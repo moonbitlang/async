@@ -1,0 +1,4 @@
+{
+  "import": [ "moonbitlang/async/os_error" ],
+  "native-stub": [ "poll.c" ]
+}

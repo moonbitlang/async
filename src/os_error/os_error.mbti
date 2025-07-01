@@ -1,0 +1,12 @@
+package "moonbitlang/async/os_error"
+
+// Values
+fn check_errno() -> Unit raise OSError
+
+// Types and methods
+pub suberror OSError Int
+
+// Type aliases
+
+// Traits
+
