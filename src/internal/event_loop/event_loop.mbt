@@ -15,13 +15,7 @@
 ///|
 struct EventLoop {
   poll : Instance
-  tasks : Map[Int, Task]
-}
-
-///|
-priv struct Task {
-  mut callback : Option[() -> Unit]
-  oneshot : Bool
+  tasks : Map[Int, @coroutine.Coroutine]
 }
 
 ///|
@@ -32,57 +26,45 @@ pub fn EventLoop::new() -> EventLoop {
 ///|
 pub fn EventLoop::run_forever(self : Self) -> Unit raise {
   while not(self.tasks.is_empty()) {
-    let n = self.poll.wait(timeout=-1)
+    let n = self.poll.wait(timeout=5000)
     if n < 0 {
       @os_error.check_errno()
     }
     for i in 0..<n {
       let event = get_event(i)
       let fd = event.fd()
-      let task = self.tasks.get(fd).unwrap()
-      if task.callback is Some(cb) {
-        if task.oneshot {
-          task.callback = None
-        }
-        cb()
+      guard self.tasks.get(fd) is Some(coro)
+      self.tasks.remove(fd)
+      if 0 != self.poll.remove(fd) {
+        @os_error.check_errno()
       }
+      coro.wake()
     }
   }
   self.poll.destroy()
 }
 
 ///|
-pub fn EventLoop::register(
+pub async fn EventLoop::wait_for_fd(
   self : EventLoop,
   fd : Int,
-  cb : () -> Unit,
   oneshot~ : Bool,
   events~ : Events
-) -> Unit raise @os_error.OSError {
-  match self.tasks.get(fd) {
-    None => {
-      self.tasks[fd] = { callback: Some(cb), oneshot }
-      if 0 != self.poll.register(fd, events~, oneshot~) {
+) -> Unit raise {
+  guard self.tasks.get(fd) is None
+  if 0 != self.poll.register(fd, events~, oneshot~) {
+    @os_error.check_errno()
+  }
+  self.tasks[fd] = @coroutine.current_coroutine()
+  @coroutine.suspend() catch {
+    err => {
+      self.tasks.remove(fd)
+      if 0 != self.poll.remove(fd) {
         @os_error.check_errno()
       }
-    }
-    Some(task) => {
-      guard task.callback is None else {
-        abort("file descriptor \{fd} already subscribed")
-      }
-      task.callback = Some(cb)
-      if 0 != self.poll.modify(fd, events~, oneshot~) {
-        @os_error.check_errno()
-      }
+      raise err
     }
   }
-}
-
-///|
-pub fn EventLoop::unregister(self : EventLoop, fd : Int) -> Unit {
-  let task = self.tasks.get(fd).unwrap()
-  task.callback = None
-  let _ = self.poll.remove(fd)
 }
 
 ///|

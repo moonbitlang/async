@@ -13,8 +13,9 @@
 // limitations under the License.
 
 ///|
-priv type Instance
+priv type Instance Int
 
+///|
 pub(all) enum Events {
   Read = 1
   Write = 2
@@ -34,14 +35,6 @@ extern "C" fn Instance::register(
   events~ : Events,
   oneshot~ : Bool = false
 ) -> Int = "poll_register"
-
-///|
-extern "C" fn Instance::modify(
-  self : Instance,
-  fd : Int,
-  events~ : Events,
-  oneshot~ : Bool = false
-) -> Int = "poll_modify"
 
 ///|
 extern "C" fn Instance::remove(self : Instance, fd : Int) -> Int = "poll_remove"

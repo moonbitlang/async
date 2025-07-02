@@ -1,18 +1,13 @@
 package "moonbitlang/async/internal/event_loop"
 
-import(
-  "moonbitlang/async/os_error"
-)
-
 // Values
 
 // Types and methods
 type EventLoop
 fn EventLoop::close(Self, Int) -> Unit
 fn EventLoop::new() -> Self
-fn EventLoop::register(Self, Int, () -> Unit, oneshot~ : Bool, events~ : Events) -> Unit raise @os_error.OSError
 fn EventLoop::run_forever(Self) -> Unit raise
-fn EventLoop::unregister(Self, Int) -> Unit
+async fn EventLoop::wait_for_fd(Self, Int, oneshot~ : Bool, events~ : Events) -> Unit raise
 
 pub(all) enum Events {
   Read
