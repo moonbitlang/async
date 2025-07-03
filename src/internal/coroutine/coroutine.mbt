@@ -24,6 +24,7 @@ priv enum State {
 struct Coroutine {
   mut state : State
   downstream : Array[Coroutine]
+  children : Array[Coroutine]
 }
 
 ///|
@@ -45,12 +46,15 @@ pub fn Coroutine::wake(self : Coroutine) -> Unit {
 }
 
 ///|
-pub fn Coroutine::cancel(self : Coroutine, err~ : Error) -> Unit {
+pub suberror Cancelled derive(Show)
+
+///|
+pub fn Coroutine::cancel(self : Coroutine) -> Unit {
   guard self.state is Suspend(ok_cont=_, err_cont~) else {  }
   self.state = Running
   let last_coro = curr_coro.val
   curr_coro.val = Some(self)
-  err_cont(err)
+  err_cont(Cancelled)
   curr_coro.val = last_coro
 }
 
@@ -65,8 +69,11 @@ pub async fn suspend() -> Unit raise {
 
 ///|
 pub fn Coroutine::spawn(f : async () -> Unit raise) -> Coroutine {
-  let coro = { state: Running, downstream: [] }
+  let coro = { state: Running, downstream: [], children: [] }
   let last_coro = curr_coro.val
+  if last_coro is Some(outer) {
+    outer.children.push(coro)
+  }
   curr_coro.val = Some(coro)
   run_async(fn() {
     try f() catch {
@@ -78,6 +85,10 @@ pub fn Coroutine::spawn(f : async () -> Unit raise) -> Coroutine {
       downstream.wake()
     }
     coro.downstream.clear()
+    for child in coro.children {
+      child.cancel()
+    }
+    coro.children.clear()
   })
   curr_coro.val = last_coro
   coro

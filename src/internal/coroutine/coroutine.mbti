@@ -6,8 +6,11 @@ fn current_coroutine() -> Coroutine
 async fn suspend() -> Unit raise
 
 // Types and methods
+pub type! Cancelled
+impl Show for Cancelled
+
 type Coroutine
-fn Coroutine::cancel(Self, err~ : Error) -> Unit
+fn Coroutine::cancel(Self) -> Unit
 fn Coroutine::spawn(() -> Unit raise) -> Self
 fnalias Coroutine::spawn
 async fn Coroutine::wait(Self) -> Unit raise

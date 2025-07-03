@@ -14,14 +14,14 @@
 
 ///|
 fn main_prog() -> Unit raise {
-  @async.with_event_loop(fn(ctx) {
+  @async.with_event_loop(fn() {
     let listen_sock = make_tcp_socket()
     bind(listen_sock, "0.0.0.0", 4200)
     listen(listen_sock)
     for {
       let conn = accept(listen_sock)
       println("received new connection \{conn}")
-      ctx.spawn(fn() {
+      @async.spawn(fn() {
         let buf = Bytes::make(1024, 0)
         while recv(conn, buf) is n && n > 0 {
           let _ = send(conn, buf[0:n].to_bytes())

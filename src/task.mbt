@@ -25,9 +25,13 @@ pub async fn[X] Task::wait(task : Task[X]) -> X raise {
 }
 
 ///|
-pub suberror Cancelled
+pub fn[X] Task::cancel(task : Task[X]) -> Unit {
+  task.coro.cancel()
+}
 
 ///|
-pub fn[X] Task::cancel(task : Task[X]) -> Unit {
-  task.coro.cancel(err=Cancelled)
+pub async fn[X] spawn(f : async () -> X raise) -> Task[X] {
+  let result = @ref.new(None)
+  let coro = @coroutine.spawn(() => result.val = Some(f()))
+  { coro, result }
 }

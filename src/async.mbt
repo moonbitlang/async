@@ -13,20 +13,14 @@
 // limitations under the License.
 
 ///|
-pub typealias @context.(Task, Context)
-
-///|
-pub fnalias @context.with_context
-
-///|
 let curr_loop : Ref[@event_loop.EventLoop?] = @ref.new(None)
 
 ///|
-pub fn with_event_loop(f : async (Context) -> Unit raise) -> Unit raise {
+pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
   let evloop = @event_loop.EventLoop::new()
   curr_loop.val = Some(evloop)
-  let _ = @coroutine.spawn(() => @context.with_context(f))
+  let _ = @coroutine.spawn(f)
   evloop.run_forever()
   curr_loop.val = None
 }

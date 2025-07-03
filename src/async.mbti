@@ -1,24 +1,20 @@
 package "moonbitlang/async"
 
-import(
-  "moonbitlang/async/context"
-)
-
 // Values
 async fn sleep(Int) -> Unit raise
 
+async fn[X] spawn(() -> X raise) -> Task[X]
+
 async fn wait_fd(Int) -> Unit raise
 
-async fn[X] with_context((@context.Context) -> X raise) -> X raise
-
-fn with_event_loop((@context.Context) -> Unit raise) -> Unit raise
+fn with_event_loop(() -> Unit raise) -> Unit raise
 
 // Types and methods
+type Task[X]
+fn[X] Task::cancel(Self[X]) -> Unit
+async fn[X] Task::wait(Self[X]) -> X raise
 
 // Type aliases
-pub typealias @context.Context as Context
-
-pub typealias @context.Task as Task
 
 // Traits
 
