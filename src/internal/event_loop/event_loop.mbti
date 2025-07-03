@@ -7,6 +7,7 @@ type EventLoop
 fn EventLoop::close(Self, Int) -> Unit
 fn EventLoop::new() -> Self
 fn EventLoop::run_forever(Self) -> Unit raise
+async fn EventLoop::sleep(Self, Int) -> Unit raise
 async fn EventLoop::wait_for_fd(Self, Int, oneshot~ : Bool, events~ : Events) -> Unit raise
 
 pub(all) enum Events {

@@ -36,3 +36,9 @@ pub async fn wait_fd(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   evloop.wait_for_fd(fd, oneshot=false, events=Read)
 }
+
+///|
+pub async fn sleep(ms : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  evloop.sleep(ms)
+}

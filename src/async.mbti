@@ -5,6 +5,8 @@ import(
 )
 
 // Values
+async fn sleep(Int) -> Unit raise
+
 async fn wait_fd(Int) -> Unit raise
 
 async fn[X] with_context((@context.Context) -> X raise) -> X raise

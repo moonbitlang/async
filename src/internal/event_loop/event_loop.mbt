@@ -16,20 +16,27 @@
 struct EventLoop {
   poll : Instance
   tasks : Map[Int, @coroutine.Coroutine]
+  timers : @sorted_set.T[Timer]
 }
 
 ///|
 pub fn EventLoop::new() -> EventLoop {
-  { poll: Instance::new(), tasks: {} }
+  { poll: Instance::new(), tasks: {}, timers: @sorted_set.new() }
 }
 
 ///|
 pub fn EventLoop::run_forever(self : Self) -> Unit raise {
-  while not(self.tasks.is_empty()) {
-    let n = self.poll.wait(timeout=5000)
+  while not(self.tasks.is_empty() && self.timers.is_empty()) {
+    let timeout = match self.timers.iter().head() {
+      Some(timer) =>
+        @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
+      None => -1
+    }
+    let n = self.poll.wait(timeout~)
     if n < 0 {
       @os_error.check_errno()
     }
+    self.flush_timer()
     for i in 0..<n {
       let event = get_event(i)
       let fd = event.fd()
@@ -39,6 +46,7 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
         @os_error.check_errno()
       }
       coro.wake()
+      self.flush_timer()
     }
   }
   self.poll.destroy()
@@ -75,3 +83,24 @@ pub fn EventLoop::close(self : EventLoop, fd : Int) -> Unit {
 
 ///|
 extern "C" fn close(fd : Int) = "close"
+
+///|
+fn EventLoop::flush_timer(self : EventLoop) -> Unit {
+  while self.timers.iter().head() is Some(timer) &&
+        timer.expire_time <= @time.ms_since_epoch() {
+    self.timers.remove(timer)
+    timer.coro.wake()
+  }
+}
+
+///|
+pub async fn EventLoop::sleep(self : EventLoop, duration : Int) -> Unit raise {
+  let timer = Timer::new(duration, @coroutine.current_coroutine())
+  self.timers.add(timer)
+  @coroutine.suspend() catch {
+    err => {
+      self.timers.remove(timer)
+      raise err
+    }
+  }
+}
