@@ -20,9 +20,10 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
   let evloop = @event_loop.EventLoop::new()
   curr_loop.val = Some(evloop)
-  let _ = @coroutine.spawn(f)
+  let main = @coroutine.spawn(f, wait=true)
   evloop.run_forever()
   curr_loop.val = None
+  main.unwrap()
 }
 
 ///|

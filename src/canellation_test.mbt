@@ -99,10 +99,7 @@ test "error propagation" {
       task1.wait()
       task2.wait()
     } catch {
-      err => {
-        buf.write_string("main task received error \{err}\n")
-        raise err
-      }
+      err => buf.write_string("main task received error \{err}\n")
     } noraise {
       _ => buf.write_string("main task normal exit\n")
     }

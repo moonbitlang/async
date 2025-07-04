@@ -32,6 +32,11 @@ pub fn[X] Task::cancel(task : Task[X]) -> Unit {
 ///|
 pub async fn[X] spawn(f : async () -> X raise) -> Task[X] {
   let result = @ref.new(None)
-  let coro = @coroutine.spawn(() => result.val = Some(f()))
+  let coro = @coroutine.spawn(wait=false, () => result.val = Some(f()))
   { coro, result }
+}
+
+///|
+pub async fn spawn_bg(f : async () -> Unit raise) -> Unit {
+  ignore(@coroutine.spawn(wait=true, f))
 }

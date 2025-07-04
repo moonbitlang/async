@@ -64,7 +64,7 @@ pub async fn EventLoop::wait_for_fd(
     @os_error.check_errno()
   }
   self.tasks[fd] = @coroutine.current_coroutine()
-  @coroutine.suspend() catch {
+  ignore(@coroutine.suspend()) catch {
     err => {
       self.tasks.remove(fd)
       if 0 != self.poll.remove(fd) {
@@ -97,7 +97,7 @@ fn EventLoop::flush_timer(self : EventLoop) -> Unit {
 pub async fn EventLoop::sleep(self : EventLoop, duration : Int) -> Unit raise {
   let timer = Timer::new(duration, @coroutine.current_coroutine())
   self.timers.add(timer)
-  @coroutine.suspend() catch {
+  ignore(@coroutine.suspend()) catch {
     err => {
       self.timers.remove(timer)
       raise err
