@@ -13,7 +13,9 @@ async fn[X, Y, Z] wait3(Task[X], Task[Y], Task[Z]) -> (X, Y, Z) raise
 
 async fn[X, Y, Z, W] wait4(Task[X], Task[Y], Task[Z], Task[W]) -> (X, Y, Z, W) raise
 
-async fn wait_fd(Int) -> Unit raise
+async fn wait_fd_read(Int) -> Unit raise
+
+async fn wait_fd_write(Int) -> Unit raise
 
 fn with_event_loop(() -> Unit raise) -> Unit raise
 

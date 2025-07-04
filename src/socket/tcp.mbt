@@ -39,7 +39,7 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 ///|
 pub async fn TCP::accept(self : TCP) -> TCP raise {
   let TCP(listen_sock) = self
-  @async.wait_fd(listen_sock)
+  @async.wait_fd_read(listen_sock)
   let conn_sock = accept_ffi(listen_sock)
   if conn_sock < 0 {
     @os_error.check_errno()
@@ -56,7 +56,7 @@ pub async fn TCP::recv(
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
-  @async.wait_fd(sock)
+  @async.wait_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
   if n_read < 0 {
     @os_error.check_errno()

@@ -27,9 +27,15 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 }
 
 ///|
-pub async fn wait_fd(fd : Int) -> Unit raise {
+pub async fn wait_fd_read(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  evloop.wait_for_fd(fd, oneshot=false, events=Read)
+  evloop.wait_for_fd_read(fd)
+}
+
+///|
+pub async fn wait_fd_write(fd : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  evloop.wait_for_fd_write(fd)
 }
 
 ///|

@@ -20,6 +20,7 @@ pub(all) enum Events {
   Read = 1
   Write = 2
   ReadWrite = 3
+  Error = 4
 }
 
 ///|
@@ -29,15 +30,54 @@ extern "C" fn Instance::new() -> Instance = "poll_create"
 extern "C" fn Instance::destroy(self : Instance) = "poll_destroy"
 
 ///|
-extern "C" fn Instance::register(
+extern "C" fn Instance::register_ffi(
+  self : Instance,
+  fd : Int,
+  events~ : Events,
+  oneshot~ : Bool
+) -> Int = "poll_register"
+
+///|
+fn Instance::register(
   self : Instance,
   fd : Int,
   events~ : Events,
   oneshot~ : Bool = false
-) -> Int = "poll_register"
+) -> Unit raise {
+  if 0 != self.register_ffi(fd, events~, oneshot~) {
+    @os_error.check_errno()
+  }
+}
 
 ///|
-extern "C" fn Instance::remove(self : Instance, fd : Int) -> Int = "poll_remove"
+extern "C" fn Instance::modify_ffi(
+  self : Instance,
+  fd : Int,
+  events~ : Events,
+  oneshot~ : Bool = false
+) -> Int = "poll_modify"
+
+///|
+fn Instance::modify(
+  self : Instance,
+  fd : Int,
+  events~ : Events,
+  oneshot~ : Bool = false
+) -> Unit raise {
+  if 0 != self.modify_ffi(fd, events~, oneshot~) {
+    @os_error.check_errno()
+  }
+}
+
+///|
+extern "C" fn Instance::remove_ffi(self : Instance, fd : Int) -> Int = "poll_remove"
+
+///|
+fn Instance::remove(self : Instance, fd : Int) -> Unit raise {
+  if 0 != self.remove_ffi(fd) {
+    @os_error.check_errno()
+  }
+}
 
 ///|
 #external
@@ -48,6 +88,9 @@ extern "C" fn get_event(index : Int) -> Event = "event_list_get"
 
 ///|
 extern "C" fn Event::fd(self : Event) -> Int = "event_get_fd"
+
+///|
+extern "C" fn Event::events(self : Event) -> Events = "event_get_events"
 
 ///|
 extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "poll_wait"

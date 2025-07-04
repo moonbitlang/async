@@ -41,7 +41,7 @@ pub async fn UDP::recv(
   if n_read > 0 {
     return n_read
   } else if @os_error.is_nonblocking_io_error(@os_error.get_errno()) {
-    @async.wait_fd(sock)
+    @async.wait_fd_read(sock)
     recv_ffi(sock, buf, offset, max_len)
   } else {
     @os_error.check_errno()

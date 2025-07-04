@@ -1,5 +1,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <stdio.h>
 
 int poll_create() {
   return epoll_create1(0);
@@ -13,7 +14,8 @@ const int ev_masks[] = {
   0,
   EPOLLIN,
   EPOLLOUT,
-  EPOLLIN | EPOLLOUT
+  EPOLLIN | EPOLLOUT,
+  EPOLLERR
 };
 
 int poll_register(
@@ -66,4 +68,17 @@ struct epoll_event* event_list_get(int index) {
 
 int event_get_fd(struct epoll_event *ev) {
   return ev->data.fd;
+}
+
+int event_get_events(struct epoll_event *ev) {
+  if (ev->events | EPOLLERR)
+    return 4;
+
+  int result = 0;
+  if (ev->events | EPOLLIN)
+    result |= 1;
+  if (ev->events | EPOLLOUT)
+    result |= 2;
+
+  return result;
 }

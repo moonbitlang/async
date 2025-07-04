@@ -15,8 +15,14 @@
 ///|
 struct EventLoop {
   poll : Instance
-  tasks : Map[Int, @coroutine.Coroutine]
+  tasks : Map[Int, Task]
   timers : @sorted_set.T[Timer]
+}
+
+///|
+priv struct Task {
+  mut read : @coroutine.Coroutine?
+  mut write : Set[@coroutine.Coroutine]
 }
 
 ///|
@@ -37,14 +43,33 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
       @os_error.check_errno()
     }
     self.flush_timer()
+    let coros = []
     for i in 0..<n {
       let event = get_event(i)
       let fd = event.fd()
-      guard self.tasks.get(fd) is Some(coro)
-      self.tasks.remove(fd)
-      if 0 != self.poll.remove(fd) {
-        @os_error.check_errno()
+      guard self.tasks.get(fd) is Some(task)
+      let events = event.events()
+      if events is Read && not(task.write.is_empty()) {
+        self.poll.modify(fd, events=Write)
       }
+      if events is Write && task.read is None {
+        self.poll.modify(fd, events=Read)
+      } else {
+        self.tasks.remove(fd)
+        self.poll.remove(fd)
+      }
+      if task.read is Some(coro) && not(events is Write) {
+        task.read = None
+        coros.push(coro)
+      }
+      if not(task.write.is_empty() || events is Read) {
+        for coro in task.write {
+          coros.push(coro)
+        }
+        task.write = Set::new()
+      }
+    }
+    for coro in coros {
       coro.wake()
       self.flush_timer()
     }
@@ -53,22 +78,71 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
-pub async fn EventLoop::wait_for_fd(
+pub async fn EventLoop::wait_for_fd_read(
   self : EventLoop,
-  fd : Int,
-  oneshot~ : Bool,
-  events~ : Events
+  fd : Int
 ) -> Unit raise {
-  guard self.tasks.get(fd) is None
-  if 0 != self.poll.register(fd, events~, oneshot~) {
-    @os_error.check_errno()
+  let task = match self.tasks.get(fd) {
+    None => {
+      let task = { read: None, write: Set::new() }
+      self.tasks[fd] = task
+      task
+    }
+    Some(task) => task
   }
-  self.tasks[fd] = @coroutine.current_coroutine()
+  guard task.read is None
+  task.read = Some(@coroutine.current_coroutine())
+  if task.write.is_empty() {
+    self.poll.register(fd, events=Read, oneshot=false)
+  } else {
+    self.poll.modify(fd, events=ReadWrite, oneshot=false)
+  }
   ignore(@coroutine.suspend()) catch {
     err => {
-      self.tasks.remove(fd)
-      if 0 != self.poll.remove(fd) {
-        @os_error.check_errno()
+      task.read = None
+      if task.write.is_empty() {
+        self.tasks.remove(fd)
+        self.poll.remove(fd)
+      } else {
+        self.poll.modify(fd, events=Write)
+      }
+      raise err
+    }
+  }
+}
+
+///|
+pub async fn EventLoop::wait_for_fd_write(
+  self : EventLoop,
+  fd : Int
+) -> Unit raise {
+  let task = match self.tasks.get(fd) {
+    None => {
+      let task = { read: None, write: Set::new() }
+      self.tasks[fd] = task
+      task
+    }
+    Some(task) => task
+  }
+  if task.write.is_empty() {
+    if task.read is None {
+      self.poll.register(fd, events=Write, oneshot=false)
+    } else {
+      self.poll.modify(fd, events=ReadWrite, oneshot=false)
+    }
+  }
+  let coro = @coroutine.current_coroutine()
+  task.write.add(coro)
+  ignore(@coroutine.suspend()) catch {
+    err => {
+      task.write.remove(coro)
+      if task.write.is_empty() {
+        if task.read is None {
+          self.tasks.remove(fd)
+          self.poll.remove(fd)
+        } else {
+          self.poll.modify(fd, events=Read)
+        }
       }
       raise err
     }
