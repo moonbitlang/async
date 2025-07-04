@@ -40,3 +40,35 @@ pub async fn[X] spawn(f : async () -> X raise) -> Task[X] {
 pub async fn spawn_bg(f : async () -> Unit raise) -> Unit {
   ignore(@coroutine.spawn(wait=true, f))
 }
+
+///|
+pub async fn[X, Y] wait2(t1 : Task[X], t2 : Task[Y]) -> (X, Y) raise {
+  @coroutine.wait_all([t1.coro, t2.coro])
+  (t1.result.val.unwrap(), t2.result.val.unwrap())
+}
+
+///|
+pub async fn[X, Y, Z] wait3(
+  t1 : Task[X],
+  t2 : Task[Y],
+  t3 : Task[Z]
+) -> (X, Y, Z) raise {
+  @coroutine.wait_all([t1.coro, t2.coro, t3.coro])
+  (t1.result.val.unwrap(), t2.result.val.unwrap(), t3.result.val.unwrap())
+}
+
+///|
+pub async fn[X, Y, Z, W] wait4(
+  t1 : Task[X],
+  t2 : Task[Y],
+  t3 : Task[Z],
+  t4 : Task[W]
+) -> (X, Y, Z, W) raise {
+  @coroutine.wait_all([t1.coro, t2.coro, t3.coro, t4.coro])
+  (
+    t1.result.val.unwrap(),
+    t2.result.val.unwrap(),
+    t3.result.val.unwrap(),
+    t4.result.val.unwrap(),
+  )
+}
