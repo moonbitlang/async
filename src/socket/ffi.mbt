@@ -13,29 +13,34 @@
 // limitations under the License.
 
 ///|
-pub extern "C" fn get_errno() -> Int = "get_errno"
+extern "C" fn make_tcp_socket() -> Int = "make_tcp_socket"
 
 ///|
-pub const EAGAIN : Int = 11
+extern "C" fn make_udp_socket() -> Int = "make_udp_socket"
 
 ///|
-pub const EWOULDBLOCK : Int = 41
+extern "C" fn bind_ffi(sock : Int, ip : UInt, port : Int) -> Int = "bind_ffi"
 
 ///|
-pub const EINPROGRESS : Int = 115
+extern "C" fn listen_ffi(sock : Int) -> Int = "listen_ffi"
 
 ///|
-pub fn is_nonblocking_io_error(code : Int) -> Bool {
-  code is (EAGAIN | EWOULDBLOCK | EINPROGRESS)
-}
+extern "C" fn accept_ffi(sock : Int) -> Int = "accept_ffi"
 
 ///|
-pub suberror OSError Int derive(Show)
+#borrow(buf)
+extern "C" fn recv_ffi(
+  sock : Int,
+  buf : FixedArray[Byte],
+  offset : Int,
+  max_len : Int
+) -> Int = "recv_ffi"
 
 ///|
-pub fn check_errno() -> Unit raise OSError {
-  let err_code = get_errno()
-  if err_code != 0 {
-    raise OSError(err_code)
-  }
-}
+#borrow(buf)
+extern "C" fn send_ffi(
+  sock : Int,
+  buf : Bytes,
+  offset : Int,
+  max_len : Int
+) -> Int = "send_ffi"

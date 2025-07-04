@@ -2,7 +2,6 @@
   "is-main": true,
   "import": [
     "moonbitlang/async",
-    "moonbitlang/async/os_error",
-  ],
-  "native-stub": [ "socket.c" ]
+    "moonbitlang/async/socket"
+  ]
 }

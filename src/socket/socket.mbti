@@ -1,0 +1,23 @@
+package "moonbitlang/async/socket"
+
+// Values
+
+// Types and methods
+type TCP
+async fn TCP::accept(Self) -> Self raise
+fn TCP::bind(Self, UInt, Int) -> Unit raise
+fn TCP::listen(Self) -> Unit raise
+fn TCP::new() -> Self
+async fn TCP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
+async fn TCP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Int raise
+
+type UDP
+fn UDP::bind(Self, UInt, Int) -> Unit raise
+fn UDP::new() -> Self
+async fn UDP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
+async fn UDP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Int raise
+
+// Type aliases
+
+// Traits
+

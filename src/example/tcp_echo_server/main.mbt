@@ -15,19 +15,19 @@
 ///|
 fn main_prog() -> Unit raise {
   @async.with_event_loop(fn() {
-    let listen_sock = make_tcp_socket()
-    bind(listen_sock, "0.0.0.0", 4200)
-    listen(listen_sock)
+    let listen_sock = @socket.TCP::new()
+    listen_sock..bind(0, 4200)..listen()
     for {
-      let conn = accept(listen_sock)
-      println("received new connection \{conn}")
+      let conn = listen_sock.accept()
+      println("received new connection")
       @async.spawn(fn() {
-        let buf = Bytes::make(1024, 0)
-        while recv(conn, buf) is n && n > 0 {
-          let _ = send(conn, buf[0:n].to_bytes())
+        let buf = FixedArray::make(1024, b'0')
+        while conn.recv(buf) is n && n > 0 {
+          let buf = buf.unsafe_reinterpret_as_bytes()
+          let _ = conn.send(buf[0:n].to_bytes())
 
         }
-        println("connection \{conn} closed")
+        println("connection closed")
       })
       |> ignore
     }
