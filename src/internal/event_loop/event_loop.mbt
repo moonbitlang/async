@@ -80,7 +80,7 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
 ///|
 pub async fn EventLoop::wait_for_fd_read(
   self : EventLoop,
-  fd : Int
+  fd : Int,
 ) -> Unit raise {
   let task = match self.tasks.get(fd) {
     None => {
@@ -114,7 +114,7 @@ pub async fn EventLoop::wait_for_fd_read(
 ///|
 pub async fn EventLoop::wait_for_fd_write(
   self : EventLoop,
-  fd : Int
+  fd : Int,
 ) -> Unit raise {
   let task = match self.tasks.get(fd) {
     None => {

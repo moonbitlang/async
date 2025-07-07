@@ -15,8 +15,8 @@
 ///|
 test "basic_timer" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn() {
-      let t1 = @async.spawn(fn() {
+  let result = try? @async.with_event_loop(fn(root) {
+      root.spawn(fn() {
         @async.sleep(100)
         buf.write_string("task 1, tick 1\n")
         @async.sleep(100)
@@ -24,7 +24,7 @@ test "basic_timer" {
         @async.sleep(100)
         buf.write_string("task 1, tick 3\n")
       })
-      let t2 = @async.spawn(fn() {
+      root.spawn(fn() {
         @async.sleep(150)
         buf.write_string("task 2, tick 1\n")
         @async.sleep(100)
@@ -32,8 +32,6 @@ test "basic_timer" {
         @async.sleep(100)
         buf.write_string("task 2, tick 3\n")
       })
-      t1.wait()
-      t2.wait()
     })
   inspect(result, content="Ok(())")
   inspect(

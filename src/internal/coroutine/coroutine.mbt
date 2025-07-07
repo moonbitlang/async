@@ -17,16 +17,14 @@ priv enum State {
   Done
   Fail(Error)
   Running
-  Suspend(ok_cont~ : (Int) -> Unit, err_cont~ : (Error) -> Unit)
+  Suspend(ok_cont~ : (Unit) -> Unit, err_cont~ : (Error) -> Unit)
 }
 
 ///|
 struct Coroutine {
   coro_id : Int
   mut state : State
-  downstream : Map[Coroutine, Int]
-  children : Array[Coroutine]
-  children_wait : Array[Coroutine]
+  downstream : Set[Coroutine]
 }
 
 ///|
@@ -51,12 +49,12 @@ pub fn current_coroutine() -> Coroutine {
 }
 
 ///|
-pub fn Coroutine::wake(self : Coroutine, tag~ : Int = 0) -> Unit {
+pub fn Coroutine::wake(self : Coroutine) -> Unit {
   guard self.state is Suspend(ok_cont~, err_cont=_) else {  }
   self.state = Running
   let last_coro = curr_coro.val
   curr_coro.val = Some(self)
-  ok_cont(tag)
+  ok_cont(())
   curr_coro.val = last_coro
 }
 
@@ -74,7 +72,7 @@ pub fn Coroutine::cancel(self : Coroutine) -> Unit {
 }
 
 ///|
-pub async fn suspend() -> Int raise {
+pub async fn suspend() -> Unit raise {
   guard curr_coro.val is Some(coro)
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
@@ -83,45 +81,21 @@ pub async fn suspend() -> Int raise {
 }
 
 ///|
-pub fn Coroutine::spawn(f : async () -> Unit raise, wait~ : Bool) -> Coroutine {
+pub fn Coroutine::spawn(f : async () -> Unit raise) -> Coroutine {
   coro_id.val += 1
-  let coro = {
-    state: Running,
-    downstream: {},
-    children: [],
-    children_wait: [],
-    coro_id: coro_id.val,
-  }
+  let coro = { state: Running, downstream: Set::new(), coro_id: coro_id.val }
   let last_coro = curr_coro.val
-  if last_coro is Some(outer) {
-    if wait {
-      outer.children_wait.push(coro)
-    } else {
-      outer.children.push(coro)
-    }
-  }
   curr_coro.val = Some(coro)
   run_async(fn() {
-    try {
-      f()
-      wait_all(coro.children_wait)
-    } catch {
+    try f() catch {
       err => coro.state = Fail(err)
     } noraise {
       _ => coro.state = Done
     }
-    for coro, tag in coro.downstream {
-      coro.wake(tag~)
+    for coro in coro.downstream {
+      coro.wake()
     }
     coro.downstream.clear()
-    for child in coro.children {
-      child.cancel()
-    }
-    coro.children.clear()
-    for child in coro.children_wait {
-      child.cancel()
-    }
-    coro.children_wait.clear()
   })
   curr_coro.val = last_coro
   coro
@@ -148,7 +122,7 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit raise {
     Fail(err) => raise err
     Running | Suspend(_) => ()
   }
-  target.downstream[coro] = 0
+  target.downstream.add(coro)
   try suspend() catch {
     err => {
       target.downstream.remove(coro)
@@ -156,42 +130,5 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit raise {
     }
   } noraise {
     _ => target.unwrap()
-  }
-}
-
-///|
-pub async fn wait_all(coros : Array[Coroutine]) -> Unit raise {
-  guard curr_coro.val is Some(self)
-  let mut remaining = 0
-  try {
-    for tag, coro in coros {
-      guard not(physical_equal(coro, self))
-      match coro.state {
-        Done => ()
-        Fail(err) => raise err
-        Running | Suspend(_) => {
-          remaining += 1
-          coro.downstream[self] = tag
-        }
-      }
-    }
-    while remaining > 0 {
-      let tag = suspend()
-      match coros[tag].state {
-        Done => remaining -= 1
-        Fail(err) => raise err
-        Running | Suspend(_) => ()
-      }
-    }
-  } catch {
-    err => {
-      for coro in coros {
-        match coro.state {
-          Running | Suspend(_) => coro.downstream.remove(self)
-          Done | Fail(_) => ()
-        }
-      }
-      raise err
-    }
   }
 }

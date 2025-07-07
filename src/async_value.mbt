@@ -13,29 +13,18 @@
 // limitations under the License.
 
 ///|
-fn main_prog() -> Unit raise {
-  @async.with_event_loop(fn(root) {
-    let listen_sock = @socket.TCP::new()
-    listen_sock..bind(0, 4200)..listen()
-    for {
-      let conn = listen_sock.accept()
-      println("received new connection")
-      root.spawn(fn() {
-        let buf = FixedArray::make(1024, b'0')
-        while conn.recv(buf) is n && n > 0 {
-          let buf = buf.unsafe_reinterpret_as_bytes()
-          let _ = conn.send(buf[0:n].to_bytes())
-
-        }
-        println("connection closed")
-      })
-    }
-  })
+struct AsyncValue[X] {
+  value : Ref[X?]
+  coro : @coroutine.Coroutine
 }
 
 ///|
-fn main {
-  main_prog() catch {
-    err => println("server exit with error \{err}")
-  }
+pub async fn[X] AsyncValue::wait(self : AsyncValue[X]) -> X raise {
+  self.coro.wait()
+  self.value.val.unwrap()
+}
+
+///|
+pub fn[X] AsyncValue::cancel(self : AsyncValue[X]) -> Unit {
+  self.coro.cancel()
 }

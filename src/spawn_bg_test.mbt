@@ -15,8 +15,8 @@
 ///|
 test "spawn_bg basic" {
   let buf = StringBuilder::new()
-  @async.with_event_loop(fn() {
-    @async.spawn_bg(fn() {
+  @async.with_event_loop(fn(root) {
+    root.spawn(fn() {
       @async.sleep(100)
       buf.write_string("task 1, tick 1\n")
       @async.sleep(100)
@@ -24,7 +24,7 @@ test "spawn_bg basic" {
       @async.sleep(100)
       buf.write_string("task 1, tick 3\n")
     })
-    @async.spawn_bg(fn() {
+    root.spawn(fn() {
       @async.sleep(150)
       buf.write_string("task 2, tick 1\n")
       @async.sleep(100)
@@ -50,12 +50,12 @@ test "spawn_bg basic" {
 ///|
 test "spawn_bg error1" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn() {
-      @async.spawn_bg(fn() {
+  let result = try? @async.with_event_loop(fn(root) {
+      root.spawn(fn() {
         @async.sleep(10000)
         buf.write_string("task 1 finished\n")
       })
-      @async.spawn_bg(fn() {
+      root.spawn(fn() {
         @async.sleep(100)
         raise Err
       })
@@ -67,12 +67,12 @@ test "spawn_bg error1" {
 ///|
 test "spawn_bg error2" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn() {
-      @async.spawn_bg(fn() {
+  let result = try? @async.with_event_loop(fn(root) {
+      root.spawn(fn() {
         @async.sleep(100)
         raise Err
       })
-      @async.spawn_bg(fn() {
+      root.spawn(fn() {
         @async.sleep(10000)
         buf.write_string("task 1 finished\n")
       })

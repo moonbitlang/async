@@ -34,7 +34,7 @@ extern "C" fn Instance::register_ffi(
   self : Instance,
   fd : Int,
   events~ : Events,
-  oneshot~ : Bool
+  oneshot~ : Bool,
 ) -> Int = "poll_register"
 
 ///|
@@ -42,7 +42,7 @@ fn Instance::register(
   self : Instance,
   fd : Int,
   events~ : Events,
-  oneshot~ : Bool = false
+  oneshot~ : Bool = false,
 ) -> Unit raise {
   if 0 != self.register_ffi(fd, events~, oneshot~) {
     @os_error.check_errno()
@@ -54,7 +54,7 @@ extern "C" fn Instance::modify_ffi(
   self : Instance,
   fd : Int,
   events~ : Events,
-  oneshot~ : Bool = false
+  oneshot~ : Bool = false,
 ) -> Int = "poll_modify"
 
 ///|
@@ -62,7 +62,7 @@ fn Instance::modify(
   self : Instance,
   fd : Int,
   events~ : Events,
-  oneshot~ : Bool = false
+  oneshot~ : Bool = false,
 ) -> Unit raise {
   if 0 != self.modify_ffi(fd, events~, oneshot~) {
     @os_error.check_errno()

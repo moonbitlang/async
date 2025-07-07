@@ -14,7 +14,7 @@
 
 ///|
 async fn[T, E : Error] async_suspend(
-  cb : ((T) -> Unit, (E) -> Unit) -> Unit
+  cb : ((T) -> Unit, (E) -> Unit) -> Unit,
 ) -> T raise E = "%async.suspend"
 
 ///|

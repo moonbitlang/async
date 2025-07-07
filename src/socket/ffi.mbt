@@ -36,7 +36,7 @@ extern "C" fn recv_ffi(
   sock : Int,
   buf : FixedArray[Byte],
   offset : Int,
-  max_len : Int
+  max_len : Int,
 ) -> Int = "recv_ffi"
 
 ///|
@@ -45,7 +45,7 @@ extern "C" fn send_ffi(
   sock : Int,
   buf : Bytes,
   offset : Int,
-  max_len : Int
+  max_len : Int,
 ) -> Int = "send_ffi"
 
 ///|
