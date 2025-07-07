@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 
 int make_tcp_socket() {
   return socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -23,10 +24,22 @@ int accept_ffi(int sockfd) {
   return accept(sockfd, 0, 0);
 }
 
+int connect_ffi(int sockfd, uint32_t ip, int sport) {
+  struct sockaddr_in addr = { AF_INET, htons(sport), htonl(ip) };
+  return connect(sockfd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+}
+
 int recv_ffi(int sockfd, void *buf, int offset, int max_len) {
   return recv(sockfd, buf + offset, max_len, 0);
 }
 
 int send_ffi(int sockfd, void *buf, int offset, int max_len) {
   return send(sockfd, buf + offset, max_len, 0);
+}
+
+int getsockerr(int sockfd) {
+  int err, opt_len = sizeof(int);
+  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
+    return -1;
+  return err;
 }

@@ -28,6 +28,9 @@ extern "C" fn listen_ffi(sock : Int) -> Int = "listen_ffi"
 extern "C" fn accept_ffi(sock : Int) -> Int = "accept_ffi"
 
 ///|
+extern "C" fn connect_ffi(sock : Int, ip : UInt, port : Int) -> Int = "connect_ffi"
+
+///|
 #borrow(buf)
 extern "C" fn recv_ffi(
   sock : Int,
@@ -44,3 +47,13 @@ extern "C" fn send_ffi(
   offset : Int,
   max_len : Int
 ) -> Int = "send_ffi"
+
+///|
+extern "C" fn get_socket_err(sock : Int) -> Int = "getsockerr"
+
+///|
+fn check_socket_err(sock : Int) -> Unit raise {
+  if get_socket_err(sock) != 0 {
+    @os_error.check_errno()
+  }
+}

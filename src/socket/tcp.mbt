@@ -21,6 +21,12 @@ pub fn TCP::new() -> TCP {
 }
 
 ///|
+pub fn TCP::close(self : TCP) -> Unit {
+  let TCP(sock) = self
+  @async.close(sock)
+}
+
+///|
 pub fn TCP::bind(self : TCP, ip : UInt, port : Int) -> Unit raise {
   let TCP(sock) = self
   if 0 != bind_ffi(sock, ip, port) {
@@ -45,6 +51,20 @@ pub async fn TCP::accept(self : TCP) -> TCP raise {
     @os_error.check_errno()
   }
   TCP(conn_sock)
+}
+
+///|
+pub async fn TCP::connect(self : TCP, ip : UInt, port : Int) -> Unit raise {
+  let TCP(sock) = self
+  if 0 == connect_ffi(sock, ip, port) {
+    return
+  }
+  if @os_error.is_nonblocking_io_error(@os_error.get_errno()) {
+    @async.wait_fd_write(sock)
+    check_socket_err(sock)
+  } else {
+    @os_error.check_errno()
+  }
 }
 
 ///|

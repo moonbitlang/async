@@ -39,6 +39,12 @@ pub async fn wait_fd_write(fd : Int) -> Unit raise {
 }
 
 ///|
+pub fn close(fd : Int) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  evloop.close(fd)
+}
+
+///|
 pub async fn sleep(ms : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   evloop.sleep(ms)
