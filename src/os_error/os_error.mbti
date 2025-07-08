@@ -1,17 +1,11 @@
 package "moonbitlang/async/os_error"
 
 // Values
-const EAGAIN : Int = 11
-
-const EINPROGRESS : Int = 115
-
-const EWOULDBLOCK : Int = 41
-
 fn check_errno() -> Unit raise OSError
 
 fn get_errno() -> Int
 
-fn is_nonblocking_io_error(Int) -> Bool
+fn is_nonblocking_io_error() -> Bool
 
 // Types and methods
 pub suberror OSError Int

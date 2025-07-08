@@ -50,7 +50,7 @@ pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
     let conn_sock = accept_ffi(listen_sock, addr)
     if conn_sock > 0 {
       return (TCP(conn_sock), addr)
-    } else if @os_error.get_errno() is @os_error.EAGAIN {
+    } else if @os_error.is_nonblocking_io_error() {
       @async.wait_fd_read(listen_sock)
     } else {
       @os_error.check_errno()
@@ -64,7 +64,7 @@ pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
   if 0 == connect_ffi(sock, addr) {
     return
   }
-  if @os_error.is_nonblocking_io_error(@os_error.get_errno()) {
+  if @os_error.is_nonblocking_io_error() {
     @async.wait_fd_write(sock)
     check_socket_err(sock)
   } else {
@@ -101,7 +101,7 @@ pub async fn TCP::send(
   for sent = 0; sent < len; {
     let new_sent = send_ffi(sock, buf, offset + sent, len - sent)
     if new_sent < 0 {
-      if @os_error.get_errno() is (@os_error.EAGAIN | @os_error.EWOULDBLOCK) {
+      if @os_error.is_nonblocking_io_error() {
         @async.wait_fd_write(sock)
       } else {
         @os_error.check_errno()

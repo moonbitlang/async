@@ -16,18 +16,7 @@
 pub extern "C" fn get_errno() -> Int = "get_errno"
 
 ///|
-pub const EAGAIN : Int = 11
-
-///|
-pub const EWOULDBLOCK : Int = 41
-
-///|
-pub const EINPROGRESS : Int = 115
-
-///|
-pub fn is_nonblocking_io_error(code : Int) -> Bool {
-  code is (EAGAIN | EWOULDBLOCK | EINPROGRESS)
-}
+pub extern "C" fn is_nonblocking_io_error() -> Bool = "is_nonblocking_io_error"
 
 ///|
 pub suberror OSError Int derive(Show)
