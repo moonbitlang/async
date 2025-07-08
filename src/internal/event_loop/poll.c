@@ -123,7 +123,7 @@ int poll_register(int kqfd, int fd, int events, int oneshot) {
 }
 
 int poll_modify(int kqfd, int fd, int events, int oneshot) {
-  return poll_register(kdfd, fd, events, oneshot);
+  return poll_register(kqfd, fd, events, oneshot);
 }
 
 int poll_remove(int kqfd, int fd) {
@@ -137,7 +137,7 @@ struct kevent event_buffer[EVENT_BUFFER_SIZE];
 
 int poll_wait(int kqfd, int timeout) {
   struct timespec timeout_spec = { timeout / 1000, (timeout / 1000) * 1000 };
-  return kevent(kqfd, 0, 0, &event_buffer, EVENT_BUFFER_SIZE, &timeout_spec);
+  return kevent(kqfd, 0, 0, event_buffer, EVENT_BUFFER_SIZE, &timeout_spec);
 }
 
 // wrapper for handling event list

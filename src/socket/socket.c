@@ -6,11 +6,17 @@
 #include <moonbit.h>
 
 int make_tcp_socket() {
-  return socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock > 0)
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+  return sock;
 }
 
 int make_udp_socket() {
-  return socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+  int sock = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sock > 0)
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+  return sock;
 }
 
 int bind_ffi(int sockfd, struct sockaddr_in *addr) {
