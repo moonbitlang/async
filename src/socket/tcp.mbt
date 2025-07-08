@@ -81,8 +81,13 @@ pub async fn TCP::recv(
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
-  @async.wait_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
+  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
+    @async.wait_fd_read(sock)
+    recv_ffi(sock, buf, offset, max_len)
+  } else {
+    n_read
+  }
   if n_read < 0 {
     @os_error.check_errno()
   }
