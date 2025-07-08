@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 int make_tcp_socket() {
   return socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -21,7 +22,11 @@ int listen_ffi(int sockfd) {
 }
 
 int accept_ffi(int sockfd) {
-  return accept(sockfd, 0, 0);
+  int conn = accept(sockfd, 0, 0);
+  if (conn > 0) {
+    fcntl(conn, F_SETFL, O_NONBLOCK);
+  }
+  return conn;
 }
 
 int connect_ffi(int sockfd, uint32_t ip, int sport) {

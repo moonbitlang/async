@@ -45,12 +45,16 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 ///|
 pub async fn TCP::accept(self : TCP) -> TCP raise {
   let TCP(listen_sock) = self
-  @async.wait_fd_read(listen_sock)
-  let conn_sock = accept_ffi(listen_sock)
-  if conn_sock < 0 {
-    @os_error.check_errno()
+  for {
+    let conn_sock = accept_ffi(listen_sock)
+    if conn_sock > 0 {
+      return TCP(conn_sock)
+    } else if @os_error.get_errno() is @os_error.EAGAIN {
+      @async.wait_fd_read(listen_sock)
+    } else {
+      @os_error.check_errno()
+    }
   }
-  TCP(conn_sock)
 }
 
 ///|
