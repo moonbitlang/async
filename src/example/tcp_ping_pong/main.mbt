@@ -69,6 +69,10 @@ async fn server(println : Printer) -> Unit raise {
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+  // The sleep here is used to make test result stable and portable,
+  // because this message is in race condition
+  // with server side "received connection" message
+  @async.sleep(10)
   println("client \{id}: connection established")
   conn.send(msg)
   println("client \{id} sent: \{msg}")
