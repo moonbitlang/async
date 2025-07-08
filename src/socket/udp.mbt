@@ -21,6 +21,12 @@ pub fn UDP::new() -> UDP {
 }
 
 ///|
+pub fn UDP::close(self : UDP) -> Unit {
+  let UDP(sock) = self
+  @async.close(sock)
+}
+
+///|
 pub fn UDP::bind(self : UDP, ip : UInt, port : Int) -> Unit raise {
   let UDP(sock) = self
   if 0 != bind_ffi(sock, ip, port) {
@@ -58,6 +64,30 @@ pub async fn UDP::recv(
 }
 
 ///|
+pub async fn UDP::recvfrom(
+  self : UDP,
+  buf : FixedArray[Byte],
+  offset~ : Int = 0,
+  max_len? : Int,
+) -> (Int, UInt, Int) raise {
+  let max_len = max_len.unwrap_or(buf.length() - offset)
+  let UDP(sock) = self
+  let addr_buf = make_ip_addr(0, 0)
+  let n_read = recvfrom_ffi(sock, buf, offset, max_len, addr_buf)
+  let n_read = if n_read < 0 &&
+    @os_error.get_errno() is (@os_error.EAGAIN | @os_error.EWOULDBLOCK) {
+    @async.wait_fd_read(sock)
+    recvfrom_ffi(sock, buf, offset, max_len, addr_buf)
+  } else {
+    n_read
+  }
+  if n_read < 0 {
+    @os_error.check_errno()
+  }
+  (n_read, ip_addr_get_ip(addr_buf), ip_addr_get_port(addr_buf))
+}
+
+///|
 pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
@@ -68,6 +98,31 @@ pub async fn UDP::send(
   let UDP(sock) = self
   for {
     let n_sent = send_ffi(sock, buf, offset, len)
+    if n_sent > 0 {
+      return
+    }
+    if @os_error.get_errno() is (@os_error.EAGAIN | @os_error.EWOULDBLOCK) {
+      @async.wait_fd_write(sock)
+    } else {
+      @os_error.check_errno()
+    }
+  }
+}
+
+///|
+pub async fn UDP::sendto(
+  self : UDP,
+  buf : Bytes,
+  addr : (UInt, Int),
+  offset~ : Int = 0,
+  len? : Int,
+) -> Unit raise {
+  let len = len.unwrap_or(buf.length() - offset)
+  let (ip, port) = addr
+  let addr = make_ip_addr(ip, port)
+  let UDP(sock) = self
+  for {
+    let n_sent = sendto_ffi(sock, buf, offset, len, addr)
     if n_sent > 0 {
       return
     }

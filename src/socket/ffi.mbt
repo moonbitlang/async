@@ -57,3 +57,34 @@ fn check_socket_err(sock : Int) -> Unit raise {
     @os_error.check_errno()
   }
 }
+
+///|
+extern "C" fn make_ip_addr(ip : UInt, port : Int) -> Bytes = "make_ip_addr"
+
+///|
+#borrow(addr)
+extern "C" fn ip_addr_get_ip(addr : Bytes) -> UInt = "ip_addr_get_ip"
+
+///|
+#borrow(addr)
+extern "C" fn ip_addr_get_port(addr : Bytes) -> Int = "ip_addr_get_port"
+
+///|
+#borrow(buf, addr_buf)
+extern "C" fn recvfrom_ffi(
+  sock : Int,
+  buf : FixedArray[Byte],
+  offset : Int,
+  max_len : Int,
+  addr_buf : Bytes,
+) -> Int = "recvfrom_ffi"
+
+///|
+#borrow(buf, addr_buf)
+extern "C" fn sendto_ffi(
+  sock : Int,
+  buf : Bytes,
+  offset : Int,
+  max_len : Int,
+  addr_buf : Bytes,
+) -> Int = "sendto_ffi"
