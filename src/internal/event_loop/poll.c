@@ -28,6 +28,8 @@ int poll_register(
   if (oneshot)
     events |= EPOLLONESHOT;
 
+  events |= EPOLLET;
+
   epoll_data_t data;
   data.fd = fd;
   struct epoll_event event = { events, data };
@@ -43,6 +45,8 @@ int poll_modify(
   events = ev_masks[events];
   if (oneshot)
     events |= EPOLLONESHOT;
+
+  events |= EPOLLET;
 
   epoll_data_t data;
   data.fd = fd;
