@@ -25,7 +25,7 @@ pub(all) type Printer (String) -> Unit
 async fn server(println : Printer) -> Unit raise {
   @async.with_task_group(fn(group) {
     let listen_sock = @socket.TCP::new()
-    listen_sock..bind(@socket.Addr::new(0, port))..listen()
+    listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
     try {
       for {
         let (conn, _) = listen_sock.accept()
@@ -68,7 +68,7 @@ async fn server(println : Printer) -> Unit raise {
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
-  conn.connect(@socket.Addr::new((127 << 24) + 1, port)) // 127.0.0.1:port
+  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   println("client \{id}: connection established")
   conn.send(msg)
   println("client \{id} sent: \{msg}")

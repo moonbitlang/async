@@ -41,3 +41,30 @@ pub impl Show for Addr with output(self, logger) {
   ..write_char(':')
   ..write_object(port)
 }
+
+///|
+pub suberror InvalidAddr derive(Show)
+
+///|
+// TODO: faster implementation
+pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
+  guard src.split(":").collect() is [ip, port] else { raise InvalidAddr }
+  guard ip.split(".").collect() is [a, b, c, d] else { raise InvalidAddr }
+  fn parse_octal(x : @string.View) raise InvalidAddr {
+    let value = @strconv.parse_uint(x.to_string()) catch {
+      _ => raise InvalidAddr
+    }
+    guard value < 256 else { raise InvalidAddr }
+    value
+  }
+
+  let ip = (parse_octal(a) << 24) |
+    (parse_octal(b) << 16) |
+    (parse_octal(c) << 8) |
+    parse_octal(d)
+  let port = @strconv.parse_int(port.to_string()) catch {
+    _ => raise InvalidAddr
+  }
+  guard 0 <= port && port < 65536 else { raise InvalidAddr }
+  Addr::new(ip, port)
+}

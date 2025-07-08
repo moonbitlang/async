@@ -25,7 +25,7 @@ pub(all) type Printer (String) -> Unit
 async fn server(println : Printer) -> Unit raise {
   let server_sock = @socket.UDP::new()
   @async.with_task_group(fn(group) {
-    server_sock.bind(@socket.Addr::new(0, port))
+    server_sock.bind(@socket.Addr::parse("0.0.0.0:\{port}"))
     let buf = FixedArray::make(1024, b'0')
     while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
       group.spawn(fn() {
@@ -54,7 +54,7 @@ async fn server(println : Printer) -> Unit raise {
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.UDP::new()
-  conn.connect(@socket.Addr::new((127 << 24) + 1, port)) // 127.0.0.1:port
+  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   conn.send(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
