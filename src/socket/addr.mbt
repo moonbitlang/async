@@ -13,29 +13,31 @@
 // limitations under the License.
 
 ///|
-fn main_prog() -> Unit raise {
-  let server = @socket.UDP::new()
-  @async.with_event_loop(fn(root) {
-    server.bind(@socket.Addr::new(0, 4200))
-    for {
-      let buf = FixedArray::make(1024, b'0')
-      let (n, addr) = server.recvfrom(buf)
-      root.spawn(fn() {
-        let buf = buf.unsafe_reinterpret_as_bytes()
-        server.sendto(buf[0:n].to_bytes(), addr)
-      })
-    }
-  }) catch {
-    err => {
-      server.close()
-      raise err
-    }
-  }
-}
+type Addr Bytes
 
 ///|
-fn main {
-  main_prog() catch {
-    err => println("server exit with error \{err}")
-  }
+pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "make_ip_addr"
+
+///|
+#borrow(addr)
+pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "ip_addr_get_ip"
+
+///|
+#borrow(addr)
+pub extern "C" fn Addr::port(addr : Addr) -> Int = "ip_addr_get_port"
+
+///|
+pub impl Show for Addr with output(self, logger) {
+  let ip = self.ip()
+  let port = self.port()
+  logger
+  ..write_object(ip >> 24)
+  ..write_char('.')
+  ..write_object((ip >> 16) & 255)
+  ..write_char('.')
+  ..write_object((ip >> 8) & 255)
+  ..write_char('.')
+  ..write_object(ip & 255)
+  ..write_char(':')
+  ..write_object(port)
 }

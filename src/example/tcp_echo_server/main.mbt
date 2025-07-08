@@ -17,10 +17,10 @@ fn main_prog() -> Unit raise {
   @async.with_event_loop(fn(root) {
     let listen_sock = @socket.TCP::new()
     try {
-      listen_sock..bind(0, 4200)..listen()
+      listen_sock..bind(@socket.Addr::new(0, 4200))..listen()
       for {
-        let conn = listen_sock.accept()
-        println("received new connection")
+        let (conn, addr) = listen_sock.accept()
+        println("received new connection from \{addr}")
         root.spawn(fn() {
           let buf = FixedArray::make(1024, b'0')
           while conn.recv(buf) is n && n > 0 {

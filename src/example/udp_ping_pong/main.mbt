@@ -25,14 +25,14 @@ pub(all) type Printer (String) -> Unit
 async fn server(println : Printer) -> Unit raise {
   let server_sock = @socket.UDP::new()
   @async.with_task_group(fn(group) {
-    server_sock.bind(0, port)
+    server_sock.bind(@socket.Addr::new(0, port))
     let buf = FixedArray::make(1024, b'0')
-    while server_sock.recvfrom(buf) is (n, ip, port) && n > 0 {
+    while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
       group.spawn(fn() {
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{msg}")
         let reply = b"pong"
-        server_sock.sendto(reply, (ip, port))
+        server_sock.sendto(reply, addr)
         println("server sent: \{reply}")
         if msg == b"exit" {
           println("server initiate terminate")
@@ -54,7 +54,7 @@ async fn server(println : Printer) -> Unit raise {
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.UDP::new()
-  conn.connect((127 << 24) + 1, port) // 127.0.0.1:port
+  conn.connect(@socket.Addr::new((127 << 24) + 1, port)) // 127.0.0.1:port
   conn.send(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')

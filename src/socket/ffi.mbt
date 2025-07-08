@@ -19,16 +19,19 @@ extern "C" fn make_tcp_socket() -> Int = "make_tcp_socket"
 extern "C" fn make_udp_socket() -> Int = "make_udp_socket"
 
 ///|
-extern "C" fn bind_ffi(sock : Int, ip : UInt, port : Int) -> Int = "bind_ffi"
+#borrow(addr)
+extern "C" fn bind_ffi(sock : Int, addr : Addr) -> Int = "bind_ffi"
 
 ///|
 extern "C" fn listen_ffi(sock : Int) -> Int = "listen_ffi"
 
 ///|
-extern "C" fn accept_ffi(sock : Int) -> Int = "accept_ffi"
+#borrow(addr_buf)
+extern "C" fn accept_ffi(sock : Int, addr_buf : Addr) -> Int = "accept_ffi"
 
 ///|
-extern "C" fn connect_ffi(sock : Int, ip : UInt, port : Int) -> Int = "connect_ffi"
+#borrow(addr)
+extern "C" fn connect_ffi(sock : Int, addr : Addr) -> Int = "connect_ffi"
 
 ///|
 #borrow(buf)
@@ -59,24 +62,13 @@ fn check_socket_err(sock : Int) -> Unit raise {
 }
 
 ///|
-extern "C" fn make_ip_addr(ip : UInt, port : Int) -> Bytes = "make_ip_addr"
-
-///|
-#borrow(addr)
-extern "C" fn ip_addr_get_ip(addr : Bytes) -> UInt = "ip_addr_get_ip"
-
-///|
-#borrow(addr)
-extern "C" fn ip_addr_get_port(addr : Bytes) -> Int = "ip_addr_get_port"
-
-///|
 #borrow(buf, addr_buf)
 extern "C" fn recvfrom_ffi(
   sock : Int,
   buf : FixedArray[Byte],
   offset : Int,
   max_len : Int,
-  addr_buf : Bytes,
+  addr_buf : Addr,
 ) -> Int = "recvfrom_ffi"
 
 ///|
@@ -86,5 +78,5 @@ extern "C" fn sendto_ffi(
   buf : Bytes,
   offset : Int,
   max_len : Int,
-  addr_buf : Bytes,
+  addr_buf : Addr,
 ) -> Int = "sendto_ffi"

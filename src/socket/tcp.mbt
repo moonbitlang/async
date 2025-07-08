@@ -27,9 +27,9 @@ pub fn TCP::close(self : TCP) -> Unit {
 }
 
 ///|
-pub fn TCP::bind(self : TCP, ip : UInt, port : Int) -> Unit raise {
+pub fn TCP::bind(self : TCP, addr : Addr) -> Unit raise {
   let TCP(sock) = self
-  if 0 != bind_ffi(sock, ip, port) {
+  if 0 != bind_ffi(sock, addr) {
     @os_error.check_errno()
   }
 }
@@ -43,12 +43,13 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 }
 
 ///|
-pub async fn TCP::accept(self : TCP) -> TCP raise {
+pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
   let TCP(listen_sock) = self
+  let addr = Addr::new(0, 0)
   for {
-    let conn_sock = accept_ffi(listen_sock)
+    let conn_sock = accept_ffi(listen_sock, addr)
     if conn_sock > 0 {
-      return TCP(conn_sock)
+      return (TCP(conn_sock), addr)
     } else if @os_error.get_errno() is @os_error.EAGAIN {
       @async.wait_fd_read(listen_sock)
     } else {
@@ -58,9 +59,9 @@ pub async fn TCP::accept(self : TCP) -> TCP raise {
 }
 
 ///|
-pub async fn TCP::connect(self : TCP, ip : UInt, port : Int) -> Unit raise {
+pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
   let TCP(sock) = self
-  if 0 == connect_ffi(sock, ip, port) {
+  if 0 == connect_ffi(sock, addr) {
     return
   }
   if @os_error.is_nonblocking_io_error(@os_error.get_errno()) {

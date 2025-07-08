@@ -13,26 +13,25 @@ int make_udp_socket() {
   return socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 }
 
-int bind_ffi(int sockfd, uint32_t ip, int sport) {
-  struct sockaddr_in addr = { AF_INET, htons(sport), htonl(ip) };
-  return bind(sockfd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+int bind_ffi(int sockfd, struct sockaddr_in *addr) {
+  return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
 }
 
 int listen_ffi(int sockfd) {
   return listen(sockfd, 0);
 }
 
-int accept_ffi(int sockfd) {
-  int conn = accept(sockfd, 0, 0);
+int accept_ffi(int sockfd, struct sockaddr_in *addr_buf) {
+  socklen_t socklen = sizeof(struct sockaddr_in);
+  int conn = accept(sockfd, (struct sockaddr*)addr_buf, &socklen);
   if (conn > 0) {
     fcntl(conn, F_SETFL, O_NONBLOCK);
   }
   return conn;
 }
 
-int connect_ffi(int sockfd, uint32_t ip, int sport) {
-  struct sockaddr_in addr = { AF_INET, htons(sport), htonl(ip) };
-  return connect(sockfd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+int connect_ffi(int sockfd, struct sockaddr_in *addr) {
+  return connect(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
 }
 
 int recv_ffi(int sockfd, void *buf, int offset, int max_len) {
@@ -56,17 +55,17 @@ void *make_ip_addr(uint32_t ip, int port) {
     0
   );
   addr->sin_family = AF_INET;
-  addr->sin_port = port;
-  addr->sin_addr.s_addr = ip;
+  addr->sin_port = htons(port);
+  addr->sin_addr.s_addr = htonl(ip);
   return addr;
 }
 
 uint32_t ip_addr_get_ip(struct sockaddr_in *addr) {
-  return addr->sin_addr.s_addr;
+  return ntohl(addr->sin_addr.s_addr);
 }
 
 uint32_t ip_addr_get_port(struct sockaddr_in *addr) {
-  return addr->sin_port;
+  return ntohs(addr->sin_port);
 }
 
 int recvfrom_ffi(int sockfd, void *buf, int offset, int max_len, void *addr_buf) {
