@@ -3,9 +3,7 @@ package "moonbitlang/async/internal/coroutine"
 // Values
 fn current_coroutine() -> Coroutine
 
-async fn suspend() -> Int raise
-
-async fn wait_all(Array[Coroutine]) -> Unit raise
+async fn suspend() -> Unit raise
 
 // Types and methods
 pub type! Cancelled
@@ -13,11 +11,11 @@ impl Show for Cancelled
 
 type Coroutine
 fn Coroutine::cancel(Self) -> Unit
-fn Coroutine::spawn(() -> Unit raise, wait~ : Bool) -> Self
+fn Coroutine::spawn(async () -> Unit raise) -> Self
 fnalias Coroutine::spawn
 fn Coroutine::unwrap(Self) -> Unit raise
 async fn Coroutine::wait(Self) -> Unit raise
-fn Coroutine::wake(Self, tag~ : Int = ..) -> Unit
+fn Coroutine::wake(Self) -> Unit
 impl Eq for Coroutine
 impl Hash for Coroutine
 

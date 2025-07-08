@@ -1,28 +1,26 @@
 package "moonbitlang/async"
 
 // Values
+fn close(Int) -> Unit
+
 async fn sleep(Int) -> Unit raise
-
-async fn[X] spawn(() -> X raise) -> Task[X]
-
-async fn spawn_bg(() -> Unit raise) -> Unit
-
-async fn[X, Y] wait2(Task[X], Task[Y]) -> (X, Y) raise
-
-async fn[X, Y, Z] wait3(Task[X], Task[Y], Task[Z]) -> (X, Y, Z) raise
-
-async fn[X, Y, Z, W] wait4(Task[X], Task[Y], Task[Z], Task[W]) -> (X, Y, Z, W) raise
 
 async fn wait_fd_read(Int) -> Unit raise
 
 async fn wait_fd_write(Int) -> Unit raise
 
-fn with_event_loop(() -> Unit raise) -> Unit raise
+fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
+
+async fn[X] with_task_group(async (TaskGroup) -> X raise) -> X raise
 
 // Types and methods
-type Task[X]
-fn[X] Task::cancel(Self[X]) -> Unit
-async fn[X] Task::wait(Self[X]) -> X raise
+type AsyncValue[X]
+fn[X] AsyncValue::cancel(Self[X]) -> Unit
+async fn[X] AsyncValue::wait(Self[X]) -> X raise
+
+type TaskGroup
+fn[X] TaskGroup::async_value(Self, async () -> X raise) -> AsyncValue[X]
+fn TaskGroup::spawn(Self, async () -> Unit raise) -> Unit
 
 // Type aliases
 

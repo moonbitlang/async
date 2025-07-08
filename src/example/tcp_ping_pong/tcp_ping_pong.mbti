@@ -1,0 +1,16 @@
+package "moonbitlang/async/example/tcp_ping_pong"
+
+// Values
+fn main_prog(Printer) -> Unit raise
+
+// Types and methods
+pub(all) type Printer (String) -> Unit
+fn Printer::inner(Self) -> (String) -> Unit
+
+type ServerTerminate
+impl Show for ServerTerminate
+
+// Type aliases
+
+// Traits
+
