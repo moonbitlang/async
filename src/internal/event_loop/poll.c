@@ -55,7 +55,7 @@ int poll_modify(
   return epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
 }
 
-int poll_remove(int epfd, int fd) {
+int poll_remove(int epfd, int fd, int events) {
   return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
 }
 
@@ -126,9 +126,9 @@ int poll_modify(int kqfd, int fd, int events, int oneshot) {
   return poll_register(kqfd, fd, events, oneshot);
 }
 
-int poll_remove(int kqfd, int fd) {
+int poll_remove(int kqfd, int fd, int events) {
   struct kevent event;
-  EV_SET(&event, fd, 0, EV_DELETE, 0, 0, 0);
+  EV_SET(&event, fd, ev_masks[events], EV_DELETE, 0, 0, 0);
   return kevent(kqfd, &event, 1, 0, 0, 0);
 }
 

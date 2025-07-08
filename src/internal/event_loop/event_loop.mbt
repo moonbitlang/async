@@ -21,6 +21,7 @@ struct EventLoop {
 
 ///|
 priv struct Task {
+  mut events : Events
   mut read : @coroutine.Coroutine?
   mut write : Set[@coroutine.Coroutine]
 }
@@ -49,13 +50,13 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
       let fd = event.fd()
       guard self.tasks.get(fd) is Some(task)
       let events = event.events()
-      if events is Read && not(task.write.is_empty()) {
-        self.poll.modify(fd, events=Write)
-      } else if events is Write && task.read is Some(_) {
-        self.poll.modify(fd, events=Read)
-      } else {
-        self.tasks.remove(fd)
-        self.poll.remove(fd)
+      match (events, task.events) {
+        (Read, ReadWrite) => self.poll.modify(fd, events=Write)
+        (Write, ReadWrite) => self.poll.modify(fd, events=Read)
+        (_, original_events) => {
+          self.tasks.remove(fd)
+          self.poll.remove(fd, events=original_events)
+        }
       }
       if task.read is Some(coro) && not(events is Write) {
         task.read = None
@@ -83,7 +84,7 @@ pub async fn EventLoop::wait_for_fd_read(
 ) -> Unit raise {
   let task = match self.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new() }
+      let task = { read: None, write: Set::new(), events: Read }
       self.tasks[fd] = task
       task
     }
@@ -92,8 +93,10 @@ pub async fn EventLoop::wait_for_fd_read(
   guard task.read is None
   task.read = Some(@coroutine.current_coroutine())
   if task.write.is_empty() {
+    task.events = Read
     self.poll.register(fd, events=Read, oneshot=false)
   } else {
+    task.events = ReadWrite
     self.poll.modify(fd, events=ReadWrite, oneshot=false)
   }
   ignore(@coroutine.suspend()) catch {
@@ -101,8 +104,9 @@ pub async fn EventLoop::wait_for_fd_read(
       task.read = None
       if task.write.is_empty() {
         self.tasks.remove(fd)
-        self.poll.remove(fd)
+        self.poll.remove(fd, events=Read)
       } else {
+        task.events = Write
         self.poll.modify(fd, events=Write)
       }
       raise err
@@ -117,7 +121,7 @@ pub async fn EventLoop::wait_for_fd_write(
 ) -> Unit raise {
   let task = match self.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new() }
+      let task = { read: None, write: Set::new(), events: Write }
       self.tasks[fd] = task
       task
     }
@@ -125,8 +129,10 @@ pub async fn EventLoop::wait_for_fd_write(
   }
   if task.write.is_empty() {
     if task.read is None {
+      task.events = Write
       self.poll.register(fd, events=Write, oneshot=false)
     } else {
+      task.events = ReadWrite
       self.poll.modify(fd, events=ReadWrite, oneshot=false)
     }
   }
@@ -138,8 +144,9 @@ pub async fn EventLoop::wait_for_fd_write(
       if task.write.is_empty() {
         if task.read is None {
           self.tasks.remove(fd)
-          self.poll.remove(fd)
+          self.poll.remove(fd, events=Write)
         } else {
+          task.events = Read
           self.poll.modify(fd, events=Read)
         }
       }
@@ -150,9 +157,9 @@ pub async fn EventLoop::wait_for_fd_write(
 
 ///|
 pub fn EventLoop::close(self : EventLoop, fd : Int) -> Unit {
-  if self.tasks.contains(fd) {
+  if self.tasks.get(fd) is Some(task) {
     self.tasks.remove(fd)
-    self.poll.remove(fd) catch {
+    self.poll.remove(fd, events=task.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
   }

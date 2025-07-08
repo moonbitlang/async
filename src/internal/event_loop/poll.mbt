@@ -70,11 +70,15 @@ fn Instance::modify(
 }
 
 ///|
-extern "C" fn Instance::remove_ffi(self : Instance, fd : Int) -> Int = "poll_remove"
+extern "C" fn Instance::remove_ffi(
+  self : Instance,
+  fd : Int,
+  events~ : Events,
+) -> Int = "poll_remove"
 
 ///|
-fn Instance::remove(self : Instance, fd : Int) -> Unit raise {
-  if 0 != self.remove_ffi(fd) {
+fn Instance::remove(self : Instance, fd : Int, events~ : Events) -> Unit raise {
+  if 0 != self.remove_ffi(fd, events~) {
     @os_error.check_errno()
   }
 }
