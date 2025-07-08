@@ -151,7 +151,12 @@ pub async fn EventLoop::wait_for_fd_write(
 
 ///|
 pub fn EventLoop::close(self : EventLoop, fd : Int) -> Unit {
-  self.tasks.remove(fd)
+  if self.tasks.contains(fd) {
+    self.tasks.remove(fd)
+    self.poll.remove(fd) catch {
+      err => abort("detach \{fd} from loop: \{err}")
+    }
+  }
   close(fd)
 }
 
