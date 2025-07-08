@@ -24,8 +24,7 @@ fn main_prog() -> Unit raise {
         let buf = FixedArray::make(1024, b'0')
         while conn.recv(buf) is n && n > 0 {
           let buf = buf.unsafe_reinterpret_as_bytes()
-          let _ = conn.send(buf[0:n].to_bytes())
-
+          conn.send(buf[0:n].to_bytes())
         }
         println("connection closed")
       })

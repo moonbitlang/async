@@ -37,7 +37,7 @@ async fn server(println : Printer) -> Unit raise {
               let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
               println("server received: \{msg}")
               let reply = b"pong"
-              ignore(conn.send(reply))
+              conn.send(reply)
               println("server sent: \{reply}")
               if msg == b"exit" {
                 println("server initiate terminate")
@@ -70,7 +70,7 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
   conn.connect((127 << 24) + 1, port) // 127.0.0.1:port
   println("client \{id}: connection established")
-  ignore(conn.send(msg))
+  conn.send(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   try {

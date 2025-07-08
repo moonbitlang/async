@@ -94,12 +94,19 @@ pub async fn TCP::send(
   buf : Bytes,
   offset~ : Int = 0,
   len? : Int,
-) -> Int raise {
+) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
-  let n_sent = send_ffi(sock, buf, offset, len)
-  if n_sent < 0 {
-    @os_error.check_errno()
+  for sent = 0; sent < len; {
+    let new_sent = send_ffi(sock, buf, offset + sent, len - sent)
+    if new_sent < 0 {
+      if @os_error.get_errno() is (@os_error.EAGAIN | @os_error.EWOULDBLOCK) {
+        @async.wait_fd_write(sock)
+      } else {
+        @os_error.check_errno()
+      }
+    } else {
+      continue sent + new_sent
+    }
   }
-  n_sent
 }

@@ -29,6 +29,14 @@ pub fn UDP::bind(self : UDP, ip : UInt, port : Int) -> Unit raise {
 }
 
 ///|
+pub fn UDP::connect(self : UDP, ip : UInt, port : Int) -> Unit raise {
+  let UDP(sock) = self
+  if 0 != connect_ffi(sock, ip, port) {
+    @os_error.check_errno()
+  }
+}
+
+///|
 pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
@@ -55,12 +63,18 @@ pub async fn UDP::send(
   buf : Bytes,
   offset~ : Int = 0,
   len? : Int,
-) -> Int raise {
+) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
-  let n_sent = send_ffi(sock, buf, offset, len)
-  if n_sent < 0 {
-    @os_error.check_errno()
+  for {
+    let n_sent = send_ffi(sock, buf, offset, len)
+    if n_sent > 0 {
+      return
+    }
+    if @os_error.get_errno() is (@os_error.EAGAIN | @os_error.EWOULDBLOCK) {
+      @async.wait_fd_write(sock)
+    } else {
+      @os_error.check_errno()
+    }
   }
-  n_sent
 }
