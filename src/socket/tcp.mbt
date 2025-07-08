@@ -95,6 +95,22 @@ pub async fn TCP::recv(
 }
 
 ///|
+pub suberror ConnectionClosed derive(Show)
+
+///|
+pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
+  let buf = FixedArray::make(len, (0 : Byte))
+  for received = 0; received < len; {
+    let new_received = self.recv(buf, offset=received, max_len=len - received)
+    if new_received == 0 {
+      raise ConnectionClosed
+    }
+    continue received + new_received
+  }
+  buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
 pub async fn TCP::send(
   self : TCP,
   buf : Bytes,
