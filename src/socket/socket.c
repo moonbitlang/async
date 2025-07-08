@@ -49,7 +49,8 @@ int send_ffi(int sockfd, void *buf, int offset, int max_len) {
 }
 
 int getsockerr(int sockfd) {
-  int err, opt_len = sizeof(int);
+  int err;
+  socklen_t opt_len = sizeof(int);
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
     return -1;
   return err;
