@@ -100,7 +100,7 @@ pub fn main_prog(println : Printer) -> Unit raise {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
           ctx.spawn(() => client(println, i, msg))
-          @async.sleep(1)
+          @async.sleep(100)
         }
       })
       root.spawn(() => client(println, 6, b"exit"))
