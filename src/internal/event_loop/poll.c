@@ -75,13 +75,13 @@ int event_get_fd(struct epoll_event *ev) {
 }
 
 int event_get_events(struct epoll_event *ev) {
-  if (ev->events | EPOLLERR)
+  if (ev->events & EPOLLERR)
     return 4;
 
   int result = 0;
-  if (ev->events | EPOLLIN)
+  if (ev->events & EPOLLIN)
     result |= 1;
-  if (ev->events | EPOLLOUT)
+  if (ev->events & EPOLLOUT)
     result |= 2;
 
   return result;

@@ -51,8 +51,7 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
       let events = event.events()
       if events is Read && not(task.write.is_empty()) {
         self.poll.modify(fd, events=Write)
-      }
-      if events is Write && task.read is None {
+      } else if events is Write && task.read is Some(_) {
         self.poll.modify(fd, events=Read)
       } else {
         self.tasks.remove(fd)
