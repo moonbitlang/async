@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-test "spawn_bg basic" {
+test "spawn basic" {
   let buf = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn(fn() {
@@ -48,7 +48,7 @@ test "spawn_bg basic" {
 }
 
 ///|
-test "spawn_bg error1" {
+test "spawn error1" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn(fn() {
@@ -65,7 +65,7 @@ test "spawn_bg error1" {
 }
 
 ///|
-test "spawn_bg error2" {
+test "spawn error2" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn(fn() {
