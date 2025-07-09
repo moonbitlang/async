@@ -7,15 +7,33 @@
 
 int make_tcp_socket() {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock > 0)
-    fcntl(sock, F_SETFL, O_NONBLOCK);
+  if (sock > 0) {
+    int flags = fcntl(sock, F_GETFL);
+    if (flags < 0)
+      return flags;
+
+    if (!(flags & O_NONBLOCK)) {
+      int status = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+      if (status < 0)
+        return status;
+    }
+  }
   return sock;
 }
 
 int make_udp_socket() {
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sock > 0)
-    fcntl(sock, F_SETFL, O_NONBLOCK);
+  if (sock > 0) {
+    int flags = fcntl(sock, F_GETFL);
+    if (flags < 0)
+      return flags;
+
+    if (!(flags & O_NONBLOCK)) {
+      int status = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+      if (status < 0)
+        return status;
+    }
+  }
   return sock;
 }
 
@@ -31,7 +49,15 @@ int accept_ffi(int sockfd, struct sockaddr_in *addr_buf) {
   socklen_t socklen = sizeof(struct sockaddr_in);
   int conn = accept(sockfd, (struct sockaddr*)addr_buf, &socklen);
   if (conn > 0) {
-    fcntl(conn, F_SETFL, O_NONBLOCK);
+    int flags = fcntl(conn, F_GETFL);
+    if (flags < 0)
+      return flags;
+
+    if (!(flags & O_NONBLOCK)) {
+      int status = fcntl(conn, F_SETFL, flags | O_NONBLOCK);
+      if (status < 0)
+        return status;
+    }
   }
   return conn;
 }
