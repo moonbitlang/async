@@ -16,7 +16,7 @@
 test "manual cancel" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
-      let task = root.async_value(fn() {
+      let task = root.spawn(fn() {
         try {
           @async.sleep(500)
           buf.write_string("task finished\n")
@@ -49,11 +49,11 @@ suberror Err derive(Show)
 test "error propagation" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         @async.sleep(1000)
         raise Err
       })
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         try {
           @async.sleep(500)
           buf.write_string("task 2, tick 1\n")
@@ -84,14 +84,14 @@ test "error propagation" {
 test "multiple scope" {
   let buf = StringBuilder::new()
   with_event_loop(fn(root) {
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       try
         @async.with_task_group(fn(ctx) {
-          ctx.spawn(fn() {
+          ctx.spawn_bg(fn() {
             sleep(500)
             raise Err
           })
-          ctx.spawn(fn() {
+          ctx.spawn_bg(fn() {
             try sleep(1000) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
@@ -108,14 +108,14 @@ test "multiple scope" {
         _ => buf.write_string("ctx 1 finished normally\n")
       }
     })
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       try
         @async.with_task_group(fn(ctx) {
-          ctx.spawn(fn() {
+          ctx.spawn_bg(fn() {
             sleep(2000)
             raise Err
           })
-          ctx.spawn(fn() {
+          ctx.spawn_bg(fn() {
             try sleep(1000) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")

@@ -28,7 +28,7 @@ async fn server(println : Printer) -> Unit raise {
     server_sock.bind(@socket.Addr::parse("0.0.0.0:\{port}"))
     let buf = FixedArray::make(1024, b'0')
     while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
-      group.spawn(fn() {
+      group.spawn_bg(fn() {
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{msg}")
         let reply = b"pong"
@@ -79,16 +79,16 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
 ///|
 pub fn main_prog(println : Printer) -> Unit raise {
   @async.with_event_loop(fn(root) {
-    root.spawn(() => server(println))
-    root.spawn(fn() {
+    root.spawn_bg(() => server(println))
+    root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
-          ctx.spawn(() => client(println, i, msg))
+          ctx.spawn_bg(() => client(println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn(() => client(println, 6, b"exit"))
+      root.spawn_bg(() => client(println, 6, b"exit"))
     })
   })
 }

@@ -22,7 +22,7 @@ test "read_exactly" {
   @async.with_event_loop(fn(root) {
     let (r, w) = @pipe.pipe()
     // reader
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       let msg1 = r.read_exactly(4)
       log("first message: \{msg1}")
       let msg2 = r.read_exactly(4)
@@ -32,7 +32,7 @@ test "read_exactly" {
       r.close()
     })
     // writer
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       w.write([1, 2, 3, 4, 5, 6])
       log("first message sent")
       @async.sleep(200)
@@ -64,7 +64,7 @@ test "read_exactly failure" {
   let result = try? @async.with_event_loop(fn(root) {
       let (r, w) = @pipe.pipe()
       // reader
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         try {
           let msg1 = r.read_exactly(4)
           log("first message: \{msg1}")
@@ -82,7 +82,7 @@ test "read_exactly failure" {
         }
       })
       // writer
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         w.write([1, 2, 3, 4, 5, 6])
         log("first message sent")
         @async.sleep(200)

@@ -70,15 +70,18 @@ fn TaskGroup::spawn_coroutine(
 /// The whole task group will only exit after this child task terminates.
 /// If the spawned task fail with error, the whole task group will also fail,
 /// other tasks in the group will be cancelled.
-pub fn TaskGroup::spawn(self : TaskGroup, f : async () -> Unit raise) -> Unit {
+pub fn TaskGroup::spawn_bg(
+  self : TaskGroup,
+  f : async () -> Unit raise,
+) -> Unit {
   ignore(self.spawn_coroutine(f))
 }
 
 ///|
-pub fn[X] TaskGroup::async_value(
+pub fn[X] TaskGroup::spawn(
   self : TaskGroup,
   f : async () -> X raise,
-) -> AsyncValue[X] {
+) -> Task[X] {
   let value = @ref.new(None)
   let coro = self.spawn_coroutine(() => value.val = Some(f()))
   { value, coro }
@@ -97,7 +100,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
     unfinished: 0,
     err: None,
   }
-  tg.spawn(() => result = Some(f(tg)))
+  tg.spawn_bg(() => result = Some(f(tg)))
   try {
     while tg.unfinished > 0 {
       @coroutine.suspend()

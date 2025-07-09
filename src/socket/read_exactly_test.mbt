@@ -22,7 +22,7 @@ test "read_exactly" {
 
   @async.with_event_loop(fn(root) {
     // server
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       let listen_sock = @socket.TCP::new()
       try {
         listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
@@ -57,7 +57,7 @@ test "read_exactly" {
       }
     })
     // client
-    root.spawn(fn() {
+    root.spawn_bg(fn() {
       let conn = @socket.TCP::new()
       conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       conn.send([1, 2, 3, 4, 5, 6])
@@ -91,7 +91,7 @@ test "read_exactly failure" {
 
   let result = try? @async.with_event_loop(fn(root) {
       // server
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         let listen_sock = @socket.TCP::new()
         try {
           listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
@@ -126,7 +126,7 @@ test "read_exactly failure" {
         }
       })
       // client
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         let conn = @socket.TCP::new()
         conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
         conn.send([1, 2, 3, 4, 5, 6])

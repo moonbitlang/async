@@ -30,7 +30,7 @@ async fn server(println : Printer) -> Unit raise {
       for {
         let (conn, _) = listen_sock.accept()
         println("received new connection")
-        group.spawn(fn() {
+        group.spawn_bg(fn() {
           let buf = FixedArray::make(1024, b'0')
           try {
             while conn.recv(buf) is n && n > 0 {
@@ -98,16 +98,16 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
 ///|
 pub fn main_prog(println : Printer) -> Unit raise {
   @async.with_event_loop(fn(root) {
-    root.spawn(() => server(println))
-    root.spawn(fn() {
+    root.spawn_bg(() => server(println))
+    root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
-          ctx.spawn(() => client(println, i, msg))
+          ctx.spawn_bg(() => client(println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn(() => client(println, 6, b"exit"))
+      root.spawn_bg(() => client(println, 6, b"exit"))
     })
   })
 }

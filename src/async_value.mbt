@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-struct AsyncValue[X] {
+struct Task[X] {
   value : Ref[X?]
   coro : @coroutine.Coroutine
 }
 
 ///|
-pub async fn[X] AsyncValue::wait(self : AsyncValue[X]) -> X raise {
+pub async fn[X] Task::wait(self : Task[X]) -> X raise {
   self.coro.wait()
   self.value.val.unwrap()
 }
 
 ///|
-pub fn[X] AsyncValue::cancel(self : AsyncValue[X]) -> Unit {
+pub fn[X] Task::cancel(self : Task[X]) -> Unit {
   self.coro.cancel()
 }

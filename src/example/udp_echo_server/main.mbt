@@ -20,7 +20,7 @@ fn main_prog() -> Unit raise {
     for {
       let buf = FixedArray::make(1024, b'0')
       let (n, addr) = server.recvfrom(buf)
-      root.spawn(fn() {
+      root.spawn_bg(fn() {
         let buf = buf.unsafe_reinterpret_as_bytes()
         server.sendto(buf[0:n].to_bytes(), addr)
       })

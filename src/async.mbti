@@ -8,13 +8,13 @@ fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
 async fn[X] with_task_group(async (TaskGroup) -> X raise) -> X raise
 
 // Types and methods
-type AsyncValue[X]
-fn[X] AsyncValue::cancel(Self[X]) -> Unit
-async fn[X] AsyncValue::wait(Self[X]) -> X raise
+type Task[X]
+fn[X] Task::cancel(Self[X]) -> Unit
+async fn[X] Task::wait(Self[X]) -> X raise
 
 type TaskGroup
-fn[X] TaskGroup::async_value(Self, async () -> X raise) -> AsyncValue[X]
-fn TaskGroup::spawn(Self, async () -> Unit raise) -> Unit
+fn[X] TaskGroup::spawn(Self, async () -> X raise) -> Task[X]
+fn TaskGroup::spawn_bg(Self, async () -> Unit raise) -> Unit
 
 // Type aliases
 
