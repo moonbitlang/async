@@ -51,24 +51,26 @@ fn TaskGroup::spawn_coroutine(
     self.unfinished += 1
   }
   async fn worker() raise {
+    fn on_completion() {
+      if not(no_wait) {
+        self.unfinished -= 1
+        if self.unfinished == 0 {
+          self.parent.wake()
+        }
+      }
+    }
+
     try f() catch {
       err => {
         if allow_failure {
-          if not(no_wait) {
-            self.unfinished -= 1
-            self.parent.wake()
-          }
+          on_completion()
         } else if self.unfinished > 0 {
           self.cancel(err)
         }
         raise err
       }
     } noraise {
-      _ =>
-        if not(no_wait) {
-          self.unfinished -= 1
-          self.parent.wake()
-        }
+      _ => on_completion()
     }
   }
 
@@ -136,9 +138,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   }
   tg.spawn_bg(() => result = Some(f(tg)))
   try {
-    while tg.unfinished > 0 {
-      @coroutine.suspend()
-    }
+    @coroutine.suspend()
     for child in tg.children {
       child.cancel()
     }
