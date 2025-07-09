@@ -13,6 +13,14 @@
 // limitations under the License.
 
 ///|
+/// A `TaskGroup` can be used to spawn children tasks that run in parallel.
+/// Task groups implements *structured concurrency*:
+/// a task group will only return after all its children task terminates.
+///
+/// Task groups also handles *error propagation*:
+/// by default, if any child task raises error,
+/// the whole task group will also raise that error,
+/// and all other remaining child tasks will be cancelled.
 struct TaskGroup {
   children : Array[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
@@ -58,6 +66,10 @@ fn TaskGroup::spawn_coroutine(
 }
 
 ///|
+/// Spawn a child task in a task group, and run it asynchronously in the background.
+/// The whole task group will only exit after this child task terminates.
+/// If the spawned task fail with error, the whole task group will also fail,
+/// other tasks in the group will be cancelled.
 pub fn TaskGroup::spawn(self : TaskGroup, f : async () -> Unit raise) -> Unit {
   ignore(self.spawn_coroutine(f))
 }
@@ -73,6 +85,10 @@ pub fn[X] TaskGroup::async_value(
 }
 
 ///|
+/// `with_task_group(f)` creates a new task group and run `f` with the new group.
+/// `f` itself will be run in a child task of the new group.
+/// `with_task_group` exits after all the whole group terminates,
+/// which means all child tasks in the group have terminated, including `f`.
 pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   let mut result = None
   let tg = {

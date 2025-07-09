@@ -16,6 +16,9 @@
 extern "C" fn pipe_ffi(out : FixedArray[Int]) -> Int = "moonbitlang_async_pipe"
 
 ///|
+extern "C" fn get_blocking(fd : Int) -> Int = "moonbitlang_async_get_blocking"
+
+///|
 extern "C" fn set_nonblock(fd : Int) -> Int = "moonbitlang_async_set_nonblock"
 
 ///|

@@ -13,9 +13,12 @@
 // limitations under the License.
 
 ///|
+/// A UDP socket directly corresponding to OS socket
 type UDP Int
 
 ///|
+/// Create a new UDP socket using the `socket(2)` system call.
+/// The created socket always operate in non-blocking mode.
 pub fn UDP::new() -> UDP {
   make_udp_socket()
 }
@@ -27,6 +30,8 @@ pub fn UDP::close(self : UDP) -> Unit {
 }
 
 ///|
+/// Bind the socket to an address using the `bind(2)` system call,
+/// so that the socket can be used to receive packets from the address.
 pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
   if 0 != bind_ffi(sock, addr) {
@@ -35,6 +40,8 @@ pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
 }
 
 ///|
+/// "connect" the socket to remote address using `connect(2)` system call.
+/// For UDP socket, connect means setting the default address for `send`.
 pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
   if 0 != connect_ffi(sock, addr) {
@@ -43,6 +50,15 @@ pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
 }
 
 ///|
+/// Receive packet from a UDP socket  using `recv(2)` system call.
+/// For `udp.recv(buf, offset~, max_len~)`,
+/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
+/// The number of received bytes will be returned.
+///
+/// UDP is a datagram based protocol,
+/// and `recv` will always receive exactly one UDP packet.
+/// If the buffer is smaller than the received packet,
+/// the rest of the packet will be lost.
 pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
@@ -64,6 +80,7 @@ pub async fn UDP::recv(
 }
 
 ///|
+/// Same as `UDP::recv`, but also return the address of sender.
 pub async fn UDP::recvfrom(
   self : UDP,
   buf : FixedArray[Byte],
@@ -87,6 +104,10 @@ pub async fn UDP::recvfrom(
 }
 
 ///|
+/// Send data through a UDP socket using `send(2)` system call.
+/// The address of the remote peer is determined by `bind` or `connect`.
+///
+/// UDP is a datagram based protocol, every call of `send` will send exactly one packet.
 pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
@@ -109,6 +130,7 @@ pub async fn UDP::send(
 }
 
 ///|
+/// Same as `send`, but the address to send is explicitly passed as argument.
 pub async fn UDP::sendto(
   self : UDP,
   buf : Bytes,

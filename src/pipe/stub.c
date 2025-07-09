@@ -5,6 +5,14 @@ int moonbitlang_async_pipe(int *fds) {
   return pipe(fds);
 }
 
+int moonbitlang_async_get_blocking(int fd) {
+  int flags = fcntl(fd, F_GETFL);
+  if (flags < 0)
+    return flags;
+
+  return (flags & O_NONBLOCK) > 0;
+}
+
 int moonbitlang_async_set_nonblock(int fd) {
   int flags = fcntl(fd, F_GETFL);
   if (flags < 0)

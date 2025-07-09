@@ -16,6 +16,13 @@
 let curr_loop : Ref[@event_loop.EventLoop?] = @ref.new(None)
 
 ///|
+/// Create a fresh event loop and run a async program inside the loop.
+/// A new task group will be created for convenience,
+/// that is, `with_event_loop(f)` will run `with_task_group(f)` using the event loop.
+///
+/// There can only one event loop running for every program,
+/// calling `with_event_loop` inside another event loop is invalid,
+/// and will result in immediate failure.
 pub fn with_event_loop(f : async (TaskGroup) -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
   let evloop = @event_loop.EventLoop::new()
@@ -45,6 +52,9 @@ pub fn close(fd : Int) -> Unit {
 }
 
 ///|
+/// `sleep` will wait for the given time (in milliseconds) before returning.
+/// Other task can still run while current task is sleeping.
+/// If current task is cancelled, `sleep` will return early with an error.
 pub async fn sleep(ms : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   evloop.sleep(ms)

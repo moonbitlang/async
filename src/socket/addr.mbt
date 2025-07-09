@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+/// IPv4 address + port number
 type Addr Bytes
 
 ///|
@@ -46,6 +47,7 @@ pub impl Show for Addr with output(self, logger) {
 pub suberror InvalidAddr derive(Show)
 
 ///|
+/// Parse a string into IPv4 address, format should be `ip:port` (no space)
 // TODO: faster implementation
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
   guard src.split(":").collect() is [ip, port] else { raise InvalidAddr }

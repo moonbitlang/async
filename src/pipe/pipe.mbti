@@ -3,6 +3,8 @@ package "moonbitlang/async/pipe"
 // Values
 fn pipe() -> (PipeRead, PipeWrite) raise
 
+fn reset_stdio() -> Unit
+
 let stderr : PipeWrite
 
 let stdin : PipeRead
@@ -15,11 +17,13 @@ impl Show for PipeClosed
 
 type PipeRead
 fn PipeRead::close(Self) -> Unit
+fn PipeRead::fd(Self) -> Int
 async fn PipeRead::read(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
 async fn PipeRead::read_exactly(Self, Int) -> Bytes raise
 
 type PipeWrite
 fn PipeWrite::close(Self) -> Unit
+fn PipeWrite::fd(Self) -> Int
 async fn PipeWrite::write(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
 
 // Type aliases

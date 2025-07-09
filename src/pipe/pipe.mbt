@@ -13,12 +13,28 @@
 // limitations under the License.
 
 ///|
+/// The read end of a pipe
 type PipeRead Int
 
 ///|
+pub fn PipeRead::fd(self : PipeRead) -> Int {
+  let PipeRead(fd) = self
+  fd
+}
+
+///|
+/// The write end of a pipe
 type PipeWrite Int
 
 ///|
+pub fn PipeWrite::fd(self : PipeWrite) -> Int {
+  let PipeWrite(fd) = self
+  fd
+}
+
+///|
+/// Create a pipe using `pipe(2)` system call.
+/// Return the read end and write end of the pipe.
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let fds : FixedArray[Int] = [0, 0]
   if 0 != pipe_ffi(fds) {
@@ -35,29 +51,60 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 }
 
 ///|
+let stdio_need_reset : Array[Int] = []
+
+///|
+/// The standard input treated as a pipe.
+/// Using this value will result in standard input being set to non-blocking mode.
+/// For console applications, remember to reset the state of standard input
+/// using `reset_stdio`, as standard input may be shared between multiple process.
 pub let stdin : PipeRead = {
-  ignore(set_nonblock(0))
+  if get_blocking(0) > 0 {
+    stdio_need_reset.push(0)
+    ignore(set_nonblock(0))
+  }
   PipeRead(0)
 }
 
 ///|
+/// The standard output treated as a pipe.
+/// Using this value will result in standard output being set to non-blocking mode.
+/// For console applications, remember to reset the state of standard output
+/// using `reset_stdio`, as standard output may be shared between multiple process.
 pub let stdout : PipeWrite = {
-  ignore(set_nonblock(1))
+  if get_blocking(1) > 0 {
+    stdio_need_reset.push(1)
+    ignore(set_nonblock(1))
+  }
   PipeWrite(1)
 }
 
 ///|
+/// The standard error treated as a pipe.
+/// Using this value will result in standard error being set to non-blocking mode.
+/// For console applications, remember to reset the state of standard error
+/// using `reset_stdio`, as standard error may be shared between multiple process.
 pub let stderr : PipeWrite = {
-  ignore(set_nonblock(2))
+  if get_blocking(2) > 0 {
+    stdio_need_reset.push(2)
+    ignore(set_nonblock(2))
+  }
   PipeWrite(2)
+}
+
+///|
+/// Reset the state of standard input/output/error, clearing the non-blocking flag.
+/// For console applications, this prevents the parent process from also entering non-blocking mode.
+/// If stdio is already in non-blocking mode, this function does nothing.
+pub fn reset_stdio() -> Unit {
+  for fd in stdio_need_reset {
+    ignore(set_blocking(fd))
+  }
 }
 
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
   let PipeRead(fd) = self
-  if fd < 3 {
-    ignore(set_blocking(fd))
-  }
   @async.close(fd)
 }
 
@@ -68,6 +115,10 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 }
 
 ///|
+/// Read data from the read end of a pipe using `read(2)` system call.
+/// For `pipe.read(buf, offset~, max_len~)`,
+/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
+/// The number of read bytes will be returned.
 pub async fn PipeRead::read(
   self : PipeRead,
   buf : FixedArray[Byte],
@@ -93,6 +144,9 @@ pub async fn PipeRead::read(
 pub suberror PipeClosed derive(Show)
 
 ///|
+/// `pipe.read_exactly(n)` read exactly `n` bytes of data from a pipe.
+/// `read_exactly` will only return after all `n` bytes of data are read.
+/// If the pipe is closed before receiving all data, an error is raised.
 pub async fn PipeRead::read_exactly(self : PipeRead, len : Int) -> Bytes raise {
   let buf = FixedArray::make(len, (0 : Byte))
   for received = 0; received < len; {
@@ -106,6 +160,8 @@ pub async fn PipeRead::read_exactly(self : PipeRead, len : Int) -> Bytes raise {
 }
 
 ///|
+/// Write data through the write end of a pipe using `write(2)` system call.
+/// This function will only return after all data have been successfully written.
 pub async fn PipeWrite::write(
   self : PipeWrite,
   buf : Bytes,
