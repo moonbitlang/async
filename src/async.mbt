@@ -13,9 +13,6 @@
 // limitations under the License.
 
 ///|
-let curr_loop : Ref[@event_loop.EventLoop?] = @ref.new(None)
-
-///|
 /// Create a fresh event loop and run a async program inside the loop.
 /// A new task group will be created for convenience,
 /// that is, `with_event_loop(f)` will run `with_task_group(f)` using the event loop.
@@ -24,38 +21,11 @@ let curr_loop : Ref[@event_loop.EventLoop?] = @ref.new(None)
 /// calling `with_event_loop` inside another event loop is invalid,
 /// and will result in immediate failure.
 pub fn with_event_loop(f : async (TaskGroup) -> Unit raise) -> Unit raise {
-  guard curr_loop.val is None
-  let evloop = @event_loop.EventLoop::new()
-  curr_loop.val = Some(evloop)
-  let main = @coroutine.spawn(() => with_task_group(f))
-  evloop.run_forever()
-  curr_loop.val = None
-  main.unwrap()
-}
-
-///|
-pub async fn wait_fd_read(fd : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  evloop.wait_for_fd_read(fd)
-}
-
-///|
-pub async fn wait_fd_write(fd : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  evloop.wait_for_fd_write(fd)
-}
-
-///|
-pub fn close(fd : Int) -> Unit {
-  guard curr_loop.val is Some(evloop)
-  evloop.close(fd)
+  @event_loop.with_event_loop(() => with_task_group(f))
 }
 
 ///|
 /// `sleep` will wait for the given time (in milliseconds) before returning.
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
-pub async fn sleep(ms : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  evloop.sleep(ms)
-}
+pub fnalias @event_loop.sleep

@@ -26,7 +26,7 @@ pub fn UDP::new() -> UDP {
 ///|
 pub fn UDP::close(self : UDP) -> Unit {
   let UDP(sock) = self
-  @async.close(sock)
+  @event_loop.close_fd(sock)
 }
 
 ///|
@@ -71,7 +71,7 @@ pub async fn UDP::recv(
   if n_read > 0 {
     return n_read
   } else if @os_error.is_nonblocking_io_error() {
-    @async.wait_fd_read(sock)
+    @event_loop.wait_fd_read(sock)
     recv_ffi(sock, buf, offset, max_len)
   } else {
     @os_error.check_errno()
@@ -92,7 +92,7 @@ pub async fn UDP::recvfrom(
   let addr = Addr::new(0, 0)
   let n_read = recvfrom_ffi(sock, buf, offset, max_len, addr)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @async.wait_fd_read(sock)
+    @event_loop.wait_fd_read(sock)
     recvfrom_ffi(sock, buf, offset, max_len, addr)
   } else {
     n_read
@@ -122,7 +122,7 @@ pub async fn UDP::send(
       return
     }
     if @os_error.is_nonblocking_io_error() {
-      @async.wait_fd_write(sock)
+      @event_loop.wait_fd_write(sock)
     } else {
       @os_error.check_errno()
     }
@@ -146,7 +146,7 @@ pub async fn UDP::sendto(
       return
     }
     if @os_error.is_nonblocking_io_error() {
-      @async.wait_fd_write(sock)
+      @event_loop.wait_fd_write(sock)
     } else {
       @os_error.check_errno()
     }

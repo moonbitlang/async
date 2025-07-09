@@ -105,13 +105,13 @@ pub fn reset_stdio() -> Unit {
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
   let PipeRead(fd) = self
-  @async.close(fd)
+  @event_loop.close_fd(fd)
 }
 
 ///|
 pub fn PipeWrite::close(self : PipeWrite) -> Unit {
   let PipeWrite(fd) = self
-  @async.close(fd)
+  @event_loop.close_fd(fd)
 }
 
 ///|
@@ -129,7 +129,7 @@ pub async fn PipeRead::read(
   let PipeRead(fd) = self
   let n_read = read_ffi(fd, buf, offset, max_len)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @async.wait_fd_read(fd)
+    @event_loop.wait_fd_read(fd)
     read_ffi(fd, buf, offset, max_len)
   } else {
     n_read
@@ -174,7 +174,7 @@ pub async fn PipeWrite::write(
     let new_sent = write_ffi(fd, buf, offset + sent, len - sent)
     if new_sent < 0 {
       if @os_error.is_nonblocking_io_error() {
-        @async.wait_fd_write(fd)
+        @event_loop.wait_fd_write(fd)
       } else {
         @os_error.check_errno()
       }

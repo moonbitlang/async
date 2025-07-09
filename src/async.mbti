@@ -1,13 +1,7 @@
 package "moonbitlang/async"
 
 // Values
-fn close(Int) -> Unit
-
 async fn sleep(Int) -> Unit raise
-
-async fn wait_fd_read(Int) -> Unit raise
-
-async fn wait_fd_write(Int) -> Unit raise
 
 fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
 

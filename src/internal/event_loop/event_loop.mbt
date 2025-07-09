@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-struct EventLoop {
+priv struct EventLoop {
   poll : Instance
   tasks : Map[Int, Task]
   timers : @sorted_set.T[Timer]
@@ -27,12 +27,21 @@ priv struct Task {
 }
 
 ///|
-pub fn EventLoop::new() -> EventLoop {
-  { poll: Instance::new(), tasks: {}, timers: @sorted_set.new() }
+let curr_loop : Ref[EventLoop?] = @ref.new(None)
+
+///|
+pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
+  guard curr_loop.val is None
+  let evloop = { poll: Instance::new(), tasks: {}, timers: @sorted_set.new() }
+  curr_loop.val = Some(evloop)
+  let main = @coroutine.spawn(f)
+  evloop.run_forever()
+  curr_loop.val = None
+  main.unwrap()
 }
 
 ///|
-pub fn EventLoop::run_forever(self : Self) -> Unit raise {
+fn EventLoop::run_forever(self : Self) -> Unit raise {
   while not(self.tasks.is_empty() && self.timers.is_empty()) {
     let timeout = match self.timers.iter().head() {
       Some(timer) =>
@@ -78,14 +87,12 @@ pub fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
-pub async fn EventLoop::wait_for_fd_read(
-  self : EventLoop,
-  fd : Int,
-) -> Unit raise {
-  let task = match self.tasks.get(fd) {
+pub async fn wait_fd_read(fd : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  let task = match evloop.tasks.get(fd) {
     None => {
       let task = { read: None, write: Set::new(), events: Read }
-      self.tasks[fd] = task
+      evloop.tasks[fd] = task
       task
     }
     Some(task) => task
@@ -94,20 +101,20 @@ pub async fn EventLoop::wait_for_fd_read(
   task.read = Some(@coroutine.current_coroutine())
   if task.write.is_empty() {
     task.events = Read
-    self.poll.register(fd, events=Read, oneshot=false)
+    evloop.poll.register(fd, events=Read, oneshot=false)
   } else {
     task.events = ReadWrite
-    self.poll.modify(fd, events=ReadWrite, oneshot=false)
+    evloop.poll.modify(fd, events=ReadWrite, oneshot=false)
   }
   ignore(@coroutine.suspend()) catch {
     err => {
       task.read = None
       if task.write.is_empty() {
-        self.tasks.remove(fd)
-        self.poll.remove(fd, events=Read)
+        evloop.tasks.remove(fd)
+        evloop.poll.remove(fd, events=Read)
       } else {
         task.events = Write
-        self.poll.modify(fd, events=Write)
+        evloop.poll.modify(fd, events=Write)
       }
       raise err
     }
@@ -115,14 +122,12 @@ pub async fn EventLoop::wait_for_fd_read(
 }
 
 ///|
-pub async fn EventLoop::wait_for_fd_write(
-  self : EventLoop,
-  fd : Int,
-) -> Unit raise {
-  let task = match self.tasks.get(fd) {
+pub async fn wait_fd_write(fd : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  let task = match evloop.tasks.get(fd) {
     None => {
       let task = { read: None, write: Set::new(), events: Write }
-      self.tasks[fd] = task
+      evloop.tasks[fd] = task
       task
     }
     Some(task) => task
@@ -130,10 +135,10 @@ pub async fn EventLoop::wait_for_fd_write(
   if task.write.is_empty() {
     if task.read is None {
       task.events = Write
-      self.poll.register(fd, events=Write, oneshot=false)
+      evloop.poll.register(fd, events=Write, oneshot=false)
     } else {
       task.events = ReadWrite
-      self.poll.modify(fd, events=ReadWrite, oneshot=false)
+      evloop.poll.modify(fd, events=ReadWrite, oneshot=false)
     }
   }
   let coro = @coroutine.current_coroutine()
@@ -143,11 +148,11 @@ pub async fn EventLoop::wait_for_fd_write(
       task.write.remove(coro)
       if task.write.is_empty() {
         if task.read is None {
-          self.tasks.remove(fd)
-          self.poll.remove(fd, events=Write)
+          evloop.tasks.remove(fd)
+          evloop.poll.remove(fd, events=Write)
         } else {
           task.events = Read
-          self.poll.modify(fd, events=Read)
+          evloop.poll.modify(fd, events=Read)
         }
       }
       raise err
@@ -156,18 +161,19 @@ pub async fn EventLoop::wait_for_fd_write(
 }
 
 ///|
-pub fn EventLoop::close(self : EventLoop, fd : Int) -> Unit {
-  if self.tasks.get(fd) is Some(task) {
-    self.tasks.remove(fd)
-    self.poll.remove(fd, events=task.events) catch {
+pub fn close_fd(fd : Int) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  if evloop.tasks.get(fd) is Some(task) {
+    evloop.tasks.remove(fd)
+    evloop.poll.remove(fd, events=task.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
   }
-  close(fd)
+  close_ffi(fd)
 }
 
 ///|
-extern "C" fn close(fd : Int) = "close"
+extern "C" fn close_ffi(fd : Int) = "close"
 
 ///|
 fn EventLoop::flush_timer(self : EventLoop) -> Unit {
@@ -179,12 +185,13 @@ fn EventLoop::flush_timer(self : EventLoop) -> Unit {
 }
 
 ///|
-pub async fn EventLoop::sleep(self : EventLoop, duration : Int) -> Unit raise {
+pub async fn sleep(duration : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
   let timer = Timer::new(duration, @coroutine.current_coroutine())
-  self.timers.add(timer)
-  ignore(@coroutine.suspend()) catch {
+  evloop.timers.add(timer)
+  @coroutine.suspend() catch {
     err => {
-      self.timers.remove(timer)
+      evloop.timers.remove(timer)
       raise err
     }
   }

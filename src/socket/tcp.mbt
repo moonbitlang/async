@@ -26,7 +26,7 @@ pub fn TCP::new() -> TCP {
 ///|
 pub fn TCP::close(self : TCP) -> Unit {
   let TCP(sock) = self
-  @async.close(sock)
+  @event_loop.close_fd(sock)
 }
 
 ///|
@@ -60,7 +60,7 @@ pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
     if conn_sock > 0 {
       return (TCP(conn_sock), addr)
     } else if @os_error.is_nonblocking_io_error() {
-      @async.wait_fd_read(listen_sock)
+      @event_loop.wait_fd_read(listen_sock)
     } else {
       @os_error.check_errno()
     }
@@ -75,7 +75,7 @@ pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
     return
   }
   if @os_error.is_nonblocking_io_error() {
-    @async.wait_fd_write(sock)
+    @event_loop.wait_fd_write(sock)
     check_socket_err(sock)
   } else {
     @os_error.check_errno()
@@ -97,7 +97,7 @@ pub async fn TCP::recv(
   let TCP(sock) = self
   let n_read = recv_ffi(sock, buf, offset, max_len)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @async.wait_fd_read(sock)
+    @event_loop.wait_fd_read(sock)
     recv_ffi(sock, buf, offset, max_len)
   } else {
     n_read
@@ -142,7 +142,7 @@ pub async fn TCP::send(
     let new_sent = send_ffi(sock, buf, offset + sent, len - sent)
     if new_sent < 0 {
       if @os_error.is_nonblocking_io_error() {
-        @async.wait_fd_write(sock)
+        @event_loop.wait_fd_write(sock)
       } else {
         @os_error.check_errno()
       }
