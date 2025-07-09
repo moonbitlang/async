@@ -44,19 +44,31 @@ fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
 fn TaskGroup::spawn_coroutine(
   self : TaskGroup,
   f : async () -> Unit raise,
+  no_wait~ : Bool,
+  allow_failure~ : Bool,
 ) -> @coroutine.Coroutine {
-  self.unfinished += 1
+  if not(no_wait) {
+    self.unfinished += 1
+  }
   async fn worker() raise {
     try f() catch {
       err => {
-        self.cancel(err)
+        if allow_failure {
+          if not(no_wait) {
+            self.unfinished -= 1
+            self.parent.wake()
+          }
+        } else if self.unfinished > 0 {
+          self.cancel(err)
+        }
         raise err
       }
     } noraise {
-      _ => {
-        self.unfinished -= 1
-        self.parent.wake()
-      }
+      _ =>
+        if not(no_wait) {
+          self.unfinished -= 1
+          self.parent.wake()
+        }
     }
   }
 
@@ -67,23 +79,45 @@ fn TaskGroup::spawn_coroutine(
 
 ///|
 /// Spawn a child task in a task group, and run it asynchronously in the background.
-/// The whole task group will only exit after this child task terminates.
-/// If the spawned task fail with error, the whole task group will also fail,
-/// other tasks in the group will be cancelled.
+///
+/// Unless `no_wait` (`false` by default) is `true`,
+/// the whole task group will only exit after this child task terminates.
+///
+/// Unless `allow_failure` (`false` by default) is `true`,
+/// Ithe whole task group will also fail if the spawned task fails, 
+/// other tasks in the group will be cancelled in this case.
 pub fn TaskGroup::spawn_bg(
   self : TaskGroup,
   f : async () -> Unit raise,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
 ) -> Unit {
-  ignore(self.spawn_coroutine(f))
+  ignore(self.spawn_coroutine(f, no_wait~, allow_failure~))
 }
 
 ///|
+/// Spawn a child task in a task group, compute a result asynchronously.
+/// A task handle will be returned, the result value of the task can be waited
+/// and retrieved using `.wait()`, or cancelled using `.cancel()`.
+///
+/// Unless `no_wait` (`false` by default) is `true`,
+/// the whole task group will only exit after this child task terminates.
+///
+/// Unless `allow_failure` (`false` by default) is `true`,
+/// Ithe whole task group will also fail if the spawned task fails, 
+/// other tasks in the group will be cancelled in this case.
 pub fn[X] TaskGroup::spawn(
   self : TaskGroup,
   f : async () -> X raise,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
 ) -> Task[X] {
   let value = @ref.new(None)
-  let coro = self.spawn_coroutine(() => value.val = Some(f()))
+  let coro = self.spawn_coroutine(
+    () => value.val = Some(f()),
+    no_wait~,
+    allow_failure~,
+  )
   { value, coro }
 }
 
@@ -104,6 +138,9 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   try {
     while tg.unfinished > 0 {
       @coroutine.suspend()
+    }
+    for child in tg.children {
+      child.cancel()
     }
   } catch {
     err => tg.cancel(err)

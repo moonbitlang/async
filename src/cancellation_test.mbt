@@ -16,7 +16,7 @@
 test "manual cancel" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
-      let task = root.spawn(fn() {
+      let task = root.spawn(allow_failure=true, fn() {
         try {
           @async.sleep(500)
           buf.write_string("task finished\n")
@@ -37,7 +37,7 @@ test "manual cancel" {
     content=(
       #|cancelled by error Cancelled
       #|main task exit
-      #|Err(Cancelled)
+      #|Ok(())
     ),
   )
 }

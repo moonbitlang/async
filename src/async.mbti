@@ -13,8 +13,8 @@ fn[X] Task::cancel(Self[X]) -> Unit
 async fn[X] Task::wait(Self[X]) -> X raise
 
 type TaskGroup
-fn[X] TaskGroup::spawn(Self, async () -> X raise) -> Task[X]
-fn TaskGroup::spawn_bg(Self, async () -> Unit raise) -> Unit
+fn[X] TaskGroup::spawn(Self, async () -> X raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Task[X]
+fn TaskGroup::spawn_bg(Self, async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit
 
 // Type aliases
 
