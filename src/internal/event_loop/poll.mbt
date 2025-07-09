@@ -24,10 +24,10 @@ pub(all) enum Events {
 }
 
 ///|
-extern "C" fn Instance::new() -> Instance = "poll_create"
+extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
 
 ///|
-extern "C" fn Instance::destroy(self : Instance) = "poll_destroy"
+extern "C" fn Instance::destroy(self : Instance) = "moonbitlang_async_poll_destroy"
 
 ///|
 extern "C" fn Instance::register_ffi(
@@ -35,7 +35,7 @@ extern "C" fn Instance::register_ffi(
   fd : Int,
   events~ : Events,
   oneshot~ : Bool,
-) -> Int = "poll_register"
+) -> Int = "moonbitlang_async_poll_register"
 
 ///|
 fn Instance::register(
@@ -55,7 +55,7 @@ extern "C" fn Instance::modify_ffi(
   fd : Int,
   events~ : Events,
   oneshot~ : Bool = false,
-) -> Int = "poll_modify"
+) -> Int = "moonbitlang_async_poll_modify"
 
 ///|
 fn Instance::modify(
@@ -74,7 +74,7 @@ extern "C" fn Instance::remove_ffi(
   self : Instance,
   fd : Int,
   events~ : Events,
-) -> Int = "poll_remove"
+) -> Int = "moonbitlang_async_poll_remove"
 
 ///|
 fn Instance::remove(self : Instance, fd : Int, events~ : Events) -> Unit raise {
@@ -88,13 +88,13 @@ fn Instance::remove(self : Instance, fd : Int, events~ : Events) -> Unit raise {
 priv type Event
 
 ///|
-extern "C" fn get_event(index : Int) -> Event = "event_list_get"
+extern "C" fn get_event(index : Int) -> Event = "moonbitlang_async_event_list_get"
 
 ///|
-extern "C" fn Event::fd(self : Event) -> Int = "event_get_fd"
+extern "C" fn Event::fd(self : Event) -> Int = "moonbitlang_async_event_get_fd"
 
 ///|
-extern "C" fn Event::events(self : Event) -> Events = "event_get_events"
+extern "C" fn Event::events(self : Event) -> Events = "moonbitlang_async_event_get_events"
 
 ///|
-extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "poll_wait"
+extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"

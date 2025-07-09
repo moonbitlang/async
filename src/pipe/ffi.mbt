@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-extern "C" fn pipe_ffi(out : FixedArray[Int]) -> Int = "pipe_ffi"
+extern "C" fn pipe_ffi(out : FixedArray[Int]) -> Int = "moonbitlang_async_pipe"
 
 ///|
-extern "C" fn set_nonblock(fd : Int) -> Int = "set_nonblock"
+extern "C" fn set_nonblock(fd : Int) -> Int = "moonbitlang_async_set_nonblock"
 
 ///|
-extern "C" fn set_blocking(fd : Int) -> Int = "set_blocking"
+extern "C" fn set_blocking(fd : Int) -> Int = "moonbitlang_async_set_blocking"
 
 ///|
 extern "C" fn read_ffi(
@@ -27,7 +27,7 @@ extern "C" fn read_ffi(
   buf : FixedArray[Byte],
   offset : Int,
   max_len : Int,
-) -> Int = "read_ffi"
+) -> Int = "moonbitlang_async_read"
 
 ///|
 extern "C" fn write_ffi(
@@ -35,4 +35,4 @@ extern "C" fn write_ffi(
   buf : Bytes,
   offset : Int,
   max_len : Int,
-) -> Int = "write_ffi"
+) -> Int = "moonbitlang_async_write"

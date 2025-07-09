@@ -16,15 +16,15 @@
 type Addr Bytes
 
 ///|
-pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "make_ip_addr"
+pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
 #borrow(addr)
-pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "ip_addr_get_ip"
+pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get_ip"
 
 ///|
 #borrow(addr)
-pub extern "C" fn Addr::port(addr : Addr) -> Int = "ip_addr_get_port"
+pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
 
 ///|
 pub impl Show for Addr with output(self, logger) {

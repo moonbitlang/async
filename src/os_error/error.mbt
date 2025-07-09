@@ -13,10 +13,10 @@
 // limitations under the License.
 
 ///|
-pub extern "C" fn get_errno() -> Int = "get_errno"
+pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
 
 ///|
-pub extern "C" fn is_nonblocking_io_error() -> Bool = "is_nonblocking_io_error"
+pub extern "C" fn is_nonblocking_io_error() -> Bool = "moonbitlang_async_is_nonblocking_io_error"
 
 ///|
 pub suberror OSError Int derive(Show)

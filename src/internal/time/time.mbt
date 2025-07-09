@@ -13,4 +13,4 @@
 // limitations under the License.
 
 ///|
-pub extern "C" fn ms_since_epoch() -> Int64 = "get_ms_since_epoch"
+pub extern "C" fn ms_since_epoch() -> Int64 = "moonbitlang_async_get_ms_since_epoch"
