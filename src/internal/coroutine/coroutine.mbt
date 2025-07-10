@@ -63,12 +63,13 @@ pub suberror Cancelled derive(Show)
 
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
-  guard self.state is Suspend(ok_cont=_, err_cont~) else {  }
-  self.state = Running
   let last_coro = curr_coro.val
-  curr_coro.val = Some(self)
-  err_cont(Cancelled)
-  curr_coro.val = last_coro
+  while self.state is Suspend(ok_cont=_, err_cont~) {
+    self.state = Running
+    curr_coro.val = Some(self)
+    err_cont(Cancelled)
+    curr_coro.val = last_coro
+  }
 }
 
 ///|

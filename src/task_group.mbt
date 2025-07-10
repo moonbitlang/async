@@ -138,7 +138,9 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   }
   tg.spawn_bg(() => result = Some(f(tg)))
   try {
-    @coroutine.suspend()
+    if tg.unfinished > 0 {
+      @coroutine.suspend()
+    }
     for child in tg.children {
       child.cancel()
     }

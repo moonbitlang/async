@@ -144,3 +144,33 @@ test "multiple scope" {
     ),
   )
 }
+
+///|
+test "recursive cancel" {
+  let buf = StringBuilder::new()
+  buf.write_object(
+    try? @async.with_event_loop(fn(root) {
+      let task = root.spawn(allow_failure=true, fn() {
+        @async.sleep(1000) catch {
+          err => buf.write_string("first sleep cancelled with \{err}\n")
+        }
+        @async.sleep(1000) catch {
+          err => buf.write_string("second sleep cancelled with \{err}\n")
+        }
+        buf.write_string("task finished\n")
+      })
+      task.cancel()
+      buf.write_string("main task exit\n")
+    }),
+  )
+  inspect(
+    buf.to_string(),
+    content=(
+      #|first sleep cancelled with Cancelled
+      #|second sleep cancelled with Cancelled
+      #|task finished
+      #|main task exit
+      #|Ok(())
+    ),
+  )
+}
