@@ -8,13 +8,16 @@ fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
 async fn[X] with_task_group(async (TaskGroup) -> X raise) -> X raise
 
 // Types and methods
+pub type! AlreadyTerminated
+impl Show for AlreadyTerminated
+
 type Task[X]
 fn[X] Task::cancel(Self[X]) -> Unit
 async fn[X] Task::wait(Self[X]) -> X raise
 
 type TaskGroup
-fn[X] TaskGroup::spawn(Self, async () -> X raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Task[X]
-fn TaskGroup::spawn_bg(Self, async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit
+fn[X] TaskGroup::spawn(Self, async () -> X raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Task[X] raise
+fn TaskGroup::spawn_bg(Self, async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit raise
 
 // Type aliases
 

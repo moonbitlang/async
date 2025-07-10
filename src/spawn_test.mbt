@@ -80,3 +80,67 @@ test "spawn error2" {
   buf.write_string(result.to_string())
   inspect(buf.to_string(), content="Err(Err)")
 }
+
+///|
+test "spawn after cancelled 1" {
+  let buf = StringBuilder::new()
+  buf.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        try {
+          @async.sleep(500)
+          buf.write_string("task finished\n")
+        } catch {
+          err => {
+            buf.write_string("cancelled by error \{err}\n")
+            root.spawn_bg(() => @async.sleep(1000)) catch {
+              err => buf.write_string("trying to spawn, received \{err}\n")
+            }
+            raise err
+          }
+        }
+      })
+      raise Err
+    }),
+  )
+  inspect(
+    buf.to_string(),
+    content=(
+      #|cancelled by error Cancelled
+      #|trying to spawn, received AlreadyTerminated
+      #|Err(Err)
+    ),
+  )
+}
+
+///|
+test "spawn after cancelled 2" {
+  let buf = StringBuilder::new()
+  buf.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(no_wait=true, allow_failure=true, fn() {
+        try {
+          @async.sleep(1000)
+          buf.write_string("task finished\n")
+        } catch {
+          err => {
+            buf.write_string("cancelled by error \{err}\n")
+            root.spawn_bg(() => @async.sleep(1000)) catch {
+              err => buf.write_string("trying to spawn, received \{err}\n")
+            }
+            raise err
+          }
+        }
+      })
+      @async.sleep(500)
+    }),
+  )
+  inspect(
+    buf.to_string(),
+    content=(
+      #|cancelled by error Cancelled
+      #|trying to spawn, received AlreadyTerminated
+      #|Ok(())
+    ),
+  )
+}

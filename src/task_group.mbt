@@ -13,6 +13,13 @@
 // limitations under the License.
 
 ///|
+priv enum TaskGroupState {
+  Done
+  Fail(Error)
+  Running
+}
+
+///|
 /// A `TaskGroup` can be used to spawn children tasks that run in parallel.
 /// Task groups implements *structured concurrency*:
 /// a task group will only return after all its children task terminates.
@@ -25,13 +32,13 @@ struct TaskGroup {
   children : Array[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
   mut unfinished : Int
-  mut err : Error?
+  mut state : TaskGroupState
 }
 
 ///|
 fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
-  if self.err is None {
-    self.err = Some(err)
+  if self.state is Running {
+    self.state = Fail(err)
   }
   for child in self.children {
     child.cancel()
@@ -41,12 +48,18 @@ fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
 }
 
 ///|
+pub suberror AlreadyTerminated derive(Show)
+
+///|
 fn TaskGroup::spawn_coroutine(
   self : TaskGroup,
   f : async () -> Unit raise,
   no_wait~ : Bool,
   allow_failure~ : Bool,
-) -> @coroutine.Coroutine {
+) -> @coroutine.Coroutine raise {
+  if not(self.state is Running) {
+    raise AlreadyTerminated
+  }
   if not(no_wait) {
     self.unfinished += 1
   }
@@ -88,12 +101,15 @@ fn TaskGroup::spawn_coroutine(
 /// Unless `allow_failure` (`false` by default) is `true`,
 /// Ithe whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
+///
+/// If the task group is already cancelled or has been terminated,
+/// `spawn_bg` will fail with error and the child task will not be spawned.
 pub fn TaskGroup::spawn_bg(
   self : TaskGroup,
   f : async () -> Unit raise,
   no_wait~ : Bool = false,
   allow_failure~ : Bool = false,
-) -> Unit {
+) -> Unit raise {
   ignore(self.spawn_coroutine(f, no_wait~, allow_failure~))
 }
 
@@ -108,12 +124,15 @@ pub fn TaskGroup::spawn_bg(
 /// Unless `allow_failure` (`false` by default) is `true`,
 /// Ithe whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
+///
+/// If the task group is already cancelled or has been terminated,
+/// `spawn` will fail with error and the child task will not be spawned.
 pub fn[X] TaskGroup::spawn(
   self : TaskGroup,
   f : async () -> X raise,
   no_wait~ : Bool = false,
   allow_failure~ : Bool = false,
-) -> Task[X] {
+) -> Task[X] raise {
   let value = @ref.new(None)
   let coro = self.spawn_coroutine(
     () => value.val = Some(f()),
@@ -134,12 +153,15 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
     children: [],
     parent: @coroutine.current_coroutine(),
     unfinished: 0,
-    err: None,
+    state: Running,
   }
   tg.spawn_bg(() => result = Some(f(tg)))
   try {
     if tg.unfinished > 0 {
       @coroutine.suspend()
+    }
+    if tg.state is Running {
+      tg.state = Done
     }
     for child in tg.children {
       child.cancel()
@@ -147,8 +169,9 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   } catch {
     err => tg.cancel(err)
   }
-  match tg.err {
-    None => result.unwrap()
-    Some(err) => raise err
+  match tg.state {
+    Done => result.unwrap()
+    Fail(err) => raise err
+    Running => panic()
   }
 }
