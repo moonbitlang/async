@@ -29,3 +29,27 @@ pub fn with_event_loop(f : async (TaskGroup) -> Unit raise) -> Unit raise {
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
 pub fnalias @event_loop.sleep
+
+///|
+priv suberror WithTimeout
+
+///|
+/// `with_timeout(timeout, f)` run the async function `f`.
+/// If `f` return or fail before `timeout`,
+/// `with_timeout` return immediately with the same result.
+/// If `f` is still running after `timeout` milliseconds,
+/// `with_timeout` will also return immediately, and `f` will be cancelled.
+pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise {
+  let mut cancelled = false
+  with_task_group(fn(group) {
+    group.spawn_bg(no_wait=true, fn() {
+      sleep(time)
+      cancelled = true
+      raise WithTimeout
+    })
+    f()
+  }) catch {
+    _ if cancelled => ()
+    err => raise err
+  }
+}

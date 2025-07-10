@@ -7,6 +7,8 @@ fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
 
 async fn[X] with_task_group(async (TaskGroup) -> X raise) -> X raise
 
+async fn with_timeout(Int, async () -> Unit raise) -> Unit raise
+
 // Types and methods
 pub type! AlreadyTerminated
 impl Show for AlreadyTerminated
