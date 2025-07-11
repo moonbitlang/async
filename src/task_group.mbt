@@ -60,31 +60,29 @@ fn TaskGroup::spawn_coroutine(
   if not(no_wait) {
     self.unfinished += 1
   }
-  async fn worker() raise {
-    fn on_completion() {
-      if not(no_wait) {
-        self.unfinished -= 1
-        if self.unfinished == 0 {
-          self.parent.wake()
-        }
+  fn on_completion() {
+    if not(no_wait) {
+      self.unfinished -= 1
+      if self.unfinished == 0 {
+        self.parent.wake()
       }
-    }
-
-    try f() catch {
-      err => {
-        if allow_failure {
-          on_completion()
-        } else if self.unfinished > 0 {
-          self.cancel(err)
-        }
-        raise err
-      }
-    } noraise {
-      _ => on_completion()
     }
   }
 
-  let coro = @coroutine.spawn(worker)
+  fn on_error(err) {
+    if allow_failure {
+      on_completion()
+    } else if self.unfinished > 0 {
+      self.cancel(err)
+    }
+  }
+
+  async fn worker() raise {
+    f()
+    on_completion()
+  }
+
+  let coro = @coroutine.spawn(worker, on_error~)
   self.children.push(coro)
   coro
 }
@@ -101,6 +99,9 @@ fn TaskGroup::spawn_coroutine(
 ///
 /// If the task group is already cancelled or has been terminated,
 /// `spawn_bg` will fail with error and the child task will not be spawned.
+///
+/// It is undefined whether the child task will start running immediately
+/// before `spawn_bg` returns.
 pub fn TaskGroup::spawn_bg(
   self : TaskGroup,
   f : async () -> Unit raise,
@@ -124,6 +125,9 @@ pub fn TaskGroup::spawn_bg(
 ///
 /// If the task group is already cancelled or has been terminated,
 /// `spawn` will fail with error and the child task will not be spawned.
+///
+/// It is undefined whether the child task will start running immediately
+/// before `spawn` returns.
 pub fn[X] TaskGroup::spawn(
   self : TaskGroup,
   f : async () -> X raise,

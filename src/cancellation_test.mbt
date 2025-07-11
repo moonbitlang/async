@@ -27,6 +27,7 @@ test "manual cancel" {
           }
         }
       })
+      @async.sleep(100)
       task.cancel()
       @async.sleep(1000)
       buf.write_string("main task exit\n")
@@ -159,6 +160,7 @@ test "recursive cancel" {
         }
         buf.write_string("task finished\n")
       })
+      @async.sleep(100)
       task.cancel()
       buf.write_string("main task exit\n")
     }),
@@ -171,6 +173,35 @@ test "recursive cancel" {
       #|task finished
       #|main task exit
       #|Ok(())
+    ),
+  )
+}
+
+///|
+test "spawn directly error" {
+  let buf = StringBuilder::new()
+  buf.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.with_task_group(fn(group) {
+          @async.sleep(1)
+          // Here, spawn raises error immediately, and trigger group cancellation.
+          // However, the current coroutine is still running, not suspended.
+          // Therefore it is necessary to perform `suspend` on `spawn`
+          group.spawn_bg(() => raise Err)
+          buf.write_string("after spawn\n")
+          @async.sleep(500)
+          buf.write_string("main task exit\n")
+        })
+      })
+      @async.sleep(50)
+    }),
+  )
+  inspect(
+    buf.to_string(),
+    content=(
+      #|after spawn
+      #|Err(Err)
     ),
   )
 }

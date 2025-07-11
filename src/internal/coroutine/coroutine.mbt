@@ -38,24 +38,8 @@ pub impl Hash for Coroutine with hash_combine(self, hasher) {
 }
 
 ///|
-let coro_id : Ref[Int] = @ref.new(0)
-
-///|
-let curr_coro : Ref[Coroutine?] = { val: None }
-
-///|
-pub fn current_coroutine() -> Coroutine {
-  curr_coro.val.unwrap()
-}
-
-///|
 pub fn Coroutine::wake(self : Coroutine) -> Unit {
-  guard self.state is Suspend(ok_cont~, err_cont=_) else {  }
-  self.state = Running
-  let last_coro = curr_coro.val
-  curr_coro.val = Some(self)
-  ok_cont(())
-  curr_coro.val = last_coro
+  scheduler.run_later.push_back(self)
 }
 
 ///|
@@ -63,18 +47,28 @@ pub suberror Cancelled derive(Show)
 
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
-  let last_coro = curr_coro.val
+  let last_coro = scheduler.curr_coro
   while self.state is Suspend(ok_cont=_, err_cont~) {
     self.state = Running
-    curr_coro.val = Some(self)
+    scheduler.curr_coro = Some(self)
     err_cont(Cancelled)
-    curr_coro.val = last_coro
+    scheduler.curr_coro = last_coro
   }
 }
 
 ///|
+pub async fn pause() -> Unit raise {
+  guard scheduler.curr_coro is Some(coro)
+  async_suspend(fn(ok_cont, err_cont) {
+    guard coro.state is Running
+    coro.state = Suspend(ok_cont~, err_cont~)
+    scheduler.run_later.push_back(coro)
+  })
+}
+
+///|
 pub async fn suspend() -> Unit raise {
-  guard curr_coro.val is Some(coro)
+  guard scheduler.curr_coro is Some(coro)
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
@@ -82,13 +76,35 @@ pub async fn suspend() -> Unit raise {
 }
 
 ///|
-pub fn Coroutine::spawn(f : async () -> Unit raise) -> Coroutine {
-  coro_id.val += 1
-  let coro = { state: Running, downstream: Set::new(), coro_id: coro_id.val }
-  let last_coro = curr_coro.val
-  curr_coro.val = Some(coro)
+pub async fn sleep(duration : Int) -> Unit raise {
+  let timer = Timer::new(duration, current_coroutine())
+  scheduler.timers.add(timer)
+  suspend() catch {
+    err => {
+      scheduler.timers.remove(timer)
+      raise err
+    }
+  }
+}
+
+///|
+pub fn spawn(
+  f : async () -> Unit raise,
+  on_error? : (Error) -> Unit,
+) -> Coroutine {
+  scheduler.coro_id += 1
+  let coro = {
+    state: Running,
+    downstream: Set::new(),
+    coro_id: scheduler.coro_id,
+  }
+  let last_coro = scheduler.curr_coro
+  scheduler.curr_coro = Some(coro)
   run_async(fn() {
-    try f() catch {
+    try {
+      pause()
+      f()
+    } catch {
       err => coro.state = Fail(err)
     } noraise {
       _ => coro.state = Done
@@ -97,13 +113,13 @@ pub fn Coroutine::spawn(f : async () -> Unit raise) -> Coroutine {
       coro.wake()
     }
     coro.downstream.clear()
+    if coro.state is Fail(err) && on_error is Some(on_error) {
+      on_error(err)
+    }
   })
-  curr_coro.val = last_coro
+  scheduler.curr_coro = last_coro
   coro
 }
-
-///|
-pub fnalias Coroutine::spawn
 
 ///|
 pub fn Coroutine::unwrap(self : Coroutine) -> Unit raise {
@@ -116,7 +132,7 @@ pub fn Coroutine::unwrap(self : Coroutine) -> Unit raise {
 
 ///|
 pub async fn Coroutine::wait(target : Coroutine) -> Unit raise {
-  guard curr_coro.val is Some(coro)
+  guard scheduler.curr_coro is Some(coro)
   guard not(physical_equal(coro, target))
   match target.state {
     Done => return

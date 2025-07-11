@@ -100,6 +100,7 @@ test "spawn after cancelled 1" {
           }
         }
       })
+      @async.sleep(100)
       raise Err
     }),
   )

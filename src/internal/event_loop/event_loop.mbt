@@ -16,7 +16,6 @@
 priv struct EventLoop {
   poll : Instance
   tasks : Map[Int, Task]
-  timers : @sorted_set.T[Timer]
 }
 
 ///|
@@ -32,9 +31,10 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
-  let evloop = { poll: Instance::new(), tasks: {}, timers: @sorted_set.new() }
+  let evloop = { poll: Instance::new(), tasks: {} }
   curr_loop.val = Some(evloop)
   let main = @coroutine.spawn(f)
+  @coroutine.reschedule()
   evloop.run_forever()
   curr_loop.val = None
   main.unwrap()
@@ -42,18 +42,16 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  while not(self.tasks.is_empty() && self.timers.is_empty()) {
-    let timeout = match self.timers.iter().head() {
-      Some(timer) =>
-        @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
+  while not(self.tasks.is_empty() && @coroutine.no_more_work()) {
+    let timeout = match @coroutine.next_expire_time() {
+      Some(t) => @cmp.maximum(0, (t - @time.ms_since_epoch()).to_int())
       None => -1
     }
     let n = self.poll.wait(timeout~)
     if n < 0 {
       @os_error.check_errno()
     }
-    self.flush_timer()
-    let coros = []
+    @coroutine.reschedule()
     for i in 0..<n {
       let event = get_event(i)
       let fd = event.fd()
@@ -69,19 +67,16 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       }
       if task.read is Some(coro) && not(events is Write) {
         task.read = None
-        coros.push(coro)
+        coro.wake()
       }
       if not(task.write.is_empty() || events is Read) {
         for coro in task.write {
-          coros.push(coro)
+          coro.wake()
         }
         task.write = Set::new()
       }
     }
-    for coro in coros {
-      coro.wake()
-      self.flush_timer()
-    }
+    @coroutine.reschedule()
   }
   self.poll.destroy()
 }
@@ -174,25 +169,3 @@ pub fn close_fd(fd : Int) -> Unit {
 
 ///|
 extern "C" fn close_ffi(fd : Int) = "close"
-
-///|
-fn EventLoop::flush_timer(self : EventLoop) -> Unit {
-  while self.timers.iter().head() is Some(timer) &&
-        timer.expire_time <= @time.ms_since_epoch() {
-    self.timers.remove(timer)
-    timer.coro.wake()
-  }
-}
-
-///|
-pub async fn sleep(duration : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  let timer = Timer::new(duration, @coroutine.current_coroutine())
-  evloop.timers.add(timer)
-  @coroutine.suspend() catch {
-    err => {
-      evloop.timers.remove(timer)
-      raise err
-    }
-  }
-}

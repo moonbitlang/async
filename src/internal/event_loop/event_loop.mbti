@@ -3,8 +3,6 @@ package "moonbitlang/async/internal/event_loop"
 // Values
 fn close_fd(Int) -> Unit
 
-async fn sleep(Int) -> Unit raise
-
 async fn wait_fd_read(Int) -> Unit raise
 
 async fn wait_fd_write(Int) -> Unit raise
