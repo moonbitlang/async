@@ -99,3 +99,77 @@ test "with_timeout timeout" {
     ),
   )
 }
+
+///|
+test "with_timeout nested1" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(500)
+        log.write_string("half second tick\n")
+        @async.sleep(500)
+        log.write_string("one second tick\n")
+      })
+      @async.with_timeout(750, fn() {
+        @async.with_timeout(1250, fn() {
+          @async.sleep(2000) catch {
+            err => {
+              log.write_string("task cancelled\n")
+              raise err
+            }
+          }
+          log.write_string("task finished after 2s\n")
+        })
+      })
+      log.write_string("main task finished\n")
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|half second tick
+      #|task cancelled
+      #|main task finished
+      #|one second tick
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "with_timeout nested2" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(500)
+        log.write_string("half second tick\n")
+        @async.sleep(500)
+        log.write_string("one second tick\n")
+      })
+      @async.with_timeout(1250, fn() {
+        @async.with_timeout(750, fn() {
+          @async.sleep(2000) catch {
+            err => {
+              log.write_string("task cancelled\n")
+              raise err
+            }
+          }
+          log.write_string("task finished after 2s\n")
+        })
+      })
+      log.write_string("main task finished\n")
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|half second tick
+      #|task cancelled
+      #|main task finished
+      #|one second tick
+      #|Ok(())
+    ),
+  )
+}

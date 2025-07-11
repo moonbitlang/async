@@ -164,11 +164,11 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
     if tg.state is Running {
       tg.state = Done
     }
-    for child in tg.children {
-      child.cancel()
-    }
   } catch {
-    err => tg.cancel(err)
+    err => tg.state = Fail(err)
+  }
+  for child in tg.children {
+    child.cancel()
   }
   match tg.state {
     Done => result.unwrap()

@@ -46,16 +46,14 @@ priv suberror WithTimeout
 /// If `f` is still running after `timeout` milliseconds,
 /// `with_timeout` will also return immediately, and `f` will be cancelled.
 pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise {
-  let mut cancelled = false
   with_task_group(fn(group) {
     group.spawn_bg(no_wait=true, fn() {
       sleep(time)
-      cancelled = true
       raise WithTimeout
     })
     f()
   }) catch {
-    _ if cancelled => ()
+    WithTimeout => ()
     err => raise err
   }
 }
