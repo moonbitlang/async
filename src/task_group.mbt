@@ -39,12 +39,9 @@ struct TaskGroup {
 fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
   if self.state is Running {
     self.state = Fail(err)
+    self.unfinished = 0
+    self.parent.wake()
   }
-  for child in self.children {
-    child.cancel()
-  }
-  self.unfinished = 0
-  self.parent.wake()
 }
 
 ///|
