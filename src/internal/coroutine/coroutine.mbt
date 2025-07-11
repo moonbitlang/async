@@ -71,7 +71,18 @@ pub async fn suspend() -> Unit raise {
   guard scheduler.curr_coro is Some(coro)
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
-    coro.state = Suspend(ok_cont~, err_cont~)
+    fn wrapped_ok_cont(x) {
+      scheduler.blocking -= 1
+      ok_cont(x)
+    }
+
+    fn wrapped_err_cont(err) {
+      scheduler.blocking -= 1
+      err_cont(err)
+    }
+
+    coro.state = Suspend(ok_cont=wrapped_ok_cont, err_cont=wrapped_err_cont)
+    scheduler.blocking += 1
   })
 }
 

@@ -2,5 +2,6 @@
   "import": [
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/event_loop",
-  ]
+  ],
+  "test-import": [ "moonbitlang/async/pipe" ]
 }

@@ -42,7 +42,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  while not(self.tasks.is_empty() && @coroutine.no_more_work()) {
+  while not(@coroutine.no_more_work()) {
     let timeout = match @coroutine.next_expire_time() {
       Some(t) => @cmp.maximum(0, (t - @time.ms_since_epoch()).to_int())
       None => -1
@@ -70,6 +70,14 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     }
     @coroutine.reschedule()
   }
+  for fd, task in self.tasks {
+    guard task.read is None && task.write.is_empty()
+    self.poll.remove(fd, events=task.events) catch {
+      err => abort("detach \{fd} from loop: \{err}")
+    }
+    close_ffi(fd)
+  }
+  self.tasks.clear()
   self.poll.destroy()
 }
 

@@ -46,6 +46,7 @@ impl Compare for Timer with compare(t1, t2) {
 priv struct Scheduler {
   mut coro_id : Int
   mut curr_coro : Coroutine?
+  mut blocking : Int
   run_later : @deque.T[Coroutine]
   timers : @sorted_set.T[Timer]
 }
@@ -54,6 +55,7 @@ priv struct Scheduler {
 let scheduler : Scheduler = {
   coro_id: 0,
   curr_coro: None,
+  blocking: 0,
   run_later: @deque.new(),
   timers: @sorted_set.new(),
 }
@@ -74,7 +76,9 @@ pub fn next_expire_time() -> Int64? {
 
 ///|
 pub fn no_more_work() -> Bool {
-  scheduler.run_later.is_empty() && scheduler.timers.is_empty()
+  scheduler.blocking == 0 &&
+  scheduler.run_later.is_empty() &&
+  scheduler.timers.is_empty()
 }
 
 ///|
