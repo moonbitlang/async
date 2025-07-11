@@ -127,6 +127,7 @@ pub async fn PipeRead::read(
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let PipeRead(fd) = self
+  @event_loop.prepare_fd_read(fd)
   let n_read = read_ffi(fd, buf, offset, max_len)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
     @event_loop.wait_fd_read(fd)
@@ -170,6 +171,7 @@ pub async fn PipeWrite::write(
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let PipeWrite(fd) = self
+  @event_loop.prepare_fd_write(fd)
   for sent = 0; sent < len; {
     let new_sent = write_ffi(fd, buf, offset + sent, len - sent)
     if new_sent < 0 {

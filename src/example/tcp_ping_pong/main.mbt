@@ -81,7 +81,6 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
     if conn.recv(buf) is n && n > 0 {
       let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
       println("client \{id} received: \{msg}")
-      conn.close()
     } else {
       println("client \{id}: connection closed by peer")
     }

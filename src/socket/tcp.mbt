@@ -54,6 +54,7 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 /// will be returned together with the address of peer.
 pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
   let TCP(listen_sock) = self
+  @event_loop.prepare_fd_read(listen_sock)
   let addr = Addr::new(0, 0)
   for {
     let conn_sock = accept_ffi(listen_sock, addr)
@@ -71,6 +72,7 @@ pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
   let TCP(sock) = self
+  @event_loop.prepare_fd_write(sock)
   if 0 == connect_ffi(sock, addr) {
     return
   }
@@ -95,6 +97,7 @@ pub async fn TCP::recv(
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
+  @event_loop.prepare_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
     @event_loop.wait_fd_read(sock)
@@ -138,6 +141,7 @@ pub async fn TCP::send(
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
+  @event_loop.prepare_fd_write(sock)
   for sent = 0; sent < len; {
     let new_sent = send_ffi(sock, buf, offset + sent, len - sent)
     if new_sent < 0 {

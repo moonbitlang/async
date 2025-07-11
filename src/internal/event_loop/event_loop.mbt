@@ -57,19 +57,11 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       let fd = event.fd()
       guard self.tasks.get(fd) is Some(task)
       let events = event.events()
-      match (events, task.events) {
-        (Read, ReadWrite) => self.poll.modify(fd, events=Write)
-        (Write, ReadWrite) => self.poll.modify(fd, events=Read)
-        (_, original_events) => {
-          self.tasks.remove(fd)
-          self.poll.remove(fd, events=original_events)
-        }
-      }
       if task.read is Some(coro) && not(events is Write) {
         task.read = None
         coro.wake()
       }
-      if not(task.write.is_empty() || events is Read) {
+      if not(events is Read) {
         for coro in task.write {
           coro.wake()
         }
@@ -82,74 +74,78 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
-pub async fn wait_fd_read(fd : Int) -> Unit raise {
+pub fn prepare_fd_read(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   let task = match evloop.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new(), events: Read }
+      let task = { read: None, write: Set::new(), events: NoEvent }
       evloop.tasks[fd] = task
       task
     }
     Some(task) => task
   }
   guard task.read is None
-  task.read = Some(@coroutine.current_coroutine())
-  if task.write.is_empty() {
-    task.events = Read
-    evloop.poll.register(fd, events=Read, oneshot=false)
-  } else {
-    task.events = ReadWrite
-    evloop.poll.modify(fd, events=ReadWrite, oneshot=false)
+  match task.events {
+    NoEvent => {
+      task.events = Read
+      evloop.poll.register(fd, events=Read, oneshot=false)
+    }
+    Write => {
+      task.events = ReadWrite
+      evloop.poll.modify(fd, events=ReadWrite, oneshot=false)
+    }
+    _ => ()
   }
+}
+
+///|
+pub async fn wait_fd_read(fd : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  guard evloop.tasks.get(fd) is Some(task)
+  guard task.events is (Read | ReadWrite)
+  task.read = Some(@coroutine.current_coroutine())
   ignore(@coroutine.suspend()) catch {
     err => {
       task.read = None
-      if task.write.is_empty() {
-        evloop.tasks.remove(fd)
-        evloop.poll.remove(fd, events=Read)
-      } else {
-        task.events = Write
-        evloop.poll.modify(fd, events=Write)
-      }
       raise err
     }
   }
 }
 
 ///|
-pub async fn wait_fd_write(fd : Int) -> Unit raise {
+pub fn prepare_fd_write(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   let task = match evloop.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new(), events: Write }
+      let task = { read: None, write: Set::new(), events: NoEvent }
       evloop.tasks[fd] = task
       task
     }
     Some(task) => task
   }
-  if task.write.is_empty() {
-    if task.read is None {
+  match task.events {
+    NoEvent => {
       task.events = Write
       evloop.poll.register(fd, events=Write, oneshot=false)
-    } else {
+    }
+    Read => {
       task.events = ReadWrite
       evloop.poll.modify(fd, events=ReadWrite, oneshot=false)
     }
+    _ => ()
   }
+}
+
+///|
+pub async fn wait_fd_write(fd : Int) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  guard evloop.tasks.get(fd) is Some(task)
+  guard task.events is (Write | ReadWrite)
   let coro = @coroutine.current_coroutine()
   task.write.add(coro)
   ignore(@coroutine.suspend()) catch {
     err => {
       task.write.remove(coro)
-      if task.write.is_empty() {
-        if task.read is None {
-          evloop.tasks.remove(fd)
-          evloop.poll.remove(fd, events=Write)
-        } else {
-          task.events = Read
-          evloop.poll.modify(fd, events=Read)
-        }
-      }
       raise err
     }
   }

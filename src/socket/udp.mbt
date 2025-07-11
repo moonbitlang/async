@@ -67,6 +67,7 @@ pub async fn UDP::recv(
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
+  @event_loop.prepare_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
   if n_read > 0 {
     return n_read
@@ -89,6 +90,7 @@ pub async fn UDP::recvfrom(
 ) -> (Int, Addr) raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
+  @event_loop.prepare_fd_read(sock)
   let addr = Addr::new(0, 0)
   let n_read = recvfrom_ffi(sock, buf, offset, max_len, addr)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
@@ -116,6 +118,7 @@ pub async fn UDP::send(
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
+  @event_loop.prepare_fd_write(sock)
   for {
     let n_sent = send_ffi(sock, buf, offset, len)
     if n_sent > 0 {
@@ -140,6 +143,7 @@ pub async fn UDP::sendto(
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
+  @event_loop.prepare_fd_write(sock)
   for {
     let n_sent = sendto_ffi(sock, buf, offset, len, addr)
     if n_sent > 0 {
