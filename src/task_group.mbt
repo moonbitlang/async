@@ -170,6 +170,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   for child in tg.children {
     child.cancel()
   }
+  tg.children.clear()
   match tg.state {
     Done => result.unwrap()
     Fail(err) => raise err
