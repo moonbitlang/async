@@ -18,7 +18,7 @@ test "wait basic" {
   buf.write_object(
     try? @async.with_event_loop(fn(root) {
       let task = root.spawn(no_wait=true, fn() {
-        @async.sleep(500)
+        @async.sleep(100)
         buf.write_string("task finished\n")
       })
       task.wait()
@@ -52,7 +52,7 @@ test "wait cancelled" {
           }
         }
       })
-      @async.sleep(500)
+      @async.sleep(100)
       raise Err
     }),
   )

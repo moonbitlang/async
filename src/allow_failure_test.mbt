@@ -17,7 +17,7 @@ test "allow_failure ignored" {
   let buf = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn_bg(allow_failure=true, fn() { raise Err })
-    @async.sleep(500)
+    @async.sleep(100)
     buf.write_string("main task terminate\n")
   })
   inspect(
@@ -35,7 +35,7 @@ test "allow_failure waited" {
   buf.write_object(
     try? @async.with_event_loop(fn(root) {
       let task = root.spawn(allow_failure=true, fn() { raise Err })
-      @async.sleep(500)
+      @async.sleep(100)
       task.wait()
       buf.write_string("main task terminate\n")
     }),
@@ -52,7 +52,7 @@ test "allow_failure no error" {
         @async.sleep(1000)
         buf.write_string("`allow_failure` task terminate\n")
       })
-      @async.sleep(500)
+      @async.sleep(100)
       buf.write_string("main task terminate\n")
     }),
   )

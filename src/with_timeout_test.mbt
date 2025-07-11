@@ -18,12 +18,12 @@ test "with_timeout normal exit" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(1000)
-        log.write_string("one second tick\n")
+        @async.sleep(200)
+        log.write_string("200ms tick\n")
       })
-      @async.with_timeout(2000, fn() {
-        @async.sleep(500)
-        log.write_string("task finished after 500ms\n")
+      @async.with_timeout(1000, fn() {
+        @async.sleep(100)
+        log.write_string("task finished after 100ms\n")
       })
       log.write_string("main task finished\n")
     }),
@@ -31,9 +31,9 @@ test "with_timeout normal exit" {
   inspect(
     log.to_string(),
     content=(
-      #|task finished after 500ms
+      #|task finished after 100ms
       #|main task finished
-      #|one second tick
+      #|200ms tick
       #|Ok(())
     ),
   )
@@ -45,11 +45,11 @@ test "with_timeout failure" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(1000)
-        log.write_string("one second tick\n")
+        @async.sleep(200)
+        log.write_string("200ms tick\n")
       })
-      @async.with_timeout(2000, fn() {
-        @async.sleep(500)
+      @async.with_timeout(1000, fn() {
+        @async.sleep(100)
         raise Err
       }) catch {
         err => {
@@ -74,10 +74,10 @@ test "with_timeout timeout" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(1000)
-        log.write_string("one second tick\n")
+        @async.sleep(200)
+        log.write_string("200ms tick\n")
       })
-      @async.with_timeout(500, fn() {
+      @async.with_timeout(100, fn() {
         @async.sleep(2000) catch {
           err => {
             log.write_string("task cancelled\n")
@@ -94,7 +94,7 @@ test "with_timeout timeout" {
     content=(
       #|task cancelled
       #|main task finished
-      #|one second tick
+      #|200ms tick
       #|Ok(())
     ),
   )
@@ -106,13 +106,13 @@ test "with_timeout nested1" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(500)
-        log.write_string("half second tick\n")
-        @async.sleep(500)
-        log.write_string("one second tick\n")
+        @async.sleep(100)
+        log.write_string("100ms tick\n")
+        @async.sleep(100)
+        log.write_string("200ms tick\n")
       })
-      @async.with_timeout(750, fn() {
-        @async.with_timeout(1250, fn() {
+      @async.with_timeout(150, fn() {
+        @async.with_timeout(250, fn() {
           @async.sleep(2000) catch {
             err => {
               log.write_string("task cancelled\n")
@@ -128,10 +128,10 @@ test "with_timeout nested1" {
   inspect(
     log.to_string(),
     content=(
-      #|half second tick
+      #|100ms tick
       #|task cancelled
       #|main task finished
-      #|one second tick
+      #|200ms tick
       #|Ok(())
     ),
   )
@@ -143,13 +143,13 @@ test "with_timeout nested2" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(500)
-        log.write_string("half second tick\n")
-        @async.sleep(500)
-        log.write_string("one second tick\n")
+        @async.sleep(100)
+        log.write_string("100ms tick\n")
+        @async.sleep(100)
+        log.write_string("200ms tick\n")
       })
-      @async.with_timeout(1250, fn() {
-        @async.with_timeout(750, fn() {
+      @async.with_timeout(250, fn() {
+        @async.with_timeout(150, fn() {
           @async.sleep(2000) catch {
             err => {
               log.write_string("task cancelled\n")
@@ -165,10 +165,10 @@ test "with_timeout nested2" {
   inspect(
     log.to_string(),
     content=(
-      #|half second tick
+      #|100ms tick
       #|task cancelled
       #|main task finished
-      #|one second tick
+      #|200ms tick
       #|Ok(())
     ),
   )

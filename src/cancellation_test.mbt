@@ -51,14 +51,14 @@ test "error propagation" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(1000)
+        @async.sleep(200)
         raise Err
       })
       root.spawn_bg(fn() {
         try {
-          @async.sleep(500)
+          @async.sleep(100)
           buf.write_string("task 2, tick 1\n")
-          @async.sleep(1000)
+          @async.sleep(200)
           buf.write_string("task 2, tick 2\n")
         } catch {
           err => {
@@ -89,11 +89,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(500)
+            sleep(100)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(1000) catch {
+            try sleep(200) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
                 raise err
@@ -113,11 +113,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(2000)
+            sleep(250)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(1000) catch {
+            try sleep(150) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
                 raise err
@@ -185,9 +185,6 @@ test "spawn directly error" {
       root.spawn_bg(fn() {
         @async.with_task_group(fn(group) {
           @async.sleep(1)
-          // Here, spawn raises error immediately, and trigger group cancellation.
-          // However, the current coroutine is still running, not suspended.
-          // Therefore it is necessary to perform `suspend` on `spawn`
           group.spawn_bg(() => raise Err)
           buf.write_string("after spawn\n")
           @async.sleep(500)

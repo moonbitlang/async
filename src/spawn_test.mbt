@@ -121,19 +121,19 @@ test "spawn after cancelled 2" {
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(no_wait=true, allow_failure=true, fn() {
         try {
-          @async.sleep(1000)
+          @async.sleep(200)
           buf.write_string("task finished\n")
         } catch {
           err => {
             buf.write_string("cancelled by error \{err}\n")
-            root.spawn_bg(() => @async.sleep(1000)) catch {
+            root.spawn_bg(() => @async.sleep(200)) catch {
               err => buf.write_string("trying to spawn, received \{err}\n")
             }
             raise err
           }
         }
       })
-      @async.sleep(500)
+      @async.sleep(100)
     }),
   )
   inspect(
