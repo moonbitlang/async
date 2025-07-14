@@ -69,15 +69,16 @@ pub async fn UDP::recv(
   let UDP(sock) = self
   @event_loop.prepare_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
-  if n_read > 0 {
-    return n_read
-  } else if @os_error.is_nonblocking_io_error() {
+  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
     @event_loop.wait_fd_read(sock)
     recv_ffi(sock, buf, offset, max_len)
   } else {
-    @os_error.check_errno()
     n_read
   }
+  if n_read < 0 {
+    @os_error.check_errno()
+  }
+  n_read
 }
 
 ///|
