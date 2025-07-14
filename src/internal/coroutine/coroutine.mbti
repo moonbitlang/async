@@ -9,6 +9,8 @@ fn no_more_work() -> Bool
 
 async fn pause() -> Unit raise
 
+async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
+
 fn reschedule() -> Unit
 
 async fn sleep(Int) -> Unit raise

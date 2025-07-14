@@ -21,9 +21,17 @@ priv enum State {
 }
 
 ///|
+priv enum CancellationShield {
+  NoShield
+  Shielded
+  ShieldedCancelled
+}
+
+///|
 struct Coroutine {
   coro_id : Int
   mut state : State
+  mut shield : CancellationShield
   downstream : Set[Coroutine]
 }
 
@@ -47,13 +55,21 @@ pub suberror Cancelled derive(Show)
 
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
+  match self.shield {
+    NoShield => ()
+    Shielded => {
+      self.shield = ShieldedCancelled
+      return
+    }
+    ShieldedCancelled => return
+  }
   let last_coro = scheduler.curr_coro
+  scheduler.curr_coro = Some(self)
   while self.state is Suspend(ok_cont=_, err_cont~) {
     self.state = Running
-    scheduler.curr_coro = Some(self)
     err_cont(Cancelled)
-    scheduler.curr_coro = last_coro
   }
+  scheduler.curr_coro = last_coro
 }
 
 ///|
@@ -106,6 +122,7 @@ pub fn spawn(
   scheduler.coro_id += 1
   let coro = {
     state: Running,
+    shield: NoShield,
     downstream: Set::new(),
     coro_id: scheduler.coro_id,
   }
@@ -158,5 +175,37 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit raise {
     }
   } noraise {
     _ => target.unwrap()
+  }
+}
+
+///|
+pub async fn protect_from_cancel(f : async () -> Unit raise) -> Unit raise {
+  guard scheduler.curr_coro is Some(coro)
+  if coro.shield is NoShield {
+    coro.shield = Shielded
+    fn restore_state() raise {
+      match coro.shield {
+        Shielded => coro.shield = NoShield
+        ShieldedCancelled => {
+          let err = Cancelled
+          coro.shield = NoShield
+          coro.state = Fail(err)
+          raise err
+        }
+        NoShield => panic()
+      }
+    }
+
+    try f() catch {
+      err => {
+        restore_state()
+        raise err
+      }
+    } noraise {
+      _ => restore_state()
+    }
+  } else {
+    // already in a shield, do nothing
+    f()
   }
 }

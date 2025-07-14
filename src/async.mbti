@@ -3,6 +3,8 @@ package "moonbitlang/async"
 // Values
 async fn pause() -> Unit raise
 
+async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
+
 async fn sleep(Int) -> Unit raise
 
 fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise

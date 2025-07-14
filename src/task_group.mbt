@@ -37,10 +37,10 @@ struct TaskGroup {
 
 ///|
 fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
-  if self.state is Running {
-    self.state = Fail(err)
-    self.unfinished = 0
-    self.parent.wake()
+  guard self.state is Running
+  self.state = Fail(err)
+  for child in self.children {
+    child.cancel()
   }
 }
 
@@ -70,11 +70,10 @@ fn TaskGroup::spawn_coroutine(
   }
 
   fn on_error(err) {
-    if allow_failure {
-      on_completion()
-    } else if self.unfinished > 0 {
+    if not(allow_failure) && self.state is Running {
       self.cancel(err)
     }
+    on_completion()
   }
 
   async fn worker() raise {
@@ -157,18 +156,16 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
     state: Running,
   }
   tg.spawn_bg(() => result = Some(f(tg)))
-  try {
-    if tg.unfinished > 0 {
-      @coroutine.suspend()
+  if tg.unfinished > 0 {
+    @coroutine.suspend() catch {
+      err => tg.cancel(err)
     }
-    if tg.state is Running {
-      tg.state = Done
-    }
-  } catch {
-    err => tg.state = Fail(err)
   }
-  for child in tg.children {
-    child.cancel()
+  if tg.state is Running {
+    tg.state = Done
+    for child in tg.children {
+      child.cancel()
+    }
   }
   tg.children.clear()
   match tg.state {

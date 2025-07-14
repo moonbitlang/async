@@ -57,3 +57,16 @@ pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise 
     err => raise err
   }
 }
+
+///|
+/// `protect_from_cancel(f)` executes `f` and protect `f` from cancellation.
+/// If current task is cancelled while running `protect_from_cancel(f)`,
+/// `f` will be protected from the cancellation and still run to finish,
+/// and the cancellation will be delayed until `f` returns.
+/// Things waiting for current task, such as the task group,
+/// will also wait until `f` finish.
+///
+/// This function should be use with extra care and only when absolutely necessary,
+/// because it will break other abstraction such as `with_timeout`.
+/// A common scenario is avoiding corrupted state due to partial write to file etc.
+pub fnalias @coroutine.protect_from_cancel
