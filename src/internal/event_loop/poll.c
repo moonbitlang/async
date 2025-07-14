@@ -16,16 +16,16 @@ static const int ev_masks[] = {
   EPOLLIN,
   EPOLLOUT,
   EPOLLIN | EPOLLOUT,
-  EPOLLERR
 };
 
 int moonbitlang_async_poll_register(
   int epfd,
   int fd,
-  int events,
+  int prev_events,
+  int new_events,
   int oneshot
 ) {
-  events = ev_masks[events];
+  int events = ev_masks[prev_events | new_events];
   if (oneshot)
     events |= EPOLLONESHOT;
 
@@ -34,25 +34,8 @@ int moonbitlang_async_poll_register(
   epoll_data_t data;
   data.fd = fd;
   struct epoll_event event = { events, data };
-  return epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
-}
-
-int moonbitlang_async_poll_modify(
-  int epfd,
-  int fd,
-  int events,
-  int oneshot
-) {
-  events = ev_masks[events];
-  if (oneshot)
-    events |= EPOLLONESHOT;
-
-  events |= EPOLLET;
-
-  epoll_data_t data;
-  data.fd = fd;
-  struct epoll_event event = { events, data };
-  return epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
+  int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+  return epoll_ctl(epfd, op, fd, &event);
 }
 
 int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
@@ -76,8 +59,8 @@ int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
 }
 
 int moonbitlang_async_event_get_events(struct epoll_event *ev) {
-  if (ev->events & EPOLLERR)
-    return 4;
+  if (ev->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+    return 3;
 
   int result = 0;
   if (ev->events & EPOLLIN)
@@ -107,11 +90,16 @@ static const int ev_masks[] = {
   EVFILT_READ,
   EVFILT_WRITE,
   EVFILT_READ | EVFILT_WRITE,
-  EV_ERROR
 };
 
-int moonbitlang_async_poll_register(int kqfd, int fd, int events, int oneshot) {
-  int filter = ev_masks[events];
+int moonbitlang_async_poll_register(
+  int kqfd,
+  int fd,
+  int prev_events,
+  int new_events,
+  int oneshot
+) {
+  int filter = ev_masks[new_events];
 
   int flags = EV_ADD | EV_CLEAR;
   if (oneshot)
@@ -120,10 +108,6 @@ int moonbitlang_async_poll_register(int kqfd, int fd, int events, int oneshot) {
   struct kevent event;
   EV_SET(&event, fd, filter, flags, 0, 0, 0);
   return kevent(kqfd, &event, 1, 0, 0, 0);
-}
-
-int moonbitlang_async_poll_modify(int kqfd, int fd, int events, int oneshot) {
-  return poll_register(kqfd, fd, events, oneshot);
 }
 
 int moonbitlang_async_poll_remove(int kqfd, int fd, int events) {
@@ -150,16 +134,16 @@ int moonbitlang_async_event_get_fd(struct kevent *ev) {
 }
 
 int moonbitlang_async_event_get_events(struct kevent *ev) {
-  if (ev->flags | EV_ERROR)
-    return 4;
+  if (ev->filter == EVFILT_READ)
+    return 1;
 
-  int result = 0;
-  if (ev->filter & EVFILT_READ)
-    result |= 1;
-  if (ev->filter & EVFILT_WRITE)
-    result |= 2;
+  if (ev->filter == EVFILT_WRITE)
+    return 2;
 
-  return result;
+  if (ev->flags & EV_ERROR)
+    return 3;
+
+  return 0;
 }
 
 // end of kqueue backend

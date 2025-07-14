@@ -16,13 +16,13 @@
 priv type Instance Int
 
 ///|
-pub(all) enum Events {
-  NoEvent = 0
-  Read = 1
-  Write = 2
-  ReadWrite = 3
-  Error = 4
-}
+const NoEvent = 0
+
+///|
+const Read = 1
+
+///|
+const Write = 2
 
 ///|
 extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
@@ -34,7 +34,8 @@ extern "C" fn Instance::destroy(self : Instance) = "moonbitlang_async_poll_destr
 extern "C" fn Instance::register_ffi(
   self : Instance,
   fd : Int,
-  events~ : Events,
+  prev_events~ : Int,
+  new_events~ : Int,
   oneshot~ : Bool,
 ) -> Int = "moonbitlang_async_poll_register"
 
@@ -42,30 +43,11 @@ extern "C" fn Instance::register_ffi(
 fn Instance::register(
   self : Instance,
   fd : Int,
-  events~ : Events,
+  prev_events~ : Int,
+  new_events~ : Int,
   oneshot~ : Bool = false,
 ) -> Unit raise {
-  if 0 != self.register_ffi(fd, events~, oneshot~) {
-    @os_error.check_errno()
-  }
-}
-
-///|
-extern "C" fn Instance::modify_ffi(
-  self : Instance,
-  fd : Int,
-  events~ : Events,
-  oneshot~ : Bool = false,
-) -> Int = "moonbitlang_async_poll_modify"
-
-///|
-fn Instance::modify(
-  self : Instance,
-  fd : Int,
-  events~ : Events,
-  oneshot~ : Bool = false,
-) -> Unit raise {
-  if 0 != self.modify_ffi(fd, events~, oneshot~) {
+  if 0 != self.register_ffi(fd, prev_events~, new_events~, oneshot~) {
     @os_error.check_errno()
   }
 }
@@ -74,11 +56,11 @@ fn Instance::modify(
 extern "C" fn Instance::remove_ffi(
   self : Instance,
   fd : Int,
-  events~ : Events,
+  events~ : Int,
 ) -> Int = "moonbitlang_async_poll_remove"
 
 ///|
-fn Instance::remove(self : Instance, fd : Int, events~ : Events) -> Unit raise {
+fn Instance::remove(self : Instance, fd : Int, events~ : Int) -> Unit raise {
   if 0 != self.remove_ffi(fd, events~) {
     @os_error.check_errno()
   }
@@ -95,7 +77,7 @@ extern "C" fn get_event(index : Int) -> Event = "moonbitlang_async_event_list_ge
 extern "C" fn Event::fd(self : Event) -> Int = "moonbitlang_async_event_get_fd"
 
 ///|
-extern "C" fn Event::events(self : Event) -> Events = "moonbitlang_async_event_get_events"
+extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
 
 ///|
 extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"
