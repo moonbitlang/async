@@ -28,15 +28,19 @@ priv enum TaskGroupState {
 /// by default, if any child task raises error,
 /// the whole task group will also raise that error,
 /// and all other remaining child tasks will be cancelled.
-struct TaskGroup {
+///
+/// The type parameter `X` in `TaskGroup[X]` is the result type of the group,
+/// see `with_task_group` for more detail.
+struct TaskGroup[X] {
   children : Array[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
   mut unfinished : Int
   mut state : TaskGroupState
+  mut result : X?
 }
 
 ///|
-fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
+fn[X] TaskGroup::cancel(self : TaskGroup[X], err : Error) -> Unit {
   let old_state = self.state
   match old_state {
     Done(_) | Fail(_) if err is @coroutine.Cancelled => ()
@@ -53,8 +57,8 @@ fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
 pub suberror AlreadyTerminated derive(Show)
 
 ///|
-fn TaskGroup::spawn_coroutine(
-  self : TaskGroup,
+fn[X] TaskGroup::spawn_coroutine(
+  self : TaskGroup[X],
   f : async () -> Unit raise,
   no_wait~ : Bool,
   allow_failure~ : Bool,
@@ -106,8 +110,8 @@ fn TaskGroup::spawn_coroutine(
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn_bg` returns.
-pub fn TaskGroup::spawn_bg(
-  self : TaskGroup,
+pub fn[X] TaskGroup::spawn_bg(
+  self : TaskGroup[X],
   f : async () -> Unit raise,
   no_wait~ : Bool = false,
   allow_failure~ : Bool = false,
@@ -132,8 +136,8 @@ pub fn TaskGroup::spawn_bg(
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn` returns.
-pub fn[X] TaskGroup::spawn(
-  self : TaskGroup,
+pub fn[G, X] TaskGroup::spawn(
+  self : TaskGroup[G],
   f : async () -> X raise,
   no_wait~ : Bool = false,
   allow_failure~ : Bool = false,
@@ -152,15 +156,23 @@ pub fn[X] TaskGroup::spawn(
 /// `f` itself will be run in a child task of the new group.
 /// `with_task_group` exits after all the whole group terminates,
 /// which means all child tasks in the group have terminated, including `f`.
-pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
-  let mut result = None
+///
+/// If all children task terminate successfully,
+/// `with_task_group` will return the result of `f`.
+pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise {
   let tg = {
     children: [],
     parent: @coroutine.current_coroutine(),
     unfinished: 0,
     state: Running,
+    result: None,
   }
-  tg.spawn_bg(() => result = Some(f(tg)))
+  tg.spawn_bg(fn() {
+    let value = f(tg)
+    if tg.result is None {
+      tg.result = Some(value)
+    }
+  })
   if tg.unfinished > 0 {
     @coroutine.suspend() catch {
       err => tg.cancel(err)
@@ -174,8 +186,31 @@ pub async fn[X] with_task_group(f : async (TaskGroup) -> X raise) -> X raise {
   }
   tg.children.clear()
   match tg.state {
-    Done => result.unwrap()
+    Done => tg.result.unwrap()
     Fail(err) => raise err
     Running => panic()
   }
+}
+
+///|
+/// Force a task group to terminate immediately with the given result value.
+/// All child tasks in the group, including potentially the current one,
+/// will be cancelled.
+pub fn[X] TaskGroup::return_immediately(
+  self : TaskGroup[X],
+  value : X,
+) -> Unit raise {
+  if self.result is None {
+    self.result = Some(value)
+  }
+  if self.state is Running {
+    self.state = Done
+    let curr_coro = @coroutine.current_coroutine()
+    for child in self.children {
+      if child != curr_coro {
+        child.cancel()
+      }
+    }
+  }
+  raise @coroutine.Cancelled
 }

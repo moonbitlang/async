@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/coroutine"
 
 // Values
@@ -20,7 +21,7 @@ fn spawn(async () -> Unit raise, on_error? : (Error) -> Unit) -> Coroutine
 async fn suspend() -> Unit raise
 
 // Types and methods
-pub type! Cancelled
+pub(all) type! Cancelled
 impl Show for Cancelled
 
 type Coroutine

@@ -173,3 +173,33 @@ test "with_timeout nested2" {
     ),
   )
 }
+
+///|
+test "with_timeout error_on_cancel" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(200)
+        log.write_string("200ms tick\n")
+      })
+      @async.with_timeout(100, fn() {
+        @async.sleep(2000) catch {
+          _ => {
+            log.write_string("causing other error on cancellation\n")
+            raise Err
+          }
+        }
+        log.write_string("task finished after 100ms\n")
+      })
+      log.write_string("main task finished\n")
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|causing other error on cancellation
+      #|Err(Err)
+    ),
+  )
+}

@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async"
 
 // Values
@@ -7,9 +8,9 @@ async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
 
 async fn sleep(Int) -> Unit raise
 
-fn with_event_loop(async (TaskGroup) -> Unit raise) -> Unit raise
+fn with_event_loop(async (TaskGroup[Unit]) -> Unit raise) -> Unit raise
 
-async fn[X] with_task_group(async (TaskGroup) -> X raise) -> X raise
+async fn[X] with_task_group(async (TaskGroup[X]) -> X raise) -> X raise
 
 async fn with_timeout(Int, async () -> Unit raise) -> Unit raise
 
@@ -21,9 +22,10 @@ type Task[X]
 fn[X] Task::cancel(Self[X]) -> Unit
 async fn[X] Task::wait(Self[X]) -> X raise
 
-type TaskGroup
-fn[X] TaskGroup::spawn(Self, async () -> X raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Task[X] raise
-fn TaskGroup::spawn_bg(Self, async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit raise
+type TaskGroup[X]
+fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
+fn[G, X] TaskGroup::spawn(Self[G], async () -> X raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Task[X] raise
+fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit raise
 
 // Type aliases
 

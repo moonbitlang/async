@@ -20,7 +20,7 @@
 /// There can only one event loop running for every program,
 /// calling `with_event_loop` inside another event loop is invalid,
 /// and will result in immediate failure.
-pub fn with_event_loop(f : async (TaskGroup) -> Unit raise) -> Unit raise {
+pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit raise) -> Unit raise {
   @event_loop.with_event_loop(() => with_task_group(f))
 }
 
@@ -37,9 +37,6 @@ pub fnalias @coroutine.sleep
 pub fnalias @coroutine.pause
 
 ///|
-priv suberror WithTimeout
-
-///|
 /// `with_timeout(timeout, f)` run the async function `f`.
 /// If `f` return or fail before `timeout`,
 /// `with_timeout` return immediately with the same result.
@@ -49,13 +46,10 @@ pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise 
   with_task_group(fn(group) {
     group.spawn_bg(no_wait=true, fn() {
       sleep(time)
-      raise WithTimeout
+      group.return_immediately(())
     })
     f()
-  }) catch {
-    WithTimeout => ()
-    err => raise err
-  }
+  })
 }
 
 ///|
