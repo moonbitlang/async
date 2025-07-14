@@ -42,7 +42,7 @@ int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {
 }
 
 int moonbitlang_async_listen(int sockfd) {
-  return listen(sockfd, 0);
+  return listen(sockfd, SOMAXCONN);
 }
 
 int moonbitlang_async_accept(int sockfd, struct sockaddr_in *addr_buf) {
