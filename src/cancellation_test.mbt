@@ -202,3 +202,28 @@ test "spawn directly error" {
     ),
   )
 }
+
+///|
+test "error in cancellation" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(no_wait=true, fn() {
+        @async.sleep(1000) catch {
+          _ => {
+            log.write_string("causing other error in cancellation handler\n")
+            raise Err
+          }
+        }
+      })
+      @async.sleep(50)
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|causing other error in cancellation handler
+      #|Err(Err)
+    ),
+  )
+}

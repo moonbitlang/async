@@ -37,10 +37,15 @@ struct TaskGroup {
 
 ///|
 fn TaskGroup::cancel(self : TaskGroup, err : Error) -> Unit {
-  guard self.state is Running
-  self.state = Fail(err)
-  for child in self.children {
-    child.cancel()
+  let old_state = self.state
+  match old_state {
+    Done(_) | Fail(_) if err is @coroutine.Cancelled => ()
+    _ => self.state = Fail(err)
+  }
+  if old_state is Running {
+    for child in self.children {
+      child.cancel()
+    }
   }
 }
 
@@ -70,7 +75,7 @@ fn TaskGroup::spawn_coroutine(
   }
 
   fn on_error(err) {
-    if not(allow_failure) && self.state is Running {
+    if not(allow_failure) {
       self.cancel(err)
     }
     on_completion()
