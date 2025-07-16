@@ -24,48 +24,30 @@ test "read_exactly" {
     // server
     root.spawn_bg(fn() {
       let listen_sock = @socket.TCP::new()
-      try {
-        listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
-        let (conn, _) = listen_sock.accept()
-        try {
-          let msg1 = conn.recv_exactly(4)
-          log("first message: \{msg1}")
-          let msg2 = conn.recv_exactly(4)
-          log("second message: \{msg2}")
-          let msg3 = conn.recv_exactly(4)
-          log("third message: \{msg3}")
-        } catch {
-          err => {
-            conn.close()
-            raise err
-          }
-        } noraise {
-          _ => {
-            // let the client close first to avoid socket entering `TIME_WAIT` state,
-            // occupying the address.
-            @async.sleep(50)
-            conn.close()
-          }
-        }
-      } catch {
-        err => {
-          listen_sock.close()
-          raise err
-        }
-      } noraise {
-        _ => listen_sock.close()
-      }
+      defer listen_sock.close()
+      listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
+      let (conn, _) = listen_sock.accept()
+      defer conn.close()
+      let msg1 = conn.recv_exactly(4)
+      log("first message: \{msg1}")
+      let msg2 = conn.recv_exactly(4)
+      log("second message: \{msg2}")
+      let msg3 = conn.recv_exactly(4)
+      log("third message: \{msg3}")
+      // let the client close first to avoid socket entering `TIME_WAIT` state,
+      // occupying the address.
+      @async.sleep(50)
     })
     // client
     root.spawn_bg(fn() {
       let conn = @socket.TCP::new()
+      defer conn.close()
       conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       conn.send([1, 2, 3, 4, 5, 6])
       log("first message sent")
       @async.sleep(200)
       conn.send([7, 8, 9, 10, 11, 12])
       log("second message sent")
-      conn.close()
     })
   })
   inspect(
@@ -93,46 +75,28 @@ test "read_exactly failure" {
       // server
       root.spawn_bg(fn() {
         let listen_sock = @socket.TCP::new()
-        try {
-          listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
-          let (conn, _) = listen_sock.accept()
-          try {
-            let msg1 = conn.recv_exactly(4)
-            log("first message: \{msg1}")
-            let msg2 = conn.recv_exactly(4)
-            log("second message: \{msg2}")
-            let msg3 = conn.recv_exactly(4)
-            log("third message: \{msg3}")
-          } catch {
-            err => {
-              conn.close()
-              raise err
-            }
-          } noraise {
-            _ => {
-              // let the client close first to avoid socket entering `TIME_WAIT` state,
-              // occupying the address.
-              @async.sleep(50)
-              conn.close()
-            }
-          }
-        } catch {
-          err => {
-            listen_sock.close()
-            raise err
-          }
-        } noraise {
-          _ => listen_sock.close()
-        }
+        defer listen_sock.close()
+        listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
+        let (conn, _) = listen_sock.accept()
+        defer conn.close()
+        let msg1 = conn.recv_exactly(4)
+        log("first message: \{msg1}")
+        let msg2 = conn.recv_exactly(4)
+        log("second message: \{msg2}")
+        let msg3 = conn.recv_exactly(4)
+        log("third message: \{msg3}")
+        // let the client close first to avoid socket entering `TIME_WAIT` state,
+        // occupying the address.
+        @async.sleep(50)
       })
       // client
       root.spawn_bg(fn() {
         let conn = @socket.TCP::new()
+        defer conn.close()
         conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
         conn.send([1, 2, 3, 4, 5, 6])
         log("first message sent")
         @async.sleep(200)
-        conn.close()
       })
     })
   log(result.to_string())

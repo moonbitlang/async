@@ -23,22 +23,22 @@ test "read_exactly" {
     let (r, w) = @pipe.pipe()
     // reader
     root.spawn_bg(fn() {
+      defer r.close()
       let msg1 = r.read_exactly(4)
       log("first message: \{msg1}")
       let msg2 = r.read_exactly(4)
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4)
       log("third message: \{msg3}")
-      r.close()
     })
     // writer
     root.spawn_bg(fn() {
+      defer w.close()
       w.write([1, 2, 3, 4, 5, 6])
       log("first message sent")
       @async.sleep(200)
       w.write([7, 8, 9, 10, 11, 12])
       log("second message sent")
-      w.close()
     })
   })
   inspect(
@@ -65,28 +65,20 @@ test "read_exactly failure" {
       let (r, w) = @pipe.pipe()
       // reader
       root.spawn_bg(fn() {
-        try {
-          let msg1 = r.read_exactly(4)
-          log("first message: \{msg1}")
-          let msg2 = r.read_exactly(4)
-          log("second message: \{msg2}")
-          let msg3 = r.read_exactly(4)
-          log("third message: \{msg3}")
-        } catch {
-          err => {
-            r.close()
-            raise err
-          }
-        } noraise {
-          _ => r.close()
-        }
+        defer r.close()
+        let msg1 = r.read_exactly(4)
+        log("first message: \{msg1}")
+        let msg2 = r.read_exactly(4)
+        log("second message: \{msg2}")
+        let msg3 = r.read_exactly(4)
+        log("third message: \{msg3}")
       })
       // writer
       root.spawn_bg(fn() {
+        defer w.close()
         w.write([1, 2, 3, 4, 5, 6])
         log("first message sent")
         @async.sleep(200)
-        w.close()
       })
     })
   log(result.to_string())
