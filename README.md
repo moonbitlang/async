@@ -4,6 +4,8 @@ This library provides basic asynchronous IO functionality for MoonBit,
 as well as useful asynchronous programming facilities.
 Currently, this library only supports native/LLVM backends on Linux/MacOS.
 
+WARNING: this library is current experimental, API is subjected to future change.
+
 ## Features
 
 - [X] TCP/UDP socket
