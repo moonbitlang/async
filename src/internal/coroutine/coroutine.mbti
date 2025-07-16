@@ -1,4 +1,3 @@
-// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/coroutine"
 
 // Values
