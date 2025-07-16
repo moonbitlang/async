@@ -61,7 +61,7 @@ fn[X] TaskGroup::spawn_coroutine(
   self : TaskGroup[X],
   f : async () -> Unit raise,
   no_wait~ : Bool,
-  allow_failure~ : Bool,
+  allow_failure~ : Bool
 ) -> @coroutine.Coroutine raise {
   if not(self.state is Running) {
     raise AlreadyTerminated
@@ -114,7 +114,7 @@ pub fn[X] TaskGroup::spawn_bg(
   self : TaskGroup[X],
   f : async () -> Unit raise,
   no_wait~ : Bool = false,
-  allow_failure~ : Bool = false,
+  allow_failure~ : Bool = false
 ) -> Unit raise {
   ignore(self.spawn_coroutine(f, no_wait~, allow_failure~))
 }
@@ -140,7 +140,7 @@ pub fn[G, X] TaskGroup::spawn(
   self : TaskGroup[G],
   f : async () -> X raise,
   no_wait~ : Bool = false,
-  allow_failure~ : Bool = false,
+  allow_failure~ : Bool = false
 ) -> Task[X] raise {
   let value = @ref.new(None)
   let coro = self.spawn_coroutine(
@@ -198,7 +198,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
 /// will be cancelled.
 pub fn[X] TaskGroup::return_immediately(
   self : TaskGroup[X],
-  value : X,
+  value : X
 ) -> Unit raise {
   if self.result is None {
     self.result = Some(value)

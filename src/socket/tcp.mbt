@@ -93,7 +93,7 @@ pub async fn TCP::recv(
   self : TCP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int,
+  max_len? : Int
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
@@ -137,7 +137,7 @@ pub async fn TCP::send(
   self : TCP,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int,
+  len? : Int
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let TCP(sock) = self
