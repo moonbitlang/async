@@ -2,7 +2,7 @@
   "import": [
     "moonbitlang/async/os_error",
     "moonbitlang/async/internal/coroutine",
-    "moonbitlang/async/internal/time",
+    "moonbitlang/async/internal/time"
   ],
   "native-stub": [ "poll.c" ]
 }
