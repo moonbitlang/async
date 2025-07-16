@@ -23,8 +23,9 @@ pub(all) type Printer (String) -> Unit
 
 ///|
 async fn server(println : Printer) -> Unit raise {
-  let server_sock = @socket.UDP::new()
   @async.with_task_group(fn(group) {
+    let server_sock = @socket.UDP::new()
+    defer server_sock.close()
     server_sock.bind(@socket.Addr::parse("0.0.0.0:\{port}"))
     let buf = FixedArray::make(1024, b'0')
     while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
@@ -45,7 +46,6 @@ async fn server(println : Printer) -> Unit raise {
   }) catch {
     err => {
       println("server terminate: \{err}")
-      server_sock.close()
       raise err
     }
   }
@@ -54,25 +54,17 @@ async fn server(println : Printer) -> Unit raise {
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.UDP::new()
+  defer conn.close()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   conn.send(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
-  try {
-    if conn.recv(buf) is n && n > 0 {
-      let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-      println("client \{id} received: \{msg}")
-      conn.close()
-    } else {
-      println("client \{id}: connection closed by peer")
-    }
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
-  } noraise {
-    _ => conn.close()
+  if conn.recv(buf) is n && n > 0 {
+    let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+    println("client \{id} received: \{msg}")
+    conn.close()
+  } else {
+    println("client \{id}: connection closed by peer")
   }
 }
 

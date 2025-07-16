@@ -16,25 +16,20 @@
 fn main_prog() -> Unit raise {
   @async.with_event_loop(fn(root) {
     let listen_sock = @socket.TCP::new()
-    try {
-      listen_sock..bind(@socket.Addr::parse("0.0.0.0:4200"))..listen()
-      for {
-        let (conn, addr) = listen_sock.accept()
-        println("received new connection from \{addr}")
-        root.spawn_bg(fn() {
-          let buf = FixedArray::make(1024, b'0')
-          while conn.recv(buf) is n && n > 0 {
-            let buf = buf.unsafe_reinterpret_as_bytes()
-            conn.send(buf[0:n].to_bytes())
-          }
-          println("connection closed")
-        })
-      }
-    } catch {
-      err => {
-        listen_sock.close()
-        raise err
-      }
+    defer listen_sock.close()
+    listen_sock..bind(@socket.Addr::parse("0.0.0.0:4200"))..listen()
+    for {
+      let (conn, addr) = listen_sock.accept()
+      println("received new connection from \{addr}")
+      root.spawn_bg(fn() {
+        defer conn.close()
+        let buf = FixedArray::make(1024, b'0')
+        while conn.recv(buf) is n && n > 0 {
+          let buf = buf.unsafe_reinterpret_as_bytes()
+          conn.send(buf[0:n].to_bytes())
+        }
+        println("connection closed")
+      })
     }
   })
 }

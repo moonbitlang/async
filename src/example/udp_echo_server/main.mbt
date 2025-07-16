@@ -14,8 +14,9 @@
 
 ///|
 fn main_prog() -> Unit raise {
-  let server = @socket.UDP::new()
   @async.with_event_loop(fn(root) {
+    let server = @socket.UDP::new()
+    defer server.close()
     server.bind(@socket.Addr::parse("0.0.0.0:4200"))
     for {
       let buf = FixedArray::make(1024, b'0')
@@ -25,12 +26,7 @@ fn main_prog() -> Unit raise {
         server.sendto(buf[0:n].to_bytes(), addr)
       })
     }
-  }) catch {
-    err => {
-      server.close()
-      raise err
-    }
-  }
+  })
 }
 
 ///|

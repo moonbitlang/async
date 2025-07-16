@@ -17,12 +17,16 @@ test "read EOF" {
   let buf = FixedArray::make(16, b'0')
   @async.with_event_loop(fn(_) {
     let path = b"read_eof_test\x00"
-    let w = @fs.create(path, permission=0o644, sync=Full)
-    w.write(b"abcd")
-    w.close()
-    let r = @fs.open(path, mode=ReadOnly)
-    let n = r.read(buf)
-    r.close()
+    {
+      let w = @fs.create(path, permission=0o644, sync=Full)
+      defer w.close()
+      w.write(b"abcd")
+    }
+    let n = {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      r.read(buf)
+    }
     @fs.remove(path)
     assert_eq(n, 4)
     inspect(

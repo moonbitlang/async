@@ -40,25 +40,27 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
   let job_completion_pipe = @thread_pool.init_thread_pool()
+  defer @thread_pool.destroy_thread_pool()
   let evloop = {
     poll: Instance::new(),
     tasks: {},
     jobs: {},
     job_completion_pipe,
   }
+  defer evloop.poll.destroy()
   evloop.poll.register(
     job_completion_pipe,
     prev_events=NoEvent,
     new_events=Read,
   )
+  defer (evloop.poll.remove(job_completion_pipe, events=Read) catch { _ => () })
   curr_loop.val = Some(evloop)
+  defer {
+    curr_loop.val = None
+  }
   let main = @coroutine.spawn(f)
   @coroutine.reschedule()
   evloop.run_forever()
-  curr_loop.val = None
-  evloop.poll.remove(job_completion_pipe, events=Read)
-  evloop.poll.destroy()
-  @thread_pool.destroy_thread_pool()
   main.unwrap()
 }
 

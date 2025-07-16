@@ -19,34 +19,42 @@ test "basic seek" {
   @async.with_event_loop(fn(_) {
     let path = b"basic_seek_test\x00"
     // initialize
-    let w = @fs.create(path, permission=0o644, sync=Full)
-    log.write_string("initial size: \{w.size()}\n")
-    w.write(b"abcdef")
-    log.write_string("size after write: \{w.size()}\n")
-    w.close()
+    {
+      let w = @fs.create(path, permission=0o644, sync=Full)
+      defer w.close()
+      log.write_string("initial size: \{w.size()}\n")
+      w.write(b"abcdef")
+      log.write_string("size after write: \{w.size()}\n")
+    }
     // first read
-    let r = @fs.open(path, mode=ReadOnly)
-    log.write_string("current size: \{r.size()}\n")
-    guard r.read(buf) == buf.length()
-    log.write_string("current content: \{buf}\n")
-    r.close()
+    {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      log.write_string("current size: \{r.size()}\n")
+      guard r.read(buf) == buf.length()
+      log.write_string("current content: \{buf}\n")
+    }
     // update content
-    let w = @fs.open(path, mode=WriteOnly)
-    ignore(w.seek(-2, mode=FromEnd))
-    log.write_string("writing at position \{w.curr_pos()}\n")
-    w.write(b"56")
-    ignore(w.seek(2, mode=FromStart))
-    log.write_string("writing at position \{w.curr_pos()}\n")
-    w.write(b"34")
-    ignore(w.seek(-4, mode=Relative))
-    log.write_string("writing at position \{w.curr_pos()}\n")
-    w.write(b"12")
-    w.close()
+    {
+      let w = @fs.open(path, mode=WriteOnly)
+      defer w.close()
+      ignore(w.seek(-2, mode=FromEnd))
+      log.write_string("writing at position \{w.curr_pos()}\n")
+      w.write(b"56")
+      ignore(w.seek(2, mode=FromStart))
+      log.write_string("writing at position \{w.curr_pos()}\n")
+      w.write(b"34")
+      ignore(w.seek(-4, mode=Relative))
+      log.write_string("writing at position \{w.curr_pos()}\n")
+      w.write(b"12")
+    }
     // read content
-    let r = @fs.open(path, mode=ReadOnly)
-    guard r.read(buf) == buf.length()
-    log.write_string("final content: \{buf}\n")
-    r.close()
+    {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      guard r.read(buf) == buf.length()
+      log.write_string("final content: \{buf}\n")
+    }
     @fs.remove(path)
   })
   inspect(
