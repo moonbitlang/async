@@ -39,7 +39,7 @@ extern "C" fn recv_ffi(
   sock : Int,
   buf : FixedArray[Byte],
   offset : Int,
-  max_len : Int,
+  max_len : Int
 ) -> Int = "moonbitlang_async_recv"
 
 ///|
@@ -48,7 +48,7 @@ extern "C" fn send_ffi(
   sock : Int,
   buf : Bytes,
   offset : Int,
-  max_len : Int,
+  max_len : Int
 ) -> Int = "moonbitlang_async_send"
 
 ///|
@@ -68,7 +68,7 @@ extern "C" fn recvfrom_ffi(
   buf : FixedArray[Byte],
   offset : Int,
   max_len : Int,
-  addr_buf : Addr,
+  addr_buf : Addr
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
@@ -78,5 +78,5 @@ extern "C" fn sendto_ffi(
   buf : Bytes,
   offset : Int,
   max_len : Int,
-  addr_buf : Addr,
+  addr_buf : Addr
 ) -> Int = "moonbitlang_async_sendto"

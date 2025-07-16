@@ -29,7 +29,7 @@ extern "C" fn read_ffi(
   fd : Int,
   buf : FixedArray[Byte],
   offset : Int,
-  max_len : Int,
+  max_len : Int
 ) -> Int = "moonbitlang_async_read"
 
 ///|
@@ -37,5 +37,5 @@ extern "C" fn write_ffi(
   fd : Int,
   buf : Bytes,
   offset : Int,
-  max_len : Int,
+  max_len : Int
 ) -> Int = "moonbitlang_async_write"
