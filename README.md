@@ -8,12 +8,26 @@ API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
 
 WARNING: this library is current experimental, API is subjected to future change.
 
+## Installation
+In your MoonBit project root, run:
+```bash
+moon add moonbitlang/async@0.1.0
+```
+This library provides the following packages:
+
+- `moonbitlang/async`: most basic asynchronous operations
+- `moonbitlang/async/socket`: TCP and UDP socket
+- `moonbitlang/async/pipe`: operations on pipes
+
+To use these packages, add them to the `import` field of `moon.pkg.json`.
+
 ## Features
 
 - [X] TCP/UDP socket
 - [X] timer
 - [X] pipe
 - [ ] asynchronous file system operations
+- [ ] process manipulation
 - [X] structured concurrency
 - [X] cooperative multi tasking
 - [ ] IO worker thread
