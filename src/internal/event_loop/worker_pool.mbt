@@ -35,6 +35,9 @@ type Job
 extern "C" fn submit_job(job : Job) -> Int = "moonbitlang_async_submit_job"
 
 ///|
+pub extern "C" fn make_sleep_job(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
+
+///|
 #borrow(buf)
 pub extern "C" fn make_read_job(
   fd : Int,
