@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -124,4 +125,32 @@ int moonbitlang_async_recvfrom(int sockfd, void *buf, int offset, int max_len, v
 
 int moonbitlang_async_sendto(int sockfd, void *buf, int offset, int max_len, void *addr) {
   return sendto(sockfd, buf + offset, max_len, 0, addr, sizeof(struct sockaddr_in));
+}
+
+
+void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t flowinfo, uint32_t scope_id) {
+  struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
+    sizeof(struct sockaddr_in6),
+    0
+  );
+  addr->sin6_family = AF_INET6;
+  addr->sin6_port = htons(port);
+  addr->sin6_flowinfo = flowinfo;
+  addr->sin6_scope_id = scope_id;
+  memcpy(&addr->sin6_addr, ip, 16);
+  return addr;
+}
+
+int32_t moonbitlang_async_ipv6_addr_get_ip(struct sockaddr_in6 *addr, uint8_t *dst) {
+  char ip_str[INET6_ADDRSTRLEN];
+  if (inet_ntop(AF_INET6, &addr->sin6_addr, ip_str, sizeof(ip_str)) == NULL) {
+      return -1;
+  }
+  int len = strlen(ip_str);
+  memcpy(dst, ip_str, len);
+  dst[len] = '\0';
+  return len;
+}
+uint32_t moonbitlang_async_ipv6_addr_get_port(struct sockaddr_in6 *addr) {
+  return ntohs(addr->sin6_port);
 }

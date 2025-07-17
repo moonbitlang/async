@@ -17,6 +17,9 @@
 type Addr Bytes
 
 ///|
+type Ipv6Addr Bytes
+
+///|
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
@@ -26,6 +29,22 @@ pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get
 ///|
 #borrow(addr)
 pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
+
+///|
+pub extern "C" fn Ipv6Addr::new(
+  ip : FixedArray[Byte],
+  port : Int,
+  flowinfo : Int,
+  scope_id : Int
+) -> Ipv6Addr = "moonbitlang_async_make_ipv6_addr"
+
+///|
+#borrow(addr)
+pub extern "C" fn Ipv6Addr::ip(addr : Ipv6Addr, buf : Bytes) -> Int = "moonbitlang_async_ipv6_addr_get_ip"
+
+///|
+#borrow(addr)
+pub extern "C" fn Ipv6Addr::port(addr : Ipv6Addr) -> Int = "moonbitlang_async_ipv6_addr_get_port"
 
 ///|
 pub impl Show for Addr with output(self, logger) {
@@ -44,29 +63,31 @@ pub impl Show for Addr with output(self, logger) {
 }
 
 ///|
+pub impl Show for Ipv6Addr with output(self, logger) {
+  let ip_buf = Bytes::make(47, Byte::default())
+  let len = self.ip(ip_buf)
+  let ip_str = utf8_bytes_to_mbt_string(ip_buf[0:len].to_bytes())
+  logger.write_char('[')
+  logger.write_string(ip_str)
+  logger.write_char(']')
+  logger.write_char(':')
+  logger.write_object(self.port())
+}
+
+///|
 pub suberror InvalidAddr derive(Show)
 
 ///|
 /// Parse a string into IPv4 address, format should be `ip:port` (no space)
 // TODO: faster implementation
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
-  guard src.split(":").collect() is [ip, port] else { raise InvalidAddr }
-  guard ip.split(".").collect() is [a, b, c, d] else { raise InvalidAddr }
-  fn parse_octal(x : @string.View) raise InvalidAddr {
-    let value = @strconv.parse_uint(x.to_string()) catch {
-      _ => raise InvalidAddr
-    }
-    guard value < 256 else { raise InvalidAddr }
-    value
-  }
-
-  let ip = (parse_octal(a) << 24) |
-    (parse_octal(b) << 16) |
-    (parse_octal(c) << 8) |
-    parse_octal(d)
-  let port = @strconv.parse_int(port.to_string()) catch {
-    _ => raise InvalidAddr
-  }
-  guard 0 <= port && port < 65536 else { raise InvalidAddr }
+  let (ip, port) = try_parse_ipv4(src) catch { _ => raise InvalidAddr }
   Addr::new(ip, port)
+}
+
+///|
+pub fn Ipv6Addr::parse(src : String) -> Ipv6Addr raise InvalidAddr {
+  let (ip_bytes, port, flowinfo, scope_id) = try_parse_ipv6(src)
+  let ip_bytes = ip_bytes.map(x => x.to_byte())
+  Ipv6Addr::new(ip_bytes, port, flowinfo, scope_id)
 }
