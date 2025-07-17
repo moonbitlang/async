@@ -136,7 +136,7 @@ int moonbitlang_async_poll_remove(int kqfd, int fd, int events) {
 static struct kevent event_buffer[EVENT_BUFFER_SIZE];
 
 int moonbitlang_async_poll_wait(int kqfd, int timeout) {
-  struct timespec timeout_spec = { timeout / 1000, (timeout / 1000) * 1000 };
+  struct timespec timeout_spec = { timeout / 1000, (timeout / 1000) * 1000000 };
   return kevent(kqfd, 0, 0, event_buffer, EVENT_BUFFER_SIZE, &timeout_spec);
 }
 
