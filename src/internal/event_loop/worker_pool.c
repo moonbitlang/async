@@ -22,11 +22,11 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <moonbit.h>
-#include <stdio.h>
+#include <time.h>
 
 enum op_code {
-  OP_READ = 0,
+  OP_SLEEP = 0, // for testing only
+  OP_READ,
   OP_WRITE,
   OP_OPEN
 };
@@ -53,6 +53,7 @@ struct job {
   int32_t job_id;
   enum op_code op_code;
   union {
+    struct timespec sleep;
     struct read_job read;
     struct write_job write;
     struct open_job open;
@@ -127,6 +128,11 @@ void *worker(void *data) {
   while (1) {
     struct job_result result = { job->job_id, 0, 0 };
     switch (job->op_code) {
+    case OP_SLEEP:
+      nanosleep(&job->payload.sleep, 0);
+      result.ret = 0;
+      break;
+
     case OP_READ:
       result.ret = read(
         job->payload.read.fd,
@@ -271,6 +277,16 @@ int moonbitlang_async_submit_job(struct job *job) {
 
 int moonbitlang_async_job_id(struct job *job) {
   return job->job_id;
+}
+
+struct job *moonbitlang_async_make_sleep_job(int ms) {
+  struct job *job = (struct job*)malloc(sizeof(struct job));
+  job->next = 0;
+  job->job_id = pool.job_id++;
+  job->op_code = OP_SLEEP;
+  job->payload.sleep.tv_sec = ms / 1000;
+  job->payload.sleep.tv_nsec = (ms % 1000) * 1000000;
+  return job;
 }
 
 struct job *moonbitlang_async_make_read_job(int fd, void *buf, int len) {
