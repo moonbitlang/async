@@ -16,6 +16,8 @@
 priv struct EventLoop {
   poll : Instance
   tasks : Map[Int, Task]
+  jobs : Map[Int, JobHandle]
+  job_completion_pipe : Int
 }
 
 ///|
@@ -26,17 +28,38 @@ priv struct Task {
 }
 
 ///|
+priv struct JobHandle {
+  mut ret : Int
+  mut err : Int
+  coro : @coroutine.Coroutine
+}
+
+///|
 let curr_loop : Ref[EventLoop?] = @ref.new(None)
 
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
-  let evloop = { poll: Instance::new(), tasks: {} }
+  let job_completion_pipe = init_thread_pool()
+  let evloop = {
+    poll: Instance::new(),
+    tasks: {},
+    jobs: {},
+    job_completion_pipe,
+  }
+  evloop.poll.register(
+    job_completion_pipe,
+    prev_events=NoEvent,
+    new_events=Read,
+  )
   curr_loop.val = Some(evloop)
   let main = @coroutine.spawn(f)
   @coroutine.reschedule()
   evloop.run_forever()
   curr_loop.val = None
+  evloop.poll.remove(job_completion_pipe, events=Read)
+  evloop.poll.destroy()
+  destroy_thread_pool()
   main.unwrap()
 }
 
@@ -55,6 +78,16 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     for i in 0..<n {
       let event = get_event(i)
       let fd = event.fd()
+      if fd == self.job_completion_pipe {
+        while fetch_completion() is Some({ job_id, ret, err }) {
+          guard self.jobs.get(job_id) is Some(job)
+          self.jobs.remove(job_id)
+          job.ret = ret
+          job.err = err
+          job.coro.wake()
+        }
+        continue
+      }
       guard self.tasks.get(fd) is Some(task)
       let events = event.events()
       if task.read is Some(coro) && (events & Read) != 0 {
@@ -78,7 +111,6 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     close_ffi(fd)
   }
   self.tasks.clear()
-  self.poll.destroy()
 }
 
 ///|
@@ -169,3 +201,18 @@ pub fn close_fd(fd : Int) -> Unit {
 
 ///|
 extern "C" fn close_ffi(fd : Int) = "close"
+
+///|
+pub async fn perform_job(job : Job) -> Int raise {
+  guard curr_loop.val is Some(evloop)
+  let coro = @coroutine.current_coroutine()
+  let job_id = submit_job(job)
+  let handle = { ret: 0, err: 0, coro }
+  evloop.jobs[job_id] = handle
+  @coroutine.protect_from_cancel(@coroutine.suspend)
+  if handle.err > 0 {
+    raise @os_error.OSError(handle.err)
+  } else {
+    handle.ret
+  }
+}

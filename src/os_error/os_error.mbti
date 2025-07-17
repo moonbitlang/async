@@ -8,7 +8,7 @@ fn get_errno() -> Int
 fn is_nonblocking_io_error() -> Bool
 
 // Types and methods
-pub suberror OSError Int
+pub(all) suberror OSError Int
 impl Show for OSError
 
 // Type aliases
