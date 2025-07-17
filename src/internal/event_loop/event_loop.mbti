@@ -3,7 +3,7 @@ package "moonbitlang/async/internal/event_loop"
 // Values
 fn close_fd(Int) -> Unit
 
-fn make_open_job(Bytes, Int) -> Job
+fn make_open_job(Bytes, Int, Int) -> Job
 
 fn make_read_job(Int, FixedArray[Byte], Int) -> Job
 
