@@ -46,6 +46,7 @@ struct write_job {
 struct open_job {
   char *filename;
   int flags;
+  int mode;
 };
 
 struct job {
@@ -154,7 +155,11 @@ void *worker(void *data) {
       break;
 
     case OP_OPEN:
-      result.ret = open(job->payload.open.filename, job->payload.open.flags);
+      result.ret = open(
+        job->payload.open.filename,
+        job->payload.open.flags,
+        job->payload.open.mode
+      );
       if (result.ret < 0)
         result.err = errno;
       break;
@@ -311,13 +316,14 @@ struct job *moonbitlang_async_make_write_job(int fd, void *buf, int len) {
   return job;
 }
 
-struct job *moonbitlang_async_make_open_job(char *filename, int flags) {
+struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode) {
   struct job *job = (struct job*)malloc(sizeof(struct job));
   job->next = 0;
   job->job_id = pool.job_id++;
   job->op_code = OP_OPEN;
   job->payload.open.filename = filename;
   job->payload.open.flags = flags;
+  job->payload.open.mode = mode;
   return job;
 }
 

@@ -1,12 +1,27 @@
 package "moonbitlang/async/fs"
 
 // Values
-async fn open(Bytes, Int) -> File raise
+async fn create(Bytes, permission~ : Int, sync~ : SyncMode = ..) -> File raise
+
+async fn open(Bytes, mode~ : Mode, sync~ : SyncMode = .., append~ : Bool = .., create? : Int, truncate~ : Bool = ..) -> File raise
 
 // Types and methods
 type File
+fn File::close(Self) -> Unit
 async fn File::read(Self, FixedArray[Byte], Int) -> Unit raise
 async fn File::write(Self, Bytes, Int) -> Unit raise
+
+pub(all) enum Mode {
+  ReadOnly
+  WriteOnly
+  ReadWrite
+}
+
+pub(all) enum SyncMode {
+  NoSync
+  Data
+  Full
+}
 
 // Type aliases
 

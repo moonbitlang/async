@@ -16,9 +16,59 @@
 type File Int
 
 ///|
-pub async fn open(filename : Bytes, flags : Int) -> File raise {
-  let job = @event_loop.make_open_job(filename, flags)
+pub fn File::close(self : File) -> Unit {
+  let File(fd) = self
+  @event_loop.close_fd(fd)
+}
+
+///|
+pub(all) enum Mode {
+  ReadOnly = 0
+  WriteOnly
+  ReadWrite
+}
+
+///|
+pub(all) enum SyncMode {
+  NoSync
+  Data
+  Full
+}
+
+///|
+extern "C" fn make_open_flags(
+  mode~ : Mode,
+  sync~ : SyncMode,
+  append~ : Bool,
+  create~ : Bool,
+  truncate~ : Bool
+) -> Int = "moonbitlang_async_make_open_flags"
+
+///|
+pub async fn open(
+  filename : Bytes,
+  mode~ : Mode,
+  sync~ : SyncMode = NoSync,
+  append~ : Bool = false,
+  create? : Int,
+  truncate~ : Bool = false
+) -> File raise {
+  let (create, user_mode) = match create {
+    None => (false, 0)
+    Some(mode) => (true, mode)
+  }
+  let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
+  let job = @event_loop.make_open_job(filename, flags, user_mode)
   File(@event_loop.perform_job(job))
+}
+
+///|
+pub async fn create(
+  filename : Bytes,
+  permission~ : Int,
+  sync~ : SyncMode = NoSync
+) -> File raise {
+  open(filename, mode=WriteOnly, sync~, create=permission, truncate=true)
 }
 
 ///|

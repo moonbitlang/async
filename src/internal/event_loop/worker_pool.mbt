@@ -51,7 +51,11 @@ pub extern "C" fn make_write_job(fd : Int, buf : Bytes, len : Int) -> Job = "moo
 
 ///|
 #borrow(filename)
-pub extern "C" fn make_open_job(filename : Bytes, flags : Int) -> Job = "moonbitlang_async_make_open_job"
+pub extern "C" fn make_open_job(
+  filename : Bytes,
+  flags : Int,
+  mode : Int
+) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
 priv struct JobResult {
