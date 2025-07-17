@@ -13,18 +13,28 @@
 // limitations under the License.
 
 ///|
-pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
+type File Int
 
 ///|
-pub extern "C" fn is_nonblocking_io_error() -> Bool = "moonbitlang_async_is_nonblocking_io_error"
+pub async fn open(filename : Bytes, flags : Int) -> File raise {
+  let job = @event_loop.make_open_job(filename, flags)
+  File(@event_loop.perform_job(job))
+}
 
 ///|
-pub(all) suberror OSError Int derive(Show)
+pub async fn File::read(
+  self : File,
+  buf : FixedArray[Byte],
+  len : Int
+) -> Unit raise {
+  let File(fd) = self
+  let job = @event_loop.make_read_job(fd, buf, len)
+  guard len == @event_loop.perform_job(job)
+}
 
 ///|
-pub fn check_errno() -> Unit raise OSError {
-  let err_code = get_errno()
-  if err_code != 0 {
-    raise OSError(err_code)
-  }
+pub async fn File::write(self : File, buf : Bytes, len : Int) -> Unit raise {
+  let File(fd) = self
+  let job = @event_loop.make_write_job(fd, buf, len)
+  guard len == @event_loop.perform_job(job)
 }

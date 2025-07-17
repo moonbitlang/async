@@ -1,0 +1,14 @@
+package "moonbitlang/async/fs"
+
+// Values
+async fn open(Bytes, Int) -> File raise
+
+// Types and methods
+type File
+async fn File::read(Self, FixedArray[Byte], Int) -> Unit raise
+async fn File::write(Self, Bytes, Int) -> Unit raise
+
+// Type aliases
+
+// Traits
+

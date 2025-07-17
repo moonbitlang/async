@@ -4,5 +4,5 @@
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/time"
   ],
-  "native-stub": [ "poll.c" ]
+  "native-stub": [ "poll.c", "worker_pool.c" ],
 }
