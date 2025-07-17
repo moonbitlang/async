@@ -14,14 +14,17 @@
 
 ///|
 test "Parse IPv4 address" {
-  assert_eq(@socket.Addr::parse("127.0.0.1:8080").to_string(), "127.0.0.1:8080")
-  assert_eq(@socket.Addr::parse("0.0.0.0:8080").to_string(), "0.0.0.0:8080")
   assert_eq(
-    @socket.Addr::parse("255.255.255.255:8080").to_string(),
+    @socket.Ipv4Addr::parse("127.0.0.1:8080").to_string(),
+    "127.0.0.1:8080",
+  )
+  assert_eq(@socket.Ipv4Addr::parse("0.0.0.0:8080").to_string(), "0.0.0.0:8080")
+  assert_eq(
+    @socket.Ipv4Addr::parse("255.255.255.255:8080").to_string(),
     "255.255.255.255:8080",
   )
   assert_eq(
-    @socket.Addr::parse("172.31.254.253:8080").to_string(),
+    @socket.Ipv4Addr::parse("172.31.254.253:8080").to_string(),
     "172.31.254.253:8080",
   )
 }
@@ -29,15 +32,15 @@ test "Parse IPv4 address" {
 ///|
 test "Parse invalid IPv4 address" {
   // Too short
-  let v = try? @socket.Addr::parse("127.0.0.1")
+  let v = try? @socket.Ipv4Addr::parse("127.0.0.1")
   assert_true(v is Err(_))
 
   // Too long
-  let v = try? @socket.Addr::parse("127.0.0.1:8080:8080")
+  let v = try? @socket.Ipv4Addr::parse("127.0.0.1:8080:8080")
   assert_true(v is Err(_))
 
   // Invalid IP, out of range
-  let v = try? @socket.Addr::parse("256.0.0.1:8080")
+  let v = try? @socket.Ipv4Addr::parse("256.0.0.1:8080")
   assert_true(v is Err(_))
 }
 

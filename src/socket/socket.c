@@ -54,16 +54,20 @@ int moonbitlang_async_make_udp_socket() {
   return sock;
 }
 
-int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {
-  return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
+int moonbitlang_async_bind(int sockfd, struct sockaddr_storage *addr) {
+  socklen_t socklen = (addr->ss_family == AF_INET6) ? 
+    sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+  return bind(sockfd, (struct sockaddr*)addr, socklen);
 }
+
 
 int moonbitlang_async_listen(int sockfd) {
   return listen(sockfd, SOMAXCONN);
 }
 
-int moonbitlang_async_accept(int sockfd, struct sockaddr_in *addr_buf) {
-  socklen_t socklen = sizeof(struct sockaddr_in);
+int moonbitlang_async_accept(int sockfd, struct sockaddr_storage *addr_buf) {
+  socklen_t socklen = (addr_buf->ss_family == AF_INET6) ? 
+    sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
   int conn = accept(sockfd, (struct sockaddr*)addr_buf, &socklen);
   if (conn > 0) {
     int flags = fcntl(conn, F_GETFL);
@@ -79,8 +83,8 @@ int moonbitlang_async_accept(int sockfd, struct sockaddr_in *addr_buf) {
   return conn;
 }
 
-int moonbitlang_async_connect(int sockfd, struct sockaddr_in *addr) {
-  return connect(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
+int moonbitlang_async_connect(int sockfd, struct sockaddr_storage *addr) {
+  return connect(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_storage));
 }
 
 int moonbitlang_async_recv(int sockfd, void *buf, int offset, int max_len) {
@@ -119,14 +123,15 @@ uint32_t moonbitlang_async_ip_addr_get_port(struct sockaddr_in *addr) {
 }
 
 int moonbitlang_async_recvfrom(int sockfd, void *buf, int offset, int max_len, void *addr_buf) {
-  socklen_t addr_size = sizeof(struct sockaddr_in);
+  socklen_t addr_size = sizeof(struct sockaddr_storage);
   return recvfrom(sockfd, buf + offset, max_len, 0, addr_buf, &addr_size);
 }
 
-int moonbitlang_async_sendto(int sockfd, void *buf, int offset, int max_len, void *addr) {
-  return sendto(sockfd, buf + offset, max_len, 0, addr, sizeof(struct sockaddr_in));
+int moonbitlang_async_sendto(int sockfd, void *buf, int offset, int max_len, struct sockaddr_storage *addr) {
+  socklen_t addr_len = (addr->ss_family == AF_INET6) ? 
+      sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+  return sendto(sockfd, buf + offset, max_len, 0, (void *)addr, addr_len);
 }
-
 
 void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t flowinfo, uint32_t scope_id) {
   struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(

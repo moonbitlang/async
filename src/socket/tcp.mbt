@@ -31,9 +31,9 @@ pub fn TCP::close(self : TCP) -> Unit {
 
 ///|
 /// Bind the socket to an address using the `bind(2)` system call.
-pub fn TCP::bind(self : TCP, addr : Addr) -> Unit raise {
+pub fn TCP::bind(self : TCP, addr : SocketAddr) -> Unit raise {
   let TCP(sock) = self
-  if 0 != bind_ffi(sock, addr) {
+  if 0 != bind_ffi(sock, addr.to_ipaddr()) {
     @os_error.check_errno()
   }
 }
@@ -52,14 +52,14 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 /// Accept a new connection on a listening socket using `accept(2)` system call.
 /// A new socket representing the accepted connection
 /// will be returned together with the address of peer.
-pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
+pub async fn TCP::accept(self : TCP) -> (TCP, SocketAddr) raise {
   let TCP(listen_sock) = self
   @event_loop.prepare_fd_read(listen_sock)
-  let addr = Addr::new(0, 0)
+  let addr = create_sockaddr_storage_ffi()
   for {
     let conn_sock = accept_ffi(listen_sock, addr)
     if conn_sock > 0 {
-      return (TCP(conn_sock), addr)
+      return (TCP(conn_sock), addr.to_socket_addr())
     } else if @os_error.is_nonblocking_io_error() {
       @event_loop.wait_fd_read(listen_sock)
     } else {
@@ -70,10 +70,10 @@ pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
 
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
-pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
+pub async fn TCP::connect(self : TCP, addr : SocketAddr) -> Unit raise {
   let TCP(sock) = self
   @event_loop.prepare_fd_write(sock)
-  if 0 == connect_ffi(sock, addr) {
+  if 0 == connect_ffi(sock, addr.to_ipaddr()) {
     return
   }
   if @os_error.is_nonblocking_io_error() {

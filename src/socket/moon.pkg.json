@@ -4,5 +4,5 @@
     "moonbitlang/async/internal/event_loop"
   ],
   "test-import": [ "moonbitlang/async" ],
-  "native-stub": [ "socket.c" ]
+  "native-stub": [ "socket.c", "ip.c" ]
 }

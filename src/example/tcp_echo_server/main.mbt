@@ -17,7 +17,7 @@ fn main_prog() -> Unit raise {
   @async.with_event_loop(fn(root) {
     let listen_sock = @socket.TCP::new()
     try {
-      listen_sock..bind(@socket.Addr::parse("0.0.0.0:4200"))..listen()
+      listen_sock..bind(@socket.SocketAddr::parse("0.0.0.0:4200"))..listen()
       for {
         let (conn, addr) = listen_sock.accept()
         println("received new connection from \{addr}")
