@@ -24,7 +24,7 @@ async fn server() -> Int raise {
   let mut num_connection = 0
   try
     @async.with_task_group(fn(group) {
-      listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
+      listen_sock..bind(@socket.SocketAddr::parse("0.0.0.0:\{port}"))..listen()
       for {
         let (conn, _) = listen_sock.accept()
         num_connection += 1
@@ -64,7 +64,7 @@ async fn server() -> Int raise {
 ///|
 async fn client(msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
-  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+  conn.connect(@socket.SocketAddr::parse("127.0.0.1:\{port}"))
   conn.send(msg)
   conn.close()
 }

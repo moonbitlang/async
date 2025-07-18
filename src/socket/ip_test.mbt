@@ -13,29 +13,15 @@
 // limitations under the License.
 
 ///|
-fn main_prog() -> Unit raise {
-  let server = @socket.UDP::new()
-  @async.with_event_loop(fn(root) {
-    server.bind(@socket.SocketAddr::parse("0.0.0.0:4200"))
-    for {
-      let buf = FixedArray::make(1024, b'0')
-      let (n, addr) = server.recvfrom(buf)
-      root.spawn_bg(fn() {
-        let buf = buf.unsafe_reinterpret_as_bytes()
-        server.sendto(buf[0:n].to_bytes(), addr)
-      })
+test "Resolve IPv4 hostname" {
+  let addrs = ToSocketAddrs::to_socket_addr("localhost").collect()
+  assert_true(addrs.length() > 0)
+  assert_true(addrs[0].is_ipv4())
+  match addrs[0] {
+    SocketAddr::V4(addr) => {
+      assert_eq(addr.ip_name(), "127.0.0.1")
+      assert_eq(addr.port(), 80)
     }
-  }) catch {
-    err => {
-      server.close()
-      raise err
-    }
-  }
-}
-
-///|
-fn main {
-  main_prog() catch {
-    err => println("server exit with error \{err}")
+    _ => fail("Expected IPv4 address")
   }
 }
