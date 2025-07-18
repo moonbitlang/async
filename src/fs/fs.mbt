@@ -88,3 +88,9 @@ pub async fn File::write(self : File, buf : Bytes, len : Int) -> Unit raise {
   let job = @event_loop.make_write_job(fd, buf, len)
   guard len == @event_loop.perform_job(job)
 }
+
+///|
+pub async fn remove(path : Bytes) -> Unit raise {
+  let job = @event_loop.make_remove_job(path)
+  ignore(@event_loop.perform_job(job))
+}

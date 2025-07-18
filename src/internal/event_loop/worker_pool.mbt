@@ -58,6 +58,10 @@ pub extern "C" fn make_open_job(
 ) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
+#borrow(path)
+pub extern "C" fn make_remove_job(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
+
+///|
 priv struct JobResult {
   job_id : Int
   ret : Int
