@@ -7,6 +7,8 @@ fn make_open_job(Bytes, Int, Int) -> Job
 
 fn make_read_job(Int, FixedArray[Byte], Int) -> Job
 
+fn make_remove_job(Bytes) -> Job
+
 fn make_sleep_job(Int) -> Job
 
 fn make_write_job(Int, Bytes, Int) -> Job

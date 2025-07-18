@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <errno.h>
 #include <time.h>
 
@@ -28,7 +29,8 @@ enum op_code {
   OP_SLEEP = 0, // for testing only
   OP_READ,
   OP_WRITE,
-  OP_OPEN
+  OP_OPEN,
+  OP_REMOVE
 };
 
 struct read_job {
@@ -49,6 +51,10 @@ struct open_job {
   int mode;
 };
 
+struct remove_job {
+  char *path;
+};
+
 struct job {
   struct job *next;
   int32_t job_id;
@@ -58,6 +64,7 @@ struct job {
     struct read_job read;
     struct write_job write;
     struct open_job open;
+    struct remove_job remove;
   } payload;
 };
 
@@ -160,6 +167,12 @@ void *worker(void *data) {
         job->payload.open.flags,
         job->payload.open.mode
       );
+      if (result.ret < 0)
+        result.err = errno;
+      break;
+
+    case OP_REMOVE:
+      result.ret = remove(job->payload.remove.path);
       if (result.ret < 0)
         result.err = errno;
       break;
@@ -324,6 +337,15 @@ struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode)
   job->payload.open.filename = filename;
   job->payload.open.flags = flags;
   job->payload.open.mode = mode;
+  return job;
+}
+
+struct job *moonbitlang_async_make_remove_job(char *path) {
+  struct job *job = (struct job*)malloc(sizeof(struct job));
+  job->next = 0;
+  job->job_id = pool.job_id++;
+  job->op_code = OP_REMOVE;
+  job->payload.remove.path = path;
   return job;
 }
 

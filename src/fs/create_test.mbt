@@ -23,6 +23,7 @@ test "basic create" {
     let r = @fs.open(path, mode=ReadOnly)
     r.read(buf, 4)
     r.close()
+    @fs.remove(path)
   })
   inspect(buf, content="[b'\\x61', b'\\x62', b'\\x63', b'\\x64']")
 }
