@@ -1,19 +1,13 @@
 package "moonbitlang/async/internal/event_loop"
 
+import(
+  "moonbitlang/async/internal/thread_pool"
+)
+
 // Values
 fn close_fd(Int) -> Unit
 
-fn make_open_job(Bytes, Int, Int) -> Job
-
-fn make_read_job(Int, FixedArray[Byte], Int) -> Job
-
-fn make_remove_job(Bytes) -> Job
-
-fn make_sleep_job(Int) -> Job
-
-fn make_write_job(Int, Bytes, Int) -> Job
-
-async fn perform_job(Job) -> Int raise
+async fn perform_job(@thread_pool.Job) -> Int raise
 
 fn prepare_fd_read(Int) -> Unit raise
 
@@ -26,7 +20,6 @@ async fn wait_fd_write(Int) -> Unit raise
 fn with_event_loop(async () -> Unit raise) -> Unit raise
 
 // Types and methods
-type Job
 
 // Type aliases
 

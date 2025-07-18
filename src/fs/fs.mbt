@@ -58,7 +58,7 @@ pub async fn open(
     Some(mode) => (true, mode)
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
-  let job = @event_loop.make_open_job(filename, flags, user_mode)
+  let job = @thread_pool.open_job(filename, flags, user_mode)
   File(@event_loop.perform_job(job))
 }
 
@@ -78,19 +78,19 @@ pub async fn File::read(
   len : Int
 ) -> Unit raise {
   let File(fd) = self
-  let job = @event_loop.make_read_job(fd, buf, len)
+  let job = @thread_pool.read_job(fd, buf, len)
   guard len == @event_loop.perform_job(job)
 }
 
 ///|
 pub async fn File::write(self : File, buf : Bytes, len : Int) -> Unit raise {
   let File(fd) = self
-  let job = @event_loop.make_write_job(fd, buf, len)
+  let job = @thread_pool.write_job(fd, buf, len)
   guard len == @event_loop.perform_job(job)
 }
 
 ///|
 pub async fn remove(path : Bytes) -> Unit raise {
-  let job = @event_loop.make_remove_job(path)
+  let job = @thread_pool.remove_job(path)
   ignore(@event_loop.perform_job(job))
 }

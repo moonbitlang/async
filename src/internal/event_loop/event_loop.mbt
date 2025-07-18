@@ -29,8 +29,7 @@ priv struct Task {
 
 ///|
 priv struct JobHandle {
-  mut ret : Int
-  mut err : Int
+  job : @thread_pool.Job
   coro : @coroutine.Coroutine
 }
 
@@ -40,7 +39,7 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
-  let job_completion_pipe = init_thread_pool()
+  let job_completion_pipe = @thread_pool.init_thread_pool()
   let evloop = {
     poll: Instance::new(),
     tasks: {},
@@ -59,7 +58,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   curr_loop.val = None
   evloop.poll.remove(job_completion_pipe, events=Read)
   evloop.poll.destroy()
-  destroy_thread_pool()
+  @thread_pool.destroy_thread_pool()
   main.unwrap()
 }
 
@@ -79,12 +78,10 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       let event = get_event(i)
       let fd = event.fd()
       if fd == self.job_completion_pipe {
-        while fetch_completion() is Some({ job_id, ret, err }) {
-          guard self.jobs.get(job_id) is Some(job)
+        while @thread_pool.fetch_completion() is Some(job_id) {
+          guard self.jobs.get(job_id) is Some({ job: _, coro })
           self.jobs.remove(job_id)
-          job.ret = ret
-          job.err = err
-          job.coro.wake()
+          coro.wake()
         }
         continue
       }
@@ -203,16 +200,15 @@ pub fn close_fd(fd : Int) -> Unit {
 extern "C" fn close_ffi(fd : Int) = "close"
 
 ///|
-pub async fn perform_job(job : Job) -> Int raise {
+pub async fn perform_job(job : @thread_pool.Job) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let coro = @coroutine.current_coroutine()
-  let job_id = submit_job(job)
-  let handle = { ret: 0, err: 0, coro }
-  evloop.jobs[job_id] = handle
+  @thread_pool.submit_job(job)
+  evloop.jobs[job.id()] = { job, coro }
   @coroutine.protect_from_cancel(@coroutine.suspend)
-  if handle.err > 0 {
-    raise @os_error.OSError(handle.err)
+  if job.err() > 0 {
+    raise @os_error.OSError(job.err())
   } else {
-    handle.ret
+    job.ret()
   }
 }
