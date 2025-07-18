@@ -64,3 +64,6 @@ pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise 
 /// because it will break other abstraction such as `with_timeout`.
 /// A common scenario is avoiding corrupted state due to partial write to file etc.
 pub fnalias @coroutine.protect_from_cancel
+
+///|
+pub typealias @aqueue.Queue
