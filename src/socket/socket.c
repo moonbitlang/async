@@ -146,16 +146,10 @@ void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t flowinfo,
   return addr;
 }
 
-int32_t moonbitlang_async_ipv6_addr_get_ip(struct sockaddr_in6 *addr, uint8_t *dst) {
-  char ip_str[INET6_ADDRSTRLEN];
-  if (inet_ntop(AF_INET6, &addr->sin6_addr, ip_str, sizeof(ip_str)) == NULL) {
-      return -1;
-  }
-  int len = strlen(ip_str);
-  memcpy(dst, ip_str, len);
-  dst[len] = '\0';
-  return len;
+void moonbitlang_async_ipv6_addr_get_ip(struct sockaddr_in6 *addr, uint8_t *dst) {
+    memcpy(dst, &addr->sin6_addr, 16);
 }
+
 uint32_t moonbitlang_async_ipv6_addr_get_port(struct sockaddr_in6 *addr) {
   return ntohs(addr->sin6_port);
 }

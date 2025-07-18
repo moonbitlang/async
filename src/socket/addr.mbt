@@ -81,11 +81,18 @@ pub extern "C" fn Ipv6Addr::new(
 
 ///|
 #borrow(addr, buf)
-pub extern "C" fn Ipv6Addr::ip(addr : Ipv6Addr, buf : Bytes) -> Int = "moonbitlang_async_ipv6_addr_get_ip"
+extern "C" fn Ipv6Addr::_ip(addr : Ipv6Addr, buf : FixedArray[Byte]) -> Unit = "moonbitlang_async_ipv6_addr_get_ip"
 
 ///|
 #borrow(addr)
 pub extern "C" fn Ipv6Addr::port(addr : Ipv6Addr) -> Int = "moonbitlang_async_ipv6_addr_get_port"
+
+///|
+pub fn Ipv6Addr::ip(self : Ipv6Addr) -> FixedArray[Byte] {
+  let buf = FixedArray::make(16, Byte::default())
+  self._ip(buf)
+  buf
+}
 
 ///|
 pub impl Show for Ipv4Addr with output(self, logger) {
@@ -105,9 +112,9 @@ pub impl Show for Ipv4Addr with output(self, logger) {
 
 ///|
 pub impl Show for Ipv6Addr with output(self, logger) {
-  let ip_buf = Bytes::make(_IP_V6_ADDRLEN, Byte::default())
-  let len = self.ip(ip_buf)
-  let ip_str = utf8_bytes_to_mbt_string(ip_buf[0:len].to_bytes())
+  let ip_str = self.ip_name() catch {
+    _ => abort("Unknown error to get IPv6 address")
+  }
   logger.write_char('[')
   logger.write_string(ip_str)
   logger.write_char(']')
@@ -137,6 +144,28 @@ pub fn Ipv6Addr::parse(src : String) -> Ipv6Addr raise InvalidAddr {
 pub fn SocketAddr::parse(src : String) -> SocketAddr raise InvalidAddr {
   parse_address(src) catch {
     _ => raise InvalidAddr
+  }
+}
+
+///|
+pub fn SocketAddr::ip(self : SocketAddr) -> String {
+  match self {
+    SocketAddr::V4(addr) =>
+      addr.ip_name() catch {
+        _ => abort("Unknown error to get IPv4 address")
+      }
+    SocketAddr::V6(addr) =>
+      addr.ip_name() catch {
+        _ => abort("Unknown error to get IPv6 address")
+      }
+  }
+}
+
+///|
+pub fn SocketAddr::port(self : SocketAddr) -> Int {
+  match self {
+    SocketAddr::V4(addr) => addr.port()
+    SocketAddr::V6(addr) => addr.port()
   }
 }
 

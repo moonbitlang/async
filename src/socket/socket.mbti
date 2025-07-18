@@ -3,12 +3,11 @@ package "moonbitlang/async/socket"
 // Values
 
 // Types and methods
-type Addr
-fn Addr::ip(Self) -> UInt
-fn Addr::new(UInt, Int) -> Self
-fn Addr::parse(String) -> Self raise InvalidAddr
-fn Addr::port(Self) -> Int
-impl Show for Addr
+type SocketAddr
+fn SocketAddr::ip(Self) -> String
+fn SocketAddr::parse(String) -> Self raise InvalidAddr
+fn SocketAddr::port(Self) -> Int
+impl Show for SocketAddr
 
 pub type! ConnectionClosed
 impl Show for ConnectionClosed
@@ -17,10 +16,10 @@ pub type! InvalidAddr
 impl Show for InvalidAddr
 
 type TCP
-async fn TCP::accept(Self) -> (Self, Addr) raise
-fn TCP::bind(Self, Addr) -> Unit raise
+async fn TCP::accept(Self) -> (Self, SocketAddr) raise
+fn TCP::bind(Self, SocketAddr) -> Unit raise
 fn TCP::close(Self) -> Unit
-async fn TCP::connect(Self, Addr) -> Unit raise
+async fn TCP::connect(Self, SocketAddr) -> Unit raise
 fn TCP::listen(Self) -> Unit raise
 fn TCP::new() -> Self
 async fn TCP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
@@ -28,14 +27,14 @@ async fn TCP::recv_exactly(Self, Int) -> Bytes raise
 async fn TCP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
 
 type UDP
-fn UDP::bind(Self, Addr) -> Unit raise
+fn UDP::bind(Self, SocketAddr) -> Unit raise
 fn UDP::close(Self) -> Unit
-fn UDP::connect(Self, Addr) -> Unit raise
+fn UDP::connect(Self, SocketAddr) -> Unit raise
 fn UDP::new() -> Self
 async fn UDP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
-async fn UDP::recvfrom(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> (Int, Addr) raise
+async fn UDP::recvfrom(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> (Int, SocketAddr) raise
 async fn UDP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
-async fn UDP::sendto(Self, Bytes, Addr, offset~ : Int = .., len? : Int) -> Unit raise
+async fn UDP::sendto(Self, Bytes, SocketAddr, offset~ : Int = .., len? : Int) -> Unit raise
 
 // Type aliases
 
