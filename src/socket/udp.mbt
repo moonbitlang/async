@@ -59,6 +59,10 @@ pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
 /// and `recv` will always receive exactly one UDP packet.
 /// If the buffer is smaller than the received packet,
 /// the rest of the packet will be lost.
+///
+/// At most one task can read from a UDP socket at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
@@ -83,6 +87,19 @@ pub async fn UDP::recv(
 
 ///|
 /// Same as `UDP::recv`, but also return the address of sender.
+/// Receive packet from a UDP socket  using `recvfrom(2)` system call.
+/// For `udp.recv(buf, offset~, max_len~)`,
+/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
+/// The number of received bytes and the source address of the packet will be returned.
+///
+/// UDP is a datagram based protocol,
+/// and `recv` will always receive exactly one UDP packet.
+/// If the buffer is smaller than the received packet,
+/// the rest of the packet will be lost.
+///
+/// At most one task can read from a UDP socket at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn UDP::recvfrom(
   self : UDP,
   buf : FixedArray[Byte],
@@ -111,6 +128,10 @@ pub async fn UDP::recvfrom(
 /// The address of the remote peer is determined by `bind` or `connect`.
 ///
 /// UDP is a datagram based protocol, every call of `send` will send exactly one packet.
+///
+/// At most one task can write to a UDP socket at any time.
+/// To allow multiple writers,
+/// use a worker task for reading and use `@async.Queue` to gather the data.
 pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
@@ -135,6 +156,14 @@ pub async fn UDP::send(
 
 ///|
 /// Same as `send`, but the address to send is explicitly passed as argument.
+/// Send data through a UDP socket using `sendto(2)` system call.
+/// The address of the remote peer is determined by `bind` or `connect`.
+///
+/// UDP is a datagram based protocol, every call of `send` will send exactly one packet.
+///
+/// At most one task can write to a UDP socket at any time.
+/// To allow multiple writers,
+/// use a worker task for reading and use `@async.Queue` to gather the data.
 pub async fn UDP::sendto(
   self : UDP,
   buf : Bytes,

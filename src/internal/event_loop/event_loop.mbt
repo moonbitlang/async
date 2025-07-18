@@ -24,7 +24,7 @@ priv struct EventLoop {
 priv struct Task {
   mut events : Int
   mut read : @coroutine.Coroutine?
-  mut write : Set[@coroutine.Coroutine]
+  mut write : @coroutine.Coroutine?
 }
 
 ///|
@@ -91,11 +91,9 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
         task.read = None
         coro.wake()
       }
-      if (events & Write) != 0 {
-        for coro in task.write {
-          coro.wake()
-        }
-        task.write = Set::new()
+      if task.write is Some(coro) && (events & Write) != 0 {
+        task.write = None
+        coro.wake()
       }
     }
     @coroutine.reschedule()
@@ -115,7 +113,7 @@ pub fn prepare_fd_read(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   let task = match evloop.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new(), events: NoEvent }
+      let task = { read: None, write: None, events: NoEvent }
       evloop.tasks[fd] = task
       task
     }
@@ -152,12 +150,13 @@ pub fn prepare_fd_write(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   let task = match evloop.tasks.get(fd) {
     None => {
-      let task = { read: None, write: Set::new(), events: NoEvent }
+      let task = { read: None, write: None, events: NoEvent }
       evloop.tasks[fd] = task
       task
     }
     Some(task) => task
   }
+  guard task.write is None
   if (task.events & Write) == 0 {
     evloop.poll.register(
       fd,
@@ -175,10 +174,10 @@ pub async fn wait_fd_write(fd : Int) -> Unit raise {
   guard evloop.tasks.get(fd) is Some(task)
   guard (task.events & Write) != 0
   let coro = @coroutine.current_coroutine()
-  task.write.add(coro)
+  task.write = Some(coro)
   ignore(@coroutine.suspend()) catch {
     err => {
-      task.write.remove(coro)
+      task.write = None
       raise err
     }
   }

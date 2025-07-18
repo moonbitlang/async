@@ -93,3 +93,10 @@ may block the whole program as well
 
 - although internally `moonbitlang/async` may use OS threads to perform some IO job,
 user code can only utilize one hardware processor
+
+There are several other points to notice when using this library:
+
+- At most one task can read/write to socket etc. at anytime, to avoid race condition.
+If multiple reader/writer is desired,
+you should create a dedicated worker task for reading/writing
+and use `@async.Queue` to distribute/gather data

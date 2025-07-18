@@ -89,6 +89,10 @@ pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
 /// For `tcp.recv(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
 /// The number of received bytes will be returned.
+///
+/// At most one task can read from a TCP socket at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn TCP::recv(
   self : TCP,
   buf : FixedArray[Byte],
@@ -118,6 +122,10 @@ pub suberror ConnectionClosed derive(Show)
 /// `conn.recv_exactly(n)` receives exactly `n` bytes of data from a TCP connection.
 /// `recv_exactly` will only return after all `n` bytes of data are received.
 /// If the connection is closed before receiving all data, an error is raised.
+///
+/// At most one task can read from a TCP socket at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
   let buf = FixedArray::make(len, (0 : Byte))
   for received = 0; received < len; {
@@ -133,6 +141,10 @@ pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
 ///|
 /// Send data through a TCP connection using `send(2)` system call.
 /// This function will only return after all data have been successfully sent.
+///
+/// At most one task can write to a TCP socket at any time.
+/// To allow multiple writers,
+/// use a worker task for writing and use `@async.Queue` to gather data.
 pub async fn TCP::send(
   self : TCP,
   buf : Bytes,
