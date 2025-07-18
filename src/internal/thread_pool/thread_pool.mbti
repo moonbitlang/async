@@ -1,0 +1,31 @@
+package "moonbitlang/async/internal/thread_pool"
+
+// Values
+fn destroy_thread_pool() -> Unit
+
+fn fetch_completion() -> Int? raise
+
+fn init_thread_pool() -> Int raise
+
+fn open_job(Bytes, Int, Int) -> Job
+
+fn read_job(Int, FixedArray[Byte], Int) -> Job
+
+fn remove_job(Bytes) -> Job
+
+fn sleep_job(Int) -> Job
+
+fn submit_job(Job) -> Unit
+
+fn write_job(Int, Bytes, Int) -> Job
+
+// Types and methods
+type Job
+fn Job::err(Self) -> Int
+fn Job::id(Self) -> Int
+fn Job::ret(Self) -> Int
+
+// Type aliases
+
+// Traits
+

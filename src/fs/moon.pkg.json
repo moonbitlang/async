@@ -1,5 +1,8 @@
 {
-  "import": [ "moonbitlang/async/internal/event_loop" ],
+  "import": [
+    "moonbitlang/async/internal/event_loop",
+    "moonbitlang/async/internal/thread_pool"
+  ],
   "test-import": [ "moonbitlang/async" ],
   "native-stub": [ "stub.c" ]
 }

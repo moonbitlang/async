@@ -59,6 +59,8 @@ struct job {
   struct job *next;
   int32_t job_id;
   enum op_code op_code;
+  int32_t ret;
+  int32_t err;
   union {
     struct timespec sleep;
     struct read_job read;
@@ -67,13 +69,6 @@ struct job {
     struct remove_job remove;
   } payload;
 };
-
-struct job_result {
-  int32_t job_id;
-  int32_t ret;
-  int32_t err;
-};
-
 
 static
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -98,6 +93,18 @@ struct {
   int worker_count;
   int free_worker_count;
 } pool;
+
+int32_t moonbitlang_async_job_get_id(struct job *job) {
+  return job->job_id;
+}
+
+int32_t moonbitlang_async_job_get_ret(struct job *job) {
+  return job->ret;
+}
+
+int32_t moonbitlang_async_job_get_err(struct job *job) {
+  return job->err;
+}
 
 // thread unsafe
 static
@@ -134,53 +141,51 @@ void *worker(void *data) {
   struct job *job = (struct job*)data;
 
   while (1) {
-    struct job_result result = { job->job_id, 0, 0 };
     switch (job->op_code) {
     case OP_SLEEP:
       nanosleep(&job->payload.sleep, 0);
-      result.ret = 0;
+      job->ret = 0;
       break;
 
     case OP_READ:
-      result.ret = read(
+      job->ret = read(
         job->payload.read.fd,
         job->payload.read.buf,
         job->payload.read.len
       );
-      if (result.ret < 0)
-        result.err = errno;
+      if (job->ret < 0)
+        job->err = errno;
       break;
 
     case OP_WRITE:
-      result.ret = write(
+      job->ret = write(
         job->payload.read.fd,
         job->payload.read.buf,
         job->payload.read.len
       );
-      if (result.ret < 0)
-        result.err = errno;
+      if (job->ret < 0)
+        job->err = errno;
       break;
 
     case OP_OPEN:
-      result.ret = open(
+      job->ret = open(
         job->payload.open.filename,
         job->payload.open.flags,
         job->payload.open.mode
       );
-      if (result.ret < 0)
-        result.err = errno;
+      if (job->ret < 0)
+        job->err = errno;
       break;
 
     case OP_REMOVE:
-      result.ret = remove(job->payload.remove.path);
-      if (result.ret < 0)
-        result.err = errno;
+      job->ret = remove(job->payload.remove.path);
+      if (job->ret < 0)
+        job->err = errno;
       break;
     }
-    free(job);
-    job = 0;
-    write(pool.notify_send, &result, sizeof(struct job_result));
+    write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
+    job = 0;
     while (1) {
       pthread_mutex_lock(&pool_mutex);
       job = dequeue_job();
@@ -267,8 +272,9 @@ void moonbitlang_async_destroy_thread_pool() {
   close(pool.notify_recv);
 }
 
-int moonbitlang_async_submit_job(struct job *job) {
-  int id = job->job_id;
+void moonbitlang_async_submit_job(struct job *job) {
+  job->ret = 0;
+  job->err = 0;
   pthread_mutex_lock(&pool_mutex);
   if (pool.free_worker_count > 0) {
     enqueue_job(job);
@@ -290,7 +296,6 @@ int moonbitlang_async_submit_job(struct job *job) {
     pthread_create(&id, &attr, &worker, job);
     pthread_attr_destroy(&attr);
   }
-  return id;
 }
 
 int moonbitlang_async_job_id(struct job *job) {
@@ -349,14 +354,11 @@ struct job *moonbitlang_async_make_remove_job(char *path) {
   return job;
 }
 
-int moonbitlang_async_fetch_completion(struct job_result *result) {
-  int ret = read(pool.notify_recv, result, sizeof(struct job_result));
+int32_t moonbitlang_async_fetch_completion() {
+  int32_t job_id;
+  int32_t ret = read(pool.notify_recv, &job_id, sizeof(int32_t));
   if (ret < 0)
     return ret;
 
-  // should not happer, must be a bug
-  if (ret < sizeof(struct job_result))
-    abort();
-
-  return 0;
+  return job_id;
 }

@@ -3,5 +3,8 @@
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/event_loop"
   ],
-  "test-import": [ "moonbitlang/async/pipe" ]
+  "test-import": [
+    "moonbitlang/async/pipe",
+    "moonbitlang/async/internal/thread_pool"
+  ]
 }

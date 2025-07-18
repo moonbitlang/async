@@ -22,7 +22,7 @@ test "worker basic" {
         log.write_string("tick\n")
       }
     })
-    guard @event_loop.perform_job(@event_loop.make_sleep_job(250)) == 0
+    guard @event_loop.perform_job(@thread_pool.sleep_job(250)) == 0
     log.write_string("done\n")
   })
   inspect(
@@ -50,8 +50,7 @@ test "worker multiple" {
     })
     for i in 0..<4 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(@event_loop.make_sleep_job(50 + i * 100))
-        |> ignore
+        @event_loop.perform_job(@thread_pool.sleep_job(50 + i * 100)) |> ignore
         log.write_string("#\{i} done\n")
       })
     }
@@ -83,7 +82,7 @@ test "worker cancel1" {
       }
     })
     let task = root.spawn(allow_failure=true, fn() {
-      try @event_loop.perform_job(@event_loop.make_sleep_job(250)) catch {
+      try @event_loop.perform_job(@thread_pool.sleep_job(250)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -121,7 +120,7 @@ test "worker cancel2" {
       }
     })
     root.spawn_bg(allow_failure=true, fn() {
-      try @event_loop.perform_job(@event_loop.make_sleep_job(250)) catch {
+      try @event_loop.perform_job(@thread_pool.sleep_job(250)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
