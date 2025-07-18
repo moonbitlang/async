@@ -27,6 +27,7 @@ fn[G, X] TaskGroup::spawn(Self[G], async () -> X raise, no_wait~ : Bool = .., al
 fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit raise, no_wait~ : Bool = .., allow_failure~ : Bool = ..) -> Unit raise
 
 // Type aliases
+pub typealias @moonbitlang/async/aqueue.Queue as Queue
 
 // Traits
 

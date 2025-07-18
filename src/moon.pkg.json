@@ -1,7 +1,8 @@
 {
   "import": [
     "moonbitlang/async/internal/coroutine",
-    "moonbitlang/async/internal/event_loop"
+    "moonbitlang/async/internal/event_loop",
+    "moonbitlang/async/aqueue"
   ],
   "test-import": [
     "moonbitlang/async/pipe",
