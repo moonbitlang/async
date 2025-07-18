@@ -25,6 +25,10 @@
 #include <errno.h>
 #include <time.h>
 
+#ifdef __MACH__
+#include <sys/event.h>
+#endif
+
 enum op_code {
   OP_SLEEP = 0, // for testing only
   OP_READ,
@@ -143,7 +147,21 @@ void *worker(void *data) {
   while (1) {
     switch (job->op_code) {
     case OP_SLEEP:
+#ifdef __MACH__
+      {
+        // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
+        // causing corrupted test result.
+        // However `kqueue` seems to have very accurate timing.
+        // Since `OP_SLEEP` is only for testing purpose,
+        // here we use `kqueue` (in an absolutely wrong way) to perform sleep.
+        int kqfd = kqueue();
+        struct kevent kev;
+        kevent(kqfd, 0, 0, &kev, 1, &(job->payload.sleep));
+        close(kqfd);
+      }
+#else
       nanosleep(&job->payload.sleep, 0);
+#endif
       job->ret = 0;
       break;
 
