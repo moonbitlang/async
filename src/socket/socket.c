@@ -91,7 +91,7 @@ int moonbitlang_async_send(int sockfd, void *buf, int offset, int max_len) {
 }
 
 int moonbitlang_async_getsockerr(int sockfd) {
-  int err;
+  int err = 0;
   socklen_t opt_len = sizeof(int);
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
     return -1;

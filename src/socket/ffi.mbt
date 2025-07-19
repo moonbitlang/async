@@ -56,8 +56,11 @@ extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
 fn check_socket_err(sock : Int) -> Unit raise {
-  if get_socket_err(sock) != 0 {
+  let err = get_socket_err(sock)
+  if err < 0 {
     @os_error.check_errno()
+  } else if err > 0 {
+    raise @os_error.OSError(err)
   }
 }
 
