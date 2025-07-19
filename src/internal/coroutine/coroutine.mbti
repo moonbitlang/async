@@ -3,6 +3,8 @@ package "moonbitlang/async/internal/coroutine"
 // Values
 fn current_coroutine() -> Coroutine
 
+fn is_being_cancelled() -> Bool
+
 fn next_expire_time() -> Int64?
 
 fn no_more_work() -> Bool

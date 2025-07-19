@@ -45,6 +45,11 @@ pub fn Coroutine::wake(self : Coroutine) -> Unit {
 }
 
 ///|
+pub fn is_being_cancelled() -> Bool {
+  current_coroutine().cancelled
+}
+
+///|
 pub(all) suberror Cancelled derive(Show)
 
 ///|
