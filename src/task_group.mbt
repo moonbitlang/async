@@ -214,3 +214,82 @@ pub fn[X] TaskGroup::return_immediately(
   }
   raise @coroutine.Cancelled
 }
+
+///|
+pub(all) enum RetryMethod {
+  NoRetry
+  Immediate
+  FixedDelay(Int)
+  ExponentialDelay(initial~ : Int, factor~ : Double, maximum~ : Int)
+}
+
+///|
+/// Similar to `spawn_bg`, but the spawn a loop,
+/// i.e. the spawned task will be restarted after it terminates.
+/// The spawned task can terminate the loop by returning `IterEnd`.
+///
+/// When the spawned task raises an error, the behavior is determined by `retry`.
+/// - If `retry` is `NoRetry` (the default),
+///   the loop will terminate immediately and propagate the error.
+/// - If `retry` is `Immediate`, the task will immediately be restarted.
+/// - If `retry` is `FixedDelay(t)`,
+///   the task will be restarted after sleeping for `t` milliseconds
+/// - If `retry` is `ExponentialDelay(initial~, factor~, maximum~)`,
+///   the task will be restarted with an exponentially growing delay.
+///   The initial delay is `initial`, and after every failure,
+///   the delay will be multiplied by `factor`, but will never exceed `maximum`.
+///   If the task succeed, the retry delay will be reset to `initial`.
+///
+/// The meaning of `no_wait` and `allow_failure` is the same as `spawn_bg`.
+pub fn[X] TaskGroup::spawn_loop(
+  self : TaskGroup[X],
+  f : async () -> IterResult raise,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
+  retry~ : RetryMethod = NoRetry
+) -> Unit raise {
+  self.spawn_bg(no_wait~, allow_failure~, fn() {
+    match retry {
+      NoRetry =>
+        for {
+          guard f() is IterContinue else { break }
+        }
+      Immediate =>
+        for {
+          try f() catch {
+            err if @coroutine.is_being_cancelled() => raise err
+            _ => ()
+          } noraise {
+            IterContinue => ()
+            IterEnd => break
+          }
+        }
+      FixedDelay(t) =>
+        for {
+          try f() catch {
+            err if @coroutine.is_being_cancelled() => raise err
+            _ => sleep(t)
+          } noraise {
+            IterContinue => ()
+            IterEnd => break
+          }
+        }
+      ExponentialDelay(initial~, factor~, maximum~) =>
+        for delay = initial {
+          try f() catch {
+            err if @coroutine.is_being_cancelled() => raise err
+            _ => {
+              sleep(delay)
+              continue @cmp.minimum(
+                  maximum,
+                  (delay.to_double() * factor).to_int(),
+                )
+            }
+          } noraise {
+            IterContinue => continue initial
+            IterEnd => break
+          }
+        }
+    }
+  })
+}
