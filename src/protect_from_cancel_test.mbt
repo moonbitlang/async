@@ -159,7 +159,7 @@ test "protect_from_cancel fail" {
       #|100ms tick
       #|200ms tick
       #|critial job fail
-      #|Ok(())
+      #|Err(Err)
     ),
   )
 }
@@ -230,6 +230,38 @@ test "protect_from_cancel nested2" {
       #|200ms tick
       #|outer critial job finished
       #|`with_timeout` containing critical job finished
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "protect_from_cancel in cancellation handler" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(no_wait=true, fn() {
+        @async.sleep(100) catch {
+          err => {
+            log.write_string("cancelled with error \{err}\n")
+            @async.protect_from_cancel(fn() {
+              @async.sleep(50)
+              log.write_string("critial cancellation handler terminated\n")
+            })
+            raise err
+          }
+        }
+      })
+      @async.sleep(50)
+      log.write_string("start cancellation\n")
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|start cancellation
+      #|cancelled with error Cancelled
+      #|critial cancellation handler terminated
       #|Ok(())
     ),
   )
