@@ -65,6 +65,14 @@ fn check_socket_err(sock : Int) -> Unit raise {
 }
 
 ///|
+extern "C" fn enable_keepalive_ffi(
+  sock : Int,
+  keep_idle : Int,
+  keep_count : Int,
+  keep_intv : Int
+) -> Int = "moonbitlang_async_enable_keepalive"
+
+///|
 #borrow(buf, addr_buf)
 extern "C" fn recvfrom_ffi(
   sock : Int,

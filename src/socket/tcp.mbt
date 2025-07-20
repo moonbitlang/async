@@ -49,6 +49,31 @@ pub fn TCP::listen(self : TCP) -> Unit raise {
 }
 
 ///|
+/// Enable TCP keep alive on the socket.
+///
+/// `idle_before_keep_alive` is the duration of idle time in seconds to wait
+/// before sending the first keep alive probe.
+///
+/// `keep_alive_count` is the number of keep alive probe to try
+/// before closing the connection.
+///
+/// `keep_alive_interval` is the time in seconds between two keep alive probes.
+pub fn TCP::enable_keepalive(
+  self : TCP,
+  idle_before_keep_alive~ : Int = -1,
+  keep_alive_count~ : Int = -1,
+  keep_alive_interval~ : Int = -1
+) -> Unit raise {
+  let TCP(sock) = self
+  let ret = enable_keepalive_ffi(
+    sock, idle_before_keep_alive, keep_alive_count, keep_alive_interval,
+  )
+  if ret < 0 {
+    @os_error.check_errno()
+  }
+}
+
+///|
 /// Accept a new connection on a listening socket using `accept(2)` system call.
 /// A new socket representing the accepted connection
 /// will be returned together with the address of peer.
