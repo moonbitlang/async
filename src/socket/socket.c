@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <moonbit.h>
@@ -96,6 +97,39 @@ int moonbitlang_async_getsockerr(int sockfd) {
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
     return -1;
   return err;
+}
+
+int moonbitlang_async_enable_keepalive(
+  int sock,
+  int keep_idle,
+  int keep_cnt,
+  int keep_intvl
+) {
+  int value = 1;
+  if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &value, sizeof(int)) < 0)
+    return -1;
+
+  if (keep_cnt > 0) {
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keep_cnt, sizeof(int)) < 0)
+      return -1;
+  }
+
+  if (keep_idle > 0) {
+#ifdef __MACH__
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &keep_idle, sizeof(int)) < 0)
+      return -1;
+#elifdef __linux__
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keep_idle, sizeof(int)) < 0)
+      return -1;
+#endif
+  }
+
+  if (keep_intvl > 0) {
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keep_intvl, sizeof(int)) < 0)
+      return -1;
+  }
+
+  return 0;
 }
 
 void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
