@@ -120,3 +120,39 @@ test "aqueue cancellation" {
     ),
   )
 }
+
+///|
+test "aqueue fairness" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    let queue = @aqueue.Queue::new()
+    root.spawn_bg(fn() {
+      for _ in 0..<2 {
+        let x = queue.get()
+        log.write_string("task 1: get => \{x}\n")
+      }
+    })
+    root.spawn_bg(fn() {
+      for _ in 0..<2 {
+        let x = queue.get()
+        log.write_string("task 2: get => \{x}\n")
+      }
+    })
+    @async.sleep(20)
+    queue.put(1)
+    queue.put(2)
+    @async.sleep(20)
+    queue.put(3)
+    queue.put(4)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task 1: get => 1
+      #|task 2: get => 2
+      #|task 1: get => 3
+      #|task 2: get => 4
+      #|
+    ),
+  )
+}

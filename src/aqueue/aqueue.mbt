@@ -52,7 +52,16 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
 /// in this case, an cancellation will be raised from `get`.
 pub async fn[X] Queue::get(self : Queue[X]) -> X raise {
   loop self.buffer.pop_front() {
-    Some(data) => data
+    Some(data) => {
+      // It is necessary to `pause` here for fairness.
+      // Assume there are multiple blocked readers, and now multiple element arrives,
+      // we expect this currently blocked readers to continue in
+      // first-come-first-serve manner. However, if the first woken reader continues
+      // reading, without pausing in the middle, it will receive extra data before
+      // the other blocked readers are woken, breaking fairness.
+      @coroutine.pause()
+      data
+    }
     None => {
       let reader = @ref.new(Some(@coroutine.current_coroutine()))
       self.readers.push_back(reader)
