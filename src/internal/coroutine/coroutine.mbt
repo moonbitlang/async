@@ -109,7 +109,7 @@ pub async fn sleep(duration : Int) -> Unit raise {
 ///|
 pub fn spawn(
   f : async () -> Unit raise,
-  on_error? : (Error) -> Unit
+  on_error? : (Error) -> Unit,
 ) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {

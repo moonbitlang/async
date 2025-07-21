@@ -127,7 +127,7 @@ pub async fn PipeRead::read(
   self : PipeRead,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int
+  max_len? : Int,
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let PipeRead(fd) = self
@@ -179,7 +179,7 @@ pub async fn PipeWrite::write(
   self : PipeWrite,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int
+  len? : Int,
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let PipeWrite(fd) = self
