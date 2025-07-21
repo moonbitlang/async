@@ -139,6 +139,9 @@ pub async fn File::read(
 /// `file.write(buf, offset~, len~)` write content of `buf[offset:offset+len]`
 /// to the file `file`.
 /// By default, `offset` is `0` and `len` is `buf.length() - offset`.
+///
+/// `write` will ensure all data is succesfully written,
+/// Unless an error occurred while writing.
 pub async fn File::write(
   self : File,
   buf : Bytes,

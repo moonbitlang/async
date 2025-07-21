@@ -176,11 +176,19 @@ void *worker(void *data) {
       break;
 
     case OP_WRITE:
-      job->ret = write(
-        job->payload.read.fd,
-        job->payload.read.buf,
-        job->payload.read.len
-      );
+      while (job->ret < job->payload.read.len) {
+        int written = write(
+          job->payload.read.fd,
+          job->payload.read.buf + job->ret,
+          job->payload.read.len - job->ret
+        );
+        if (written < 0) {
+          job->ret = -1;
+          break;
+        } else {
+          job->ret += written;
+        }
+      }
       if (job->ret < 0)
         job->err = errno;
       break;
