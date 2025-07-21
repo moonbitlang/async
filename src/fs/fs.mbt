@@ -117,16 +117,22 @@ pub async fn create(
 /// `file.read(buf, offset~, len~) read `len` bytes from `file`,
 /// store data into `buf`, starting with `offset`.
 /// By default, `offset` is `0` and `len` is `buf.length() - offset`.
+///
+/// The number of data actually read will be returned.
+/// The number can be smaller than the requested size for various reasons:
+///
+/// - EOF is reached before reading all requested data
+/// - the file is a named pipe, and not enough data is available
 pub async fn File::read(
   self : File,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
   len? : Int,
-) -> Unit raise {
+) -> Int raise {
   let File(fd) = self
   let len = len.unwrap_or(buf.length() - offset)
   let job = @thread_pool.read_job(fd, buf, offset, len)
-  guard len == @event_loop.perform_job(job)
+  @event_loop.perform_job(job)
 }
 
 ///|
@@ -142,7 +148,7 @@ pub async fn File::write(
   let File(fd) = self
   let len = len.unwrap_or(buf.length())
   let job = @thread_pool.write_job(fd, buf, offset, len)
-  guard len == @event_loop.perform_job(job)
+  ignore(@event_loop.perform_job(job))
 }
 
 ///|

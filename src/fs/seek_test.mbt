@@ -27,7 +27,7 @@ test "basic seek" {
     // first read
     let r = @fs.open(path, mode=ReadOnly)
     log.write_string("current size: \{r.size()}\n")
-    r.read(buf)
+    guard r.read(buf) == buf.length()
     log.write_string("current content: \{buf}\n")
     r.close()
     // update content
@@ -44,7 +44,7 @@ test "basic seek" {
     w.close()
     // read content
     let r = @fs.open(path, mode=ReadOnly)
-    r.read(buf)
+    guard r.read(buf) == buf.length()
     log.write_string("final content: \{buf}\n")
     r.close()
     @fs.remove(path)
