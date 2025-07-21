@@ -48,11 +48,21 @@ pub extern "C" fn sleep_job(time : Int) -> Job = "moonbitlang_async_make_sleep_j
 
 ///|
 #borrow(buf)
-pub extern "C" fn read_job(fd : Int, buf : FixedArray[Byte], len : Int) -> Job = "moonbitlang_async_make_read_job"
+pub extern "C" fn read_job(
+  fd : Int,
+  buf : FixedArray[Byte],
+  offset : Int,
+  len : Int,
+) -> Job = "moonbitlang_async_make_read_job"
 
 ///|
 #borrow(buf)
-pub extern "C" fn write_job(fd : Int, buf : Bytes, len : Int) -> Job = "moonbitlang_async_make_write_job"
+pub extern "C" fn write_job(
+  fd : Int,
+  buf : Bytes,
+  offset : Int,
+  len : Int,
+) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
 #borrow(filename)
