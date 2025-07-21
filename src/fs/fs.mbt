@@ -102,3 +102,36 @@ pub async fn remove(path : Bytes) -> Unit raise {
   let job = @thread_pool.remove_job(path)
   ignore(@event_loop.perform_job(job))
 }
+
+///|
+pub(all) enum SeekMode {
+  FromStart = 0
+  FromEnd
+  Relative
+}
+
+///|
+extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = "moonbitlang_async_lseek"
+
+///|
+pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise {
+  let File(fd) = self
+  let offset = lseek_ffi(fd, offset, mode)
+  if offset < 0 {
+    @os_error.check_errno()
+  }
+  offset
+}
+
+///|
+pub fn File::curr_pos(self : File) -> Int64 raise {
+  self.seek(0, mode=Relative)
+}
+
+///|
+pub fn File::size(self : File) -> Int64 raise {
+  let curr_pos = self.curr_pos()
+  let size = self.seek(0, mode=FromEnd)
+  ignore(self.seek(curr_pos, mode=FromStart))
+  size
+}

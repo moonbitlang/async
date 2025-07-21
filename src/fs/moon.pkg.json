@@ -1,5 +1,6 @@
 {
   "import": [
+    "moonbitlang/async/os_error",
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/internal/thread_pool"
   ],
