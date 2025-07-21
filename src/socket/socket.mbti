@@ -3,42 +3,68 @@ package "moonbitlang/async/socket"
 // Values
 
 // Types and methods
-type Addr
-fn Addr::ip(Self) -> UInt
-fn Addr::new(UInt, Int) -> Self
-fn Addr::parse(String) -> Self raise InvalidAddr
-fn Addr::port(Self) -> Int
-impl Show for Addr
-
 pub type! ConnectionClosed
 impl Show for ConnectionClosed
+
+pub(all) enum Domain {
+  IPv4
+  IPv6
+}
+fn Domain::from_address(SocketAddr) -> Self
+impl Show for Domain
 
 pub type! InvalidAddr
 impl Show for InvalidAddr
 
+type Ipv4Addr
+fn Ipv4Addr::ip(Self) -> UInt
+fn Ipv4Addr::new(UInt, Int) -> Self
+fn Ipv4Addr::parse(String) -> Self raise InvalidAddr
+fn Ipv4Addr::port(Self) -> Int
+impl Show for Ipv4Addr
+
+type Ipv6Addr
+fn Ipv6Addr::ip(Self) -> FixedArray[Byte]
+fn Ipv6Addr::new(FixedArray[Byte], Int, Int, Int) -> Self
+fn Ipv6Addr::parse(String) -> Self raise InvalidAddr
+fn Ipv6Addr::port(Self) -> Int
+impl Show for Ipv6Addr
+
+pub(all) enum SocketAddr {
+  V4(Ipv4Addr)
+  V6(Ipv6Addr)
+}
+fn SocketAddr::ip(Self) -> String
+fn SocketAddr::is_ipv4(Self) -> Bool
+fn SocketAddr::is_ipv6(Self) -> Bool
+fn SocketAddr::parse(String) -> Self raise InvalidAddr
+fn SocketAddr::port(Self) -> Int
+impl Show for SocketAddr
+
 type TCP
-async fn TCP::accept(Self) -> (Self, Addr) raise
-fn TCP::bind(Self, Addr) -> Unit raise
+async fn TCP::accept(Self) -> (Self, SocketAddr) raise
+fn TCP::bind(Self, SocketAddr) -> Unit raise
 fn TCP::close(Self) -> Unit
-async fn TCP::connect(Self, Addr) -> Unit raise
+async fn TCP::connect(Self, SocketAddr) -> Unit raise
 fn TCP::enable_keepalive(Self, idle_before_keep_alive~ : Int = .., keep_alive_count~ : Int = .., keep_alive_interval~ : Int = ..) -> Unit raise
 fn TCP::listen(Self) -> Unit raise
-fn TCP::new() -> Self
+fn TCP::new(domain? : Domain) -> Self
 async fn TCP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
 async fn TCP::recv_exactly(Self, Int) -> Bytes raise
 async fn TCP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
 
 type UDP
-fn UDP::bind(Self, Addr) -> Unit raise
+fn UDP::bind(Self, SocketAddr) -> Unit raise
 fn UDP::close(Self) -> Unit
-fn UDP::connect(Self, Addr) -> Unit raise
-fn UDP::new() -> Self
+fn UDP::connect(Self, SocketAddr) -> Unit raise
+fn UDP::new(domain? : Domain) -> Self
 async fn UDP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
-async fn UDP::recvfrom(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> (Int, Addr) raise
+async fn UDP::recvfrom(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> (Int, SocketAddr) raise
 async fn UDP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
-async fn UDP::sendto(Self, Bytes, Addr, offset~ : Int = .., len? : Int) -> Unit raise
+async fn UDP::sendto(Self, Bytes, SocketAddr, offset~ : Int = .., len? : Int) -> Unit raise
 
 // Type aliases
+pub typealias SocketAddr as Addr
 
 // Traits
 

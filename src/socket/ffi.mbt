@@ -13,25 +13,22 @@
 // limitations under the License.
 
 ///|
-extern "C" fn make_tcp_socket() -> Int = "moonbitlang_async_make_tcp_socket"
-
-///|
-extern "C" fn make_udp_socket() -> Int = "moonbitlang_async_make_udp_socket"
+extern "C" fn make_socket(domain : Int, ty : Int, protocol : Int) -> Int = "moonbitlang_async_make_socket"
 
 ///|
 #borrow(addr)
-extern "C" fn bind_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind"
+extern "C" fn bind_ffi(sock : Int, addr : IpAddr) -> Int = "moonbitlang_async_bind"
 
 ///|
 extern "C" fn listen_ffi(sock : Int) -> Int = "moonbitlang_async_listen"
 
 ///|
 #borrow(addr_buf)
-extern "C" fn accept_ffi(sock : Int, addr_buf : Addr) -> Int = "moonbitlang_async_accept"
+extern "C" fn accept_ffi(sock : Int, addr_buf : IpAddr) -> Int = "moonbitlang_async_accept"
 
 ///|
 #borrow(addr)
-extern "C" fn connect_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_ffi(sock : Int, addr : IpAddr) -> Int = "moonbitlang_async_connect"
 
 ///|
 #borrow(buf)
@@ -79,7 +76,7 @@ extern "C" fn recvfrom_ffi(
   buf : FixedArray[Byte],
   offset : Int,
   max_len : Int,
-  addr_buf : Addr
+  addr_buf : IpAddr
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
@@ -89,5 +86,5 @@ extern "C" fn sendto_ffi(
   buf : Bytes,
   offset : Int,
   max_len : Int,
-  addr_buf : Addr
+  addr_buf : IpAddr
 ) -> Int = "moonbitlang_async_sendto"

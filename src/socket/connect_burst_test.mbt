@@ -19,12 +19,14 @@ suberror ServerTerminate
 let port = 4205
 
 ///|
-async fn server() -> Int raise {
-  let listen_sock = @socket.TCP::new()
+async fn server(ip : String) -> Int raise {
   let mut num_connection = 0
+  let addr = @socket.SocketAddr::parse("\{ip}:\{port}")
+  let domain = Domain::from_address(addr)
+  let listen_sock = @socket.TCP::new(domain~)
   try
     @async.with_task_group(fn(group) {
-      listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
+      listen_sock..bind(addr)..listen()
       for {
         let (conn, _) = listen_sock.accept()
         num_connection += 1
@@ -62,9 +64,11 @@ async fn server() -> Int raise {
 }
 
 ///|
-async fn client(msg : Bytes) -> Unit raise {
-  let conn = @socket.TCP::new()
-  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+async fn client(ip : String, msg : Bytes) -> Unit raise {
+  let addr = @socket.SocketAddr::parse("\{ip}:\{port}")
+  let domain = Domain::from_address(addr)
+  let conn = @socket.TCP::new(domain~)
+  conn.connect(addr)
   conn.send(msg)
   conn.close()
 }
@@ -73,16 +77,46 @@ async fn client(msg : Bytes) -> Unit raise {
 test "connection burst" {
   let log = StringBuilder::new()
   let mut result = 0
+  let ip = "127.0.0.1"
   log.write_object(
     try? @async.with_event_loop(fn(root) {
-      root.spawn_bg(() => result = server())
+      root.spawn_bg(() => result = server(ip))
       root.spawn_bg(fn() {
         @async.with_task_group(fn(ctx) {
           for _ in 0..<6 {
-            ctx.spawn_bg(() => client(b"ping"))
+            ctx.spawn_bg(() => client(ip, b"ping"))
           }
         })
-        root.spawn_bg(() => client(b"exit"))
+        root.spawn_bg(() => client(ip, b"exit"))
+      })
+    }),
+  )
+  log.write_string("\n")
+  log.write_object(result)
+  inspect(
+    log.to_string(),
+    content=(
+      #|Ok(())
+      #|7
+    ),
+  )
+}
+
+///|
+test "connection burst with ipv6" {
+  let log = StringBuilder::new()
+  let mut result = 0
+  let ip = "[::1]"
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(() => result = server(ip))
+      root.spawn_bg(fn() {
+        @async.with_task_group(fn(ctx) {
+          for _ in 0..<6 {
+            ctx.spawn_bg(() => client(ip, b"ping"))
+          }
+        })
+        root.spawn_bg(() => client(ip, b"exit"))
       })
     }),
   )

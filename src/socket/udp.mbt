@@ -19,8 +19,9 @@ type UDP Int
 ///|
 /// Create a new UDP socket using the `socket(2)` system call.
 /// The created socket always operate in non-blocking mode.
-pub fn UDP::new() -> UDP {
-  make_udp_socket()
+pub fn UDP::new(domain? : Domain) -> UDP {
+  let domain = domain.unwrap_or(Domain::IPv4)
+  make_socket(domain.inner(), Type::Datagram.inner(), 0)
 }
 
 ///|
@@ -32,9 +33,9 @@ pub fn UDP::close(self : UDP) -> Unit {
 ///|
 /// Bind the socket to an address using the `bind(2)` system call,
 /// so that the socket can be used to receive packets from the address.
-pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
+pub fn UDP::bind(self : UDP, addr : SocketAddr) -> Unit raise {
   let UDP(sock) = self
-  if 0 != bind_ffi(sock, addr) {
+  if 0 != bind_ffi(sock, addr.to_ipaddr()) {
     @os_error.check_errno()
   }
 }
@@ -42,9 +43,9 @@ pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
 ///|
 /// "connect" the socket to remote address using `connect(2)` system call.
 /// For UDP socket, connect means setting the default address for `send`.
-pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
+pub fn UDP::connect(self : UDP, addr : SocketAddr) -> Unit raise {
   let UDP(sock) = self
-  if 0 != connect_ffi(sock, addr) {
+  if 0 != connect_ffi(sock, addr.to_ipaddr()) {
     @os_error.check_errno()
   }
 }
@@ -105,11 +106,11 @@ pub async fn UDP::recvfrom(
   buf : FixedArray[Byte],
   offset~ : Int = 0,
   max_len? : Int
-) -> (Int, Addr) raise {
+) -> (Int, SocketAddr) raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
   @event_loop.prepare_fd_read(sock)
-  let addr = Addr::new(0, 0)
+  let addr = create_sockaddr_storage_ffi()
   let n_read = recvfrom_ffi(sock, buf, offset, max_len, addr)
   let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
     @event_loop.wait_fd_read(sock)
@@ -120,7 +121,7 @@ pub async fn UDP::recvfrom(
   if n_read < 0 {
     @os_error.check_errno()
   }
-  (n_read, addr)
+  (n_read, addr.to_socket_addr())
 }
 
 ///|
@@ -167,7 +168,7 @@ pub async fn UDP::send(
 pub async fn UDP::sendto(
   self : UDP,
   buf : Bytes,
-  addr : Addr,
+  addr : SocketAddr,
   offset~ : Int = 0,
   len? : Int
 ) -> Unit raise {
@@ -175,7 +176,7 @@ pub async fn UDP::sendto(
   let UDP(sock) = self
   @event_loop.prepare_fd_write(sock)
   for {
-    let n_sent = sendto_ffi(sock, buf, offset, len, addr)
+    let n_sent = sendto_ffi(sock, buf, offset, len, addr.to_ipaddr())
     if n_sent > 0 {
       return
     }

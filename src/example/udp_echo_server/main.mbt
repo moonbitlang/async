@@ -16,7 +16,7 @@
 fn main_prog() -> Unit raise {
   let server = @socket.UDP::new()
   @async.with_event_loop(fn(root) {
-    server.bind(@socket.Addr::parse("0.0.0.0:4200"))
+    server.bind(@socket.SocketAddr::parse("0.0.0.0:4200"))
     for {
       let buf = FixedArray::make(1024, b'0')
       let (n, addr) = server.recvfrom(buf)
