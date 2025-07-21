@@ -24,13 +24,14 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 ## Features
 
 - [X] TCP/UDP socket
+- [ ] DNS resolution
 - [X] timer
 - [X] pipe
-- [ ] asynchronous file system operations
+- [X] asynchronous file system operations
 - [ ] process manipulation
 - [X] structured concurrency
 - [X] cooperative multi tasking
-- [ ] IO worker thread
+- [X] IO worker thread
 - [X] Linux support (`epoll`)
 - [X] MacOS support (`kqueue`)
 - [ ] Windows support
