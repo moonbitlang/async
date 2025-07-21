@@ -330,24 +330,24 @@ struct job *moonbitlang_async_make_sleep_job(int ms) {
   return job;
 }
 
-struct job *moonbitlang_async_make_read_job(int fd, void *buf, int len) {
+struct job *moonbitlang_async_make_read_job(int fd, void *buf, int offset, int len) {
   struct job *job = (struct job*)malloc(sizeof(struct job));
   job->next = 0;
   job->job_id = pool.job_id++;
   job->op_code = OP_READ;
   job->payload.read.fd = fd;
-  job->payload.read.buf = buf;
+  job->payload.read.buf = buf + offset;
   job->payload.read.len = len;
   return job;
 }
 
-struct job *moonbitlang_async_make_write_job(int fd, void *buf, int len) {
+struct job *moonbitlang_async_make_write_job(int fd, void *buf, int offset, int len) {
   struct job *job = (struct job*)malloc(sizeof(struct job));
   job->next = 0;
   job->job_id = pool.job_id++;
   job->op_code = OP_WRITE;
   job->payload.read.fd = fd;
-  job->payload.read.buf = buf;
+  job->payload.read.buf = buf + offset;
   job->payload.read.len = len;
   return job;
 }

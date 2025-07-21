@@ -18,10 +18,10 @@ test "basic create" {
   @async.with_event_loop(fn(_) {
     let path = b"basic_create_test\x00"
     let w = @fs.create(path, permission=0o644, sync=Full)
-    w.write(b"abcd\n", 4)
+    w.write(b"abcd\n")
     w.close()
     let r = @fs.open(path, mode=ReadOnly)
-    r.read(buf, 4)
+    r.read(buf)
     r.close()
     @fs.remove(path)
   })

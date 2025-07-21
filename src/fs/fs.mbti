@@ -11,8 +11,8 @@ async fn remove(Bytes) -> Unit raise
 // Types and methods
 type File
 fn File::close(Self) -> Unit
-async fn File::read(Self, FixedArray[Byte], Int) -> Unit raise
-async fn File::write(Self, Bytes, Int) -> Unit raise
+async fn File::read(Self, FixedArray[Byte], offset~ : Int = .., len? : Int) -> Unit raise
+async fn File::write(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
 
 pub(all) enum Mode {
   ReadOnly
