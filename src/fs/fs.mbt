@@ -41,7 +41,7 @@ extern "C" fn make_open_flags(
   sync~ : SyncMode,
   append~ : Bool,
   create~ : Bool,
-  truncate~ : Bool
+  truncate~ : Bool,
 ) -> Int = "moonbitlang_async_make_open_flags"
 
 ///|
@@ -51,7 +51,7 @@ pub async fn open(
   sync~ : SyncMode = NoSync,
   append~ : Bool = false,
   create? : Int,
-  truncate~ : Bool = false
+  truncate~ : Bool = false,
 ) -> File raise {
   let (create, user_mode) = match create {
     None => (false, 0)
@@ -66,7 +66,7 @@ pub async fn open(
 pub async fn create(
   filename : Bytes,
   permission~ : Int,
-  sync~ : SyncMode = NoSync
+  sync~ : SyncMode = NoSync,
 ) -> File raise {
   open(filename, mode=WriteOnly, sync~, create=permission, truncate=true)
 }
@@ -75,7 +75,7 @@ pub async fn create(
 pub async fn File::read(
   self : File,
   buf : FixedArray[Byte],
-  len : Int
+  len : Int,
 ) -> Unit raise {
   let File(fd) = self
   let job = @thread_pool.read_job(fd, buf, len)
