@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async"
 
 // Values
@@ -14,7 +15,7 @@ async fn[X] with_task_group(async (TaskGroup[X]) -> X raise) -> X raise
 async fn with_timeout(Int, async () -> Unit raise) -> Unit raise
 
 // Types and methods
-pub type! AlreadyTerminated
+pub suberror AlreadyTerminated
 impl Show for AlreadyTerminated
 
 pub(all) enum RetryMethod {

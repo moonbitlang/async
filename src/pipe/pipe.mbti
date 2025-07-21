@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/pipe"
 
 // Values
@@ -12,7 +13,7 @@ let stdin : PipeRead
 let stdout : PipeWrite
 
 // Types and methods
-pub type! PipeClosed
+pub suberror PipeClosed
 impl Show for PipeClosed
 
 type PipeRead

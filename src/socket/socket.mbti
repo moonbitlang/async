@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/socket"
 
 // Values
@@ -10,10 +11,10 @@ fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
 impl Show for Addr
 
-pub type! ConnectionClosed
+pub suberror ConnectionClosed
 impl Show for ConnectionClosed
 
-pub type! InvalidAddr
+pub suberror InvalidAddr
 impl Show for InvalidAddr
 
 type TCP
