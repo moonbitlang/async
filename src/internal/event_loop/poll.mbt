@@ -36,7 +36,7 @@ extern "C" fn Instance::register_ffi(
   fd : Int,
   prev_events~ : Int,
   new_events~ : Int,
-  oneshot~ : Bool
+  oneshot~ : Bool,
 ) -> Int = "moonbitlang_async_poll_register"
 
 ///|
@@ -45,7 +45,7 @@ fn Instance::register(
   fd : Int,
   prev_events~ : Int,
   new_events~ : Int,
-  oneshot~ : Bool = false
+  oneshot~ : Bool = false,
 ) -> Unit raise {
   if 0 != self.register_ffi(fd, prev_events~, new_events~, oneshot~) {
     @os_error.check_errno()
@@ -56,7 +56,7 @@ fn Instance::register(
 extern "C" fn Instance::remove_ffi(
   self : Instance,
   fd : Int,
-  events~ : Int
+  events~ : Int,
 ) -> Int = "moonbitlang_async_poll_remove"
 
 ///|

@@ -15,6 +15,8 @@
  */
 
 #include <fcntl.h>
+#include <stdint.h>
+#include <unistd.h>
 
 int moonbitlang_async_make_open_flags(
   int mode,
@@ -35,4 +37,9 @@ int moonbitlang_async_make_open_flags(
     flags |= O_CREAT;
 
   return flags;
+}
+
+int64_t moonbitlang_async_lseek(int fd, int64_t offset, int mode) {
+  static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
+  return lseek(fd, offset, whence_list[mode]);
 }

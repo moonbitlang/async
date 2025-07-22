@@ -27,37 +27,25 @@ async fn server(ip : String) -> Int raise {
   try
     @async.with_task_group(fn(group) {
       listen_sock..bind(addr)..listen()
+      defer listen_sock.close()
       for {
         let (conn, _) = listen_sock.accept()
         num_connection += 1
         group.spawn_bg(fn() {
+          defer conn.close()
           let buf = FixedArray::make(1024, b'0')
-          try {
-            while conn.recv(buf) is n && n > 0 {
-              let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-              if msg == b"exit" {
-                raise ServerTerminate
-              }
-            }
-            conn.close()
-          } catch {
-            err => {
-              conn.close()
-              raise err
+          while conn.recv(buf) is n && n > 0 {
+            let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+            if msg == b"exit" {
+              raise ServerTerminate
             }
           }
         })
       }
     })
   catch {
-    ServerTerminate => {
-      listen_sock.close()
-      num_connection
-    }
-    err => {
-      listen_sock.close()
-      raise err
-    }
+    ServerTerminate => num_connection
+    err => raise err
   } noraise {
     (_ : Unit) => panic()
   }
@@ -68,9 +56,9 @@ async fn client(ip : String, msg : Bytes) -> Unit raise {
   let addr = @socket.SocketAddr::parse("\{ip}:\{port}")
   let domain = Domain::from_address(addr)
   let conn = @socket.TCP::new(domain~)
+  defer conn.close()
   conn.connect(addr)
   conn.send(msg)
-  conn.close()
 }
 
 ///|

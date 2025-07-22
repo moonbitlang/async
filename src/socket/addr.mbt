@@ -71,7 +71,7 @@ pub extern "C" fn Ipv6Addr::new(
   ip : FixedArray[Byte],
   port : Int,
   flowinfo : Int,
-  scope_id : Int
+  scope_id : Int,
 ) -> Ipv6Addr = "moonbitlang_async_make_ipv6_addr"
 
 ///|

@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/thread_pool"
 
 // Values
@@ -9,7 +10,7 @@ fn init_thread_pool() -> Int raise
 
 fn open_job(Bytes, Int, Int) -> Job
 
-fn read_job(Int, FixedArray[Byte], Int) -> Job
+fn read_job(Int, FixedArray[Byte], Int, Int) -> Job
 
 fn remove_job(Bytes) -> Job
 
@@ -17,7 +18,7 @@ fn sleep_job(Int) -> Job
 
 fn submit_job(Job) -> Unit
 
-fn write_job(Int, Bytes, Int) -> Job
+fn write_job(Int, Bytes, Int, Int) -> Job
 
 // Types and methods
 type Job

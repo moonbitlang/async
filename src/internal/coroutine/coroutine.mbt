@@ -77,19 +77,12 @@ pub async fn pause() -> Unit raise {
 ///|
 pub async fn suspend() -> Unit raise {
   guard scheduler.curr_coro is Some(coro)
+  defer {
+    scheduler.blocking -= 1
+  }
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
-    fn wrapped_ok_cont(x) {
-      scheduler.blocking -= 1
-      ok_cont(x)
-    }
-
-    fn wrapped_err_cont(err) {
-      scheduler.blocking -= 1
-      err_cont(err)
-    }
-
-    coro.state = Suspend(ok_cont=wrapped_ok_cont, err_cont=wrapped_err_cont)
+    coro.state = Suspend(ok_cont~, err_cont~)
     scheduler.blocking += 1
   })
 }
@@ -109,7 +102,7 @@ pub async fn sleep(duration : Int) -> Unit raise {
 ///|
 pub fn spawn(
   f : async () -> Unit raise,
-  on_error? : (Error) -> Unit
+  on_error? : (Error) -> Unit,
 ) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
@@ -179,18 +172,12 @@ pub async fn protect_from_cancel(f : async () -> Unit raise) -> Unit raise {
     f()
   } else {
     coro.shielded = true
-    try f() catch {
-      err => {
-        coro.shielded = false
-        raise err
-      }
-    } noraise {
-      _ => {
-        coro.shielded = false
-        if coro.cancelled {
-          raise Cancelled
-        }
-      }
+    defer {
+      coro.shielded = false
+    }
+    f()
+    if coro.cancelled {
+      raise Cancelled
     }
   }
 }

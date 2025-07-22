@@ -17,12 +17,16 @@ test "basic create" {
   let buf = FixedArray::make(4, b'0')
   @async.with_event_loop(fn(_) {
     let path = b"basic_create_test\x00"
-    let w = @fs.create(path, permission=0o644, sync=Full)
-    w.write(b"abcd\n", 4)
-    w.close()
-    let r = @fs.open(path, mode=ReadOnly)
-    r.read(buf, 4)
-    r.close()
+    {
+      let w = @fs.create(path, permission=0o644, sync=Full)
+      defer w.close()
+      w.write(b"abcd\n")
+    }
+    {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      guard r.read(buf) == buf.length()
+    }
     @fs.remove(path)
   })
   inspect(buf, content="[b'\\x61', b'\\x62', b'\\x63', b'\\x64']")

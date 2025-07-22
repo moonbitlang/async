@@ -214,9 +214,7 @@ test "spawn_loop cancelled2" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       let mut i = 0
-      root.spawn_loop(no_wait=true, allow_failure=true, retry=FixedDelay(50), fn(
-
-      ) {
+      root.spawn_loop(no_wait=true, allow_failure=true, retry=FixedDelay(50), () => {
         log.write_string("loop \{i}\n")
         i = i + 1
         raise Err

@@ -25,40 +25,33 @@ pub(all) type Printer (String) -> Unit
 async fn server(println : Printer) -> Unit raise {
   @async.with_task_group(fn(group) {
     let listen_sock = @socket.TCP::new()
+    defer listen_sock.close()
     listen_sock..bind(@socket.SocketAddr::parse("0.0.0.0:\{port}"))..listen()
     try {
       for {
         let (conn, _) = listen_sock.accept()
         println("received new connection")
         group.spawn_bg(fn() {
+          defer conn.close()
           let buf = FixedArray::make(1024, b'0')
-          try {
-            while conn.recv(buf) is n && n > 0 {
-              let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-              println("server received: \{msg}")
-              let reply = b"pong"
-              conn.send(reply)
-              println("server sent: \{reply}")
-              if msg == b"exit" {
-                println("server initiate terminate")
-                raise ServerTerminate
-              }
-            } else {
-              println("server: connection closed by peer")
+          while conn.recv(buf) is n && n > 0 {
+            let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+            println("server received: \{msg}")
+            let reply = b"pong"
+            conn.send(reply)
+            println("server sent: \{reply}")
+            if msg == b"exit" {
+              println("server initiate terminate")
+              raise ServerTerminate
             }
-            conn.close()
-          } catch {
-            err => {
-              conn.close()
-              raise err
-            }
+          } else {
+            println("server: connection closed by peer")
           }
         })
       }
     } catch {
       err => {
         println("server terminate: \{err}")
-        listen_sock.close()
         raise err
       }
     }
@@ -68,6 +61,7 @@ async fn server(println : Printer) -> Unit raise {
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
+  defer conn.close()
   conn.connect(@socket.SocketAddr::parse("127.0.0.1:\{port}"))
   // The sleep here is used to make test result stable and portable,
   // because this message is in race condition
@@ -77,20 +71,11 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   conn.send(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
-  try {
-    if conn.recv(buf) is n && n > 0 {
-      let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-      println("client \{id} received: \{msg}")
-    } else {
-      println("client \{id}: connection closed by peer")
-    }
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
-  } noraise {
-    _ => conn.close()
+  if conn.recv(buf) is n && n > 0 {
+    let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+    println("client \{id} received: \{msg}")
+  } else {
+    println("client \{id}: connection closed by peer")
   }
 }
 

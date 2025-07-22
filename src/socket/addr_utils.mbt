@@ -14,7 +14,7 @@
 
 ///|
 fn try_parse_ipv6(
-  input : String
+  input : String,
 ) -> (FixedArray[UInt], Int, Int, Int) raise InvalidAddr {
   // Make sure the format is [addr]:port
   guard input.has_prefix("[") else {
@@ -67,7 +67,7 @@ fn parse_ipv6_to_bytes(ip_str : String) -> FixedArray[UInt] raise InvalidAddr {
 
 ///|
 fn parse_compressed_ipv6_to_bytes(
-  ip_str : String
+  ip_str : String,
 ) -> FixedArray[UInt] raise InvalidAddr {
   let parts = ip_str.split("::").collect()
   let left_part = parts[0]
@@ -150,7 +150,7 @@ fn parse_compressed_ipv6_to_bytes(
 
 ///|
 fn parse_full_ipv6_to_bytes(
-  ip_str : String
+  ip_str : String,
 ) -> FixedArray[UInt] raise InvalidAddr {
   let parts = ip_str.split(":").collect()
   let result : FixedArray[UInt] = FixedArray::make(16, 0)
@@ -207,7 +207,7 @@ fn parse_ipv6_group(group : String) -> UInt raise InvalidAddr {
 
 ///|
 fn parse_ipv4_to_bytes(
-  ip_str : @string.View
+  ip_str : @string.View,
 ) -> (UInt, UInt, UInt, UInt) raise InvalidAddr {
   let parts = ip_str.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }

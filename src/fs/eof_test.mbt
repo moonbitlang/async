@@ -13,29 +13,27 @@
 // limitations under the License.
 
 ///|
-extern "C" fn pipe_ffi(out : FixedArray[Int]) -> Int = "moonbitlang_async_pipe"
-
-///|
-extern "C" fn get_blocking(fd : Int) -> Int = "moonbitlang_async_get_blocking"
-
-///|
-extern "C" fn set_nonblock(fd : Int) -> Int = "moonbitlang_async_set_nonblock"
-
-///|
-extern "C" fn set_blocking(fd : Int) -> Int = "moonbitlang_async_set_blocking"
-
-///|
-extern "C" fn read_ffi(
-  fd : Int,
-  buf : FixedArray[Byte],
-  offset : Int,
-  max_len : Int,
-) -> Int = "moonbitlang_async_read"
-
-///|
-extern "C" fn write_ffi(
-  fd : Int,
-  buf : Bytes,
-  offset : Int,
-  max_len : Int,
-) -> Int = "moonbitlang_async_write"
+test "read EOF" {
+  let buf = FixedArray::make(16, b'0')
+  @async.with_event_loop(fn(_) {
+    let path = b"read_eof_test\x00"
+    {
+      let w = @fs.create(path, permission=0o644, sync=Full)
+      defer w.close()
+      w.write(b"abcd")
+    }
+    let n = {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      r.read(buf)
+    }
+    @fs.remove(path)
+    assert_eq(n, 4)
+    inspect(
+      buf.unsafe_reinterpret_as_bytes()[0:n],
+      content=(
+        #|b"\x61\x62\x63\x64"
+      ),
+    )
+  })
+}

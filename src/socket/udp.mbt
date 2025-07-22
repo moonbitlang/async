@@ -68,7 +68,7 @@ pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int
+  max_len? : Int,
 ) -> Int raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
@@ -105,7 +105,7 @@ pub async fn UDP::recvfrom(
   self : UDP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int
+  max_len? : Int,
 ) -> (Int, SocketAddr) raise {
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
@@ -137,7 +137,7 @@ pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int
+  len? : Int,
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
@@ -170,7 +170,7 @@ pub async fn UDP::sendto(
   buf : Bytes,
   addr : SocketAddr,
   offset~ : Int = 0,
-  len? : Int
+  len? : Int,
 ) -> Unit raise {
   let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self

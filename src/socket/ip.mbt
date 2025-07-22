@@ -112,7 +112,7 @@ extern "C" fn ipv6_addrlen_ffi() -> Int = "moonbitlang_ipv6_addrlen"
 #borrow(addr)
 extern "C" fn get_ipaddr_detail_ffi(
   addr : IpAddr,
-  cb : (Int, Int, Int, Int) -> Bool
+  cb : (Int, Int, Int, Int) -> Bool,
 ) -> Int = "moonbitlang_get_ip_addr_detail"
 
 ///|
@@ -180,7 +180,7 @@ impl ToIpAddr for IpAddr with to_socket_addr(self : IpAddr) -> SocketAddr raise 
     family_val : Int,
     _port_val : Int,
     _flowinfo_val : Int,
-    _scope_id_val : Int
+    _scope_id_val : Int,
   ) {
     family = family_val
     return true

@@ -1,9 +1,10 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/socket"
 
 // Values
 
 // Types and methods
-pub type! ConnectionClosed
+pub suberror ConnectionClosed
 impl Show for ConnectionClosed
 
 pub(all) enum Domain {
@@ -13,7 +14,7 @@ pub(all) enum Domain {
 fn Domain::from_address(SocketAddr) -> Self
 impl Show for Domain
 
-pub type! InvalidAddr
+pub suberror InvalidAddr
 impl Show for InvalidAddr
 
 type Ipv4Addr
