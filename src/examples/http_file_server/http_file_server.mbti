@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/examples/http_file_server"
+
+// Values
+
+// Errors
+type InvalidRequest
+impl Show for InvalidRequest
+
+// Types and methods
+type Cmd
+impl Show for Cmd
+
+type HttpHeader
+impl Show for HttpHeader
+
+// Type aliases
+
+// Traits
+
