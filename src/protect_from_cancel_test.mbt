@@ -266,3 +266,46 @@ test "protect_from_cancel in cancellation handler" {
     ),
   )
 }
+
+///|
+test "cancel while scheduled" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    root.spawn_bg(fn() {
+      for _ in 0..<2 {
+        @async.sleep(20)
+        log.write_string("tick\n")
+      }
+    })
+    let task1 = root.spawn(allow_failure=true, fn() {
+      // after calling `pause`, current coroutine would be in `run_later`,
+      // and it will receive cancellation in this situation
+      @async.pause() catch {
+        err => {
+          log.write_string("`pause` cancelled with \{err}\n")
+          @async.protect_from_cancel(fn() {
+            // Now, due to `protect_from_cancel`,
+            // we are allowed to suspend inside cancellation handler.
+            // However, since current coroutine is still in `run_later`,
+            // the scheduler will wakeup current coroutine immediately,
+            // before the timer expires.
+            @async.sleep(30)
+            log.write_string("async cleanup finished\n")
+          })
+          raise err
+        }
+      }
+    })
+    root.spawn_bg(fn() { task1.cancel() })
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|`pause` cancelled with Cancelled
+      #|tick
+      #|async cleanup finished
+      #|tick
+      #|
+    ),
+  )
+}
