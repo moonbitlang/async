@@ -309,3 +309,49 @@ test "cancel while scheduled" {
     ),
   )
 }
+
+///|
+test "error in async cancel" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    root.spawn_bg(fn() {
+      for _ in 0..<3 {
+        @async.sleep(20)
+        log.write_string("tick\n")
+      }
+    })
+    log.write_object(
+      try? @async.with_task_group(fn(group) {
+        group.spawn_bg(no_wait=true, allow_failure=true, fn() {
+          @async.sleep(1000) catch {
+            _ => {
+              log.write_string("performing async cleanup\n")
+              @async.protect_from_cancel(fn() {
+                @async.sleep(20)
+                log.write_string("raising error from async cleanup\n")
+                raise Err
+              })
+            }
+          }
+        })
+        @async.sleep(10)
+        log.write_string("main task of inner group done\n")
+      }),
+    )
+    log.write_string("\ngroup terminates\n")
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|main task of inner group done
+      #|performing async cleanup
+      #|tick
+      #|raising error from async cleanup
+      #|Ok(())
+      #|group terminates
+      #|tick
+      #|tick
+      #|
+    ),
+  )
+}
