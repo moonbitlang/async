@@ -35,22 +35,9 @@ struct TaskGroup[X] {
   children : Array[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
   mut unfinished : Int
+  mut waiting : Int
   mut state : TaskGroupState
   mut result : X?
-}
-
-///|
-fn[X] TaskGroup::cancel(self : TaskGroup[X], err : Error) -> Unit {
-  let old_state = self.state
-  match old_state {
-    Done(_) | Fail(_) if err is @coroutine.Cancelled => ()
-    _ => self.state = Fail(err)
-  }
-  if old_state is Running {
-    for child in self.children {
-      child.cancel()
-    }
-  }
 }
 
 ///|
@@ -66,21 +53,40 @@ fn[X] TaskGroup::spawn_coroutine(
   if not(self.state is Running) {
     raise AlreadyTerminated
   }
+  self.unfinished += 1
   if not(no_wait) {
-    self.unfinished += 1
+    self.waiting += 1
   }
   fn on_completion() {
+    self.unfinished -= 1
     if not(no_wait) {
-      self.unfinished -= 1
-      if self.unfinished == 0 {
-        self.parent.wake()
+      self.waiting -= 1
+      if self.waiting == 0 && self.state is Running {
+        for child in self.children {
+          if child != @coroutine.current_coroutine() {
+            child.cancel()
+          }
+        }
+        self.state = Done
       }
+    }
+    if self.unfinished == 0 {
+      self.parent.wake()
     }
   }
 
   fn on_error(err) {
     if not(allow_failure) {
-      self.cancel(err)
+      if self.state is Running {
+        for child in self.children {
+          if child != @coroutine.current_coroutine() {
+            child.cancel()
+          }
+        }
+        self.state = Fail(err)
+      } else if not(err is @coroutine.Cancelled) {
+        self.state = Fail(err)
+      }
     }
     on_completion()
   }
@@ -164,6 +170,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
     children: [],
     parent: @coroutine.current_coroutine(),
     unfinished: 0,
+    waiting: 0,
     state: Running,
     result: None,
   }
@@ -175,13 +182,18 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
   })
   if tg.unfinished > 0 {
     @coroutine.suspend() catch {
-      err => tg.cancel(err)
+      err =>
+        if tg.state is Running {
+          tg.state = Fail(err)
+          for child in tg.children {
+            child.cancel()
+          }
+        }
     }
   }
-  if tg.state is Running {
-    tg.state = Done
-    for child in tg.children {
-      child.cancel()
+  if tg.unfinished > 0 {
+    protect_from_cancel(@coroutine.suspend) catch {
+      _ => ()
     }
   }
   tg.children.clear()

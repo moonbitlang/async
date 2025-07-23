@@ -223,7 +223,7 @@ test "error in cancellation" {
     log.to_string(),
     content=(
       #|causing other error in cancellation handler
-      #|Ok(())
+      #|Err(Err)
     ),
   )
 }
