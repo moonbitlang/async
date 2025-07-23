@@ -99,10 +99,7 @@ pub async fn sleep(duration : Int) -> Unit raise {
 }
 
 ///|
-pub fn spawn(
-  f : async () -> Unit raise,
-  on_error? : (Error) -> Unit,
-) -> Coroutine {
+pub fn spawn(f : async () -> Unit raise) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
     state: Running,
@@ -127,9 +124,6 @@ pub fn spawn(
       coro.wake()
     }
     coro.downstream.clear()
-    if coro.state is Fail(err) && on_error is Some(on_error) {
-      on_error(err)
-    }
   })
   scheduler.curr_coro = last_coro
   coro

@@ -18,7 +18,7 @@ fn reschedule() -> Unit
 
 async fn sleep(Int) -> Unit raise
 
-fn spawn(async () -> Unit raise, on_error? : (Error) -> Unit) -> Coroutine
+fn spawn(async () -> Unit raise) -> Coroutine
 
 async fn suspend() -> Unit raise
 

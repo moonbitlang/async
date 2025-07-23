@@ -32,9 +32,8 @@ priv enum TaskGroupState {
 /// The type parameter `X` in `TaskGroup[X]` is the result type of the group,
 /// see `with_task_group` for more detail.
 struct TaskGroup[X] {
-  children : Array[@coroutine.Coroutine]
+  children : Set[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
-  mut unfinished : Int
   mut waiting : Int
   mut state : TaskGroupState
   mut result : X?
@@ -53,51 +52,46 @@ fn[X] TaskGroup::spawn_coroutine(
   if not(self.state is Running) {
     raise AlreadyTerminated
   }
-  self.unfinished += 1
   if not(no_wait) {
     self.waiting += 1
   }
-  fn on_completion() {
-    self.unfinished -= 1
-    if not(no_wait) {
-      self.waiting -= 1
-      if self.waiting == 0 && self.state is Running {
-        for child in self.children {
-          if child != @coroutine.current_coroutine() {
-            child.cancel()
-          }
-        }
-        self.state = Done
-      }
-    }
-    if self.unfinished == 0 {
-      self.parent.wake()
-    }
-  }
-
-  fn on_error(err) {
-    if not(allow_failure) {
-      if self.state is Running {
-        for child in self.children {
-          if child != @coroutine.current_coroutine() {
-            child.cancel()
-          }
-        }
-        self.state = Fail(err)
-      } else if not(err is @coroutine.Cancelled) {
-        self.state = Fail(err)
-      }
-    }
-    on_completion()
-  }
-
   async fn worker() raise {
-    f()
-    on_completion()
+    let coro = @coroutine.current_coroutine()
+    defer {
+      if not(no_wait) {
+        self.waiting -= 1
+        if self.waiting == 0 && self.state is Running {
+          for child in self.children {
+            child.cancel()
+          }
+          self.state = Done
+        }
+      }
+      if self.children.is_empty() {
+        self.parent.wake()
+      }
+    }
+    try {
+      defer self.children.remove(coro)
+      f()
+    } catch {
+      err if allow_failure => raise err
+      err => {
+        if self.state is Running {
+          for child in self.children {
+            child.cancel()
+          }
+          self.state = Fail(err)
+        } else if not(err is @coroutine.Cancelled) {
+          self.state = Fail(err)
+        }
+        raise err
+      }
+    }
   }
 
-  let coro = @coroutine.spawn(worker, on_error~)
-  self.children.push(coro)
+  let coro = @coroutine.spawn(worker)
+  self.children.add(coro)
   coro
 }
 
@@ -167,9 +161,8 @@ pub fn[G, X] TaskGroup::spawn(
 /// `with_task_group` will return the result of `f`.
 pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise {
   let tg = {
-    children: [],
+    children: Set::new(),
     parent: @coroutine.current_coroutine(),
-    unfinished: 0,
     waiting: 0,
     state: Running,
     result: None,
@@ -180,7 +173,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
       tg.result = Some(value)
     }
   })
-  if tg.unfinished > 0 {
+  if not(tg.children.is_empty()) {
     @coroutine.suspend() catch {
       err =>
         if tg.state is Running {
@@ -191,7 +184,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
         }
     }
   }
-  if tg.unfinished > 0 {
+  if not(tg.children.is_empty()) {
     protect_from_cancel(@coroutine.suspend) catch {
       _ => ()
     }
