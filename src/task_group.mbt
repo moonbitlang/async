@@ -37,6 +37,7 @@ struct TaskGroup[X] {
   mut waiting : Int
   mut state : TaskGroupState
   mut result : X?
+  group_defer : Array[async () -> Unit raise]
 }
 
 ///|
@@ -152,6 +153,27 @@ pub fn[G, X] TaskGroup::spawn(
 }
 
 ///|
+/// Attach a defer block, represented as a cleanup function, to a task group.
+/// The clenaup function will be invoked when the group terminates.
+/// Group scoped defer blocks are executed in FILO order, just like normal `defer`.
+/// `with_task_group` will only exit after all group defer blocks terminate.
+///
+/// Note that if the whole task group is cancelled,
+/// async operations in group defer block will be cancelled immediately too.
+/// Users can use `protect_from_cancel` to prevent async tasks from being cancelled.
+/// It is highly recommended to add a hard timeout to async defer block in this case,
+/// to avoid infinite hanging due to blocked operation.
+pub fn[X] TaskGroup::add_defer(
+  self : TaskGroup[X],
+  block : async () -> Unit raise,
+) -> Unit raise {
+  if not(self.state is Running) {
+    raise AlreadyTerminated
+  }
+  self.group_defer.push(block)
+}
+
+///|
 /// `with_task_group(f)` creates a new task group and run `f` with the new group.
 /// `f` itself will be run in a child task of the new group.
 /// `with_task_group` exits after all the whole group terminates,
@@ -166,6 +188,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
     waiting: 0,
     state: Running,
     result: None,
+    group_defer: [],
   }
   tg.spawn_bg(fn() {
     let value = f(tg)
@@ -190,6 +213,11 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise 
     }
   }
   tg.children.clear()
+  while tg.group_defer.pop() is Some(defer_block) {
+    defer_block() catch {
+      err => if tg.state is Done { tg.state = Fail(err) }
+    }
+  }
   match tg.state {
     Done => tg.result.unwrap()
     Fail(err) => raise err
