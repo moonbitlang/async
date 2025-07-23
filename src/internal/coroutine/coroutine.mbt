@@ -26,6 +26,7 @@ struct Coroutine {
   mut state : State
   mut shielded : Bool
   mut cancelled : Bool
+  mut ready : Bool
   downstream : Set[Coroutine]
 }
 
@@ -41,6 +42,7 @@ pub impl Hash for Coroutine with hash_combine(self, hasher) {
 
 ///|
 pub fn Coroutine::wake(self : Coroutine) -> Unit {
+  self.ready = true
   scheduler.run_later.push_back(self)
 }
 
@@ -55,13 +57,9 @@ pub(all) suberror Cancelled derive(Show)
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
   self.cancelled = true
-  let last_coro = scheduler.curr_coro
-  scheduler.curr_coro = Some(self)
-  while not(self.shielded) && self.state is Suspend(ok_cont=_, err_cont~) {
-    self.state = Running
-    err_cont(Cancelled)
+  if not(self.shielded || self.ready) {
+    self.wake()
   }
-  scheduler.curr_coro = last_coro
 }
 
 ///|
@@ -70,6 +68,7 @@ pub async fn pause() -> Unit raise {
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
+    coro.ready = true
     scheduler.run_later.push_back(coro)
   })
 }
@@ -107,6 +106,7 @@ pub fn spawn(
   scheduler.coro_id += 1
   let coro = {
     state: Running,
+    ready: false,
     shielded: false,
     downstream: Set::new(),
     coro_id: scheduler.coro_id,

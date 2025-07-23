@@ -94,11 +94,16 @@ fn Scheduler::flush_timer(scheduler : Scheduler) -> Unit {
 pub fn reschedule() -> Unit {
   scheduler.flush_timer()
   while scheduler.run_later.pop_front() is Some(coro) {
-    guard coro.state is Suspend(ok_cont~, err_cont=_) else {  }
+    coro.ready = false
+    guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)
-    ok_cont(())
+    if coro.cancelled && not(coro.shielded) {
+      err_cont(Cancelled)
+    } else {
+      ok_cont(())
+    }
     scheduler.curr_coro = last_coro
     scheduler.flush_timer()
   }

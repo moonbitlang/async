@@ -168,10 +168,10 @@ test "recursive cancel" {
   inspect(
     buf.to_string(),
     content=(
+      #|main task exit
       #|first sleep cancelled with Cancelled
       #|second sleep cancelled with Cancelled
       #|task finished
-      #|main task exit
       #|Ok(())
     ),
   )
@@ -223,7 +223,7 @@ test "error in cancellation" {
     log.to_string(),
     content=(
       #|causing other error in cancellation handler
-      #|Err(Err)
+      #|Ok(())
     ),
   )
 }
