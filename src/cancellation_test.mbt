@@ -151,6 +151,12 @@ test "recursive cancel" {
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        for _ in 0..<3 {
+          @async.sleep(20)
+          buf.write_string("tick\n")
+        }
+      })
       let task = root.spawn(allow_failure=true, fn() {
         @async.sleep(1000) catch {
           err => buf.write_string("first sleep cancelled with \{err}\n")
@@ -160,7 +166,7 @@ test "recursive cancel" {
         }
         buf.write_string("task finished\n")
       })
-      @async.sleep(100)
+      @async.sleep(30)
       task.cancel()
       buf.write_string("main task exit\n")
     }),
@@ -168,10 +174,13 @@ test "recursive cancel" {
   inspect(
     buf.to_string(),
     content=(
+      #|tick
       #|main task exit
       #|first sleep cancelled with Cancelled
       #|second sleep cancelled with Cancelled
       #|task finished
+      #|tick
+      #|tick
       #|Ok(())
     ),
   )

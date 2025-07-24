@@ -101,6 +101,9 @@ pub fn reschedule() -> Unit {
     scheduler.curr_coro = Some(coro)
     if coro.cancelled && not(coro.shielded) {
       err_cont(Cancelled)
+      if coro.state is Suspend(_) && not(coro.shielded) {
+        scheduler.run_later.push_back(coro)
+      }
     } else {
       ok_cont(())
     }
