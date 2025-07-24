@@ -65,6 +65,9 @@ pub fn Coroutine::cancel(self : Coroutine) -> Unit {
 ///|
 pub async fn pause() -> Unit raise {
   guard scheduler.curr_coro is Some(coro)
+  if coro.cancelled && not(coro.shielded) {
+    raise Cancelled
+  }
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
@@ -76,13 +79,16 @@ pub async fn pause() -> Unit raise {
 ///|
 pub async fn suspend() -> Unit raise {
   guard scheduler.curr_coro is Some(coro)
+  if coro.cancelled && not(coro.shielded) {
+    raise Cancelled
+  }
+  scheduler.blocking += 1
   defer {
     scheduler.blocking -= 1
   }
   async_suspend(fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
-    scheduler.blocking += 1
   })
 }
 
