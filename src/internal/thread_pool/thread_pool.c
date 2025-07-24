@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include <moonbit.h>
 
 #ifdef __MACH__
 #include <sys/event.h>
@@ -326,6 +327,24 @@ void moonbitlang_async_submit_job(struct job *job) {
 
 int moonbitlang_async_job_id(struct job *job) {
   return job->job_id;
+}
+
+void moonbitlang_async_free_job(struct job *job) {
+  switch (job->op_code) {
+  case OP_SLEEP: break;
+  case OP_READ:
+    moonbit_decref(job->payload.read.buf);
+    break;
+  case OP_WRITE:
+    moonbit_decref(job->payload.write.buf);
+    break;
+  case OP_OPEN:
+    moonbit_decref(job->payload.open.filename);
+    break;
+  case OP_REMOVE:
+    moonbit_decref(job->payload.remove.path);
+    break;
+  }
 }
 
 struct job *moonbitlang_async_make_sleep_job(int ms) {

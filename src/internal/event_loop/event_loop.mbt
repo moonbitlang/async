@@ -205,6 +205,7 @@ pub async fn perform_job(job : @thread_pool.Job) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let coro = @coroutine.current_coroutine()
   @thread_pool.submit_job(job)
+  defer job.free()
   evloop.jobs[job.id()] = { job, coro }
   @coroutine.protect_from_cancel(@coroutine.suspend)
   if job.err() > 0 {
