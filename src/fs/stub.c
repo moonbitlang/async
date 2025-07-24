@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <moonbit.h>
 
 int moonbitlang_async_make_open_flags(
@@ -60,4 +61,22 @@ moonbit_bytes_t moonbitlang_async_dirent_name(struct dirent *dirent) {
   moonbit_bytes_t result = moonbit_make_bytes(len, 0);
   memcpy(result, dirent->d_name, len);
   return result;
+}
+
+int32_t moonbitlang_async_file_kind(int fd) {
+  struct stat stat;
+
+  if (fstat(fd, &stat) < 0)
+    return -1;
+
+  switch (stat.st_mode & S_IFMT) {
+  case S_IFREG:  return 1;
+  case S_IFDIR:  return 2;
+  case S_IFLNK:  return 3;
+  case S_IFSOCK: return 4;
+  case S_IFIFO:  return 5;
+  case S_IFBLK:  return 6;
+  case S_IFCHR:  return 7;
+  default:       return 0;
+  }
 }

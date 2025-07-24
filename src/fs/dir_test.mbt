@@ -38,3 +38,52 @@ test "read_all" {
     ),
   )
 }
+
+///|
+test "as_dir" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let dir_file = @fs.open("src\x00", mode=ReadOnly)
+    defer dir_file.close()
+    guard dir_file.kind() is Directory
+    let dir = dir_file.as_dir()
+    let list = dir.read_all()
+    list.sort()
+    for file in list {
+      let kind = @fs.open(b"src/" + file + b"\x00", mode=ReadOnly).kind()
+      log.write_string("\{ascii_to_string(file)}: \{kind}\n")
+    }
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|fs: Directory
+      #|pipe: Directory
+      #|aqueue: Directory
+      #|socket: Directory
+      #|example: Directory
+      #|internal: Directory
+      #|os_error: Directory
+      #|task.mbt: Regular
+      #|async.mbt: Regular
+      #|async.mbti: Regular
+      #|moon.pkg.json: Regular
+      #|wait_test.mbt: Regular
+      #|pause_test.mbt: Regular
+      #|spawn_test.mbt: Regular
+      #|task_group.mbt: Regular
+      #|timer_test.mbt: Regular
+      #|worker_test.mbt: Regular
+      #|no_wait_test.mbt: Regular
+      #|spawn_loop_test.mbt: Regular
+      #|group_defer_test.mbt: Regular
+      #|cancellation_test.mbt: Regular
+      #|with_timeout_test.mbt: Regular
+      #|allow_failure_test.mbt: Regular
+      #|missing_close_test.mbt: Regular
+      #|return_immediately_test.mbt: Regular
+      #|protect_from_cancel_test.mbt: Regular
+      #|
+    ),
+  )
+}
