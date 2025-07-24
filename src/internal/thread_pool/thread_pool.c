@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include <dirent.h>
 #include <moonbit.h>
 
 #ifdef __MACH__
@@ -35,7 +36,8 @@ enum op_code {
   OP_READ,
   OP_WRITE,
   OP_OPEN,
-  OP_REMOVE
+  OP_REMOVE,
+  OP_READDIR
 };
 
 struct read_job {
@@ -60,6 +62,11 @@ struct remove_job {
   char *path;
 };
 
+struct readdir_job {
+  DIR *dir;
+  struct dirent **out;
+};
+
 struct job {
   struct job *next;
   int32_t job_id;
@@ -72,6 +79,7 @@ struct job {
     struct write_job write;
     struct open_job open;
     struct remove_job remove;
+    struct readdir_job readdir;
   } payload;
 };
 
@@ -209,6 +217,14 @@ void *worker(void *data) {
       if (job->ret < 0)
         job->err = errno;
       break;
+
+    case OP_READDIR:
+      *(job->payload.readdir.out) = readdir(job->payload.readdir.dir);
+      if (*(job->payload.readdir.out) == 0) {
+        job->ret = -1;
+        job->err = errno;
+      }
+      break;
     }
     write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
@@ -344,6 +360,9 @@ void moonbitlang_async_free_job(struct job *job) {
   case OP_REMOVE:
     moonbit_decref(job->payload.remove.path);
     break;
+  case OP_READDIR:
+    moonbit_decref(job->payload.readdir.out);
+    break;
   }
 }
 
@@ -396,6 +415,16 @@ struct job *moonbitlang_async_make_remove_job(char *path) {
   job->job_id = pool.job_id++;
   job->op_code = OP_REMOVE;
   job->payload.remove.path = path;
+  return job;
+}
+
+struct job *moonbitlang_async_make_readdir_job(DIR *dir, struct dirent **out) {
+  struct job *job = (struct job*)malloc(sizeof(struct job));
+  job->next = 0;
+  job->job_id = pool.job_id++;
+  job->op_code = OP_READDIR;
+  job->payload.readdir.dir = dir;
+  job->payload.readdir.out = out;
   return job;
 }
 
