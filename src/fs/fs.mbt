@@ -206,3 +206,44 @@ pub fn File::size(self : File) -> Int64 raise {
   ignore(self.seek(curr_pos, mode=FromStart))
   size
 }
+
+///|
+extern "C" fn File::as_dir_ffi(self : File) -> Directory = "fdopendir"
+
+///|
+/// Convert a file to directory.
+/// If the file is not a directory, an error will be raised.
+pub fn File::as_dir(self : File) -> Directory raise {
+  let dir = self.as_dir_ffi()
+  if dir.is_null() {
+    @os_error.check_errno()
+  }
+  dir
+}
+
+///|
+pub(all) enum FileKind {
+  Unknown = 0
+  Regular = 1
+  Directory = 2
+  SymLink = 3
+  Socket = 4
+  Pipe = 5
+  BlockDevice = 6
+  CharDevice = 7
+} derive(Show)
+
+///|
+fn FileKind::unsafe_from_int(x : Int) -> FileKind = "%identity"
+
+///|
+extern "C" fn File::kind_ffi(self : File) -> Int = "moonbitlang_async_file_kind"
+
+///|
+pub fn File::kind(self : File) -> FileKind raise {
+  let kind = self.kind_ffi()
+  if kind < 0 {
+    @os_error.check_errno()
+  }
+  FileKind::unsafe_from_int(kind)
+}
