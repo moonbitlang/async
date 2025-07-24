@@ -41,13 +41,15 @@ pub extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
 pub extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
+pub extern "C" fn Job::free(self : Job) = "moonbitlang_async_free_job"
+
+///|
 pub extern "C" fn submit_job(job : Job) = "moonbitlang_async_submit_job"
 
 ///|
 pub extern "C" fn sleep_job(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
 
 ///|
-#borrow(buf)
 pub extern "C" fn read_job(
   fd : Int,
   buf : FixedArray[Byte],
@@ -56,7 +58,6 @@ pub extern "C" fn read_job(
 ) -> Job = "moonbitlang_async_make_read_job"
 
 ///|
-#borrow(buf)
 pub extern "C" fn write_job(
   fd : Int,
   buf : Bytes,
@@ -65,11 +66,9 @@ pub extern "C" fn write_job(
 ) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
-#borrow(filename)
 pub extern "C" fn open_job(filename : Bytes, flags : Int, mode : Int) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
-#borrow(path)
 pub extern "C" fn remove_job(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|

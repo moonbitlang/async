@@ -23,6 +23,7 @@ fn write_job(Int, Bytes, Int, Int) -> Job
 // Types and methods
 type Job
 fn Job::err(Self) -> Int
+fn Job::free(Self) -> Unit
 fn Job::id(Self) -> Int
 fn Job::ret(Self) -> Int
 
