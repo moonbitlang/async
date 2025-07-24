@@ -90,7 +90,7 @@ test "aqueue cancellation" {
         queue.put(x)
       }
     })
-    @async.with_timeout(250, fn() {
+    @async.with_timeout(225, fn() {
       for {
         let x = queue.get() catch {
           err => {
