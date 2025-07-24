@@ -205,7 +205,7 @@ void *worker(void *data) {
     case OP_OPEN:
       job->ret = open(
         job->payload.open.filename,
-        job->payload.open.flags,
+        job->payload.open.flags | O_CLOEXEC,
         job->payload.open.mode
       );
       if (job->ret < 0)
@@ -264,18 +264,24 @@ int moonbitlang_async_init_thread_pool() {
     // set the write end of the notification pipe as blocking,
     // and the read end as non-blocking
     int flags = fcntl(notification_pipe[i], F_GETFL);
-    if (flags < 0) {
-      close(notification_pipe[0]);
-      close(notification_pipe[1]);
-      return -1;
-    }
+    if (flags < 0) goto fcntl_error;
 
     int new_flags = i == 0 ? flags | O_NONBLOCK : flags & ~O_NONBLOCK;
-    if (flags != new_flags && 0 != fcntl(notification_pipe[i], F_SETFL, new_flags)) {
-      close(notification_pipe[0]);
-      close(notification_pipe[1]);
-      return -1;
-    }
+    if (flags != new_flags && 0 != fcntl(notification_pipe[i], F_SETFL, new_flags))
+      goto fcntl_error;
+
+    flags = fcntl(notification_pipe[i], F_GETFD);
+    if (flags < 0) goto fcntl_error;
+
+    if (0 != fcntl(notification_pipe[i], F_SETFD, flags | FD_CLOEXEC))
+      goto fcntl_error;
+
+    continue;
+
+  fcntl_error:
+    close(notification_pipe[0]);
+    close(notification_pipe[1]);
+    return -1;
   }
 
   pthread_mutex_init(&pool_mutex, 0);
