@@ -18,7 +18,26 @@
 #include <fcntl.h>
 
 int moonbitlang_async_pipe(int *fds) {
-  return pipe(fds);
+  if (pipe(fds) < 0)
+    return -1;
+
+  int flags = fcntl(fds[0], F_GETFD);
+  if (flags < 0) return flags;
+
+  if (!(flags & FD_CLOEXEC)) {
+    if (fcntl(fds[0], F_SETFD, flags | FD_CLOEXEC) < 0)
+      return -1;
+  }
+
+  flags = fcntl(fds[1], F_GETFD);
+  if (flags < 0) return flags;
+
+  if (!(flags & FD_CLOEXEC)) {
+    if (fcntl(fds[1], F_SETFD, flags | FD_CLOEXEC) < 0)
+      return -1;
+  }
+
+  return 0;
 }
 
 int moonbitlang_async_get_blocking(int fd) {

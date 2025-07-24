@@ -23,7 +23,7 @@
 #include <moonbit.h>
 
 int moonbitlang_async_make_tcp_socket() {
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  int sock = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
   if (sock > 0) {
     int flags = fcntl(sock, F_GETFL);
     if (flags < 0)
