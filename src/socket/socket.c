@@ -23,35 +23,11 @@
 #include <moonbit.h>
 
 int moonbitlang_async_make_tcp_socket() {
-  int sock = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-  if (sock > 0) {
-    int flags = fcntl(sock, F_GETFL);
-    if (flags < 0)
-      return flags;
-
-    if (!(flags & O_NONBLOCK)) {
-      int status = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-      if (status < 0)
-        return status;
-    }
-  }
-  return sock;
+  return socket(AF_INET, SOCK_STREAM, 0);
 }
 
 int moonbitlang_async_make_udp_socket() {
-  int sock = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sock > 0) {
-    int flags = fcntl(sock, F_GETFL);
-    if (flags < 0)
-      return flags;
-
-    if (!(flags & O_NONBLOCK)) {
-      int status = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-      if (status < 0)
-        return status;
-    }
-  }
-  return sock;
+  return socket(AF_INET, SOCK_DGRAM, 0);
 }
 
 int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {

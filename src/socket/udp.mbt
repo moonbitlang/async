@@ -19,8 +19,14 @@ type UDP Int
 ///|
 /// Create a new UDP socket using the `socket(2)` system call.
 /// The created socket always operate in non-blocking mode.
-pub fn UDP::new() -> UDP {
-  make_udp_socket()
+pub fn UDP::new() -> UDP raise {
+  let sock = make_udp_socket()
+  if sock < 0 {
+    @os_error.check_errno()
+  }
+  @fd_util.set_cloexec(sock)
+  @fd_util.set_nonblocking(sock)
+  UDP(sock)
 }
 
 ///|

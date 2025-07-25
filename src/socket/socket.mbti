@@ -24,7 +24,7 @@ fn TCP::close(Self) -> Unit
 async fn TCP::connect(Self, Addr) -> Unit raise
 fn TCP::enable_keepalive(Self, idle_before_keep_alive~ : Int = .., keep_alive_count~ : Int = .., keep_alive_interval~ : Int = ..) -> Unit raise
 fn TCP::listen(Self) -> Unit raise
-fn TCP::new() -> Self
+fn TCP::new() -> Self raise
 async fn TCP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
 async fn TCP::recv_exactly(Self, Int) -> Bytes raise
 async fn TCP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
@@ -33,7 +33,7 @@ type UDP
 fn UDP::bind(Self, Addr) -> Unit raise
 fn UDP::close(Self) -> Unit
 fn UDP::connect(Self, Addr) -> Unit raise
-fn UDP::new() -> Self
+fn UDP::new() -> Self raise
 async fn UDP::recv(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> Int raise
 async fn UDP::recvfrom(Self, FixedArray[Byte], offset~ : Int = .., max_len? : Int) -> (Int, Addr) raise
 async fn UDP::send(Self, Bytes, offset~ : Int = .., len? : Int) -> Unit raise
