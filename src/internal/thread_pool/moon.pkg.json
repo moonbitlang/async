@@ -1,4 +1,7 @@
 {
-  "import": [ "moonbitlang/async/os_error" ],
+  "import": [
+    "moonbitlang/async/os_error",
+    "moonbitlang/async/internal/fd_util"
+  ],
   "native-stub": [ "thread_pool.c" ]
 }

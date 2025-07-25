@@ -105,7 +105,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     self.poll.remove(fd, events=task.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
-    close_ffi(fd)
+    @fd_util.close(fd)
   }
   self.tasks.clear()
 }
@@ -194,11 +194,10 @@ pub fn close_fd(fd : Int) -> Unit {
       err => abort("detach \{fd} from loop: \{err}")
     }
   }
-  close_ffi(fd)
+  @fd_util.close(fd) catch {
+    _ => ()
+  }
 }
-
-///|
-extern "C" fn close_ffi(fd : Int) = "close"
 
 ///|
 pub async fn perform_job(job : @thread_pool.Job) -> Int raise {

@@ -13,15 +13,25 @@
 // limitations under the License.
 
 ///|
-extern "C" fn init_thread_pool_ffi() -> Int = "moonbitlang_async_init_thread_pool"
+extern "C" fn init_thread_pool_ffi(notify_recv : Int, notify_send : Int) -> Int = "moonbitlang_async_init_thread_pool"
 
 ///|
 pub fn init_thread_pool() -> Int raise {
-  let completion_fd = init_thread_pool_ffi()
-  if completion_fd < 0 {
+  let (notify_recv, notify_send) = @fd_util.pipe()
+  try {
+    @fd_util.set_nonblocking(notify_recv)
+    @fd_util.set_blocking(notify_send)
+  } catch {
+    err => {
+      @fd_util.close(notify_recv)
+      @fd_util.close(notify_send)
+      raise err
+    }
+  }
+  if init_thread_pool_ffi(notify_recv, notify_send) < 0 {
     @os_error.check_errno()
   }
-  completion_fd
+  notify_recv
 }
 
 ///|

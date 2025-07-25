@@ -36,17 +36,9 @@ pub fn PipeWrite::fd(self : PipeWrite) -> Int {
 /// Create a pipe using `pipe(2)` system call.
 /// Return the read end and write end of the pipe.
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
-  let fds : FixedArray[Int] = [0, 0]
-  if 0 != pipe_ffi(fds) {
-    @os_error.check_errno()
-  }
-  guard fds is [r, w]
-  if set_nonblock(r) < 0 {
-    @os_error.check_errno()
-  }
-  if set_nonblock(w) < 0 {
-    @os_error.check_errno()
-  }
+  let (r, w) = @fd_util.pipe()
+  @fd_util.set_nonblocking(r)
+  @fd_util.set_nonblocking(w)
   (PipeRead(r), PipeWrite(w))
 }
 
@@ -61,7 +53,9 @@ let stdio_need_reset : Array[Int] = []
 pub let stdin : PipeRead = {
   if get_blocking(0) > 0 {
     stdio_need_reset.push(0)
-    ignore(set_nonblock(0))
+    @fd_util.set_nonblocking(0) catch {
+      _ => ()
+    }
   }
   PipeRead(0)
 }
@@ -74,7 +68,9 @@ pub let stdin : PipeRead = {
 pub let stdout : PipeWrite = {
   if get_blocking(1) > 0 {
     stdio_need_reset.push(1)
-    ignore(set_nonblock(1))
+    @fd_util.set_nonblocking(1) catch {
+      _ => ()
+    }
   }
   PipeWrite(1)
 }
@@ -87,7 +83,9 @@ pub let stdout : PipeWrite = {
 pub let stderr : PipeWrite = {
   if get_blocking(2) > 0 {
     stdio_need_reset.push(2)
-    ignore(set_nonblock(2))
+    @fd_util.set_nonblocking(2) catch {
+      _ => ()
+    }
   }
   PipeWrite(2)
 }
@@ -98,7 +96,9 @@ pub let stderr : PipeWrite = {
 /// If stdio is already in non-blocking mode, this function does nothing.
 pub fn reset_stdio() -> Unit {
   for fd in stdio_need_reset {
-    ignore(set_blocking(fd))
+    @fd_util.set_blocking(fd) catch {
+      _ => ()
+    }
   }
 }
 

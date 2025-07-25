@@ -19,8 +19,14 @@ type TCP Int
 ///|
 /// Create a new TCP socket using the `socket(2)` system call.
 /// The created socket always operate in non-blocking mode.
-pub fn TCP::new() -> TCP {
-  make_tcp_socket()
+pub fn TCP::new() -> TCP raise {
+  let sock = make_tcp_socket()
+  if sock < 0 {
+    @os_error.check_errno()
+  }
+  @fd_util.set_cloexec(sock)
+  @fd_util.set_nonblocking(sock)
+  TCP(sock)
 }
 
 ///|

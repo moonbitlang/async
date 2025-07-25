@@ -246,7 +246,7 @@ void *worker(void *data) {
   return 0;
 }
 
-int moonbitlang_async_init_thread_pool() {
+int moonbitlang_async_init_thread_pool(int notify_recv, int notify_send) {
   if (pool.initialized)
     abort();
 
@@ -256,42 +256,14 @@ int moonbitlang_async_init_thread_pool() {
   pool.worker_count = 0;
   pool.free_worker_count = 0;
 
-  int notification_pipe[2];
-  if (0 != pipe(notification_pipe))
-    return -1;
-
-  for (int i = 0; i < 2; ++i) {
-    // set the write end of the notification pipe as blocking,
-    // and the read end as non-blocking
-    int flags = fcntl(notification_pipe[i], F_GETFL);
-    if (flags < 0) goto fcntl_error;
-
-    int new_flags = i == 0 ? flags | O_NONBLOCK : flags & ~O_NONBLOCK;
-    if (flags != new_flags && 0 != fcntl(notification_pipe[i], F_SETFL, new_flags))
-      goto fcntl_error;
-
-    flags = fcntl(notification_pipe[i], F_GETFD);
-    if (flags < 0) goto fcntl_error;
-
-    if (0 != fcntl(notification_pipe[i], F_SETFD, flags | FD_CLOEXEC))
-      goto fcntl_error;
-
-    continue;
-
-  fcntl_error:
-    close(notification_pipe[0]);
-    close(notification_pipe[1]);
-    return -1;
-  }
-
   pthread_mutex_init(&pool_mutex, 0);
 
   sigemptyset(&pool.wakeup_signal);
   sigaddset(&pool.wakeup_signal, SIGUSR1);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 
-  pool.notify_recv = notification_pipe[0];
-  pool.notify_send = notification_pipe[1];
+  pool.notify_recv = notify_recv;
+  pool.notify_send = notify_send;
   pool.initialized = 1;
   return pool.notify_recv;
 }
