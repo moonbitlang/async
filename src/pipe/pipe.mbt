@@ -137,6 +137,7 @@ pub async fn PipeRead::read(
     @event_loop.wait_fd_read(fd)
     read_ffi(fd, buf, offset, max_len)
   } else {
+    @async.pause()
     n_read
   }
   if n_read < 0 {
