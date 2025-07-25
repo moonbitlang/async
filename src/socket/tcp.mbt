@@ -132,6 +132,7 @@ pub async fn TCP::recv(
     @event_loop.wait_fd_read(sock)
     recv_ffi(sock, buf, offset, max_len)
   } else {
+    @async.pause()
     n_read
   }
   if n_read < 0 {
