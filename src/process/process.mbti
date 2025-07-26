@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/process"
+
+import(
+  "moonbitlang/async/pipe"
+)
+
+// Values
+async fn spawn(Bytes, Array[Bytes], extra_env~ : Map[Bytes, Bytes] = .., inherit_env~ : Bool = .., stdin? : @pipe.PipeRead, stdout? : @pipe.PipeWrite, stderr? : @pipe.PipeWrite) -> Process raise
+
+// Types and methods
+type Process
+
+// Type aliases
+
+// Traits
+
