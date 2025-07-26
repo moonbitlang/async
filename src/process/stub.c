@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <sys/wait.h>
 #include <string.h>
 #include <moonbit.h>
 

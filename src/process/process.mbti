@@ -10,6 +10,7 @@ async fn spawn(Bytes, Array[Bytes], extra_env~ : Map[Bytes, Bytes] = .., inherit
 
 // Types and methods
 type Process
+async fn Process::wait(Self) -> Int raise
 
 // Type aliases
 
