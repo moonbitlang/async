@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #ifdef __linux__
+#include <sys/syscall.h>
 #include <sys/epoll.h>
 
 int moonbitlang_async_poll_create() {
@@ -34,6 +35,9 @@ static const int ev_masks[] = {
   EPOLLIN | EPOLLOUT,
 };
 
+// use mask to classify different kinds of entity
+static const uint64_t pid_mask = (uint64_t)1 << 63;
+
 int moonbitlang_async_poll_register(
   int epfd,
   int fd,
@@ -48,14 +52,33 @@ int moonbitlang_async_poll_register(
   events |= EPOLLET;
 
   epoll_data_t data;
-  data.fd = fd;
+  data.u64 = fd;
   struct epoll_event event = { events, data };
   int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
   return epoll_ctl(epfd, op, fd, &event);
 }
 
+int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
+  int pidfd = syscall(SYS_pidfd_open, pid, 0);
+  if (pidfd < 0)
+    return -1;
+
+  epoll_data_t data;
+  data.u64 = pid_mask | pidfd;
+
+  struct epoll_event event = { EPOLLIN, data };
+  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &event);
+  if (ret < 0)
+    return ret;
+
+  return pidfd;
+}
+
 int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
-  return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
+  int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
+  if (events & 4)
+    close(fd);
+  return ret;
 }
 
 #define EVENT_BUFFER_SIZE 1024
@@ -71,10 +94,13 @@ struct epoll_event* moonbitlang_async_event_list_get(int index) {
 }
 
 int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
-  return ev->data.fd;
+  return ev->data.u64 & ~pid_mask;
 }
 
 int moonbitlang_async_event_get_events(struct epoll_event *ev) {
+  if (ev->data.u64 & pid_mask)
+    return 4;
+
   if (ev->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
     return 3;
 
@@ -126,6 +152,16 @@ int moonbitlang_async_poll_register(
   return kevent(kqfd, &event, 1, 0, 0, 0);
 }
 
+int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid) {
+  struct kevent event;
+  EV_SET(&event, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, 0);
+  int ret = kevent(kqfd, &event, 1, 0, 0, 0);
+  if (ret < 0)
+    return ret;
+
+  return pid;
+}
+
 int moonbitlang_async_poll_remove(int kqfd, int fd, int events) {
   struct kevent event;
   EV_SET(&event, fd, ev_masks[events], EV_DELETE, 0, 0, 0);
@@ -155,6 +191,9 @@ int moonbitlang_async_event_get_events(struct kevent *ev) {
 
   if (ev->filter == EVFILT_WRITE)
     return 2;
+
+  if (ev->filter == EVFILT_PROC)
+    return 4;
 
   if (ev->flags & EV_ERROR)
     return 3;

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <sys/wait.h>
 #include <string.h>
 #include <moonbit.h>
 
@@ -35,4 +36,14 @@ moonbit_bytes_t *moonbitlang_async_get_curr_env() {
   result[len] = 0;
 
   return result;
+}
+
+pid_t moonbitlang_async_process_wait(pid_t pid, int *out) {
+  int wstatus = 0;
+  int ret = waitpid(pid, &wstatus, WNOHANG | WSTOPPED);
+  if (ret <= 0)
+    return ret;
+
+  *out = WEXITSTATUS(wstatus);
+  return ret;
 }

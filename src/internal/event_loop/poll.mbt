@@ -25,6 +25,9 @@ const Read = 1
 const Write = 2
 
 ///|
+const Process = 4
+
+///|
 extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
 
 ///|
@@ -50,6 +53,18 @@ fn Instance::register(
   if 0 != self.register_ffi(fd, prev_events~, new_events~, oneshot~) {
     @os_error.check_errno()
   }
+}
+
+///|
+extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
+
+///|
+fn Instance::register_pid(self : Instance, pid : Int) -> Int raise {
+  let handle = self.register_pid_ffi(pid)
+  if handle < 0 {
+    @os_error.check_errno()
+  }
+  handle
 }
 
 ///|

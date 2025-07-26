@@ -93,3 +93,20 @@ pub async fn spawn(
   let job = @thread_pool.spawn_job(cmd, argv, env, stdin, stdout, stderr)
   Process(@event_loop.perform_job(job))
 }
+
+///|
+#borrow(out)
+extern "C" fn wait_ffi(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_process_wait"
+
+///|
+pub async fn Process::wait(self : Process) -> Int raise {
+  let Process(pid) = self
+  @event_loop.wait_pid(pid)
+  let out = @ref.new(0)
+  let ret = wait_ffi(pid, out)
+  if ret < 0 {
+    @os_error.check_errno()
+  }
+  guard ret == pid
+  out.val
+}
