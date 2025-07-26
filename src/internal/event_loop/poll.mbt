@@ -25,6 +25,9 @@ const Read = 1
 const Write = 2
 
 ///|
+const Process = 4
+
+///|
 extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
 
 ///|
@@ -53,6 +56,18 @@ fn Instance::register(
 }
 
 ///|
+extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
+
+///|
+fn Instance::register_pid(self : Instance, pid : Int) -> Int raise {
+  let handle = self.register_pid_ffi(pid)
+  if handle < 0 {
+    @os_error.check_errno()
+  }
+  handle
+}
+
+///|
 extern "C" fn Instance::remove_ffi(
   self : Instance,
   fd : Int,
@@ -62,6 +77,19 @@ extern "C" fn Instance::remove_ffi(
 ///|
 fn Instance::remove(self : Instance, fd : Int, events~ : Int) -> Unit raise {
   if 0 != self.remove_ffi(fd, events~) {
+    @os_error.check_errno()
+  }
+}
+
+///|
+extern "C" fn Instance::remove_pid_ffi(
+  self : Instance,
+  pid_handle : Int,
+) -> Int = "moonbitlang_async_poll_remove_pid"
+
+///|
+fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit raise {
+  if 0 != self.remove_pid_ffi(pid_handle) {
     @os_error.check_errno()
   }
 }
@@ -78,6 +106,10 @@ extern "C" fn Event::fd(self : Event) -> Int = "moonbitlang_async_event_get_fd"
 
 ///|
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
+
+///|
+#borrow(out)
+extern "C" fn Event::pid_status(self : Event, out : Ref[Int]) -> Int = "moonbitlang_async_event_get_pid_status"
 
 ///|
 extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"

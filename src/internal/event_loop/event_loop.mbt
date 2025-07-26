@@ -17,6 +17,7 @@ priv struct EventLoop {
   poll : Instance
   tasks : Map[Int, Task]
   jobs : Map[Int, JobHandle]
+  pids : Map[Int, ProcessHandle]
   job_completion_pipe : Int
 }
 
@@ -34,6 +35,12 @@ priv struct JobHandle {
 }
 
 ///|
+priv struct ProcessHandle {
+  mut result : Int
+  waiters : Set[@coroutine.Coroutine]
+}
+
+///|
 let curr_loop : Ref[EventLoop?] = @ref.new(None)
 
 ///|
@@ -45,6 +52,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
     poll: Instance::new(),
     tasks: {},
     jobs: {},
+    pids: {},
     job_completion_pipe,
   }
   defer evloop.poll.destroy()
@@ -78,24 +86,37 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     @coroutine.reschedule()
     for i in 0..<n {
       let event = get_event(i)
+      let events = event.events()
       let fd = event.fd()
-      if fd == self.job_completion_pipe {
+      if (events & Process) != 0 {
+        if self.pids.get(fd) is Some(handle) {
+          let result = @ref.new(0)
+          if event.pid_status(result) < 0 {
+            @os_error.check_errno()
+          }
+          handle.result = result.val
+          self.pids.remove(fd)
+          for coro in handle.waiters {
+            coro.wake()
+          }
+        }
+        self.poll.remove_pid(fd)
+      } else if fd == self.job_completion_pipe {
         while @thread_pool.fetch_completion() is Some(job_id) {
           guard self.jobs.get(job_id) is Some({ job: _, coro })
           self.jobs.remove(job_id)
           coro.wake()
         }
-        continue
-      }
-      guard self.tasks.get(fd) is Some(task)
-      let events = event.events()
-      if task.read is Some(coro) && (events & Read) != 0 {
-        task.read = None
-        coro.wake()
-      }
-      if task.write is Some(coro) && (events & Write) != 0 {
-        task.write = None
-        coro.wake()
+      } else {
+        guard self.tasks.get(fd) is Some(task)
+        if task.read is Some(coro) && (events & Read) != 0 {
+          task.read = None
+          coro.wake()
+        }
+        if task.write is Some(coro) && (events & Write) != 0 {
+          task.write = None
+          coro.wake()
+        }
       }
     }
     @coroutine.reschedule()
@@ -107,6 +128,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     }
     @fd_util.close(fd)
   }
+  guard self.pids.is_empty()
   self.tasks.clear()
 }
 
@@ -183,6 +205,33 @@ pub async fn wait_fd_write(fd : Int) -> Unit raise {
       raise err
     }
   }
+}
+
+///|
+pub async fn wait_pid(pid : Int) -> Int raise {
+  guard curr_loop.val is Some(evloop)
+  let alt_id = evloop.poll.register_pid(pid)
+  let handle = match evloop.pids.get(alt_id) {
+    None => {
+      let handle = { result: 0, waiters: Set::new() }
+      evloop.pids[alt_id] = handle
+      handle
+    }
+    Some(handle) => handle
+  }
+  let coro = @coroutine.current_coroutine()
+  handle.waiters.add(coro)
+  @coroutine.suspend() catch {
+    err => {
+      handle.waiters.remove(coro)
+      if handle.waiters.is_empty() {
+        evloop.pids.remove(alt_id)
+        evloop.poll.remove_pid(alt_id)
+      }
+      raise err
+    }
+  }
+  handle.result
 }
 
 ///|

@@ -13,7 +13,10 @@
 // limitations under the License.
 
 ///|
-type Process Int
+struct Process {
+  pid : Int
+  mut exit_status : Int?
+}
 
 ///|
 extern "C" fn get_curr_env() -> FixedArray[Bytes?] = "moonbitlang_async_get_curr_env"
@@ -91,5 +94,15 @@ pub async fn spawn(
     }
   }
   let job = @thread_pool.spawn_job(cmd, argv, env, stdin, stdout, stderr)
-  Process(@event_loop.perform_job(job))
+  { pid: @event_loop.perform_job(job), exit_status: None }
+}
+
+///|
+pub async fn Process::wait(self : Process) -> Int raise {
+  if self.exit_status is Some(status) {
+    return status
+  }
+  let status = @event_loop.wait_pid(self.pid)
+  self.exit_status = Some(status)
+  status
 }
