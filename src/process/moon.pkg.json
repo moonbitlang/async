@@ -1,0 +1,10 @@
+{
+  "import": [
+    "moonbitlang/async/internal/event_loop",
+    "moonbitlang/async/internal/thread_pool",
+    "moonbitlang/async/internal/fd_util",
+    "moonbitlang/async/pipe"
+  ],
+  "test-import": [ "moonbitlang/async" ],
+  "native-stub": [ "stub.c" ]
+}

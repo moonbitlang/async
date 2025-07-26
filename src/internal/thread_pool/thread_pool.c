@@ -22,14 +22,18 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <time.h>
 #include <dirent.h>
+#include <spawn.h>
 #include <moonbit.h>
 
 #ifdef __MACH__
 #include <sys/event.h>
 #endif
+
+extern char **environ;
 
 enum op_code {
   OP_SLEEP = 0, // for testing only
@@ -37,7 +41,8 @@ enum op_code {
   OP_WRITE,
   OP_OPEN,
   OP_REMOVE,
-  OP_READDIR
+  OP_READDIR,
+  OP_SPAWN
 };
 
 struct read_job {
@@ -67,6 +72,15 @@ struct readdir_job {
   struct dirent **out;
 };
 
+struct spawn_job {
+  char *path;
+  char **args;
+  char **envp;
+  int stdin_fd;
+  int stdout_fd;
+  int stderr_fd;
+};
+
 struct job {
   struct job *next;
   int32_t job_id;
@@ -80,6 +94,7 @@ struct job {
     struct open_job open;
     struct remove_job remove;
     struct readdir_job readdir;
+    struct spawn_job spawn;
   } payload;
 };
 
@@ -225,6 +240,56 @@ void *worker(void *data) {
         job->err = errno;
       }
       break;
+
+    case OP_SPAWN: {
+      posix_spawnattr_t attr;
+      posix_spawnattr_init(&attr);
+      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK);
+      posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
+
+      posix_spawn_file_actions_t file_actions;
+      posix_spawn_file_actions_init(&file_actions);
+      if (job->payload.spawn.stdin_fd >= 0) {
+        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stdin_fd, 0);
+        if (job->err) goto exit;
+      }
+      if (job->payload.spawn.stdout_fd >= 0) {
+        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stdout_fd, 1);
+        if (job->err) goto exit;
+      }
+      if (job->payload.spawn.stderr_fd >= 0) {
+        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stderr_fd, 2);
+        if (job->err) goto exit;
+      }
+
+      int32_t pid;
+      if (strchr(job->payload.spawn.path, '/')) {
+        job->err = posix_spawn(
+          &pid,
+          job->payload.spawn.path,
+          &file_actions,
+          &attr,
+          job->payload.spawn.args,
+          job->payload.spawn.envp ? job->payload.spawn.envp : environ
+        );
+      } else {
+        job->err = posix_spawnp(
+          &pid,
+          job->payload.spawn.path,
+          &file_actions,
+          &attr,
+          job->payload.spawn.args,
+          job->payload.spawn.envp ? job->payload.spawn.envp : environ
+        );
+      }
+    exit:
+      posix_spawnattr_destroy(&attr);
+      posix_spawn_file_actions_destroy(&file_actions);
+      if (!(job->err)) {
+        job->ret = pid;
+      }
+      break;
+    }
     }
     write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
@@ -341,6 +406,11 @@ void moonbitlang_async_free_job(struct job *job) {
   case OP_READDIR:
     moonbit_decref(job->payload.readdir.out);
     break;
+  case OP_SPAWN:
+    moonbit_decref(job->payload.spawn.path);
+    moonbit_decref(job->payload.spawn.args);
+    moonbit_decref(job->payload.spawn.envp);
+    break;
   }
 }
 
@@ -403,6 +473,27 @@ struct job *moonbitlang_async_make_readdir_job(DIR *dir, struct dirent **out) {
   job->op_code = OP_READDIR;
   job->payload.readdir.dir = dir;
   job->payload.readdir.out = out;
+  return job;
+}
+
+struct job *moonbitlang_async_make_spawn_job(
+  char *path,
+  char **args,
+  char **envp,
+  int stdin_fd,
+  int stdout_fd,
+  int stderr_fd
+) {
+  struct job *job = (struct job*)malloc(sizeof(struct job));
+  job->next = 0;
+  job->job_id = pool.job_id++;
+  job->op_code = OP_SPAWN;
+  job->payload.spawn.path = path;
+  job->payload.spawn.args = args;
+  job->payload.spawn.envp = envp;
+  job->payload.spawn.stdin_fd = stdin_fd;
+  job->payload.spawn.stdout_fd = stdout_fd;
+  job->payload.spawn.stderr_fd = stderr_fd;
   return job;
 }
 

@@ -34,7 +34,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs", "pipe", "aqueue", "socket", "example", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
+      #|["fs", "pipe", "aqueue", "socket", "example", "process", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
     ),
   )
 }
@@ -62,6 +62,7 @@ test "as_dir" {
       #|aqueue: Directory
       #|socket: Directory
       #|example: Directory
+      #|process: Directory
       #|internal: Directory
       #|os_error: Directory
       #|task.mbt: Regular
