@@ -1,0 +1,76 @@
+///|
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+test "set_env" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    @process.spawn(b"sh\x00", [b"-c\x00", b"echo $MAGIC_VAR\x00"], stdout=w, extra_env={
+      b"MAGIC_VAR": b"MAGIC_VALUE",
+    })
+    |> ignore
+    let buf = FixedArray::make(1024, b'0')
+    while r.read(buf) is n && n > 0 {
+      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+      log.write_string(ascii_to_string(data))
+    }
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|MAGIC_VALUE
+      #|
+    ),
+  )
+}
+
+///|
+test "set_env no inherit" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    @process.spawn(
+      b"env\x00",
+      [],
+      stdout=w,
+      extra_env={
+        b"MAGIC_VAR_1": b"MAGIC_VALUE_1",
+        b"MAGIC_VAR_2": b"MAGIC_VALUE_2",
+        b"MAGIC_VAR_3": b"MAGIC_VALUE_3",
+        b"MAGIC_VAR_4": b"MAGIC_VALUE_4",
+      },
+      inherit_env=false,
+    )
+    |> ignore
+    let buf = FixedArray::make(1024, b'0')
+    while r.read(buf) is n && n > 0 {
+      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+      log.write_string(ascii_to_string(data))
+    }
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|MAGIC_VAR_1=MAGIC_VALUE_1
+      #|MAGIC_VAR_2=MAGIC_VALUE_2
+      #|MAGIC_VAR_3=MAGIC_VALUE_3
+      #|MAGIC_VAR_4=MAGIC_VALUE_4
+      #|
+    ),
+  )
+}
