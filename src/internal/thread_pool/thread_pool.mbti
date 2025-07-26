@@ -16,6 +16,8 @@ fn remove_job(Bytes) -> Job
 
 fn sleep_job(Int) -> Job
 
+fn spawn_job(Bytes, FixedArray[Bytes?], FixedArray[Bytes?], Int, Int, Int) -> Job
+
 fn submit_job(Job) -> Unit
 
 fn write_job(Int, Bytes, Int, Int) -> Job

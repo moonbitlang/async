@@ -82,6 +82,16 @@ pub extern "C" fn open_job(filename : Bytes, flags : Int, mode : Int) -> Job = "
 pub extern "C" fn remove_job(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|
+pub extern "C" fn spawn_job(
+  path : Bytes,
+  args : FixedArray[Bytes?],
+  env : FixedArray[Bytes?],
+  stdin : Int,
+  stdout : Int,
+  stderr : Int,
+) -> Job = "moonbitlang_async_make_spawn_job"
+
+///|
 extern "C" fn fetch_completion_ffi() -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
