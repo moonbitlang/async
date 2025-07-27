@@ -28,7 +28,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] timer
 - [X] pipe
 - [X] asynchronous file system operations
-- [ ] process manipulation
+- [X] process manipulation
 - [X] structured concurrency
 - [X] cooperative multi tasking
 - [X] IO worker thread
