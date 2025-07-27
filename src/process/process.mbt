@@ -25,6 +25,24 @@ extern "C" fn get_curr_env() -> FixedArray[Bytes?] = "moonbitlang_async_get_curr
 let curr_env : FixedArray[Bytes?] = get_curr_env()
 
 ///|
+/// Spawn a new system process with command `cmd`,
+/// and provide `args` as extra arguments to `cmd.
+/// Both `cmd` and elements of `args` must be `'\0'` terminated.
+///
+/// If `inherit_env` is `true` (`true` by default),
+/// the new process will inherit environment variables of current process.
+///
+/// `extra_env`, if present, will set extra environment variables for the new process
+/// (in addition to those inherited ones, if `inherit_env` is `true`).
+/// Keys and values of `extra_env` MUST NOT contain `'\0'`.
+///
+/// `stdin`, `stdout` and `stderr`, if set,
+/// the corresponding channel of the new process will be redirected to the given pipe.
+/// The ownership of `stdin`, `stdout`, and `stderr` will be transferred to the `spawn`,
+/// current process MUST NOT read/write/close these pipes any more, even if `spawn` fails.
+///
+/// The new process will run in background, while current process can do other tasks.
+/// You can wait for the process using the handle returned by `spawn`.
 pub async fn spawn(
   cmd : Bytes,
   args : Array[Bytes],
@@ -98,6 +116,8 @@ pub async fn spawn(
 }
 
 ///|
+/// Wait for a spawned process to terminate.
+/// Returns the exit code of the process.
 pub async fn Process::wait(self : Process) -> Int raise {
   if self.exit_status is Some(status) {
     return status
