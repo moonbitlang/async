@@ -9,7 +9,7 @@ on:
 jobs:
   stable-build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os:
           - name: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
 
   bleeding-build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os:
           - name: ubuntu-latest
