@@ -12,10 +12,11 @@ let stdin : PipeRead
 
 let stdout : PipeWrite
 
-// Types and methods
+// Errors
 pub suberror PipeClosed
 impl Show for PipeClosed
 
+// Types and methods
 type PipeRead
 fn PipeRead::close(Self) -> Unit
 fn PipeRead::fd(Self) -> Int

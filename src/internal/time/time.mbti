@@ -4,6 +4,8 @@ package "moonbitlang/async/internal/time"
 // Values
 fn ms_since_epoch() -> Int64
 
+// Errors
+
 // Types and methods
 
 // Type aliases

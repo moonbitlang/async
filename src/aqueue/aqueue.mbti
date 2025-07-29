@@ -3,6 +3,8 @@ package "moonbitlang/async/aqueue"
 
 // Values
 
+// Errors
+
 // Types and methods
 type Queue[X]
 async fn[X] Queue::get(Self[X]) -> X raise

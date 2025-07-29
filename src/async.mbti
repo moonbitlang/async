@@ -14,10 +14,11 @@ async fn[X] with_task_group(async (TaskGroup[X]) -> X raise) -> X raise
 
 async fn with_timeout(Int, async () -> Unit raise) -> Unit raise
 
-// Types and methods
+// Errors
 pub suberror AlreadyTerminated
 impl Show for AlreadyTerminated
 
+// Types and methods
 pub(all) enum RetryMethod {
   NoRetry
   Immediate

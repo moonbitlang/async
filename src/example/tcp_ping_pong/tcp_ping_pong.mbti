@@ -4,12 +4,13 @@ package "moonbitlang/async/example/tcp_ping_pong"
 // Values
 fn main_prog(Printer) -> Unit raise
 
+// Errors
+type ServerTerminate
+impl Show for ServerTerminate
+
 // Types and methods
 pub(all) type Printer (String) -> Unit
 fn Printer::inner(Self) -> (String) -> Unit
-
-type ServerTerminate
-impl Show for ServerTerminate
 
 // Type aliases
 

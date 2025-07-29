@@ -10,6 +10,8 @@ fn opendir(Bytes) -> Directory raise
 
 async fn remove(Bytes) -> Unit raise
 
+// Errors
+
 // Types and methods
 type Directory
 fn Directory::close(Self) -> Unit

@@ -3,6 +3,13 @@ package "moonbitlang/async/socket"
 
 // Values
 
+// Errors
+pub suberror ConnectionClosed
+impl Show for ConnectionClosed
+
+pub suberror InvalidAddr
+impl Show for InvalidAddr
+
 // Types and methods
 type Addr
 fn Addr::ip(Self) -> UInt
@@ -10,12 +17,6 @@ fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
 impl Show for Addr
-
-pub suberror ConnectionClosed
-impl Show for ConnectionClosed
-
-pub suberror InvalidAddr
-impl Show for InvalidAddr
 
 type TCP
 async fn TCP::accept(Self) -> (Self, Addr) raise

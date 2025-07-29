@@ -3,6 +3,8 @@ package "moonbitlang/async/example/tcp_echo_server"
 
 // Values
 
+// Errors
+
 // Types and methods
 
 // Type aliases

@@ -22,6 +22,8 @@ async fn wait_pid(Int) -> Int raise
 
 fn with_event_loop(async () -> Unit raise) -> Unit raise
 
+// Errors
+
 // Types and methods
 
 // Type aliases

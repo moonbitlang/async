@@ -8,9 +8,11 @@ fn get_errno() -> Int
 
 fn is_nonblocking_io_error() -> Bool
 
-// Types and methods
+// Errors
 pub(all) suberror OSError Int
 impl Show for OSError
+
+// Types and methods
 
 // Type aliases
 

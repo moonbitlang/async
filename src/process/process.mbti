@@ -8,6 +8,8 @@ import(
 // Values
 async fn spawn(Bytes, Array[Bytes], extra_env~ : Map[Bytes, Bytes] = .., inherit_env~ : Bool = .., stdin? : @pipe.PipeRead, stdout? : @pipe.PipeWrite, stderr? : @pipe.PipeWrite) -> Process raise
 
+// Errors
+
 // Types and methods
 type Process
 async fn Process::wait(Self) -> Int raise
