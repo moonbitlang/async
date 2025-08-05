@@ -14,7 +14,7 @@
 
 ///|
 /// IPv4 address + port number
-type Addr Bytes
+type Addr Bytes derive(Eq, Compare, Hash)
 
 ///|
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"

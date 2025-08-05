@@ -16,6 +16,9 @@ fn Addr::ip(Self) -> UInt
 fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
+impl Compare for Addr
+impl Eq for Addr
+impl Hash for Addr
 impl Show for Addr
 
 type TCP
