@@ -14,7 +14,7 @@
 
 ///|
 /// The read end of a pipe
-type PipeRead Int
+struct PipeRead(Int)
 
 ///|
 pub fn PipeRead::fd(self : PipeRead) -> Int {
@@ -24,7 +24,7 @@ pub fn PipeRead::fd(self : PipeRead) -> Int {
 
 ///|
 /// The write end of a pipe
-type PipeWrite Int
+struct PipeWrite(Int)
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> Int {

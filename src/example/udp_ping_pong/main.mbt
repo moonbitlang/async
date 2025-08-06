@@ -19,7 +19,7 @@ suberror ServerTerminate derive(Show)
 let port = 4201
 
 ///|
-pub(all) type Printer (String) -> Unit
+pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server(println : Printer) -> Unit raise {

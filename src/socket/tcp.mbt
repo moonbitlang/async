@@ -14,7 +14,7 @@
 
 ///|
 /// A TCP socket directly corresponding to OS socket.
-type TCP Int
+struct TCP(Int)
 
 ///|
 /// Create a new TCP socket using the `socket(2)` system call.

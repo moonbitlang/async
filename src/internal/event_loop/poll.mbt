@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv type Instance Int
+priv struct Instance(Int)
 
 ///|
 const NoEvent = 0
