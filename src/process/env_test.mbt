@@ -16,13 +16,15 @@
 ///|
 test "set_env" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
+  @async.with_event_loop(fn(root) {
     let (r, w) = @pipe.pipe()
     defer r.close()
-    @process.spawn(b"sh\x00", [b"-c\x00", b"echo $MAGIC_VAR\x00"], stdout=w, extra_env={
-      b"MAGIC_VAR": b"MAGIC_VALUE",
+    root.spawn_bg(fn() {
+      @process.run(b"sh\x00", [b"-c\x00", b"echo $MAGIC_VAR\x00"], stdout=w, extra_env={
+        b"MAGIC_VAR": b"MAGIC_VALUE",
+      })
+      |> ignore
     })
-    |> ignore
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
@@ -41,22 +43,24 @@ test "set_env" {
 ///|
 test "set_env no inherit" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
+  @async.with_event_loop(fn(root) {
     let (r, w) = @pipe.pipe()
     defer r.close()
-    @process.spawn(
-      b"env\x00",
-      [],
-      stdout=w,
-      extra_env={
-        b"MAGIC_VAR_1": b"MAGIC_VALUE_1",
-        b"MAGIC_VAR_2": b"MAGIC_VALUE_2",
-        b"MAGIC_VAR_3": b"MAGIC_VALUE_3",
-        b"MAGIC_VAR_4": b"MAGIC_VALUE_4",
-      },
-      inherit_env=false,
-    )
-    |> ignore
+    root.spawn_bg(fn() {
+      @process.run(
+        b"env\x00",
+        [],
+        stdout=w,
+        extra_env={
+          b"MAGIC_VAR_1": b"MAGIC_VALUE_1",
+          b"MAGIC_VAR_2": b"MAGIC_VALUE_2",
+          b"MAGIC_VAR_3": b"MAGIC_VALUE_3",
+          b"MAGIC_VAR_4": b"MAGIC_VALUE_4",
+        },
+        inherit_env=false,
+      )
+      |> ignore
+    })
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
