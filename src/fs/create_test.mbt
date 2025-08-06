@@ -16,7 +16,7 @@
 test "basic create" {
   let buf = FixedArray::make(4, b'0')
   @async.with_event_loop(fn(_) {
-    let path = b"basic_create_test\x00"
+    let path = b"basic_create_test"
     {
       let w = @fs.create(path, permission=0o644, sync=Full)
       defer w.close()

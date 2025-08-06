@@ -29,9 +29,7 @@ test "basic_ls" {
     let (r, w) = @pipe.pipe()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"ls\x00", [b"src\x00"], stdout=w, extra_env={
-        b"LANG": b"C",
-      })
+      @process.run(b"ls", [b"src"], stdout=w, extra_env={ b"LANG": b"C" })
       |> ignore
     })
     let buf = FixedArray::make(1024, b'0')
@@ -82,8 +80,7 @@ test "basic_cat" {
     let (cat_read, we_write) = @pipe.pipe()
     let (we_read, cat_write) = @pipe.pipe()
     root.spawn_bg(fn() {
-      @process.run(b"cat\x00", [b"-"], stdin=cat_read, stdout=cat_write)
-      |> ignore
+      @process.run(b"cat", [b"-"], stdin=cat_read, stdout=cat_write) |> ignore
     })
     root.spawn_bg(fn() {
       defer we_write.close()

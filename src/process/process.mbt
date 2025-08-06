@@ -24,7 +24,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 ///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
-/// Both `cmd` and elements of `args` must be `'\0'` terminated.
+/// Both `cmd` and elements of `args` must not contain `'\0'`.
 ///
 /// `run` will block until the new process terminates,
 /// and returns the exit status of the process.
@@ -38,7 +38,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 ///
 /// `extra_env`, if present, will set extra environment variables for the new process
 /// (in addition to those inherited ones, if `inherit_env` is `true`).
-/// Keys and values of `extra_env` MUST NOT contain `'\0'`.
+/// Keys and values of `extra_env` must not contain `'\0'`.
 ///
 /// `stdin`, `stdout` and `stderr`, if set,
 /// the corresponding channel of the new process will be redirected to the given pipe.
@@ -106,7 +106,7 @@ pub async fn run(
       let envp = FixedArray::make(n + curr_env.length(), None)
       let mut i = 0
       for k, v in extra_env {
-        envp[i] = Some(k + b"=" + v + "\x00")
+        envp[i] = Some(k + b"=" + v)
         i = i + 1
       }
       curr_env.blit_to(envp, src_offset=0, dst_offset=i, len=curr_env.length())
