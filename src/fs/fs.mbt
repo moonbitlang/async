@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-type File Int
+struct File(Int)
 
 ///|
 pub fn File::close(self : File) -> Unit {

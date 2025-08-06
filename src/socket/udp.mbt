@@ -14,7 +14,7 @@
 
 ///|
 /// A UDP socket directly corresponding to OS socket
-type UDP Int
+struct UDP(Int)
 
 ///|
 /// Create a new UDP socket using the `socket(2)` system call.
