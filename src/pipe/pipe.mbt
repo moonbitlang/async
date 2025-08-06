@@ -127,9 +127,8 @@ pub async fn PipeRead::read(
   self : PipeRead,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int,
+  max_len~ : Int = buf.length() - offset,
 ) -> Int raise {
-  let max_len = max_len.unwrap_or(buf.length() - offset)
   let PipeRead(fd) = self
   @event_loop.prepare_fd_read(fd)
   let n_read = read_ffi(fd, buf, offset, max_len)
@@ -180,9 +179,8 @@ pub async fn PipeWrite::write(
   self : PipeWrite,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int,
+  len~ : Int = buf.length() - offset,
 ) -> Unit raise {
-  let len = len.unwrap_or(buf.length() - offset)
   let PipeWrite(fd) = self
   @event_loop.prepare_fd_write(fd)
   for sent = 0; sent < len; {

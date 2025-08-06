@@ -73,9 +73,8 @@ pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int,
+  max_len~ : Int = buf.length() - offset,
 ) -> Int raise {
-  let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
   @event_loop.prepare_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
@@ -110,9 +109,8 @@ pub async fn UDP::recvfrom(
   self : UDP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  max_len? : Int,
+  max_len~ : Int = buf.length() - offset,
 ) -> (Int, Addr) raise {
-  let max_len = max_len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
   @event_loop.prepare_fd_read(sock)
   let addr = Addr::new(0, 0)
@@ -142,9 +140,8 @@ pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int,
+  len~ : Int = buf.length() - offset,
 ) -> Unit raise {
-  let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
   @event_loop.prepare_fd_write(sock)
   for {
@@ -175,9 +172,8 @@ pub async fn UDP::sendto(
   buf : Bytes,
   addr : Addr,
   offset~ : Int = 0,
-  len? : Int,
+  len~ : Int = buf.length() - offset,
 ) -> Unit raise {
-  let len = len.unwrap_or(buf.length() - offset)
   let UDP(sock) = self
   @event_loop.prepare_fd_write(sock)
   for {
