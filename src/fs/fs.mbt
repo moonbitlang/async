@@ -127,10 +127,9 @@ pub async fn File::read(
   self : File,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  len? : Int,
+  len~ : Int = buf.length() - offset,
 ) -> Int raise {
   let File(fd) = self
-  let len = len.unwrap_or(buf.length() - offset)
   let job = @thread_pool.read_job(fd, buf, offset, len)
   @event_loop.perform_job(job)
 }
@@ -146,10 +145,9 @@ pub async fn File::write(
   self : File,
   buf : Bytes,
   offset~ : Int = 0,
-  len? : Int,
+  len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let File(fd) = self
-  let len = len.unwrap_or(buf.length())
   let job = @thread_pool.write_job(fd, buf, offset, len)
   ignore(@event_loop.perform_job(job))
 }
