@@ -12,7 +12,9 @@ fn with_event_loop(async (TaskGroup[Unit]) -> Unit raise) -> Unit raise
 
 async fn[X] with_task_group(async (TaskGroup[X]) -> X raise) -> X raise
 
-async fn with_timeout(Int, async () -> Unit raise) -> Unit raise
+async fn with_timeout(Int, async () -> Unit raise, error? : Error) -> Unit raise
+
+async fn[X] with_timeout_opt(Int, async () -> X raise) -> X? raise
 
 // Errors
 pub suberror AlreadyTerminated
