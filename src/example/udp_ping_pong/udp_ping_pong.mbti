@@ -9,7 +9,7 @@ type ServerTerminate
 impl Show for ServerTerminate
 
 // Types and methods
-pub(all) type Printer (String) -> Unit
+pub(all) struct Printer((String) -> Unit)
 fn Printer::inner(Self) -> (String) -> Unit
 
 // Type aliases
