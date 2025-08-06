@@ -94,8 +94,7 @@ pub async fn open(
 }
 
 ///|
-/// Create a new file at `pathname`.
-/// `pathname` should be a byte string terminated with `'\0'`.
+/// Create a new file at `pathname`. `pathname` must not contain`'\0'`.
 ///
 /// - User permission of the new file would be set to `permission`,
 ///   which is an integer in UNIX style. For example, `0o640` means:
@@ -153,8 +152,7 @@ pub async fn File::write(
 }
 
 ///|
-/// Remove the file located at `path`.
-/// `path` should be a byte string terminated with `'\0'`.
+/// Remove the file located at `path`. `path` must not contain `'\0'`.
 pub async fn remove(path : Bytes) -> Unit raise {
   let job = @thread_pool.remove_job(path)
   ignore(@event_loop.perform_job(job))
