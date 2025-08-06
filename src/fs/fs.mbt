@@ -57,7 +57,7 @@ extern "C" fn make_open_flags(
 ) -> Int = "moonbitlang_async_make_open_flags"
 
 ///|
-/// Open a file. `filename` should be a byte string terminated with `'\0'`.
+/// Open a file. `filename` should be a byte string and must not contain `'\0'`.
 ///
 /// - `mode` determines what operations (read/write) are permitted for the file.
 ///

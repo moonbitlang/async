@@ -21,8 +21,8 @@ test "cancel process" {
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
       @process.run(
-        b"sh\x00",
-        [b"-c\x00", b"echo first; sleep 10; echo second\x00"],
+        b"sh",
+        [b"-c", b"echo first; sleep 10; echo second"],
         stdout=w,
       )
     })
@@ -58,8 +58,8 @@ test "orphan process" {
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
       @process.run(
-        b"sh\x00",
-        [b"-c\x00", b"echo first; sleep 1; echo second\x00"],
+        b"sh",
+        [b"-c", b"echo first; sleep 1; echo second"],
         stdout=w,
         orphan=true,
       )

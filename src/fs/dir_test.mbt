@@ -25,7 +25,7 @@ fn ascii_to_string(ascii : Bytes) -> String {
 test "read_all" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let dir = @fs.opendir("src\x00")
+    let dir = @fs.opendir("src")
     defer dir.close()
     let list = dir.read_all().map(ascii_to_string)
     list.sort()
@@ -43,14 +43,14 @@ test "read_all" {
 test "as_dir" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let dir_file = @fs.open("src\x00", mode=ReadOnly)
+    let dir_file = @fs.open("src", mode=ReadOnly)
     defer dir_file.close()
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
     let list = dir.read_all()
     list.sort()
     for file in list {
-      let kind = @fs.open(b"src/" + file + b"\x00", mode=ReadOnly).kind()
+      let kind = @fs.open(b"src/" + file, mode=ReadOnly).kind()
       log.write_string("\{ascii_to_string(file)}: \{kind}\n")
     }
   })

@@ -23,7 +23,7 @@ test "basic wait" {
         log.write_string("\{(i + 1) * 300}ms tick\n")
       }
     })
-    let result = @process.run(b"sh\x00", [b"-c\x00", b"sleep 1\x00"])
+    let result = @process.run(b"sh", [b"-c", b"sleep 1"])
     log.write_string("process completed with \{result}\n")
   })
   inspect(
@@ -43,7 +43,7 @@ test "basic wait" {
 test "wait exitcode" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let result = @process.run(b"sh\x00", [b"-c\x00", b"exit 42\x00"])
+    let result = @process.run(b"sh", [b"-c", b"exit 42"])
     log.write_string("process completed with \{result}")
   })
   inspect(log.to_string(), content="process completed with 42")

@@ -32,7 +32,7 @@ extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
 extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
 
 ///|
-/// Open the directory at `path`. `path` should be a `'\0'` terminated byte string.
+/// Open the directory at `path`. `path` must not contain `'\0'`.
 /// If `path` is not a directory, an error will be raised
 pub fn opendir(path : Bytes) -> Directory raise {
   let dir = opendir_ffi(path)

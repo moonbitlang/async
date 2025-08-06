@@ -17,7 +17,7 @@ test "basic seek" {
   let log = StringBuilder::new()
   let buf = FixedArray::make(6, b'0')
   @async.with_event_loop(fn(_) {
-    let path = b"basic_seek_test\x00"
+    let path = b"basic_seek_test"
     // initialize
     {
       let w = @fs.create(path, permission=0o644, sync=Full)

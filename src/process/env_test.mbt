@@ -20,7 +20,7 @@ test "set_env" {
     let (r, w) = @pipe.pipe()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"sh\x00", [b"-c\x00", b"echo $MAGIC_VAR\x00"], stdout=w, extra_env={
+      @process.run(b"sh", [b"-c", b"echo $MAGIC_VAR"], stdout=w, extra_env={
         b"MAGIC_VAR": b"MAGIC_VALUE",
       })
       |> ignore
@@ -48,7 +48,7 @@ test "set_env no inherit" {
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(
-        b"env\x00",
+        b"env",
         [],
         stdout=w,
         extra_env={
