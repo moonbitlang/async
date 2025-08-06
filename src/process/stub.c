@@ -15,7 +15,9 @@
  */
 
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <string.h>
+#include <signal.h>
 #include <moonbit.h>
 
 extern char **environ;
@@ -36,4 +38,8 @@ moonbit_bytes_t *moonbitlang_async_get_curr_env() {
   result[len] = 0;
 
   return result;
+}
+
+void moonbitlang_async_terminate_process(pid_t pid) {
+  kill(pid, SIGTERM);
 }

@@ -23,8 +23,8 @@ test "basic wait" {
         log.write_string("\{(i + 1) * 300}ms tick\n")
       }
     })
-    let proc = @process.spawn(b"sh\x00", [b"-c\x00", b"sleep 1\x00"])
-    log.write_string("process completed with \{proc.wait()}\n")
+    let result = @process.run(b"sh\x00", [b"-c\x00", b"sleep 1\x00"])
+    log.write_string("process completed with \{result}\n")
   })
   inspect(
     log.to_string(),
@@ -43,25 +43,8 @@ test "basic wait" {
 test "wait exitcode" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let proc = @process.spawn(b"sh\x00", [b"-c\x00", b"exit 42\x00"])
-    log.write_string("process completed with \{proc.wait()}")
+    let result = @process.run(b"sh\x00", [b"-c\x00", b"exit 42\x00"])
+    log.write_string("process completed with \{result}")
   })
   inspect(log.to_string(), content="process completed with 42")
-}
-
-///|
-test "multiple wait" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let proc = @process.spawn(b"sh\x00", [b"-c\x00", b"exit 42\x00"])
-    log.write_string("process completed with \{proc.wait()}\n")
-    log.write_string("wait again: \{proc.wait()}")
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|process completed with 42
-      #|wait again: 42
-    ),
-  )
 }

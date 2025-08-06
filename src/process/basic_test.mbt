@@ -25,13 +25,15 @@ fn ascii_to_string(ascii : @bytes.View) -> String {
 ///|
 test "basic_ls" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
+  @async.with_event_loop(fn(root) {
     let (r, w) = @pipe.pipe()
     defer r.close()
-    @process.spawn(b"ls\x00", [b"src\x00"], stdout=w, extra_env={
-      b"LANG": b"C",
+    root.spawn_bg(fn() {
+      @process.run(b"ls\x00", [b"src\x00"], stdout=w, extra_env={
+        b"LANG": b"C",
+      })
+      |> ignore
     })
-    |> ignore
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
@@ -79,8 +81,10 @@ test "basic_cat" {
   @async.with_event_loop(fn(root) {
     let (cat_read, we_write) = @pipe.pipe()
     let (we_read, cat_write) = @pipe.pipe()
-    @process.spawn(b"cat\x00", [b"-"], stdin=cat_read, stdout=cat_write)
-    |> ignore
+    root.spawn_bg(fn() {
+      @process.run(b"cat\x00", [b"-"], stdin=cat_read, stdout=cat_write)
+      |> ignore
+    })
     root.spawn_bg(fn() {
       defer we_write.close()
       we_write.write(b"abcd\n")

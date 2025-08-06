@@ -13,21 +13,25 @@
 // limitations under the License.
 
 ///|
-struct Process {
-  pid : Int
-  mut exit_status : Int?
-}
-
-///|
 extern "C" fn get_curr_env() -> FixedArray[Bytes?] = "moonbitlang_async_get_curr_env"
 
 ///|
 let curr_env : FixedArray[Bytes?] = get_curr_env()
 
 ///|
-/// Spawn a new system process with command `cmd`,
+extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
+
+///|
+/// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` must be `'\0'` terminated.
+///
+/// `run` will block until the new process terminates,
+/// and returns the exit status of the process.
+/// If current task is cancelled while blocking,
+/// the spawned process will be terminated via `SIGTERM`,
+/// unless `orphan` is `true` (`false` by default).
+/// To run the process in background, use `@async.spawn` or `@async.spawn_bg`.
 ///
 /// If `inherit_env` is `true` (`true` by default),
 /// the new process will inherit environment variables of current process.
@@ -40,10 +44,7 @@ let curr_env : FixedArray[Bytes?] = get_curr_env()
 /// the corresponding channel of the new process will be redirected to the given pipe.
 /// The ownership of `stdin`, `stdout`, and `stderr` will be transferred to the `spawn`,
 /// current process MUST NOT read/write/close these pipes any more, even if `spawn` fails.
-///
-/// The new process will run in background, while current process can do other tasks.
-/// You can wait for the process using the handle returned by `spawn`.
-pub async fn spawn(
+pub async fn run(
   cmd : Bytes,
   args : Array[Bytes],
   extra_env~ : Map[Bytes, Bytes] = {},
@@ -51,7 +52,8 @@ pub async fn spawn(
   stdin? : @pipe.PipeRead,
   stdout? : @pipe.PipeWrite,
   stderr? : @pipe.PipeWrite,
-) -> Process raise {
+  orphan~ : Bool = false,
+) -> Int raise {
   let argv = FixedArray::make(args.length() + 2, None)
   argv[0] = Some(cmd)
   for i in 0..<args.length() {
@@ -112,17 +114,12 @@ pub async fn spawn(
     }
   }
   let job = @thread_pool.spawn_job(cmd, argv, env, stdin, stdout, stderr)
-  { pid: @event_loop.perform_job(job), exit_status: None }
-}
-
-///|
-/// Wait for a spawned process to terminate.
-/// Returns the exit code of the process.
-pub async fn Process::wait(self : Process) -> Int raise {
-  if self.exit_status is Some(status) {
-    return status
+  let pid = @event_loop.perform_job(job)
+  @event_loop.wait_pid(pid) catch {
+    err if !orphan && @coroutine.is_being_cancelled() => {
+      terminate_process(pid)
+      raise err
+    }
+    err => raise err
   }
-  let status = @event_loop.wait_pid(self.pid)
-  self.exit_status = Some(status)
-  status
 }
