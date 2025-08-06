@@ -46,7 +46,7 @@ test "basic_ls" {
       #|async.mbt
       #|async.mbti
       #|cancellation_test.mbt
-      #|example
+      #|examples
       #|fs
       #|group_defer_test.mbt
       #|internal
