@@ -5,6 +5,8 @@ as well as useful asynchronous programming facilities.
 Currently, this library only supports native/LLVM backends on Linux/MacOS.
 
 API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
+You can also find small examples in `src/examples`,
+these examples can be run via `moon run src/examples/<example-name>`.
 
 WARNING: this library is current experimental, API is subjected to future change.
 
@@ -18,6 +20,9 @@ This library provides the following packages:
 - `moonbitlang/async`: most basic asynchronous operations
 - `moonbitlang/async/socket`: TCP and UDP socket
 - `moonbitlang/async/pipe`: operations on pipes
+- `moonbitlang/async/fs`: file system operations, such as file IO and directory reading
+- `moonbitlang/async/process`: spawning system process
+- `moonbitlang/async/aqueue`: asynchronous queue data structure for inter-task communication
 
 To use these packages, add them to the `import` field of `moon.pkg.json`.
 
