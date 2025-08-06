@@ -203,3 +203,131 @@ test "with_timeout error_on_cancel" {
     ),
   )
 }
+
+///|
+test "with_timeout error-on-timeout" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(50)
+        log.write_string("50ms tick\n")
+      })
+      defer log.write_string("main task terminates\n")
+      @async.with_timeout(25, error=Err, fn() {
+        @async.sleep(2000) catch {
+          err => {
+            log.write_string("task cancelled\n")
+            raise err
+          }
+        }
+        log.write_string("task finished after 2s\n")
+      })
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|task cancelled
+      #|main task terminates
+      #|Err(Err)
+    ),
+  )
+}
+
+///|
+test "with_timeout_opt normal exit" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(50)
+        log.write_string("50ms tick\n")
+      })
+      log.write_object(
+        @async.with_timeout_opt(1000, fn() {
+          @async.sleep(25)
+          log.write_string("task finished after 25ms\n")
+          42
+        }),
+      )
+      log.write_char('\n')
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|task finished after 25ms
+      #|Some(42)
+      #|50ms tick
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "with_timeout_opt failure" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(50)
+        log.write_string("50ms tick\n")
+      })
+      @async.with_timeout(1000, fn() {
+        @async.sleep(25)
+        raise Err
+      }) catch {
+        err => {
+          log.write_string("main task fail with \{err}\n")
+          raise err
+        }
+      }
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|main task fail with Err
+      #|Err(Err)
+    ),
+  )
+}
+
+///|
+test "with_timeout_opt timeout" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        @async.sleep(50)
+        log.write_string("50ms tick\n")
+      })
+      log.write_object(
+        @async.with_timeout_opt(25, fn() {
+          try @async.sleep(2000) catch {
+            err => {
+              log.write_string("task cancelled\n")
+              raise err
+            }
+          } noraise {
+            _ => {
+              log.write_string("task finished after 2s\n")
+              42
+            }
+          }
+        }),
+      )
+      log.write_char('\n')
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|task cancelled
+      #|None
+      #|50ms tick
+      #|Ok(())
+    ),
+  )
+}

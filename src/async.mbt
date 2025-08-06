@@ -38,17 +38,52 @@ pub fnalias @coroutine.pause
 
 ///|
 /// `with_timeout(timeout, f)` run the async function `f`.
-/// If `f` return or fail before `timeout`,
-/// `with_timeout` return immediately with the same result.
-/// If `f` is still running after `timeout` milliseconds,
-/// `with_timeout` will also return immediately, and `f` will be cancelled.
-pub async fn with_timeout(time : Int, f : async () -> Unit raise) -> Unit raise {
+///
+/// - If `f` return before `timeout`, `with_timeout` will immediately stop.
+///
+/// - If `f` fail before `timeout`, `with_timeout` will also fail immediately.
+///
+/// - If `f` is still running after `timeout` milliseconds, `f` will be cancelled.
+///   In this case, by default, `with_timeout` will return normally.
+///   However, if the optional argument `error` is explicitly set,
+///   `with_timeout` will raise the given error in this case.
+pub async fn with_timeout(
+  time : Int,
+  f : async () -> Unit raise,
+  error? : Error,
+) -> Unit raise {
   with_task_group(fn(group) {
     group.spawn_bg(no_wait=true, fn() {
       sleep(time)
-      group.return_immediately(())
+      match error {
+        Some(err) => raise err
+        None => group.return_immediately(())
+      }
     })
     f()
+  })
+}
+
+///|
+/// `with_timeout_opt(timeout, f)` run the async function `f`.
+///
+/// - If `f` return `value` before `timeout`,
+///   `with_timeout_opt` will return `Some(value)` immediately.
+///
+/// - If `f` fail before `timeout`, `with_timeout_opt` will fail immediately.
+///
+/// - If `f` is still running after `timeout` milliseconds,
+/// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
+pub async fn[X] with_timeout_opt(
+  time : Int,
+  f : async () -> X raise,
+) -> X? raise {
+  with_task_group(fn(group) {
+    group.spawn_bg(no_wait=true, fn() {
+      sleep(time)
+      group.return_immediately(None)
+    })
+    Some(f())
   })
 }
 
