@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/example/tcp_ping_pong"
+package "moonbitlang/async/examples/tcp_ping_pong"
 
 // Values
 fn main_prog(Printer) -> Unit raise

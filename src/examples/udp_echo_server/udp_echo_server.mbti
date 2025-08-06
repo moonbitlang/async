@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/example/udp_echo_server"
+package "moonbitlang/async/examples/udp_echo_server"
 
 // Values
 
