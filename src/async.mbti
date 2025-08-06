@@ -6,6 +6,8 @@ async fn pause() -> Unit raise
 
 async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
 
+async fn[X] retry(RetryMethod, max_retry? : Int, async () -> X raise) -> X raise
+
 async fn sleep(Int) -> Unit raise
 
 fn with_event_loop(async (TaskGroup[Unit]) -> Unit raise) -> Unit raise
@@ -22,7 +24,6 @@ impl Show for AlreadyTerminated
 
 // Types and methods
 pub(all) enum RetryMethod {
-  NoRetry
   Immediate
   FixedDelay(Int)
   ExponentialDelay(initial~ : Int, factor~ : Double, maximum~ : Int)
@@ -37,7 +38,7 @@ fn[X] TaskGroup::add_defer(Self[X], async () -> Unit raise) -> Unit raise
 fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
 fn[G, X] TaskGroup::spawn(Self[G], async () -> X raise, no_wait? : Bool, allow_failure? : Bool) -> Task[X] raise
 fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit raise, no_wait? : Bool, allow_failure? : Bool) -> Unit raise
-fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult raise, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod) -> Unit raise
+fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult raise, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int) -> Unit raise
 
 // Type aliases
 pub typealias @moonbitlang/async/aqueue.Queue as Queue

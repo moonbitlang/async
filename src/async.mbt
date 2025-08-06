@@ -102,3 +102,77 @@ pub fnalias @coroutine.protect_from_cancel
 
 ///|
 pub typealias @aqueue.Queue
+
+///|
+/// `RetryMethod` describes different retry strategies used by various APIs:
+///
+/// - `Immediate`: failed task will immediately be restarted.
+///
+/// - `FixedDelay(t)`,
+///   failed task will be restarted after sleeping for `t` milliseconds
+///
+/// - `ExponentialDelay(initial~, factor~, maximum~)`:
+///   failed task will be restarted with an exponentially growing delay.
+///   The initial delay is `initial`, and after every failure,
+///   the delay will be multiplied by `factor`, but will never exceed `maximum`.
+pub(all) enum RetryMethod {
+  Immediate
+  FixedDelay(Int)
+  ExponentialDelay(initial~ : Int, factor~ : Double, maximum~ : Int)
+}
+
+///|
+/// `retry(strategy, f)` will keep retrying some async operation until success.
+/// If `f` returns `value` normally, `retry` will immediately return `value`.
+/// If `f` fails with error, `retry` will restart `f` again.
+/// The restart strategy is determined by `strategy`,
+/// see the `RetryMethod` type for more details.
+///
+/// If current task is cancelled, `retry` will be cancelled too.
+///
+/// By default, the number of retry attempt is unbounded.
+/// However, if `max_retry` is set,
+/// the number of retry attempts will not exceed the value of `max_retry`.
+/// If retry attempts reaches limit, `retry` will raise the error from `f`'s last attempt.
+pub async fn[X] retry(
+  strategy : RetryMethod,
+  max_retry? : Int,
+  f : async () -> X raise,
+) -> X raise {
+  match strategy {
+    Immediate =>
+      for i = 0; ; i = i + 1 {
+        try f() catch {
+          err if @coroutine.is_being_cancelled() => raise err
+          err if max_retry is Some(max) && i >= max => raise err
+          _ => ()
+        } noraise {
+          result => return result
+        }
+      }
+    FixedDelay(t) =>
+      for i = 0; ; i = i + 1 {
+        try f() catch {
+          err if @coroutine.is_being_cancelled() => raise err
+          err if max_retry is Some(max) && i >= max => raise err
+          _ => sleep(t)
+        } noraise {
+          result => return result
+        }
+      }
+    ExponentialDelay(initial~, factor~, maximum~) =>
+      for i = 0, timeout = initial; ; i = i + 1 {
+        try f() catch {
+          err if @coroutine.is_being_cancelled() => raise err
+          err if max_retry is Some(max) && i >= max => raise err
+          _ => {
+            sleep(timeout)
+            continue i + 1,
+              @cmp.minimum(maximum, (timeout.to_double() * factor).to_int())
+          }
+        } noraise {
+          result => return result
+        }
+      }
+  }
+}
