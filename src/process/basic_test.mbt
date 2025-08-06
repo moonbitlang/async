@@ -58,6 +58,7 @@ test "basic_ls" {
       #|pipe
       #|process
       #|protect_from_cancel_test.mbt
+      #|retry_test.mbt
       #|return_immediately_test.mbt
       #|socket
       #|spawn_loop_test.mbt

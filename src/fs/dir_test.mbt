@@ -34,7 +34,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs", "pipe", "aqueue", "socket", "process", "examples", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
+      #|["fs", "pipe", "aqueue", "socket", "process", "examples", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "retry_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
     ),
   )
 }
@@ -71,6 +71,7 @@ test "as_dir" {
       #|moon.pkg.json: Regular
       #|wait_test.mbt: Regular
       #|pause_test.mbt: Regular
+      #|retry_test.mbt: Regular
       #|spawn_test.mbt: Regular
       #|task_group.mbt: Regular
       #|timer_test.mbt: Regular

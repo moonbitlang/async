@@ -13,18 +13,16 @@
 // limitations under the License.
 
 ///|
-test "spawn_loop basic" {
+test "retry immediate" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_event_loop(fn(_) {
       let mut i = 0
-      root.spawn_loop(fn() {
+      retry(Immediate, fn() {
         log.write_string("tick \{i}\n")
         i = i + 1
         if i < 3 {
-          IterContinue
-        } else {
-          IterEnd
+          raise Err
         }
       })
     }),
@@ -41,58 +39,62 @@ test "spawn_loop basic" {
 }
 
 ///|
-test "spawn_loop basic-error" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(root) {
-      let mut i = 0
-      root.spawn_loop(fn() {
-        log.write_string("tick \{i}\n")
-        i = i + 1
-        if i >= 3 {
-          raise Err
-        }
-        IterContinue
-      })
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|tick 0
-      #|tick 1
-      #|tick 2
-      #|Err(Err)
-    ),
-  )
-}
-
-///|
-test "spawn_loop retry-exponential" {
+test "retry fixed" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        for i in 0..<9 {
+        for i in 0..<3 {
           @async.sleep(50)
           log.write_string("tick \{i}\n")
         }
       })
       @async.sleep(25)
       let mut i = 0
-      root.spawn_loop(
-        retry=ExponentialDelay(initial=50, factor=2, maximum=150),
-        fn() {
-          log.write_string("loop \{i}\n")
-          i = i + 1
-          match i {
-            1 | 2 | 3 => raise Err
-            4 => IterContinue
-            5 | 6 => raise Err
-            _ => IterEnd
-          }
-        },
-      )
+      retry(FixedDelay(50), fn() {
+        log.write_string("loop \{i}\n")
+        i = i + 1
+        if i < 3 {
+          raise Err
+        }
+      })
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|loop 0
+      #|tick 0
+      #|loop 1
+      #|tick 1
+      #|loop 2
+      #|tick 2
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "retry exponential" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(root) {
+      root.spawn_bg(fn() {
+        for i in 0..<7 {
+          @async.sleep(50)
+          log.write_string("tick \{i}\n")
+        }
+      })
+      @async.sleep(25)
+      let mut i = 0
+      retry(ExponentialDelay(initial=50, factor=2, maximum=150), fn() {
+        log.write_string("loop \{i}\n")
+        i = i + 1
+        if i < 4 {
+          raise Err
+        }
+      })
+      log.write_string("retry completed\n")
     }),
   )
   inspect(
@@ -108,12 +110,60 @@ test "spawn_loop retry-exponential" {
       #|tick 4
       #|tick 5
       #|loop 3
-      #|loop 4
+      #|retry completed
       #|tick 6
-      #|loop 5
-      #|tick 7
-      #|tick 8
-      #|loop 6
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "retry cancelled1" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(_) {
+      let mut i = 0
+      @async.with_timeout(125, fn() {
+        @async.retry(Immediate, fn() {
+          @async.sleep(50)
+          log.write_string("loop \{i}\n")
+          i = i + 1
+          raise Err
+        })
+      })
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|loop 0
+      #|loop 1
+      #|Ok(())
+    ),
+  )
+}
+
+///|
+test "retry cancelled2" {
+  let log = StringBuilder::new()
+  log.write_object(
+    try? @async.with_event_loop(fn(_) {
+      let mut i = 0
+      @async.with_timeout(125, fn() {
+        retry(FixedDelay(50), fn() {
+          log.write_string("loop \{i}\n")
+          i = i + 1
+          raise Err
+        })
+      })
+    }),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|loop 0
+      #|loop 1
+      #|loop 2
       #|Ok(())
     ),
   )
