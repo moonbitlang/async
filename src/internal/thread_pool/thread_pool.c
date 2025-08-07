@@ -234,8 +234,9 @@ void *worker(void *data) {
       break;
 
     case OP_READDIR:
+      errno = 0;
       *(job->payload.readdir.out) = readdir(job->payload.readdir.dir);
-      if (*(job->payload.readdir.out) == 0) {
+      if (*(job->payload.readdir.out) == 0 && errno) {
         job->ret = -1;
         job->err = errno;
       }
