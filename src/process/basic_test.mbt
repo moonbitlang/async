@@ -50,6 +50,7 @@ test "basic_ls" {
       #|fs
       #|group_defer_test.mbt
       #|internal
+      #|io
       #|missing_close_test.mbt
       #|moon.pkg.json
       #|no_wait_test.mbt

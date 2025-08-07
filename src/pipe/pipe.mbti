@@ -13,8 +13,6 @@ let stdin : PipeRead
 let stdout : PipeWrite
 
 // Errors
-pub suberror PipeClosed
-impl Show for PipeClosed
 
 // Types and methods
 type PipeRead
@@ -22,6 +20,7 @@ fn PipeRead::close(Self) -> Unit
 fn PipeRead::fd(Self) -> Int
 async fn PipeRead::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
 async fn PipeRead::read_exactly(Self, Int) -> Bytes raise
+impl @moonbitlang/async/io.Reader for PipeRead
 
 type PipeWrite
 fn PipeWrite::close(Self) -> Unit

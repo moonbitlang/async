@@ -116,20 +116,7 @@ pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
 }
 
 ///|
-/// Receive data from a TCP connection using `recv(2)` system call.
-/// For `tcp.recv(buf, offset~, max_len~)`,
-/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
-/// The number of received bytes will be returned.
-///
-/// At most one task can read from a TCP socket at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn TCP::recv(
-  self : TCP,
-  buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
-) -> Int raise {
+pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
   let TCP(sock) = self
   @event_loop.prepare_fd_read(sock)
   let n_read = recv_ffi(sock, buf, offset, max_len)
@@ -147,7 +134,22 @@ pub async fn TCP::recv(
 }
 
 ///|
-pub suberror ConnectionClosed derive(Show)
+/// Receive data from a TCP connection using `recv(2)` system call.
+/// For `tcp.recv(buf, offset~, max_len~)`,
+/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
+/// The number of received bytes will be returned.
+///
+/// At most one task can read from a TCP socket at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
+pub async fn TCP::recv(
+  self : TCP,
+  buf : FixedArray[Byte],
+  offset~ : Int = 0,
+  max_len~ : Int = buf.length() - offset,
+) -> Int raise {
+  @io.Reader::read(self, buf, offset~, max_len~)
+}
 
 ///|
 /// `conn.recv_exactly(n)` receives exactly `n` bytes of data from a TCP connection.
@@ -158,15 +160,7 @@ pub suberror ConnectionClosed derive(Show)
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
-  let buf = FixedArray::make(len, (0 : Byte))
-  for received = 0; received < len; {
-    let new_received = self.recv(buf, offset=received, max_len=len - received)
-    if new_received == 0 {
-      raise ConnectionClosed
-    }
-    continue received + new_received
-  }
-  buf.unsafe_reinterpret_as_bytes()
+  @io.Reader::read_exactly(self, len)
 }
 
 ///|
