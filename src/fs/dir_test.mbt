@@ -90,3 +90,21 @@ test "as_dir" {
     ),
   )
 }
+
+///|
+test "readdir clear errno" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    // do something to set a non-zero errno
+    try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
+      _ => ()
+    } noraise {
+      _ => ()
+    }
+    let dir = @fs.opendir("src")
+    defer dir.close()
+    let list = dir.read_all().map(ascii_to_string)
+    log.write_object(list.length())
+  })
+  inspect(log.to_string(), content="29")
+}
