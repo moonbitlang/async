@@ -8,6 +8,14 @@ pub suberror ReaderClosed
 impl Show for ReaderClosed
 
 // Types and methods
+type BufferedReader[R]
+async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit raise
+async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int raise
+fn[R] BufferedReader::new(R) -> Self[R]
+async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> Bytes raise
+async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte raise
+async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+impl[R : Reader] Reader for BufferedReader[R]
 
 // Type aliases
 

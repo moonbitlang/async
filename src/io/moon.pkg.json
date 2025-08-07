@@ -1,1 +1,6 @@
-{}
+{
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/pipe"
+  ]
+}
