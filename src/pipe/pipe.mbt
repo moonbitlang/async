@@ -115,20 +115,7 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 }
 
 ///|
-/// Read data from the read end of a pipe using `read(2)` system call.
-/// For `pipe.read(buf, offset~, max_len~)`,
-/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
-/// The number of read bytes will be returned.
-///
-/// At most one task can read from a pipe at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn PipeRead::read(
-  self : PipeRead,
-  buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
-) -> Int raise {
+pub impl @io.Reader for PipeRead with read(self, buf, offset~, max_len~) {
   let PipeRead(fd) = self
   @event_loop.prepare_fd_read(fd)
   let n_read = read_ffi(fd, buf, offset, max_len)
@@ -146,7 +133,22 @@ pub async fn PipeRead::read(
 }
 
 ///|
-pub suberror PipeClosed derive(Show)
+/// Read data from the read end of a pipe using `read(2)` system call.
+/// For `pipe.read(buf, offset~, max_len~)`,
+/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
+/// The number of read bytes will be returned.
+///
+/// At most one task can read from a pipe at any time.
+/// To allow multiple reader,
+/// use a worker task for reading and use `@async.Queue` to distribute the data.
+pub async fn PipeRead::read(
+  self : PipeRead,
+  buf : FixedArray[Byte],
+  offset~ : Int = 0,
+  max_len~ : Int = buf.length() - offset,
+) -> Int raise {
+  @io.Reader::read(self, buf, offset~, max_len~)
+}
 
 ///|
 /// `pipe.read_exactly(n)` read exactly `n` bytes of data from a pipe.
@@ -157,15 +159,7 @@ pub suberror PipeClosed derive(Show)
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
 pub async fn PipeRead::read_exactly(self : PipeRead, len : Int) -> Bytes raise {
-  let buf = FixedArray::make(len, (0 : Byte))
-  for received = 0; received < len; {
-    let new_received = self.read(buf, offset=received, max_len=len - received)
-    if new_received == 0 {
-      raise PipeClosed
-    }
-    continue received + new_received
-  }
-  buf.unsafe_reinterpret_as_bytes()
+  @io.Reader::read_exactly(self, len)
 }
 
 ///|

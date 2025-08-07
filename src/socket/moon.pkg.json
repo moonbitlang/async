@@ -3,6 +3,7 @@
     "moonbitlang/async/os_error",
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/internal/fd_util",
+    "moonbitlang/async/io",
     "moonbitlang/async"
   ],
   "native-stub": [ "socket.c" ]

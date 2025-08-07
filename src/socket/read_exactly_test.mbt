@@ -105,8 +105,9 @@ test "read_exactly failure" {
     content=(
       #|first message sent
       #|first message: b"\x01\x02\x03\x04"
-      #|Err(ConnectionClosed)
+      #|Err(ReaderClosed)
       #|
+
     ),
   )
 }
