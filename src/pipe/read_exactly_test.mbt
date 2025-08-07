@@ -89,7 +89,6 @@ test "read_exactly failure" {
       #|first message: b"\x01\x02\x03\x04"
       #|Err(ReaderClosed)
       #|
-
     ),
   )
 }
