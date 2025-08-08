@@ -19,7 +19,7 @@ test "protect_from_cancel" {
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
         @async.protect_from_cancel(fn() {
-          @async.sleep(200) catch {
+          @async.sleep(40) catch {
             err => {
               log.write_string("critial job cancelled with error \{err}\n")
               raise err
@@ -32,11 +32,11 @@ test "protect_from_cancel" {
             raise err
           }
         }
-        @async.sleep(200)
+        @async.sleep(20)
         log.write_string("non-critial part of job finished\n")
       })
       root.spawn_bg(fn() {
-        @async.sleep(200) catch {
+        @async.sleep(40) catch {
           err => {
             log.write_string("non-critial job cancelled with error \{err}\n")
             raise err
@@ -44,7 +44,7 @@ test "protect_from_cancel" {
         }
         log.write_string("non-critical job finished\n")
       })
-      @async.sleep(100)
+      @async.sleep(20)
       raise Err
     }),
   )
@@ -65,21 +65,21 @@ test "protect_from_cancel wait" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
-        log.write_string("100ms tick\n")
-        @async.sleep(100)
-        log.write_string("200ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
+        @async.sleep(20)
+        log.write_string("40ms tick\n")
       })
       @async.with_task_group(fn(group) {
         group.spawn_bg(fn() {
-          @async.sleep(150)
+          @async.sleep(30)
           log.write_string(
             "trying to cancel the group containing critial job\n",
           )
           raise Err
         })
         @async.protect_from_cancel(fn() {
-          @async.sleep(250)
+          @async.sleep(50)
           log.write_string("critial job finished\n")
         })
       }) catch {
@@ -91,9 +91,9 @@ test "protect_from_cancel wait" {
   inspect(
     log.to_string(),
     content=(
-      #|100ms tick
+      #|20ms tick
       #|trying to cancel the group containing critial job
-      #|200ms tick
+      #|40ms tick
       #|critial job finished
       #|task group containing critical job finished
       #|Ok(())
@@ -107,14 +107,14 @@ test "protect_from_cancel with_timeout" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
-        log.write_string("100ms tick\n")
-        @async.sleep(100)
-        log.write_string("200ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
       })
-      @async.with_timeout(150, fn() {
+      @async.with_timeout(30, fn() {
         @async.protect_from_cancel(fn() {
-          @async.sleep(250)
+          @async.sleep(50)
           log.write_string("critial job finished\n")
         })
       })
@@ -124,8 +124,8 @@ test "protect_from_cancel with_timeout" {
   inspect(
     log.to_string(),
     content=(
-      #|100ms tick
-      #|200ms tick
+      #|20ms tick
+      #|20ms tick
       #|critial job finished
       #|`with_timeout` containing critical job finished
       #|Ok(())
@@ -139,14 +139,14 @@ test "protect_from_cancel fail" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
-        log.write_string("100ms tick\n")
-        @async.sleep(100)
-        log.write_string("200ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
+        @async.sleep(20)
+        log.write_string("40ms tick\n")
       })
-      @async.with_timeout(150, fn() {
+      @async.with_timeout(30, fn() {
         @async.protect_from_cancel(fn() {
-          @async.sleep(250)
+          @async.sleep(50)
           log.write_string("critial job fail\n")
           raise Err
         })
@@ -156,8 +156,8 @@ test "protect_from_cancel fail" {
   inspect(
     log.to_string(),
     content=(
-      #|100ms tick
-      #|200ms tick
+      #|20ms tick
+      #|40ms tick
       #|critial job fail
       #|Err(Err)
     ),
@@ -170,15 +170,15 @@ test "protect_from_cancel nested1" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
-        log.write_string("100ms tick\n")
-        @async.sleep(100)
-        log.write_string("200ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
       })
-      @async.with_timeout(150, fn() {
+      @async.with_timeout(30, fn() {
         @async.protect_from_cancel(fn() {
           @async.protect_from_cancel(fn() {
-            @async.sleep(250)
+            @async.sleep(50)
             log.write_string("critial job finished\n")
           })
         })
@@ -189,8 +189,8 @@ test "protect_from_cancel nested1" {
   inspect(
     log.to_string(),
     content=(
-      #|100ms tick
-      #|200ms tick
+      #|20ms tick
+      #|20ms tick
       #|critial job finished
       #|`with_timeout` containing critical job finished
       #|Ok(())
@@ -204,18 +204,20 @@ test "protect_from_cancel nested2" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
-        log.write_string("100ms tick\n")
-        @async.sleep(100)
-        log.write_string("200ms tick\n")
+        @async.sleep(20)
+        log.write_string("20ms tick\n")
+        @async.sleep(20)
+        log.write_string("40ms tick\n")
+        @async.sleep(20)
+        log.write_string("60ms tick\n")
       })
-      @async.with_timeout(150, fn() {
+      @async.with_timeout(20, fn() {
         @async.protect_from_cancel(fn() {
           @async.protect_from_cancel(fn() {
-            @async.sleep(50)
+            @async.sleep(30)
             log.write_string("inner critial job finished\n")
           })
-          @async.sleep(200)
+          @async.sleep(20)
           log.write_string("outer critial job finished\n")
         })
       })
@@ -225,11 +227,12 @@ test "protect_from_cancel nested2" {
   inspect(
     log.to_string(),
     content=(
+      #|20ms tick
       #|inner critial job finished
-      #|100ms tick
-      #|200ms tick
+      #|40ms tick
       #|outer critial job finished
       #|`with_timeout` containing critical job finished
+      #|60ms tick
       #|Ok(())
     ),
   )
@@ -241,18 +244,18 @@ test "protect_from_cancel in cancellation handler" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(no_wait=true, fn() {
-        @async.sleep(100) catch {
+        @async.sleep(40) catch {
           err => {
             log.write_string("cancelled with error \{err}\n")
             @async.protect_from_cancel(fn() {
-              @async.sleep(50)
+              @async.sleep(20)
               log.write_string("critial cancellation handler terminated\n")
             })
             raise err
           }
         }
       })
-      @async.sleep(50)
+      @async.sleep(20)
       log.write_string("start cancellation\n")
     }),
   )
