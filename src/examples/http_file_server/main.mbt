@@ -127,14 +127,20 @@ async fn server(
         let path = header.path
         println("serving \{ascii_to_string(path)}")
         match header.cmd {
-          Get =>
-            try @fs.open(base_path + header.path, mode=ReadOnly) catch {
-              _ => serve_404(conn)
-            } noraise {
-              file if file.kind() is Directory =>
-                serve_directory(conn, file.as_dir(), path~)
-              file => serve_file(conn, file, path~)
+          Get => {
+            let file = @fs.open(base_path + header.path, mode=ReadOnly) catch {
+              _ => {
+                serve_404(conn)
+                continue
+              }
             }
+            defer file.close()
+            if file.kind() is Directory {
+              serve_directory(conn, file.as_dir(), path~)
+            } else {
+              serve_file(conn, file, path~)
+            }
+          }
         }
       }
     })
