@@ -18,11 +18,11 @@ test "worker basic" {
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(50)
+        @async.sleep(20)
         log.write_string("tick\n")
       }
     })
-    guard @event_loop.perform_job(@thread_pool.sleep_job(250)) == 0
+    guard @event_loop.perform_job(@thread_pool.sleep_job(100)) == 0
     log.write_string("done\n")
   })
   inspect(
@@ -44,13 +44,13 @@ test "worker multiple" {
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(100)
+        @async.sleep(20)
         log.write_string("tick\n")
       }
     })
     for i in 0..<4 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(@thread_pool.sleep_job(50 + i * 100)) |> ignore
+        @event_loop.perform_job(@thread_pool.sleep_job(10 + i * 20)) |> ignore
         log.write_string("#\{i} done\n")
       })
     }
@@ -77,12 +77,12 @@ test "worker cancel1" {
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(50)
+        @async.sleep(20)
         log.write_string("tick\n")
       }
     })
     let task = root.spawn(allow_failure=true, fn() {
-      try @event_loop.perform_job(@thread_pool.sleep_job(250)) catch {
+      try @event_loop.perform_job(@thread_pool.sleep_job(100)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -91,7 +91,7 @@ test "worker cancel1" {
         _ => log.write_string("done\n")
       }
     })
-    @async.sleep(150)
+    @async.sleep(50)
     log.write_string("trying to cancel\n")
     task.cancel()
   })
@@ -115,12 +115,12 @@ test "worker cancel2" {
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(50)
+        @async.sleep(20)
         log.write_string("tick\n")
       }
     })
     root.spawn_bg(allow_failure=true, fn() {
-      try @event_loop.perform_job(@thread_pool.sleep_job(250)) catch {
+      try @event_loop.perform_job(@thread_pool.sleep_job(100)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -129,7 +129,7 @@ test "worker cancel2" {
         _ => log.write_string("done\n")
       }
     })
-    @async.sleep(150)
+    @async.sleep(50)
     log.write_string("trying to terminate now\n")
     root.return_immediately(())
   })

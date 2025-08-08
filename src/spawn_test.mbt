@@ -17,19 +17,19 @@ test "spawn basic" {
   let buf = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
-      @async.sleep(100)
+      @async.sleep(20)
       buf.write_string("task 1, tick 1\n")
-      @async.sleep(100)
+      @async.sleep(20)
       buf.write_string("task 1, tick 2\n")
-      @async.sleep(100)
+      @async.sleep(20)
       buf.write_string("task 1, tick 3\n")
     })
     root.spawn_bg(fn() {
-      @async.sleep(150)
+      @async.sleep(30)
       buf.write_string("task 2, tick 1\n")
-      @async.sleep(100)
+      @async.sleep(20)
       buf.write_string("task 2, tick 2\n")
-      @async.sleep(100)
+      @async.sleep(20)
       buf.write_string("task 2, tick 3\n")
     })
   })
@@ -52,11 +52,11 @@ test "spawn error1" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(10000)
+        @async.sleep(1000)
         buf.write_string("task 1 finished\n")
       })
       root.spawn_bg(fn() {
-        @async.sleep(100)
+        @async.sleep(20)
         raise Err
       })
     })
@@ -69,11 +69,11 @@ test "spawn error2" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
+        @async.sleep(20)
         raise Err
       })
       root.spawn_bg(fn() {
-        @async.sleep(10000)
+        @async.sleep(1000)
         buf.write_string("task 1 finished\n")
       })
     })
@@ -88,7 +88,7 @@ test "spawn after cancelled 1" {
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
         try {
-          @async.sleep(500)
+          @async.sleep(30)
           buf.write_string("task finished\n")
         } catch {
           err => {
@@ -100,7 +100,7 @@ test "spawn after cancelled 1" {
           }
         }
       })
-      @async.sleep(100)
+      @async.sleep(20)
       raise Err
     }),
   )
@@ -121,7 +121,7 @@ test "spawn after cancelled 2" {
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(no_wait=true, allow_failure=true, fn() {
         try {
-          @async.sleep(200)
+          @async.sleep(30)
           buf.write_string("task finished\n")
         } catch {
           err => {
@@ -133,7 +133,7 @@ test "spawn after cancelled 2" {
           }
         }
       })
-      @async.sleep(100)
+      @async.sleep(20)
     }),
   )
   inspect(

@@ -36,7 +36,7 @@ test "read_exactly" {
       log("third message: \{msg3}")
       // let the client close first to avoid socket entering `TIME_WAIT` state,
       // occupying the address.
-      @async.sleep(50)
+      @async.sleep(20)
     })
     // client
     root.spawn_bg(fn() {
@@ -45,7 +45,7 @@ test "read_exactly" {
       conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       conn.send([1, 2, 3, 4, 5, 6])
       log("first message sent")
-      @async.sleep(200)
+      @async.sleep(20)
       conn.send([7, 8, 9, 10, 11, 12])
       log("second message sent")
     })
@@ -87,7 +87,7 @@ test "read_exactly failure" {
         log("third message: \{msg3}")
         // let the client close first to avoid socket entering `TIME_WAIT` state,
         // occupying the address.
-        @async.sleep(50)
+        @async.sleep(20)
       })
       // client
       root.spawn_bg(fn() {
@@ -96,7 +96,7 @@ test "read_exactly failure" {
         conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
         conn.send([1, 2, 3, 4, 5, 6])
         log("first message sent")
-        @async.sleep(200)
+        @async.sleep(20)
       })
     })
   log(result.to_string())

@@ -18,11 +18,11 @@ test "return_immediately basic" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
+        @async.sleep(20)
         root.return_immediately(())
       })
       root.spawn_bg(fn() {
-        @async.sleep(150)
+        @async.sleep(30)
         log.write_string("task finished\n")
       })
     }),
@@ -36,16 +36,16 @@ test "return_immediately nested" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(150)
+        @async.sleep(30)
         log.write_string("outer task finished\n")
       })
       @async.with_task_group(fn(group) {
         group.spawn_bg(fn() {
-          @async.sleep(100)
+          @async.sleep(20)
           root.return_immediately(())
         })
         group.spawn_bg(fn() {
-          @async.sleep(150)
+          @async.sleep(30)
           log.write_string("inner task finished\n")
         })
       })
@@ -60,11 +60,11 @@ test "return_immediately error on cancel" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(100)
+        @async.sleep(20)
         root.return_immediately(())
       })
       root.spawn_bg(fn() {
-        @async.sleep(150) catch {
+        @async.sleep(30) catch {
           _ => {
             log.write_string("task cancelled, causing other error\n")
             raise Err

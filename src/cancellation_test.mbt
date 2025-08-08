@@ -18,7 +18,7 @@ test "manual cancel" {
   let result = try? @async.with_event_loop(fn(root) {
       let task = root.spawn(allow_failure=true, fn() {
         try {
-          @async.sleep(500)
+          @async.sleep(30)
           buf.write_string("task finished\n")
         } catch {
           err => {
@@ -27,9 +27,9 @@ test "manual cancel" {
           }
         }
       })
-      @async.sleep(100)
+      @async.sleep(10)
       task.cancel()
-      @async.sleep(1000)
+      @async.sleep(20)
       buf.write_string("main task exit\n")
     })
   buf.write_string(result.to_string())
@@ -51,14 +51,14 @@ test "error propagation" {
   let buf = StringBuilder::new()
   let result = try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(200)
+        @async.sleep(30)
         raise Err
       })
       root.spawn_bg(fn() {
         try {
-          @async.sleep(100)
+          @async.sleep(20)
           buf.write_string("task 2, tick 1\n")
-          @async.sleep(200)
+          @async.sleep(20)
           buf.write_string("task 2, tick 2\n")
         } catch {
           err => {
@@ -89,11 +89,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(100)
+            sleep(20)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(200) catch {
+            try sleep(40) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
                 raise err
@@ -113,11 +113,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(250)
+            sleep(50)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(150) catch {
+            try sleep(30) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
                 raise err
@@ -196,11 +196,11 @@ test "spawn directly error" {
           @async.sleep(1)
           group.spawn_bg(() => raise Err)
           buf.write_string("after spawn\n")
-          @async.sleep(500)
+          @async.sleep(40)
           buf.write_string("main task exit\n")
         })
       })
-      @async.sleep(50)
+      @async.sleep(20)
     }),
   )
   inspect(
@@ -225,7 +225,7 @@ test "error in cancellation" {
           }
         }
       })
-      @async.sleep(50)
+      @async.sleep(20)
     }),
   )
   inspect(
