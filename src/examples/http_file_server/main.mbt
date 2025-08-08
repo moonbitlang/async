@@ -60,16 +60,16 @@ async fn serve_file(
   file : @fs.File,
   path~ : Bytes,
 ) -> Unit raise {
-  let content_type : Bytes = match path.suffix() {
-    "png" => "image/png"
-    "jpg" | "jpeg" => "image/jpeg"
-    "html" => "text/html"
-    "css" => "text/css"
-    "js" => "text/javascript"
-    "mp4" => "video/mp4"
-    "mpv" => "video/mpv"
-    "mpeg" => "video/mpeg"
-    "mkv" => "video/x-matroska"
+  let content_type : Bytes = match path {
+    [.., .. ".png"] => "image/png"
+    [.., .. ".jpg"] | "jpeg" => "image/jpeg"
+    [.., .. ".html"] => "text/html"
+    [.., .. ".css"] => "text/css"
+    [.., .. ".js"] => "text/javascript"
+    [.., .. ".mp4"] => "video/mp4"
+    [.., .. ".mpv"] => "video/mpv"
+    [.., .. ".mpeg"] => "video/mpeg"
+    [.., .. ".mkv"] => "video/x-matroska"
     _ => "appliaction/octet-stream"
   }
   conn
@@ -147,7 +147,7 @@ fn main {
     [] | [_] => b"."
     [_, path, ..] => path.to_ascii()
   }
-  @async.with_event_loop(ctx => server(ctx, path~, port=8001)) catch {
+  @async.with_event_loop(ctx => server(ctx, path~, port=8000)) catch {
     err => println("server terminate due to \{err}")
   }
 }
