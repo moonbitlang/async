@@ -27,13 +27,7 @@ fn ascii_to_string(bytes : Bytes) -> String {
 
 ///|
 fn String::to_ascii(str : String) -> Bytes {
-  let result = FixedArray::make(str.length(), b'0')
-  for i in 0..<str.length() {
-    let c = str.unsafe_charcode_at(i)
-    guard c < 256
-    result[i] = c.to_byte()
-  }
-  result.unsafe_reinterpret_as_bytes()
+  Bytes::makei(str.length(), i => str.unsafe_charcode_at(i).to_byte())
 }
 
 ///|
@@ -55,13 +49,5 @@ fn @bytes.View::rev_find_index(self : @bytes.View, byte : Byte) -> Int? {
     }
   } else {
     None
-  }
-}
-
-///|
-fn Bytes::suffix(self : Bytes) -> @bytes.View {
-  match self[:].rev_find_index(b'.') {
-    Some(i) if i + 1 < self.length() => self[i + 1:]
-    _ => ""
   }
 }
