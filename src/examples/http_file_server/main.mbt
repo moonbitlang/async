@@ -104,10 +104,11 @@ async fn serve_404(conn : @socket.TCP) -> Unit raise {
 }
 
 ///|
-async fn server(
+pub async fn server(
   ctx : @async.TaskGroup[Unit],
   path~ : Bytes,
   port~ : Int,
+  log~ : (String) -> Unit = println,
 ) -> Unit raise {
   let base_path = path
   let listen_sock = @socket.TCP::new()
@@ -115,17 +116,17 @@ async fn server(
   listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
   for {
     let (conn, addr) = listen_sock.accept()
-    println("received new connection from \{addr}")
+    log("received new connection from \{addr}")
     ctx.spawn_bg(allow_failure=true, fn() {
       defer {
-        println("closing connection from \{addr}")
+        log("closing connection from \{addr}")
         conn.close()
       }
       let src = @io.BufferedReader::new(conn)
       for {
         let (header, _) = parse_http_request(src)
         let path = header.path
-        println("serving \{ascii_to_string(path)}")
+        log("serving \{ascii_to_string(path)}")
         match header.cmd {
           Get => {
             let file = @fs.open(base_path + header.path, mode=ReadOnly) catch {
