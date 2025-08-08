@@ -245,8 +245,18 @@ void *worker(void *data) {
     case OP_SPAWN: {
       posix_spawnattr_t attr;
       posix_spawnattr_init(&attr);
-      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK);
+      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
       posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
+
+      sigset_t sigdefault_set;
+      sigemptyset(&sigdefault_set);
+      sigaddset(&sigdefault_set, SIGCHLD);
+      sigaddset(&sigdefault_set, SIGHUP);
+      sigaddset(&sigdefault_set, SIGINT);
+      sigaddset(&sigdefault_set, SIGQUIT);
+      sigaddset(&sigdefault_set, SIGTERM);
+      sigaddset(&sigdefault_set, SIGALRM);
+      posix_spawnattr_setsigdefault(&attr, &sigdefault_set);
 
       posix_spawn_file_actions_t file_actions;
       posix_spawn_file_actions_init(&file_actions);

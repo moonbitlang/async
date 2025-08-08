@@ -15,23 +15,23 @@
 
 ///|
 test "cancel process" {
+  let test_prog = b"sleep 10 &\n" +
+    b"child=$!\n" +
+    b"trap \"echo received SIGTERM; kill -s TERM $child\" TERM\n" +
+    b"wait $child"
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     let (r, w) = @pipe.pipe()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
-      @process.run(
-        b"sh",
-        [b"-c", b"echo first; sleep 10; echo second"],
-        stdout=w,
-      )
+      @process.run(b"sh", [b"-c", test_prog], stdout=w)
     })
     root.spawn_bg(fn() {
       defer r.close()
       let buf = FixedArray::make(1024, b'0')
       while r.read(buf) is n && n > 0 {
         let data = buf.unsafe_reinterpret_as_bytes()[0:n] |> ascii_to_string
-        log.write_string("from process: \{data}\n")
+        log.write_string("from process: \{data}")
       }
     })
     @async.sleep(50)
@@ -41,10 +41,9 @@ test "cancel process" {
   inspect(
     log.to_string(),
     content=(
-      #|from process: first
-      #|
       #|cancelling task running process
       #|process terminates
+      #|from process: received SIGTERM
       #|
     ),
   )
@@ -69,7 +68,7 @@ test "orphan process" {
       let buf = FixedArray::make(1024, b'0')
       while r.read(buf) is n && n > 0 {
         let data = buf.unsafe_reinterpret_as_bytes()[0:n] |> ascii_to_string
-        log.write_string("from process: \{data}\n")
+        log.write_string("from process: \{data}")
       }
     })
     @async.sleep(50)
@@ -80,11 +79,9 @@ test "orphan process" {
     log.to_string(),
     content=(
       #|from process: first
-      #|
       #|cancelling task running process
       #|process terminates
       #|from process: second
-      #|
       #|
     ),
   )
