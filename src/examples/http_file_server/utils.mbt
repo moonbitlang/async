@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn ascii_to_string(bytes : Bytes) -> String {
+pub fn ascii_to_string(bytes : Bytes) -> String {
   let builder = StringBuilder::new()
   for b in bytes {
     match b {

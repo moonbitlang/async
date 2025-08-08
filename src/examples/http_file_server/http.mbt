@@ -47,7 +47,7 @@ suberror InvalidRequest {
 typealias @io.BufferedReader[@socket.TCP] as Input
 
 ///|
-async fn parse_http_header(src : Input) -> HttpHeader raise {
+async fn parse_http_request_line(src : Input) -> (Cmd, Bytes) raise {
   // parse the request line
   let cmd_len = src.find(b" ")
   let cmd = match src[:cmd_len] {
@@ -64,6 +64,11 @@ async fn parse_http_header(src : Input) -> HttpHeader raise {
   guard protocol == b"HTTP/1.1" else {
     raise InvalidProtocol(ascii_to_string(protocol))
   }
+  (cmd, uri)
+}
+
+///|
+pub async fn parse_http_headers(src : Input) -> Map[Bytes, Bytes] raise {
   // parse request headers
   let headers = {}
   for {
@@ -88,15 +93,16 @@ async fn parse_http_header(src : Input) -> HttpHeader raise {
     headers[key] = value
     src.drop(line_end + 2)
   }
-  { cmd, path: uri, headers }
+  headers
 }
 
 ///|
 async fn parse_http_request(src : Input) -> (HttpHeader, Bytes) raise {
-  let header = parse_http_header(src)
-  let body = match header.headers.get(b"content-length") {
+  let (cmd, path) = parse_http_request_line(src)
+  let headers = parse_http_headers(src)
+  let body = match headers.get(b"content-length") {
     None => b""
     Some(len) => src.read_exactly(@strconv.parse_int(ascii_to_string(len)))
   }
-  (header, body)
+  ({ cmd, path, headers }, body)
 }
