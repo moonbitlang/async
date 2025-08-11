@@ -1,7 +1,6 @@
 {
   "import": [
     "moonbitlang/async/internal/event_loop",
-    "moonbitlang/async/internal/thread_pool",
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/pipe"

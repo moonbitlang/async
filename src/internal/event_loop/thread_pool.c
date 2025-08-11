@@ -27,6 +27,8 @@
 #include <time.h>
 #include <dirent.h>
 #include <spawn.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <moonbit.h>
 
 #ifdef __MACH__
@@ -42,7 +44,9 @@ enum op_code {
   OP_OPEN,
   OP_REMOVE,
   OP_READDIR,
-  OP_SPAWN
+  OP_SPAWN,
+  OP_RECVFROM,
+  OP_SENDTO
 };
 
 struct read_job {
@@ -81,6 +85,20 @@ struct spawn_job {
   int stderr_fd;
 };
 
+struct recvfrom_job {
+  int sock;
+  void *buf;
+  int len;
+  struct sockaddr *addr_out;
+};
+
+struct sendto_job {
+  int sock;
+  void *buf;
+  int len;
+  struct sockaddr *addr;
+};
+
 struct job {
   int32_t job_id;
   enum op_code op_code;
@@ -94,6 +112,8 @@ struct job {
     struct remove_job remove;
     struct readdir_job readdir;
     struct spawn_job spawn;
+    struct recvfrom_job recvfrom;
+    struct sendto_job sendto;
   } payload;
 };
 
@@ -117,6 +137,22 @@ int32_t moonbitlang_async_job_get_ret(struct job *job) {
 
 int32_t moonbitlang_async_job_get_err(struct job *job) {
   return job->err;
+}
+
+int32_t moonbitlang_async_job_poll_event(struct job *job) {
+  switch (job->op_code) {
+  case OP_READ: return 1;
+  case OP_WRITE: return 2;
+  default: return 0;
+  }
+}
+
+int moonbitlang_async_job_poll_fd(struct job *job) {
+  switch (job->op_code) {
+  case OP_READ: return job->payload.read.fd;
+  case OP_WRITE: return job->payload.write.fd;
+  default: return -1;
+  }
 }
 
 static
@@ -266,6 +302,34 @@ void *worker(void *data) {
       }
       break;
     }
+
+    case OP_RECVFROM: {
+      socklen_t addr_size = sizeof(struct sockaddr_in);
+      job->ret = recvfrom(
+        job->payload.recvfrom.sock,
+        job->payload.recvfrom.buf,
+        job->payload.recvfrom.len,
+        0,
+        job->payload.recvfrom.addr_out,
+        &addr_size
+      );
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+    }
+
+    case OP_SENDTO:
+      job->ret = sendto(
+        job->payload.sendto.sock,
+        job->payload.sendto.buf,
+        job->payload.sendto.len,
+        0,
+        job->payload.sendto.addr,
+        sizeof(struct sockaddr_in)
+      );
+      if (job->ret < 0)
+        job->err = errno;
+      break;
     }
     write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
@@ -344,6 +408,14 @@ void free_job(void *jobp) {
     moonbit_decref(job->payload.spawn.path);
     moonbit_decref(job->payload.spawn.args);
     moonbit_decref(job->payload.spawn.envp);
+    break;
+  case OP_RECVFROM:
+    moonbit_decref(job->payload.recvfrom.buf);
+    moonbit_decref(job->payload.recvfrom.addr_out);
+    break;
+  case OP_SENDTO:
+    moonbit_decref(job->payload.sendto.buf);
+    moonbit_decref(job->payload.sendto.addr);
     break;
   }
 }
@@ -432,6 +504,40 @@ struct job *moonbitlang_async_make_spawn_job(
   job->payload.spawn.stdin_fd = stdin_fd;
   job->payload.spawn.stdout_fd = stdout_fd;
   job->payload.spawn.stderr_fd = stderr_fd;
+  return job;
+}
+
+struct job *moonbitlang_async_make_recvfrom_job(
+  int sock,
+  void *buf,
+  int offset,
+  int len,
+  struct sockaddr *addr_out
+) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_RECVFROM;
+  job->payload.recvfrom.sock = sock;
+  job->payload.recvfrom.buf = buf + offset;
+  job->payload.recvfrom.len = len;
+  job->payload.recvfrom.addr_out = addr_out;
+  return job;
+}
+
+struct job *moonbitlang_async_make_sendto_job(
+  int sock,
+  void *buf,
+  int offset,
+  int len,
+  struct sockaddr *addr
+) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_SENDTO;
+  job->payload.sendto.sock = sock;
+  job->payload.sendto.buf = buf + offset;
+  job->payload.sendto.len = len;
+  job->payload.sendto.addr = addr;
   return job;
 }
 

@@ -1,0 +1,126 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+#external
+priv type JobForWorker
+
+///|
+extern "C" fn JobForWorker::id(self : JobForWorker) -> Int = "moonbitlang_async_job_get_id"
+
+///|
+extern "C" fn JobForWorker::ret(self : JobForWorker) -> Int = "moonbitlang_async_job_get_ret"
+
+///|
+extern "C" fn JobForWorker::err(self : JobForWorker) -> Int = "moonbitlang_async_job_get_err"
+
+///|
+extern "C" fn JobForWorker::sleep(time : Int) -> JobForWorker = "moonbitlang_async_make_sleep_job"
+
+///|
+extern "C" fn JobForWorker::read(
+  fd : Int,
+  buf : FixedArray[Byte],
+  offset : Int,
+  len : Int,
+) -> JobForWorker = "moonbitlang_async_make_read_job"
+
+///|
+extern "C" fn JobForWorker::write(
+  fd : Int,
+  buf : Bytes,
+  offset : Int,
+  len : Int,
+) -> JobForWorker = "moonbitlang_async_make_write_job"
+
+///|
+extern "C" fn JobForWorker::open(
+  filename : Bytes,
+  flags : Int,
+  mode : Int,
+) -> JobForWorker = "moonbitlang_async_make_open_job"
+
+///|
+extern "C" fn JobForWorker::remove(path : Bytes) -> JobForWorker = "moonbitlang_async_make_remove_job"
+
+///|
+#external
+type Directory
+
+///|
+#external
+type DirectoryEntry
+
+///|
+extern "C" fn JobForWorker::readdir(
+  dir : Directory,
+  out : Ref[DirectoryEntry],
+) -> JobForWorker = "moonbitlang_async_make_readdir_job"
+
+///|
+extern "C" fn JobForWorker::spawn(
+  path : Bytes,
+  args : FixedArray[Bytes?],
+  env : FixedArray[Bytes?],
+  stdin : Int,
+  stdout : Int,
+  stderr : Int,
+) -> JobForWorker = "moonbitlang_async_make_spawn_job"
+
+///|
+extern "C" fn JobForWorker::recvfrom(
+  sock : Int,
+  buf : FixedArray[Byte],
+  offset : Int,
+  len : Int,
+  addr : Bytes,
+) -> JobForWorker = "moonbitlang_async_make_recvfrom_job"
+
+///|
+extern "C" fn JobForWorker::sendto(
+  sock : Int,
+  buf : Bytes,
+  offset : Int,
+  len : Int,
+  addr : Bytes,
+) -> JobForWorker = "moonbitlang_async_make_sendto_job"
+
+///|
+pub(all) enum Job {
+  Sleep(Int)
+  Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int)
+  Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int)
+  Open(path~ : Bytes, flags~ : Int, mode~ : Int)
+  Remove(path~ : Bytes)
+  Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
+  Spawn(
+    path~ : Bytes,
+    args~ : FixedArray[Bytes?],
+    env~ : FixedArray[Bytes?],
+    stdin~ : Int,
+    stdout~ : Int,
+    stderr~ : Int
+  )
+  Recvfrom(
+    sock~ : Int,
+    buf~ : FixedArray[Byte],
+    offset~ : Int,
+    len~ : Int,
+    addr~ : Bytes
+  )
+  Sendto(sock~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, addr~ : Bytes)
+  Connect(sock~ : Int, addr~ : Bytes)
+  Accept(sock~ : Int, addr~ : Bytes)
+  WaitProcess(Int)
+}

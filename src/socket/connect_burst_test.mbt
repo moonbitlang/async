@@ -35,6 +35,7 @@ async fn server() -> Int raise {
           while conn.recv(buf) is n && n > 0 {
             let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
             if msg == b"exit" {
+              @async.sleep(20)
               raise ServerTerminate
             }
           }

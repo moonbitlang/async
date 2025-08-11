@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
-#include <unistd.h>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <moonbit.h>
 
-int moonbitlang_async_get_blocking(int fd) {
-  int flags = fcntl(fd, F_GETFL);
-  if (flags < 0)
-    return flags;
+int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
+  return connect(sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
+}
 
-  return (flags & O_NONBLOCK) > 0;
+int moonbitlang_async_accept(int sockfd, moonbit_bytes_t addr_buf) {
+  socklen_t socklen = Moonbit_array_length(addr_buf);
+  return accept(sockfd, (struct sockaddr*)addr_buf, &socklen);
+}
+
+int moonbitlang_async_getsockerr(int sockfd) {
+  int err = 0;
+  socklen_t opt_len = sizeof(int);
+  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
+    return -1;
+  return err;
 }

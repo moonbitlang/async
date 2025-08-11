@@ -16,10 +16,21 @@
 pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
 
 ///|
-pub extern "C" fn is_nonblocking_io_error() -> Bool = "moonbitlang_async_is_nonblocking_io_error"
+extern "C" fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbitlang_async_is_nonblocking_io_error"
+
+///|
+pub fn is_nonblocking_io_error() -> Bool {
+  errno_is_nonblocking_io_error(get_errno())
+}
 
 ///|
 pub(all) suberror OSError Int derive(Show)
+
+///|
+pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
+  let OSError(errno) = err
+  errno_is_nonblocking_io_error(errno)
+}
 
 ///|
 pub fn check_errno() -> Unit raise OSError {

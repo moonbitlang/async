@@ -14,8 +14,7 @@
 
 ///|
 /// A directory in file system
-#external
-type Directory
+struct Directory(@event_loop.Directory)
 
 ///|
 extern "C" fn Directory::close_ffi(self : Directory) -> Int = "closedir"
@@ -43,8 +42,7 @@ pub fn opendir(path : Bytes) -> Directory raise {
 }
 
 ///|
-#external
-priv type DirectoryEntry
+typealias @event_loop.DirectoryEntry
 
 ///|
 extern "C" fn get_null_dirent() -> DirectoryEntry = "moonbitlang_async_null_dirent"
@@ -56,16 +54,9 @@ let null_dirent : DirectoryEntry = get_null_dirent()
 extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang_async_dirent_name"
 
 ///|
-extern "C" fn readdir_job(
-  dir : Directory,
-  out : Ref[DirectoryEntry],
-) -> @thread_pool.Job = "moonbitlang_async_make_readdir_job"
-
-///|
 async fn Directory::read_next(dir : Directory) -> Bytes? raise {
   let out = @ref.new(null_dirent)
-  let job = readdir_job(dir, out)
-  ignore(@event_loop.perform_job(job))
+  ignore(@event_loop.perform_job(Readdir(dir=dir.0, out~)))
   if physical_equal(out.val, null_dirent) {
     None
   } else {
