@@ -13,10 +13,26 @@
 // limitations under the License.
 
 ///|
-extern "C" fn init_thread_pool_ffi(notify_recv : Int, notify_send : Int) -> Int = "moonbitlang_async_init_thread_pool"
+priv struct Worker {
+  id : Int64
+  job_slot : Ref[Job]
+}
 
 ///|
-pub fn init_thread_pool() -> Int raise {
+pub struct Runtime {
+  notify_recv : Int
+  priv notify_send : Int
+  max_worker_count : Int
+  priv job_queue : @deque.T[Job]
+  priv idle_workers : @deque.T[Worker]
+  priv running_workers : Map[Int, Worker]
+}
+
+///|
+extern "C" fn init_thread_pool_ffi(notify_send : Int) = "moonbitlang_async_init_thread_pool"
+
+///|
+pub fn Runtime::new(max_worker_count~ : Int = 1024) -> Runtime raise {
   let (notify_recv, notify_send) = @fd_util.pipe()
   try {
     @fd_util.set_nonblocking(notify_recv)
@@ -28,81 +44,77 @@ pub fn init_thread_pool() -> Int raise {
       raise err
     }
   }
-  if init_thread_pool_ffi(notify_recv, notify_send) < 0 {
-    @os_error.check_errno()
+  init_thread_pool_ffi(notify_send)
+  {
+    notify_recv,
+    notify_send,
+    max_worker_count,
+    job_queue: @deque.new(),
+    idle_workers: @deque.new(),
+    running_workers: {},
   }
-  notify_recv
 }
 
 ///|
-pub extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
+extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
-#external
-type Job
+pub fn Runtime::destroy(rt : Runtime) -> Unit {
+  destroy_thread_pool()
+  @fd_util.close(rt.notify_recv) catch {
+    _ => ()
+  }
+  @fd_util.close(rt.notify_send) catch {
+    _ => ()
+  }
+}
 
 ///|
-pub extern "C" fn Job::id(self : Job) -> Int = "moonbitlang_async_job_get_id"
+#borrow(job_slot)
+extern "C" fn spawn_worker(job_slot : Ref[Job]) -> Int64 = "moonbitlang_async_spawn_worker"
 
 ///|
-pub extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
+extern "C" fn wake_worker(worker_id : Int64) = "moonbitlang_async_wake_worker"
 
 ///|
-pub extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
+pub fn Runtime::submit_job(rt : Runtime, job : Job) -> Unit {
+  match rt.idle_workers.pop_front() {
+    None if rt.running_workers.size() > rt.max_worker_count =>
+      rt.job_queue.push_back(job)
+    None => {
+      let job_slot = @ref.new(job)
+      let id = spawn_worker(job_slot)
+      rt.running_workers[job.id()] = { id, job_slot }
+    }
+    Some(worker) => {
+      worker.job_slot.val = job
+      rt.running_workers[job.id()] = worker
+      wake_worker(worker.id)
+    }
+  }
+}
 
 ///|
-pub extern "C" fn Job::free(self : Job) = "moonbitlang_async_free_job"
+extern "C" fn fetch_completion_ffi(notify_recv : Int) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
-pub extern "C" fn submit_job(job : Job) = "moonbitlang_async_submit_job"
-
-///|
-pub extern "C" fn sleep_job(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
-
-///|
-pub extern "C" fn read_job(
-  fd : Int,
-  buf : FixedArray[Byte],
-  offset : Int,
-  len : Int,
-) -> Job = "moonbitlang_async_make_read_job"
-
-///|
-pub extern "C" fn write_job(
-  fd : Int,
-  buf : Bytes,
-  offset : Int,
-  len : Int,
-) -> Job = "moonbitlang_async_make_write_job"
-
-///|
-pub extern "C" fn open_job(filename : Bytes, flags : Int, mode : Int) -> Job = "moonbitlang_async_make_open_job"
-
-///|
-pub extern "C" fn remove_job(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
-
-///|
-pub extern "C" fn spawn_job(
-  path : Bytes,
-  args : FixedArray[Bytes?],
-  env : FixedArray[Bytes?],
-  stdin : Int,
-  stdout : Int,
-  stderr : Int,
-) -> Job = "moonbitlang_async_make_spawn_job"
-
-///|
-extern "C" fn fetch_completion_ffi() -> Int = "moonbitlang_async_fetch_completion"
-
-///|
-pub fn fetch_completion() -> Int? raise {
-  let job_id = fetch_completion_ffi()
+pub fn Runtime::fetch_completion(rt : Runtime) -> Int? raise {
+  let job_id = fetch_completion_ffi(rt.notify_recv)
   if job_id < 0 {
     if not(@os_error.is_nonblocking_io_error()) {
       @os_error.check_errno()
     }
     None
   } else {
+    guard rt.running_workers.get(job_id) is Some(worker)
+    rt.running_workers.remove(job_id)
+    match rt.job_queue.pop_front() {
+      None => rt.idle_workers.push_back(worker)
+      Some(job) => {
+        worker.job_slot.val = job
+        wake_worker(worker.id)
+      }
+    }
     Some(job_id)
   }
 }

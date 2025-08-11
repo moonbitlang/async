@@ -113,7 +113,7 @@ pub async fn run(
       envp
     }
   }
-  let job = @thread_pool.spawn_job(cmd, argv, env, stdin, stdout, stderr)
+  let job = @thread_pool.Job::spawn(cmd, argv, env, stdin, stdout, stderr)
   let pid = @event_loop.perform_job(job)
   @event_loop.wait_pid(pid) catch {
     err if !orphan && @coroutine.is_being_cancelled() => {
