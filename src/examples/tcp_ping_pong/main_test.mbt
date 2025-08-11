@@ -72,6 +72,7 @@ test "main" {
       #|server received: b"\x65\x78\x69\x74"
       #|server sent: b"\x70\x6f\x6e\x67"
       #|server initiate terminate
+      #|client 6 received: b"\x70\x6f\x6e\x67"
       #|server terminate: Cancelled
       #|Err(ServerTerminate)
     ),

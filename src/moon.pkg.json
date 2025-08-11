@@ -4,8 +4,5 @@
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/aqueue"
   ],
-  "test-import": [
-    "moonbitlang/async/pipe",
-    "moonbitlang/async/internal/thread_pool"
-  ]
+  "test-import": [ "moonbitlang/async/pipe" ]
 }

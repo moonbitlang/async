@@ -85,52 +85,23 @@ pub fn TCP::enable_keepalive(
 /// will be returned together with the address of peer.
 pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
   let TCP(listen_sock) = self
-  @event_loop.prepare_fd_read(listen_sock)
   let addr = Addr::new(0, 0)
-  for {
-    let conn_sock = accept_ffi(listen_sock, addr)
-    if conn_sock > 0 {
-      return (TCP(conn_sock), addr)
-    } else if @os_error.is_nonblocking_io_error() {
-      @event_loop.wait_fd_read(listen_sock)
-    } else {
-      @os_error.check_errno()
-    }
-  }
+  let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
+  @fd_util.set_nonblocking(conn)
+  (conn, addr)
 }
 
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
   let TCP(sock) = self
-  @event_loop.prepare_fd_write(sock)
-  if 0 == connect_ffi(sock, addr) {
-    return
-  }
-  if @os_error.is_nonblocking_io_error() {
-    @event_loop.wait_fd_write(sock)
-    check_socket_err(sock)
-  } else {
-    @os_error.check_errno()
-  }
+  ignore(@event_loop.perform_job(Connect(sock~, addr=addr.0)))
 }
 
 ///|
 pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
   let TCP(sock) = self
-  @event_loop.prepare_fd_read(sock)
-  let n_read = recv_ffi(sock, buf, offset, max_len)
-  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @event_loop.wait_fd_read(sock)
-    recv_ffi(sock, buf, offset, max_len)
-  } else {
-    @async.pause()
-    n_read
-  }
-  if n_read < 0 {
-    @os_error.check_errno()
-  }
-  n_read
+  @event_loop.perform_job(Read(fd=sock, buf~, offset~, len=max_len))
 }
 
 ///|
@@ -177,17 +148,10 @@ pub async fn TCP::send(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let TCP(sock) = self
-  @event_loop.prepare_fd_write(sock)
   for sent = 0; sent < len; {
-    let new_sent = send_ffi(sock, buf, offset + sent, len - sent)
-    if new_sent < 0 {
-      if @os_error.is_nonblocking_io_error() {
-        @event_loop.wait_fd_write(sock)
-      } else {
-        @os_error.check_errno()
-      }
-    } else {
-      continue sent + new_sent
-    }
+    let new_sent = @event_loop.perform_job(
+      Write(fd=sock, buf~, offset=offset - sent, len=len - sent),
+    )
+    continue sent + new_sent
   }
 }

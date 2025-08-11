@@ -13,4 +13,17 @@
 // limitations under the License.
 
 ///|
-extern "C" fn get_blocking(fd : Int) -> Int = "moonbitlang_async_get_blocking"
+extern "C" fn init_thread_pool_ffi(notify_send : Int) = "moonbitlang_async_init_thread_pool"
+
+///|
+extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
+
+///|
+#borrow(job_slot)
+extern "C" fn spawn_worker(job_slot : Ref[JobForWorker]) -> Int64 = "moonbitlang_async_spawn_worker"
+
+///|
+extern "C" fn wake_worker(worker_id : Int64) = "moonbitlang_async_wake_worker"
+
+///|
+extern "C" fn fetch_completion_ffi(notify_recv : Int) -> Int = "moonbitlang_async_fetch_completion"

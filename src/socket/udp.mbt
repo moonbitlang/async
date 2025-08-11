@@ -76,18 +76,7 @@ pub async fn UDP::recv(
   max_len~ : Int = buf.length() - offset,
 ) -> Int raise {
   let UDP(sock) = self
-  @event_loop.prepare_fd_read(sock)
-  let n_read = recv_ffi(sock, buf, offset, max_len)
-  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @event_loop.wait_fd_read(sock)
-    recv_ffi(sock, buf, offset, max_len)
-  } else {
-    n_read
-  }
-  if n_read < 0 {
-    @os_error.check_errno()
-  }
-  n_read
+  @event_loop.perform_job(Read(fd=sock, buf~, offset~, len=max_len))
 }
 
 ///|
@@ -112,18 +101,10 @@ pub async fn UDP::recvfrom(
   max_len~ : Int = buf.length() - offset,
 ) -> (Int, Addr) raise {
   let UDP(sock) = self
-  @event_loop.prepare_fd_read(sock)
   let addr = Addr::new(0, 0)
-  let n_read = recvfrom_ffi(sock, buf, offset, max_len, addr)
-  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @event_loop.wait_fd_read(sock)
-    recvfrom_ffi(sock, buf, offset, max_len, addr)
-  } else {
-    n_read
-  }
-  if n_read < 0 {
-    @os_error.check_errno()
-  }
+  let n_read = @event_loop.perform_job(
+    Recvfrom(sock~, buf~, offset~, len=max_len, addr=addr.0),
+  )
   (n_read, addr)
 }
 
@@ -143,18 +124,7 @@ pub async fn UDP::send(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let UDP(sock) = self
-  @event_loop.prepare_fd_write(sock)
-  for {
-    let n_sent = send_ffi(sock, buf, offset, len)
-    if n_sent > 0 {
-      return
-    }
-    if @os_error.is_nonblocking_io_error() {
-      @event_loop.wait_fd_write(sock)
-    } else {
-      @os_error.check_errno()
-    }
-  }
+  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~)) |> ignore
 }
 
 ///|
@@ -175,16 +145,6 @@ pub async fn UDP::sendto(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let UDP(sock) = self
-  @event_loop.prepare_fd_write(sock)
-  for {
-    let n_sent = sendto_ffi(sock, buf, offset, len, addr)
-    if n_sent > 0 {
-      return
-    }
-    if @os_error.is_nonblocking_io_error() {
-      @event_loop.wait_fd_write(sock)
-    } else {
-      @os_error.check_errno()
-    }
-  }
+  @event_loop.perform_job(Sendto(sock~, buf~, offset~, len~, addr=addr.0))
+  |> ignore
 }

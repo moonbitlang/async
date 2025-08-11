@@ -19,13 +19,13 @@ priv struct Instance(Int)
 const NoEvent = 0
 
 ///|
-const Read = 1
+const ReadEvent = 1
 
 ///|
-const Write = 2
+const WriteEvent = 2
 
 ///|
-const Process = 4
+const ProcessEvent = 4
 
 ///|
 extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
@@ -49,10 +49,12 @@ fn Instance::register(
   prev_events~ : Int,
   new_events~ : Int,
   oneshot~ : Bool = false,
-) -> Unit raise {
-  if 0 != self.register_ffi(fd, prev_events~, new_events~, oneshot~) {
+) -> Bool raise {
+  let ret = self.register_ffi(fd, prev_events~, new_events~, oneshot~)
+  if ret < 0 {
     @os_error.check_errno()
   }
+  ret > 0
 }
 
 ///|

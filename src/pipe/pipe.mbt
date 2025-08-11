@@ -117,19 +117,7 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 ///|
 pub impl @io.Reader for PipeRead with read(self, buf, offset~, max_len~) {
   let PipeRead(fd) = self
-  @event_loop.prepare_fd_read(fd)
-  let n_read = read_ffi(fd, buf, offset, max_len)
-  let n_read = if n_read < 0 && @os_error.is_nonblocking_io_error() {
-    @event_loop.wait_fd_read(fd)
-    read_ffi(fd, buf, offset, max_len)
-  } else {
-    @async.pause()
-    n_read
-  }
-  if n_read < 0 {
-    @os_error.check_errno()
-  }
-  n_read
+  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len))
 }
 
 ///|
@@ -176,17 +164,10 @@ pub async fn PipeWrite::write(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let PipeWrite(fd) = self
-  @event_loop.prepare_fd_write(fd)
   for sent = 0; sent < len; {
-    let new_sent = write_ffi(fd, buf, offset + sent, len - sent)
-    if new_sent < 0 {
-      if @os_error.is_nonblocking_io_error() {
-        @event_loop.wait_fd_write(fd)
-      } else {
-        @os_error.check_errno()
-      }
-    } else {
-      continue sent + new_sent
-    }
+    let new_sent = @event_loop.perform_job(
+      Write(fd~, buf~, offset=offset + sent, len=len - sent),
+    )
+    continue sent + new_sent
   }
 }

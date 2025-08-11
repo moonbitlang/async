@@ -1,30 +1,34 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/event_loop"
 
-import(
-  "moonbitlang/async/internal/thread_pool"
-)
-
 // Values
 fn close_fd(Int) -> Unit
 
-async fn perform_job(@thread_pool.Job) -> Int raise
-
-fn prepare_fd_read(Int) -> Unit raise
-
-fn prepare_fd_write(Int) -> Unit raise
-
-async fn wait_fd_read(Int) -> Unit raise
-
-async fn wait_fd_write(Int) -> Unit raise
-
-async fn wait_pid(Int) -> Int raise
+async fn perform_job(Job) -> Int raise
 
 fn with_event_loop(async () -> Unit raise) -> Unit raise
 
 // Errors
 
 // Types and methods
+type Directory
+
+type DirectoryEntry
+
+pub(all) enum Job {
+  Sleep(Int)
+  Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int)
+  Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int)
+  Open(path~ : Bytes, flags~ : Int, mode~ : Int)
+  Remove(path~ : Bytes)
+  Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
+  Spawn(path~ : Bytes, args~ : FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int)
+  Recvfrom(sock~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes)
+  Sendto(sock~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, addr~ : Bytes)
+  Connect(sock~ : Int, addr~ : Bytes)
+  Accept(sock~ : Int, addr~ : Bytes)
+  WaitProcess(Int)
+}
 
 // Type aliases
 

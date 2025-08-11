@@ -13,25 +13,36 @@
 // limitations under the License.
 
 ///|
+priv struct Worker {
+  id : Int64
+  job_slot : Ref[JobForWorker]
+}
+
+///|
 priv struct EventLoop {
   poll : Instance
-  tasks : Map[Int, Task]
-  jobs : Map[Int, JobHandle]
+  fds : Map[Int, FdHandle]
   pids : Map[Int, ProcessHandle]
-  thread_pool : @thread_pool.Runtime
+  notify_recv : Int
+  max_worker_count : Int
+  job_queue : @deque.T[JobForWorker]
+  idle_workers : @deque.T[Worker]
+  running_workers : Map[Int, Worker]
+  jobs : Map[Int, @coroutine.Coroutine]
 }
 
 ///|
-priv struct Task {
+priv enum EventStatus {
+  NotSure
+  Ready
+  Waiting(@coroutine.Coroutine)
+}
+
+///|
+priv struct FdHandle {
   mut events : Int
-  mut read : @coroutine.Coroutine?
-  mut write : @coroutine.Coroutine?
-}
-
-///|
-priv struct JobHandle {
-  job : @thread_pool.Job
-  coro : @coroutine.Coroutine
+  mut read : EventStatus
+  mut write : EventStatus
 }
 
 ///|
@@ -46,24 +57,42 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
-  let thread_pool = @thread_pool.Runtime::new()
-  defer thread_pool.destroy()
+  let (notify_recv, notify_send) = @fd_util.pipe()
+  try {
+    @fd_util.set_nonblocking(notify_recv)
+    @fd_util.set_blocking(notify_send)
+  } catch {
+    err => {
+      @fd_util.close(notify_recv)
+      @fd_util.close(notify_send)
+      raise err
+    }
+  }
+  defer {
+    @fd_util.close(notify_recv) catch {
+      _ => ()
+    }
+    @fd_util.close(notify_send) catch {
+      _ => ()
+    }
+  }
+  init_thread_pool_ffi(notify_send)
+  defer destroy_thread_pool()
   let evloop = {
     poll: Instance::new(),
-    tasks: {},
-    jobs: {},
+    fds: {},
     pids: {},
-    thread_pool,
+    notify_recv,
+    max_worker_count: 1024,
+    job_queue: @deque.new(),
+    idle_workers: @deque.new(),
+    running_workers: {},
+    jobs: {},
   }
   defer evloop.poll.destroy()
-  evloop.poll.register(
-    thread_pool.notify_recv,
-    prev_events=NoEvent,
-    new_events=Read,
-  )
-  defer (evloop.poll.remove(thread_pool.notify_recv, events=Read) catch {
-    _ => ()
-  })
+  evloop.poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent)
+  |> ignore
+  defer (evloop.poll.remove(notify_recv, events=ReadEvent) catch { _ => () })
   curr_loop.val = Some(evloop)
   defer {
     curr_loop.val = None
@@ -90,7 +119,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       let event = get_event(i)
       let events = event.events()
       let fd = event.fd()
-      if (events & Process) != 0 {
+      if (events & ProcessEvent) != 0 {
         if self.pids.get(fd) is Some(handle) {
           let result = @ref.new(0)
           if event.pid_status(result) < 0 {
@@ -103,114 +132,157 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
           }
         }
         self.poll.remove_pid(fd)
-      } else if fd == self.thread_pool.notify_recv {
-        while self.thread_pool.fetch_completion() is Some(job_id) {
-          guard self.jobs.get(job_id) is Some({ job: _, coro })
+      } else if fd == self.notify_recv {
+        while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
+          guard self.running_workers.get(job_id) is Some(worker)
+          self.running_workers.remove(job_id)
+          match self.job_queue.pop_front() {
+            None => self.idle_workers.push_back(worker)
+            Some(job) => {
+              worker.job_slot.val = job
+              wake_worker(worker.id)
+            }
+          }
+          guard self.jobs.get(job_id) is Some(coro)
           self.jobs.remove(job_id)
           coro.wake()
+        } else {
+          if not(@os_error.is_nonblocking_io_error()) {
+            @os_error.check_errno()
+          }
         }
       } else {
-        guard self.tasks.get(fd) is Some(task)
-        if task.read is Some(coro) && (events & Read) != 0 {
-          task.read = None
-          coro.wake()
+        guard self.fds.get(fd) is Some(handle)
+        if (events & ReadEvent) != 0 {
+          match handle.read {
+            Ready => ()
+            NotSure => handle.read = Ready
+            Waiting(coro) => {
+              handle.read = NotSure
+              coro.wake()
+            }
+          }
         }
-        if task.write is Some(coro) && (events & Write) != 0 {
-          task.write = None
-          coro.wake()
+        if (events & WriteEvent) != 0 {
+          match handle.write {
+            Ready => ()
+            NotSure => handle.write = Ready
+            Waiting(coro) => {
+              handle.write = NotSure
+              coro.wake()
+            }
+          }
         }
       }
     }
     @coroutine.reschedule()
   }
-  for fd, task in self.tasks {
-    guard task.read is None && task.write.is_empty()
-    self.poll.remove(fd, events=task.events) catch {
+  for fd, handle in self.fds {
+    guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
+    self.poll.remove(fd, events=handle.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
     @fd_util.close(fd)
   }
   guard self.pids.is_empty()
-  self.tasks.clear()
+  self.fds.clear()
 }
 
 ///|
-pub fn prepare_fd_read(fd : Int) -> Unit raise {
+fn prepare_fd_read(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  let task = match evloop.tasks.get(fd) {
+  let handle = match evloop.fds.get(fd) {
     None => {
-      let task = { read: None, write: None, events: NoEvent }
-      evloop.tasks[fd] = task
-      task
+      let handle = { read: NotSure, write: NotSure, events: NoEvent }
+      evloop.fds[fd] = handle
+      handle
     }
-    Some(task) => task
+    Some(handle) => handle
   }
-  guard task.read is None
-  if (task.events & Read) == 0 {
-    evloop.poll.register(
-      fd,
-      prev_events=task.events,
-      new_events=Read,
-      oneshot=false,
-    )
-    task.events = task.events | Read
+  guard not(handle.read is Waiting(_))
+  if (handle.events & ReadEvent) == 0 {
+    if evloop.poll.register(
+        fd,
+        prev_events=handle.events,
+        new_events=ReadEvent,
+        oneshot=false,
+      ) {
+      handle.events = handle.events | ReadEvent
+    }
+  } else {
+    handle.read = NotSure
   }
 }
 
 ///|
-pub async fn wait_fd_read(fd : Int) -> Unit raise {
+async fn wait_fd_read(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  guard evloop.tasks.get(fd) is Some(task)
-  guard (task.events & Read) != 0
-  task.read = Some(@coroutine.current_coroutine())
+  guard evloop.fds.get(fd) is Some(handle)
+  guard (handle.events & ReadEvent) != 0
+  if handle.read is Ready {
+    handle.read = NotSure
+    return
+  }
+  handle.read = Waiting(@coroutine.current_coroutine())
   @coroutine.suspend() catch {
     err => {
-      task.read = None
+      if handle.read is Waiting(_) {
+        handle.read = NotSure
+      }
       raise err
     }
   }
 }
 
 ///|
-pub fn prepare_fd_write(fd : Int) -> Unit raise {
+fn prepare_fd_write(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  let task = match evloop.tasks.get(fd) {
+  let handle = match evloop.fds.get(fd) {
     None => {
-      let task = { read: None, write: None, events: NoEvent }
-      evloop.tasks[fd] = task
-      task
+      let handle = { read: NotSure, write: NotSure, events: NoEvent }
+      evloop.fds[fd] = handle
+      handle
     }
-    Some(task) => task
+    Some(handle) => handle
   }
-  guard task.write is None
-  if (task.events & Write) == 0 {
-    evloop.poll.register(
-      fd,
-      prev_events=task.events,
-      new_events=Write,
-      oneshot=false,
-    )
-    task.events = task.events | Write
+  guard not(handle.write is Waiting(_))
+  if (handle.events & WriteEvent) == 0 {
+    if evloop.poll.register(
+        fd,
+        prev_events=handle.events,
+        new_events=WriteEvent,
+        oneshot=false,
+      ) {
+      handle.events = handle.events | WriteEvent
+    }
+  } else {
+    handle.write = NotSure
   }
 }
 
 ///|
-pub async fn wait_fd_write(fd : Int) -> Unit raise {
+async fn wait_fd_write(fd : Int) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  guard evloop.tasks.get(fd) is Some(task)
-  guard (task.events & Write) != 0
+  guard evloop.fds.get(fd) is Some(handle)
+  guard (handle.events & WriteEvent) != 0
+  if handle.write is Ready {
+    handle.write = NotSure
+    return
+  }
   let coro = @coroutine.current_coroutine()
-  task.write = Some(coro)
+  handle.write = Waiting(coro)
   ignore(@coroutine.suspend()) catch {
     err => {
-      task.write = None
+      if handle.write is Waiting(_) {
+        handle.write = NotSure
+      }
       raise err
     }
   }
 }
 
 ///|
-pub async fn wait_pid(pid : Int) -> Int raise {
+async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let alt_id = evloop.poll.register_pid(pid)
   let handle = match evloop.pids.get(alt_id) {
@@ -239,10 +311,12 @@ pub async fn wait_pid(pid : Int) -> Int raise {
 ///|
 pub fn close_fd(fd : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
-  if evloop.tasks.get(fd) is Some(task) {
-    evloop.tasks.remove(fd)
-    evloop.poll.remove(fd, events=task.events) catch {
-      err => abort("detach \{fd} from loop: \{err}")
+  if evloop.fds.get(fd) is Some(handle) {
+    evloop.fds.remove(fd)
+    if not(handle.events is NoEvent) {
+      evloop.poll.remove(fd, events=handle.events) catch {
+        err => abort("detach \{fd} from loop: \{err}")
+      }
     }
   }
   @fd_util.close(fd) catch {
@@ -251,11 +325,23 @@ pub fn close_fd(fd : Int) -> Unit {
 }
 
 ///|
-pub async fn perform_job(job : @thread_pool.Job) -> Int raise {
+async fn perform_job_in_worker(job : JobForWorker) -> Int raise {
   guard curr_loop.val is Some(evloop)
-  let coro = @coroutine.current_coroutine()
-  evloop.thread_pool.submit_job(job)
-  evloop.jobs[job.id()] = { job, coro }
+  match evloop.idle_workers.pop_front() {
+    None if evloop.running_workers.size() > evloop.max_worker_count =>
+      evloop.job_queue.push_back(job)
+    None => {
+      let job_slot = @ref.new(job)
+      let id = spawn_worker(job_slot)
+      evloop.running_workers[job.id()] = { id, job_slot }
+    }
+    Some(worker) => {
+      worker.job_slot.val = job
+      evloop.running_workers[job.id()] = worker
+      wake_worker(worker.id)
+    }
+  }
+  evloop.jobs[job.id()] = @coroutine.current_coroutine()
   @coroutine.protect_from_cancel(@coroutine.suspend)
   if job.err() > 0 {
     raise @os_error.OSError(job.err())
@@ -263,3 +349,100 @@ pub async fn perform_job(job : @thread_pool.Job) -> Int raise {
     job.ret()
   }
 }
+
+///|
+async fn perform_read_job(job : JobForWorker, fd : Int) -> Int raise {
+  prepare_fd_read(fd)
+  perform_job_in_worker(job) catch {
+    @os_error.OSError(_) as err if err.is_nonblocking_io_error() => {
+      wait_fd_read(fd)
+      perform_job_in_worker(job)
+    }
+    err => raise err
+  }
+}
+
+///|
+async fn perform_write_job(job : JobForWorker, fd : Int) -> Int raise {
+  prepare_fd_write(fd)
+  perform_job_in_worker(job) catch {
+    @os_error.OSError(_) as err if err.is_nonblocking_io_error() => {
+      wait_fd_write(fd)
+      perform_job_in_worker(job)
+    }
+    err => raise err
+  }
+}
+
+///|
+pub async fn perform_job(job : Job) -> Int raise {
+  match job {
+    Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
+    Read(fd~, buf~, offset~, len~) =>
+      perform_read_job(JobForWorker::read(fd, buf, offset, len), fd)
+    Write(fd~, buf~, offset~, len~) =>
+      perform_write_job(JobForWorker::write(fd, buf, offset, len), fd)
+    Open(path~, flags~, mode~) =>
+      perform_job_in_worker(JobForWorker::open(path, flags, mode))
+    Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
+    Readdir(dir~, out~) =>
+      perform_job_in_worker(JobForWorker::readdir(dir, out))
+    Spawn(path~, args~, env~, stdin~, stdout~, stderr~) =>
+      perform_job_in_worker(
+        JobForWorker::spawn(path, args, env, stdin, stdout, stderr),
+      )
+    Recvfrom(sock~, buf~, offset~, len~, addr~) =>
+      perform_read_job(
+        JobForWorker::recvfrom(sock, buf, offset, len, addr),
+        sock,
+      )
+    Sendto(sock~, buf~, offset~, len~, addr~) =>
+      perform_write_job(
+        JobForWorker::sendto(sock, buf, offset, len, addr),
+        sock,
+      )
+    Connect(sock~, addr~) => {
+      prepare_fd_write(sock)
+      if 0 == connect_ffi(sock, addr) {
+        return 0
+      }
+      if @os_error.is_nonblocking_io_error() {
+        wait_fd_write(sock)
+        let err = get_socket_err(sock)
+        if err < 0 {
+          @os_error.check_errno()
+        } else if err > 0 {
+          raise @os_error.OSError(err)
+        }
+      } else {
+        @os_error.check_errno()
+      }
+      0
+    }
+    Accept(sock~, addr~) => {
+      prepare_fd_read(sock)
+      let conn = accept_ffi(sock, addr)
+      if conn > 0 {
+        conn
+      } else if @os_error.is_nonblocking_io_error() {
+        wait_fd_read(sock)
+        accept_ffi(sock, addr)
+      } else {
+        @os_error.check_errno()
+        -1
+      }
+    }
+    WaitProcess(pid) => wait_pid(pid)
+  }
+}
+
+///|
+#borrow(addr)
+extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_connect"
+
+///|
+#borrow(addr_buf)
+extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
+
+///|
+extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"

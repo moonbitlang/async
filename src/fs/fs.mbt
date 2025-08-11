@@ -89,7 +89,7 @@ pub async fn open(
     Some(mode) => (true, mode)
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
-  let job = @thread_pool.Job::open(filename, flags, user_mode)
+  let job = @event_loop.Open(path=filename, flags~, mode=user_mode)
   File(@event_loop.perform_job(job))
 }
 
@@ -129,8 +129,7 @@ pub async fn File::read(
   len~ : Int = buf.length() - offset,
 ) -> Int raise {
   let File(fd) = self
-  let job = @thread_pool.Job::read(fd, buf, offset, len)
-  @event_loop.perform_job(job)
+  @event_loop.perform_job(Read(fd~, buf~, offset~, len~))
 }
 
 ///|
@@ -147,14 +146,13 @@ pub async fn File::write(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let File(fd) = self
-  let job = @thread_pool.Job::write(fd, buf, offset, len)
-  ignore(@event_loop.perform_job(job))
+  ignore(@event_loop.perform_job(Write(fd~, buf~, offset~, len~)))
 }
 
 ///|
 /// Remove the file located at `path`. `path` must not contain `'\0'`.
 pub async fn remove(path : Bytes) -> Unit raise {
-  let job = @thread_pool.Job::remove(path)
+  let job = @event_loop.Remove(path~)
   ignore(@event_loop.perform_job(job))
 }
 

@@ -30,6 +30,7 @@ async fn server(println : Printer) -> Unit raise {
     let buf = FixedArray::make(1024, b'0')
     while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
       group.spawn_bg(fn() {
+        @async.sleep(10)
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{msg}")
         let reply = b"pong"
@@ -60,6 +61,7 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   if conn.recv(buf) is n && n > 0 {
+    @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
     println("client \{id} received: \{msg}")
     conn.close()
