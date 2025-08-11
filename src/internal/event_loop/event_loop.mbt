@@ -18,7 +18,7 @@ priv struct EventLoop {
   tasks : Map[Int, Task]
   jobs : Map[Int, JobHandle]
   pids : Map[Int, ProcessHandle]
-  job_completion_pipe : Int
+  thread_pool : @thread_pool.Runtime
 }
 
 ///|
@@ -46,22 +46,24 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
-  let job_completion_pipe = @thread_pool.init_thread_pool()
-  defer @thread_pool.destroy_thread_pool()
+  let thread_pool = @thread_pool.Runtime::new()
+  defer thread_pool.destroy()
   let evloop = {
     poll: Instance::new(),
     tasks: {},
     jobs: {},
     pids: {},
-    job_completion_pipe,
+    thread_pool,
   }
   defer evloop.poll.destroy()
   evloop.poll.register(
-    job_completion_pipe,
+    thread_pool.notify_recv,
     prev_events=NoEvent,
     new_events=Read,
   )
-  defer (evloop.poll.remove(job_completion_pipe, events=Read) catch { _ => () })
+  defer (evloop.poll.remove(thread_pool.notify_recv, events=Read) catch {
+    _ => ()
+  })
   curr_loop.val = Some(evloop)
   defer {
     curr_loop.val = None
@@ -101,8 +103,8 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
           }
         }
         self.poll.remove_pid(fd)
-      } else if fd == self.job_completion_pipe {
-        while @thread_pool.fetch_completion() is Some(job_id) {
+      } else if fd == self.thread_pool.notify_recv {
+        while self.thread_pool.fetch_completion() is Some(job_id) {
           guard self.jobs.get(job_id) is Some({ job: _, coro })
           self.jobs.remove(job_id)
           coro.wake()
@@ -252,8 +254,7 @@ pub fn close_fd(fd : Int) -> Unit {
 pub async fn perform_job(job : @thread_pool.Job) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let coro = @coroutine.current_coroutine()
-  @thread_pool.submit_job(job)
-  defer job.free()
+  evloop.thread_pool.submit_job(job)
   evloop.jobs[job.id()] = { job, coro }
   @coroutine.protect_from_cancel(@coroutine.suspend)
   if job.err() > 0 {

@@ -82,7 +82,6 @@ struct spawn_job {
 };
 
 struct job {
-  struct job *next;
   int32_t job_id;
   enum op_code op_code;
   int32_t ret;
@@ -98,28 +97,14 @@ struct job {
   } payload;
 };
 
-static
-pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-#define MAX_WORKER_COUNT 1024
-
 struct {
   int initialized;
 
   int notify_send;
-  int notify_recv;
 
   sigset_t wakeup_signal;
   sigset_t old_sigmask;
   int32_t job_id;
-
-  // The following should be protected by `pool_mutex`
-  struct job *job_queue_head;
-  struct job *job_queue_tail;
-
-  pthread_t workers[MAX_WORKER_COUNT];
-  int worker_count;
-  int free_worker_count;
 } pool;
 
 int32_t moonbitlang_async_job_get_id(struct job *job) {
@@ -134,29 +119,6 @@ int32_t moonbitlang_async_job_get_err(struct job *job) {
   return job->err;
 }
 
-// thread unsafe
-static
-void enqueue_job(struct job *job) {
-  if (pool.job_queue_tail) {
-    pool.job_queue_tail->next = job;
-    pool.job_queue_tail = job;
-  } else {
-    pool.job_queue_head = pool.job_queue_tail = job;
-  }
-}
-
-// thread unsafe
-static
-struct job *dequeue_job() {
-  struct job *job = pool.job_queue_head;
-  if (job) {
-    pool.job_queue_head = job->next;
-    if (job == pool.job_queue_tail)
-      pool.job_queue_tail = 0;
-  }
-  return job;
-}
-
 static
 void *worker(void *data) {
   int sig;
@@ -166,9 +128,12 @@ void *worker(void *data) {
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGUSR1);
 
-  struct job *job = (struct job*)data;
+  struct job *job = *((struct job**)data);
 
-  while (1) {
+  while (job) {
+    job->ret = 0;
+    job->err = 0;
+
     switch (job->op_code) {
     case OP_SLEEP:
 #ifdef __MACH__
@@ -305,43 +270,24 @@ void *worker(void *data) {
     write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
     job = 0;
-    while (1) {
-      pthread_mutex_lock(&pool_mutex);
-      job = dequeue_job();
-      if (!job) {
-        pool.workers[pool.free_worker_count++] = self;
-      }
-      pthread_mutex_unlock(&pool_mutex);
-
-      if (job)
-        break;
-
-      sigwait(&pool.wakeup_signal, &sig);
-    }
+    sigwait(&pool.wakeup_signal, &sig);
+    job = *(struct job**)data;
   }
   return 0;
 }
 
-int moonbitlang_async_init_thread_pool(int notify_recv, int notify_send) {
+void moonbitlang_async_init_thread_pool(int notify_send) {
   if (pool.initialized)
     abort();
 
   pool.job_id = 0;
-  pool.job_queue_head = 0;
-  pool.job_queue_tail = 0;
-  pool.worker_count = 0;
-  pool.free_worker_count = 0;
-
-  pthread_mutex_init(&pool_mutex, 0);
 
   sigemptyset(&pool.wakeup_signal);
   sigaddset(&pool.wakeup_signal, SIGUSR1);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 
-  pool.notify_recv = notify_recv;
   pool.notify_send = notify_send;
   pool.initialized = 1;
-  return pool.notify_recv;
 }
 
 void moonbitlang_async_destroy_thread_pool() {
@@ -350,56 +296,33 @@ void moonbitlang_async_destroy_thread_pool() {
 
   pool.initialized = 0;
 
-  pthread_mutex_destroy(&pool_mutex);
-
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
 
-  while (pool.job_queue_head) {
-    struct job *head = pool.job_queue_head;
-    pool.job_queue_head = head->next;
-    free(head);
-  }
-  pool.job_queue_tail = 0;
-
   pool.job_id = 0;
-  pool.worker_count = 0;
-  pool.free_worker_count = 0;
-
-  close(pool.notify_send);
-  close(pool.notify_recv);
 }
 
-void moonbitlang_async_submit_job(struct job *job) {
-  job->ret = 0;
-  job->err = 0;
-  pthread_mutex_lock(&pool_mutex);
-  if (pool.free_worker_count > 0) {
-    enqueue_job(job);
-    pthread_t worker = pool.workers[--pool.free_worker_count];
-    pthread_mutex_unlock(&pool_mutex);
-    pthread_kill(worker, SIGUSR1);
-  } else if (pool.worker_count >= MAX_WORKER_COUNT) {
-    enqueue_job(job);
-    pthread_mutex_unlock(&pool_mutex);
-  } else {
-    pthread_mutex_unlock(&pool_mutex);
+pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, 512);
 
-    // no free worker thread available, try to spawn a new one
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, 512);
+  pthread_t id;
+  pthread_create(&id, &attr, &worker, job_slot);
+  pthread_attr_destroy(&attr);
+  return id;
+}
 
-    pthread_t id;
-    pthread_create(&id, &attr, &worker, job);
-    pthread_attr_destroy(&attr);
-  }
+void moonbitlang_async_wake_worker(pthread_t worker) {
+  pthread_kill(worker, SIGUSR1);
 }
 
 int moonbitlang_async_job_id(struct job *job) {
   return job->job_id;
 }
 
-void moonbitlang_async_free_job(struct job *job) {
+static
+void free_job(void *jobp) {
+  struct job *job = (struct job*)jobp;
   switch (job->op_code) {
   case OP_SLEEP: break;
   case OP_READ:
@@ -425,9 +348,19 @@ void moonbitlang_async_free_job(struct job *job) {
   }
 }
 
+static
+struct job *make_job() {
+  struct job *job = (struct job*)moonbit_make_external_object(
+    &free_job,
+    sizeof(struct job)
+  );
+  job->ret = 0;
+  job->err = 0;
+  return job;
+}
+
 struct job *moonbitlang_async_make_sleep_job(int ms) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_SLEEP;
   job->payload.sleep.tv_sec = ms / 1000;
@@ -436,8 +369,7 @@ struct job *moonbitlang_async_make_sleep_job(int ms) {
 }
 
 struct job *moonbitlang_async_make_read_job(int fd, void *buf, int offset, int len) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_READ;
   job->payload.read.fd = fd;
@@ -447,8 +379,7 @@ struct job *moonbitlang_async_make_read_job(int fd, void *buf, int offset, int l
 }
 
 struct job *moonbitlang_async_make_write_job(int fd, void *buf, int offset, int len) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_WRITE;
   job->payload.read.fd = fd;
@@ -458,8 +389,7 @@ struct job *moonbitlang_async_make_write_job(int fd, void *buf, int offset, int 
 }
 
 struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_OPEN;
   job->payload.open.filename = filename;
@@ -469,8 +399,7 @@ struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode)
 }
 
 struct job *moonbitlang_async_make_remove_job(char *path) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_REMOVE;
   job->payload.remove.path = path;
@@ -478,8 +407,7 @@ struct job *moonbitlang_async_make_remove_job(char *path) {
 }
 
 struct job *moonbitlang_async_make_readdir_job(DIR *dir, struct dirent **out) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_READDIR;
   job->payload.readdir.dir = dir;
@@ -495,8 +423,7 @@ struct job *moonbitlang_async_make_spawn_job(
   int stdout_fd,
   int stderr_fd
 ) {
-  struct job *job = (struct job*)malloc(sizeof(struct job));
-  job->next = 0;
+  struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_SPAWN;
   job->payload.spawn.path = path;
@@ -508,9 +435,9 @@ struct job *moonbitlang_async_make_spawn_job(
   return job;
 }
 
-int32_t moonbitlang_async_fetch_completion() {
+int32_t moonbitlang_async_fetch_completion(int notify_recv) {
   int32_t job_id;
-  int32_t ret = read(pool.notify_recv, &job_id, sizeof(int32_t));
+  int32_t ret = read(notify_recv, &job_id, sizeof(int32_t));
   if (ret < 0)
     return ret;
 
