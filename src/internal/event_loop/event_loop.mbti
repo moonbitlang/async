@@ -11,6 +11,8 @@ fn with_event_loop(async () -> Unit raise) -> Unit raise
 // Errors
 
 // Types and methods
+type AddrInfo
+
 type Directory
 
 type DirectoryEntry
@@ -28,6 +30,7 @@ pub(all) enum Job {
   Connect(sock~ : Int, addr~ : Bytes)
   Accept(sock~ : Int, addr~ : Bytes)
   WaitProcess(Int)
+  GetAddrInfo(host~ : Bytes, out~ : Ref[AddrInfo])
 }
 
 // Type aliases
