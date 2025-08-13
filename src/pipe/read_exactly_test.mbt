@@ -25,10 +25,13 @@ test "read_exactly" {
     root.spawn_bg(fn() {
       defer r.close()
       let msg1 = r.read_exactly(4)
+      @async.sleep(10)
       log("first message: \{msg1}")
       let msg2 = r.read_exactly(4)
+      @async.sleep(10)
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4)
+      @async.sleep(10)
       log("third message: \{msg3}")
     })
     // writer
@@ -67,10 +70,13 @@ test "read_exactly failure" {
       root.spawn_bg(fn() {
         defer r.close()
         let msg1 = r.read_exactly(4)
+        @async.sleep(10)
         log("first message: \{msg1}")
         let msg2 = r.read_exactly(4)
+        @async.sleep(10)
         log("second message: \{msg2}")
         let msg3 = r.read_exactly(4)
+        @async.sleep(10)
         log("third message: \{msg3}")
       })
       // writer

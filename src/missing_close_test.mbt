@@ -19,6 +19,7 @@ test "missing_close" {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       let data = r.read_exactly(4)
+      @async.sleep(10)
       log.write_string("received \{data}\n")
     })
     root.spawn_bg(fn() {
