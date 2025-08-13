@@ -109,29 +109,29 @@ pub fn spawn(f : async () -> Unit raise) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
     state: Running,
-    ready: false,
-    shielded: false,
+    ready: true,
+    shielded: true,
     downstream: Set::new(),
     coro_id: scheduler.coro_id,
     cancelled: false,
   }
-  let last_coro = scheduler.curr_coro
-  scheduler.curr_coro = Some(coro)
-  run_async(fn() {
-    try {
-      pause()
-      f()
-    } catch {
-      err => coro.state = Fail(err)
-    } noraise {
-      _ => coro.state = Done
-    }
-    for coro in coro.downstream {
-      coro.wake()
-    }
-    coro.downstream.clear()
-  })
-  scheduler.curr_coro = last_coro
+  fn run(_) {
+    run_async(fn() {
+      coro.shielded = false
+      try f() catch {
+        err => coro.state = Fail(err)
+      } noraise {
+        _ => coro.state = Done
+      }
+      for coro in coro.downstream {
+        coro.wake()
+      }
+      coro.downstream.clear()
+    })
+  }
+
+  coro.state = Suspend(ok_cont=run, err_cont=_ => ())
+  scheduler.run_later.push_back(coro)
   coro
 }
 
