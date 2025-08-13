@@ -6,7 +6,8 @@
     "moonbitlang/async/io"
   ],
   "test-import": [
-    "moonbitlang/async"
+    "moonbitlang/async",
+    "moonbitlang/async/aqueue"
   ],
   "native-stub": [ "socket.c" ]
 }

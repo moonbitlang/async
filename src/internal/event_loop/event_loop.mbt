@@ -105,7 +105,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  while not(@coroutine.no_more_work()) {
+  while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
     let timeout = match @coroutine.next_expire_time() {
       Some(t) => @cmp.maximum(0, (t - @time.ms_since_epoch()).to_int())
       None => -1
@@ -141,9 +141,10 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
               wake_worker(worker.id)
             }
           }
-          guard self.jobs.get(job_id) is Some(coro)
-          self.jobs.remove(job_id)
-          coro.wake()
+          if self.jobs.get(job_id) is Some(coro) {
+            self.jobs.remove(job_id)
+            coro.wake()
+          }
         } else {
           if not(@os_error.is_nonblocking_io_error()) {
             @os_error.check_errno()
@@ -313,7 +314,10 @@ pub fn close_fd(fd : Int) -> Unit {
 }
 
 ///|
-async fn perform_job_in_worker(job : JobForWorker) -> Int raise {
+async fn perform_job_in_worker(
+  job : JobForWorker,
+  allow_cancel~ : Bool = false,
+) -> Int raise {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {
     None if evloop.running_workers.size() > evloop.max_worker_count =>
@@ -330,7 +334,16 @@ async fn perform_job_in_worker(job : JobForWorker) -> Int raise {
     }
   }
   evloop.jobs[job.id()] = @coroutine.current_coroutine()
-  @coroutine.protect_from_cancel(@coroutine.suspend)
+  if allow_cancel {
+    @coroutine.suspend() catch {
+      err => {
+        evloop.jobs.remove(job.id())
+        raise err
+      }
+    }
+  } else {
+    @coroutine.protect_from_cancel(@coroutine.suspend)
+  }
   if job.err() > 0 {
     raise @os_error.OSError(job.err())
   } else {
@@ -422,7 +435,10 @@ pub async fn perform_job(job : Job) -> Int raise {
     }
     WaitProcess(pid) => wait_pid(pid)
     GetAddrInfo(host~, out~) =>
-      perform_job_in_worker(JobForWorker::getaddrinfo(host, out))
+      perform_job_in_worker(
+        JobForWorker::getaddrinfo(host, out),
+        allow_cancel=true,
+      )
   }
 }
 
