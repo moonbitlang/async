@@ -48,7 +48,7 @@ priv struct FdHandle {
 ///|
 priv struct ProcessHandle {
   mut result : Int
-  waiters : Set[@coroutine.Coroutine]
+  waiter : @coroutine.Coroutine
 }
 
 ///|
@@ -127,9 +127,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
           }
           handle.result = result.val
           self.pids.remove(fd)
-          for coro in handle.waiters {
-            coro.wake()
-          }
+          handle.waiter.wake()
         }
         self.poll.remove_pid(fd)
       } else if fd == self.notify_recv {
@@ -285,23 +283,13 @@ async fn wait_fd_write(fd : Int) -> Unit raise {
 async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let alt_id = evloop.poll.register_pid(pid)
-  let handle = match evloop.pids.get(alt_id) {
-    None => {
-      let handle = { result: 0, waiters: Set::new() }
-      evloop.pids[alt_id] = handle
-      handle
-    }
-    Some(handle) => handle
-  }
-  let coro = @coroutine.current_coroutine()
-  handle.waiters.add(coro)
+  guard evloop.pids.get(alt_id) is None
+  let handle = { result: 0, waiter: @coroutine.current_coroutine() }
+  evloop.pids[alt_id] = handle
   @coroutine.suspend() catch {
     err => {
-      handle.waiters.remove(coro)
-      if handle.waiters.is_empty() {
-        evloop.pids.remove(alt_id)
-        evloop.poll.remove_pid(alt_id)
-      }
+      evloop.pids.remove(alt_id)
+      evloop.poll.remove_pid(alt_id)
       raise err
     }
   }
