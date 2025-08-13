@@ -236,3 +236,27 @@ test "error in cancellation" {
     ),
   )
 }
+
+///|
+test "immediately cancelled" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    let task = root.spawn(allow_failure=true, fn() {
+      defer log.write_string("task terminated\n")
+      log.write_string("task started\n")
+      @async.sleep(100)
+      log.write_string("task finished\n")
+    })
+    log.write_string("task spawned\n")
+    task.cancel()
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task spawned
+      #|task started
+      #|task terminated
+      #|
+    ),
+  )
+}
