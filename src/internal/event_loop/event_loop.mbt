@@ -421,6 +421,8 @@ pub async fn perform_job(job : Job) -> Int raise {
       }
     }
     WaitProcess(pid) => wait_pid(pid)
+    GetAddrInfo(host~, out~) =>
+      perform_job_in_worker(JobForWorker::getaddrinfo(host, out))
   }
 }
 

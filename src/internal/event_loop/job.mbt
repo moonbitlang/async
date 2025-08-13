@@ -97,6 +97,16 @@ extern "C" fn JobForWorker::sendto(
 ) -> JobForWorker = "moonbitlang_async_make_sendto_job"
 
 ///|
+#external
+type AddrInfo
+
+///|
+extern "C" fn JobForWorker::getaddrinfo(
+  host : Bytes,
+  out : Ref[AddrInfo],
+) -> JobForWorker = "moonbitlang_async_make_getaddrinfo_job"
+
+///|
 pub(all) enum Job {
   Sleep(Int)
   Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int)
@@ -123,4 +133,5 @@ pub(all) enum Job {
   Connect(sock~ : Int, addr~ : Bytes)
   Accept(sock~ : Int, addr~ : Bytes)
   WaitProcess(Int)
+  GetAddrInfo(host~ : Bytes, out~ : Ref[AddrInfo])
 }

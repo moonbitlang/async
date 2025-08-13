@@ -29,6 +29,7 @@
 #include <spawn.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <moonbit.h>
 
 #ifdef __MACH__
@@ -46,7 +47,8 @@ enum op_code {
   OP_READDIR,
   OP_SPAWN,
   OP_RECVFROM,
-  OP_SENDTO
+  OP_SENDTO,
+  OP_GETADDRINFO
 };
 
 struct read_job {
@@ -99,6 +101,11 @@ struct sendto_job {
   struct sockaddr *addr;
 };
 
+struct getaddrinfo_job {
+  char *hostname;
+  struct addrinfo **out;
+};
+
 struct job {
   int32_t job_id;
   enum op_code op_code;
@@ -114,6 +121,7 @@ struct job {
     struct spawn_job spawn;
     struct recvfrom_job recvfrom;
     struct sendto_job sendto;
+    struct getaddrinfo_job getaddrinfo;
   } payload;
 };
 
@@ -330,6 +338,25 @@ void *worker(void *data) {
       if (job->ret < 0)
         job->err = errno;
       break;
+
+    case OP_GETADDRINFO: {
+      struct addrinfo hint = {
+        0, // ai_flags
+        AF_INET, // ai_family
+        0, // ai_socktype
+        0, // ai_protocol
+        0, 0, 0, 0
+      };
+      job->ret = getaddrinfo(
+        job->payload.getaddrinfo.hostname, 
+        0,
+        &hint,
+        job->payload.getaddrinfo.out
+      );
+      if (job->ret == EAI_SYSTEM)
+        job->err = errno;
+      break;
+    }
     }
     write(pool.notify_send, &(job->job_id), sizeof(int32_t));
 
@@ -416,6 +443,10 @@ void free_job(void *jobp) {
   case OP_SENDTO:
     moonbit_decref(job->payload.sendto.buf);
     moonbit_decref(job->payload.sendto.addr);
+    break;
+  case OP_GETADDRINFO:
+    moonbit_decref(job->payload.getaddrinfo.hostname);
+    moonbit_decref(job->payload.getaddrinfo.out);
     break;
   }
 }
@@ -538,6 +569,18 @@ struct job *moonbitlang_async_make_sendto_job(
   job->payload.sendto.buf = buf + offset;
   job->payload.sendto.len = len;
   job->payload.sendto.addr = addr;
+  return job;
+}
+
+struct job *moonbitlang_async_make_getaddrinfo_job(
+  char *hostname,
+  struct addrinfo **out
+) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_GETADDRINFO;
+  job->payload.getaddrinfo.hostname = hostname;
+  job->payload.getaddrinfo.out = out;
   return job;
 }
 
