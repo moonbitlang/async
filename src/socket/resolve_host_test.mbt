@@ -31,3 +31,25 @@ test "resolve mooncakes.io" {
   })
   inspect(log.to_string(), content="54.188.190.230:443")
 }
+
+///|
+test "resolve cancel" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    let channel = @async.Queue::new()
+    let task = root.spawn(allow_failure=true, fn() {
+      channel.put(())
+      log.write_object(@socket.Addr::resolve("localhost", port=443))
+    })
+    channel.get() // make sure the task already started
+    task.cancel()
+    log.write_string("host resolution cancelled\n")
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|host resolution cancelled
+      #|
+    ),
+  )
+}
