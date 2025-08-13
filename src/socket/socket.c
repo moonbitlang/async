@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <moonbit.h>
@@ -96,4 +97,12 @@ uint32_t moonbitlang_async_ip_addr_get_ip(struct sockaddr_in *addr) {
 
 uint32_t moonbitlang_async_ip_addr_get_port(struct sockaddr_in *addr) {
   return ntohs(addr->sin_port);
+}
+
+struct addrinfo *moonbitlang_async_null_addrinfo() {
+  return 0;
+}
+
+uint32_t moonbitlang_async_addrinfo_get_ip(struct addrinfo *addrinfo) {
+  return ntohl(((struct sockaddr_in*)(addrinfo->ai_addr))->sin_addr.s_addr);
 }
