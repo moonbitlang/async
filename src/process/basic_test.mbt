@@ -29,7 +29,9 @@ test "basic_ls" {
     let (r, w) = @pipe.pipe()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"ls", [b"src"], stdout=w, extra_env={ b"LANG": b"C" })
+      @process.run(b"ls", [b"src"], stdout=w, extra_env={
+        b"LANG": b"en_US.UTF-8",
+      })
       |> ignore
     })
     let buf = FixedArray::make(1024, b'0')
@@ -64,8 +66,8 @@ test "basic_ls" {
       #|socket
       #|spawn_loop_test.mbt
       #|spawn_test.mbt
-      #|task.mbt
       #|task_group.mbt
+      #|task.mbt
       #|timer_test.mbt
       #|wait_test.mbt
       #|with_timeout_test.mbt
