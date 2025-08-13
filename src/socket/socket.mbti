@@ -7,12 +7,16 @@ package "moonbitlang/async/socket"
 pub suberror InvalidAddr
 impl Show for InvalidAddr
 
+pub suberror ResolveHostnameError Int
+impl Show for ResolveHostnameError
+
 // Types and methods
 type Addr
 fn Addr::ip(Self) -> UInt
 fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
+async fn Addr::resolve(Bytes, port~ : Int) -> Self raise
 impl Compare for Addr
 impl Eq for Addr
 impl Hash for Addr

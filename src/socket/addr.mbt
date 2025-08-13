@@ -70,3 +70,31 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
   guard 0 <= port && port < 65536 else { raise InvalidAddr }
   Addr::new(ip, port)
 }
+
+///|
+typealias @event_loop.AddrInfo
+
+///|
+extern "C" fn AddrInfo::null() -> AddrInfo = "moonbitlang_async_null_addrinfo"
+
+///|
+extern "C" fn AddrInfo::ip(self : AddrInfo) -> UInt = "moonbitlang_async_addrinfo_get_ip"
+
+///|
+extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
+
+///|
+pub suberror ResolveHostnameError Int derive(Show)
+
+///|
+/// Resolve a IPv4 address by hostname
+pub async fn Addr::resolve(host : Bytes, port~ : Int) -> Addr raise {
+  let info = @ref.new(AddrInfo::null())
+  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=info))
+  if ret > 0 {
+    raise ResolveHostnameError(ret)
+  }
+  let ip = info.val.ip()
+  info.val.free()
+  Addr::new(ip, port)
+}
