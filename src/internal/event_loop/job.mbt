@@ -13,7 +13,6 @@
 // limitations under the License.
 
 ///|
-#external
 priv type JobForWorker
 
 ///|
