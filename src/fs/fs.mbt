@@ -147,7 +147,8 @@ pub async fn File::read(
   offset~ : Int = 0,
   len~ : Int = buf.length() - offset,
 ) -> Int raise {
-  @event_loop.perform_job(Read(fd=self.fd, buf~, offset~, len~))
+  let can_poll = self.kind.can_poll()
+  @event_loop.perform_job(Read(fd=self.fd, buf~, offset~, len~, can_poll~))
 }
 
 ///|
@@ -163,7 +164,9 @@ pub async fn File::write(
   offset~ : Int = 0,
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
-  ignore(@event_loop.perform_job(Write(fd=self.fd, buf~, offset~, len~)))
+  let can_poll = self.kind.can_poll()
+  let job = @event_loop.Write(fd=self.fd, buf~, offset~, len~, can_poll~)
+  ignore(@event_loop.perform_job(job))
 }
 
 ///|
@@ -229,6 +232,14 @@ pub fn File::as_dir(self : File) -> Directory raise {
     @os_error.check_errno()
   }
   dir
+}
+
+///|
+fn FileKind::can_poll(self : FileKind) -> Bool {
+  match self {
+    Socket | Pipe => true
+    Unknown | Regular | Directory | SymLink | BlockDevice | CharDevice => false
+  }
 }
 
 ///|

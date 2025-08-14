@@ -200,14 +200,13 @@ fn prepare_fd_read(fd : Int) -> Unit raise {
   }
   guard not(handle.read is Waiting(_))
   if (handle.events & ReadEvent) == 0 {
-    if evloop.poll.register(
-        fd,
-        prev_events=handle.events,
-        new_events=ReadEvent,
-        oneshot=false,
-      ) {
-      handle.events = handle.events | ReadEvent
-    }
+    evloop.poll.register(
+      fd,
+      prev_events=handle.events,
+      new_events=ReadEvent,
+      oneshot=false,
+    )
+    handle.events = handle.events | ReadEvent
   } else {
     handle.read = NotSure
   }
@@ -246,14 +245,13 @@ fn prepare_fd_write(fd : Int) -> Unit raise {
   }
   guard not(handle.write is Waiting(_))
   if (handle.events & WriteEvent) == 0 {
-    if evloop.poll.register(
-        fd,
-        prev_events=handle.events,
-        new_events=WriteEvent,
-        oneshot=false,
-      ) {
-      handle.events = handle.events | WriteEvent
-    }
+    evloop.poll.register(
+      fd,
+      prev_events=handle.events,
+      new_events=WriteEvent,
+      oneshot=false,
+    )
+    handle.events = handle.events | WriteEvent
   } else {
     handle.write = NotSure
   }
@@ -379,10 +377,22 @@ async fn perform_write_job(job : JobForWorker, fd : Int) -> Int raise {
 pub async fn perform_job(job : Job) -> Int raise {
   match job {
     Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
-    Read(fd~, buf~, offset~, len~) =>
-      perform_read_job(JobForWorker::read(fd, buf, offset, len), fd)
-    Write(fd~, buf~, offset~, len~) =>
-      perform_write_job(JobForWorker::write(fd, buf, offset, len), fd)
+    Read(fd~, buf~, offset~, len~, can_poll~) => {
+      let job = JobForWorker::read(fd, buf, offset, len)
+      if can_poll {
+        perform_read_job(job, fd)
+      } else {
+        perform_job_in_worker(job)
+      }
+    }
+    Write(fd~, buf~, offset~, len~, can_poll~) => {
+      let job = JobForWorker::write(fd, buf, offset, len)
+      if can_poll {
+        perform_write_job(job, fd)
+      } else {
+        perform_job_in_worker(job)
+      }
+    }
     Open(path~, flags~, mode~) =>
       perform_job_in_worker(JobForWorker::open(path, flags, mode))
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))

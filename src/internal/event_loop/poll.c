@@ -57,11 +57,7 @@ int moonbitlang_async_poll_register(
   data.u64 = fd;
   struct epoll_event event = { events, data };
   int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-  int ret = epoll_ctl(epfd, op, fd, &event);
-  if (ret < 0)
-    return errno == EPERM ? 0 : -1;
-  else
-    return 1;
+  return epoll_ctl(epfd, op, fd, &event);
 }
 
 int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
@@ -171,11 +167,7 @@ int moonbitlang_async_poll_register(
 
   struct kevent event;
   EV_SET(&event, fd, filter, flags, 0, 0, 0);
-  int ret = kevent(kqfd, &event, 1, 0, 0, 0);
-  if (ret < 0)
-    return errno == EOPNOTSUPP ? 0 : -1;
-  else
-    return 1;
+  return kevent(kqfd, &event, 1, 0, 0, 0);
 }
 
 int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid) {

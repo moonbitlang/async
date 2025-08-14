@@ -49,12 +49,10 @@ fn Instance::register(
   prev_events~ : Int,
   new_events~ : Int,
   oneshot~ : Bool = false,
-) -> Bool raise {
-  let ret = self.register_ffi(fd, prev_events~, new_events~, oneshot~)
-  if ret < 0 {
+) -> Unit raise {
+  if self.register_ffi(fd, prev_events~, new_events~, oneshot~) < 0 {
     @os_error.check_errno()
   }
-  ret > 0
 }
 
 ///|
