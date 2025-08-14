@@ -109,8 +109,14 @@ extern "C" fn JobForWorker::getaddrinfo(
 ///|
 pub(all) enum Job {
   Sleep(Int)
-  Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int)
-  Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int)
+  Read(
+    fd~ : Int,
+    buf~ : FixedArray[Byte],
+    offset~ : Int,
+    len~ : Int,
+    can_poll~ : Bool
+  )
+  Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
   Remove(path~ : Bytes)
   Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])

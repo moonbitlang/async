@@ -76,7 +76,9 @@ pub async fn UDP::recv(
   max_len~ : Int = buf.length() - offset,
 ) -> Int raise {
   let UDP(sock) = self
-  @event_loop.perform_job(Read(fd=sock, buf~, offset~, len=max_len))
+  @event_loop.perform_job(
+    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+  )
 }
 
 ///|
@@ -124,7 +126,8 @@ pub async fn UDP::send(
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
   let UDP(sock) = self
-  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~)) |> ignore
+  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
+  |> ignore
 }
 
 ///|

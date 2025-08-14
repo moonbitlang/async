@@ -117,7 +117,7 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 ///|
 pub impl @io.Reader for PipeRead with read(self, buf, offset~, max_len~) {
   let PipeRead(fd) = self
-  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len))
+  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len, can_poll=true))
 }
 
 ///|
@@ -166,7 +166,7 @@ pub async fn PipeWrite::write(
   let PipeWrite(fd) = self
   for sent = 0; sent < len; {
     let new_sent = @event_loop.perform_job(
-      Write(fd~, buf~, offset=offset + sent, len=len - sent),
+      Write(fd~, buf~, offset=offset + sent, len=len - sent, can_poll=true),
     )
     continue sent + new_sent
   }

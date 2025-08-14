@@ -21,7 +21,7 @@ type File
 fn File::as_dir(Self) -> Directory raise
 fn File::close(Self) -> Unit
 fn File::curr_pos(Self) -> Int64 raise
-fn File::kind(Self) -> FileKind raise
+fn File::kind(Self) -> FileKind
 async fn File::read(Self, FixedArray[Byte], offset? : Int, len? : Int) -> Int raise
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise

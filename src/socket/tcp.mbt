@@ -101,7 +101,9 @@ pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
 ///|
 pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
   let TCP(sock) = self
-  @event_loop.perform_job(Read(fd=sock, buf~, offset~, len=max_len))
+  @event_loop.perform_job(
+    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+  )
 }
 
 ///|
@@ -150,7 +152,7 @@ pub async fn TCP::send(
   let TCP(sock) = self
   for sent = 0; sent < len; {
     let new_sent = @event_loop.perform_job(
-      Write(fd=sock, buf~, offset=offset - sent, len=len - sent),
+      Write(fd=sock, buf~, offset=offset - sent, len=len - sent, can_poll=true),
     )
     continue sent + new_sent
   }
