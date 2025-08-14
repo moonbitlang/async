@@ -13,12 +13,26 @@
 // limitations under the License.
 
 ///|
-struct File(Int)
+pub(all) enum FileKind {
+  Unknown = 0
+  Regular = 1
+  Directory = 2
+  SymLink = 3
+  Socket = 4
+  Pipe = 5
+  BlockDevice = 6
+  CharDevice = 7
+} derive(Show)
+
+///|
+struct File {
+  fd : Int
+  kind : FileKind
+}
 
 ///|
 pub fn File::close(self : File) -> Unit {
-  let File(fd) = self
-  @event_loop.close_fd(fd)
+  @event_loop.close_fd(self.fd)
 }
 
 ///|
@@ -90,7 +104,12 @@ pub async fn open(
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
   let job = @event_loop.Open(path=filename, flags~, mode=user_mode)
-  File(@event_loop.perform_job(job))
+  let fd = @event_loop.perform_job(job)
+  let kind = get_file_kind_ffi(fd)
+  if kind < 0 {
+    @os_error.check_errno()
+  }
+  { fd, kind: FileKind::unsafe_from_int(kind) }
 }
 
 ///|
@@ -128,8 +147,7 @@ pub async fn File::read(
   offset~ : Int = 0,
   len~ : Int = buf.length() - offset,
 ) -> Int raise {
-  let File(fd) = self
-  @event_loop.perform_job(Read(fd~, buf~, offset~, len~))
+  @event_loop.perform_job(Read(fd=self.fd, buf~, offset~, len~))
 }
 
 ///|
@@ -145,8 +163,7 @@ pub async fn File::write(
   offset~ : Int = 0,
   len~ : Int = buf.length() - offset,
 ) -> Unit raise {
-  let File(fd) = self
-  ignore(@event_loop.perform_job(Write(fd~, buf~, offset~, len~)))
+  ignore(@event_loop.perform_job(Write(fd=self.fd, buf~, offset~, len~)))
 }
 
 ///|
@@ -177,8 +194,7 @@ extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = 
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
 pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise {
-  let File(fd) = self
-  let offset = lseek_ffi(fd, offset, mode)
+  let offset = lseek_ffi(self.fd, offset, mode)
   if offset < 0 {
     @os_error.check_errno()
   }
@@ -202,13 +218,13 @@ pub fn File::size(self : File) -> Int64 raise {
 }
 
 ///|
-extern "C" fn File::as_dir_ffi(self : File) -> Directory = "fdopendir"
+extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 
 ///|
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 pub fn File::as_dir(self : File) -> Directory raise {
-  let dir = self.as_dir_ffi()
+  let dir = as_dir_ffi(self.fd)
   if dir.is_null() {
     @os_error.check_errno()
   }
@@ -216,28 +232,12 @@ pub fn File::as_dir(self : File) -> Directory raise {
 }
 
 ///|
-pub(all) enum FileKind {
-  Unknown = 0
-  Regular = 1
-  Directory = 2
-  SymLink = 3
-  Socket = 4
-  Pipe = 5
-  BlockDevice = 6
-  CharDevice = 7
-} derive(Show)
-
-///|
 fn FileKind::unsafe_from_int(x : Int) -> FileKind = "%identity"
 
 ///|
-extern "C" fn File::kind_ffi(self : File) -> Int = "moonbitlang_async_file_kind"
+extern "C" fn get_file_kind_ffi(fd : Int) -> Int = "moonbitlang_async_file_kind"
 
 ///|
-pub fn File::kind(self : File) -> FileKind raise {
-  let kind = self.kind_ffi()
-  if kind < 0 {
-    @os_error.check_errno()
-  }
-  FileKind::unsafe_from_int(kind)
+pub fn File::kind(self : File) -> FileKind {
+  self.kind
 }
