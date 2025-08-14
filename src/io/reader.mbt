@@ -16,6 +16,7 @@
 pub(open) trait Reader {
   async read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int raise
   async read_exactly(Self, len : Int) -> Bytes raise = _
+  async read_all(Self) -> Bytes raise = _
 }
 
 ///|
@@ -32,4 +33,27 @@ impl Reader with read_exactly(self, len) {
     continue received + new_received
   }
   buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+impl Reader with read_all(self) {
+  let buffer_list = []
+  let mut buffer = FixedArray::make(1024, b'0')
+  let mut offset = 0
+  while self.read(buffer, offset~, max_len=buffer.length() - offset) is n &&
+        n > 0 {
+    offset += n
+    if offset == buffer.length() {
+      buffer_list.push(buffer)
+      buffer = FixedArray::make(1024, b'0')
+      offset = 0
+    }
+  }
+  let total_size = buffer_list.length() * 1024 + offset
+  let result = FixedArray::make(total_size, b'0')
+  for i, buf in buffer_list {
+    result.unsafe_blit(i * 1024, buf, 0, 1024)
+  }
+  result.unsafe_blit(buffer_list.length() * 1024, buffer, 0, offset)
+  result.unsafe_reinterpret_as_bytes()
 }

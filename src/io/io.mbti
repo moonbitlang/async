@@ -23,5 +23,6 @@ impl[R : Reader] Reader for BufferedReader[R]
 pub(open) trait Reader {
   async read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int raise
   async read_exactly(Self, Int) -> Bytes raise = _
+  async read_all(Self) -> Bytes raise = _
 }
 
