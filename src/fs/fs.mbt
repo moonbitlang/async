@@ -132,6 +132,14 @@ pub async fn create(
 }
 
 ///|
+pub impl @io.Reader for File with read(self, buf, offset~, max_len~) {
+  let can_poll = self.kind.can_poll()
+  @event_loop.perform_job(
+    Read(fd=self.fd, buf~, offset~, len=max_len, can_poll~),
+  )
+}
+
+///|
 /// `file.read(buf, offset~, len~) read `len` bytes from `file`,
 /// store data into `buf`, starting with `offset`.
 /// By default, `offset` is `0` and `len` is `buf.length() - offset`.
@@ -145,10 +153,31 @@ pub async fn File::read(
   self : File,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
+  max_len~ : Int = buf.length() - offset,
 ) -> Int raise {
-  let can_poll = self.kind.can_poll()
-  @event_loop.perform_job(Read(fd=self.fd, buf~, offset~, len~, can_poll~))
+  @io.Reader::read(self, buf, offset~, max_len~)
+}
+
+///|
+// used for obtaining the default implementation of `@io.Reader::read_all`
+priv struct DummyFile(File)
+
+///|
+impl @io.Reader for DummyFile with read(self, buf, offset~, max_len~) {
+  @io.Reader::read(self.0, buf, offset~, max_len~)
+}
+
+///|
+pub impl @io.Reader for File with read_all(self) {
+  match self.kind {
+    Regular => {
+      let size = self.size().to_int()
+      let result = FixedArray::make(size, b'0')
+      guard self.read(result) == size
+      result.unsafe_reinterpret_as_bytes()
+    }
+    _ => @io.Reader::read_all(DummyFile(self))
+  }
 }
 
 ///|
