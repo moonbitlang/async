@@ -25,7 +25,7 @@ impl @moonbitlang/async/io.Reader for PipeRead
 type PipeWrite
 fn PipeWrite::close(Self) -> Unit
 fn PipeWrite::fd(Self) -> Int
-async fn PipeWrite::write(Self, Bytes, offset? : Int, len? : Int) -> Unit raise
+impl @moonbitlang/async/io.Writer for PipeWrite
 
 // Type aliases
 

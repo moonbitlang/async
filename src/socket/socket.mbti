@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/socket"
 
+import(
+  "moonbitlang/core/bytes"
+)
+
 // Values
 
 // Errors
@@ -32,8 +36,9 @@ fn TCP::listen(Self) -> Unit raise
 fn TCP::new() -> Self raise
 async fn TCP::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
 async fn TCP::recv_exactly(Self, Int) -> Bytes raise
-async fn TCP::send(Self, Bytes, offset? : Int, len? : Int) -> Unit raise
+async fn TCP::send(Self, @bytes.View) -> Unit raise
 impl @moonbitlang/async/io.Reader for TCP
+impl @moonbitlang/async/io.Writer for TCP
 
 type UDP
 fn UDP::bind(Self, Addr) -> Unit raise

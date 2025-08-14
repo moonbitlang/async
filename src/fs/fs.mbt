@@ -181,21 +181,10 @@ pub impl @io.Reader for File with read_all(self) {
 }
 
 ///|
-/// `file.write(buf, offset~, len~)` write content of `buf[offset:offset+len]`
-/// to the file `file`.
-/// By default, `offset` is `0` and `len` is `buf.length() - offset`.
-///
-/// `write` will ensure all data is succesfully written,
-/// Unless an error occurred while writing.
-pub async fn File::write(
-  self : File,
-  buf : Bytes,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
-) -> Unit raise {
+pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
   let job = @event_loop.Write(fd=self.fd, buf~, offset~, len~, can_poll~)
-  ignore(@event_loop.perform_job(job))
+  @event_loop.perform_job(job)
 }
 
 ///|

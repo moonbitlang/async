@@ -83,7 +83,7 @@ async fn serve_file(
     conn
     ..send(n.to_string(radix=16).to_ascii())
     ..send("\r\n")
-    ..send(send_buf.unsafe_reinterpret_as_bytes(), len=n)
+    ..send(send_buf.unsafe_reinterpret_as_bytes()[:n])
     ..send("\r\n")
   }
   conn.send("0\r\n\r\n")
