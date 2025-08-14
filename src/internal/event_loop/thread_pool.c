@@ -358,7 +358,7 @@ void *worker(void *data) {
       break;
     }
     }
-    write(pool.notify_send, &(job->job_id), sizeof(int32_t));
+    write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
     sigwait(&pool.wakeup_signal, &sig);
@@ -585,10 +585,11 @@ struct job *moonbitlang_async_make_getaddrinfo_job(
 }
 
 int32_t moonbitlang_async_fetch_completion(int notify_recv) {
-  int32_t job_id;
-  int32_t ret = read(notify_recv, &job_id, sizeof(int32_t));
+  struct job *job;
+  int32_t ret = read(notify_recv, &job, sizeof(struct job*));
   if (ret < 0)
     return ret;
 
-  return job_id;
+  moonbit_decref(job);
+  return job->job_id;
 }
