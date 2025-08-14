@@ -25,8 +25,8 @@ fn File::kind(Self) -> FileKind
 async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise
-async fn File::write(Self, Bytes, offset? : Int, len? : Int) -> Unit raise
 impl @moonbitlang/async/io.Reader for File
+impl @moonbitlang/async/io.Writer for File
 
 pub(all) enum FileKind {
   Unknown

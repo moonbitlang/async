@@ -151,23 +151,7 @@ pub async fn PipeRead::read_exactly(self : PipeRead, len : Int) -> Bytes raise {
 }
 
 ///|
-/// Write data through the write end of a pipe using `write(2)` system call.
-/// This function will only return after all data have been successfully written.
-///
-/// At most one task can write to a pipe at any time.
-/// To allow multiple writers,
-/// use a worker task for writing and use `@async.Queue` to gather data.
-pub async fn PipeWrite::write(
-  self : PipeWrite,
-  buf : Bytes,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
-) -> Unit raise {
+pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
   let PipeWrite(fd) = self
-  for sent = 0; sent < len; {
-    let new_sent = @event_loop.perform_job(
-      Write(fd~, buf~, offset=offset + sent, len=len - sent, can_poll=true),
-    )
-    continue sent + new_sent
-  }
+  @event_loop.perform_job(Write(fd~, buf~, offset~, len~, can_poll=true))
 }

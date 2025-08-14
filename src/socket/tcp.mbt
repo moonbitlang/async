@@ -137,23 +137,18 @@ pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
 }
 
 ///|
-/// Send data through a TCP connection using `send(2)` system call.
+pub impl @io.Writer for TCP with write_once(self, buf, offset~, len~) {
+  let TCP(sock) = self
+  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
+}
+
+///|
+/// Send data through a TCP connection.
 /// This function will only return after all data have been successfully sent.
 ///
 /// At most one task can write to a TCP socket at any time.
 /// To allow multiple writers,
 /// use a worker task for writing and use `@async.Queue` to gather data.
-pub async fn TCP::send(
-  self : TCP,
-  buf : Bytes,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
-) -> Unit raise {
-  let TCP(sock) = self
-  for sent = 0; sent < len; {
-    let new_sent = @event_loop.perform_job(
-      Write(fd=sock, buf~, offset=offset - sent, len=len - sent, can_poll=true),
-    )
-    continue sent + new_sent
-  }
+pub async fn TCP::send(self : TCP, data : @bytes.View) -> Unit raise {
+  @io.Writer::write(self, data)
 }
