@@ -173,7 +173,7 @@ void *worker(void *data) {
   int sig;
   pthread_t self = pthread_self();
 
-#ifdef __MACH
+#ifdef __MACH__
   signal(SIGUSR1, dummy_signal_handler);
 #endif
 
