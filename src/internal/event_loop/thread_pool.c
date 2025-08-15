@@ -406,6 +406,7 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
 }
 
 void moonbitlang_async_wake_worker(pthread_t worker) {
+  printf("waking %ld\n", worker);
   pthread_kill(worker, SIGUSR1);
 }
 
