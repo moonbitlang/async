@@ -133,7 +133,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       } else if fd == self.notify_recv {
         while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
           guard self.running_workers.get(job_id) is Some(worker) else {
-            println("job missing")
+            println("job \{job_id} missing")
             panic()
           }
           self.running_workers.remove(job_id)
@@ -337,10 +337,12 @@ async fn perform_job_in_worker(
     None => {
       let job_slot = @ref.new(job)
       let id = spawn_worker(job_slot)
+      println("submitting \{job.id()} to new worker \{id}")
       evloop.running_workers[job.id()] = { id, job_slot }
     }
     Some(worker) => {
       worker.job_slot.val = job
+      println("submitting \{job.id()} to existing worker \{worker.id}")
       evloop.running_workers[job.id()] = worker
       wake_worker(worker.id)
     }
