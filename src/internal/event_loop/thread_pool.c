@@ -168,6 +168,8 @@ void *worker(void *data) {
   int sig;
   pthread_t self = pthread_self();
 
+  signal(SIGUSR1, SIG_DFL);
+
   sigset_t sigset;
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGUSR1);
