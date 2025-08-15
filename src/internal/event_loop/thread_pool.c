@@ -358,6 +358,7 @@ void *worker(void *data) {
       break;
     }
     }
+    printf("worker: %d completed\n", job->job_id);
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
