@@ -1,0 +1,28 @@
+name: debug
+
+on:
+  pull_request:
+
+jobs:
+  debug-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: patch runtime.c
+        run: |
+          cp runtime-patched.c ~/.moon/lib/runtime.c
+
+      - name: moon test
+        run: |
+          moon test
