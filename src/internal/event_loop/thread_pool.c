@@ -175,6 +175,7 @@ void *worker(void *data) {
   struct job *job = *((struct job**)data);
 
   while (job) {
+    printf("worker: received %d\n", job->job_id);
     job->ret = 0;
     job->err = 0;
 
