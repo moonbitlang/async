@@ -70,7 +70,7 @@ async fn client(path : Bytes) -> Response raise {
   let conn = @socket.TCP::new()
   defer conn.close()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
-  conn..send(b"GET ")..send(path)..send(b" HTTP/1.1\r\n\r\n")
+  conn..write(b"GET ")..write(path)..write(b" HTTP/1.1\r\n\r\n")
   parse_reply(@io.BufferedReader::new(conn))
 }
 

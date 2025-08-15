@@ -34,12 +34,12 @@ async fn server(println : Printer) -> Unit raise {
         group.spawn_bg(fn() {
           defer conn.close()
           let buf = FixedArray::make(1024, b'0')
-          while conn.recv(buf) is n && n > 0 {
+          while conn.read(buf) is n && n > 0 {
             @async.sleep(10)
             let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
             println("server received: \{msg}")
             let reply = b"pong"
-            conn.send(reply)
+            conn.write(reply)
             println("server sent: \{reply}")
             if msg == b"exit" {
               println("server initiate terminate")
@@ -70,10 +70,10 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
   // with server side "received connection" message
   @async.sleep(10)
   println("client \{id}: connection established")
-  conn.send(msg)
+  conn.write(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
-  if conn.recv(buf) is n && n > 0 {
+  if conn.read(buf) is n && n > 0 {
     @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
     println("client \{id} received: \{msg}")

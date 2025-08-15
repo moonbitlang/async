@@ -139,18 +139,6 @@ pub async fn PipeRead::read(
 }
 
 ///|
-/// `pipe.read_exactly(n)` read exactly `n` bytes of data from a pipe.
-/// `read_exactly` will only return after all `n` bytes of data are read.
-/// If the pipe is closed before receiving all data, an error is raised.
-///
-/// At most one task can read from a pipe at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn PipeRead::read_exactly(self : PipeRead, len : Int) -> Bytes raise {
-  @io.Reader::read_exactly(self, len)
-}
-
-///|
 pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
   let PipeWrite(fd) = self
   @event_loop.perform_job(Write(fd~, buf~, offset~, len~, can_poll=true))
