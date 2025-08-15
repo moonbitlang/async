@@ -175,7 +175,7 @@ void *worker(void *data) {
   struct job *job = *((struct job**)data);
 
   while (job) {
-    printf("worker: received %d\n", job->job_id);
+    printf("worker %ul: received %d\n", self, job->job_id);
     job->ret = 0;
     job->err = 0;
 
@@ -359,7 +359,7 @@ void *worker(void *data) {
       break;
     }
     }
-    printf("worker: %d completed\n", job->job_id);
+    printf("worker %ul: %d completed\n", self, job->job_id);
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
