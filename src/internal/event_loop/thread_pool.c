@@ -393,7 +393,7 @@ void moonbitlang_async_destroy_thread_pool() {
   pool.job_id = 0;
 }
 
-pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
+pthread_t *moonbitlang_async_spawn_worker(struct job **job_slot) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 512);
@@ -401,15 +401,18 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
   pthread_t id;
   pthread_create(&id, &attr, &worker, job_slot);
   pthread_attr_destroy(&attr);
-  return id;
+
+  pthread_t *result = (pthread_t*)moonbit_make_bytes(sizeof(pthread_t), 0);
+  *result = id;
+  return result;
 }
 
-void moonbitlang_async_wake_worker(pthread_t worker) {
+void moonbitlang_async_wake_worker(pthread_t *worker) {
   static int flag = 1;
   int sig = flag ? SIGUSR1 : SIGUSR2;
   flag = !flag;
-  printf("sending %d to %lu\n", sig, worker);
-  pthread_kill(worker, sig);
+  printf("sending %d to %lu\n", sig, *worker);
+  pthread_kill(*worker, sig);
 }
 
 int moonbitlang_async_job_id(struct job *job) {

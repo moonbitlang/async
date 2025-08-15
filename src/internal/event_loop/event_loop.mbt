@@ -14,7 +14,7 @@
 
 ///|
 priv struct Worker {
-  id : Int64
+  id : WorkerId
   job_slot : Ref[JobForWorker]
 }
 
