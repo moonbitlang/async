@@ -418,7 +418,7 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
 
 void moonbitlang_async_wake_worker(pthread_t worker) {
   printf("sending %d to %ld\n", SIGUSR1, worker);
-  pthread_kill(worker, SIGUSR1);
+  printf("pthread_kill() = %d\n", pthread_kill(worker, SIGUSR1));
 }
 
 int moonbitlang_async_job_id(struct job *job) {
