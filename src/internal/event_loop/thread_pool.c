@@ -177,10 +177,6 @@ void *worker(void *data) {
   signal(SIGUSR1, dummy_signal_handler);
 #endif
 
-  sigset_t sigset;
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
-
   struct job *job = *((struct job**)data);
 
   while (job) {
@@ -392,6 +388,10 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
 
   pool.notify_send = notify_send;
   pool.initialized = 1;
+
+#ifdef __MACH__
+  signal(SIGUSR1, dummy_signal_handler);
+#endif
 }
 
 void moonbitlang_async_destroy_thread_pool() {
