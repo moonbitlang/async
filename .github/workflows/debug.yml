@@ -25,4 +25,12 @@ jobs:
 
       - name: moon test
         run: |
-          moon test
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
+          moon test -p moonbitlang/async/example/http_file_server
