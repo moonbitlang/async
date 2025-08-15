@@ -142,6 +142,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
             None => self.idle_workers.push_back(worker)
             Some(job) => {
               worker.job_slot.val = job
+              self.running_workers[job.id()] = worker
               wake_worker(worker.id)
             }
           }
