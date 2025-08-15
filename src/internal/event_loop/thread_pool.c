@@ -359,7 +359,9 @@ void *worker(void *data) {
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
-    printf("worker %lu waiting\n", self);
+    sigset_t set;
+    pthread_sigmask(SIG_SETMASK, 0, &set);
+    printf("worker %lu waiting, sigset: %lu\n", self, set);
     sigwait(&pool.wakeup_signal, &sig);
     printf("worker %lu/%lu: received signal %d\n", self, pthread_self(), sig);
     job = *(struct job**)data;
