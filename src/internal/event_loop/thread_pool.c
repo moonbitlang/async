@@ -368,9 +368,11 @@ void *worker(void *data) {
       break;
     }
     }
+    printf("worker %ld done\n", self);
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
+    printf("worker %ld waiting\n", self);
     sigwait(&pool.wakeup_signal, &sig);
     printf("worker %ld: received signal %d\n", self, sig);
     job = *(struct job**)data;
