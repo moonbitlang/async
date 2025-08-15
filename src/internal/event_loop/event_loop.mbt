@@ -132,7 +132,10 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
         self.poll.remove_pid(fd)
       } else if fd == self.notify_recv {
         while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
-          guard self.running_workers.get(job_id) is Some(worker)
+          guard self.running_workers.get(job_id) is Some(worker) else {
+            println("job missing")
+            panic()
+          }
           self.running_workers.remove(job_id)
           match self.job_queue.pop_front() {
             None => self.idle_workers.push_back(worker)
@@ -181,7 +184,14 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     @coroutine.reschedule()
   }
   for fd, handle in self.fds {
-    guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
+    guard not(handle.read is Waiting(_)) else {
+      println("someone waiting for read")
+      panic()
+    }
+    guard not(handle.write is Waiting(_)) else {
+      println("someone waiting for write")
+      panic()
+    }
     self.poll.remove(fd, events=handle.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
