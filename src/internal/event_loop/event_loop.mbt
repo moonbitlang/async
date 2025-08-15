@@ -340,11 +340,13 @@ async fn perform_job_in_worker(
       let id = spawn_worker(job_slot)
       println("submitting \{job.id()} to new worker \{id}")
       evloop.running_workers[job.id()] = { id, job_slot }
+      guard evloop.running_workers.get(job.id()) is Some(_)
     }
     Some(worker) => {
       worker.job_slot.val = job
       println("submitting \{job.id()} to existing worker \{worker.id}")
       evloop.running_workers[job.id()] = worker
+      guard evloop.running_workers.get(job.id()) is Some(_)
       wake_worker(worker.id)
     }
   }
