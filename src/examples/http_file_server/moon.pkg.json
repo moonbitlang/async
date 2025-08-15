@@ -5,5 +5,10 @@
     "moonbitlang/async/socket",
     "moonbitlang/async/fs"
   ],
+  "link": {
+    "native": {
+      "cc-flags": "-g"
+    }
+  },
   "is-main": true
 }
