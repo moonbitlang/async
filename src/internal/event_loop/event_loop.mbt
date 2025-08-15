@@ -136,6 +136,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
             println("job \{job_id} missing")
             panic()
           }
+          println("worker \{worker.id}: job \{job_id} completed")
           self.running_workers.remove(job_id)
           match self.job_queue.pop_front() {
             None => self.idle_workers.push_back(worker)
