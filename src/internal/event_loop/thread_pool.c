@@ -168,6 +168,12 @@ static
 void dummy_signal_handler(int sig) {}
 #endif
 
+#ifdef __MACH__
+#define WAKEUP_SIGNAL SIGALRM
+#else
+#define WAKEUP_SIGNAL SIGUSR1
+#endif
+
 static
 void *worker(void *data) {
   int sig;
@@ -379,14 +385,14 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
   pool.job_id = 0;
 
   sigemptyset(&pool.wakeup_signal);
-  sigaddset(&pool.wakeup_signal, SIGUSR2);
+  sigaddset(&pool.wakeup_signal, WAKEUP_SIGNAL);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 
   pool.notify_send = notify_send;
   pool.initialized = 1;
 
 #ifdef __MACH__
-  signal(SIGUSR2, dummy_signal_handler);
+  signal(WAKEUP_SIGNAL, dummy_signal_handler);
 #endif
 }
 
@@ -413,8 +419,8 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
 }
 
 void moonbitlang_async_wake_worker(pthread_t worker) {
-  printf("sending %d to %ld\n", SIGUSR2, worker);
-  printf("pthread_kill() = %d\n", pthread_kill(worker, SIGUSR2));
+  printf("sending %d to %ld\n", WAKEUP_SIGNAL, worker);
+  printf("pthread_kill() = %d\n", pthread_kill(worker, WAKEUP_SIGNAL));
 }
 
 int moonbitlang_async_job_id(struct job *job) {
