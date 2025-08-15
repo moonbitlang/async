@@ -34,8 +34,11 @@ async fn TCP::connect(Self, Addr) -> Unit raise
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
 fn TCP::listen(Self) -> Unit raise
 fn TCP::new() -> Self raise
-async fn TCP::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+#alias(recv, deprecated)
+async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+#deprecated
 async fn TCP::recv_exactly(Self, Int) -> Bytes raise
+#deprecated
 async fn TCP::send(Self, @bytes.View) -> Unit raise
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP

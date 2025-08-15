@@ -107,7 +107,7 @@ pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
 }
 
 ///|
-/// Receive data from a TCP connection using `recv(2)` system call.
+/// Receive data from a TCP connection.
 /// For `tcp.recv(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
 /// The number of received bytes will be returned.
@@ -115,7 +115,8 @@ pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn TCP::recv(
+#alias(recv, deprecated)
+pub async fn TCP::read(
   self : TCP,
   buf : FixedArray[Byte],
   offset~ : Int = 0,
@@ -125,30 +126,7 @@ pub async fn TCP::recv(
 }
 
 ///|
-/// `conn.recv_exactly(n)` receives exactly `n` bytes of data from a TCP connection.
-/// `recv_exactly` will only return after all `n` bytes of data are received.
-/// If the connection is closed before receiving all data, an error is raised.
-///
-/// At most one task can read from a TCP socket at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn TCP::recv_exactly(self : TCP, len : Int) -> Bytes raise {
-  @io.Reader::read_exactly(self, len)
-}
-
-///|
 pub impl @io.Writer for TCP with write_once(self, buf, offset~, len~) {
   let TCP(sock) = self
   @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
-}
-
-///|
-/// Send data through a TCP connection.
-/// This function will only return after all data have been successfully sent.
-///
-/// At most one task can write to a TCP socket at any time.
-/// To allow multiple writers,
-/// use a worker task for writing and use `@async.Queue` to gather data.
-pub async fn TCP::send(self : TCP, data : @bytes.View) -> Unit raise {
-  @io.Writer::write(self, data)
 }

@@ -32,7 +32,7 @@ async fn server() -> Int raise {
         group.spawn_bg(fn() {
           defer conn.close()
           let buf = FixedArray::make(1024, b'0')
-          while conn.recv(buf) is n && n > 0 {
+          while conn.read(buf) is n && n > 0 {
             let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
             if msg == b"exit" {
               @async.sleep(20)
@@ -55,7 +55,7 @@ async fn client(msg : Bytes) -> Unit raise {
   let conn = @socket.TCP::new()
   defer conn.close()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
-  conn.send(msg)
+  conn.write(msg)
 }
 
 ///|
