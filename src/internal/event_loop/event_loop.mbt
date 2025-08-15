@@ -143,6 +143,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
             Some(job) => {
               worker.job_slot.val = job
               self.running_workers[job.id()] = worker
+              println("submitting \{job.id()} (queued) to \{worker.id}")
               wake_worker(worker.id)
             }
           }
@@ -334,8 +335,10 @@ async fn perform_job_in_worker(
 ) -> Int raise {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.size() > evloop.max_worker_count =>
+    None if evloop.running_workers.size() > evloop.max_worker_count => {
+      println("queueing job \{job.id()}")
       evloop.job_queue.push_back(job)
+    }
     None => {
       let job_slot = @ref.new(job)
       let id = spawn_worker(job_slot)
