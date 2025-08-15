@@ -361,7 +361,7 @@ void *worker(void *data) {
     job = 0;
     sigset_t set;
     pthread_sigmask(SIG_SETMASK, 0, &set);
-    printf("worker %lu waiting, sigset: %lu\n", self, set);
+    printf("worker %lu waiting, sigset: %lx\n", self, set);
     sigwait(&pool.wakeup_signal, &sig);
     printf("worker %lu/%lu: received signal %d\n", self, pthread_self(), sig);
     job = *(struct job**)data;
