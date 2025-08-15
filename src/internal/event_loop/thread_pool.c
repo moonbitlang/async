@@ -361,11 +361,10 @@ void *worker(void *data) {
       break;
     }
     }
-    printf("worker %ld: %d completed\n", self, job->job_id);
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
-    printf("%d\n", sigwait(&pool.wakeup_signal, &sig));
+    sigwait(&pool.wakeup_signal, &sig);
     printf("worker %ld: received signal %d\n", self, sig);
     job = *(struct job**)data;
   }
@@ -409,7 +408,7 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
 }
 
 void moonbitlang_async_wake_worker(pthread_t worker) {
-  printf("waking %ld\n", worker);
+  printf("sending %d to %ld\n", SIGUSR1, worker);
   pthread_kill(worker, SIGUSR1);
 }
 

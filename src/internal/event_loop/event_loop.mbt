@@ -132,18 +132,13 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
         self.poll.remove_pid(fd)
       } else if fd == self.notify_recv {
         while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
-          guard self.running_workers.get(job_id) is Some(worker) else {
-            println("job \{job_id} missing")
-            panic()
-          }
-          println("worker \{worker.id}: job \{job_id} completed")
+          guard self.running_workers.get(job_id) is Some(worker)
           self.running_workers.remove(job_id)
           match self.job_queue.pop_front() {
             None => self.idle_workers.push_back(worker)
             Some(job) => {
               worker.job_slot.val = job
               self.running_workers[job.id()] = worker
-              println("submitting \{job.id()} (queued) to \{worker.id}")
               wake_worker(worker.id)
             }
           }
@@ -187,14 +182,8 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     @coroutine.reschedule()
   }
   for fd, handle in self.fds {
-    guard not(handle.read is Waiting(_)) else {
-      println("someone waiting for read")
-      panic()
-    }
-    guard not(handle.write is Waiting(_)) else {
-      println("someone waiting for write")
-      panic()
-    }
+    guard not(handle.read is Waiting(_))
+    guard not(handle.write is Waiting(_))
     self.poll.remove(fd, events=handle.events) catch {
       err => abort("detach \{fd} from loop: \{err}")
     }
@@ -335,20 +324,16 @@ async fn perform_job_in_worker(
 ) -> Int raise {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.size() > evloop.max_worker_count => {
-      println("queueing job \{job.id()}")
+    None if evloop.running_workers.size() > evloop.max_worker_count =>
       evloop.job_queue.push_back(job)
-    }
     None => {
       let job_slot = @ref.new(job)
       let id = spawn_worker(job_slot)
-      println("submitting \{job.id()} to new worker \{id}")
       evloop.running_workers[job.id()] = { id, job_slot }
       guard evloop.running_workers.get(job.id()) is Some(_)
     }
     Some(worker) => {
       worker.job_slot.val = job
-      println("submitting \{job.id()} to existing worker \{worker.id}")
       evloop.running_workers[job.id()] = worker
       guard evloop.running_workers.get(job.id()) is Some(_)
       wake_worker(worker.id)
