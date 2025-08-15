@@ -168,13 +168,10 @@ void *worker(void *data) {
   int sig;
   pthread_t self = pthread_self();
 
-  sigset_t sigset;
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
-
   struct job *job = *((struct job**)data);
 
   while (job) {
+    printf("worker %lu: received %d\n", self, job->job_id);
     job->ret = 0;
     job->err = 0;
 
@@ -358,10 +355,15 @@ void *worker(void *data) {
       break;
     }
     }
+    printf("worker %lu done\n", self);
     write(pool.notify_send, &job, sizeof(struct job*));
 
     job = 0;
+    sigset_t set;
+    pthread_sigmask(SIG_SETMASK, 0, &set);
+    printf("worker %lu waiting, sigset: %lx\n", self, set);
     sigwait(&pool.wakeup_signal, &sig);
+    printf("worker %lu/%lu: received signal %d\n", self, pthread_self(), sig);
     job = *(struct job**)data;
   }
   return 0;
@@ -375,6 +377,7 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
 
   sigemptyset(&pool.wakeup_signal);
   sigaddset(&pool.wakeup_signal, SIGUSR1);
+  sigaddset(&pool.wakeup_signal, SIGUSR2);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 
   pool.notify_send = notify_send;
@@ -392,7 +395,7 @@ void moonbitlang_async_destroy_thread_pool() {
   pool.job_id = 0;
 }
 
-pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
+pthread_t *moonbitlang_async_spawn_worker(struct job **job_slot) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 512);
@@ -400,11 +403,19 @@ pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
   pthread_t id;
   pthread_create(&id, &attr, &worker, job_slot);
   pthread_attr_destroy(&attr);
-  return id;
+
+  pthread_t *result = (pthread_t*)moonbit_make_bytes(sizeof(pthread_t), 0);
+  *result = id;
+  printf("spawn => %ld\n", id);
+  return result;
 }
 
-void moonbitlang_async_wake_worker(pthread_t worker) {
-  pthread_kill(worker, SIGUSR1);
+void moonbitlang_async_wake_worker(pthread_t *worker) {
+  static int flag = 1;
+  int sig = flag ? SIGUSR1 : SIGUSR2;
+  flag = !flag;
+  printf("sending %d to %lu\n", sig, *worker);
+  pthread_kill(*worker, sig);
 }
 
 int moonbitlang_async_job_id(struct job *job) {

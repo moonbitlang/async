@@ -110,9 +110,10 @@ test "basic" {
       #|transfer-encoding: chunked
       #|content-type: appliaction/octet-stream
       #|
-      #|{\n  "import": [\n    "moonbitlang/async",\n    "moonbitlang/async/io",\n    "moonbitlang/async/socket",\n    "moonbitlang/async/fs"\n  ],\n  "is-main": true\n}\n
+      #|{\n  "import": [\n    "moonbitlang/async",\n    "moonbitlang/async/io",\n    "moonbitlang/async/socket",\n    "moonbitlang/async/fs"\n  ],\n  "link": {\n    "native": {\n      "cc-flags": "-g"\n    }\n  },\n  "is-main": true\n}\n
       #|
       #|
+
     ),
   )
 }
