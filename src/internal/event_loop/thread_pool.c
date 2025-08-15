@@ -169,7 +169,7 @@ void dummy_signal_handler(int sig) {}
 #endif
 
 #ifdef __MACH__
-#define WAKEUP_SIGNAL SIGALRM
+#define WAKEUP_SIGNAL SIGSYS
 #else
 #define WAKEUP_SIGNAL SIGUSR1
 #endif
