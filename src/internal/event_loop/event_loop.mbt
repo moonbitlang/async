@@ -150,8 +150,12 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
             @os_error.check_errno()
           }
         }
-      } else {
-        guard self.fds.get(fd) is Some(handle)
+      } else if self.fds.get(fd) is Some(handle) {
+        // There is one corner case here: to support precise timer,
+        // we perform a `@coroutine.reschedule` immediately after polling.
+        // However, if a file descriptor is closed during this rescheduling,
+        // it will be removed from `self.fds`, but we can still see it here,
+        // because the poll returns *before* the close
         if (events & ReadEvent) != 0 {
           match handle.read {
             Ready => ()
