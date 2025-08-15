@@ -39,7 +39,7 @@ test "read_exactly" {
       defer w.close()
       w.write([1, 2, 3, 4, 5, 6])
       log("first message sent")
-      @async.sleep(20)
+      @async.sleep(50)
       w.write([7, 8, 9, 10, 11, 12])
       log("second message sent")
     })
