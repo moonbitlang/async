@@ -404,6 +404,7 @@ pthread_t *moonbitlang_async_spawn_worker(struct job **job_slot) {
 
   pthread_t *result = (pthread_t*)moonbit_make_bytes(sizeof(pthread_t), 0);
   *result = id;
+  printf("spawn => %ld\n", id);
   return result;
 }
 
