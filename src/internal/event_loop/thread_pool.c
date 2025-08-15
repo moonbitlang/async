@@ -163,12 +163,19 @@ int moonbitlang_async_job_poll_fd(struct job *job) {
   }
 }
 
+#ifdef __MACH__
+static
+void dummy_signal_handler(int sig) {}
+#endif
+
 static
 void *worker(void *data) {
   int sig;
   pthread_t self = pthread_self();
 
-  signal(SIGUSR1, SIG_DFL);
+#ifdef __MACH
+  signal(SIGUSR1, dummy_signal_handler);
+#endif
 
   sigset_t sigset;
   sigemptyset(&sigset);
