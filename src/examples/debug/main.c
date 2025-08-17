@@ -12,13 +12,13 @@ void *worker1(void *input) {
   sigset_t *set = (sigset_t*)input;
   int sig;
   int data = 1;
-  while (1) {
+  for (int i = 0; ; ++i) {
     write(ipc[1], &data, sizeof(int));
     // printf("worker 1 start waiting\n");
     sigwait(set, &sig);
     // printf("worker 1 received signal %d\n", sig);
     if (sig != SIGUSR1) {
-      printf("worker 1 received incorrect signal\n");
+      printf("worker 1 received incorrect signal at iteration %d\n", i);
       abort();
     }
   }
@@ -28,13 +28,13 @@ void *worker2(void *input) {
   sigset_t *set = (sigset_t*)input;
   int sig;
   int data = 2;
-  while (1) {
+  for (int i = 0; ; ++i) {
     write(ipc[1], &data, sizeof(int));
     // printf("worker 2 start waiting\n");
     sigwait(set, &sig);
     // printf("worker 2 received signal %d\n", sig);
     if (sig != SIGUSR2) {
-      printf("worker 2 received incorrect signal\n");
+      printf("worker 2 received incorrect signal at iteration %d\n", i);
       abort();
     }
   }
