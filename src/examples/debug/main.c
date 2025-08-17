@@ -14,9 +14,9 @@ void *worker1(void *input) {
   int data = 1;
   while (1) {
     write(ipc[1], &data, sizeof(int));
-    printf("worker 1 start waiting\n");
+    // printf("worker 1 start waiting\n");
     sigwait(set, &sig);
-    printf("worker 1 received signal %d\n", sig);
+    // printf("worker 1 received signal %d\n", sig);
     if (sig != SIGUSR1) {
       printf("worker 1 received incorrect signal\n");
       abort();
@@ -30,9 +30,9 @@ void *worker2(void *input) {
   int data = 2;
   while (1) {
     write(ipc[1], &data, sizeof(int));
-    printf("worker 2 start waiting\n");
+    // printf("worker 2 start waiting\n");
     sigwait(set, &sig);
-    printf("worker 2 received signal %d\n", sig);
+    // printf("worker 2 received signal %d\n", sig);
     if (sig != SIGUSR2) {
       printf("worker 2 received incorrect signal\n");
       abort();
@@ -83,12 +83,12 @@ void main_prog() {
     }
 
     if (worker1_done) {
-      printf("sending signal %d to worker 1\n", SIGUSR1);
+      // printf("sending signal %d to worker 1\n", SIGUSR1);
       pthread_kill(id1, SIGUSR1);
     }
 
     if (worker2_done) {
-      printf("sending signal %d to worker 2\n", SIGUSR2);
+      // printf("sending signal %d to worker 2\n", SIGUSR2);
       pthread_kill(id2, SIGUSR2);
     }
   }
