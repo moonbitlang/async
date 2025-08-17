@@ -1,4 +1,9 @@
 {
   "native-stub": [ "main.c" ],
+  "link": {
+    "native": {
+      "cc-flags": "-pthread"
+    }
+  },
   "is-main": true
 }
