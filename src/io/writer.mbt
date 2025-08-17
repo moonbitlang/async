@@ -24,10 +24,16 @@ impl Writer with write(self, view) {
   let start = view.start_offset()
   let len = view.length()
   let end = start + len
-  for offset = start; offset < end; {
-    let progress = self.write_once(view.data(), offset~, len=end - offset)
-    continue offset + progress
+  let offset = self.write_once(view.data(), offset=start, len~)
+  if offset == end {
+    return
   }
+  @async.protect_from_cancel(fn() {
+    for offset = start; offset < end; {
+      let progress = self.write_once(view.data(), offset~, len=end - offset)
+      continue offset + progress
+    }
+  })
 }
 
 ///|
