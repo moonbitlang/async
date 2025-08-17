@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/select.h>
 
 int ipc[2];
 
@@ -52,6 +53,10 @@ void main_prog() {
   int flags = fcntl(ipc[0], F_GETFL);
   fcntl(ipc[0], F_SETFL, flags | O_NONBLOCK);
 
+  fd_set poll_set;
+  FD_ZERO(&poll_set);
+  FD_SET(ipc[0], &poll_set);
+
   // create two threads
   pthread_attr_t attr;
   pthread_attr_init(&attr);
@@ -64,6 +69,8 @@ void main_prog() {
     int worker1_done = 0;
     int worker2_done = 0;
     int data = 0;
+
+    select(ipc[0] + 1, &poll_set, 0, 0, 0);
     while (read(ipc[0], &data, sizeof(int)) > 0) {
       if (data == 1)
         worker1_done = 1;
