@@ -590,6 +590,7 @@ int32_t moonbitlang_async_fetch_completion(int notify_recv) {
   if (ret < 0)
     return ret;
 
+  int job_id = job->job_id;
   moonbit_decref(job);
-  return job->job_id;
+  return job_id;
 }
