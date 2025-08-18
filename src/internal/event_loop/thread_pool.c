@@ -163,16 +163,21 @@ int moonbitlang_async_job_poll_fd(struct job *job) {
   }
 }
 
+struct worker {
+  pthread_t id;
+  struct job *job;
+};
+
 static
-void *worker(void *data) {
+void *worker_loop(void *data) {
   int sig;
-  pthread_t self = pthread_self();
+  struct worker *self = (struct worker*)data;
 
   sigset_t sigset;
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGUSR1);
 
-  struct job *job = *((struct job**)data);
+  struct job *job = self->job;
 
   while (job) {
     job->ret = 0;
@@ -358,11 +363,11 @@ void *worker(void *data) {
       break;
     }
     }
-    write(pool.notify_send, &job, sizeof(struct job*));
+    write(pool.notify_send, &(job->job_id), sizeof(int));
 
     job = 0;
     sigwait(&pool.wakeup_signal, &sig);
-    job = *(struct job**)data;
+    job = self->job;
   }
   return 0;
 }
@@ -392,19 +397,29 @@ void moonbitlang_async_destroy_thread_pool() {
   pool.job_id = 0;
 }
 
-pthread_t moonbitlang_async_spawn_worker(struct job **job_slot) {
+void free_worker(void *worker) {
+  moonbit_decref(((struct worker*)worker)->job);
+}
+
+struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 512);
 
-  pthread_t id;
-  pthread_create(&id, &attr, &worker, job_slot);
+  struct worker *worker = (struct worker*)moonbit_make_external_object(
+    &free_worker,
+    sizeof(struct worker)
+  );
+  worker->job = init_job;
+  pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
-  return id;
+  return worker;
 }
 
-void moonbitlang_async_wake_worker(pthread_t worker) {
-  pthread_kill(worker, SIGUSR1);
+void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
+  moonbit_decref(worker->job);
+  worker->job = job;
+  pthread_kill(worker->id, SIGUSR1);
 }
 
 int moonbitlang_async_job_id(struct job *job) {
@@ -585,12 +600,10 @@ struct job *moonbitlang_async_make_getaddrinfo_job(
 }
 
 int32_t moonbitlang_async_fetch_completion(int notify_recv) {
-  struct job *job;
-  int32_t ret = read(notify_recv, &job, sizeof(struct job*));
+  int job_id;
+  int32_t ret = read(notify_recv, &job_id, sizeof(int));
   if (ret < 0)
     return ret;
 
-  int job_id = job->job_id;
-  moonbit_decref(job);
   return job_id;
 }

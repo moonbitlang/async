@@ -13,12 +13,6 @@
 // limitations under the License.
 
 ///|
-priv struct Worker {
-  id : Int64
-  job_slot : Ref[JobForWorker]
-}
-
-///|
 priv struct EventLoop {
   poll : Instance
   fds : Map[Int, FdHandle]
@@ -136,10 +130,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
           self.running_workers.remove(job_id)
           match self.job_queue.pop_front() {
             None => self.idle_workers.push_back(worker)
-            Some(job) => {
-              worker.job_slot.val = job
-              wake_worker(worker.id)
-            }
+            Some(job) => wake_worker(worker, job)
           }
           if self.jobs.get(job_id) is Some(coro) {
             self.jobs.remove(job_id)
@@ -325,14 +316,12 @@ async fn perform_job_in_worker(
     None if evloop.running_workers.size() > evloop.max_worker_count =>
       evloop.job_queue.push_back(job)
     None => {
-      let job_slot = @ref.new(job)
-      let id = spawn_worker(job_slot)
-      evloop.running_workers[job.id()] = { id, job_slot }
+      let worker = spawn_worker(job)
+      evloop.running_workers[job.id()] = worker
     }
     Some(worker) => {
-      worker.job_slot.val = job
       evloop.running_workers[job.id()] = worker
-      wake_worker(worker.id)
+      wake_worker(worker, job)
     }
   }
   evloop.jobs[job.id()] = @coroutine.current_coroutine()
