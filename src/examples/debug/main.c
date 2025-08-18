@@ -38,7 +38,7 @@ void *worker2(void *input) {
   }
 }
 
-int main() {
+void main_prog() {
   // initialize signal set
   sigset_t set;
   sigemptyset(&set);
