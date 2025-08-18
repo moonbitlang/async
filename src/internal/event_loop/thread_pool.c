@@ -168,6 +168,13 @@ void *worker(void *data) {
   int sig;
   pthread_t self = pthread_self();
 
+#ifdef __MACH__
+  int sig_kq = kqueue();
+  struct kevent event;
+  EV_SET(&event, SIGUSR1, EVFILT_SIGNAL, EV_ADD, 0, 0, 0);
+  kevent(sig_kq, &event, 1, 0, 0, 0);
+#endif
+
   struct job *job = *((struct job**)data);
 
   while (job) {
@@ -362,10 +369,18 @@ void *worker(void *data) {
     sigset_t set;
     pthread_sigmask(SIG_SETMASK, 0, &set);
     printf("worker %lu waiting, sigset: %lx\n", self, set);
+#ifdef __MACH__
+    kevent(sig_kq, 0, 0, &event, 1, 0);
+#else
     sigwait(&pool.wakeup_signal, &sig);
+#endif
     printf("worker %lu/%lu: received signal %d\n", self, pthread_self(), sig);
     job = *(struct job**)data;
   }
+
+#ifdef __MACH__
+  close(sig_kq);
+#endif
   return 0;
 }
 
@@ -377,7 +392,6 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
 
   sigemptyset(&pool.wakeup_signal);
   sigaddset(&pool.wakeup_signal, SIGUSR1);
-  sigaddset(&pool.wakeup_signal, SIGUSR2);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 
   pool.notify_send = notify_send;
@@ -411,11 +425,8 @@ pthread_t *moonbitlang_async_spawn_worker(struct job **job_slot) {
 }
 
 void moonbitlang_async_wake_worker(pthread_t *worker) {
-  static int flag = 1;
-  int sig = flag ? SIGUSR1 : SIGUSR2;
-  flag = !flag;
-  printf("sending %d to %lu\n", sig, *worker);
-  pthread_kill(*worker, sig);
+  printf("sending %d to %lu\n", SIGUSR1, *worker);
+  pthread_kill(*worker, SIGUSR1);
 }
 
 int moonbitlang_async_job_id(struct job *job) {
