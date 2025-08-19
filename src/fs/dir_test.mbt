@@ -34,7 +34,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs", "io", "pipe", "aqueue", "socket", "process", "examples", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "retry_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
+      #|["fs", "io", "pipe", "aqueue", "socket", "process", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "retry_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
     ),
   )
 }
@@ -63,7 +63,6 @@ test "as_dir" {
       #|aqueue: Directory
       #|socket: Directory
       #|process: Directory
-      #|examples: Directory
       #|internal: Directory
       #|os_error: Directory
       #|task.mbt: Regular
@@ -106,5 +105,5 @@ test "readdir clear errno" {
     let list = dir.read_all().map(ascii_to_string)
     log.write_object(list.length())
   })
-  inspect(log.to_string(), content="29")
+  inspect(log.to_string(), content="28")
 }

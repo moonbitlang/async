@@ -88,10 +88,10 @@ test "basic" {
     client_log.write_object(client(b"/src"))
     client_log.write_string("\n\n")
     client_log.write_string(
-      "client: GET /src/examples/http_file_server/moon.pkg.json\n",
+      "client: GET /examples/http_file_server/moon.pkg.json\n",
     )
     client_log.write_object(
-      client(b"/src/examples/http_file_server/moon.pkg.json"),
+      client(b"/examples/http_file_server/moon.pkg.json"),
     )
     client_log.write_string("\n\n")
   })
@@ -101,11 +101,11 @@ test "basic" {
       #|client: GET /src
       #|HTTP/1.1 200 OK
       #|content-type: text/html
-      #|content-length: 1669
+      #|content-length: 1627
       #|
-      #|<!DOCTYPE html><html><head></head><body><h1>/src</h1>\n<div style="margin: 1em; font-size: 15pt"><a href="/">..</a><br/><br/>\n<a href="/src/fs">fs</a><br/>\n<a href="/src/io">io</a><br/>\n<a href="/src/pipe">pipe</a><br/>\n<a href="/src/aqueue">aqueue</a><br/>\n<a href="/src/socket">socket</a><br/>\n<a href="/src/process">process</a><br/>\n<a href="/src/examples">examples</a><br/>\n<a href="/src/internal">internal</a><br/>\n<a href="/src/os_error">os_error</a><br/>\n<a href="/src/task.mbt">task.mbt</a><br/>\n<a href="/src/async.mbt">async.mbt</a><br/>\n<a href="/src/async.mbti">async.mbti</a><br/>\n<a href="/src/moon.pkg.json">moon.pkg.json</a><br/>\n<a href="/src/wait_test.mbt">wait_test.mbt</a><br/>\n<a href="/src/pause_test.mbt">pause_test.mbt</a><br/>\n<a href="/src/retry_test.mbt">retry_test.mbt</a><br/>\n<a href="/src/spawn_test.mbt">spawn_test.mbt</a><br/>\n<a href="/src/task_group.mbt">task_group.mbt</a><br/>\n<a href="/src/timer_test.mbt">timer_test.mbt</a><br/>\n<a href="/src/worker_test.mbt">worker_test.mbt</a><br/>\n<a href="/src/no_wait_test.mbt">no_wait_test.mbt</a><br/>\n<a href="/src/spawn_loop_test.mbt">spawn_loop_test.mbt</a><br/>\n<a href="/src/group_defer_test.mbt">group_defer_test.mbt</a><br/>\n<a href="/src/cancellation_test.mbt">cancellation_test.mbt</a><br/>\n<a href="/src/with_timeout_test.mbt">with_timeout_test.mbt</a><br/>\n<a href="/src/allow_failure_test.mbt">allow_failure_test.mbt</a><br/>\n<a href="/src/missing_close_test.mbt">missing_close_test.mbt</a><br/>\n<a href="/src/return_immediately_test.mbt">return_immediately_test.mbt</a><br/>\n<a href="/src/protect_from_cancel_test.mbt">protect_from_cancel_test.mbt</a><br/>\n</div></body></html>
+      #|<!DOCTYPE html><html><head></head><body><h1>/src</h1>\n<div style="margin: 1em; font-size: 15pt"><a href="/">..</a><br/><br/>\n<a href="/src/fs">fs</a><br/>\n<a href="/src/io">io</a><br/>\n<a href="/src/pipe">pipe</a><br/>\n<a href="/src/aqueue">aqueue</a><br/>\n<a href="/src/socket">socket</a><br/>\n<a href="/src/process">process</a><br/>\n<a href="/src/internal">internal</a><br/>\n<a href="/src/os_error">os_error</a><br/>\n<a href="/src/task.mbt">task.mbt</a><br/>\n<a href="/src/async.mbt">async.mbt</a><br/>\n<a href="/src/async.mbti">async.mbti</a><br/>\n<a href="/src/moon.pkg.json">moon.pkg.json</a><br/>\n<a href="/src/wait_test.mbt">wait_test.mbt</a><br/>\n<a href="/src/pause_test.mbt">pause_test.mbt</a><br/>\n<a href="/src/retry_test.mbt">retry_test.mbt</a><br/>\n<a href="/src/spawn_test.mbt">spawn_test.mbt</a><br/>\n<a href="/src/task_group.mbt">task_group.mbt</a><br/>\n<a href="/src/timer_test.mbt">timer_test.mbt</a><br/>\n<a href="/src/worker_test.mbt">worker_test.mbt</a><br/>\n<a href="/src/no_wait_test.mbt">no_wait_test.mbt</a><br/>\n<a href="/src/spawn_loop_test.mbt">spawn_loop_test.mbt</a><br/>\n<a href="/src/group_defer_test.mbt">group_defer_test.mbt</a><br/>\n<a href="/src/cancellation_test.mbt">cancellation_test.mbt</a><br/>\n<a href="/src/with_timeout_test.mbt">with_timeout_test.mbt</a><br/>\n<a href="/src/allow_failure_test.mbt">allow_failure_test.mbt</a><br/>\n<a href="/src/missing_close_test.mbt">missing_close_test.mbt</a><br/>\n<a href="/src/return_immediately_test.mbt">return_immediately_test.mbt</a><br/>\n<a href="/src/protect_from_cancel_test.mbt">protect_from_cancel_test.mbt</a><br/>\n</div></body></html>
       #|
-      #|client: GET /src/examples/http_file_server/moon.pkg.json
+      #|client: GET /examples/http_file_server/moon.pkg.json
       #|HTTP/1.1 200 OK
       #|transfer-encoding: chunked
       #|content-type: appliaction/octet-stream
@@ -113,6 +113,7 @@ test "basic" {
       #|{\n  "import": [\n    "moonbitlang/async",\n    "moonbitlang/async/io",\n    "moonbitlang/async/socket",\n    "moonbitlang/async/fs"\n  ],\n  "is-main": true\n}\n
       #|
       #|
+
     ),
   )
 }

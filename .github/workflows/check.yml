@@ -66,12 +66,16 @@ jobs:
           moonrun --version
 
       - name: moon check
-        run: moon check
+        run: |
+          moon check
+          moon check -C examples
 
       - name: moon test
         run: |
           moon test --release
           moon test
+          moon test --release -C examples
+          moon test -C examples
 
   moon-format:
     runs-on: ubuntu-latest
