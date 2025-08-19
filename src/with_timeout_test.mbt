@@ -275,7 +275,7 @@ test "with_timeout_opt failure" {
         log.write_string("50ms tick\n")
       })
       @async.with_timeout(1000, fn() {
-        @async.sleep(25)
+        @async.sleep(20)
         raise Err
       }) catch {
         err => {

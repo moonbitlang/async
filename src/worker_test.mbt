@@ -44,13 +44,13 @@ test "worker multiple" {
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(20)
+        @async.sleep(30)
         log.write_string("tick\n")
       }
     })
     for i in 0..<4 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(Sleep(10 + i * 20)) |> ignore
+        @event_loop.perform_job(Sleep(15 + i * 30)) |> ignore
         log.write_string("#\{i} done\n")
       })
     }
