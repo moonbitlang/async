@@ -34,6 +34,9 @@
 
 #ifdef __MACH__
 #include <sys/event.h>
+#define WAKEUP_METHOD_COND_VAR
+#else
+#define WAKEUP_METHOD_SIGNAL
 #endif
 
 extern char **environ;
@@ -130,8 +133,10 @@ struct {
 
   int notify_send;
 
+#ifdef WAKEUP_METHOD_SIGNAL
   sigset_t wakeup_signal;
   sigset_t old_sigmask;
+#endif
   int32_t job_id;
 } pool;
 
@@ -166,6 +171,10 @@ int moonbitlang_async_job_poll_fd(struct job *job) {
 struct worker {
   pthread_t id;
   struct job *job;
+#ifdef WAKEUP_METHOD_COND_VAR
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+#endif
 };
 
 static
@@ -173,11 +182,12 @@ void *worker_loop(void *data) {
   int sig;
   struct worker *self = (struct worker*)data;
 
-  sigset_t sigset;
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
-
   struct job *job = self->job;
+
+#ifdef WAKEUP_METHOD_COND_VAR
+  pthread_mutex_init(&(self->mutex), 0);
+  pthread_cond_init(&(self->cond), 0);
+#endif
 
   while (job) {
     job->ret = 0;
@@ -259,8 +269,12 @@ void *worker_loop(void *data) {
     case OP_SPAWN: {
       posix_spawnattr_t attr;
       posix_spawnattr_init(&attr);
+#ifdef WAKEUP_METHOD_SIGNAL
       posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
       posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
+#else
+      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
+#endif
 
       sigset_t sigdefault_set;
       sigemptyset(&sigdefault_set);
@@ -366,10 +380,35 @@ void *worker_loop(void *data) {
     write(pool.notify_send, &(job->job_id), sizeof(int));
 
     job = 0;
+#ifdef WAKEUP_METHOD_SIGNAL
     sigwait(&pool.wakeup_signal, &sig);
+#elif defined(WAKEUP_METHOD_COND_VAR)
+    pthread_mutex_lock(&(self->mutex));
+#ifdef __MACH__
+    // There's a bug in the MacOS's `pthread_cond_wait`,
+    // see https://github.com/graphia-app/graphia/issues/33
+    // We know the arguments must be valid here, so use a loop to work around
+    while (pthread_cond_wait(&(self->cond), &(self->mutex)) == EINVAL) {}
+#else
+    pthread_cond_wait(&(self->cond), &(self->mutex));
+#endif
+    pthread_mutex_unlock(&(self->mutex));
+#endif
     job = self->job;
   }
   return 0;
+}
+
+void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
+  moonbit_decref(worker->job);
+  worker->job = job;
+#ifdef WAKEUP_METHOD_SIGNAL
+  pthread_kill(worker->id, SIGUSR1);
+#elif defined(WAKEUP_METHOD_COND_VAR)
+  pthread_mutex_lock(&(worker->mutex));
+  pthread_cond_signal(&(worker->cond));
+  pthread_mutex_unlock(&(worker->mutex));
+#endif
 }
 
 void moonbitlang_async_init_thread_pool(int notify_send) {
@@ -378,9 +417,11 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
 
   pool.job_id = 0;
 
+#ifdef WAKEUP_METHOD_SIGNAL
   sigemptyset(&pool.wakeup_signal);
   sigaddset(&pool.wakeup_signal, SIGUSR1);
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
+#endif
 
   pool.notify_send = notify_send;
   pool.initialized = 1;
@@ -392,13 +433,22 @@ void moonbitlang_async_destroy_thread_pool() {
 
   pool.initialized = 0;
 
+#ifdef WAKEUP_METHOD_SIGNAL
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
+#endif
 
   pool.job_id = 0;
 }
 
-void free_worker(void *worker) {
-  moonbit_decref(((struct worker*)worker)->job);
+void free_worker(void *target) {
+  struct worker *worker = (struct worker*)target;
+  // terminate the worker
+  moonbitlang_async_wake_worker(worker, 0);
+  pthread_join(worker->id, 0);
+#ifdef WAKEUP_METHOD_COND_VAR
+  pthread_mutex_destroy(&(worker->mutex));
+  pthread_cond_destroy(&(worker->cond));
+#endif
 }
 
 struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
@@ -414,12 +464,6 @@ struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
   return worker;
-}
-
-void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
-  moonbit_decref(worker->job);
-  worker->job = job;
-  pthread_kill(worker->id, SIGUSR1);
 }
 
 int moonbitlang_async_job_id(struct job *job) {
