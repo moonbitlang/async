@@ -130,7 +130,10 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
           self.running_workers.remove(job_id)
           match self.job_queue.pop_front() {
             None => self.idle_workers.push_back(worker)
-            Some(job) => wake_worker(worker, job)
+            Some(job) => {
+              self.running_workers[job.id()] = worker
+              wake_worker(worker, job)
+            }
           }
           if self.jobs.get(job_id) is Some(coro) {
             self.jobs.remove(job_id)
