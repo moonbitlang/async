@@ -224,11 +224,11 @@ void *worker_loop(void *data) {
       break;
 
     case OP_WRITE:
-      while (job->ret < job->payload.read.len) {
+      while (job->ret < job->payload.write.len) {
         int written = write(
-          job->payload.read.fd,
-          job->payload.read.buf + job->ret,
-          job->payload.read.len - job->ret
+          job->payload.write.fd,
+          job->payload.write.buf + job->ret,
+          job->payload.write.len - job->ret
         );
         if (written < 0) {
           job->ret = -1;
