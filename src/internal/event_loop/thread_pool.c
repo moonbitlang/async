@@ -85,9 +85,7 @@ struct spawn_job {
   char *path;
   char **args;
   char **envp;
-  int stdin_fd;
-  int stdout_fd;
-  int stderr_fd;
+  int stdio[3];
   char *cwd;
 };
 
@@ -289,17 +287,12 @@ void *worker_loop(void *data) {
 
       posix_spawn_file_actions_t file_actions;
       posix_spawn_file_actions_init(&file_actions);
-      if (job->payload.spawn.stdin_fd >= 0) {
-        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stdin_fd, 0);
-        if (job->err) goto exit;
-      }
-      if (job->payload.spawn.stdout_fd >= 0) {
-        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stdout_fd, 1);
-        if (job->err) goto exit;
-      }
-      if (job->payload.spawn.stderr_fd >= 0) {
-        job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stderr_fd, 2);
-        if (job->err) goto exit;
+      for (int i = 0; i < 3; ++i) {
+        int fd = job->payload.spawn.stdio[i];
+        if (fd >= 0) {
+          job->err = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
+          if (job->err) goto exit;
+        }
       }
       if (job->payload.spawn.cwd) {
         job->err = posix_spawn_file_actions_addchdir_np(&file_actions, job->payload.spawn.cwd);
@@ -329,6 +322,10 @@ void *worker_loop(void *data) {
     exit:
       posix_spawnattr_destroy(&attr);
       posix_spawn_file_actions_destroy(&file_actions);
+      for (int i = 0; i < 3; ++i) {
+        int fd = job->payload.spawn.stdio[i];
+        if (fd >= 0) close(fd);
+      }
       if (!(job->err)) {
         job->ret = pid;
       }
@@ -597,9 +594,9 @@ struct job *moonbitlang_async_make_spawn_job(
   job->payload.spawn.path = path;
   job->payload.spawn.args = args;
   job->payload.spawn.envp = envp;
-  job->payload.spawn.stdin_fd = stdin_fd;
-  job->payload.spawn.stdout_fd = stdout_fd;
-  job->payload.spawn.stderr_fd = stderr_fd;
+  job->payload.spawn.stdio[0] = stdin_fd;
+  job->payload.spawn.stdio[1] = stdout_fd;
+  job->payload.spawn.stdio[2] = stderr_fd;
   job->payload.spawn.cwd = cwd;
   return job;
 }
