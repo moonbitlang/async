@@ -1,0 +1,11 @@
+{
+  "import": [
+    "moonbitlang/async/io",
+    "moonbitlang/async/internal/coroutine"
+  ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/pipe"
+  ],
+  "native-stub": [ "stub.c" ]
+}
