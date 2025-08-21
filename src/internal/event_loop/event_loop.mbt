@@ -394,9 +394,9 @@ pub async fn perform_job(job : Job) -> Int raise {
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
     Readdir(dir~, out~) =>
       perform_job_in_worker(JobForWorker::readdir(dir, out))
-    Spawn(path~, args~, env~, stdin~, stdout~, stderr~) =>
+    Spawn(path~, args~, env~, stdin~, stdout~, stderr~, cwd~) =>
       perform_job_in_worker(
-        JobForWorker::spawn(path, args, env, stdin, stdout, stderr),
+        JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
       )
     Recvfrom(sock~, buf~, offset~, len~, addr~) =>
       perform_read_job(

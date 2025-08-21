@@ -44,6 +44,9 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 /// the corresponding channel of the new process will be redirected to the given pipe.
 /// The ownership of `stdin`, `stdout`, and `stderr` will be transferred to the `spawn`,
 /// current process MUST NOT read/write/close these pipes any more, even if `spawn` fails.
+///
+/// If `cwd` is present, the spawned command will be executed
+/// in the directory specified by `cwd`.
 pub async fn run(
   cmd : Bytes,
   args : Array[Bytes],
@@ -52,6 +55,7 @@ pub async fn run(
   stdin? : @pipe.PipeRead,
   stdout? : @pipe.PipeWrite,
   stderr? : @pipe.PipeWrite,
+  cwd? : Bytes,
   orphan~ : Bool = false,
 ) -> Int raise {
   let argv = FixedArray::make(args.length() + 2, None)
@@ -120,6 +124,7 @@ pub async fn run(
     stdin~,
     stdout~,
     stderr~,
+    cwd~,
   )
   let pid = @event_loop.perform_job(job)
   @event_loop.perform_job(WaitProcess(pid)) catch {

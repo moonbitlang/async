@@ -24,7 +24,7 @@ pub(all) enum Job {
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
   Remove(path~ : Bytes)
   Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
-  Spawn(path~ : Bytes, args~ : FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int)
+  Spawn(path~ : Bytes, args~ : FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?)
   Recvfrom(sock~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes)
   Sendto(sock~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, addr~ : Bytes)
   Connect(sock~ : Int, addr~ : Bytes)

@@ -75,6 +75,7 @@ extern "C" fn JobForWorker::spawn(
   stdin : Int,
   stdout : Int,
   stderr : Int,
+  cwd : Bytes?,
 ) -> JobForWorker = "moonbitlang_async_make_spawn_job"
 
 ///|
@@ -125,7 +126,8 @@ pub(all) enum Job {
     env~ : FixedArray[Bytes?],
     stdin~ : Int,
     stdout~ : Int,
-    stderr~ : Int
+    stderr~ : Int,
+    cwd~ : Bytes?
   )
   Recvfrom(
     sock~ : Int,
