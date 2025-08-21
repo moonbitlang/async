@@ -63,23 +63,6 @@ pub async fn run(
   for i in 0..<args.length() {
     argv[i + 1] = Some(args[i])
   }
-  fn close(fd) {
-    @fd_util.close(fd) catch {
-      _ => ()
-    }
-  }
-
-  defer {
-    if stdin is Some(pipe) {
-      close(pipe.fd())
-    }
-    if stdout is Some(pipe) {
-      close(pipe.fd())
-    }
-    if stderr is Some(pipe) {
-      close(pipe.fd())
-    }
-  }
   let stdin = match stdin {
     Some(pipe) => {
       @fd_util.set_blocking(pipe.fd())
