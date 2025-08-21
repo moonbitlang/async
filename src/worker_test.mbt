@@ -114,8 +114,8 @@ test "worker cancel2" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
-      for _ in 0..<4 {
-        @async.sleep(20)
+      for _ in 0..<3 {
+        @async.sleep(40)
         log.write_string("tick\n")
       }
     })
@@ -129,14 +129,13 @@ test "worker cancel2" {
         _ => log.write_string("done\n")
       }
     })
-    @async.sleep(50)
+    @async.sleep(60)
     log.write_string("trying to terminate now\n")
     root.return_immediately(())
   })
   inspect(
     log.to_string(),
     content=(
-      #|tick
       #|tick
       #|trying to terminate now
       #|sleep cancelled with Cancelled
