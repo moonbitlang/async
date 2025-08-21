@@ -88,6 +88,7 @@ struct spawn_job {
   int stdin_fd;
   int stdout_fd;
   int stderr_fd;
+  char *cwd;
 };
 
 struct recvfrom_job {
@@ -298,6 +299,10 @@ void *worker_loop(void *data) {
       }
       if (job->payload.spawn.stderr_fd >= 0) {
         job->err = posix_spawn_file_actions_adddup2(&file_actions, job->payload.spawn.stderr_fd, 2);
+        if (job->err) goto exit;
+      }
+      if (job->payload.spawn.cwd) {
+        job->err = posix_spawn_file_actions_addchdir_np(&file_actions, job->payload.spawn.cwd);
         if (job->err) goto exit;
       }
 
@@ -583,7 +588,8 @@ struct job *moonbitlang_async_make_spawn_job(
   char **envp,
   int stdin_fd,
   int stdout_fd,
-  int stderr_fd
+  int stderr_fd,
+  char *cwd
 ) {
   struct job *job = make_job();
   job->job_id = pool.job_id++;
@@ -594,6 +600,7 @@ struct job *moonbitlang_async_make_spawn_job(
   job->payload.spawn.stdin_fd = stdin_fd;
   job->payload.spawn.stdout_fd = stdout_fd;
   job->payload.spawn.stderr_fd = stderr_fd;
+  job->payload.spawn.cwd = cwd;
   return job;
 }
 

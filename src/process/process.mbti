@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-async fn run(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : @pipe.PipeRead, stdout? : @pipe.PipeWrite, stderr? : @pipe.PipeWrite, orphan? : Bool) -> Int raise
+async fn run(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : @pipe.PipeRead, stdout? : @pipe.PipeWrite, stderr? : @pipe.PipeWrite, cwd? : Bytes, orphan? : Bool) -> Int raise
 
 // Errors
 
