@@ -123,7 +123,7 @@ test "retry cancelled1" {
   log.write_object(
     try? @async.with_event_loop(fn(_) {
       let mut i = 0
-      @async.with_timeout(125, fn() {
+      @async.with_timeout(140, fn() {
         @async.retry(Immediate, fn() {
           @async.sleep(50)
           log.write_string("loop \{i}\n")

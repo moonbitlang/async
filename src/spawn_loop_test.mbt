@@ -78,7 +78,7 @@ test "spawn_loop retry-exponential" {
           log.write_string("tick \{i}\n")
         }
       })
-      @async.sleep(25)
+      @async.sleep(15)
       let mut i = 0
       root.spawn_loop(
         retry=ExponentialDelay(initial=50, factor=2, maximum=150),

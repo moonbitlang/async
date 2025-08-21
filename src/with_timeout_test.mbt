@@ -214,7 +214,7 @@ test "with_timeout error-on-timeout" {
         log.write_string("50ms tick\n")
       })
       defer log.write_string("main task terminates\n")
-      @async.with_timeout(25, error=Err, fn() {
+      @async.with_timeout(20, error=Err, fn() {
         @async.sleep(2000) catch {
           err => {
             log.write_string("task cancelled\n")
