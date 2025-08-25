@@ -48,7 +48,8 @@ pub fn Coroutine::wake(self : Coroutine) -> Unit {
 
 ///|
 pub fn is_being_cancelled() -> Bool {
-  current_coroutine().cancelled
+  let coro = current_coroutine()
+  coro.cancelled && not(coro.shielded)
 }
 
 ///|
