@@ -68,6 +68,7 @@ test "basic_ls" {
       #|task_group.mbt
       #|task.mbt
       #|timer_test.mbt
+      #|tls
       #|wait_test.mbt
       #|with_timeout_test.mbt
       #|worker_test.mbt
