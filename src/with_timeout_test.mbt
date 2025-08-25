@@ -180,8 +180,8 @@ test "with_timeout error_on_cancel" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(30)
-        log.write_string("30ms tick\n")
+        @async.sleep(40)
+        log.write_string("40ms tick\n")
       })
       @async.with_timeout(20, fn() {
         @async.sleep(2000) catch {
