@@ -25,6 +25,8 @@
 #define BIO_CTRL_FLUSH 11
 #define SSL_CTRL_MODE 33
 #define SSL_MODE_ENABLE_PARTIAL_WRITE 0x00000001U
+#define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
+#define TLSEXT_NAMETYPE_host_name 0
 
 typedef struct BIO_METHOD BIO_METHOD;
 typedef struct BIO BIO;
@@ -48,6 +50,7 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(void, SSL_set_bio, (SSL *s, BIO *rbio, BIO *wbio))\
   IMPORT_FUNC(int, SSL_connect, (SSL *ssl))\
   IMPORT_FUNC(void, SSL_set_verify, (SSL *ssl, int mode, int (*verify_cb)(int, void*)))\
+  IMPORT_FUNC(long, SSL_ctrl, (SSL *ssl, int cmd, long larg, void *parg))\
   IMPORT_FUNC(int, SSL_accept, (SSL *ssl))\
   IMPORT_FUNC(int, SSL_use_certificate_file, (SSL *ssl, const char *file, int type))\
   IMPORT_FUNC(int, SSL_use_PrivateKey_file, (SSL *ssl, const char *file, int type))\
@@ -213,6 +216,10 @@ SSL *moonbitlang_async_tls_ssl_new(SSL_CTX *ctx, BIO *rbio, BIO *wbio) {
 
 int moonbitlang_async_tls_ssl_connect(SSL *ssl) {
   return SSL_connect(ssl);
+}
+
+int moonbitlang_async_tls_ssl_set_sni(SSL *ssl, void *host) {
+  return SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, host);
 }
 
 void moonbitlang_async_tls_ssl_set_verify(SSL *ssl, int verify) {
