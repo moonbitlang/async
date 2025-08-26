@@ -206,8 +206,13 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
   }
   for fd, handle in self.fds {
     guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
-    self.poll.remove(fd, events=handle.events) catch {
-      err => abort("detach \{fd} from loop: \{err}")
+    if not(handle.events is NoEvent) {
+      // if `poll_register` fails, `handle.events` may be `NoEvent`,
+      // in this case we have never added it to the poller,
+      // so we must not remove it from the poller here
+      self.poll.remove(fd, events=handle.events) catch {
+        err => abort("detach \{fd} from loop: \{err}")
+      }
     }
     @fd_util.close(fd)
   }
