@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/http"
+
+import(
+  "moonbitlang/async/io"
+)
+
+// Values
+async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit raise
+
+async fn[Writer : @io.Writer] send_response(Writer, Response, Body) -> Unit raise
+
+// Errors
+pub suberror HttpProtocolError {
+  BadRequest
+  HttpVersionNotSupported(String)
+  NotImplemented
+}
+impl Show for HttpProtocolError
+
+// Types and methods
+pub(all) enum Body {
+  Empty
+  Fixed(Bytes)
+  Stream(&@io.Reader)
+}
+
+pub(all) struct Header(Bytes, Bytes)
+
+
+type Reader
+fn[R : @io.Reader] Reader::new(R) -> Self
+async fn Reader::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+async fn Reader::read_request(Self) -> Request raise
+async fn Reader::read_response(Self) -> Response raise
+async fn Reader::skip_body(Self) -> Unit raise
+impl @io.Reader for Reader
+
+pub(all) struct Request {
+  meth : RequestMethod
+  path : Bytes
+  headers : Array[Header]
+}
+
+pub(all) enum RequestMethod {
+  Get
+  Head
+  Post
+  Put
+  Delete
+  Connect
+  Options
+  Trace
+  Patch
+}
+
+pub(all) struct Response {
+  code : Int
+  reason : Bytes
+  headers : Array[Header]
+}
+
+// Type aliases
+
+// Traits
+

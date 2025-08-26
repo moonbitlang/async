@@ -1,0 +1,6 @@
+{
+  "import": [
+    "moonbitlang/async/io",
+    "moonbitlang/async/internal/bytes_util"
+  ]
+}
