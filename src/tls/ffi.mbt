@@ -56,6 +56,10 @@ extern "C" fn SSL::new(ctx : SSL_CTX, rbio : BIO, wbio : BIO) -> SSL = "moonbitl
 extern "C" fn SSL::connect(self : SSL) -> Int = "moonbitlang_async_tls_ssl_connect"
 
 ///|
+#borrow(host)
+extern "C" fn SSL::set_sni(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_sni"
+
+///|
 extern "C" fn SSL::set_verify(self : SSL, verify : Bool) = "moonbitlang_async_tls_ssl_set_verify"
 
 ///|

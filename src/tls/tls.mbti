@@ -16,8 +16,8 @@ impl Show for OpenSSLError
 
 // Types and methods
 type TLS
-async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool) -> Self raise
-async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool) -> Self raise
+async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool, sni? : Bytes) -> Self raise
+async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool, sni? : Bytes) -> Self raise
 fn TLS::close(Self) -> Unit
 async fn TLS::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
 async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self raise

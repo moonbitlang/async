@@ -58,14 +58,24 @@ async fn TLS::handle_error(self : TLS, err : Int) -> Unit raise {
 /// If `verify` is `true` (`true` by default),
 /// `client_from_pair` will perform verification on server's certificate,
 /// using the default verification setting of the OpenSSL library.
+///
+/// If `sni` is present, its value will set the host name for the
+/// Server Name Indication (SNI) field in ClientHello packet of TLS.
 pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
   r : R,
   w : W,
   verify~ : Bool = true,
+  sni? : Bytes,
 ) -> TLS raise {
   let self = TLS::from_pair(client_ctx, r, w)
   if not(verify) {
     self.ssl.set_verify(false)
+  }
+  if sni is Some(host) {
+    guard self.ssl.set_sni(host) > 0 else {
+      self.close()
+      raise OpenSSLError(err_get_error())
+    }
   }
   while self.ssl.connect() is ret && ret <= 0 {
     self.handle_error(self.ssl.get_error(ret)) catch {
@@ -85,11 +95,15 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
 /// If `verify` is `true` (`true` by default),
 /// `client` will perform verification on server's certificate,
 /// using the default verification setting of the OpenSSL library.
+///
+/// If `sni` is present, its value will set the host name for the
+/// Server Name Indication (SNI) field in ClientHello packet of TLS.
 pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
   inner : Inner,
   verify~ : Bool = true,
+  sni? : Bytes,
 ) -> TLS raise {
-  TLS::client_from_pair(inner, inner, verify~)
+  TLS::client_from_pair(inner, inner, verify~, sni?)
 }
 
 ///|
