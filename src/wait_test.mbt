@@ -18,13 +18,13 @@ test "wait basic" {
   buf.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
-        buf.write_string("20ms tick\n")
-        @async.sleep(20)
+        @async.sleep(40)
         buf.write_string("40ms tick\n")
+        @async.sleep(80)
+        buf.write_string("80ms tick\n")
       })
       let task = root.spawn(no_wait=true, fn() {
-        @async.sleep(30)
+        @async.sleep(60)
         buf.write_string("task finished\n")
       })
       task.wait()
@@ -34,10 +34,10 @@ test "wait basic" {
   inspect(
     buf.to_string(),
     content=(
-      #|20ms tick
+      #|40ms tick
       #|task finished
       #|main task exit
-      #|40ms tick
+      #|80ms tick
       #|Ok(())
     ),
   )
