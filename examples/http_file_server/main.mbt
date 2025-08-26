@@ -111,11 +111,10 @@ pub async fn server(
   log~ : (String) -> Unit = println,
 ) -> Unit raise {
   let base_path = path
-  let listen_sock = @socket.TCP::new()
-  defer listen_sock.close()
-  listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
+  let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+  defer server.close()
   for {
-    let (conn, addr) = listen_sock.accept()
+    let (conn, addr) = server.accept()
     log("received new connection from \{addr}")
     ctx.spawn_bg(allow_failure=true, fn() {
       defer {

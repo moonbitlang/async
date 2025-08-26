@@ -20,14 +20,13 @@ let port = 4206
 
 ///|
 async fn server() -> Int raise {
-  let listen_sock = @socket.TCP::new()
+  let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+  defer server.close()
   let mut num_connection = 0
   try
     @async.with_task_group(fn(group) {
-      listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
-      defer listen_sock.close()
       for {
-        let (conn, _) = listen_sock.accept()
+        let (conn, _) = server.accept()
         num_connection += 1
         group.spawn_bg(fn() {
           defer conn.close()
@@ -52,9 +51,8 @@ async fn server() -> Int raise {
 
 ///|
 async fn client(msg : Bytes) -> Unit raise {
-  let conn = @socket.TCP::new()
+  let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
-  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   conn.write(msg)
 }
 
