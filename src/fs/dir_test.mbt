@@ -25,7 +25,7 @@ fn ascii_to_string(ascii : Bytes) -> String {
 test "read_all" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let dir = @fs.opendir("src")
+    let dir = @fs.opendir("src/fs")
     defer dir.close()
     let list = dir.read_all().map(ascii_to_string)
     list.sort()
@@ -34,7 +34,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs", "io", "tls", "pipe", "aqueue", "socket", "process", "internal", "os_error", "task.mbt", "async.mbt", "async.mbti", "moon.pkg.json", "wait_test.mbt", "pause_test.mbt", "retry_test.mbt", "spawn_test.mbt", "task_group.mbt", "timer_test.mbt", "worker_test.mbt", "no_wait_test.mbt", "spawn_loop_test.mbt", "group_defer_test.mbt", "cancellation_test.mbt", "with_timeout_test.mbt", "allow_failure_test.mbt", "missing_close_test.mbt", "return_immediately_test.mbt", "protect_from_cancel_test.mbt"]
+      #|["fs.mbt", "stub.c", "dir.mbt", "fs.mbti", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt"]
     ),
   )
 }
@@ -43,49 +43,30 @@ test "read_all" {
 test "as_dir" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let dir_file = @fs.open("src", mode=ReadOnly)
+    let dir_file = @fs.open("src/fs", mode=ReadOnly)
     defer dir_file.close()
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
     let list = dir.read_all()
     list.sort()
     for file in list {
-      let kind = @fs.open(b"src/" + file, mode=ReadOnly).kind()
+      let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
       log.write_string("\{ascii_to_string(file)}: \{kind}\n")
     }
   })
   inspect(
     log.to_string(),
     content=(
-      #|fs: Directory
-      #|io: Directory
-      #|tls: Directory
-      #|pipe: Directory
-      #|aqueue: Directory
-      #|socket: Directory
-      #|process: Directory
-      #|internal: Directory
-      #|os_error: Directory
-      #|task.mbt: Regular
-      #|async.mbt: Regular
-      #|async.mbti: Regular
+      #|fs.mbt: Regular
+      #|stub.c: Regular
+      #|dir.mbt: Regular
+      #|fs.mbti: Regular
+      #|dir_test.mbt: Regular
+      #|eof_test.mbt: Regular
       #|moon.pkg.json: Regular
-      #|wait_test.mbt: Regular
-      #|pause_test.mbt: Regular
-      #|retry_test.mbt: Regular
-      #|spawn_test.mbt: Regular
-      #|task_group.mbt: Regular
-      #|timer_test.mbt: Regular
-      #|worker_test.mbt: Regular
-      #|no_wait_test.mbt: Regular
-      #|spawn_loop_test.mbt: Regular
-      #|group_defer_test.mbt: Regular
-      #|cancellation_test.mbt: Regular
-      #|with_timeout_test.mbt: Regular
-      #|allow_failure_test.mbt: Regular
-      #|missing_close_test.mbt: Regular
-      #|return_immediately_test.mbt: Regular
-      #|protect_from_cancel_test.mbt: Regular
+      #|seek_test.mbt: Regular
+      #|create_test.mbt: Regular
+      #|read_all_test.mbt: Regular
       #|
     ),
   )
@@ -101,10 +82,10 @@ test "readdir clear errno" {
     } noraise {
       _ => ()
     }
-    let dir = @fs.opendir("src")
+    let dir = @fs.opendir("src/fs")
     defer dir.close()
     let list = dir.read_all().map(ascii_to_string)
     log.write_object(list.length())
   })
-  inspect(log.to_string(), content="29")
+  inspect(log.to_string(), content="10")
 }
