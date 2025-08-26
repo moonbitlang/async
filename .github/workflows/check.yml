@@ -39,6 +39,8 @@ jobs:
         run: |
           moon test --release
           moon test
+          moon test --release -C examples
+          moon test -C examples
 
   bleeding-build:
     strategy:
