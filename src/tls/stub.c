@@ -50,6 +50,7 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(void, SSL_set_bio, (SSL *s, BIO *rbio, BIO *wbio))\
   IMPORT_FUNC(int, SSL_connect, (SSL *ssl))\
   IMPORT_FUNC(void, SSL_set_verify, (SSL *ssl, int mode, int (*verify_cb)(int, void*)))\
+  IMPORT_FUNC(int, SSL_set1_host, (SSL *ssl, const char *host))\
   IMPORT_FUNC(long, SSL_ctrl, (SSL *ssl, int cmd, long larg, void *parg))\
   IMPORT_FUNC(int, SSL_accept, (SSL *ssl))\
   IMPORT_FUNC(int, SSL_use_certificate_file, (SSL *ssl, const char *file, int type))\
@@ -216,6 +217,10 @@ SSL *moonbitlang_async_tls_ssl_new(SSL_CTX *ctx, BIO *rbio, BIO *wbio) {
 
 int moonbitlang_async_tls_ssl_connect(SSL *ssl) {
   return SSL_connect(ssl);
+}
+
+int moonbitlang_async_tls_ssl_set_host(SSL *ssl, const char *host) {
+  return SSL_set1_host(ssl, host);
 }
 
 int moonbitlang_async_tls_ssl_set_sni(SSL *ssl, void *host) {

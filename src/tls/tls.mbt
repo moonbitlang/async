@@ -16,6 +16,7 @@
 /// A TLS-encrypted connection
 struct TLS {
   ssl : SSL
+  host : Bytes?
   read_end : Endpoint
   write_end : Endpoint
 }
@@ -31,13 +32,14 @@ fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
   ctx : SSL_CTX,
   r : R,
   w : W,
+  host~ : Bytes?,
 ) -> TLS {
   let read_end = Endpoint::new_read(r)
   let write_end = Endpoint::new_write(w)
   let rbio = create_rbio(read_end, (bio, dst, len) => bio.read(dst, len))
   let wbio = create_wbio(write_end, (bio, src, len) => bio.write(src, len))
   let ssl = SSL::new(ctx, rbio, wbio)
-  { ssl, read_end, write_end }
+  { ssl, host, read_end, write_end }
 }
 
 ///|
@@ -59,22 +61,31 @@ async fn TLS::handle_error(self : TLS, err : Int) -> Unit raise {
 /// `client_from_pair` will perform verification on server's certificate,
 /// using the default verification setting of the OpenSSL library.
 ///
-/// If `sni` is present, its value will set the host name for the
-/// Server Name Indication (SNI) field in ClientHello packet of TLS.
+/// If `host` is present, it will be used to verify the peer's certificate.
+///
+/// If `host` is present and `sni` is `true` (`true` by default),
+/// Server Name Indication (SNI) field of TLS will be set to `host`.
 pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
   r : R,
   w : W,
   verify~ : Bool = true,
-  sni? : Bytes,
+  host? : Bytes,
+  sni~ : Bool = true,
 ) -> TLS raise {
-  let self = TLS::from_pair(client_ctx, r, w)
+  let self = TLS::from_pair(client_ctx, r, w, host~)
   if not(verify) {
     self.ssl.set_verify(false)
   }
-  if sni is Some(host) {
-    guard self.ssl.set_sni(host) > 0 else {
+  if host is Some(host) {
+    guard self.ssl.set_host(host) > 0 else {
       self.close()
       raise OpenSSLError(err_get_error())
+    }
+    if sni {
+      guard self.ssl.set_sni(host) > 0 else {
+        self.close()
+        raise OpenSSLError(err_get_error())
+      }
     }
   }
   while self.ssl.connect() is ret && ret <= 0 {
@@ -96,14 +107,17 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
 /// `client` will perform verification on server's certificate,
 /// using the default verification setting of the OpenSSL library.
 ///
-/// If `sni` is present, its value will set the host name for the
-/// Server Name Indication (SNI) field in ClientHello packet of TLS.
+/// If `host` is present, it will be used to verify the peer's certificate.
+///
+/// If `host` is present and `sni` is `true` (`true` by default),
+/// Server Name Indication (SNI) field of TLS will be set to `host`.
 pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
   inner : Inner,
   verify~ : Bool = true,
-  sni? : Bytes,
+  host? : Bytes,
+  sni~ : Bool = true,
 ) -> TLS raise {
-  TLS::client_from_pair(inner, inner, verify~, sni?)
+  TLS::client_from_pair(inner, inner, verify~, host?, sni~)
 }
 
 ///|
@@ -124,7 +138,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
   certificate_file~ : Bytes,
   certificate_type~ : X509FileType,
 ) -> TLS raise {
-  let self = TLS::from_pair(server_ctx, r, w)
+  let self = TLS::from_pair(server_ctx, r, w, host=None)
   if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
     self.close()
     raise OpenSSLError(err_get_error())
@@ -221,6 +235,8 @@ pub fn TLS::close(self : TLS) -> Unit {
   self.read_end.close()
   self.write_end.close()
   self.ssl.free()
+  // We must make sure the host string lives longer than `self.ssl`
+  ignore(self.host)
 }
 
 ///|
