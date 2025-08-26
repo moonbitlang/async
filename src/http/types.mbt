@@ -13,30 +13,31 @@
 // limitations under the License.
 
 ///|
-pub fn ascii_to_string(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for b in bytes {
-    match b {
-      '\r' => builder.write_string("\\r")
-      '\n' => builder.write_string("\\n")
-      b => builder.write_char(b.to_int().unsafe_to_char())
-    }
-  }
-  builder.to_string()
+pub(all) enum RequestMethod {
+  Get
+  Head
+  Post
+  Put
+  Delete
+  Connect
+  Options
+  Trace
+  Patch
 }
 
 ///|
-fn String::to_ascii(str : String) -> Bytes {
-  Bytes::makei(str.length(), i => str.unsafe_charcode_at(i).to_byte())
+pub(all) struct Header(Bytes,Bytes)
+
+///|
+pub(all) struct Request {
+  meth : RequestMethod
+  path : Bytes
+  headers : Array[Header]
 }
 
 ///|
-fn @bytes.View::rev_find_index(self : @bytes.View, byte : Byte) -> Int? {
-  for i = self.length() - 1; i >= 0; i = i - 1 {
-    if self[i] == byte {
-      break Some(i)
-    }
-  } else {
-    None
-  }
+pub(all) struct Response {
+  code : Int
+  reason : Bytes
+  headers : Array[Header]
 }

@@ -45,13 +45,11 @@ async fn serve_directory(
     ..write_bytes(b"</a><br/>\n")
   }
   content.write_bytes(b"</div></body></html>")
-  conn
-  ..write(b"HTTP/1.1 200 OK\r\n")
-  ..write(b"Content-Type: text/html\r\n")
-  ..write(b"Content-Length: ")
-  ..write(content.length().to_string().to_ascii())
-  ..write(b"\r\n\r\n")
-  ..write(content.to_bytes())
+  @http.send_response(
+    conn,
+    { code: 200, reason: "OK", headers: [Header("Content-Type", "text/html")] },
+    Fixed(content.to_bytes()),
+  )
 }
 
 ///|
@@ -72,21 +70,11 @@ async fn serve_file(
     [.., .. ".mkv"] => "video/x-matroska"
     _ => "appliaction/octet-stream"
   }
-  conn
-  ..write(b"HTTP/1.1 200 OK\r\n")
-  ..write(b"Transfer-Encoding: chunked\r\n")
-  ..write("Content-Type: ")
-  ..write(content_type)
-  ..write(b"\r\n\r\n")
-  let send_buf = FixedArray::make(1024, b'0')
-  while file.read(send_buf) is n && n > 0 {
-    conn
-    ..write(n.to_string(radix=16).to_ascii())
-    ..write("\r\n")
-    ..write(send_buf.unsafe_reinterpret_as_bytes()[:n])
-    ..write("\r\n")
-  }
-  conn.write("0\r\n\r\n")
+  @http.send_response(
+    conn,
+    { code: 200, reason: "OK", headers: [Header("Content-Type", content_type)] },
+    Stream(file),
+  )
 }
 
 ///|
@@ -94,13 +82,15 @@ let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></htm
 
 ///|
 async fn serve_404(conn : @socket.TCP) -> Unit raise {
-  conn
-  ..write(b"HTTP/1.1 404 NotFound\r\n")
-  ..write(b"Content-Type: text/html\r\n")
-  ..write(b"Content-Length: ")
-  ..write(page_for_404.length().to_string().to_ascii())
-  ..write(b"\r\n\r\n")
-  ..write(page_for_404)
+  @http.send_response(
+    conn,
+    {
+      code: 404,
+      reason: "NotFound",
+      headers: [Header("Content-Type", "text/html")],
+    },
+    Fixed(page_for_404),
+  )
 }
 
 ///|
@@ -121,14 +111,15 @@ pub async fn server(
         log("closing connection from \{addr}")
         conn.close()
       }
-      let src = @io.BufferedReader::new(conn)
+      let src = @http.Reader::new(conn)
       for {
-        let (header, _) = parse_http_request(src)
-        let path = header.path
+        let request = src.read_request()
+        src.skip_body()
+        let path = request.path
         log("serving \{ascii_to_string(path)}")
-        match header.cmd {
+        match request.meth {
           Get => {
-            let file = @fs.open(base_path + header.path, mode=ReadOnly) catch {
+            let file = @fs.open(base_path + path, mode=ReadOnly) catch {
               _ => {
                 serve_404(conn)
                 continue
@@ -141,6 +132,7 @@ pub async fn server(
               serve_file(conn, file, path~)
             }
           }
+          _ => ()
         }
       }
     })
