@@ -49,6 +49,20 @@ priv struct ProcessHandle {
 let curr_loop : Ref[EventLoop?] = @ref.new(None)
 
 ///|
+priv struct EventLoopHook {
+  init : (() -> Unit)?
+  exit : (() -> Unit)?
+}
+
+///|
+let hooks : Array[EventLoopHook] = []
+
+///|
+pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
+  hooks.push({ init, exit })
+}
+
+///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   guard curr_loop.val is None
   let (notify_recv, notify_send) = @fd_util.pipe()
@@ -88,13 +102,29 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
   |> ignore
   defer (evloop.poll.remove(notify_recv, events=ReadEvent) catch { _ => () })
   curr_loop.val = Some(evloop)
-  defer {
-    curr_loop.val = None
+  for hook in hooks {
+    if hook.init is Some(init) {
+      init()
+    }
   }
-  let main = @coroutine.spawn(f)
-  @coroutine.reschedule()
-  evloop.run_forever()
-  main.unwrap()
+  try {
+    defer {
+      curr_loop.val = None
+    }
+    let main = @coroutine.spawn(f)
+    @coroutine.reschedule()
+    evloop.run_forever()
+    main.unwrap()
+  } catch {
+    err => {
+      for hook in hooks {
+        if hook.exit is Some(exit) {
+          exit()
+        }
+      }
+      raise err
+    }
+  }
 }
 
 ///|

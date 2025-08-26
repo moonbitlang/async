@@ -19,7 +19,6 @@ fn String::to_ascii(str : String) -> Bytes {
 
 ///|
 fn main {
-  defer @pipe.reset_stdio()
   @async.with_event_loop(fn(_) {
     try {
       let args = @env.args()
