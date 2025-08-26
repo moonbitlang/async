@@ -89,9 +89,7 @@ test "basic" {
     client_log.write_string(
       "client: GET /examples/http_file_server/moon.pkg.json\n",
     )
-    client_log.write_object(
-      client(b"/examples/http_file_server/moon.pkg.json"),
-    )
+    client_log.write_object(client(b"/examples/http_file_server/moon.pkg.json"))
     client_log.write_string("\n\n")
   })
   inspect(
@@ -112,9 +110,6 @@ test "basic" {
       #|{\n  "import": [\n    "moonbitlang/async",\n    "moonbitlang/async/io",\n    "moonbitlang/async/socket",\n    "moonbitlang/async/fs"\n  ],\n  "is-main": true\n}\n
       #|
       #|
-
-
-
     ),
   )
 }

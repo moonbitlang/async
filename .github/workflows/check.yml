@@ -98,6 +98,7 @@ jobs:
       - name: format diff
         run: |
           moon fmt
+          moon fmt -C examples
           git diff --exit-code
 
   moon-info:
