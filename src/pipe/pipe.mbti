@@ -4,6 +4,7 @@ package "moonbitlang/async/pipe"
 // Values
 fn pipe() -> (PipeRead, PipeWrite) raise
 
+#deprecated
 fn reset_stdio() -> Unit
 
 let stderr : PipeWrite

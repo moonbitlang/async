@@ -43,19 +43,25 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 }
 
 ///|
-let stdio_need_reset : Array[Int] = []
-
-///|
 /// The standard input treated as a pipe.
 /// Using this value will result in standard input being set to non-blocking mode.
 /// For console applications, remember to reset the state of standard input
 /// using `reset_stdio`, as standard input may be shared between multiple process.
 pub let stdin : PipeRead = {
   if get_blocking(0) > 0 {
-    stdio_need_reset.push(0)
-    @fd_util.set_nonblocking(0) catch {
-      _ => ()
+    fn init() {
+      @fd_util.set_nonblocking(0) catch {
+        _ => ()
+      }
     }
+
+    fn exit() {
+      @fd_util.set_nonblocking(0) catch {
+        _ => ()
+      }
+    }
+
+    @event_loop.register_hook(init~, exit~)
   }
   PipeRead(0)
 }
@@ -67,10 +73,19 @@ pub let stdin : PipeRead = {
 /// using `reset_stdio`, as standard output may be shared between multiple process.
 pub let stdout : PipeWrite = {
   if get_blocking(1) > 0 {
-    stdio_need_reset.push(1)
-    @fd_util.set_nonblocking(1) catch {
-      _ => ()
+    fn init() {
+      @fd_util.set_nonblocking(1) catch {
+        _ => ()
+      }
     }
+
+    fn exit() {
+      @fd_util.set_nonblocking(1) catch {
+        _ => ()
+      }
+    }
+
+    @event_loop.register_hook(init~, exit~)
   }
   PipeWrite(1)
 }
@@ -82,10 +97,19 @@ pub let stdout : PipeWrite = {
 /// using `reset_stdio`, as standard error may be shared between multiple process.
 pub let stderr : PipeWrite = {
   if get_blocking(2) > 0 {
-    stdio_need_reset.push(2)
-    @fd_util.set_nonblocking(2) catch {
-      _ => ()
+    fn init() {
+      @fd_util.set_nonblocking(2) catch {
+        _ => ()
+      }
     }
+
+    fn exit() {
+      @fd_util.set_nonblocking(2) catch {
+        _ => ()
+      }
+    }
+
+    @event_loop.register_hook(init~, exit~)
   }
   PipeWrite(2)
 }
@@ -94,12 +118,9 @@ pub let stderr : PipeWrite = {
 /// Reset the state of standard input/output/error, clearing the non-blocking flag.
 /// For console applications, this prevents the parent process from also entering non-blocking mode.
 /// If stdio is already in non-blocking mode, this function does nothing.
+#deprecated("`reset_stdio` is no longer needed")
 pub fn reset_stdio() -> Unit {
-  for fd in stdio_need_reset {
-    @fd_util.set_blocking(fd) catch {
-      _ => ()
-    }
-  }
+
 }
 
 ///|

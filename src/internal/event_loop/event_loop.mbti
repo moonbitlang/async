@@ -6,6 +6,8 @@ fn close_fd(Int) -> Unit
 
 async fn perform_job(Job) -> Int raise
 
+fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
+
 fn with_event_loop(async () -> Unit raise) -> Unit raise
 
 // Errors
