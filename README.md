@@ -30,6 +30,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 
 - [X] TCP/UDP socket
 - [X] DNS resolution
+- [X} TLS support
 - [X] timer
 - [X] pipe
 - [X] asynchronous file system operations
