@@ -57,6 +57,10 @@ extern "C" fn SSL::connect(self : SSL) -> Int = "moonbitlang_async_tls_ssl_conne
 
 ///|
 #borrow(host)
+extern "C" fn SSL::set_host(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_host"
+
+///|
+#borrow(host)
 extern "C" fn SSL::set_sni(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_sni"
 
 ///|
