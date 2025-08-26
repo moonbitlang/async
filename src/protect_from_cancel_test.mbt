@@ -204,20 +204,20 @@ test "protect_from_cancel nested2" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
-        log.write_string("20ms tick\n")
-        @async.sleep(20)
+        @async.sleep(40)
         log.write_string("40ms tick\n")
-        @async.sleep(20)
-        log.write_string("60ms tick\n")
+        @async.sleep(40)
+        log.write_string("80ms tick\n")
+        @async.sleep(40)
+        log.write_string("120ms tick\n")
       })
       @async.with_timeout(20, fn() {
         @async.protect_from_cancel(fn() {
           @async.protect_from_cancel(fn() {
-            @async.sleep(30)
+            @async.sleep(60)
             log.write_string("inner critial job finished\n")
           })
-          @async.sleep(20)
+          @async.sleep(40)
           log.write_string("outer critial job finished\n")
         })
       })
@@ -227,12 +227,12 @@ test "protect_from_cancel nested2" {
   inspect(
     log.to_string(),
     content=(
-      #|20ms tick
-      #|inner critial job finished
       #|40ms tick
+      #|inner critial job finished
+      #|80ms tick
       #|outer critial job finished
       #|`with_timeout` containing critical job finished
-      #|60ms tick
+      #|120ms tick
       #|Ok(())
     ),
   )
