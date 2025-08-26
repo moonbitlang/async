@@ -29,7 +29,7 @@ test "basic_ls" {
     let (r, w) = @pipe.pipe()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"ls", [b"src"], stdout=w, extra_env={
+      @process.run(b"ls", [b"src/process"], stdout=w, extra_env={
         b"LANG": b"en_US.UTF-8",
       })
       |> ignore
@@ -43,35 +43,15 @@ test "basic_ls" {
   inspect(
     log.to_string(),
     content=(
-      #|allow_failure_test.mbt
-      #|aqueue
-      #|async.mbt
-      #|async.mbti
-      #|cancellation_test.mbt
-      #|fs
-      #|group_defer_test.mbt
-      #|internal
-      #|io
-      #|missing_close_test.mbt
+      #|basic_test.mbt
+      #|cancel_test.mbt
+      #|cwd_test.mbt
+      #|env_test.mbt
       #|moon.pkg.json
-      #|no_wait_test.mbt
-      #|os_error
-      #|pause_test.mbt
-      #|pipe
-      #|process
-      #|protect_from_cancel_test.mbt
-      #|retry_test.mbt
-      #|return_immediately_test.mbt
-      #|socket
-      #|spawn_loop_test.mbt
-      #|spawn_test.mbt
-      #|task_group.mbt
-      #|task.mbt
-      #|timer_test.mbt
-      #|tls
+      #|process.mbt
+      #|process.mbti
+      #|stub.c
       #|wait_test.mbt
-      #|with_timeout_test.mbt
-      #|worker_test.mbt
       #|
     ),
   )
