@@ -19,10 +19,12 @@ This library provides the following packages:
 
 - `moonbitlang/async`: most basic asynchronous operations
 - `moonbitlang/async/socket`: TCP and UDP socket
+- `moonbitlang/async/tls`: TLS support via OpenSSL
 - `moonbitlang/async/pipe`: operations on pipes
 - `moonbitlang/async/fs`: file system operations, such as file IO and directory reading
 - `moonbitlang/async/process`: spawning system process
 - `moonbitlang/async/aqueue`: asynchronous queue data structure for inter-task communication
+- `moonbitlang/async/io`: generic IO abstraction & utilities, such as buffering
 
 To use these packages, add them to the `import` field of `moon.pkg.json`.
 
@@ -30,7 +32,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 
 - [X] TCP/UDP socket
 - [X] DNS resolution
-- [X} TLS support
+- [X] TLS support
 - [X] timer
 - [X] pipe
 - [X] asynchronous file system operations
