@@ -24,12 +24,11 @@ pub(all) struct Printer((String) -> Unit)
 ///|
 async fn server(println : Printer) -> Unit raise {
   @async.with_task_group(fn(group) {
-    let listen_sock = @socket.TCP::new()
-    defer listen_sock.close()
-    listen_sock..bind(@socket.Addr::parse("0.0.0.0:\{port}"))..listen()
+    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+    defer server.close()
     try {
       for {
-        let (conn, _) = listen_sock.accept()
+        let (conn, _) = server.accept()
         println("received new connection")
         group.spawn_bg(fn() {
           defer conn.close()
@@ -62,9 +61,8 @@ async fn server(println : Printer) -> Unit raise {
 
 ///|
 async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
-  let conn = @socket.TCP::new()
+  let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
-  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   // The sleep here is used to make test result stable and portable,
   // because this message is in race condition
   // with server side "received connection" message

@@ -27,13 +27,9 @@ impl Hash for Addr
 impl Show for Addr
 
 type TCP
-async fn TCP::accept(Self) -> (Self, Addr) raise
-fn TCP::bind(Self, Addr) -> Unit raise
 fn TCP::close(Self) -> Unit
-async fn TCP::connect(Self, Addr) -> Unit raise
+async fn TCP::connect(Addr) -> Self raise
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-fn TCP::listen(Self) -> Unit raise
-fn TCP::new() -> Self raise
 #alias(recv, deprecated)
 async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
 #deprecated
@@ -42,6 +38,11 @@ async fn TCP::recv_exactly(Self, Int) -> Bytes raise
 async fn TCP::send(Self, @bytes.View) -> Unit raise
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP
+
+type TCPServer
+async fn TCPServer::accept(Self) -> (TCP, Addr) raise
+fn TCPServer::close(Self) -> Unit
+fn TCPServer::new(Addr) -> Self raise
 
 type UDP
 fn UDP::bind(Self, Addr) -> Unit raise

@@ -15,11 +15,10 @@
 ///|
 fn main_prog() -> Unit raise {
   @async.with_event_loop(fn(root) {
-    let listen_sock = @socket.TCP::new()
-    defer listen_sock.close()
-    listen_sock..bind(@socket.Addr::parse("0.0.0.0:4200"))..listen()
+    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:4200"))
+    defer server.close()
     for {
-      let (conn, addr) = listen_sock.accept()
+      let (conn, addr) = server.accept()
       println("received new connection from \{addr}")
       root.spawn_bg(fn() {
         defer conn.close()

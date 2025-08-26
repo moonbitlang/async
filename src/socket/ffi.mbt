@@ -13,7 +13,18 @@
 // limitations under the License.
 
 ///|
-extern "C" fn make_tcp_socket() -> Int = "moonbitlang_async_make_tcp_socket"
+extern "C" fn make_tcp_socket_ffi() -> Int = "moonbitlang_async_make_tcp_socket"
+
+///|
+fn make_tcp_socket() -> Int raise {
+  let sock = make_tcp_socket_ffi()
+  if sock < 0 {
+    @os_error.check_errno()
+  }
+  @fd_util.set_cloexec(sock)
+  @fd_util.set_nonblocking(sock)
+  sock
+}
 
 ///|
 extern "C" fn make_udp_socket() -> Int = "moonbitlang_async_make_udp_socket"

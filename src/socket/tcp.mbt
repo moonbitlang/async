@@ -13,21 +13,8 @@
 // limitations under the License.
 
 ///|
-/// A TCP socket directly corresponding to OS socket.
+/// A TCP connection
 struct TCP(Int)
-
-///|
-/// Create a new TCP socket using the `socket(2)` system call.
-/// The created socket always operate in non-blocking mode.
-pub fn TCP::new() -> TCP raise {
-  let sock = make_tcp_socket()
-  if sock < 0 {
-    @os_error.check_errno()
-  }
-  @fd_util.set_cloexec(sock)
-  @fd_util.set_nonblocking(sock)
-  TCP(sock)
-}
 
 ///|
 pub fn TCP::close(self : TCP) -> Unit {
@@ -36,22 +23,40 @@ pub fn TCP::close(self : TCP) -> Unit {
 }
 
 ///|
-/// Bind the socket to an address using the `bind(2)` system call.
-pub fn TCP::bind(self : TCP, addr : Addr) -> Unit raise {
-  let TCP(sock) = self
+struct TCPServer(Int)
+
+///|
+/// Create a TCP server that is bound to `addr`,
+/// listening for incoming connections.
+pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
+  let sock = make_tcp_socket()
   if 0 != bind_ffi(sock, addr) {
+    @fd_util.close(sock)
     @os_error.check_errno()
   }
+  if 0 != listen_ffi(sock) {
+    @fd_util.close(sock)
+    @os_error.check_errno()
+  }
+  TCPServer(sock)
 }
 
 ///|
-/// Turn the socket into listen mode using `listen(2)` system call,
-/// so that it can start accepting connections.
-pub fn TCP::listen(self : TCP) -> Unit raise {
-  let TCP(sock) = self
-  if 0 != listen_ffi(sock) {
-    @os_error.check_errno()
-  }
+pub fn TCPServer::close(self : TCPServer) -> Unit {
+  let TCPServer(sock) = self
+  @event_loop.close_fd(sock)
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) raise {
+  let TCPServer(listen_sock) = self
+  let addr = Addr::new(0, 0)
+  let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
+  @fd_util.set_cloexec(conn)
+  @fd_util.set_nonblocking(conn)
+  (conn, addr)
 }
 
 ///|
@@ -80,22 +85,17 @@ pub fn TCP::enable_keepalive(
 }
 
 ///|
-/// Accept a new connection on a listening socket using `accept(2)` system call.
-/// A new socket representing the accepted connection
-/// will be returned together with the address of peer.
-pub async fn TCP::accept(self : TCP) -> (TCP, Addr) raise {
-  let TCP(listen_sock) = self
-  let addr = Addr::new(0, 0)
-  let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
-  @fd_util.set_nonblocking(conn)
-  (conn, addr)
-}
-
-///|
 /// Make connection to a remote address using `connect(2)` system call.
-pub async fn TCP::connect(self : TCP, addr : Addr) -> Unit raise {
-  let TCP(sock) = self
-  ignore(@event_loop.perform_job(Connect(sock~, addr=addr.0)))
+pub async fn TCP::connect(addr : Addr) -> TCP raise {
+  let sock = make_tcp_socket()
+  try @event_loop.perform_job(Connect(sock~, addr=addr.0)) catch {
+    err => {
+      @fd_util.close(sock)
+      raise err
+    }
+  } noraise {
+    _ => TCP(sock)
+  }
 }
 
 ///|

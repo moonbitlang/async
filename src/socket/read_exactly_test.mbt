@@ -23,10 +23,11 @@ test "read_exactly" {
   @async.with_event_loop(fn(root) {
     // server
     root.spawn_bg(fn() {
-      let listen_sock = @socket.TCP::new()
-      defer listen_sock.close()
-      listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
-      let (conn, _) = listen_sock.accept()
+      let server = @socket.TCPServer::new(
+        @socket.Addr::parse("127.0.0.1:\{port}"),
+      )
+      defer server.close()
+      let (conn, _) = server.accept()
       defer conn.close()
       let msg1 = conn.read_exactly(4)
       @async.sleep(10)
@@ -43,9 +44,8 @@ test "read_exactly" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.TCP::new()
+      let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
-      conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       conn.write([1, 2, 3, 4, 5, 6])
       log("first message sent")
       @async.sleep(30)
@@ -77,10 +77,11 @@ test "read_exactly failure" {
   let result = try? @async.with_event_loop(fn(root) {
       // server
       root.spawn_bg(fn() {
-        let listen_sock = @socket.TCP::new()
-        defer listen_sock.close()
-        listen_sock..bind(@socket.Addr::parse("127.0.0.1:\{port}"))..listen()
-        let (conn, _) = listen_sock.accept()
+        let server = @socket.TCPServer::new(
+          @socket.Addr::parse("127.0.0.1:\{port}"),
+        )
+        defer server.close()
+        let (conn, _) = server.accept()
         defer conn.close()
         let msg1 = conn.read_exactly(4)
         @async.sleep(10)
@@ -97,9 +98,10 @@ test "read_exactly failure" {
       })
       // client
       root.spawn_bg(fn() {
-        let conn = @socket.TCP::new()
+        let conn = @socket.TCP::connect(
+          @socket.Addr::parse("127.0.0.1:\{port}"),
+        )
         defer conn.close()
-        conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
         conn.write([1, 2, 3, 4, 5, 6])
         log("first message sent")
       })
