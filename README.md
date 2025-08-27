@@ -25,6 +25,7 @@ This library provides the following packages:
 - `moonbitlang/async/process`: spawning system process
 - `moonbitlang/async/aqueue`: asynchronous queue data structure for inter-task communication
 - `moonbitlang/async/io`: generic IO abstraction & utilities, such as buffering
+- `moonbitlang/async/http`: HTTP support, including parser & sending request
 
 To use these packages, add them to the `import` field of `moon.pkg.json`.
 
@@ -33,6 +34,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] TCP/UDP socket
 - [X] DNS resolution
 - [X] TLS support
+- [X] HTTP support
 - [X] timer
 - [X] pipe
 - [X] asynchronous file system operations
