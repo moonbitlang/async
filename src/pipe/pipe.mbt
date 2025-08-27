@@ -45,8 +45,8 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 ///|
 /// The standard input treated as a pipe.
 /// Using this value will result in standard input being set to non-blocking mode.
-/// For console applications, remember to reset the state of standard input
-/// using `reset_stdio`, as standard input may be shared between multiple process.
+/// `@async.with_event_loop` will reset standard input
+/// back to its original state on exit.
 pub let stdin : PipeRead = {
   if get_blocking(0) > 0 {
     fn init() {
@@ -69,8 +69,8 @@ pub let stdin : PipeRead = {
 ///|
 /// The standard output treated as a pipe.
 /// Using this value will result in standard output being set to non-blocking mode.
-/// For console applications, remember to reset the state of standard output
-/// using `reset_stdio`, as standard output may be shared between multiple process.
+/// `@async.with_event_loop` will reset standard output
+/// back to its original state on exit.
 pub let stdout : PipeWrite = {
   if get_blocking(1) > 0 {
     fn init() {
@@ -93,8 +93,8 @@ pub let stdout : PipeWrite = {
 ///|
 /// The standard error treated as a pipe.
 /// Using this value will result in standard error being set to non-blocking mode.
-/// For console applications, remember to reset the state of standard error
-/// using `reset_stdio`, as standard error may be shared between multiple process.
+/// `@async.with_event_loop` will reset standard error
+/// back to its original state on exit.
 pub let stderr : PipeWrite = {
   if get_blocking(2) > 0 {
     fn init() {
