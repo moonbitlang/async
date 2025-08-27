@@ -5,5 +5,9 @@
     "moonbitlang/async/socket",
     "moonbitlang/async/tls",
     "moonbitlang/async/internal/bytes_util"
+  ],
+  "test-import": [
+    "moonbitlang/async/pipe",
+    "moonbitlang/async/fs"
   ]
 }

@@ -55,6 +55,7 @@ pub(all) enum RequestMethod {
   Trace
   Patch
 }
+impl Show for RequestMethod
 
 pub(all) enum RequestProtocol {
   Http
