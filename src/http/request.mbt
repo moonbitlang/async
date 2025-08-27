@@ -31,6 +31,22 @@ async fn[Conn : @io.Reader + @io.Writer] make_request(
 }
 
 ///|
+/// Perform a HTTP network request to `uri`,
+/// which should be a URI without the protocol part.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// The protocol can be specified via `protocol`, which is `Https` by default.
+/// By default the standard port number of `protocol` is used,
+/// but this can be overriden by explicitly passing `port`.
+///
+/// Additional HTTP headers can be passed via `headers`.
+/// The ownership of `headers` will be transferred to `request`,
+/// so `headers` should be a temporary array.
+/// The following headers is automatically set by `request`,
+/// and must not be specified in `headers`:
+/// 
+/// - Host
+/// - Content-Length, Transfer-Encoding
 pub async fn request(
   uri : Bytes,
   headers~ : Array[Header] = [],
