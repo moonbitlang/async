@@ -23,6 +23,7 @@ pub(open) trait Writer {
 impl Writer with write(self, view) {
   let start = view.start_offset()
   let len = view.length()
+  guard len > 0 else { return }
   let end = start + len
   let offset = self.write_once(view.data(), offset=start, len~)
   if offset == end {
