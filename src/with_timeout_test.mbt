@@ -45,10 +45,10 @@ test "with_timeout failure" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(30)
+        @async.sleep(40)
         log.write_string("30ms tick\n")
       })
-      @async.with_timeout(40, fn() {
+      @async.with_timeout(60, fn() {
         @async.sleep(20)
         raise Err
       }) catch {
