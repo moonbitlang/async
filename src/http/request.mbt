@@ -64,8 +64,8 @@ pub async fn request(
     (uri, "/")
   }
   let path = if path == "" { b"/" } else { path }
-  let addr = @socket.Addr::resolve(host, port~)
-  let conn = @socket.TCP::connect(addr)
+  let conn = @socket.TCP::connect_to_host(host, port~)
+  defer conn.close()
   headers.push(Header("Host", host))
   match protocol {
     Http => make_request(conn, path, headers~)

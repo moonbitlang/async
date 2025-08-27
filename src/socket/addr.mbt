@@ -78,7 +78,13 @@ typealias @event_loop.AddrInfo
 extern "C" fn AddrInfo::null() -> AddrInfo = "moonbitlang_async_null_addrinfo"
 
 ///|
+extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
+
+///|
 extern "C" fn AddrInfo::ip(self : AddrInfo) -> UInt = "moonbitlang_async_addrinfo_get_ip"
+
+///|
+extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
 
 ///|
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
