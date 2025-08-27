@@ -134,4 +134,12 @@ const SSL_ERROR_SYSCALL = 5
 const SSL_ERROR_ZERO_RETURN = 6
 
 ///|
-extern "C" fn err_get_error() -> String = "moonbitlang_async_tls_get_error"
+#borrow(buf)
+extern "C" fn err_get_error_ffi(buf : Bytes) -> Int = "moonbitlang_async_tls_get_error"
+
+///|
+fn err_get_error() -> String {
+  let buf = Bytes::make(256, 0)
+  let len = err_get_error_ffi(buf)
+  @bytes_util.ascii_to_string(buf[:len])
+}

@@ -13,21 +13,12 @@
 // limitations under the License.
 
 ///|
-fn ascii_to_string(ascii : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for byte in ascii {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
-}
-
-///|
 test "read_all" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
     let dir = @fs.opendir("src/fs")
     defer dir.close()
-    let list = dir.read_all().map(ascii_to_string)
+    let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
     list.sort()
     log.write_object(list)
   })
@@ -51,7 +42,7 @@ test "as_dir" {
     list.sort()
     for file in list {
       let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
-      log.write_string("\{ascii_to_string(file)}: \{kind}\n")
+      log.write_string("\{@bytes_util.ascii_to_string(file)}: \{kind}\n")
     }
   })
   inspect(
@@ -84,7 +75,7 @@ test "readdir clear errno" {
     }
     let dir = @fs.opendir("src/fs")
     defer dir.close()
-    let list = dir.read_all().map(ascii_to_string)
+    let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
     log.write_object(list.length())
   })
   inspect(log.to_string(), content="10")

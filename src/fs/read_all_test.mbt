@@ -19,7 +19,7 @@ test "read_all basic" {
     let path = b"src/fs/moon.pkg.json"
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    log.write_string(r.read_all() |> ascii_to_string)
+    log.write_string(r.read_all() |> @bytes_util.ascii_to_string)
   })
   inspect(
     log.to_string(),
@@ -30,7 +30,10 @@ test "read_all basic" {
       #|    "moonbitlang/async/io",
       #|    "moonbitlang/async/internal/event_loop"
       #|  ],
-      #|  "test-import": [ "moonbitlang/async" ],
+      #|  "test-import": [
+      #|    "moonbitlang/async",
+      #|    "moonbitlang/async/internal/bytes_util"
+      #|  ],
       #|  "native-stub": [ "stub.c" ]
       #|}
       #|

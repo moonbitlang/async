@@ -271,17 +271,10 @@ int moonbitlang_async_tls_ssl_get_error(SSL *ssl, int ret) {
   return SSL_get_error(ssl, ret);
 }
 
-moonbit_string_t moonbitlang_async_tls_get_error() {
+int moonbitlang_async_tls_get_error(void *buf) {
   unsigned long code = ERR_get_error();
-  moonbit_bytes_t buf = moonbit_make_bytes(256, 0);
   ERR_error_string(code, buf);
-  int len = strlen(buf);
-  moonbit_string_t result = moonbit_make_string(len, 0);
-  for (int i = 0; i < len; ++i) {
-    result[i] = buf[i];
-  }
-  moonbit_decref(buf);
-  return result;
+  return strlen(buf);
 }
 
 void moonbitlang_async_blit_to_c(char *src, char *dst, int offset, int len) {

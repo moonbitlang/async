@@ -30,7 +30,8 @@ test "cancel process" {
       defer r.close()
       let buf = FixedArray::make(1024, b'0')
       while r.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n] |> ascii_to_string
+        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+          |> @bytes_util.ascii_to_string
         log.write_string("from process: \{data}")
       }
     })
@@ -67,7 +68,8 @@ test "orphan process" {
       defer r.close()
       let buf = FixedArray::make(1024, b'0')
       while r.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n] |> ascii_to_string
+        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+          |> @bytes_util.ascii_to_string
         log.write_string("from process: \{data}")
       }
     })

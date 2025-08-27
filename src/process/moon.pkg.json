@@ -5,6 +5,9 @@
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/pipe"
   ],
-  "test-import": [ "moonbitlang/async" ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/internal/bytes_util"
+  ],
   "native-stub": [ "stub.c" ]
 }

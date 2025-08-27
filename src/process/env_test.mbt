@@ -28,7 +28,7 @@ test "set_env" {
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(ascii_to_string(data))
+      log.write_string(@bytes_util.ascii_to_string(data))
     }
   })
   inspect(
@@ -64,7 +64,7 @@ test "set_env no inherit" {
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(ascii_to_string(data))
+      log.write_string(@bytes_util.ascii_to_string(data))
     }
   })
   inspect(

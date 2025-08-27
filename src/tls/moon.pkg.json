@@ -1,7 +1,8 @@
 {
   "import": [
     "moonbitlang/async/io",
-    "moonbitlang/async/internal/coroutine"
+    "moonbitlang/async/internal/coroutine",
+    "moonbitlang/async/internal/bytes_util"
   ],
   "test-import": [
     "moonbitlang/async",

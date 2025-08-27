@@ -14,15 +14,6 @@
 // limitations under the License.
 
 ///|
-fn ascii_to_string(ascii : @bytes.View) -> String {
-  let builder = StringBuilder::new()
-  for byte in ascii {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
-}
-
-///|
 test "basic_ls" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
@@ -37,7 +28,7 @@ test "basic_ls" {
     let buf = FixedArray::make(1024, b'0')
     while r.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(ascii_to_string(data))
+      log.write_string(@bytes_util.ascii_to_string(data))
     }
   })
   inspect(
@@ -77,7 +68,7 @@ test "basic_cat" {
       let buf = FixedArray::make(1024, b'0')
       while we_read.read(buf) is n && n > 0 {
         let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-        log.write_string(ascii_to_string(data))
+        log.write_string(@bytes_util.ascii_to_string(data))
       }
     })
   })
