@@ -6,6 +6,8 @@ import(
 )
 
 // Values
+async fn request(Bytes, headers? : Array[Header], protocol? : RequestProtocol, port? : Int) -> (Response, Bytes) raise
+
 async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit raise
 
 async fn[Writer : @io.Writer] send_response(Writer, Response, Body) -> Unit raise
@@ -52,6 +54,11 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
+}
+
+pub(all) enum RequestProtocol {
+  Http
+  Https
 }
 
 pub(all) struct Response {
