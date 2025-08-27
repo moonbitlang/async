@@ -23,7 +23,7 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-}
+} derive(Show)
 
 ///|
 pub(all) struct Header(Bytes,Bytes)
