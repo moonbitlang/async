@@ -103,6 +103,14 @@ struct addrinfo *moonbitlang_async_null_addrinfo() {
   return 0;
 }
 
+int32_t moonbitlang_async_addrinfo_is_null(struct addrinfo *addrinfo) {
+  return addrinfo == 0;
+}
+
 uint32_t moonbitlang_async_addrinfo_get_ip(struct addrinfo *addrinfo) {
   return ntohl(((struct sockaddr_in*)(addrinfo->ai_addr))->sin_addr.s_addr);
+}
+
+struct addrinfo *moonbitlang_async_addrinfo_get_next(struct addrinfo *addrinfo) {
+  return addrinfo->ai_next;
 }

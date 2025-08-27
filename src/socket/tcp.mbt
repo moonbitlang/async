@@ -90,7 +90,7 @@ pub async fn TCP::connect(addr : Addr) -> TCP raise {
   let sock = make_tcp_socket()
   try @event_loop.perform_job(Connect(sock~, addr=addr.0)) catch {
     err => {
-      @fd_util.close(sock)
+      @event_loop.close_fd(sock)
       raise err
     }
   } noraise {

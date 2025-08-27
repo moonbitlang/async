@@ -29,6 +29,7 @@ impl Show for Addr
 type TCP
 fn TCP::close(Self) -> Unit
 async fn TCP::connect(Addr) -> Self raise
+async fn TCP::connect_to_host(Bytes, port~ : Int) -> Self raise
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
 #alias(recv, deprecated)
 async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
