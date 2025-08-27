@@ -1,0 +1,74 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+pub(all) enum RequestProtocol {
+  Http
+  Https
+}
+
+///|
+async fn[Conn : @io.Reader + @io.Writer] make_request(
+  conn : Conn,
+  path : Bytes,
+  headers~ : Array[Header],
+) -> (Response, Bytes) raise {
+  send_request(conn, { meth: Get, path, headers }, Empty)
+  let reader = Reader::new(conn)
+  let response = reader.read_response()
+  (response, reader.read_all())
+}
+
+///|
+pub async fn request(
+  uri : Bytes,
+  headers~ : Array[Header] = [],
+  protocol~ : RequestProtocol = Https,
+  port~ : Int = match protocol {
+    Http => 80
+    Https => 443
+  },
+) -> (Response, Bytes) raise {
+  let (host, path) = for i = 0; i < uri.length(); i = i + 1 {
+    if uri[i] == '/' {
+      break (uri[:i].to_bytes(), uri[i:].to_bytes())
+    }
+  } else {
+    (uri, "/")
+  }
+  let path = if path == "" { b"/" } else { path }
+  let addr = @socket.Addr::resolve(host, port~)
+  let conn = @socket.TCP::connect(addr)
+  headers.push(Header("Host", host))
+  match protocol {
+    Http => make_request(conn, path, headers~)
+    Https => {
+      let conn = @tls.TLS::client(conn, host~)
+      defer conn.close()
+      try make_request(conn, path, headers~) catch {
+        err => {
+          if not(err is (@tls.OpenSSLError(_) | @tls.ConnectionClosed)) {
+            @async.with_timeout(1000, () => conn.shutdown())
+          }
+          raise err
+        }
+      } noraise {
+        result => {
+          @async.with_timeout(1000, () => conn.shutdown())
+          result
+        }
+      }
+    }
+  }
+}
