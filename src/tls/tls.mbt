@@ -253,7 +253,12 @@ pub async fn TLS::shutdown(self : TLS) -> Unit raise {
     if ret == 0 {
       self.read_end.wait()
     } else {
-      self.handle_error(self.ssl.get_error(ret))
+      let err = self.ssl.get_error(ret)
+      if err is SSL_ERROR_ZERO_RETURN {
+        // do not raise error on non-compilant peer
+        break
+      }
+      self.handle_error(err)
     }
   }
 }

@@ -213,8 +213,7 @@ fn Endpoint::try_write(ep : Endpoint, src : C_Buffer, len : Int) -> Int {
 async fn Endpoint::wait(ep : Endpoint) -> Unit raise {
   match ep.state {
     Error(err) => raise err
-    Closed => raise ConnectionClosed
-    Idle | Blocked => ()
+    Closed | Idle | Blocked => ()
   }
   let coro = @coroutine.current_coroutine()
   ep.waiters.add(coro)
