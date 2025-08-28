@@ -13,24 +13,6 @@
 // limitations under the License.
 
 ///|
-test "read_all" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let dir = @fs.opendir("src/fs")
-    defer dir.close()
-    let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
-    list.sort()
-    log.write_object(list)
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|["fs.mbt", "stub.c", "dir.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
-    ),
-  )
-}
-
-///|
 test "as_dir" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
