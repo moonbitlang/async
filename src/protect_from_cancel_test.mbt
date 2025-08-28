@@ -107,14 +107,14 @@ test "protect_from_cancel with_timeout" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
-        log.write_string("20ms tick\n")
-        @async.sleep(20)
-        log.write_string("20ms tick\n")
+        @async.sleep(40)
+        log.write_string("40ms tick\n")
+        @async.sleep(40)
+        log.write_string("40ms tick\n")
       })
-      @async.with_timeout(30, fn() {
+      @async.with_timeout(60, fn() {
         @async.protect_from_cancel(fn() {
-          @async.sleep(50)
+          @async.sleep(100)
           log.write_string("critial job finished\n")
         })
       })
@@ -124,8 +124,8 @@ test "protect_from_cancel with_timeout" {
   inspect(
     log.to_string(),
     content=(
-      #|20ms tick
-      #|20ms tick
+      #|40ms tick
+      #|40ms tick
       #|critial job finished
       #|`with_timeout` containing critical job finished
       #|Ok(())
