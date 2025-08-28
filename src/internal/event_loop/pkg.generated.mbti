@@ -16,6 +16,10 @@ fn with_event_loop(async () -> Unit raise) -> Unit raise
 #external
 pub type AddrInfo
 
+type AddrInfoRef
+fn AddrInfoRef::get_and_clear(Self) -> AddrInfo
+fn AddrInfoRef::new() -> Self
+
 #external
 pub type Directory
 
@@ -35,7 +39,7 @@ pub(all) enum Job {
   Connect(sock~ : Int, addr~ : Bytes)
   Accept(sock~ : Int, addr~ : Bytes)
   WaitProcess(Int)
-  GetAddrInfo(host~ : Bytes, out~ : Ref[AddrInfo])
+  GetAddrInfo(host~ : Bytes, out~ : AddrInfoRef)
 }
 
 // Type aliases

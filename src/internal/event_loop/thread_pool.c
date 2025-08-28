@@ -635,6 +635,27 @@ struct job *moonbitlang_async_make_sendto_job(
   return job;
 }
 
+static
+void free_addrinfo_ref(void *obj) {
+  struct addrinfo *ai = *((struct addrinfo**)obj);
+  if (ai) freeaddrinfo(ai);
+}
+
+struct addrinfo **moonbitlang_async_addrinfo_ref_make() {
+  struct addrinfo **result = (struct addrinfo**)moonbit_make_external_object(
+    free_addrinfo_ref,
+    sizeof(struct addrinfo*)
+  );
+  *result = 0;
+  return result;
+}
+
+struct addrinfo *moonbitlang_async_addrinfo_ref_get(struct addrinfo **ref) {
+  struct addrinfo *result = *ref;
+  *ref = 0;
+  return result;
+}
+
 struct job *moonbitlang_async_make_getaddrinfo_job(
   char *hostname,
   struct addrinfo **out

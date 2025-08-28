@@ -99,10 +99,6 @@ uint32_t moonbitlang_async_ip_addr_get_port(struct sockaddr_in *addr) {
   return ntohs(addr->sin_port);
 }
 
-struct addrinfo *moonbitlang_async_null_addrinfo() {
-  return 0;
-}
-
 int32_t moonbitlang_async_addrinfo_is_null(struct addrinfo *addrinfo) {
   return addrinfo == 0;
 }

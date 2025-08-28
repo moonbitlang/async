@@ -15,15 +15,17 @@
 ///|
 /// Connect to a remote host using the happy eyeball algorithm.
 pub async fn TCP::connect_to_host(host : Bytes, port~ : Int) -> TCP raise {
-  let info = @ref.new(AddrInfo::null())
-  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=info))
+  let ai_ref = AddrInfoRef::new()
+  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
   if ret > 0 {
     raise ResolveHostnameError(ret)
   }
   let mut result = None
   let mut conn_err = None
+  let ai = ai_ref.get_and_clear()
+  defer ai.free()
   @async.with_task_group(fn(group) {
-    for ai = info.val; not(ai.is_null()); ai = ai.next() {
+    for ai = ai; not(ai.is_null()); ai = ai.next() {
       group.spawn_bg(allow_failure=true, fn() {
         let conn = TCP::connect(Addr::new(ai.ip(), port)) catch {
           err => {
