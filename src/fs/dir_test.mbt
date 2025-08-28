@@ -20,9 +20,9 @@ test "as_dir" {
     defer dir_file.close()
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
-    if true { return }
     defer dir.close()
     let list = dir.read_all()
+    if true { return }
     list.sort()
     for file in list {
       let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
