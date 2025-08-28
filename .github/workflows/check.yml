@@ -32,10 +32,10 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release --verbose
-          moon test --verbose
-          moon test --release -C examples --verbose
-          moon test -C examples --verbose
+          moon test --release --verbose -j 1 --no-parallelize
+          moon test --verbose -j 1 --no-parallelize
+          moon test --release -C examples --verbose -j 1 --no-parallelize
+          moon test -C examples --verbose -j 1 --no-parallelize
 
   bleeding-build:
     strategy:
@@ -62,7 +62,7 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release --verbose
-          moon test --verbose
-          moon test --release -C examples --verbose
-          moon test -C examples --verbose
+          moon test --release --verbose -j 1 --no-parallelize
+          moon test --verbose -j 1 --no-parallelize
+          moon test --release -C examples --verbose -j 1 --no-parallelize
+          moon test -C examples --verbose -j 1 --no-parallelize
