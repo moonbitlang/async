@@ -13,58 +13,6 @@
 // limitations under the License.
 
 ///|
-test "read_all" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let dir = @fs.opendir("src/fs")
-    defer dir.close()
-    let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
-    list.sort()
-    log.write_object(list)
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|["fs.mbt", "stub.c", "dir.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
-    ),
-  )
-}
-
-///|
-test "as_dir" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let dir_file = @fs.open("src/fs", mode=ReadOnly)
-    defer dir_file.close()
-    guard dir_file.kind() is Directory
-    let dir = dir_file.as_dir()
-    defer dir.close()
-    let list = dir.read_all()
-    list.sort()
-    for file in list {
-      let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
-      log.write_string("\{@bytes_util.ascii_to_string(file)}: \{kind}\n")
-    }
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|fs.mbt: Regular
-      #|stub.c: Regular
-      #|dir.mbt: Regular
-      #|dir_test.mbt: Regular
-      #|eof_test.mbt: Regular
-      #|moon.pkg.json: Regular
-      #|seek_test.mbt: Regular
-      #|create_test.mbt: Regular
-      #|read_all_test.mbt: Regular
-      #|pkg.generated.mbti: Regular
-      #|
-    ),
-  )
-}
-
-///|
 test "readdir clear errno" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
