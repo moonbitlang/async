@@ -99,8 +99,8 @@ pub impl @io.Reader for Reader with read(self, buf, offset~, max_len~) {
 pub async fn Reader::read(
   self : Reader,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   @io.Reader::read(self, buf, offset~, max_len~)
 }

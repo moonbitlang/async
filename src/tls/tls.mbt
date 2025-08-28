@@ -68,9 +68,9 @@ async fn TLS::handle_error(self : TLS, err : Int) -> Unit raise {
 pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
   r : R,
   w : W,
-  verify~ : Bool = true,
+  verify? : Bool = true,
   host? : Bytes,
-  sni~ : Bool = true,
+  sni? : Bool = true,
 ) -> TLS raise {
   let self = TLS::from_pair(client_ctx, r, w, host~)
   if not(verify) {
@@ -113,9 +113,9 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
 pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
   inner : Inner,
-  verify~ : Bool = true,
+  verify? : Bool = true,
   host? : Bytes,
-  sni~ : Bool = true,
+  sni? : Bool = true,
 ) -> TLS raise {
   TLS::client_from_pair(inner, inner, verify~, host?, sni~)
 }
@@ -206,8 +206,8 @@ pub impl @io.Reader for TLS with read(self, buf, offset~, max_len~) {
 pub async fn TLS::read(
   self : TLS,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   @io.Reader::read(self, buf, offset~, max_len~)
 }
