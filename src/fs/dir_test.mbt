@@ -35,13 +35,10 @@ test "as_dir" {
       #|stub.c: Regular
       #|dir.mbt: Regular
       #|dir_test.mbt: Regular
-      #|eof_test.mbt: Regular
       #|moon.pkg.json: Regular
-      #|seek_test.mbt: Regular
-      #|create_test.mbt: Regular
-      #|read_all_test.mbt: Regular
       #|pkg.generated.mbti: Regular
       #|
+
     ),
   )
 }
