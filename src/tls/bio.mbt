@@ -248,12 +248,14 @@ extern "C" fn BIO::get_endpoint(bio : BIO) -> Endpoint = "moonbitlang_async_tls_
 extern "C" fn BIO::set_flags(bio : BIO, flags : Int) = "moonbitlang_async_tls_bio_set_flags"
 
 ///|
+#owned(data)
 extern "C" fn create_rbio(
   data : Endpoint,
   read : FuncRef[(BIO, C_Buffer, Int) -> Int],
 ) -> BIO = "moonbitlang_async_tls_create_rbio"
 
 ///|
+#owned(data)
 extern "C" fn create_wbio(
   data : Endpoint,
   write : FuncRef[(BIO, C_Buffer, Int) -> Int],

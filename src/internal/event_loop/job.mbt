@@ -16,18 +16,22 @@
 priv type JobForWorker
 
 ///|
+#owned(self)
 extern "C" fn JobForWorker::id(self : JobForWorker) -> Int = "moonbitlang_async_job_get_id"
 
 ///|
+#owned(self)
 extern "C" fn JobForWorker::ret(self : JobForWorker) -> Int = "moonbitlang_async_job_get_ret"
 
 ///|
+#owned(self)
 extern "C" fn JobForWorker::err(self : JobForWorker) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
 extern "C" fn JobForWorker::sleep(time : Int) -> JobForWorker = "moonbitlang_async_make_sleep_job"
 
 ///|
+#owned(buf)
 extern "C" fn JobForWorker::read(
   fd : Int,
   buf : FixedArray[Byte],
@@ -36,6 +40,7 @@ extern "C" fn JobForWorker::read(
 ) -> JobForWorker = "moonbitlang_async_make_read_job"
 
 ///|
+#owned(buf)
 extern "C" fn JobForWorker::write(
   fd : Int,
   buf : Bytes,
@@ -44,6 +49,7 @@ extern "C" fn JobForWorker::write(
 ) -> JobForWorker = "moonbitlang_async_make_write_job"
 
 ///|
+#owned(filename)
 extern "C" fn JobForWorker::open(
   filename : Bytes,
   flags : Int,
@@ -51,23 +57,26 @@ extern "C" fn JobForWorker::open(
 ) -> JobForWorker = "moonbitlang_async_make_open_job"
 
 ///|
+#owned(path)
 extern "C" fn JobForWorker::remove(path : Bytes) -> JobForWorker = "moonbitlang_async_make_remove_job"
 
 ///|
 #external
-type Directory
+pub type Directory
 
 ///|
 #external
-type DirectoryEntry
+pub type DirectoryEntry
 
 ///|
+#owned(out)
 extern "C" fn JobForWorker::readdir(
   dir : Directory,
   out : Ref[DirectoryEntry],
 ) -> JobForWorker = "moonbitlang_async_make_readdir_job"
 
 ///|
+#owned(path, args, env, cwd)
 extern "C" fn JobForWorker::spawn(
   path : Bytes,
   args : FixedArray[Bytes?],
@@ -79,6 +88,7 @@ extern "C" fn JobForWorker::spawn(
 ) -> JobForWorker = "moonbitlang_async_make_spawn_job"
 
 ///|
+#owned(buf, addr)
 extern "C" fn JobForWorker::recvfrom(
   sock : Int,
   buf : FixedArray[Byte],
@@ -88,6 +98,7 @@ extern "C" fn JobForWorker::recvfrom(
 ) -> JobForWorker = "moonbitlang_async_make_recvfrom_job"
 
 ///|
+#owned(buf, addr)
 extern "C" fn JobForWorker::sendto(
   sock : Int,
   buf : Bytes,
@@ -98,9 +109,10 @@ extern "C" fn JobForWorker::sendto(
 
 ///|
 #external
-type AddrInfo
+pub type AddrInfo
 
 ///|
+#owned(host, out)
 extern "C" fn JobForWorker::getaddrinfo(
   host : Bytes,
   out : Ref[AddrInfo],

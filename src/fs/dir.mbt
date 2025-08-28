@@ -25,6 +25,7 @@ pub fn Directory::close(self : Directory) -> Unit {
 }
 
 ///|
+#borrow(path)
 extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
 
 ///|
