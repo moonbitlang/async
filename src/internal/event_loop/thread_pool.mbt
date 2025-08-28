@@ -22,9 +22,12 @@ extern "C" fn init_thread_pool_ffi(notify_send : Int) = "moonbitlang_async_init_
 extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
+#owned(init_job)
 extern "C" fn spawn_worker(init_job : JobForWorker) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
+#borrow(worker)
+#owned(job)
 extern "C" fn wake_worker(worker : Worker, job : JobForWorker) = "moonbitlang_async_wake_worker"
 
 ///|
