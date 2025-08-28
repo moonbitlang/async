@@ -84,16 +84,16 @@ test "error propagation" {
 ///|
 test "multiple scope" {
   let buf = StringBuilder::new()
-  with_event_loop(fn(root) {
+  @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(20)
+            @async.sleep(20)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(40) catch {
+            try @async.sleep(40) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
                 raise err
@@ -113,11 +113,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            sleep(50)
+            @async.sleep(50)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try sleep(30) catch {
+            try @async.sleep(30) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
                 raise err

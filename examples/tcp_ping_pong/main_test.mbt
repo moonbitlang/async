@@ -19,7 +19,7 @@ test "main" {
     log..write_string(msg)..write_string("\n")
   }
 
-  let result = try? main_prog(println)
+  let result = try? @tcp_ping_pong.main_prog(println)
   log.write_string(result.to_string())
   inspect(
     log.to_string(),
