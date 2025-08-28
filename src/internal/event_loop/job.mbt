@@ -112,10 +112,20 @@ extern "C" fn JobForWorker::sendto(
 pub type AddrInfo
 
 ///|
+type AddrInfoRef
+
+///|
+pub extern "C" fn AddrInfoRef::new() -> AddrInfoRef = "moonbitlang_async_addrinfo_ref_make"
+
+///|
+#borrow(self)
+pub extern "C" fn AddrInfoRef::get_and_clear(self : AddrInfoRef) -> AddrInfo = "moonbitlang_async_addrinfo_ref_get"
+
+///|
 #owned(host, out)
 extern "C" fn JobForWorker::getaddrinfo(
   host : Bytes,
-  out : Ref[AddrInfo],
+  out : AddrInfoRef,
 ) -> JobForWorker = "moonbitlang_async_make_getaddrinfo_job"
 
 ///|
@@ -152,5 +162,5 @@ pub(all) enum Job {
   Connect(sock~ : Int, addr~ : Bytes)
   Accept(sock~ : Int, addr~ : Bytes)
   WaitProcess(Int)
-  GetAddrInfo(host~ : Bytes, out~ : Ref[AddrInfo])
+  GetAddrInfo(host~ : Bytes, out~ : AddrInfoRef)
 }

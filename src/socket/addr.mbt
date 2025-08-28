@@ -72,10 +72,7 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-typealias @event_loop.AddrInfo
-
-///|
-extern "C" fn AddrInfo::null() -> AddrInfo = "moonbitlang_async_null_addrinfo"
+typealias @event_loop.(AddrInfo, AddrInfoRef)
 
 ///|
 extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
@@ -95,12 +92,12 @@ pub suberror ResolveHostnameError Int derive(Show)
 ///|
 /// Resolve a IPv4 address by hostname
 pub async fn Addr::resolve(host : Bytes, port~ : Int) -> Addr raise {
-  let info = @ref.new(AddrInfo::null())
-  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=info))
+  let ai_ref = AddrInfoRef::new()
+  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
   if ret > 0 {
     raise ResolveHostnameError(ret)
   }
-  let ip = info.val.ip()
-  info.val.free()
-  Addr::new(ip, port)
+  let ai = ai_ref.get_and_clear()
+  defer ai.free()
+  Addr::new(ai.ip(), port)
 }
