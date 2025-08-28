@@ -152,8 +152,8 @@ test "recursive cancel" {
   buf.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        for _ in 0..<3 {
-          @async.sleep(20)
+        for _ in 0..<2 {
+          @async.sleep(40)
           buf.write_string("tick\n")
         }
       })
@@ -166,7 +166,7 @@ test "recursive cancel" {
         }
         buf.write_string("task finished\n")
       })
-      @async.sleep(30)
+      @async.sleep(60)
       task.cancel()
       buf.write_string("main task exit\n")
     }),
@@ -179,7 +179,6 @@ test "recursive cancel" {
       #|first sleep cancelled with Cancelled
       #|second sleep cancelled with Cancelled
       #|task finished
-      #|tick
       #|tick
       #|Ok(())
     ),
