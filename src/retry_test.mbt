@@ -18,7 +18,7 @@ test "retry immediate" {
   log.write_object(
     try? @async.with_event_loop(fn(_) {
       let mut i = 0
-      retry(Immediate, fn() {
+      @async.retry(Immediate, fn() {
         log.write_string("tick \{i}\n")
         i = i + 1
         if i < 3 {
@@ -51,7 +51,7 @@ test "retry fixed" {
       })
       @async.sleep(25)
       let mut i = 0
-      retry(FixedDelay(50), fn() {
+      @async.retry(FixedDelay(50), fn() {
         log.write_string("loop \{i}\n")
         i = i + 1
         if i < 3 {
@@ -87,7 +87,7 @@ test "retry exponential" {
       })
       @async.sleep(25)
       let mut i = 0
-      retry(ExponentialDelay(initial=50, factor=2, maximum=150), fn() {
+      @async.retry(ExponentialDelay(initial=50, factor=2, maximum=150), fn() {
         log.write_string("loop \{i}\n")
         i = i + 1
         if i < 4 {
@@ -150,7 +150,7 @@ test "retry cancelled2" {
     try? @async.with_event_loop(fn(_) {
       let mut i = 0
       @async.with_timeout(125, fn() {
-        retry(FixedDelay(50), fn() {
+        @async.retry(FixedDelay(50), fn() {
           log.write_string("loop \{i}\n")
           i = i + 1
           raise Err

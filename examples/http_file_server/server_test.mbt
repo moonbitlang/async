@@ -13,6 +13,9 @@
 // limitations under the License.
 
 ///|
+fnalias @http_file_server.(server, ascii_to_string)
+
+///|
 fn output_response(response : @http.Response, logger : &Logger) -> Unit {
   logger
   ..write_string("HTTP/1.1 ")
