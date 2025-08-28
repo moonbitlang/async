@@ -21,6 +21,12 @@ extern "C" fn load_openssl_ffi(
 ) -> Int = "moonbitlang_async_load_openssl"
 
 ///|
+extern "C" fn init_bio_method(
+  read : FuncRef[(BIO, C_Buffer, Int) -> Int],
+  write : FuncRef[(BIO, C_Buffer, Int) -> Int],
+) = "moonbitlang_async_init_bio_method"
+
+///|
 let openssl_loaded : Ref[Bool] = @ref.new(false)
 
 ///|
@@ -46,4 +52,7 @@ fn load_openssl() -> Unit {
 ///|
 fn init {
   load_openssl()
+  init_bio_method((bio, dst, len) => bio.read(dst, len), (bio, src, len) => bio.write(
+    src, len,
+  ))
 }

@@ -36,8 +36,8 @@ fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
 ) -> TLS {
   let read_end = Endpoint::new_read(r)
   let write_end = Endpoint::new_write(w)
-  let rbio = create_rbio(read_end, (bio, dst, len) => bio.read(dst, len))
-  let wbio = create_wbio(write_end, (bio, src, len) => bio.write(src, len))
+  let rbio = create_bio(read_end)
+  let wbio = create_bio(write_end)
   let ssl = SSL::new(ctx, rbio, wbio)
   { ssl, host, read_end, write_end }
 }
