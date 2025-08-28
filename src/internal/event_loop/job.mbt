@@ -16,15 +16,15 @@
 priv type JobForWorker
 
 ///|
-#owned(self)
+#borrow(self)
 extern "C" fn JobForWorker::id(self : JobForWorker) -> Int = "moonbitlang_async_job_get_id"
 
 ///|
-#owned(self)
+#borrow(self)
 extern "C" fn JobForWorker::ret(self : JobForWorker) -> Int = "moonbitlang_async_job_get_ret"
 
 ///|
-#owned(self)
+#borrow(self)
 extern "C" fn JobForWorker::err(self : JobForWorker) -> Int = "moonbitlang_async_job_get_err"
 
 ///|

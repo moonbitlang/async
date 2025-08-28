@@ -56,13 +56,15 @@ enum op_code {
 
 struct read_job {
   int fd;
-  void *buf;
+  char *buf;
+  int offset;
   int len;
 };
 
 struct write_job {
   int fd;
-  void *buf;
+  char *buf;
+  int offset;
   int len;
 };
 
@@ -91,14 +93,16 @@ struct spawn_job {
 
 struct recvfrom_job {
   int sock;
-  void *buf;
+  char *buf;
+  int offset;
   int len;
   struct sockaddr *addr_out;
 };
 
 struct sendto_job {
   int sock;
-  void *buf;
+  char *buf;
+  int offset;
   int len;
   struct sockaddr *addr;
 };
@@ -215,7 +219,7 @@ void *worker_loop(void *data) {
     case OP_READ:
       job->ret = read(
         job->payload.read.fd,
-        job->payload.read.buf,
+        job->payload.read.buf + job->payload.read.offset,
         job->payload.read.len
       );
       if (job->ret < 0)
@@ -223,19 +227,11 @@ void *worker_loop(void *data) {
       break;
 
     case OP_WRITE:
-      while (job->ret < job->payload.write.len) {
-        int written = write(
-          job->payload.write.fd,
-          job->payload.write.buf + job->ret,
-          job->payload.write.len - job->ret
-        );
-        if (written < 0) {
-          job->ret = -1;
-          break;
-        } else {
-          job->ret += written;
-        }
-      }
+      job->ret = write(
+        job->payload.write.fd,
+        job->payload.write.buf + job->payload.write.offset,
+        job->payload.write.len
+      );
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -336,7 +332,7 @@ void *worker_loop(void *data) {
       socklen_t addr_size = sizeof(struct sockaddr_in);
       job->ret = recvfrom(
         job->payload.recvfrom.sock,
-        job->payload.recvfrom.buf,
+        job->payload.recvfrom.buf + job->payload.recvfrom.offset,
         job->payload.recvfrom.len,
         0,
         job->payload.recvfrom.addr_out,
@@ -350,7 +346,7 @@ void *worker_loop(void *data) {
     case OP_SENDTO:
       job->ret = sendto(
         job->payload.sendto.sock,
-        job->payload.sendto.buf,
+        job->payload.sendto.buf + job->payload.sendto.offset,
         job->payload.sendto.len,
         0,
         job->payload.sendto.addr,
@@ -532,22 +528,24 @@ struct job *moonbitlang_async_make_sleep_job(int ms) {
   return job;
 }
 
-struct job *moonbitlang_async_make_read_job(int fd, void *buf, int offset, int len) {
+struct job *moonbitlang_async_make_read_job(int fd, char *buf, int offset, int len) {
   struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_READ;
   job->payload.read.fd = fd;
-  job->payload.read.buf = buf + offset;
+  job->payload.read.buf = buf;
+  job->payload.read.offset = offset;
   job->payload.read.len = len;
   return job;
 }
 
-struct job *moonbitlang_async_make_write_job(int fd, void *buf, int offset, int len) {
+struct job *moonbitlang_async_make_write_job(int fd, char *buf, int offset, int len) {
   struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_WRITE;
   job->payload.read.fd = fd;
-  job->payload.read.buf = buf + offset;
+  job->payload.read.buf = buf;
+  job->payload.read.offset = offset;
   job->payload.read.len = len;
   return job;
 }
@@ -603,7 +601,7 @@ struct job *moonbitlang_async_make_spawn_job(
 
 struct job *moonbitlang_async_make_recvfrom_job(
   int sock,
-  void *buf,
+  moonbit_bytes_t buf,
   int offset,
   int len,
   struct sockaddr *addr_out
@@ -612,7 +610,8 @@ struct job *moonbitlang_async_make_recvfrom_job(
   job->job_id = pool.job_id++;
   job->op_code = OP_RECVFROM;
   job->payload.recvfrom.sock = sock;
-  job->payload.recvfrom.buf = buf + offset;
+  job->payload.recvfrom.buf = buf;
+  job->payload.recvfrom.offset = offset;
   job->payload.recvfrom.len = len;
   job->payload.recvfrom.addr_out = addr_out;
   return job;
@@ -620,7 +619,7 @@ struct job *moonbitlang_async_make_recvfrom_job(
 
 struct job *moonbitlang_async_make_sendto_job(
   int sock,
-  void *buf,
+  moonbit_bytes_t buf,
   int offset,
   int len,
   struct sockaddr *addr
@@ -629,7 +628,8 @@ struct job *moonbitlang_async_make_sendto_job(
   job->job_id = pool.job_id++;
   job->op_code = OP_SENDTO;
   job->payload.sendto.sock = sock;
-  job->payload.sendto.buf = buf + offset;
+  job->payload.sendto.buf = buf;
+  job->payload.sendto.offset = offset;
   job->payload.sendto.len = len;
   job->payload.sendto.addr = addr;
   return job;
