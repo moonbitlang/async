@@ -122,6 +122,39 @@ jobs:
           moon info
           git diff --exit-code
 
+  sanitizer-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: disable mimalloc
+        run: |
+          echo "" >dummy_libmoonbitrun.c
+          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
+
+      - name: setup sanitizer check
+        run: |
+          mkdir src/sanitizer_check
+          cp sanitizer_check.pkg.json src/sanitizer_check/moon.pkg.json
+          for f in $(find src -name "*_test.mbt" -print); do
+            cp $f src/sanitizer_check/$(echo $f | sed -e 's|/|_|g')
+          done
+
+      - name: run test with address sanitizer
+        run: |
+          moon test -p moonbitlang/async/sanitizer_check
+
   coverage-check:
     runs-on: ubuntu-latest
     continue-on-error: true
