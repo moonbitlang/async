@@ -32,20 +32,10 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
+          for i in $(seq 1 10); do
+            moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async -p moonbitlang/async/fs
+            moon test --verbose -j 1 --no-parallelize -p moonbitlang/async -p moonbitlang/async/fs
+          done
 
   bleeding-build:
     strategy:
@@ -72,19 +62,7 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
-          moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs
+          for i in $(seq 1 10); do
+            moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async -p moonbitlang/async/fs
+            moon test --verbose -j 1 --no-parallelize -p moonbitlang/async -p moonbitlang/async/fs
+          done
