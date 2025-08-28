@@ -39,8 +39,8 @@ test "basic_ls" {
       #|cwd_test.mbt
       #|env_test.mbt
       #|moon.pkg.json
+      #|pkg.generated.mbti
       #|process.mbt
-      #|process.mbti
       #|stub.c
       #|wait_test.mbt
       #|

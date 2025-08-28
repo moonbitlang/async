@@ -13,11 +13,14 @@ fn with_event_loop(async () -> Unit raise) -> Unit raise
 // Errors
 
 // Types and methods
-type AddrInfo
+#external
+pub type AddrInfo
 
-type Directory
+#external
+pub type Directory
 
-type DirectoryEntry
+#external
+pub type DirectoryEntry
 
 pub(all) enum Job {
   Sleep(Int)

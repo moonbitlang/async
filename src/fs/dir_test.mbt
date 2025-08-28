@@ -25,7 +25,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs.mbt", "stub.c", "dir.mbt", "fs.mbti", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt"]
+      #|["fs.mbt", "stub.c", "dir.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
     ),
   )
 }
@@ -51,13 +51,13 @@ test "as_dir" {
       #|fs.mbt: Regular
       #|stub.c: Regular
       #|dir.mbt: Regular
-      #|fs.mbti: Regular
       #|dir_test.mbt: Regular
       #|eof_test.mbt: Regular
       #|moon.pkg.json: Regular
       #|seek_test.mbt: Regular
       #|create_test.mbt: Regular
       #|read_all_test.mbt: Regular
+      #|pkg.generated.mbti: Regular
       #|
     ),
   )
