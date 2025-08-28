@@ -123,8 +123,8 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
 pub async fn[R : Reader] BufferedReader::read(
   self : Self[R],
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   Reader::read(self, buf, offset~, max_len~)
 }
@@ -156,7 +156,7 @@ pub async fn[R : Reader] BufferedReader::op_get(
 /// so this operation is idempotent.
 pub async fn[R : Reader] BufferedReader::op_as_view(
   self : Self[R],
-  start~ : Int = 0,
+  start? : Int = 0,
   end~ : Int,
 ) -> Bytes raise {
   guard start < end

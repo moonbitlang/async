@@ -49,9 +49,9 @@ async fn[Conn : @io.Reader + @io.Writer] make_request(
 /// - Content-Length, Transfer-Encoding
 pub async fn request(
   uri : Bytes,
-  headers~ : Array[Header] = [],
-  protocol~ : RequestProtocol = Https,
-  port~ : Int = match protocol {
+  headers? : Array[Header] = [],
+  protocol? : RequestProtocol = Https,
+  port? : Int = match protocol {
     Http => 80
     Https => 443
   },

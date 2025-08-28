@@ -93,10 +93,10 @@ extern "C" fn make_open_flags(
 pub async fn open(
   filename : Bytes,
   mode~ : Mode,
-  sync~ : SyncMode = NoSync,
-  append~ : Bool = false,
+  sync? : SyncMode = NoSync,
+  append? : Bool = false,
   create? : Int,
-  truncate~ : Bool = false,
+  truncate? : Bool = false,
 ) -> File raise {
   let (create, user_mode) = match create {
     None => (false, 0)
@@ -126,7 +126,7 @@ pub async fn open(
 pub async fn create(
   filename : Bytes,
   permission~ : Int,
-  sync~ : SyncMode = NoSync,
+  sync? : SyncMode = NoSync,
 ) -> File raise {
   open(filename, mode=WriteOnly, sync~, create=permission, truncate=true)
 }
@@ -152,8 +152,8 @@ pub impl @io.Reader for File with read(self, buf, offset~, max_len~) {
 pub async fn File::read(
   self : File,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   @io.Reader::read(self, buf, offset~, max_len~)
 }

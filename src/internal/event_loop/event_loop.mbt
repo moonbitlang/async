@@ -347,7 +347,7 @@ pub fn close_fd(fd : Int) -> Unit {
 ///|
 async fn perform_job_in_worker(
   job : JobForWorker,
-  allow_cancel~ : Bool = false,
+  allow_cancel? : Bool = false,
 ) -> Int raise {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {

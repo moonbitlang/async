@@ -48,7 +48,7 @@ fn Instance::register(
   fd : Int,
   prev_events~ : Int,
   new_events~ : Int,
-  oneshot~ : Bool = false,
+  oneshot? : Bool = false,
 ) -> Unit raise {
   if self.register_ffi(fd, prev_events~, new_events~, oneshot~) < 0 {
     @os_error.check_errno()

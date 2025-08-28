@@ -72,8 +72,8 @@ pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
 pub async fn UDP::recv(
   self : UDP,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   let UDP(sock) = self
   @event_loop.perform_job(
@@ -99,8 +99,8 @@ pub async fn UDP::recv(
 pub async fn UDP::recvfrom(
   self : UDP,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> (Int, Addr) raise {
   let UDP(sock) = self
   let addr = Addr::new(0, 0)
@@ -122,8 +122,8 @@ pub async fn UDP::recvfrom(
 pub async fn UDP::send(
   self : UDP,
   buf : Bytes,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  len? : Int = buf.length() - offset,
 ) -> Unit raise {
   let UDP(sock) = self
   @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
@@ -144,8 +144,8 @@ pub async fn UDP::sendto(
   self : UDP,
   buf : Bytes,
   addr : Addr,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  len? : Int = buf.length() - offset,
 ) -> Unit raise {
   let UDP(sock) = self
   @event_loop.perform_job(Sendto(sock~, buf~, offset~, len~, addr=addr.0))

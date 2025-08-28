@@ -98,7 +98,7 @@ pub async fn server(
   ctx : @async.TaskGroup[Unit],
   path~ : Bytes,
   port~ : Int,
-  log~ : (String) -> Unit = println,
+  log? : (String) -> Unit = println,
 ) -> Unit raise {
   let base_path = path
   let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))

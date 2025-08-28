@@ -114,8 +114,8 @@ fn[X] TaskGroup::spawn_coroutine(
 pub fn[X] TaskGroup::spawn_bg(
   self : TaskGroup[X],
   f : async () -> Unit raise,
-  no_wait~ : Bool = false,
-  allow_failure~ : Bool = false,
+  no_wait? : Bool = false,
+  allow_failure? : Bool = false,
 ) -> Unit raise {
   ignore(self.spawn_coroutine(f, no_wait~, allow_failure~))
 }
@@ -140,8 +140,8 @@ pub fn[X] TaskGroup::spawn_bg(
 pub fn[G, X] TaskGroup::spawn(
   self : TaskGroup[G],
   f : async () -> X raise,
-  no_wait~ : Bool = false,
-  allow_failure~ : Bool = false,
+  no_wait? : Bool = false,
+  allow_failure? : Bool = false,
 ) -> Task[X] raise {
   let value = @ref.new(None)
   let coro = self.spawn_coroutine(
@@ -266,8 +266,8 @@ fnalias retry as moonbitlang_async_retry
 pub fn[X] TaskGroup::spawn_loop(
   self : TaskGroup[X],
   f : async () -> IterResult raise,
-  no_wait~ : Bool = false,
-  allow_failure~ : Bool = false,
+  no_wait? : Bool = false,
+  allow_failure? : Bool = false,
   retry? : RetryMethod,
   max_retry? : Int,
 ) -> Unit raise {

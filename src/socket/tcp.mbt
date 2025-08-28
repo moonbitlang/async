@@ -71,9 +71,9 @@ pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) raise {
 /// `keep_alive_interval` is the time in seconds between two keep alive probes.
 pub fn TCP::enable_keepalive(
   self : TCP,
-  idle_before_keep_alive~ : Int = -1,
-  keep_alive_count~ : Int = -1,
-  keep_alive_interval~ : Int = -1,
+  idle_before_keep_alive? : Int = -1,
+  keep_alive_count? : Int = -1,
+  keep_alive_interval? : Int = -1,
 ) -> Unit raise {
   let TCP(sock) = self
   let ret = enable_keepalive_ffi(
@@ -119,8 +119,8 @@ pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
 pub async fn TCP::read(
   self : TCP,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
 ) -> Int raise {
   @io.Reader::read(self, buf, offset~, max_len~)
 }

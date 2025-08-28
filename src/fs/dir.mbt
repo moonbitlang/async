@@ -73,8 +73,8 @@ async fn Directory::read_next(dir : Directory) -> Bytes? raise {
 ///   directory entries starting with `.` (except `.` and `..`) will be included
 pub async fn Directory::read_all(
   dir : Directory,
-  include_hidden~ : Bool = true,
-  include_special~ : Bool = false,
+  include_hidden? : Bool = true,
+  include_special? : Bool = false,
 ) -> Array[Bytes] raise {
   let result = []
   while dir.read_next() is Some(entry) {

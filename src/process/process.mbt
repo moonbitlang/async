@@ -50,13 +50,13 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 pub async fn run(
   cmd : Bytes,
   args : Array[Bytes],
-  extra_env~ : Map[Bytes, Bytes] = {},
-  inherit_env~ : Bool = true,
+  extra_env? : Map[Bytes, Bytes] = {},
+  inherit_env? : Bool = true,
   stdin? : @pipe.PipeRead,
   stdout? : @pipe.PipeWrite,
   stderr? : @pipe.PipeWrite,
   cwd? : Bytes,
-  orphan~ : Bool = false,
+  orphan? : Bool = false,
 ) -> Int raise {
   let argv = FixedArray::make(args.length() + 2, None)
   argv[0] = Some(cmd)
