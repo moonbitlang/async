@@ -123,22 +123,6 @@ void moonbitlang_async_tls_bio_set_shutdown(BIO * bio, int flags) {
 }
 
 static
-int apply_read_closure(BIO *bio, void *buf, int num) {
-  void *closure = BIO_get_data(bio);
-  int (*read)(void *self, void *buf, int num) = *((int (**)(void *, void *, int))closure);
-  moonbit_incref(closure);
-  return read(closure, buf, num);
-}
-
-static
-int apply_write_closure(BIO *bio, const void *buf, int num) {
-  void *closure = BIO_get_data(bio);
-  int (*write)(void *self, const void *buf, int num) = *((int (**)(void *, const void *, int))closure);
-  moonbit_incref(closure);
-  return write(closure, buf, num);
-}
-
-static
 long dummy_bio_ctrl(BIO *bio, int cmd, long larg, void *parg) {
   if (cmd == BIO_CTRL_FLUSH) {
     // BIO_CTRL_FLUSH, this is required by SSL
@@ -149,36 +133,26 @@ long dummy_bio_ctrl(BIO *bio, int cmd, long larg, void *parg) {
 }
 
 static
-int destroy_closure_bio(BIO *bio) {
+int destroy_custom_bio(BIO *bio) {
   moonbit_decref(BIO_get_data(bio));
   return 1;
 }
 
-BIO *moonbitlang_async_tls_create_rbio(
-  void *data,
-  int (*read)(BIO *, void *, int)
-) {
-  BIO_METHOD *biom = BIO_meth_new(BIO_TYPE_NONE, "moonbitlang/async");
-  BIO_meth_set_read(biom, read);
-  BIO_meth_set_ctrl(biom, dummy_bio_ctrl);
-  BIO_meth_set_destroy(biom, destroy_closure_bio);
+static BIO_METHOD *bio_method = 0;
 
-  BIO *bio = BIO_new(biom);
-  BIO_set_data(bio, data);
-  BIO_set_init(bio, 1);
-  return bio;
-}
-
-BIO *moonbitlang_async_tls_create_wbio(
-  void *data,
+void moonbitlang_async_init_bio_method(
+  int (*read)(BIO *, void *, int),
   int (*write)(BIO *, const void *, int)
 ) {
-  BIO_METHOD *biom = BIO_meth_new(BIO_TYPE_NONE, "moonbitlang/async");
-  BIO_meth_set_write(biom, write);
-  BIO_meth_set_ctrl(biom, dummy_bio_ctrl);
-  BIO_meth_set_destroy(biom, destroy_closure_bio);
+  bio_method = BIO_meth_new(BIO_TYPE_NONE, "moonbitlang/async");
+  BIO_meth_set_read(bio_method, read);
+  BIO_meth_set_write(bio_method, write);
+  BIO_meth_set_ctrl(bio_method, dummy_bio_ctrl);
+  BIO_meth_set_destroy(bio_method, destroy_custom_bio);
+}
 
-  BIO *bio = BIO_new(biom);
+BIO *moonbitlang_async_tls_create_bio(void *data) {
+  BIO *bio = BIO_new(bio_method);
   BIO_set_data(bio, data);
   BIO_set_init(bio, 1);
   return bio;
