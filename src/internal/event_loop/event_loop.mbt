@@ -114,6 +114,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
     let main = @coroutine.spawn(f)
     @coroutine.reschedule()
     evloop.run_forever()
+    println("event loop exit")
     main.unwrap()
   } catch {
     err => {
@@ -204,6 +205,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     }
     @coroutine.reschedule()
   }
+  println("start event loop cleanup")
   for fd, handle in self.fds {
     guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
     if not(handle.events is NoEvent) {
@@ -214,7 +216,9 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
         err => abort("detach \{fd} from loop: \{err}")
       }
     }
+    println("before closing fd \{fd}")
     @fd_util.close(fd)
+    println("after closing fd \{fd}")
   }
   guard self.pids.is_empty()
   self.fds.clear()
