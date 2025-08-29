@@ -22,9 +22,10 @@ fn main {
     defer dir.close()
     let list = dir.read_all()
     list.sort()
-    for file in list {
-      let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
-      println("\{@bytes_util.ascii_to_string(file)}: \{kind}")
+    for name in list {
+      let file = @fs.open(b"src/fs/" + name, mode=ReadOnly)
+      defer file.close()
+      println("\{@bytes_util.ascii_to_string(name)}: \{file.kind()}")
     }
   }) catch {
     err => println(err)
