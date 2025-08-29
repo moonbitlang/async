@@ -32,9 +32,9 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 10); do
-            moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs || true
-            moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs || true
+          for i in $(seq 1 20); do
+            moon run src/debug
+            moon run --debug src/debug
           done
 
   bleeding-build:
@@ -62,7 +62,7 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 10); do
-            moon test --release --verbose -j 1 --no-parallelize -p moonbitlang/async/fs || true
-            moon test --verbose -j 1 --no-parallelize -p moonbitlang/async/fs || true
+          for i in $(seq 1 20); do
+            moon run src/debug
+            moon run --debug src/debug
           done
