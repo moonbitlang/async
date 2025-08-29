@@ -29,14 +29,3 @@ pub fn ascii_to_string(bytes : Bytes) -> String {
 fn String::to_ascii(str : String) -> Bytes {
   Bytes::makei(str.length(), i => str.unsafe_charcode_at(i).to_byte())
 }
-
-///|
-fn @bytes.View::rev_find_index(self : @bytes.View, byte : Byte) -> Int? {
-  for i = self.length() - 1; i >= 0; i = i - 1 {
-    if self[i] == byte {
-      break Some(i)
-    }
-  } else {
-    None
-  }
-}

@@ -27,7 +27,7 @@ async fn serve_directory(
   ..write_bytes(path)
   ..write_bytes(b"</h1>\n")
   ..write_bytes(b"<div style=\"margin: 1em; font-size: 15pt\">")
-  if path[:-1].rev_find_index('/') is Some(index) {
+  if path[:-1].rev_find("/") is Some(index) {
     content
     ..write_bytes(b"<a href=\"")
     ..write_bytesview(if index == 0 { b"/" } else { path[:index] })

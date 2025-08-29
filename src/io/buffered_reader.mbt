@@ -175,14 +175,12 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 /// so this operation is idempotent.
 pub async fn[R : Reader] BufferedReader::find(
   self : Self[R],
-  bytes : Bytes,
+  target : Bytes,
 ) -> Int raise {
-  let target_len = bytes.length()
   for searched = 0 {
-    for i in searched..=(self.len - target_len) {
-      if self.buf.unsafe_reinterpret_as_bytes()[i:i + target_len] == bytes {
-        return i
-      }
+    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:self.len]
+    if region.find(target) is Some(i) {
+      return searched + i
     }
     let searched = self.len
     self.fetch_more()
