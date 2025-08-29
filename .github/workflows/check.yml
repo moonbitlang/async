@@ -33,7 +33,9 @@ jobs:
       - name: moon test
         run: |
           for i in $(seq 1 40); do
+            echo "====== release run ====="
             moon run src/debug
+            echo "====== debug run ====="
             moon run --debug src/debug
           done
 
@@ -63,6 +65,8 @@ jobs:
       - name: moon test
         run: |
           for i in $(seq 1 40); do
+            echo "====== release run ====="
             moon run src/debug
+            echo "====== debug run ====="
             moon run --debug src/debug
           done
