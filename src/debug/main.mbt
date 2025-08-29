@@ -16,15 +16,27 @@
 fn main {
   @async.with_event_loop(fn(_) {
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
-    defer dir_file.close()
+    defer {
+      println("before closing dir file")
+      dir_file.close()
+      println("after closing dir file")
+    }
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
-    defer dir.close()
+    defer {
+      println("before closing dir")
+      dir.close()
+      println("after closing dir")
+    }
     let list = dir.read_all()
     list.sort()
     for name in list {
       let file = @fs.open(b"src/fs/" + name, mode=ReadOnly)
-      defer file.close()
+      defer {
+        println("before closing \{@bytes_util.ascii_to_string(name)}")
+        file.close()
+        println("after closing \{@bytes_util.ascii_to_string(name)}")
+      }
       println("\{@bytes_util.ascii_to_string(name)}: \{file.kind()}")
     }
   }) catch {
