@@ -14,6 +14,7 @@
 
 ///|
 fn main {
+  println("program strat")
   @async.with_event_loop(fn(_) {
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
     defer {
