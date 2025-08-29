@@ -42,5 +42,6 @@ fn main {
   }) catch {
     err => println(err)
   }
+  println("program terminate")
 }
 
