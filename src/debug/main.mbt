@@ -13,36 +13,47 @@
 // limitations under the License.
 
 ///|
-test "as_dir" {
-  let log = StringBuilder::new()
+extern "C" fn fflush(f : UInt64) -> Int = "fflush"
+
+///|
+fn[X : Show] log(obj : X) -> Unit {
+  println(obj)
+  ignore(fflush(0))
+}
+
+///|
+fn main {
+  log("program strat")
   @async.with_event_loop(fn(_) {
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
-    defer dir_file.close()
+    defer {
+      log("before closing dir file")
+      dir_file.close()
+      log("after closing dir file")
+    }
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
-    defer dir.close()
+    defer {
+      log("before closing dir")
+      dir.close()
+      log("after closing dir")
+    }
     let list = dir.read_all()
     list.sort()
-    for i, file in list {
-      let kind = if i < 1 {
-        @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
-      } else {
-        Regular
+    for name in list {
+      let name_str = @bytes_util.ascii_to_string(name)
+      log("before open(\{name_str})")
+      let file = @fs.open(b"src/fs/" + name, mode=ReadOnly)
+      defer {
+        log("before closing \{name_str}")
+        file.close()
+        log("after closing \{name_str}")
       }
-      log.write_string("\{@bytes_util.ascii_to_string(file)}: \{kind}\n")
+      log("\{name_str}: \{file.kind()}")
     }
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|fs.mbt: Regular
-      #|stub.c: Regular
-      #|dir.mbt: Regular
-      #|dir_test.mbt: Regular
-      #|moon.pkg.json: Regular
-      #|pkg.generated.mbti: Regular
-      #|
-
-    ),
-  )
+  }) catch {
+    err => log(err)
+  }
+  log("program terminate")
 }
+
