@@ -24,8 +24,8 @@ test "as_dir" {
     let list = dir.read_all()
     list.sort()
     for file in list {
-      // let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
-      log.write_string("\{@bytes_util.ascii_to_string(file)}: Regular\n")
+      let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
+      log.write_string("\{@bytes_util.ascii_to_string(file)}: \{kind}\n")
     }
   })
   inspect(
