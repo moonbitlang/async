@@ -41,13 +41,15 @@ fn main {
     let list = dir.read_all()
     list.sort()
     for name in list {
+      let name_str = @bytes_util.ascii_to_string(name)
+      log("before open(\{name_str})")
       let file = @fs.open(b"src/fs/" + name, mode=ReadOnly)
       defer {
-        log("before closing \{@bytes_util.ascii_to_string(name)}")
+        log("before closing \{name_str}")
         file.close()
-        log("after closing \{@bytes_util.ascii_to_string(name)}")
+        log("after closing \{name_str}")
       }
-      log("\{@bytes_util.ascii_to_string(name)}: \{file.kind()}")
+      log("\{name_str}: \{file.kind()}")
     }
   }) catch {
     err => log(err)
