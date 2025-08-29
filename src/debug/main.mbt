@@ -13,36 +13,45 @@
 // limitations under the License.
 
 ///|
+extern "C" fn fflush(f : UInt64) -> Int = "fflush"
+
+///|
+fn[X : Show] log(obj : X) -> Unit {
+  println(obj)
+  ignore(fflush(0))
+}
+
+///|
 fn main {
-  println("program strat")
+  log("program strat")
   @async.with_event_loop(fn(_) {
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
     defer {
-      println("before closing dir file")
+      log("before closing dir file")
       dir_file.close()
-      println("after closing dir file")
+      log("after closing dir file")
     }
     guard dir_file.kind() is Directory
     let dir = dir_file.as_dir()
     defer {
-      println("before closing dir")
+      log("before closing dir")
       dir.close()
-      println("after closing dir")
+      log("after closing dir")
     }
     let list = dir.read_all()
     list.sort()
     for name in list {
       let file = @fs.open(b"src/fs/" + name, mode=ReadOnly)
       defer {
-        println("before closing \{@bytes_util.ascii_to_string(name)}")
+        log("before closing \{@bytes_util.ascii_to_string(name)}")
         file.close()
-        println("after closing \{@bytes_util.ascii_to_string(name)}")
+        log("after closing \{@bytes_util.ascii_to_string(name)}")
       }
-      println("\{@bytes_util.ascii_to_string(name)}: \{file.kind()}")
+      log("\{@bytes_util.ascii_to_string(name)}: \{file.kind()}")
     }
   }) catch {
-    err => println(err)
+    err => log(err)
   }
-  println("program terminate")
+  log("program terminate")
 }
 
