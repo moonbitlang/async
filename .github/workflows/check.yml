@@ -32,7 +32,7 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 20); do
+          for i in $(seq 1 40); do
             moon run src/debug
             moon run --debug src/debug
           done
@@ -62,7 +62,7 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 20); do
+          for i in $(seq 1 40); do
             moon run src/debug
             moon run --debug src/debug
           done
