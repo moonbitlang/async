@@ -25,7 +25,9 @@ fn[X : Show] log(obj : X) -> Unit {
 fn main {
   log("program start")
   @async.with_event_loop(fn(_) {
+    log("before open dir")
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
+    log("after open dir")
     defer {
       log("before closing dir file")
       dir_file.close()
