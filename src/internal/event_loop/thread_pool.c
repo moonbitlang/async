@@ -383,19 +383,20 @@ void *worker_loop(void *data) {
     }
     write(pool.notify_send, &(job->job_id), sizeof(int));
 
-    job = 0;
 #ifdef WAKEUP_METHOD_SIGNAL
     sigwait(&pool.wakeup_signal, &sig);
 #elif defined(WAKEUP_METHOD_COND_VAR)
     pthread_mutex_lock(&(self->mutex));
+    if (job->job_id == self->job->job_id) {
 #ifdef __MACH__
-    // There's a bug in the MacOS's `pthread_cond_wait`,
-    // see https://github.com/graphia-app/graphia/issues/33
-    // We know the arguments must be valid here, so use a loop to work around
-    while (pthread_cond_wait(&(self->cond), &(self->mutex)) == EINVAL) {}
+      // There's a bug in the MacOS's `pthread_cond_wait`,
+      // see https://github.com/graphia-app/graphia/issues/33
+      // We know the arguments must be valid here, so use a loop to work around
+      while (pthread_cond_wait(&(self->cond), &(self->mutex)) == EINVAL) {}
 #else
-    pthread_cond_wait(&(self->cond), &(self->mutex));
+      pthread_cond_wait(&(self->cond), &(self->mutex));
 #endif
+    }
     pthread_mutex_unlock(&(self->mutex));
 #endif
     job = self->job;
