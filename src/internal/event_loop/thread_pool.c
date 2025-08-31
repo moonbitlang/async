@@ -174,6 +174,7 @@ int moonbitlang_async_job_poll_fd(struct job *job) {
 struct worker {
   pthread_t id;
   struct job *job;
+  int waiting;
 #ifdef WAKEUP_METHOD_COND_VAR
   pthread_mutex_t mutex;
   pthread_cond_t cond;
@@ -375,21 +376,23 @@ void *worker_loop(void *data) {
       break;
     }
     }
+    self->waiting = 1;
     write(pool.notify_send, &(job->job_id), sizeof(int));
 
-    job = 0;
 #ifdef WAKEUP_METHOD_SIGNAL
     sigwait(&pool.wakeup_signal, &sig);
 #elif defined(WAKEUP_METHOD_COND_VAR)
     pthread_mutex_lock(&(self->mutex));
+    while (self->waiting) {
 #ifdef __MACH__
-    // There's a bug in the MacOS's `pthread_cond_wait`,
-    // see https://github.com/graphia-app/graphia/issues/33
-    // We know the arguments must be valid here, so use a loop to work around
-    while (pthread_cond_wait(&(self->cond), &(self->mutex)) == EINVAL) {}
+      // There's a bug in the MacOS's `pthread_cond_wait`,
+      // see https://github.com/graphia-app/graphia/issues/33
+      // We know the arguments must be valid here, so use a loop to work around
+      while (pthread_cond_wait(&(self->cond), &(self->mutex)) == EINVAL) {}
 #else
-    pthread_cond_wait(&(self->cond), &(self->mutex));
+      pthread_cond_wait(&(self->cond), &(self->mutex));
 #endif
+    }
     pthread_mutex_unlock(&(self->mutex));
 #endif
     job = self->job;
@@ -404,6 +407,7 @@ void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
   pthread_kill(worker->id, SIGUSR1);
 #elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_lock(&(worker->mutex));
+  worker->waiting = 0;
   pthread_cond_signal(&(worker->cond));
   pthread_mutex_unlock(&(worker->mutex));
 #endif
@@ -459,6 +463,7 @@ struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
     sizeof(struct worker)
   );
   worker->job = init_job;
+  worker->waiting = 0;
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
   return worker;
