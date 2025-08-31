@@ -253,8 +253,14 @@ void *worker_loop(void *data) {
       break;
 
     case OP_READDIR:
+      printf("before setting errno\n");
+      fflush(0);
       errno = 0;
+      printf("before readdir\n");
+      fflush(0);
       *(job->payload.readdir.out) = readdir(job->payload.readdir.dir);
+      printf("after readdir\n");
+      fflush(0);
       if (*(job->payload.readdir.out) == 0 && errno) {
         job->ret = -1;
         job->err = errno;
