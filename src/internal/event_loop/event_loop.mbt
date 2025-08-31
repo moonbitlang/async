@@ -431,8 +431,15 @@ pub async fn perform_job(job : Job) -> Int raise {
     Open(path~, flags~, mode~) =>
       perform_job_in_worker(JobForWorker::open(path, flags, mode))
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
-    Readdir(dir~, out~) =>
+    Readdir(dir~, out~) => {
+      println("before perform readdir job")
+      ignore(fflush(0))
+      defer {
+        println("after perform readdir job")
+        ignore(fflush(0))
+      }
       perform_job_in_worker(JobForWorker::readdir(dir, out))
+    }
     Spawn(path~, args~, env~, stdin~, stdout~, stderr~, cwd~) =>
       perform_job_in_worker(
         JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
@@ -497,3 +504,6 @@ extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_asy
 
 ///|
 extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
+
+///|
+extern "C" fn fflush(f : UInt64) -> Int = "fflush"
