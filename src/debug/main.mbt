@@ -34,13 +34,17 @@ fn main {
       log("after closing dir file")
     }
     guard dir_file.kind() is Directory
+    log("before as_dir")
     let dir = dir_file.as_dir()
+    log("after as_dir")
     defer {
       log("before closing dir")
       dir.close()
       log("after closing dir")
     }
+    log("before read all")
     let list = dir.read_all()
+    log("after read all")
     list.sort()
     for name in list {
       let name_str = @bytes_util.ascii_to_string(name)
