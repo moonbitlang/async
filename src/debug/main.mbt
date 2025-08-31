@@ -23,7 +23,7 @@ fn[X : Show] log(obj : X) -> Unit {
 
 ///|
 fn main {
-  log("program strat")
+  log("program start")
   @async.with_event_loop(fn(_) {
     let dir_file = @fs.open("src/fs", mode=ReadOnly)
     defer {
