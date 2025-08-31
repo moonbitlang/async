@@ -406,6 +406,9 @@ void *worker_loop(void *data) {
 void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
   moonbit_decref(worker->job);
   worker->job = job;
+  if (job->op_code == OP_READDIR) {
+    printf("before submitting readdir job\n");
+  }
 #ifdef WAKEUP_METHOD_SIGNAL
   pthread_kill(worker->id, SIGUSR1);
 #elif defined(WAKEUP_METHOD_COND_VAR)
@@ -413,6 +416,9 @@ void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
   pthread_cond_signal(&(worker->cond));
   pthread_mutex_unlock(&(worker->mutex));
 #endif
+  if (job->op_code == OP_READDIR) {
+    printf("after submitting readdir job\n");
+  }
 }
 
 void moonbitlang_async_init_thread_pool(int notify_send) {
