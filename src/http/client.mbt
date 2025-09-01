@@ -15,7 +15,7 @@
 ///|
 /// Simple HTTP client which connect to a remote host via TCP
 struct Client {
-  host : Bytes
+  headers : Array[Header]
   reader : Reader
   conn : @socket.TCP
   tls : @tls.TLS?
@@ -26,8 +26,19 @@ struct Client {
 /// If `protocol` is `Https` (`Https` by default),
 /// a TLS connection will be established,
 /// and the certificate of the remote peer will be verified.
+///
+/// `headers` can be used to specify persistent headers for the client,
+/// i.e. all requests made from this client will share these headers.
+/// The ownership of `headers` will be transferred to the new client,
+/// so `headers` should not be used by the caller later.
+/// The following headers is automatically set,
+/// and must not be specified in `headers`:
+/// 
+/// - Host
+/// - Content-Length, Transfer-Encoding
 pub async fn Client::connect(
   host : Bytes,
+  headers? : Array[Header] = [],
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
 ) -> Client raise {
@@ -40,7 +51,8 @@ pub async fn Client::connect(
     None => Reader::new(conn)
     Some(tls) => Reader::new(tls)
   }
-  { host, conn, tls, reader }
+  headers.push(Header("Host", host))
+  { headers, conn, tls, reader }
 }
 
 ///|
@@ -77,23 +89,24 @@ pub impl @io.Reader for Client with read(self, buf, offset~, max_len~) {
 /// the next request MUST NOT be made before the body of the response is consumed.
 /// If you don't care about the response body, use `skip_body` to skip it.
 ///
-/// Additional HTTP headers can be passed via `headers`.
-/// The ownership of `headers` will be transferred to `request`,
-/// so `headers` should be a temporary array.
+/// In addition to headers in `Client::connect`,
+/// extra HTTP headers can be passed via `extra_headers`.
 /// The following headers is automatically set by `request`,
-/// and must not be specified in `headers`:
+/// and must not be specified in `extra_headers`:
 /// 
 /// - Host
 /// - Content-Length, Transfer-Encoding
 pub async fn Client::request(
   self : Client,
-  request : Request,
+  meth : RequestMethod,
+  path : Bytes,
+  extra_headers? : Array[Header] = [],
   body : Body,
 ) -> Response raise {
-  request.headers.push(Header("Host", self.host))
+  let headers = self.headers + extra_headers
   match self.tls {
-    Some(tls) => send_request(tls, request, body)
-    None => send_request(self.conn, request, body)
+    Some(tls) => send_request(tls, { meth, path, headers }, body)
+    None => send_request(self.conn, { meth, path, headers }, body)
   }
   self.reader.read_response()
 }
@@ -110,10 +123,10 @@ pub async fn Client::skip_body(self : Client) -> Unit raise {
 pub async fn Client::get(
   self : Client,
   path : Bytes,
-  headers? : Array[Header] = [],
+  extra_headers? : Array[Header] = [],
   body? : Body = Empty,
 ) -> Response raise {
-  self.request({ meth: Get, path, headers }, body)
+  self.request(Get, path, extra_headers~, body)
 }
 
 ///|
@@ -122,9 +135,9 @@ pub async fn Client::put(
   self : Client,
   path : Bytes,
   body : Body,
-  headers? : Array[Header] = [],
+  extra_headers? : Array[Header] = [],
 ) -> Response raise {
-  self.request({ meth: Put, path, headers }, body)
+  self.request(Put, path, extra_headers~, body)
 }
 
 ///|
@@ -133,7 +146,7 @@ pub async fn Client::post(
   self : Client,
   path : Bytes,
   body : Body,
-  headers? : Array[Header] = [],
+  extra_headers? : Array[Header] = [],
 ) -> Response raise {
-  self.request({ meth: Post, path, headers }, body)
+  self.request(Post, path, extra_headers~, body)
 }

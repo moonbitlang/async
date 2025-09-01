@@ -34,11 +34,11 @@ pub(all) enum Body {
 
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(Bytes, protocol? : Protocol, port? : Int) -> Self raise
-async fn Client::get(Self, Bytes, headers? : Array[Header], body? : Body) -> Response raise
-async fn Client::post(Self, Bytes, Body, headers? : Array[Header]) -> Response raise
-async fn Client::put(Self, Bytes, Body, headers? : Array[Header]) -> Response raise
-async fn Client::request(Self, Request, Body) -> Response raise
+async fn Client::connect(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> Self raise
+async fn Client::get(Self, Bytes, extra_headers? : Array[Header], body? : Body) -> Response raise
+async fn Client::post(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response raise
+async fn Client::put(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response raise
+async fn Client::request(Self, RequestMethod, Bytes, extra_headers? : Array[Header], Body) -> Response raise
 async fn Client::shutdown(Self) -> Unit raise
 async fn Client::skip_body(Self) -> Unit raise
 impl @io.Reader for Client
