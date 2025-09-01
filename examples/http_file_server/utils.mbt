@@ -18,7 +18,6 @@ pub fn ascii_to_string(bytes : Bytes) -> String {
   for b in bytes {
     match b {
       '\r' => builder.write_string("\\r")
-      '\n' => builder.write_string("\\n")
       b => builder.write_char(b.to_int().unsafe_to_char())
     }
   }
