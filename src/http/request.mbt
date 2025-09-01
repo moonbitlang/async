@@ -43,9 +43,9 @@ async fn perform_request(
     (uri, "/")
   }
   let path = if path == "" { b"/" } else { path }
-  let client = Client::connect(host, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
-  let response = client.request({ meth, path, headers }, body)
+  let response = client.request(meth, path, body)
   let body = client.read_all()
   client.shutdown()
   (response, body)
