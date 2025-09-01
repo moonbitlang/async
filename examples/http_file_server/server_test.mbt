@@ -114,13 +114,33 @@ test "basic" {
       #|HTTP/1.1 200 OK
       #|content-type: text/html
       #|content-length: 627
-      #|<!DOCTYPE html><html><head></head><body><h1>/examples/http_file_server</h1>\n<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>\n<a href="/examples">..</a><br/><br/>\n<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>\n<a href="/examples/http_file_server/utils.mbt">utils.mbt</a><br/>\n<a href="/examples/http_file_server/moon.pkg.json">moon.pkg.json</a><br/>\n<a href="/examples/http_file_server/server_test.mbt">server_test.mbt</a><br/>\n<a href="/examples/http_file_server/http_file_server.mbti">http_file_server.mbti</a><br/>\n</div></body></html>
+      #|<!DOCTYPE html><html><head></head><body><h1>/examples/http_file_server</h1>
+      #|<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>
+      #|<a href="/examples">..</a><br/><br/>
+      #|<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>
+      #|<a href="/examples/http_file_server/utils.mbt">utils.mbt</a><br/>
+      #|<a href="/examples/http_file_server/moon.pkg.json">moon.pkg.json</a><br/>
+      #|<a href="/examples/http_file_server/server_test.mbt">server_test.mbt</a><br/>
+      #|<a href="/examples/http_file_server/http_file_server.mbti">http_file_server.mbti</a><br/>
+      #|</div></body></html>
       #|
       #|client: GET /examples/http_file_server/moon.pkg.json
       #|HTTP/1.1 200 OK
       #|content-type: appliaction/octet-stream
       #|transfer-encoding: chunked
-      #|{\n  "import": [\n    "moonbitlang/async",\n    "moonbitlang/async/io",\n    "moonbitlang/async/socket",\n    "moonbitlang/async/fs",\n    "moonbitlang/async/http",\n    "moonbitlang/async/pipe",\n    "moonbitlang/async/process"\n  ],\n  "is-main": true\n}\n
+      #|{
+      #|  "import": [
+      #|    "moonbitlang/async",
+      #|    "moonbitlang/async/io",
+      #|    "moonbitlang/async/socket",
+      #|    "moonbitlang/async/fs",
+      #|    "moonbitlang/async/http",
+      #|    "moonbitlang/async/pipe",
+      #|    "moonbitlang/async/process"
+      #|  ],
+      #|  "is-main": true
+      #|}
+      #|
       #|
       #|HTTP/1.1 200 OK
       #|content-type: application/octet-stream
