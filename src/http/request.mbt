@@ -13,21 +13,17 @@
 // limitations under the License.
 
 ///|
-pub(all) enum RequestProtocol {
+pub(all) enum Protocol {
   Http
   Https
 }
 
 ///|
-async fn[Conn : @io.Reader + @io.Writer] make_request(
-  conn : Conn,
-  path : Bytes,
-  headers~ : Array[Header],
-) -> (Response, Bytes) raise {
-  send_request(conn, { meth: Get, path, headers }, Empty)
-  let reader = Reader::new(conn)
-  let response = reader.read_response()
-  (response, reader.read_all())
+pub fn Protocol::default_port(p : Protocol) -> Int {
+  match p {
+    Http => 80
+    Https => 443
+  }
 }
 
 ///|
@@ -50,11 +46,8 @@ async fn[Conn : @io.Reader + @io.Writer] make_request(
 pub async fn request(
   uri : Bytes,
   headers? : Array[Header] = [],
-  protocol? : RequestProtocol = Https,
-  port? : Int = match protocol {
-    Http => 80
-    Https => 443
-  },
+  protocol? : Protocol = Https,
+  port? : Int = protocol.default_port(),
 ) -> (Response, Bytes) raise {
   let (host, path) = for i = 0; i < uri.length(); i = i + 1 {
     if uri[i] == '/' {
@@ -64,27 +57,10 @@ pub async fn request(
     (uri, "/")
   }
   let path = if path == "" { b"/" } else { path }
-  let conn = @socket.TCP::connect_to_host(host, port~)
-  defer conn.close()
-  headers.push(Header("Host", host))
-  match protocol {
-    Http => make_request(conn, path, headers~)
-    Https => {
-      let conn = @tls.TLS::client(conn, host~)
-      defer conn.close()
-      try make_request(conn, path, headers~) catch {
-        err => {
-          if not(err is (@tls.OpenSSLError(_) | @tls.ConnectionClosed)) {
-            @async.with_timeout(1000, () => conn.shutdown())
-          }
-          raise err
-        }
-      } noraise {
-        result => {
-          @async.with_timeout(1000, () => conn.shutdown())
-          result
-        }
-      }
-    }
-  }
+  let client = Client::connect(host, protocol~, port~)
+  defer client.close()
+  let response = client.get(path, headers~)
+  let body = client.read_all()
+  client.shutdown()
+  (response, body)
 }

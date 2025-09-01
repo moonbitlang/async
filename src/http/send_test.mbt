@@ -110,13 +110,13 @@ test "send_request stream" {
       #|105\r
       #|{
       #|  "import": [
-      #|    "moonbitlang/async",
       #|    "moonbitlang/async/io",
       #|    "moonbitlang/async/socket",
       #|    "moonbitlang/async/tls",
       #|    "moonbitlang/async/internal/bytes_util"
       #|  ],
       #|  "test-import": [
+      #|    "moonbitlang/async",
       #|    "moonbitlang/async/pipe",
       #|    "moonbitlang/async/fs"
       #|  ]
