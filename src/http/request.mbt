@@ -27,27 +27,13 @@ pub fn Protocol::default_port(p : Protocol) -> Int {
 }
 
 ///|
-/// Perform a HTTP network request to `uri`,
-/// which should be a URI without the protocol part.
-/// The HTTP response message and the whole response body will be returned.
-///
-/// The protocol can be specified via `protocol`, which is `Https` by default.
-/// By default the standard port number of `protocol` is used,
-/// but this can be overriden by explicitly passing `port`.
-///
-/// Additional HTTP headers can be passed via `headers`.
-/// The ownership of `headers` will be transferred to `request`,
-/// so `headers` should be a temporary array.
-/// The following headers is automatically set by `request`,
-/// and must not be specified in `headers`:
-/// 
-/// - Host
-/// - Content-Length, Transfer-Encoding
-pub async fn request(
+async fn perform_request(
   uri : Bytes,
-  headers? : Array[Header] = [],
-  protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
+  meth : RequestMethod,
+  headers : Array[Header],
+  body : Body,
+  protocol~ : Protocol,
+  port~ : Int,
 ) -> (Response, Bytes) raise {
   let (host, path) = for i = 0; i < uri.length(); i = i + 1 {
     if uri[i] == '/' {
@@ -59,8 +45,52 @@ pub async fn request(
   let path = if path == "" { b"/" } else { path }
   let client = Client::connect(host, protocol~, port~)
   defer client.close()
-  let response = client.get(path, headers~)
+  let response = client.request({ meth, path, headers }, body)
   let body = client.read_all()
   client.shutdown()
   (response, body)
+}
+
+///|
+/// Perform a HTTP `GET` request to `uri`,
+/// which should be a URI without the protocol part.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// The protocol can be specified via `protocol`, which is `Https` by default.
+/// By default the standard port number of `protocol` is used,
+/// but this can be overriden by explicitly passing `port`.
+///
+/// See `Client::request` for more details.
+#alias(request, deprecated)
+pub async fn get(
+  uri : Bytes,
+  headers? : Array[Header] = [],
+  protocol? : Protocol = Https,
+  port? : Int = protocol.default_port(),
+) -> (Response, Bytes) raise {
+  perform_request(uri, Get, headers, Empty, protocol~, port~)
+}
+
+///|
+/// Similar to `get`, but performs a `PUT` request instead.
+pub async fn put(
+  uri : Bytes,
+  content : Bytes,
+  headers? : Array[Header] = [],
+  protocol? : Protocol = Https,
+  port? : Int = protocol.default_port(),
+) -> (Response, Bytes) raise {
+  perform_request(uri, Put, headers, Fixed(content), protocol~, port~)
+}
+
+///|
+/// Similar to `get`, but performs a `POST` request instead.
+pub async fn post(
+  uri : Bytes,
+  content : Bytes,
+  headers? : Array[Header] = [],
+  protocol? : Protocol = Https,
+  port? : Int = protocol.default_port(),
+) -> (Response, Bytes) raise {
+  perform_request(uri, Post, headers, Fixed(content), protocol~, port~)
 }

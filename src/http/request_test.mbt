@@ -16,7 +16,7 @@
 test "https request" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let (_, result) = @http.request("www.example.org")
+    let (_, result) = @http.get("www.example.org")
     log.write_string(@bytes_util.ascii_to_string(result))
   })
   inspect(
@@ -77,7 +77,7 @@ test "https request" {
 test "http request" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
-    let (_, result) = @http.request("www.example.org", protocol=Http)
+    let (_, result) = @http.get("www.example.org", protocol=Http)
     log.write_string(@bytes_util.ascii_to_string(result))
   })
   inspect(

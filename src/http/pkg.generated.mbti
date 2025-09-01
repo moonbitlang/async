@@ -6,7 +6,12 @@ import(
 )
 
 // Values
-async fn request(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+#alias(request, deprecated)
+async fn get(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+
+async fn post(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+
+async fn put(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
 
 async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit raise
 
