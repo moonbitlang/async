@@ -76,6 +76,15 @@ pub impl @io.Reader for Client with read(self, buf, offset~, max_len~) {
 /// After performing a request,
 /// the next request MUST NOT be made before the body of the response is consumed.
 /// If you don't care about the response body, use `skip_body` to skip it.
+///
+/// Additional HTTP headers can be passed via `headers`.
+/// The ownership of `headers` will be transferred to `request`,
+/// so `headers` should be a temporary array.
+/// The following headers is automatically set by `request`,
+/// and must not be specified in `headers`:
+/// 
+/// - Host
+/// - Content-Length, Transfer-Encoding
 pub async fn Client::request(
   self : Client,
   request : Request,
