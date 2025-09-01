@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-async fn request(Bytes, headers? : Array[Header], protocol? : RequestProtocol, port? : Int) -> (Response, Bytes) raise
+async fn request(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
 
 async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit raise
 
@@ -27,8 +27,25 @@ pub(all) enum Body {
   Stream(&@io.Reader)
 }
 
+type Client
+fn Client::close(Self) -> Unit
+async fn Client::connect(Bytes, protocol? : Protocol, port? : Int) -> Self raise
+async fn Client::get(Self, Bytes, headers? : Array[Header], body? : Body) -> Response raise
+async fn Client::post(Self, Bytes, Body, headers? : Array[Header]) -> Response raise
+async fn Client::put(Self, Bytes, Body, headers? : Array[Header]) -> Response raise
+async fn Client::request(Self, Request, Body) -> Response raise
+async fn Client::shutdown(Self) -> Unit raise
+async fn Client::skip_body(Self) -> Unit raise
+impl @io.Reader for Client
+
 pub(all) struct Header(Bytes, Bytes)
 
+
+pub(all) enum Protocol {
+  Http
+  Https
+}
+fn Protocol::default_port(Self) -> Int
 
 type Reader
 fn[R : @io.Reader] Reader::new(R) -> Self
@@ -56,11 +73,6 @@ pub(all) enum RequestMethod {
   Patch
 }
 impl Show for RequestMethod
-
-pub(all) enum RequestProtocol {
-  Http
-  Https
-}
 
 pub(all) struct Response {
   code : Int
