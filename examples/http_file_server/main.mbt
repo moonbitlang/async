@@ -27,6 +27,9 @@ async fn serve_directory(
   ..write_bytes(path)
   ..write_bytes(b"</h1>\n")
   ..write_bytes(b"<div style=\"margin: 1em; font-size: 15pt\">")
+  ..write_bytes(b"<a href=\"")
+  ..write_bytes(path)
+  ..write_bytes(b"?download_zip\">download as zip</a><br/><br/>\n")
   if path[:-1].rev_find("/") is Some(index) {
     content
     ..write_bytes(b"<a href=\"")
@@ -78,6 +81,36 @@ async fn serve_file(
 }
 
 ///|
+async fn serve_zip(conn : @socket.TCP, path : Bytes) -> Unit raise {
+  let base_name = if path.rev_find("/") is Some(i) {
+    path[i + 1:].to_bytes()
+  } else {
+    path
+  }
+  @async.with_task_group(fn(group) {
+    let (we_read_from_zip, zip_write_to_use) = @pipe.pipe()
+    defer we_read_from_zip.close()
+    group.spawn_bg(fn() {
+      defer zip_write_to_use.close()
+      @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_use)
+      |> ignore
+    })
+    @http.send_response(
+      conn,
+      {
+        code: 200,
+        reason: "OK",
+        headers: [
+          Header("Content-Type", "application/octet-stream"),
+          Header("Content-Disposition", "filename=" + base_name + ".zip"),
+        ],
+      },
+      Stream(we_read_from_zip),
+    )
+  })
+}
+
+///|
 let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></html>"
 
 ///|
@@ -115,7 +148,10 @@ pub async fn server(
       for {
         let request = src.read_request()
         src.skip_body()
-        let path = request.path
+        let (path, download_zip) = match request.path {
+          [.. path, .. "?download_zip"] => (path.to_bytes(), true)
+          path => (path, false)
+        }
         log("serving \{ascii_to_string(path)}")
         match request.meth {
           Get => {
@@ -127,7 +163,11 @@ pub async fn server(
             }
             defer file.close()
             if file.kind() is Directory {
-              serve_directory(conn, file.as_dir(), path~)
+              if download_zip {
+                serve_zip(conn, base_path + path)
+              } else {
+                serve_directory(conn, file.as_dir(), path~)
+              }
             } else {
               serve_file(conn, file, path~)
             }
