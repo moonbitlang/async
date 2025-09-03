@@ -52,6 +52,7 @@ int moonbitlang_async_poll_register(
     events |= EPOLLONESHOT;
 
   events |= EPOLLET;
+  events |= EPOLLRDHUP;
 
   epoll_data_t data;
   data.u64 = fd;
