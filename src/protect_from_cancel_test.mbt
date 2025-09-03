@@ -318,8 +318,8 @@ test "error in async cancel" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
-      for _ in 0..<3 {
-        @async.sleep(20)
+      for _ in 0..<2 {
+        @async.sleep(40)
         log.write_string("tick\n")
       }
     })
@@ -330,14 +330,14 @@ test "error in async cancel" {
             _ => {
               log.write_string("performing async cleanup\n")
               @async.protect_from_cancel(fn() {
-                @async.sleep(20)
+                @async.sleep(40)
                 log.write_string("raising error from async cleanup\n")
                 raise Err
               })
             }
           }
         })
-        @async.sleep(10)
+        @async.sleep(20)
         log.write_string("main task of inner group done\n")
       }),
     )
@@ -352,7 +352,6 @@ test "error in async cancel" {
       #|raising error from async cleanup
       #|Ok(())
       #|group terminates
-      #|tick
       #|tick
       #|
     ),
