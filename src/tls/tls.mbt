@@ -250,15 +250,16 @@ pub fn TLS::close(self : TLS) -> Unit {
 /// to prevent the program from haning indefinitely.
 pub async fn TLS::shutdown(self : TLS) -> Unit raise {
   while self.ssl.shutdown() is ret && ret <= 0 {
-    if ret == 0 {
-      self.read_end.wait()
+    let err = if ret == 0 {
+      SSL_ERROR_WANT_READ
     } else {
-      let err = self.ssl.get_error(ret)
-      if err is SSL_ERROR_ZERO_RETURN {
-        // do not raise error on non-compilant peer
-        break
-      }
-      self.handle_error(err)
+      self.ssl.get_error(ret)
+    }
+    self.handle_error(err)
+    match err {
+      SSL_ERROR_WANT_READ if self.read_end.state is Closed => break
+      SSL_ERROR_WANT_WRITE if self.write_end.state is Closed => break
+      _ => ()
     }
   }
 }
