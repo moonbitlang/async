@@ -606,7 +606,7 @@ struct job *moonbitlang_async_make_spawn_job(
 
 struct job *moonbitlang_async_make_recvfrom_job(
   int sock,
-  moonbit_bytes_t buf,
+  char *buf,
   int offset,
   int len,
   struct sockaddr *addr_out
@@ -624,7 +624,7 @@ struct job *moonbitlang_async_make_recvfrom_job(
 
 struct job *moonbitlang_async_make_sendto_job(
   int sock,
-  moonbit_bytes_t buf,
+  char *buf,
   int offset,
   int len,
   struct sockaddr *addr

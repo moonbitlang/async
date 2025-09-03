@@ -66,7 +66,7 @@ int moonbitlang_async_enable_keepalive(
 #ifdef __MACH__
     if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &keep_idle, sizeof(int)) < 0)
       return -1;
-#elifdef __linux__
+#else
     if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keep_idle, sizeof(int)) < 0)
       return -1;
 #endif
