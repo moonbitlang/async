@@ -20,7 +20,7 @@ fn Addr::ip(Self) -> UInt
 fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
-async fn Addr::resolve(Bytes, port~ : Int) -> Self raise
+async fn Addr::resolve(Bytes, port~ : Int) -> Self
 impl Compare for Addr
 impl Eq for Addr
 impl Hash for Addr
@@ -28,20 +28,20 @@ impl Show for Addr
 
 type TCP
 fn TCP::close(Self) -> Unit
-async fn TCP::connect(Addr) -> Self raise
-async fn TCP::connect_to_host(Bytes, port~ : Int) -> Self raise
+async fn TCP::connect(Addr) -> Self
+async fn TCP::connect_to_host(Bytes, port~ : Int) -> Self
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
 #alias(recv, deprecated)
-async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 #deprecated
-async fn TCP::recv_exactly(Self, Int) -> Bytes raise
+async fn TCP::recv_exactly(Self, Int) -> Bytes
 #deprecated
-async fn TCP::send(Self, @bytes.View) -> Unit raise
+async fn TCP::send(Self, @bytes.View) -> Unit
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP
 
 type TCPServer
-async fn TCPServer::accept(Self) -> (TCP, Addr) raise
+async fn TCPServer::accept(Self) -> (TCP, Addr)
 fn TCPServer::close(Self) -> Unit
 fn TCPServer::new(Addr) -> Self raise
 
@@ -50,10 +50,10 @@ fn UDP::bind(Self, Addr) -> Unit raise
 fn UDP::close(Self) -> Unit
 fn UDP::connect(Self, Addr) -> Unit raise
 fn UDP::new() -> Self raise
-async fn UDP::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
-async fn UDP::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr) raise
-async fn UDP::send(Self, Bytes, offset? : Int, len? : Int) -> Unit raise
-async fn UDP::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit raise
+async fn UDP::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+async fn UDP::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
+async fn UDP::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
+async fn UDP::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 
 // Type aliases
 

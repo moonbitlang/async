@@ -2,21 +2,21 @@
 package "moonbitlang/async"
 
 // Values
-async fn pause() -> Unit raise
+async fn pause() -> Unit
 
-async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
+async fn protect_from_cancel(async () -> Unit) -> Unit
 
-async fn[X] retry(RetryMethod, max_retry? : Int, async () -> X raise) -> X raise
+async fn[X] retry(RetryMethod, max_retry? : Int, async () -> X) -> X
 
-async fn sleep(Int) -> Unit raise
+async fn sleep(Int) -> Unit
 
-fn with_event_loop(async (TaskGroup[Unit]) -> Unit raise) -> Unit raise
+fn with_event_loop(async (TaskGroup[Unit]) -> Unit) -> Unit raise
 
-async fn[X] with_task_group(async (TaskGroup[X]) -> X raise) -> X raise
+async fn[X] with_task_group(async (TaskGroup[X]) -> X) -> X
 
-async fn with_timeout(Int, async () -> Unit raise, error? : Error) -> Unit raise
+async fn with_timeout(Int, async () -> Unit, error? : Error) -> Unit
 
-async fn[X] with_timeout_opt(Int, async () -> X raise) -> X? raise
+async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
 pub suberror AlreadyTerminated
@@ -31,14 +31,14 @@ pub(all) enum RetryMethod {
 
 type Task[X]
 fn[X] Task::cancel(Self[X]) -> Unit
-async fn[X] Task::wait(Self[X]) -> X raise
+async fn[X] Task::wait(Self[X]) -> X
 
 type TaskGroup[X]
-fn[X] TaskGroup::add_defer(Self[X], async () -> Unit raise) -> Unit raise
+fn[X] TaskGroup::add_defer(Self[X], async () -> Unit) -> Unit raise
 fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
-fn[G, X] TaskGroup::spawn(Self[G], async () -> X raise, no_wait? : Bool, allow_failure? : Bool) -> Task[X] raise
-fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit raise, no_wait? : Bool, allow_failure? : Bool) -> Unit raise
-fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult raise, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int) -> Unit raise
+fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool) -> Task[X] raise
+fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit raise
+fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int) -> Unit raise
 
 // Type aliases
 pub typealias @moonbitlang/async/aqueue.Queue as Queue

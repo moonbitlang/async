@@ -4,11 +4,11 @@ package "moonbitlang/async/internal/event_loop"
 // Values
 fn close_fd(Int) -> Unit
 
-async fn perform_job(Job) -> Int raise
+async fn perform_job(Job) -> Int
 
 fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
 
-fn with_event_loop(async () -> Unit raise) -> Unit raise
+fn with_event_loop(async () -> Unit) -> Unit raise
 
 // Errors
 

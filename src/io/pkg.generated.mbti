@@ -13,26 +13,26 @@ impl Show for ReaderClosed
 
 // Types and methods
 type BufferedReader[R]
-async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit raise
-async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int raise
+async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit
+async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
 fn[R] BufferedReader::new(R) -> Self[R]
-async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> Bytes raise
-async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte raise
-async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> Bytes
+async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
+async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 impl[R : Reader] Reader for BufferedReader[R]
 
 // Type aliases
 
 // Traits
 pub(open) trait Reader {
-  async read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int raise
-  async read_exactly(Self, Int) -> Bytes raise = _
-  async read_all(Self) -> Bytes raise = _
+  async read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+  async read_exactly(Self, Int) -> Bytes = _
+  async read_all(Self) -> Bytes = _
 }
 
 pub(open) trait Writer {
-  async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int raise
-  async write(Self, @bytes.View) -> Unit raise = _
-  async write_reader(Self, &Reader) -> Unit raise = _
+  async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+  async write(Self, @bytes.View) -> Unit = _
+  async write_reader(Self, &Reader) -> Unit = _
 }
 

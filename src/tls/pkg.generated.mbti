@@ -16,13 +16,13 @@ impl Show for OpenSSLError
 
 // Types and methods
 type TLS
-async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool, host? : Bytes, sni? : Bool) -> Self raise
-async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool, host? : Bytes, sni? : Bool) -> Self raise
+async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool, host? : Bytes, sni? : Bool) -> Self
+async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool, host? : Bytes, sni? : Bool) -> Self
 fn TLS::close(Self) -> Unit
-async fn TLS::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
-async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self raise
-async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(R, W, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self raise
-async fn TLS::shutdown(Self) -> Unit raise
+async fn TLS::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self
+async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(R, W, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self
+async fn TLS::shutdown(Self) -> Unit
 impl @io.Reader for TLS
 impl @io.Writer for TLS
 
