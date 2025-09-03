@@ -27,20 +27,38 @@ pub fn Protocol::default_port(p : Protocol) -> Int {
 }
 
 ///|
+pub suberror URIParseError {
+  InvalidFormat
+  UnsupportedProtocol(String)
+} derive(Show)
+
+///|
 async fn perform_request(
   uri : Bytes,
   meth : RequestMethod,
   headers : Array[Header],
   body : Body,
-  protocol~ : Protocol,
-  port~ : Int,
+  port? : Int,
 ) -> (Response, Bytes) raise {
-  let (host, path) = for i = 0; i < uri.length(); i = i + 1 {
-    if uri[i] == '/' {
-      break (uri[:i].to_bytes(), uri[i:].to_bytes())
-    }
+  guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
+  let protocol = match uri[:protocol_len] {
+    "http" => Http
+    "https" => Https
+    protocol => raise UnsupportedProtocol(@bytes_util.ascii_to_string(protocol))
+  }
+  let port = match port {
+    Some(port) => port
+    None =>
+      match protocol {
+        Http => 80
+        Https => 443
+      }
+  }
+  let uri = uri[protocol_len + 3:]
+  let (host, path) = if uri.find("/") is Some(i) {
+    (uri[:i].to_bytes(), uri[i:].to_bytes())
   } else {
-    (uri, "/")
+    (uri.to_bytes(), "/")
   }
   let path = if path == "" { b"/" } else { path }
   let client = Client::connect(host, headers~, protocol~, port~)
@@ -52,23 +70,21 @@ async fn perform_request(
 }
 
 ///|
-/// Perform a HTTP `GET` request to `uri`,
-/// which should be a URI without the protocol part.
+/// Perform a HTTP `GET` request to `uri`.
+/// Supported protocols are `http://` and `https://`.
 /// The HTTP response message and the whole response body will be returned.
 ///
-/// The protocol can be specified via `protocol`, which is `Https` by default.
-/// By default the standard port number of `protocol` is used,
-/// but this can be overriden by explicitly passing `port`.
+/// `port` is the port number to connect to.
+/// By default it is the standard port for the specified protocol.
 ///
 /// See `Client::request` for more details.
 #alias(request, deprecated)
 pub async fn get(
   uri : Bytes,
   headers? : Array[Header] = [],
-  protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
+  port? : Int,
 ) -> (Response, Bytes) raise {
-  perform_request(uri, Get, headers, Empty, protocol~, port~)
+  perform_request(uri, Get, headers, Empty, port?)
 }
 
 ///|
@@ -77,10 +93,9 @@ pub async fn put(
   uri : Bytes,
   content : Bytes,
   headers? : Array[Header] = [],
-  protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
+  port? : Int,
 ) -> (Response, Bytes) raise {
-  perform_request(uri, Put, headers, Fixed(content), protocol~, port~)
+  perform_request(uri, Put, headers, Fixed(content), port?)
 }
 
 ///|
@@ -89,8 +104,7 @@ pub async fn post(
   uri : Bytes,
   content : Bytes,
   headers? : Array[Header] = [],
-  protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
+  port? : Int,
 ) -> (Response, Bytes) raise {
-  perform_request(uri, Post, headers, Fixed(content), protocol~, port~)
+  perform_request(uri, Post, headers, Fixed(content), port?)
 }

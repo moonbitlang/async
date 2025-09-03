@@ -7,11 +7,11 @@ import(
 
 // Values
 #alias(request, deprecated)
-async fn get(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
+async fn get(Bytes, headers? : Array[Header], port? : Int) -> (Response, Bytes)
 
-async fn post(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
+async fn post(Bytes, Bytes, headers? : Array[Header], port? : Int) -> (Response, Bytes)
 
-async fn put(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
+async fn put(Bytes, Bytes, headers? : Array[Header], port? : Int) -> (Response, Bytes)
 
 async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit
 
@@ -24,6 +24,12 @@ pub suberror HttpProtocolError {
   NotImplemented
 }
 impl Show for HttpProtocolError
+
+pub suberror URIParseError {
+  InvalidFormat
+  UnsupportedProtocol(String)
+}
+impl Show for URIParseError
 
 // Types and methods
 pub(all) enum Body {
