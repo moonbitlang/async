@@ -18,8 +18,8 @@
 /// The internal buffer size of this queue is unlimited,
 /// and writing to the queue will never block.
 struct Queue[X] {
-  readers : @deque.T[Ref[@coroutine.Coroutine?]]
-  buffer : @deque.T[X]
+  readers : @deque.Deque[Ref[@coroutine.Coroutine?]]
+  buffer : @deque.Deque[X]
 }
 
 ///|
