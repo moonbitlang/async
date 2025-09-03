@@ -19,8 +19,8 @@ priv struct EventLoop {
   pids : Map[Int, ProcessHandle]
   notify_recv : Int
   max_worker_count : Int
-  job_queue : @deque.T[JobForWorker]
-  idle_workers : @deque.T[Worker]
+  job_queue : @deque.Deque[JobForWorker]
+  idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
 }

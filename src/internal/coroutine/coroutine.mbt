@@ -31,7 +31,7 @@ struct Coroutine {
 }
 
 ///|
-pub impl Eq for Coroutine with op_equal(c1, c2) {
+pub impl Eq for Coroutine with equal(c1, c2) {
   c1.coro_id == c2.coro_id
 }
 

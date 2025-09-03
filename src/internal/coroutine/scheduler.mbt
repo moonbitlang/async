@@ -30,7 +30,7 @@ fn Timer::new(duration : Int, coro : Coroutine) -> Timer {
 }
 
 ///|
-impl Eq for Timer with op_equal(t1, t2) {
+impl Eq for Timer with equal(t1, t2) {
   t1.timer_id == t2.timer_id
 }
 
@@ -47,8 +47,8 @@ priv struct Scheduler {
   mut coro_id : Int
   mut curr_coro : Coroutine?
   mut blocking : Int
-  run_later : @deque.T[Coroutine]
-  timers : @sorted_set.T[Timer]
+  run_later : @deque.Deque[Coroutine]
+  timers : @sorted_set.SortedSet[Timer]
 }
 
 ///|
