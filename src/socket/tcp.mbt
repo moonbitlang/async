@@ -115,7 +115,6 @@ pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-#alias(recv, deprecated)
 pub async fn TCP::read(
   self : TCP,
   buf : FixedArray[Byte],

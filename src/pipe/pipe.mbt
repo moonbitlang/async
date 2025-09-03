@@ -115,15 +115,6 @@ pub let stderr : PipeWrite = {
 }
 
 ///|
-/// Reset the state of standard input/output/error, clearing the non-blocking flag.
-/// For console applications, this prevents the parent process from also entering non-blocking mode.
-/// If stdio is already in non-blocking mode, this function does nothing.
-#deprecated("`reset_stdio` is no longer needed")
-pub fn reset_stdio() -> Unit {
-
-}
-
-///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
   let PipeRead(fd) = self
   @event_loop.close_fd(fd)

@@ -1,10 +1,6 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/socket"
 
-import(
-  "moonbitlang/core/bytes"
-)
-
 // Values
 
 // Errors
@@ -31,12 +27,7 @@ fn TCP::close(Self) -> Unit
 async fn TCP::connect(Addr) -> Self
 async fn TCP::connect_to_host(Bytes, port~ : Int) -> Self
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-#alias(recv, deprecated)
 async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-#deprecated
-async fn TCP::recv_exactly(Self, Int) -> Bytes
-#deprecated
-async fn TCP::send(Self, @bytes.View) -> Unit
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP
 
