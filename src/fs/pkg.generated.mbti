@@ -2,27 +2,27 @@
 package "moonbitlang/async/fs"
 
 // Values
-async fn create(Bytes, permission~ : Int, sync? : SyncMode) -> File raise
+async fn create(Bytes, permission~ : Int, sync? : SyncMode) -> File
 
-async fn open(Bytes, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File raise
+async fn open(Bytes, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
 
 fn opendir(Bytes) -> Directory raise
 
-async fn remove(Bytes) -> Unit raise
+async fn remove(Bytes) -> Unit
 
 // Errors
 
 // Types and methods
 type Directory
 fn Directory::close(Self) -> Unit
-async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[Bytes] raise
+async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[Bytes]
 
 type File
 fn File::as_dir(Self) -> Directory raise
 fn File::close(Self) -> Unit
 fn File::curr_pos(Self) -> Int64 raise
 fn File::kind(Self) -> FileKind
-async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
+async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise
 impl @moonbitlang/async/io.Reader for File

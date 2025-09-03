@@ -7,15 +7,15 @@ import(
 
 // Values
 #alias(request, deprecated)
-async fn get(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+async fn get(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
 
-async fn post(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+async fn post(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
 
-async fn put(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes) raise
+async fn put(Bytes, Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> (Response, Bytes)
 
-async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit raise
+async fn[Writer : @io.Writer] send_request(Writer, Request, Body) -> Unit
 
-async fn[Writer : @io.Writer] send_response(Writer, Response, Body) -> Unit raise
+async fn[Writer : @io.Writer] send_response(Writer, Response, Body) -> Unit
 
 // Errors
 pub suberror HttpProtocolError {
@@ -34,13 +34,13 @@ pub(all) enum Body {
 
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> Self raise
-async fn Client::get(Self, Bytes, extra_headers? : Array[Header], body? : Body) -> Response raise
-async fn Client::post(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response raise
-async fn Client::put(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response raise
-async fn Client::request(Self, RequestMethod, Bytes, extra_headers? : Array[Header], Body) -> Response raise
-async fn Client::shutdown(Self) -> Unit raise
-async fn Client::skip_body(Self) -> Unit raise
+async fn Client::connect(Bytes, headers? : Array[Header], protocol? : Protocol, port? : Int) -> Self
+async fn Client::get(Self, Bytes, extra_headers? : Array[Header], body? : Body) -> Response
+async fn Client::post(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response
+async fn Client::put(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response
+async fn Client::request(Self, RequestMethod, Bytes, extra_headers? : Array[Header], Body) -> Response
+async fn Client::shutdown(Self) -> Unit
+async fn Client::skip_body(Self) -> Unit
 impl @io.Reader for Client
 
 pub(all) struct Header(Bytes, Bytes)
@@ -54,10 +54,10 @@ fn Protocol::default_port(Self) -> Int
 
 type Reader
 fn[R : @io.Reader] Reader::new(R) -> Self
-async fn Reader::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
-async fn Reader::read_request(Self) -> Request raise
-async fn Reader::read_response(Self) -> Response raise
-async fn Reader::skip_body(Self) -> Unit raise
+async fn Reader::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+async fn Reader::read_request(Self) -> Request
+async fn Reader::read_response(Self) -> Response
+async fn Reader::skip_body(Self) -> Unit
 impl @io.Reader for Reader
 
 pub(all) struct Request {

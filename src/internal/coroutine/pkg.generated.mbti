@@ -10,17 +10,17 @@ fn next_expire_time() -> Int64?
 
 fn no_more_work() -> Bool
 
-async fn pause() -> Unit raise
+async fn pause() -> Unit
 
-async fn protect_from_cancel(async () -> Unit raise) -> Unit raise
+async fn protect_from_cancel(async () -> Unit) -> Unit
 
 fn reschedule() -> Unit
 
-async fn sleep(Int) -> Unit raise
+async fn sleep(Int) -> Unit
 
-fn spawn(async () -> Unit raise) -> Coroutine
+fn spawn(async () -> Unit) -> Coroutine
 
-async fn suspend() -> Unit raise
+async fn suspend() -> Unit
 
 // Errors
 pub(all) suberror Cancelled
@@ -30,7 +30,7 @@ impl Show for Cancelled
 type Coroutine
 fn Coroutine::cancel(Self) -> Unit
 fn Coroutine::unwrap(Self) -> Unit raise
-async fn Coroutine::wait(Self) -> Unit raise
+async fn Coroutine::wait(Self) -> Unit
 fn Coroutine::wake(Self) -> Unit
 impl Eq for Coroutine
 impl Hash for Coroutine

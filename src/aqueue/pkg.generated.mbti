@@ -7,7 +7,7 @@ package "moonbitlang/async/aqueue"
 
 // Types and methods
 type Queue[X]
-async fn[X] Queue::get(Self[X]) -> X raise
+async fn[X] Queue::get(Self[X]) -> X
 fn[X] Queue::new() -> Self[X]
 fn[X] Queue::put(Self[X], X) -> Unit
 
