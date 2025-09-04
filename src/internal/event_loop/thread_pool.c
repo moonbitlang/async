@@ -353,6 +353,7 @@ void *worker_loop(void *data) {
       if (!(job->err)) {
         job->ret = pid;
       }
+      printf("spawn() => %d | %d\n", pid, job->err);
       break;
     }
 

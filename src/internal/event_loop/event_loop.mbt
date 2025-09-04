@@ -318,7 +318,7 @@ async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let alt_id = evloop.poll.register_pid(pid) catch {
     err => {
-      println("register_pid: \{err}")
+      println("register_pid(\{pid}): \{err}")
       raise err
     }
   }

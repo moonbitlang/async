@@ -110,7 +110,6 @@ pub async fn run(
     cwd~,
   )
   let pid = @event_loop.perform_job(job)
-  defer println("`@process.run` completed")
   @event_loop.perform_job(WaitProcess(pid)) catch {
     err if !orphan && @coroutine.is_being_cancelled() => {
       println("`@process.run` cancelled")
