@@ -73,7 +73,7 @@ test "orphan process" {
         log.write_string("from process: \{data}")
       }
     })
-    @async.sleep(50)
+    @async.sleep(100)
     task.cancel()
     log.write_string("cancelling task running process\n")
   })
