@@ -325,10 +325,7 @@ async fn wait_pid(pid : Int) -> Int raise {
       println("register_pid(\{pid}): \{err}")
       let out = @ref.new(0)
       let ret = get_terminated_pid_status(pid, out)
-      println("!!!!!!!!!!!!!!!! waitpid() => \{ret} | \{out} !!!!!!!!!!!!!!!!!!")
-      if ret > 0 {
-        return out.val
-      }
+      println("!!!!!!!!!!!!!!!! waitpid() => \{ret} | \{out.val} !!!!!!!!!!!!!!!!!!")
       raise err
     }
   }
