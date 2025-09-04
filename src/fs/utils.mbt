@@ -25,3 +25,70 @@ pub async fn kind(path : Bytes) -> FileKind raise {
   let _ = @event_loop.perform_job(Stat(path~, out=stat))
   file_kind_from_stat(stat)
 }
+
+///|
+extern "C" fn f_ok() -> Int = "moonbitlang_async_f_ok"
+
+///|
+extern "C" fn r_ok() -> Int = "moonbitlang_async_r_ok"
+
+///|
+extern "C" fn w_ok() -> Int = "moonbitlang_async_w_ok"
+
+///|
+extern "C" fn x_ok() -> Int = "moonbitlang_async_x_ok"
+
+///|
+extern "C" fn get_ENOENT() -> Int = "moonbitlang_async_get_ENOENT"
+
+///|
+let _ENOENT : Int = get_ENOENT()
+
+///|
+extern "C" fn get_EACCES() -> Int = "moonbitlang_async_get_EACCES"
+
+///|
+let _EACCES : Int = get_EACCES()
+
+///|
+pub async fn exists(path : Bytes) -> Bool raise {
+  try @event_loop.perform_job(Access(path~, amode=f_ok())) catch {
+    @os_error.OSError(code) if code == _ENOENT => false
+    err => raise err
+  } noraise {
+    _ => true
+  }
+}
+
+///|
+pub async fn can_read(path : Bytes) -> Bool raise {
+  try @event_loop.perform_job(Access(path~, amode=r_ok())) catch {
+    @os_error.OSError(code) if code == _ENOENT => false
+    @os_error.OSError(code) if code == _EACCES => false
+    err => raise err
+  } noraise {
+    _ => true
+  }
+}
+
+///|
+pub async fn can_write(path : Bytes) -> Bool raise {
+  try @event_loop.perform_job(Access(path~, amode=w_ok())) catch {
+    @os_error.OSError(code) if code == _ENOENT => false
+    @os_error.OSError(code) if code == _EACCES => false
+    err => raise err
+  } noraise {
+    _ => true
+  }
+}
+
+///|
+pub async fn can_execute(path : Bytes) -> Bool raise {
+  try @event_loop.perform_job(Access(path~, amode=x_ok())) catch {
+    @os_error.OSError(code) if code == _ENOENT => false
+    @os_error.OSError(code) if code == _EACCES => false
+    err => raise err
+  } noraise {
+    _ => true
+  }
+}

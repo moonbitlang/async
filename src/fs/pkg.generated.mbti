@@ -2,7 +2,15 @@
 package "moonbitlang/async/fs"
 
 // Values
+async fn can_execute(Bytes) -> Bool
+
+async fn can_read(Bytes) -> Bool
+
+async fn can_write(Bytes) -> Bool
+
 async fn create(Bytes, permission~ : Int, sync? : SyncMode) -> File
+
+async fn exists(Bytes) -> Bool
 
 async fn kind(Bytes) -> FileKind
 
