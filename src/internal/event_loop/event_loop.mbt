@@ -64,6 +64,7 @@ pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
 
 ///|
 pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
+  println("========")
   guard curr_loop.val is None
   let (notify_recv, notify_send) = @fd_util.pipe()
   try {
@@ -144,6 +145,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       let events = event.events()
       let fd = event.fd()
       if (events & ProcessEvent) != 0 {
+        println("pid completed")
         if self.pids.get(fd) is Some(handle) {
           let result = @ref.new(0)
           if event.pid_status(result) < 0 {
@@ -314,17 +316,25 @@ async fn wait_fd_write(fd : Int) -> Unit raise {
 ///|
 async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
-  let alt_id = evloop.poll.register_pid(pid)
+  let alt_id = evloop.poll.register_pid(pid) catch {
+    err => {
+      println("register_pid: \{err}")
+      raise err
+    }
+  }
   guard evloop.pids.get(alt_id) is None
   let handle = { result: 0, waiter: @coroutine.current_coroutine() }
   evloop.pids[alt_id] = handle
+  println("start waiting for pid")
   @coroutine.suspend() catch {
     err => {
+      println("wait_pid cancelled")
       evloop.pids.remove(alt_id)
       evloop.poll.remove_pid(alt_id)
       raise err
     }
   }
+  println("wait_pid => \{handle.result}")
   handle.result
 }
 
