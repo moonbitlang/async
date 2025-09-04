@@ -22,7 +22,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Show)
+} derive(Eq, Show)
 
 ///|
 struct File {

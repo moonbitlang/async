@@ -63,13 +63,8 @@ moonbit_bytes_t moonbitlang_async_dirent_name(struct dirent *dirent) {
   return result;
 }
 
-int32_t moonbitlang_async_file_kind(int fd) {
-  struct stat stat;
-
-  if (fstat(fd, &stat) < 0)
-    return -1;
-
-  switch (stat.st_mode & S_IFMT) {
+int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
+  switch (stat->st_mode & S_IFMT) {
   case S_IFREG:  return 1;
   case S_IFDIR:  return 2;
   case S_IFLNK:  return 3;
@@ -79,4 +74,17 @@ int32_t moonbitlang_async_file_kind(int fd) {
   case S_IFCHR:  return 7;
   default:       return 0;
   }
+}
+
+int32_t moonbitlang_async_file_kind(int fd) {
+  struct stat stat;
+
+  if (fstat(fd, &stat) < 0)
+    return -1;
+
+  return moonbitlang_async_file_kind_from_stat(&stat);
+}
+
+int32_t moonbitlang_async_sizeof_stat() {
+  return sizeof(struct stat);
 }

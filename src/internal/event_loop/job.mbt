@@ -57,6 +57,13 @@ extern "C" fn JobForWorker::open(
 ) -> JobForWorker = "moonbitlang_async_make_open_job"
 
 ///|
+#owned(path, out)
+extern "C" fn JobForWorker::stat(
+  path : Bytes,
+  out : FixedArray[Byte],
+) -> JobForWorker = "moonbitlang_async_make_stat_job"
+
+///|
 #owned(path)
 extern "C" fn JobForWorker::remove(path : Bytes) -> JobForWorker = "moonbitlang_async_make_remove_job"
 
@@ -140,6 +147,7 @@ pub(all) enum Job {
   )
   Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
+  Stat(path~ : Bytes, out~ : FixedArray[Byte])
   Remove(path~ : Bytes)
   Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
   Spawn(
