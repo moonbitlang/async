@@ -235,5 +235,13 @@ int moonbitlang_async_event_get_pid_status(struct kevent *ev, int *out) {
   return 0;
 }
 
+int moonbitlang_async_get_terminated_pid_status(pid_t pid, int *out) {
+  int wstatus = 0;
+  int ret = waitpid(pid, &wstatus, WNOHANG);
+  if (ret == pid)
+    *out = WEXITSTATUS(wstatus);
+  return ret;
+}
+
 // end of kqueue backend
 #endif

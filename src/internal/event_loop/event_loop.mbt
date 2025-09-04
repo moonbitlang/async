@@ -314,11 +314,21 @@ async fn wait_fd_write(fd : Int) -> Unit raise {
 }
 
 ///|
+#borrow(out)
+extern "C" fn get_terminated_pid_status(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_merminated_pid_status"
+
+///|
 async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
   let alt_id = evloop.poll.register_pid(pid) catch {
     err => {
       println("register_pid(\{pid}): \{err}")
+      let out = @ref.new(0)
+      let ret = get_terminated_pid_status(pid, out)
+      println("waitpid() => \{ret} | \{out}")
+      if ret > 0 {
+        return out.val
+      }
       raise err
     }
   }
