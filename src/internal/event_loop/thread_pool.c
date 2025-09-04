@@ -30,6 +30,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/stat.h>
 #include <moonbit.h>
 
 #ifdef __MACH__
@@ -46,6 +47,7 @@ enum op_code {
   OP_READ,
   OP_WRITE,
   OP_OPEN,
+  OP_STAT,
   OP_REMOVE,
   OP_READDIR,
   OP_SPAWN,
@@ -72,6 +74,11 @@ struct open_job {
   char *filename;
   int flags;
   int mode;
+};
+
+struct stat_job {
+  char *path;
+  void *out;
 };
 
 struct remove_job {
@@ -122,6 +129,7 @@ struct job {
     struct read_job read;
     struct write_job write;
     struct open_job open;
+    struct stat_job stat;
     struct remove_job remove;
     struct readdir_job readdir;
     struct spawn_job spawn;
@@ -243,6 +251,12 @@ void *worker_loop(void *data) {
         job->payload.open.flags | O_CLOEXEC,
         job->payload.open.mode
       );
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_STAT:
+      job->ret = stat(job->payload.stat.path, job->payload.stat.out);
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -562,6 +576,15 @@ struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode)
   job->payload.open.filename = filename;
   job->payload.open.flags = flags;
   job->payload.open.mode = mode;
+  return job;
+}
+
+struct job *moonbitlang_async_make_stat_job(char *path, void *out) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_STAT;
+  job->payload.stat.path = path;
+  job->payload.stat.out = out;
   return job;
 }
 

@@ -25,7 +25,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs.mbt", "stub.c", "dir.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
+      #|["fs.mbt", "stub.c", "dir.mbt", "utils.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
     ),
   )
 }
@@ -42,7 +42,9 @@ test "as_dir" {
     let list = dir.read_all()
     list.sort()
     for file in list {
-      let kind = @fs.open(b"src/fs/" + file, mode=ReadOnly).kind()
+      let path = b"src/fs/" + file
+      let kind = @fs.open(path, mode=ReadOnly).kind()
+      assert_eq(kind, @fs.kind(path))
       log.write_string("\{@bytes_util.ascii_to_string(file)}: \{kind}\n")
     }
   })
@@ -52,6 +54,7 @@ test "as_dir" {
       #|fs.mbt: Regular
       #|stub.c: Regular
       #|dir.mbt: Regular
+      #|utils.mbt: Regular
       #|dir_test.mbt: Regular
       #|eof_test.mbt: Regular
       #|moon.pkg.json: Regular
@@ -79,5 +82,5 @@ test "readdir clear errno" {
     let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
     log.write_object(list.length())
   })
-  inspect(log.to_string(), content="10")
+  inspect(log.to_string(), content="11")
 }
