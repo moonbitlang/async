@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <moonbit.h>
 
@@ -87,4 +88,28 @@ int32_t moonbitlang_async_file_kind(int fd) {
 
 int32_t moonbitlang_async_sizeof_stat() {
   return sizeof(struct stat);
+}
+
+int moonbitlang_async_r_ok() {
+  return R_OK;
+}
+
+int moonbitlang_async_w_ok() {
+  return W_OK;
+}
+
+int moonbitlang_async_x_ok() {
+  return X_OK;
+}
+
+int moonbitlang_async_f_ok() {
+  return F_OK;
+}
+
+int moonbitlang_async_get_ENOENT() {
+  return ENOENT;
+}
+
+int moonbitlang_async_get_EACCES() {
+  return EACCES;
 }

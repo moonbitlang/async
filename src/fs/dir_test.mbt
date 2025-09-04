@@ -25,7 +25,7 @@ test "read_all" {
   inspect(
     log.to_string(),
     content=(
-      #|["fs.mbt", "stub.c", "dir.mbt", "utils.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
+      #|["fs.mbt", "stub.c", "dir.mbt", "utils.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json", "seek_test.mbt", "access_test.mbt", "create_test.mbt", "read_all_test.mbt", "pkg.generated.mbti"]
     ),
   )
 }
@@ -59,6 +59,7 @@ test "as_dir" {
       #|eof_test.mbt: Regular
       #|moon.pkg.json: Regular
       #|seek_test.mbt: Regular
+      #|access_test.mbt: Regular
       #|create_test.mbt: Regular
       #|read_all_test.mbt: Regular
       #|pkg.generated.mbti: Regular
@@ -82,5 +83,5 @@ test "readdir clear errno" {
     let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
     log.write_object(list.length())
   })
-  inspect(log.to_string(), content="11")
+  inspect(log.to_string(), content="12")
 }

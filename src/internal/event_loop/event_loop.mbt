@@ -427,6 +427,8 @@ pub async fn perform_job(job : Job) -> Int raise {
     Open(path~, flags~, mode~) =>
       perform_job_in_worker(JobForWorker::open(path, flags, mode))
     Stat(path~, out~) => perform_job_in_worker(JobForWorker::stat(path, out))
+    Access(path~, amode~) =>
+      perform_job_in_worker(JobForWorker::access(path, amode))
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
     Readdir(dir~, out~) =>
       perform_job_in_worker(JobForWorker::readdir(dir, out))

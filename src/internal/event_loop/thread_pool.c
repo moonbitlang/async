@@ -48,6 +48,7 @@ enum op_code {
   OP_WRITE,
   OP_OPEN,
   OP_STAT,
+  OP_ACCESS,
   OP_REMOVE,
   OP_READDIR,
   OP_SPAWN,
@@ -79,6 +80,11 @@ struct open_job {
 struct stat_job {
   char *path;
   void *out;
+};
+
+struct access_job {
+  char *path;
+  int amode;
 };
 
 struct remove_job {
@@ -130,6 +136,7 @@ struct job {
     struct write_job write;
     struct open_job open;
     struct stat_job stat;
+    struct access_job access;
     struct remove_job remove;
     struct readdir_job readdir;
     struct spawn_job spawn;
@@ -257,6 +264,12 @@ void *worker_loop(void *data) {
 
     case OP_STAT:
       job->ret = stat(job->payload.stat.path, job->payload.stat.out);
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_ACCESS:
+      job->ret = access(job->payload.access.path, job->payload.access.amode);
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -501,6 +514,13 @@ void free_job(void *jobp) {
   case OP_OPEN:
     moonbit_decref(job->payload.open.filename);
     break;
+  case OP_STAT:
+    moonbit_decref(job->payload.stat.path);
+    moonbit_decref(job->payload.stat.out);
+    break;
+  case OP_ACCESS:
+    moonbit_decref(job->payload.access.path);
+    break;
   case OP_REMOVE:
     moonbit_decref(job->payload.remove.path);
     break;
@@ -585,6 +605,15 @@ struct job *moonbitlang_async_make_stat_job(char *path, void *out) {
   job->op_code = OP_STAT;
   job->payload.stat.path = path;
   job->payload.stat.out = out;
+  return job;
+}
+
+struct job *moonbitlang_async_make_access_job(char *path, int amode) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_ACCESS;
+  job->payload.access.path = path;
+  job->payload.access.amode = amode;
   return job;
 }
 
