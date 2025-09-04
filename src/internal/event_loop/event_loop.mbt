@@ -315,7 +315,7 @@ async fn wait_fd_write(fd : Int) -> Unit raise {
 
 ///|
 #borrow(out)
-extern "C" fn get_terminated_pid_status(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_merminated_pid_status"
+extern "C" fn get_terminated_pid_status(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_terminated_pid_status"
 
 ///|
 async fn wait_pid(pid : Int) -> Int raise {
