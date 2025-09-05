@@ -56,15 +56,34 @@ fn Instance::register(
 }
 
 ///|
-extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
+#borrow(out)
+extern "C" fn Instance::register_pid_ffi(
+  self : Instance,
+  pid : Int,
+  out : Ref[Int],
+) -> Int = "moonbitlang_async_poll_register_pid"
 
 ///|
-fn Instance::register_pid(self : Instance, pid : Int) -> Int raise {
-  let handle = self.register_pid_ffi(pid)
-  if handle < 0 {
+priv enum RegisterPidResult {
+  Running(Int)
+  Stopped(Int)
+}
+
+///|
+fn Instance::register_pid(
+  self : Instance,
+  pid : Int,
+) -> RegisterPidResult raise {
+  let out = @ref.new(0)
+  let ret = self.register_pid_ffi(pid, out)
+  if ret < 0 {
     @os_error.check_errno()
   }
-  handle
+  if ret == 0 {
+    Running(out.val)
+  } else {
+    Stopped(out.val)
+  }
 }
 
 ///|
