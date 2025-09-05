@@ -45,6 +45,7 @@ async fn Client::get(Self, Bytes, extra_headers? : Array[Header], body? : Body) 
 async fn Client::post(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response
 async fn Client::put(Self, Bytes, Body, extra_headers? : Array[Header]) -> Response
 async fn Client::request(Self, RequestMethod, Bytes, extra_headers? : Array[Header], Body) -> Response
+#deprecated
 async fn Client::shutdown(Self) -> Unit
 async fn Client::skip_body(Self) -> Unit
 impl @io.Reader for Client

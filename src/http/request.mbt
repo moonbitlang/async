@@ -65,7 +65,6 @@ async fn perform_request(
   defer client.close()
   let response = client.request(meth, path, body)
   let body = client.read_all()
-  client.shutdown()
   (response, body)
 }
 

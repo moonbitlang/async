@@ -69,6 +69,7 @@ pub fn Client::close(self : Client) -> Unit {
 /// Gracefully shutdown a HTTP client, in particular perform TLS shutdown.
 /// This MUST be called before `close`
 /// and MUST NOT be called on fatal network or TLS error.
+#deprecated("TLS shutdown is not necessary for HTTP/1.1, and bad server may cause this to hang")
 pub async fn Client::shutdown(self : Client) -> Unit raise {
   if self.tls is Some(tls) {
     tls.shutdown()

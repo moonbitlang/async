@@ -244,8 +244,15 @@ pub fn TLS::close(self : TLS) -> Unit {
 /// This function MUST be called before `close`,
 /// and MUST NOT be called if the TLS connection fail with other error.
 ///
+/// Note that the main purpose of TLS shutdown is to ensure integrity
+/// before closing the underlying transport.
+/// So if your application protocol has its own way of ensuring integrity
+/// (e.g. `Content-Length` in HTTP/1.1),
+/// it is not necessary to call `shutdown`.
+///
 /// Shutting down a TLS connection involves communicating with remote peer,
 /// which may die unexpectedly or become irresponsive.
+/// Furthermore, some servers may not response correctly to TLS shutdown.
 /// So it is highly recommended to add a timeout when calling this function,
 /// to prevent the program from haning indefinitely.
 pub async fn TLS::shutdown(self : TLS) -> Unit raise {
@@ -255,11 +262,10 @@ pub async fn TLS::shutdown(self : TLS) -> Unit raise {
     } else {
       self.ssl.get_error(ret)
     }
-    self.handle_error(err)
     match err {
       SSL_ERROR_WANT_READ if self.read_end.state is Closed => break
       SSL_ERROR_WANT_WRITE if self.write_end.state is Closed => break
-      _ => ()
+      _ => self.handle_error(err)
     }
   }
 }
