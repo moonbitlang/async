@@ -314,7 +314,10 @@ async fn wait_fd_write(fd : Int) -> Unit raise {
 ///|
 async fn wait_pid(pid : Int) -> Int raise {
   guard curr_loop.val is Some(evloop)
-  let alt_id = evloop.poll.register_pid(pid)
+  let alt_id = match evloop.poll.register_pid(pid) {
+    Running(id) => id
+    Stopped(ret) => return ret
+  }
   guard evloop.pids.get(alt_id) is None
   let handle = { result: 0, waiter: @coroutine.current_coroutine() }
   evloop.pids[alt_id] = handle
