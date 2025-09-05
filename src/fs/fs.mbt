@@ -25,6 +25,7 @@ pub(all) enum FileKind {
 } derive(Eq, Show)
 
 ///|
+#valtype
 struct File {
   fd : Int
   kind : FileKind

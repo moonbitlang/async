@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#valtype
 priv struct Timer {
   timer_id : Int
   expire_time : Int64
