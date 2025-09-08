@@ -31,3 +31,32 @@ test "basic create" {
   })
   inspect(buf, content="[b'\\x61', b'\\x62', b'\\x63', b'\\x64']")
 }
+
+///|
+test "create or append" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let path = b"create_append_test"
+    async fn add_data(data) raise {
+      let w = @fs.open(
+        path,
+        mode=WriteOnly,
+        create=0o644,
+        sync=Full,
+        append=true,
+      )
+      defer w.close()
+      w.write(data)
+    }
+
+    add_data(b"abcd")
+    add_data(b"efgh")
+    {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      log.write_string(r.read_all() |> @bytes_util.ascii_to_string)
+    }
+    @fs.remove(path)
+  })
+  inspect(log.to_string(), content="abcdefgh")
+}

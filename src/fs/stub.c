@@ -27,8 +27,8 @@ int moonbitlang_async_make_open_flags(
   int mode,
   int sync_mode,
   int append,
-  int trunc,
-  int create
+  int create,
+  int trunc
 ) {
   static int modes[] = { O_RDONLY, O_WRONLY, O_RDWR };
   static int sync_modes[] = { 0, O_DSYNC, O_SYNC };
