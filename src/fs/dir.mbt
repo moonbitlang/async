@@ -13,6 +13,20 @@
 // limitations under the License.
 
 ///|
+/// Create a directory at `path`.
+/// The permission of the created directory must be set in `permission`.
+pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit raise {
+  ignore(@event_loop.perform_job(Mkdir(path~, mode=permission)))
+}
+
+///|
+/// Remove a directory at `path`,
+/// `path` must be an empty directory, otherwise `rmdir` will fail.
+pub async fn rmdir(path : Bytes) -> Unit raise {
+  ignore(@event_loop.perform_job(Rmdir(path~)))
+}
+
+///|
 /// A directory in file system
 struct Directory(@event_loop.Directory)
 
