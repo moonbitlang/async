@@ -13,15 +13,29 @@
 // limitations under the License.
 
 ///|
+let port : Int = 3001
+
+///|
 fn main_prog() -> Unit raise {
   @async.with_event_loop(fn(root) {
-    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:4200"))
+    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+    let headers : Array[@http.Header] = [
+      Header("Connection", "Keep-Alive"),
+      Header("Keep-Alive", "timeout=5"),
+    ]
     defer server.close()
     for {
       let (conn, _) = server.accept()
+      let conn = @http.ServerConnection::new(conn, headers~)
       root.spawn_bg(allow_failure=true, fn() {
         defer conn.close()
-        conn.write_reader(conn)
+        for {
+          let request = conn.read_request()
+          match (request.meth, request.path) {
+            (Get, "/") => conn.send_response(200, "OK", Fixed(""))
+            _ => conn.send_response(404, "NotFound", Fixed(""))
+          }
+        }
       })
     }
   })
@@ -30,6 +44,6 @@ fn main_prog() -> Unit raise {
 ///|
 fn main {
   main_prog() catch {
-    err => println("server exit with error \{err}")
+    err => println(err)
   }
 }
