@@ -477,6 +477,11 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 #endif
 
+  sigset_t sigpipe;
+  sigemptyset(&sigpipe);
+  sigaddset(&sigpipe, SIGPIPE);
+  pthread_sigmask(SIG_BLOCK, &sigpipe, 0);
+
   pool.notify_send = notify_send;
   pool.initialized = 1;
 }
