@@ -50,6 +50,8 @@ enum op_code {
   OP_STAT,
   OP_ACCESS,
   OP_REMOVE,
+  OP_MKDIR,
+  OP_RMDIR,
   OP_READDIR,
   OP_SPAWN,
   OP_RECVFROM,
@@ -88,6 +90,15 @@ struct access_job {
 };
 
 struct remove_job {
+  char *path;
+};
+
+struct mkdir_job {
+  char *path;
+  int mode;
+};
+
+struct rmdir_job {
   char *path;
 };
 
@@ -138,6 +149,8 @@ struct job {
     struct stat_job stat;
     struct access_job access;
     struct remove_job remove;
+    struct mkdir_job mkdir;
+    struct rmdir_job rmdir;
     struct readdir_job readdir;
     struct spawn_job spawn;
     struct recvfrom_job recvfrom;
@@ -276,6 +289,18 @@ void *worker_loop(void *data) {
 
     case OP_REMOVE:
       job->ret = remove(job->payload.remove.path);
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_MKDIR:
+      job->ret = mkdir(job->payload.mkdir.path, job->payload.mkdir.mode);
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_RMDIR:
+      job->ret = rmdir(job->payload.rmdir.path);
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -524,6 +549,12 @@ void free_job(void *jobp) {
   case OP_REMOVE:
     moonbit_decref(job->payload.remove.path);
     break;
+  case OP_MKDIR:
+    moonbit_decref(job->payload.mkdir.path);
+    break;
+  case OP_RMDIR:
+    moonbit_decref(job->payload.rmdir.path);
+    break;
   case OP_READDIR:
     moonbit_decref(job->payload.readdir.out);
     break;
@@ -622,6 +653,23 @@ struct job *moonbitlang_async_make_remove_job(char *path) {
   job->job_id = pool.job_id++;
   job->op_code = OP_REMOVE;
   job->payload.remove.path = path;
+  return job;
+}
+
+struct job *moonbitlang_async_make_mkdir_job(char *path, int mode) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_MKDIR;
+  job->payload.mkdir.path = path;
+  job->payload.mkdir.mode = mode;
+  return job;
+}
+
+struct job *moonbitlang_async_make_rmdir_job(char *path) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_RMDIR;
+  job->payload.rmdir.path = path;
   return job;
 }
 

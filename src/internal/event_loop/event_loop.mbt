@@ -433,6 +433,9 @@ pub async fn perform_job(job : Job) -> Int raise {
     Access(path~, amode~) =>
       perform_job_in_worker(JobForWorker::access(path, amode))
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
+    Mkdir(path~, mode~) =>
+      perform_job_in_worker(JobForWorker::mkdir(path, mode))
+    Rmdir(path~) => perform_job_in_worker(JobForWorker::rmdir(path))
     Readdir(dir~, out~) =>
       perform_job_in_worker(JobForWorker::readdir(dir, out))
     Spawn(path~, args~, env~, stdin~, stdout~, stderr~, cwd~) =>
