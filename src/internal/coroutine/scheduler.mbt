@@ -67,9 +67,11 @@ pub fn current_coroutine() -> Coroutine {
 }
 
 ///|
-pub fn next_expire_time() -> Int64? {
-  if scheduler.timers.iter().head() is Some(timer) {
-    Some(timer.expire_time)
+pub fn idle_timeout() -> Int64? {
+  if not(scheduler.run_later.is_empty()) {
+    Some(0)
+  } else if scheduler.timers.iter().head() is Some(timer) {
+    Some(@cmp.maximum(timer.expire_time - @time.ms_since_epoch(), 0))
   } else {
     None
   }
