@@ -27,8 +27,7 @@ pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit raise {
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit raise {
   if recursive {
-    let dir = opendir(path)
-    for file in dir.read_all() {
+    for file in readdir(path) {
       let file = path + "/" + file
       if kind(file) is Directory {
         rmdir(file, recursive=true)
@@ -115,4 +114,27 @@ pub async fn Directory::read_all(
     result.push(entry)
   }
   result
+}
+
+///|
+/// Read all entries in the directory located at `path`.
+/// - If `include_special` is `true` (`false` by default),
+///   `.` (current directory) and `..` (parent directory) will be included too
+/// - If `include_hidden` is `true` (`true` by default),
+///   directory entries starting with `.` (except `.` and `..`) will be included
+/// - If `sort` is `true` (`false` by default),
+///   the result will be sorted using `Array::sort`.
+pub async fn readdir(
+  path : Bytes,
+  include_hidden? : Bool = true,
+  include_special? : Bool = false,
+  sort? : Bool = false,
+) -> Array[Bytes] raise {
+  let dir = opendir(path)
+  defer dir.close()
+  let list = dir.read_all(include_hidden~, include_special~)
+  if sort {
+    list.sort()
+  }
+  list
 }

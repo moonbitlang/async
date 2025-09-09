@@ -18,13 +18,11 @@ test "mkdir" {
   @async.with_event_loop(fn(_) {
     @fs.mkdir("mkdir_test", permission=0o755)
     @fs.write_file("mkdir_test/file", "", create=0o644)
-    {
-      let dir = @fs.opendir("mkdir_test")
-      defer dir.close()
-      let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
-      list.sort()
-      log.write_object(list)
-    }
+    log.write_object(
+      @fs.readdir("mkdir_test", sort=true).map(name => @bytes_util.ascii_to_string(
+        name,
+      )),
+    )
     @fs.remove("mkdir_test/file")
     @fs.rmdir("mkdir_test")
   })
