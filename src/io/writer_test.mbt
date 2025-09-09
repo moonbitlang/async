@@ -71,3 +71,35 @@ test "write reader" {
     ),
   )
 }
+
+///|
+struct DummyWriter {
+  logger : &Logger
+  base_timeout : Int
+}
+
+///|
+impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
+  guard offset < len
+  @async.sleep(self.base_timeout)
+  self.logger.write_string("writing byte \{buf[offset]}\n")
+  1
+}
+
+///|
+test "write cancel" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let writer = { logger: log, base_timeout: 40 }
+    @async.with_timeout(60, fn() { writer.write(b"abcd") })
+  })
+  // The `write` here is partial and corrupted,
+  // but we have no choice because making `write` atomic may cause hang
+  inspect(
+    log.to_string(),
+    content=(
+      #|writing byte b'\x61'
+      #|
+    ),
+  )
+}
