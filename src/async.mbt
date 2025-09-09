@@ -101,6 +101,15 @@ pub async fn[X] with_timeout_opt(
 pub fnalias @coroutine.protect_from_cancel
 
 ///|
+/// Get current time, measured in milliseconds.
+/// `now` uses the same clock as timers in `moonbitlang/async`.
+///
+/// `now` can be used to measure elapsed time, such as benchmarking,
+/// but the meaning of the absolute time value returned by `now`
+/// is undefined, and should not be depended on.
+pub fnalias @time.ms_since_epoch as now
+
+///|
 pub typealias @aqueue.Queue
 
 ///|

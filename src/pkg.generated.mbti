@@ -2,6 +2,8 @@
 package "moonbitlang/async"
 
 // Values
+fn now() -> Int64
+
 async fn pause() -> Unit
 
 async fn protect_from_cancel(async () -> Unit) -> Unit
