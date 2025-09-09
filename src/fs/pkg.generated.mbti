@@ -20,9 +20,13 @@ async fn open(Bytes, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : I
 
 fn opendir(Bytes) -> Directory raise
 
+async fn read_file(Bytes) -> Bytes
+
 async fn remove(Bytes) -> Unit
 
 async fn rmdir(Bytes) -> Unit
+
+async fn write_file(Bytes, Bytes, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 // Errors
 

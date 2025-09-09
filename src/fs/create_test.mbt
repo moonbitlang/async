@@ -60,3 +60,15 @@ test "create or append" {
   })
   inspect(log.to_string(), content="abcdefgh")
 }
+
+///|
+test "wrapper test" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    let path = b"fs_wrapper_test"
+    @fs.write_file(path, b"abcd", create=0o644)
+    log.write_string(@fs.read_file(path) |> @bytes_util.ascii_to_string)
+    @fs.remove(path)
+  })
+  inspect(log.to_string(), content="abcd")
+}

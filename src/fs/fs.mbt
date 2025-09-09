@@ -271,3 +271,28 @@ extern "C" fn get_file_kind_ffi(fd : Int) -> Int = "moonbitlang_async_file_kind"
 pub fn File::kind(self : File) -> FileKind {
   self.kind
 }
+
+///|
+/// Read the contents of the file located at `path`.
+pub async fn read_file(path : Bytes) -> Bytes raise {
+  let file = open(path, mode=ReadOnly)
+  defer file.close()
+  file.read_all()
+}
+
+///|
+/// Write data to a file located at `path`.
+/// The meaning of `sync`, `append`, `create`, truncate`
+/// is the same as `open`, see `open` for more details.
+pub async fn write_file(
+  path : Bytes,
+  content : Bytes,
+  sync? : SyncMode = Data,
+  append? : Bool = false,
+  create? : Int,
+  truncate? : Bool = false,
+) -> Unit raise {
+  let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
+  defer file.close()
+  file.write(content)
+}
