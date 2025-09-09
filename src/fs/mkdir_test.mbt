@@ -30,3 +30,19 @@ test "mkdir" {
   })
   inspect(log.to_string(), content="[\"file\"]")
 }
+
+///|
+test "rmdir recursive" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(_) {
+    @fs.mkdir("rmdir_test", permission=0o755)
+    @fs.write_file("rmdir_test/file", "", create=0o644)
+    @fs.mkdir("rmdir_test/inner", permission=0o755)
+    @fs.write_file("rmdir_test/inner/file", "", create=0o644)
+    @fs.rmdir("rmdir_test") catch {
+      _ => log.write_string("non-recursive removal fails")
+    }
+    @fs.rmdir("rmdir_test", recursive=true)
+  })
+  inspect(log.to_string(), content="non-recursive removal fails")
+}
