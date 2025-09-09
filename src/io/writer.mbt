@@ -29,12 +29,10 @@ impl Writer with write(self, view) {
   if offset == end {
     return
   }
-  @async.protect_from_cancel(fn() {
-    for offset = start; offset < end; {
-      let progress = self.write_once(view.data(), offset~, len=end - offset)
-      continue offset + progress
-    }
-  })
+  for offset = start + offset; offset < end; {
+    let progress = self.write_once(view.data(), offset~, len=end - offset)
+    continue offset + progress
+  }
 }
 
 ///|
