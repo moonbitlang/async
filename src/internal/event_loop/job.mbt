@@ -107,26 +107,6 @@ extern "C" fn JobForWorker::spawn(
 ) -> JobForWorker = "moonbitlang_async_make_spawn_job"
 
 ///|
-#owned(buf, addr)
-extern "C" fn JobForWorker::recvfrom(
-  sock : Int,
-  buf : FixedArray[Byte],
-  offset : Int,
-  len : Int,
-  addr : Bytes,
-) -> JobForWorker = "moonbitlang_async_make_recvfrom_job"
-
-///|
-#owned(buf, addr)
-extern "C" fn JobForWorker::sendto(
-  sock : Int,
-  buf : Bytes,
-  offset : Int,
-  len : Int,
-  addr : Bytes,
-) -> JobForWorker = "moonbitlang_async_make_sendto_job"
-
-///|
 #external
 pub type AddrInfo
 
