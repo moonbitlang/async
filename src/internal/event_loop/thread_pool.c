@@ -54,8 +54,6 @@ enum op_code {
   OP_RMDIR,
   OP_READDIR,
   OP_SPAWN,
-  OP_RECVFROM,
-  OP_SENDTO,
   OP_GETADDRINFO
 };
 
@@ -115,22 +113,6 @@ struct spawn_job {
   char *cwd;
 };
 
-struct recvfrom_job {
-  int sock;
-  char *buf;
-  int offset;
-  int len;
-  struct sockaddr *addr_out;
-};
-
-struct sendto_job {
-  int sock;
-  char *buf;
-  int offset;
-  int len;
-  struct sockaddr *addr;
-};
-
 struct getaddrinfo_job {
   char *hostname;
   struct addrinfo **out;
@@ -153,8 +135,6 @@ struct job {
     struct rmdir_job rmdir;
     struct readdir_job readdir;
     struct spawn_job spawn;
-    struct recvfrom_job recvfrom;
-    struct sendto_job sendto;
     struct getaddrinfo_job getaddrinfo;
   } payload;
 };
@@ -381,34 +361,6 @@ void *worker_loop(void *data) {
       break;
     }
 
-    case OP_RECVFROM: {
-      socklen_t addr_size = sizeof(struct sockaddr_in);
-      job->ret = recvfrom(
-        job->payload.recvfrom.sock,
-        job->payload.recvfrom.buf + job->payload.recvfrom.offset,
-        job->payload.recvfrom.len,
-        0,
-        job->payload.recvfrom.addr_out,
-        &addr_size
-      );
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-    }
-
-    case OP_SENDTO:
-      job->ret = sendto(
-        job->payload.sendto.sock,
-        job->payload.sendto.buf + job->payload.sendto.offset,
-        job->payload.sendto.len,
-        0,
-        job->payload.sendto.addr,
-        sizeof(struct sockaddr_in)
-      );
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
     case OP_GETADDRINFO: {
       struct addrinfo hint = {
         0, // ai_flags
@@ -568,14 +520,6 @@ void free_job(void *jobp) {
     moonbit_decref(job->payload.spawn.args);
     moonbit_decref(job->payload.spawn.envp);
     break;
-  case OP_RECVFROM:
-    moonbit_decref(job->payload.recvfrom.buf);
-    moonbit_decref(job->payload.recvfrom.addr_out);
-    break;
-  case OP_SENDTO:
-    moonbit_decref(job->payload.sendto.buf);
-    moonbit_decref(job->payload.sendto.addr);
-    break;
   case OP_GETADDRINFO:
     moonbit_decref(job->payload.getaddrinfo.hostname);
     moonbit_decref(job->payload.getaddrinfo.out);
@@ -706,42 +650,6 @@ struct job *moonbitlang_async_make_spawn_job(
   job->payload.spawn.stdio[1] = stdout_fd;
   job->payload.spawn.stdio[2] = stderr_fd;
   job->payload.spawn.cwd = cwd;
-  return job;
-}
-
-struct job *moonbitlang_async_make_recvfrom_job(
-  int sock,
-  char *buf,
-  int offset,
-  int len,
-  struct sockaddr *addr_out
-) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_RECVFROM;
-  job->payload.recvfrom.sock = sock;
-  job->payload.recvfrom.buf = buf;
-  job->payload.recvfrom.offset = offset;
-  job->payload.recvfrom.len = len;
-  job->payload.recvfrom.addr_out = addr_out;
-  return job;
-}
-
-struct job *moonbitlang_async_make_sendto_job(
-  int sock,
-  char *buf,
-  int offset,
-  int len,
-  struct sockaddr *addr
-) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_SENDTO;
-  job->payload.sendto.sock = sock;
-  job->payload.sendto.buf = buf;
-  job->payload.sendto.offset = offset;
-  job->payload.sendto.len = len;
-  job->payload.sendto.addr = addr;
   return job;
 }
 

@@ -394,49 +394,47 @@ async fn perform_job_in_worker(
 }
 
 ///|
-async fn perform_read_job(job : JobForWorker, fd : Int) -> Int raise {
-  prepare_fd_read(fd)
-  perform_job_in_worker(job) catch {
-    @os_error.OSError(_) as err if err.is_nonblocking_io_error() => {
-      wait_fd_read(fd)
-      perform_job_in_worker(job)
-    }
-    err => raise err
-  }
-}
-
-///|
-async fn perform_write_job(job : JobForWorker, fd : Int) -> Int raise {
-  prepare_fd_write(fd)
-  perform_job_in_worker(job) catch {
-    @os_error.OSError(_) as err if err.is_nonblocking_io_error() => {
-      wait_fd_write(fd)
-      perform_job_in_worker(job)
-    }
-    err => raise err
-  }
-}
-
-///|
 pub async fn perform_job(job : Job) -> Int raise {
   match job {
     Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
-    Read(fd~, buf~, offset~, len~, can_poll~) => {
-      let job = JobForWorker::read(fd, buf, offset, len)
+    Read(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
-        perform_read_job(job, fd)
+        prepare_fd_read(fd)
+        let ret = read_ffi(fd, buf, offset~, len~)
+        let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+          wait_fd_read(fd)
+          read_ffi(fd, buf, offset~, len~)
+        } else {
+          @coroutine.pause()
+          ret
+        }
+        if ret < 0 {
+          @os_error.check_errno()
+        }
+        ret
       } else {
+        let job = JobForWorker::read(fd, buf, offset, len)
         perform_job_in_worker(job)
       }
-    }
-    Write(fd~, buf~, offset~, len~, can_poll~) => {
-      let job = JobForWorker::write(fd, buf, offset, len)
+    Write(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
-        perform_write_job(job, fd)
+        prepare_fd_write(fd)
+        let ret = write_ffi(fd, buf, offset~, len~)
+        let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+          wait_fd_write(fd)
+          write_ffi(fd, buf, offset~, len~)
+        } else {
+          @coroutine.pause()
+          ret
+        }
+        if ret < 0 {
+          @os_error.check_errno()
+        }
+        ret
       } else {
+        let job = JobForWorker::write(fd, buf, offset, len)
         perform_job_in_worker(job)
       }
-    }
     Open(path~, flags~, mode~) =>
       perform_job_in_worker(JobForWorker::open(path, flags, mode))
     Stat(path~, out~) => perform_job_in_worker(JobForWorker::stat(path, out))
@@ -452,16 +450,36 @@ pub async fn perform_job(job : Job) -> Int raise {
       perform_job_in_worker(
         JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
       )
-    Recvfrom(sock~, buf~, offset~, len~, addr~) =>
-      perform_read_job(
-        JobForWorker::recvfrom(sock, buf, offset, len, addr),
-        sock,
-      )
-    Sendto(sock~, buf~, offset~, len~, addr~) =>
-      perform_write_job(
-        JobForWorker::sendto(sock, buf, offset, len, addr),
-        sock,
-      )
+    Recvfrom(sock~, buf~, offset~, len~, addr~) => {
+      prepare_fd_read(sock)
+      let ret = recvfrom_ffi(sock, buf, offset~, len~, addr~)
+      let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+        wait_fd_read(sock)
+        recvfrom_ffi(sock, buf, offset~, len~, addr~)
+      } else {
+        @coroutine.pause()
+        ret
+      }
+      if ret < 0 {
+        @os_error.check_errno()
+      }
+      ret
+    }
+    Sendto(sock~, buf~, offset~, len~, addr~) => {
+      prepare_fd_write(sock)
+      let ret = sendto_ffi(sock, buf, offset~, len~, addr~)
+      let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+        wait_fd_write(sock)
+        sendto_ffi(sock, buf, offset~, len~, addr~)
+      } else {
+        @coroutine.pause()
+        ret
+      }
+      if ret < 0 {
+        @os_error.check_errno()
+      }
+      ret
+    }
     Connect(sock~, addr~) => {
       prepare_fd_write(sock)
       if 0 == connect_ffi(sock, addr) {
@@ -512,3 +530,41 @@ extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_asy
 
 ///|
 extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
+
+///|
+#borrow(buf)
+extern "C" fn read_ffi(
+  fd : Int,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang_async_read"
+
+///|
+#borrow(buf)
+extern "C" fn write_ffi(
+  fd : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang_async_write"
+
+///|
+#borrow(buf, addr)
+extern "C" fn recvfrom_ffi(
+  fd : Int,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+) -> Int = "moonbitlang_async_recvfrom"
+
+///|
+#borrow(buf, addr)
+extern "C" fn sendto_ffi(
+  fd : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+) -> Int = "moonbitlang_async_sendto"
