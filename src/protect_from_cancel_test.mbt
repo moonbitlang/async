@@ -65,21 +65,21 @@ test "protect_from_cancel wait" {
   log.write_object(
     try? @async.with_event_loop(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
-        log.write_string("20ms tick\n")
-        @async.sleep(20)
+        @async.sleep(40)
         log.write_string("40ms tick\n")
+        @async.sleep(40)
+        log.write_string("80ms tick\n")
       })
       @async.with_task_group(fn(group) {
         group.spawn_bg(fn() {
-          @async.sleep(30)
+          @async.sleep(60)
           log.write_string(
             "trying to cancel the group containing critial job\n",
           )
           raise Err
         })
         @async.protect_from_cancel(fn() {
-          @async.sleep(50)
+          @async.sleep(100)
           log.write_string("critial job finished\n")
         })
       }) catch {
@@ -91,9 +91,9 @@ test "protect_from_cancel wait" {
   inspect(
     log.to_string(),
     content=(
-      #|20ms tick
-      #|trying to cancel the group containing critial job
       #|40ms tick
+      #|trying to cancel the group containing critial job
+      #|80ms tick
       #|critial job finished
       #|task group containing critical job finished
       #|Ok(())

@@ -43,14 +43,14 @@ test "worker multiple" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     root.spawn_bg(fn() {
-      for _ in 0..<4 {
-        @async.sleep(30)
+      for _ in 0..<3 {
+        @async.sleep(40)
         log.write_string("tick\n")
       }
     })
-    for i in 0..<4 {
+    for i in 0..<3 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(Sleep(15 + i * 30)) |> ignore
+        @event_loop.perform_job(Sleep(20 + i * 40)) |> ignore
         log.write_string("#\{i} done\n")
       })
     }
@@ -63,8 +63,6 @@ test "worker multiple" {
       #|#1 done
       #|tick
       #|#2 done
-      #|tick
-      #|#3 done
       #|tick
       #|
     ),

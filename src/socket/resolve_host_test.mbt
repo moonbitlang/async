@@ -39,7 +39,7 @@ test "resolve cancel" {
     let channel = @async.Queue::new()
     let task = root.spawn(allow_failure=true, fn() {
       channel.put(())
-      log.write_object(@socket.Addr::resolve("github.com", port=443))
+      log.write_object(@socket.Addr::resolve("www.moonbitlang.com", port=443))
     })
     channel.get() // make sure the task already started
     task.cancel()
