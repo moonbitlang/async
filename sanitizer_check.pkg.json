@@ -14,7 +14,7 @@
   ],
   "link": {
     "native": {
-      "cc-flags": "-g -fsanitize=address"
+      "cc-flags": "-g -fsanitize=address -fno-omit-frame-pointer"
     }
   }
 }
