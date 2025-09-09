@@ -17,8 +17,7 @@ test "mkdir" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
     @fs.mkdir("mkdir_test", permission=0o755)
-    let file = @fs.create("mkdir_test/file", permission=0o644)
-    file.close()
+    @fs.write_file("mkdir_test/file", "", create=0o644)
     {
       let dir = @fs.opendir("mkdir_test")
       defer dir.close()
@@ -29,10 +28,5 @@ test "mkdir" {
     @fs.remove("mkdir_test/file")
     @fs.rmdir("mkdir_test")
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|["file"]
-    ),
-  )
+  inspect(log.to_string(), content="[\"file\"]")
 }
