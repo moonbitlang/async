@@ -21,8 +21,22 @@ pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit raise {
 
 ///|
 /// Remove a directory at `path`,
+/// If `recursive` is `true` (`false` by default),
+/// files and directories in `path` will be removed recursively.
+/// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
-pub async fn rmdir(path : Bytes) -> Unit raise {
+pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit raise {
+  if recursive {
+    let dir = opendir(path)
+    for file in dir.read_all() {
+      let file = path + "/" + file
+      if kind(file) is Directory {
+        rmdir(file, recursive=true)
+      } else {
+        remove(file)
+      }
+    }
+  }
   ignore(@event_loop.perform_job(Rmdir(path~)))
 }
 
