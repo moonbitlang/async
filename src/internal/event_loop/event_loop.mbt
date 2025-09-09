@@ -112,7 +112,6 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
       curr_loop.val = None
     }
     let main = @coroutine.spawn(f)
-    @coroutine.reschedule()
     evloop.run_forever()
     main.unwrap()
   } catch {
@@ -128,82 +127,93 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 }
 
 ///|
-fn EventLoop::run_forever(self : Self) -> Unit raise {
-  while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
-    let timeout = match @coroutine.next_expire_time() {
-      Some(t) => @cmp.maximum(0, (t - @time.ms_since_epoch()).to_int())
-      None => -1
-    }
-    let n = self.poll.wait(timeout~)
-    if n < 0 {
-      @os_error.check_errno()
-    }
-    @coroutine.reschedule()
-    for i in 0..<n {
-      let event = get_event(i)
-      let events = event.events()
-      let fd = event.fd()
-      if (events & ProcessEvent) != 0 {
-        if self.pids.get(fd) is Some(handle) {
-          let result = @ref.new(0)
-          if event.pid_status(result) < 0 {
-            @os_error.check_errno()
-          }
-          handle.result = result.val
-          self.pids.remove(fd)
-          handle.waiter.wake()
+async fn EventLoop::poll(self : Self) -> Bool raise {
+  if @coroutine.no_more_work() && self.running_workers.is_empty() {
+    return false
+  }
+  let timeout = match @coroutine.idle_timeout() {
+    Some(t) => t.to_int()
+    None => -1
+  }
+  let n = self.poll.wait(timeout~)
+  if n < 0 {
+    @os_error.check_errno()
+  }
+  for i in 0..<n {
+    let event = get_event(i)
+    let events = event.events()
+    let fd = event.fd()
+    if (events & ProcessEvent) != 0 {
+      if self.pids.get(fd) is Some(handle) {
+        let result = @ref.new(0)
+        if event.pid_status(result) < 0 {
+          @os_error.check_errno()
         }
-        self.poll.remove_pid(fd)
-      } else if fd == self.notify_recv {
-        while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
-          guard self.running_workers.get(job_id) is Some(worker)
-          self.running_workers.remove(job_id)
-          match self.job_queue.pop_front() {
-            None => self.idle_workers.push_back(worker)
-            Some(job) => {
-              self.running_workers[job.id()] = worker
-              wake_worker(worker, job)
-            }
+        handle.result = result.val
+        self.pids.remove(fd)
+        handle.waiter.wake()
+      }
+      self.poll.remove_pid(fd)
+    } else if fd == self.notify_recv {
+      while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
+        guard self.running_workers.get(job_id) is Some(worker)
+        self.running_workers.remove(job_id)
+        match self.job_queue.pop_front() {
+          None => self.idle_workers.push_back(worker)
+          Some(job) => {
+            self.running_workers[job.id()] = worker
+            wake_worker(worker, job)
           }
-          if self.jobs.get(job_id) is Some(coro) {
-            self.jobs.remove(job_id)
+        }
+        if self.jobs.get(job_id) is Some(coro) {
+          self.jobs.remove(job_id)
+          coro.wake()
+        }
+      } else {
+        if not(@os_error.is_nonblocking_io_error()) {
+          @os_error.check_errno()
+        }
+      }
+    } else if self.fds.get(fd) is Some(handle) {
+      // There is one corner case here: to support precise timer,
+      // we perform a `@coroutine.reschedule` immediately after polling.
+      // However, if a file descriptor is closed during this rescheduling,
+      // it will be removed from `self.fds`, but we can still see it here,
+      // because the poll returns *before* the close
+      if (events & ReadEvent) != 0 {
+        match handle.read {
+          Ready => ()
+          NotSure => handle.read = Ready
+          Waiting(coro) => {
+            handle.read = NotSure
             coro.wake()
           }
-        } else {
-          if not(@os_error.is_nonblocking_io_error()) {
-            @os_error.check_errno()
-          }
         }
-      } else if self.fds.get(fd) is Some(handle) {
-        // There is one corner case here: to support precise timer,
-        // we perform a `@coroutine.reschedule` immediately after polling.
-        // However, if a file descriptor is closed during this rescheduling,
-        // it will be removed from `self.fds`, but we can still see it here,
-        // because the poll returns *before* the close
-        if (events & ReadEvent) != 0 {
-          match handle.read {
-            Ready => ()
-            NotSure => handle.read = Ready
-            Waiting(coro) => {
-              handle.read = NotSure
-              coro.wake()
-            }
-          }
-        }
-        if (events & WriteEvent) != 0 {
-          match handle.write {
-            Ready => ()
-            NotSure => handle.write = Ready
-            Waiting(coro) => {
-              handle.write = NotSure
-              coro.wake()
-            }
+      }
+      if (events & WriteEvent) != 0 {
+        match handle.write {
+          Ready => ()
+          NotSure => handle.write = Ready
+          Waiting(coro) => {
+            handle.write = NotSure
+            coro.wake()
           }
         }
       }
     }
-    @coroutine.reschedule()
   }
+  @coroutine.pause()
+  true
+}
+
+///|
+fn EventLoop::run_forever(self : Self) -> Unit raise {
+  let _ = @coroutine.spawn(fn() {
+    while self.poll() {
+
+    }
+  })
+  @coroutine.reschedule()
   for fd, handle in self.fds {
     guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
     if not(handle.events is NoEvent) {
