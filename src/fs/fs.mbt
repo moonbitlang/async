@@ -32,6 +32,11 @@ struct File {
 }
 
 ///|
+pub fn File::fd(self : File) -> Int {
+  self.fd
+}
+
+///|
 pub fn File::close(self : File) -> Unit {
   @event_loop.close_fd(self.fd)
 }

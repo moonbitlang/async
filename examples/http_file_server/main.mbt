@@ -88,10 +88,9 @@ async fn serve_zip(conn : @socket.TCP, path : Bytes) -> Unit raise {
     path
   }
   @async.with_task_group(fn(group) {
-    let (we_read_from_zip, zip_write_to_use) = @pipe.pipe()
+    let (we_read_from_zip, zip_write_to_use) = @process.read_from_process()
     defer we_read_from_zip.close()
     group.spawn_bg(fn() {
-      defer zip_write_to_use.close()
       @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_use)
       |> ignore
     })

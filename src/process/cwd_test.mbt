@@ -18,7 +18,7 @@ test "set cwd" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
     guard @env.current_dir() is Some(prev_cwd)
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       let _ = @process.run(b"ls", [], stdout=w, cwd="src/process", extra_env={
@@ -43,6 +43,7 @@ test "set cwd" {
       #|moon.pkg.json
       #|pkg.generated.mbti
       #|process.mbt
+      #|redirect_test.mbt
       #|stub.c
       #|wait_test.mbt
       #|

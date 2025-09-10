@@ -351,10 +351,6 @@ void *worker_loop(void *data) {
     exit:
       posix_spawnattr_destroy(&attr);
       posix_spawn_file_actions_destroy(&file_actions);
-      for (int i = 0; i < 3; ++i) {
-        int fd = job->payload.spawn.stdio[i];
-        if (fd >= 0) close(fd);
-      }
       if (!(job->err)) {
         job->ret = pid;
       }

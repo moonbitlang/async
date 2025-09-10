@@ -78,10 +78,9 @@ test "basic" {
       out,
     ))
     tmp_file.close()
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      defer w.close()
       @process.run("unzip", ["-l", tmp_file_name], stdout=w) |> ignore
     })
     let from_unzip = @io.BufferedReader::new(r)
