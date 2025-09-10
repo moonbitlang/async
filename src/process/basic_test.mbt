@@ -17,7 +17,7 @@
 test "basic_ls" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(b"ls", [b"src/process"], stdout=w, extra_env={
@@ -41,6 +41,7 @@ test "basic_ls" {
       #|moon.pkg.json
       #|pkg.generated.mbti
       #|process.mbt
+      #|redirect_test.mbt
       #|stub.c
       #|wait_test.mbt
       #|
@@ -52,8 +53,8 @@ test "basic_ls" {
 test "basic_cat" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (cat_read, we_write) = @pipe.pipe()
-    let (we_read, cat_write) = @pipe.pipe()
+    let (cat_read, we_write) = @process.write_to_process()
+    let (we_read, cat_write) = @process.read_from_process()
     root.spawn_bg(fn() {
       @process.run(b"cat", [b"-"], stdin=cat_read, stdout=cat_write) |> ignore
     })

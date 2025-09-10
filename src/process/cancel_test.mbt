@@ -21,7 +21,7 @@ test "cancel process" {
     b"wait $child"
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
       @process.run(b"sh", [b"-c", test_prog], stdout=w)
@@ -54,7 +54,7 @@ test "cancel process" {
 test "orphan process" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
       @process.run(

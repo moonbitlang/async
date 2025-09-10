@@ -17,7 +17,7 @@
 test "set_env" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(b"sh", [b"-c", b"echo $MAGIC_VAR"], stdout=w, extra_env={
@@ -44,7 +44,7 @@ test "set_env" {
 test "set_env no inherit" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(

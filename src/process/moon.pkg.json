@@ -3,6 +3,7 @@
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
+    "moonbitlang/async/fs",
     "moonbitlang/async/pipe"
   ],
   "test-import": [
