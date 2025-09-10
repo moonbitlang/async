@@ -148,6 +148,9 @@ pub async fn run(
 
 ///|
 /// Create a temporary pipe for reading from stdout/stderr of a process.
+/// The return value is a pair `(r, w)`,
+/// where `r` is a `@pipe.PipeRead` that can be used to read process output,
+/// and `w` should be passed to `@process.run`.
 pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise {
   let (r, w) = @pipe.pipe()
   (r, TempPipeWrite(w))
@@ -155,6 +158,9 @@ pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise {
 
 ///|
 /// Create a temporary pipe for writing to stdin of a process.
+/// The return value is a pair `(r, w)`,
+/// where `w` is a `@pipe.PipeWrite` that can be used to write to process output,
+/// and `r` should be passed to `@process.run`.
 pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise {
   let (r, w) = @pipe.pipe()
   (TempPipeRead(r), w)
