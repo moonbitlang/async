@@ -231,7 +231,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
-fn prepare_fd_read(fd : Int) -> Unit raise {
+fn prepare_fd_read(fd : Int) -> FdHandle raise {
   guard curr_loop.val is Some(evloop)
   let handle = match evloop.fds.get(fd) {
     None => {
@@ -253,12 +253,11 @@ fn prepare_fd_read(fd : Int) -> Unit raise {
   } else {
     handle.read = NotSure
   }
+  handle
 }
 
 ///|
-async fn wait_fd_read(fd : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is Some(handle)
+async fn FdHandle::wait_read(handle : FdHandle) -> Unit raise {
   guard (handle.events & ReadEvent) != 0
   if handle.read is Ready {
     handle.read = NotSure
@@ -276,7 +275,7 @@ async fn wait_fd_read(fd : Int) -> Unit raise {
 }
 
 ///|
-fn prepare_fd_write(fd : Int) -> Unit raise {
+fn prepare_fd_write(fd : Int) -> FdHandle raise {
   guard curr_loop.val is Some(evloop)
   let handle = match evloop.fds.get(fd) {
     None => {
@@ -298,12 +297,11 @@ fn prepare_fd_write(fd : Int) -> Unit raise {
   } else {
     handle.write = NotSure
   }
+  handle
 }
 
 ///|
-async fn wait_fd_write(fd : Int) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is Some(handle)
+async fn FdHandle::wait_write(handle : FdHandle) -> Unit raise {
   guard (handle.events & WriteEvent) != 0
   if handle.write is Ready {
     handle.write = NotSure
@@ -399,10 +397,10 @@ pub async fn perform_job(job : Job) -> Int raise {
     Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
     Read(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
-        prepare_fd_read(fd)
+        let handle = prepare_fd_read(fd)
         let ret = read_ffi(fd, buf, offset~, len~)
         let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-          wait_fd_read(fd)
+          handle.wait_read()
           read_ffi(fd, buf, offset~, len~)
         } else {
           @coroutine.pause()
@@ -418,10 +416,10 @@ pub async fn perform_job(job : Job) -> Int raise {
       }
     Write(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
-        prepare_fd_write(fd)
+        let handle = prepare_fd_write(fd)
         let ret = write_ffi(fd, buf, offset~, len~)
         let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-          wait_fd_write(fd)
+          handle.wait_write()
           write_ffi(fd, buf, offset~, len~)
         } else {
           @coroutine.pause()
@@ -451,10 +449,10 @@ pub async fn perform_job(job : Job) -> Int raise {
         JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
       )
     Recvfrom(sock~, buf~, offset~, len~, addr~) => {
-      prepare_fd_read(sock)
+      let handle = prepare_fd_read(sock)
       let ret = recvfrom_ffi(sock, buf, offset~, len~, addr~)
       let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-        wait_fd_read(sock)
+        handle.wait_read()
         recvfrom_ffi(sock, buf, offset~, len~, addr~)
       } else {
         @coroutine.pause()
@@ -466,10 +464,10 @@ pub async fn perform_job(job : Job) -> Int raise {
       ret
     }
     Sendto(sock~, buf~, offset~, len~, addr~) => {
-      prepare_fd_write(sock)
+      let handle = prepare_fd_write(sock)
       let ret = sendto_ffi(sock, buf, offset~, len~, addr~)
       let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-        wait_fd_write(sock)
+        handle.wait_write()
         sendto_ffi(sock, buf, offset~, len~, addr~)
       } else {
         @coroutine.pause()
@@ -481,12 +479,12 @@ pub async fn perform_job(job : Job) -> Int raise {
       ret
     }
     Connect(sock~, addr~) => {
-      prepare_fd_write(sock)
+      let handle = prepare_fd_write(sock)
       if 0 == connect_ffi(sock, addr) {
         return 0
       }
       if @os_error.is_nonblocking_io_error() {
-        wait_fd_write(sock)
+        handle.wait_write()
         let err = get_socket_err(sock)
         if err < 0 {
           @os_error.check_errno()
@@ -499,12 +497,12 @@ pub async fn perform_job(job : Job) -> Int raise {
       0
     }
     Accept(sock~, addr~) => {
-      prepare_fd_read(sock)
+      let handle = prepare_fd_read(sock)
       let conn = accept_ffi(sock, addr)
       if conn > 0 {
         conn
       } else if @os_error.is_nonblocking_io_error() {
-        wait_fd_read(sock)
+        handle.wait_read()
         accept_ffi(sock, addr)
       } else {
         @os_error.check_errno()
