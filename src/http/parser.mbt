@@ -178,16 +178,16 @@ pub async fn Reader::read_request(self : Reader) -> Request raise {
   }
   self.transport.drop(meth_len + 1)
   let path_len = self.transport.find(" ")
-  let path = self.transport[:path_len]
+  let path = self.transport[:path_len].to_bytes()
   self.transport.drop(path_len + 1)
   let protocol_len = self.transport.find("\r\n")
   let protocol = self.transport[:protocol_len]
-  self.transport.drop(protocol_len + 2)
   match protocol {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol =>
       raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
   }
+  self.transport.drop(protocol_len + 2)
   let headers = self.read_headers()
   { meth, path, headers }
 }
@@ -207,19 +207,19 @@ pub async fn Reader::read_response(self : Reader) -> Response raise {
   guard self.body is Empty
   let protocol_len = self.transport.find(" ")
   let protocol = self.transport[:protocol_len]
-  self.transport.drop(protocol_len + 1)
   match protocol {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol =>
       raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
   }
+  self.transport.drop(protocol_len + 1)
   let code_len = self.transport.find(" ")
   guard parse_int(self.transport[:code_len], base=10) is Some(code) else {
     raise BadRequest
   }
   self.transport.drop(code_len + 1)
   let reason_len = self.transport.find("\r\n")
-  let reason = self.transport[:reason_len]
+  let reason = self.transport[:reason_len].to_bytes()
   self.transport.drop(reason_len + 2)
   let headers = self.read_headers()
   { code, reason, headers }

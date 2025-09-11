@@ -12,7 +12,7 @@ type BufferedReader[R]
 async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit
 async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
 fn[R] BufferedReader::new(R) -> Self[R]
-async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> Bytes
+async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> BytesView
 async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
 async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 impl[R : Reader] Reader for BufferedReader[R]

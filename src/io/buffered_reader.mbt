@@ -152,16 +152,23 @@ pub async fn[R : Reader] BufferedReader::op_get(
 /// `BufferedReader` will request more data from the inner reader.
 /// If the inner reader is closed before enough data is available,
 /// `ReaderClosed` will be rasied.
+///
 /// `op_as_view` will not advance the reader stream,
 /// so this operation is idempotent.
+///
+/// The returned bytes view MUST be temporary.
+/// If data is consumed (for example via `.drop()` or `.read()`)
+/// from the reader after `op_as_view`, the view MUST NOT be used again.
+/// The view should be copied via `.to_bytes()`
+/// before consuming data from the reader.
 pub async fn[R : Reader] BufferedReader::op_as_view(
   self : Self[R],
   start? : Int = 0,
   end~ : Int,
-) -> Bytes raise {
+) -> @bytes.View raise {
   guard start < end
   self.ensure(end)
-  self.buf.unsafe_reinterpret_as_bytes()[start:end].to_bytes()
+  self.buf.unsafe_reinterpret_as_bytes()[start:end]
 }
 
 ///|

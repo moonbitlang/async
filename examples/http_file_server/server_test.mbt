@@ -91,7 +91,6 @@ test "basic" {
         err => raise err
       }
       let line = from_unzip[:eol]
-      from_unzip.drop(eol + 1)
       guard line.rev_find(" ") is Some(i) else {
         fail("invalid output from `unzip`")
       }
@@ -99,6 +98,7 @@ test "basic" {
       if last_word.has_prefix("examples/http_file_server") {
         zip_content.push(last_word)
       }
+      from_unzip.drop(eol + 1)
     }
     zip_content.sort()
     for file in zip_content {
