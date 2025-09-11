@@ -229,6 +229,9 @@ pub async fn Reader::read_response(self : Reader) -> Response raise {
 /// Discard the body of current HTTP request/response,
 /// so that the next request/response can be processed.
 pub async fn Reader::skip_body(self : Reader) -> Unit raise {
+  if self.body is (Empty | Fixed(0)) {
+    return
+  }
   let buf = FixedArray::make(1024, b'0')
   while self.read(buf) is n && n > 0 {
 

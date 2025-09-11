@@ -48,8 +48,10 @@ pub fn[W] BufferedWriter::capacity(self : BufferedWriter[W]) -> Int {
 pub async fn[W : Writer] BufferedWriter::flush(
   self : BufferedWriter[W],
 ) -> Unit raise {
-  self.writer.write(self.buf.unsafe_reinterpret_as_bytes()[:self.len])
-  self.len = 0
+  if self.len > 0 {
+    self.writer.write(self.buf.unsafe_reinterpret_as_bytes()[:self.len])
+    self.len = 0
+  }
 }
 
 ///|
