@@ -3,6 +3,7 @@ package "moonbitlang/async/http"
 
 import(
   "moonbitlang/async/io"
+  "moonbitlang/async/socket"
 )
 
 // Values
@@ -91,6 +92,14 @@ pub(all) struct Response {
   reason : Bytes
   headers : Array[Header]
 }
+
+type ServerConnection
+fn ServerConnection::close(Self) -> Unit
+fn ServerConnection::new(@socket.TCP, headers? : Array[Header]) -> Self
+async fn ServerConnection::read_request(Self) -> Request
+async fn ServerConnection::send_response(Self, Int, Bytes, Body, extra_headers? : Array[Header]) -> Unit
+async fn ServerConnection::skip_body(Self) -> Unit
+impl @io.Reader for ServerConnection
 
 // Type aliases
 
