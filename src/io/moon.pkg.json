@@ -2,6 +2,7 @@
   "import": [],
   "test-import": [
     "moonbitlang/async",
-    "moonbitlang/async/pipe"
+    "moonbitlang/async/pipe",
+    "moonbitlang/async/internal/bytes_util"
   ]
 }
