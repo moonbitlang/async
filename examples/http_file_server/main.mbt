@@ -14,7 +14,7 @@
 
 ///|
 async fn serve_directory(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   dir : @fs.Directory,
   path~ : Bytes,
 ) -> Unit raise {
@@ -48,16 +48,17 @@ async fn serve_directory(
     ..write_bytes(b"</a><br/>\n")
   }
   content.write_bytes(b"</div></body></html>")
-  @http.send_response(
-    conn,
-    { code: 200, reason: "OK", headers: [Header("Content-Type", "text/html")] },
+  conn.send_response(
+    200,
+    "OK",
+    extra_headers=[Header("Content-Type", "text/html")],
     Fixed(content.to_bytes()),
   )
 }
 
 ///|
 async fn serve_file(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   file : @fs.File,
   path~ : Bytes,
 ) -> Unit raise {
@@ -73,15 +74,16 @@ async fn serve_file(
     [.., .. ".mkv"] => "video/x-matroska"
     _ => "appliaction/octet-stream"
   }
-  @http.send_response(
-    conn,
-    { code: 200, reason: "OK", headers: [Header("Content-Type", content_type)] },
+  conn.send_response(
+    200,
+    "OK",
+    extra_headers=[Header("Content-Type", content_type)],
     Stream(file),
   )
 }
 
 ///|
-async fn serve_zip(conn : @socket.TCP, path : Bytes) -> Unit raise {
+async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit raise {
   let base_name = if path.rev_find("/") is Some(i) {
     path[i + 1:].to_bytes()
   } else {
@@ -94,16 +96,13 @@ async fn serve_zip(conn : @socket.TCP, path : Bytes) -> Unit raise {
       @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_use)
       |> ignore
     })
-    @http.send_response(
-      conn,
-      {
-        code: 200,
-        reason: "OK",
-        headers: [
-          Header("Content-Type", "application/octet-stream"),
-          Header("Content-Disposition", "filename=" + base_name + ".zip"),
-        ],
-      },
+    conn.send_response(
+      200,
+      "OK",
+      extra_headers=[
+        Header("Content-Type", "application/octet-stream"),
+        Header("Content-Disposition", "filename=" + base_name + ".zip"),
+      ],
       Stream(we_read_from_zip),
     )
   })
@@ -113,14 +112,11 @@ async fn serve_zip(conn : @socket.TCP, path : Bytes) -> Unit raise {
 let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></html>"
 
 ///|
-async fn serve_404(conn : @socket.TCP) -> Unit raise {
-  @http.send_response(
-    conn,
-    {
-      code: 404,
-      reason: "NotFound",
-      headers: [Header("Content-Type", "text/html")],
-    },
+async fn serve_404(conn : @http.ServerConnection) -> Unit raise {
+  conn.send_response(
+    404,
+    "NotFound",
+    extra_headers=[Header("Content-Type", "text/html")],
     Fixed(page_for_404),
   )
 }
@@ -137,16 +133,15 @@ pub async fn server(
   defer server.close()
   for {
     let (conn, addr) = server.accept()
+    let conn = @http.ServerConnection::new(conn)
     log("received new connection from \{addr}")
     ctx.spawn_bg(allow_failure=true, fn() {
       defer {
         log("closing connection from \{addr}")
         conn.close()
       }
-      let src = @http.Reader::new(conn)
       for {
-        let request = src.read_request()
-        src.skip_body()
+        let request = conn.read_request()
         let (path, download_zip) = match request.path {
           [.. path, .. "?download_zip"] => (path.to_bytes(), true)
           path => (path, false)

@@ -24,45 +24,49 @@ pub(all) enum Body {
 async fn[Writer : @io.Writer] send_headers(
   w : Writer,
   headers : Array[Header],
-  body : Body,
 ) -> Unit raise {
   for header in headers {
     let Header(k, v) = header
     w..write(k)..write(": ")..write(v)..write("\r\n")
   }
+}
+
+///|
+async fn[Writer : @io.Writer] send_body_headers(
+  w : Writer,
+  body : Body,
+) -> Unit raise {
   match body {
-    Empty => w.write("\r\n")
+    Empty => ()
     Fixed(body) =>
       w
       ..write(b"Content-Length: ")
       ..write(encode_int(body.length(), base=10))
-      ..write("\r\n\r\n")
-    Stream(_) => w.write(b"Transfer-Encoding: chunked\r\n\r\n")
+      ..write("\r\n")
+    Stream(_) => w.write(b"Transfer-Encoding: chunked\r\n")
   }
 }
 
 ///|
-async fn[Writer : @io.Writer] send_body(w : Writer, body : Body) -> Unit raise {
-  match body {
-    Empty => ()
-    Fixed(body) => w.write(body)
-    Stream(body) => {
-      let buf = FixedArray::make(1031, b'0')
-      // Reserve enough space for chunk length and '\r\n' in the buffer,
-      // so that we can commit the whole chunk in a single write to avoid small writes
-      while body.read(buf, offset=5, max_len=buf.length() - 7) is n && n > 0 {
-        buf[5 + n] = '\r'
-        buf[6 + n] = '\n'
-        let len = encode_int(n, base=16)
-        let start = 3 - len.length()
-        buf[3] = '\r'
-        buf[4] = '\n'
-        buf.blit_from_bytes(start, len, 0, len.length())
-        w.write(buf.unsafe_reinterpret_as_bytes()[start:n + 7])
-      } else {
-        w.write("0\r\n\r\n")
-      }
-    }
+async fn[Writer : @io.Writer] send_body_chunked(
+  w : Writer,
+  buf : FixedArray[Byte],
+  body : &@io.Reader,
+) -> Unit raise {
+  // Reserve enough space for chunk length and '\r\n' in the buffer,
+  // so that we can commit the whole chunk in a single write to avoid small writes
+  let max_len = buf.length() - 7
+  while body.read(buf, offset=5, max_len~) is n && n > 0 {
+    buf[5 + n] = '\r'
+    buf[6 + n] = '\n'
+    let len = encode_int(n, base=16)
+    let start = 3 - len.length()
+    buf[3] = '\r'
+    buf[4] = '\n'
+    buf.blit_from_bytes(start, len, 0, len.length())
+    w.write(buf.unsafe_reinterpret_as_bytes()[start:n + 7])
+  } else {
+    w.write("0\r\n\r\n")
   }
 }
 
@@ -86,9 +90,18 @@ pub async fn[Writer : @io.Writer] send_request(
     Patch => w.write("PATCH ")
   }
   w..write(request.path)..write(" HTTP/1.1\r\n")
-  send_headers(w, request.headers, body)
+  send_headers(w, request.headers)
+  send_body_headers(w, body)
+  w.write("\r\n")
   w.flush()
-  send_body(w0, body)
+  match body {
+    Empty => ()
+    Fixed(body) => w0.write(body)
+    Stream(body) => {
+      let buf = FixedArray::make(1024, b'0')
+      send_body_chunked(w0, buf, body)
+    }
+  }
 }
 
 ///|
@@ -105,7 +118,16 @@ pub async fn[Writer : @io.Writer] send_response(
   ..write(" ")
   ..write(response.reason)
   ..write("\r\n")
-  send_headers(w, response.headers, body)
+  send_headers(w, response.headers)
+  send_body_headers(w, body)
+  w.write("\r\n")
   w.flush()
-  send_body(w0, body)
+  match body {
+    Empty => ()
+    Fixed(body) => w0.write(body)
+    Stream(body) => {
+      let buf = FixedArray::make(1024, b'0')
+      send_body_chunked(w0, buf, body)
+    }
+  }
 }
