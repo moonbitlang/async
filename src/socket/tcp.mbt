@@ -54,6 +54,10 @@ pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) raise {
   let TCPServer(listen_sock) = self
   let addr = Addr::new(0, 0)
   let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
+  if disable_nagle(conn) < 0 {
+    @fd_util.close(conn)
+    @os_error.check_errno()
+  }
   @fd_util.set_cloexec(conn)
   @fd_util.set_nonblocking(conn)
   (conn, addr)
@@ -88,6 +92,10 @@ pub fn TCP::enable_keepalive(
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn TCP::connect(addr : Addr) -> TCP raise {
   let sock = make_tcp_socket()
+  if disable_nagle(sock) < 0 {
+    @fd_util.close(sock)
+    @os_error.check_errno()
+  }
   try @event_loop.perform_job(Connect(sock~, addr=addr.0)) catch {
     err => {
       @event_loop.close_fd(sock)

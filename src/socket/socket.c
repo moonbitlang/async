@@ -27,6 +27,11 @@ int moonbitlang_async_make_tcp_socket() {
   return socket(AF_INET, SOCK_STREAM, 0);
 }
 
+int moonbitlang_async_disable_nagle(int sock) {
+  int enable = 1;
+  return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+}
+
 int moonbitlang_async_make_udp_socket() {
   return socket(AF_INET, SOCK_DGRAM, 0);
 }
