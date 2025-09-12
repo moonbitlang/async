@@ -1,10 +1,6 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/io"
 
-import(
-  "moonbitlang/core/bytes"
-)
-
 // Values
 
 // Errors
@@ -38,7 +34,7 @@ pub(open) trait Reader {
 
 pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async write(Self, @bytes.View) -> Unit = _
+  async write(Self, BytesView) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
 }
 
