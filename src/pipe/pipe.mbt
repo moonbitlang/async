@@ -127,12 +127,6 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for PipeRead with read(self, buf, offset~, max_len~) {
-  let PipeRead(fd) = self
-  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len, can_poll=true))
-}
-
-///|
 /// Read data from the read end of a pipe using `read(2)` system call.
 /// For `pipe.read(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
@@ -141,13 +135,14 @@ pub impl @io.Reader for PipeRead with read(self, buf, offset~, max_len~) {
 /// At most one task can read from a pipe at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn PipeRead::read(
-  self : PipeRead,
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  @io.Reader::read(self, buf, offset~, max_len~)
+pub impl @io.Reader for PipeRead with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
+  let PipeRead(fd) = self
+  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len, can_poll=true))
 }
 
 ///|

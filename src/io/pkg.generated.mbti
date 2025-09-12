@@ -14,7 +14,6 @@ async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
 fn[R] BufferedReader::new(R) -> Self[R]
 async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> BytesView
 async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
-async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 impl[R : Reader] Reader for BufferedReader[R]
 
 type BufferedWriter[W]
@@ -27,7 +26,7 @@ impl[W : Writer] Writer for BufferedWriter[W]
 
 // Traits
 pub(open) trait Reader {
-  async read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
   async read_exactly(Self, Int) -> Bytes = _
   async read_all(Self) -> Bytes = _
 }

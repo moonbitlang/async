@@ -16,7 +16,6 @@ let stdout : PipeWrite
 type PipeRead
 fn PipeRead::close(Self) -> Unit
 fn PipeRead::fd(Self) -> Int
-async fn PipeRead::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 impl @moonbitlang/async/io.Reader for PipeRead
 
 type PipeWrite

@@ -138,14 +138,6 @@ pub async fn create(
 }
 
 ///|
-pub impl @io.Reader for File with read(self, buf, offset~, max_len~) {
-  let can_poll = self.kind.can_poll()
-  @event_loop.perform_job(
-    Read(fd=self.fd, buf~, offset~, len=max_len, can_poll~),
-  )
-}
-
-///|
 /// `file.read(buf, offset~, len~) read `len` bytes from `file`,
 /// store data into `buf`, starting with `offset`.
 /// By default, `offset` is `0` and `len` is `buf.length() - offset`.
@@ -155,13 +147,16 @@ pub impl @io.Reader for File with read(self, buf, offset~, max_len~) {
 ///
 /// - EOF is reached before reading all requested data
 /// - the file is a named pipe, and not enough data is available
-pub async fn File::read(
-  self : File,
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  @io.Reader::read(self, buf, offset~, max_len~)
+pub impl @io.Reader for File with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
+  let can_poll = self.kind.can_poll()
+  @event_loop.perform_job(
+    Read(fd=self.fd, buf~, offset~, len=max_len, can_poll~),
+  )
 }
 
 ///|
@@ -169,7 +164,12 @@ pub async fn File::read(
 priv struct DummyFile(File)
 
 ///|
-impl @io.Reader for DummyFile with read(self, buf, offset~, max_len~) {
+impl @io.Reader for DummyFile with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
   @io.Reader::read(self.0, buf, offset~, max_len~)
 }
 
