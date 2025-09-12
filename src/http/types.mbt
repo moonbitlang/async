@@ -26,7 +26,7 @@ pub(all) enum RequestMethod {
 } derive(Show)
 
 ///|
-pub(all) struct Header(Bytes,Bytes)
+pub(all) struct Header(Bytes, Bytes)
 
 ///|
 pub(all) struct Request {
