@@ -163,8 +163,10 @@ async fn Reader::read_headers(self : Reader) -> Array[Header] raise {
 /// In the result of `read_request`, all header fields will be in lower case.
 pub async fn Reader::read_request(self : Reader) -> Request raise {
   guard self.body is Empty
-  let meth_len = self.transport.find(" ")
-  let meth = match self.transport[:meth_len] {
+  let request_line_end = self.transport.find("\r\n")
+  let request_line = self.transport[:request_line_end]
+  guard request_line.find(" ") is Some(meth_len) else { raise BadRequest }
+  let meth = match request_line[:meth_len] {
     "GET" => Get
     "HEAD" => Head
     "POST" => Post
@@ -176,18 +178,15 @@ pub async fn Reader::read_request(self : Reader) -> Request raise {
     "PATCH" => Patch
     _ => abort("handle error")
   }
-  self.transport.drop(meth_len + 1)
-  let path_len = self.transport.find(" ")
-  let path = self.transport[:path_len].to_bytes()
-  self.transport.drop(path_len + 1)
-  let protocol_len = self.transport.find("\r\n")
-  let protocol = self.transport[:protocol_len]
-  match protocol {
+  let request_line = request_line[meth_len + 1:]
+  guard request_line.find(" ") is Some(path_len) else { raise BadRequest }
+  let path = request_line[:path_len].to_bytes()
+  match request_line[path_len + 1:] {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol =>
       raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
   }
-  self.transport.drop(protocol_len + 2)
+  self.transport.drop(request_line_end + 2)
   let headers = self.read_headers()
   { meth, path, headers }
 }
@@ -205,22 +204,21 @@ pub async fn Reader::read_request(self : Reader) -> Request raise {
 /// In the result of `read_response`, all header fields will be in lower case.
 pub async fn Reader::read_response(self : Reader) -> Response raise {
   guard self.body is Empty
-  let protocol_len = self.transport.find(" ")
-  let protocol = self.transport[:protocol_len]
-  match protocol {
+  let response_line_end = self.transport.find("\r\n")
+  let response_line = self.transport[:response_line_end]
+  guard response_line.find(" ") is Some(protocol_len) else { raise BadRequest }
+  match self.transport[:protocol_len] {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol =>
       raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
   }
-  self.transport.drop(protocol_len + 1)
-  let code_len = self.transport.find(" ")
-  guard parse_int(self.transport[:code_len], base=10) is Some(code) else {
+  let response_line = response_line[protocol_len + 1:]
+  guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
+  guard parse_int(response_line[:code_len], base=10) is Some(code) else {
     raise BadRequest
   }
-  self.transport.drop(code_len + 1)
-  let reason_len = self.transport.find("\r\n")
-  let reason = self.transport[:reason_len].to_bytes()
-  self.transport.drop(reason_len + 2)
+  let reason = response_line[code_len + 1:].to_bytes()
+  self.transport.drop(response_line_end + 2)
   let headers = self.read_headers()
   { code, reason, headers }
 }
