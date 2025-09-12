@@ -19,6 +19,7 @@
 struct BufferedReader[R] {
   reader : R
   mut buf : FixedArray[Byte]
+  mut start : Int
   mut len : Int
 }
 
@@ -28,19 +29,26 @@ const SEGMENT_SIZE = 1024
 ///|
 /// Create a new buffered reader that wrap around an existing reader.
 pub fn[R] BufferedReader::new(reader : R) -> BufferedReader[R] {
-  { reader, buf: FixedArray::make(SEGMENT_SIZE, 0), len: 0 }
+  { reader, buf: FixedArray::make(SEGMENT_SIZE, 0), start: 0, len: 0 }
 }
 
 ///|
 fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
-  if n <= self.buf.length() {
+  let capacity = self.buf.length()
+  if self.start + n <= capacity {
+    return
+  }
+  if n <= capacity {
+    self.buf.blit_to(self.buf, src_offset=self.start, len=self.len)
+    self.start = 0
     return
   }
   let padding = n % SEGMENT_SIZE
   let target_len = if padding == 0 { n } else { n - padding + SEGMENT_SIZE }
   let new_buf = FixedArray::make(target_len, b'0')
-  self.buf.blit_to(new_buf, src_offset=0, dst_offset=0, len=self.buf.length())
+  self.buf.blit_to(new_buf, src_offset=self.start, dst_offset=0, len=self.len)
   self.buf = new_buf
+  self.start = 0
 }
 
 ///|
@@ -53,7 +61,11 @@ async fn[R : Reader] BufferedReader::ensure(
   }
   self.enlarge_to(len)
   while self.len < len {
-    let n = self.reader.read(self.buf, offset=self.len, max_len=len - self.len)
+    let n = self.reader.read(
+      self.buf,
+      offset=self.start + self.len,
+      max_len=len - self.len,
+    )
     if n == 0 {
       raise ReaderClosed
     }
@@ -64,10 +76,11 @@ async fn[R : Reader] BufferedReader::ensure(
 ///|
 async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit raise {
   self.enlarge_to(self.len + SEGMENT_SIZE)
+  let offset = self.start + self.len
   let n = self.reader.read(
     self.buf,
-    offset=self.len,
-    max_len=self.buf.length() - self.len,
+    offset~,
+    max_len=self.buf.length() - offset,
   )
   if n == 0 {
     raise ReaderClosed
@@ -89,10 +102,12 @@ pub async fn[R : Reader] BufferedReader::drop(
   n : Int,
 ) -> Unit raise {
   self.ensure(n)
-  if n < self.len {
-    self.buf.blit_to(self.buf, src_offset=n, len=self.len - n)
-  }
   self.len -= n
+  if self.len == 0 {
+    self.start = 0
+  } else {
+    self.start += n
+  }
 }
 
 ///|
@@ -104,7 +119,7 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
 ) {
   if self.len > 0 {
     let n = @cmp.minimum(max_len, self.len)
-    self.buf.blit_to(buf, dst_offset=offset, len=n)
+    self.buf.blit_to(buf, src_offset=self.start, dst_offset=offset, len=n)
     self.drop(n)
     n
   } else {
@@ -142,7 +157,7 @@ pub async fn[R : Reader] BufferedReader::op_get(
   index : Int,
 ) -> Byte raise {
   self.ensure(index + 1)
-  self.buf[index]
+  self.buf[self.start + index]
 }
 
 ///|
@@ -168,7 +183,7 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 ) -> @bytes.View raise {
   guard start < end
   self.ensure(end)
-  self.buf.unsafe_reinterpret_as_bytes()[start:end]
+  self.buf.unsafe_reinterpret_as_bytes()[self.start + start:self.start + end]
 }
 
 ///|
@@ -184,13 +199,14 @@ pub async fn[R : Reader] BufferedReader::find(
   self : Self[R],
   target : Bytes,
 ) -> Int raise {
-  for searched = 0 {
-    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:self.len]
+  for searched = self.start {
+    let len = self.len
+    let end = self.start + len
+    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:end]
     if region.find(target) is Some(i) {
-      return searched + i
+      return searched + i - self.start
     }
-    let searched = self.len
     self.fetch_more()
-    continue searched
+    continue self.start + len
   }
 }
