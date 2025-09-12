@@ -1,12 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/bytes_util"
 
-import(
-  "moonbitlang/core/bytes"
-)
-
 // Values
-fn ascii_to_string(@bytes.View) -> String
+fn ascii_to_string(BytesView) -> String
 
 // Errors
 
