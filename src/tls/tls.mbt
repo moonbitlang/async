@@ -186,7 +186,12 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::server(
 }
 
 ///|
-pub impl @io.Reader for TLS with read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for TLS with read(
+  self,
+  buf,
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
+) {
   while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       return ret
@@ -200,16 +205,6 @@ pub impl @io.Reader for TLS with read(self, buf, offset~, max_len~) {
     // imposible
     0
   }
-}
-
-///|
-pub async fn TLS::read(
-  self : TLS,
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  @io.Reader::read(self, buf, offset~, max_len~)
 }
 
 ///|

@@ -46,7 +46,12 @@ pub suberror HttpProtocolError {
 /// All reader related API of `HttpReader` should be called
 /// after a successful call to `read_request` or `read_response`,
 /// otherwise reading always result in EOF.
-pub impl @io.Reader for Reader with read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Reader with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
@@ -88,21 +93,6 @@ pub impl @io.Reader for Reader with read(self, buf, offset~, max_len~) {
       n
     }
   }
-}
-
-///|
-/// Read from the body of the HTTP request/response
-/// that is currently being processed by the HTTP reader.
-/// All reader related API of `HttpReader` should be called
-/// after a successful call to `read_request` or `read_response`,
-/// otherwise reading always result in EOF.
-pub async fn Reader::read(
-  self : Reader,
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  @io.Reader::read(self, buf, offset~, max_len~)
 }
 
 ///|

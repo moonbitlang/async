@@ -77,7 +77,12 @@ pub async fn Client::shutdown(self : Client) -> Unit raise {
 }
 
 ///|
-pub impl @io.Reader for Client with read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
   self.reader.read(buf, offset~, max_len~)
 }
 

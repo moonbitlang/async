@@ -107,14 +107,6 @@ pub async fn TCP::connect(addr : Addr) -> TCP raise {
 }
 
 ///|
-pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
-  let TCP(sock) = self
-  @event_loop.perform_job(
-    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
-  )
-}
-
-///|
 /// Receive data from a TCP connection.
 /// For `tcp.recv(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
@@ -123,13 +115,16 @@ pub impl @io.Reader for TCP with read(self, buf, offset~, max_len~) {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn TCP::read(
-  self : TCP,
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  @io.Reader::read(self, buf, offset~, max_len~)
+pub impl @io.Reader for TCP with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
+  let TCP(sock) = self
+  @event_loop.perform_job(
+    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+  )
 }
 
 ///|

@@ -62,7 +62,6 @@ fn Protocol::default_port(Self) -> Int
 
 type Reader
 fn[R : @io.Reader] Reader::new(R) -> Self
-async fn Reader::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 async fn Reader::read_request(Self) -> Request
 async fn Reader::read_response(Self) -> Response
 async fn Reader::skip_body(Self) -> Unit

@@ -111,11 +111,18 @@ pub async fn[R : Reader] BufferedReader::drop(
 }
 
 ///|
+/// Copy some data into the given buffer from the reader.
+/// If there is no buffered data,
+/// `BufferedReader` will request more data from the inner reader.
+/// The number of read bytes will be returned, which is always positive,
+/// unless the stream already reaches its end,
+/// i.e. there are no buffered data and the inner reader has been closed.
+/// Copied data will be removed from the reader stream.
 pub impl[R : Reader] Reader for BufferedReader[R] with read(
   self,
   buf,
-  offset~,
-  max_len~,
+  offset? = 0,
+  max_len? = buf.length() - offset,
 ) {
   if self.len > 0 {
     let n = @cmp.minimum(max_len, self.len)
@@ -125,23 +132,6 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
   } else {
     self.reader.read(buf, offset~, max_len~)
   }
-}
-
-///|
-/// Copy some data into the given buffer from the reader.
-/// If there is no buffered data,
-/// `BufferedReader` will request more data from the inner reader.
-/// The number of read bytes will be returned, which is always positive,
-/// unless the stream already reaches its end,
-/// i.e. there are no buffered data and the inner reader has been closed.
-/// Copied data will be removed from the reader stream.
-pub async fn[R : Reader] BufferedReader::read(
-  self : Self[R],
-  buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int raise {
-  Reader::read(self, buf, offset~, max_len~)
 }
 
 ///|

@@ -47,7 +47,12 @@ pub fn ServerConnection::close(self : ServerConnection) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for ServerConnection with read(
+  self,
+  buf,
+  offset? = 0,
+  max_len? = buf.length() - offset,
+) {
   self.reader.read(buf, offset~, max_len~)
 }
 
