@@ -261,3 +261,23 @@ test "BufferedReader::find bytes" {
     ),
   )
 }
+
+///|
+test "lazy drop" {
+  let log = StringBuilder::new()
+  @async.with_event_loop(fn(root) {
+    let (r, w) = @pipe.pipe()
+    root.spawn_bg(fn() {
+      w.write("abcd")
+      @async.sleep(20)
+      w.write("efgh")
+    })
+    defer r.close()
+    let reader = @io.BufferedReader::new(r)
+    let _ = reader.read_exactly(2)
+    log.write_string(reader[:2] |> @bytes_util.ascii_to_string)
+    let _ = reader.read_exactly(4)
+    log.write_string(reader[:2] |> @bytes_util.ascii_to_string)
+  })
+  inspect(log.to_string(), content="cdgh")
+}
