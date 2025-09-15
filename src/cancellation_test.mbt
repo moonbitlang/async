@@ -89,11 +89,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            @async.sleep(20)
+            @async.sleep(40)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try @async.sleep(40) catch {
+            try @async.sleep(80) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
                 raise err
@@ -113,11 +113,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            @async.sleep(50)
+            @async.sleep(100)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try @async.sleep(30) catch {
+            try @async.sleep(60) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
                 raise err
