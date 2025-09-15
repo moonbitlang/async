@@ -19,6 +19,8 @@ struct Client {
   reader : Reader
   conn : @socket.TCP
   tls : @tls.TLS?
+  send_buf : FixedArray[Byte]
+  mut send_len : Int
 }
 
 ///|
@@ -52,7 +54,8 @@ pub async fn Client::connect(
     Some(tls) => Reader::new(tls)
   }
   headers.push(Header("Host", host))
-  { headers, conn, tls, reader }
+  let send_buf = FixedArray::make(1024, b'0')
+  { headers, conn, tls, reader, send_buf, send_len: 0 }
 }
 
 ///|
@@ -87,6 +90,29 @@ pub impl @io.Reader for Client with read(
 }
 
 ///|
+async fn Client::flush(self : Self) -> Unit raise {
+  if self.send_len > 0 {
+    let data = self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len]
+    match self.tls {
+      None => self.conn.write(data)
+      Some(tls) => tls.write(data)
+    }
+    self.send_len = 0
+  }
+}
+
+///|
+impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
+  if self.send_len >= self.send_buf.length() {
+    self.flush()
+  }
+  let len = @cmp.minimum(len, self.send_buf.length() - self.send_len)
+  self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
+  self.send_len += len
+  len
+}
+
+///|
 /// Send a HTTP request to the server, and return the response from the server.
 /// Only the header of the response will be received and returned,
 /// the body of the response can be extracted by using `Client` as a `@io.Reader`.
@@ -109,10 +135,35 @@ pub async fn Client::request(
   extra_headers? : Array[Header] = [],
   body : Body,
 ) -> Response raise {
-  let headers = self.headers + extra_headers
-  match self.tls {
-    Some(tls) => send_request(tls, { meth, path, headers }, body)
-    None => send_request(self.conn, { meth, path, headers }, body)
+  match meth {
+    Get => self.write("GET ")
+    Head => self.write("HEAD ")
+    Post => self.write("POST ")
+    Put => self.write("PUT ")
+    Delete => self.write("DELETE ")
+    Connect => self.write("CONNECT ")
+    Options => self.write("OPTIONS ")
+    Trace => self.write("TRACE ")
+    Patch => self.write("PATCH ")
+  }
+  self..write(path)..write(" HTTP/1.1\r\n")
+  send_headers(self, self.headers)
+  send_headers(self, extra_headers)
+  send_body_headers(self, body)
+  self.write("\r\n")
+  self.flush()
+  match body {
+    Empty => ()
+    Fixed(body) =>
+      match self.tls {
+        None => self.conn.write(body)
+        Some(tls) => tls.write(body)
+      }
+    Stream(body) =>
+      match self.tls {
+        None => send_body_chunked(self.conn, self.send_buf, body)
+        Some(tls) => send_body_chunked(tls, self.send_buf, body)
+      }
   }
   self.reader.read_response()
 }
