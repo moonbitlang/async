@@ -18,8 +18,13 @@
 #coverage.skip
 pub fn run_async_main(main : async () -> Unit raise) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
-    _err =>
+    err => {
       // TODO: output the error to stderr
-      panic()
+      println(err)
+      exit(1)
+    }
   }
 }
+
+///|
+extern "C" fn exit(code : Int) = "exit"
