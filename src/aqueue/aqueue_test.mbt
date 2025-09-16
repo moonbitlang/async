@@ -156,3 +156,17 @@ test "aqueue fairness" {
     ),
   )
 }
+
+///|
+test "try_get" {
+  let q = @aqueue.Queue::new()
+  inspect(q.try_get(), content="None")
+  q.put(42)
+  inspect(q.try_get(), content="Some(42)")
+  inspect(q.try_get(), content="None")
+  q.put(1)
+  q.put(2)
+  inspect(q.try_get(), content="Some(1)")
+  inspect(q.try_get(), content="Some(2)")
+  inspect(q.try_get(), content="None")
+}

@@ -75,3 +75,10 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X raise {
     }
   }
 }
+
+///|
+/// Try to fetch an element from the queue without blocking.
+/// If no element is in the queue at the moment, `None` is returned.
+pub fn[X] Queue::try_get(self : Queue[X]) -> X? {
+  self.buffer.pop_front()
+}
