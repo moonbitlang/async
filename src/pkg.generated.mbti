@@ -10,6 +10,8 @@ async fn protect_from_cancel(async () -> Unit) -> Unit
 
 async fn[X] retry(RetryMethod, max_retry? : Int, async () -> X) -> X
 
+fn run_async_main(async () -> Unit) -> Unit
+
 async fn sleep(Int) -> Unit
 
 fn with_event_loop(async (TaskGroup[Unit]) -> Unit) -> Unit raise
