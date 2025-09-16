@@ -10,6 +10,7 @@ type Queue[X]
 async fn[X] Queue::get(Self[X]) -> X
 fn[X] Queue::new() -> Self[X]
 fn[X] Queue::put(Self[X], X) -> Unit
+fn[X] Queue::try_get(Self[X]) -> X?
 
 // Type aliases
 
