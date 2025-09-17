@@ -103,3 +103,16 @@ test "write cancel" {
     ),
   )
 }
+
+///|
+test "write_string" {
+  @async.with_event_loop(fn(root) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      w.write_string("abcd中文☺", encoding=UTF8)
+    })
+    inspect(@encoding/utf8.decode(r.read_all()), content="abcd中文☺")
+  })
+}

@@ -13,10 +13,16 @@
 // limitations under the License.
 
 ///|
+pub(all) enum Encoding {
+  UTF8
+}
+
+///|
 pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
   async write(Self, @bytes.View) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
+  async write_string(Self, StringView, encoding~ : Encoding) -> Unit = _
 }
 
 ///|
@@ -48,4 +54,11 @@ impl Writer with write_reader(self, reader) {
       continue offset + progress
     }
   }
+}
+
+///|
+impl Writer with write_string(self, str, encoding~) {
+  guard encoding is UTF8
+  let data = @encoding/utf8.encode(str, bom=false)
+  self.write(data)
 }

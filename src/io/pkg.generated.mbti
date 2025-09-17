@@ -22,6 +22,10 @@ async fn[W : Writer] BufferedWriter::flush(Self[W]) -> Unit
 fn[W] BufferedWriter::new(W, size? : Int) -> Self[W]
 impl[W : Writer] Writer for BufferedWriter[W]
 
+pub(all) enum Encoding {
+  UTF8
+}
+
 // Type aliases
 
 // Traits
@@ -35,5 +39,6 @@ pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
   async write(Self, BytesView) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
+  async write_string(Self, StringView, encoding~ : Encoding) -> Unit = _
 }
 
