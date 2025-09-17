@@ -43,7 +43,7 @@ pub async fn Client::connect(
   headers? : Array[Header] = [],
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
-) -> Client raise {
+) -> Client {
   let conn = @socket.TCP::connect_to_host(host, port~)
   let tls = match protocol {
     Http => None
@@ -73,7 +73,7 @@ pub fn Client::close(self : Client) -> Unit {
 /// This MUST be called before `close`
 /// and MUST NOT be called on fatal network or TLS error.
 #deprecated("TLS shutdown is not necessary for HTTP/1.1, and bad server may cause this to hang")
-pub async fn Client::shutdown(self : Client) -> Unit raise {
+pub async fn Client::shutdown(self : Client) -> Unit {
   if self.tls is Some(tls) {
     tls.shutdown()
   }
@@ -90,7 +90,7 @@ pub impl @io.Reader for Client with read(
 }
 
 ///|
-async fn Client::flush(self : Self) -> Unit raise {
+async fn Client::flush(self : Self) -> Unit {
   if self.send_len > 0 {
     let data = self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len]
     match self.tls {
@@ -134,7 +134,7 @@ pub async fn Client::request(
   path : Bytes,
   extra_headers? : Array[Header] = [],
   body : Body,
-) -> Response raise {
+) -> Response {
   match meth {
     Get => self.write("GET ")
     Head => self.write("HEAD ")
@@ -171,7 +171,7 @@ pub async fn Client::request(
 ///|
 /// Skip the body of the response currently being produced,
 /// so that the next request can be made.
-pub async fn Client::skip_body(self : Client) -> Unit raise {
+pub async fn Client::skip_body(self : Client) -> Unit {
   self.reader.skip_body()
 }
 
@@ -182,7 +182,7 @@ pub async fn Client::get(
   path : Bytes,
   extra_headers? : Array[Header] = [],
   body? : Body = Empty,
-) -> Response raise {
+) -> Response {
   self.request(Get, path, extra_headers~, body)
 }
 
@@ -193,7 +193,7 @@ pub async fn Client::put(
   path : Bytes,
   body : Body,
   extra_headers? : Array[Header] = [],
-) -> Response raise {
+) -> Response {
   self.request(Put, path, extra_headers~, body)
 }
 
@@ -204,6 +204,6 @@ pub async fn Client::post(
   path : Bytes,
   body : Body,
   extra_headers? : Array[Header] = [],
-) -> Response raise {
+) -> Response {
   self.request(Post, path, extra_headers~, body)
 }

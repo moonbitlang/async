@@ -20,7 +20,7 @@
 /// There can only one event loop running for every program,
 /// calling `with_event_loop` inside another event loop is invalid,
 /// and will result in immediate failure.
-pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit raise) -> Unit raise {
+pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit) -> Unit raise {
   @event_loop.with_event_loop(() => with_task_group(f))
 }
 
@@ -49,9 +49,9 @@ pub fnalias @coroutine.pause
 ///   `with_timeout` will raise the given error in this case.
 pub async fn with_timeout(
   time : Int,
-  f : async () -> Unit raise,
+  f : async () -> Unit,
   error? : Error,
-) -> Unit raise {
+) -> Unit {
   with_task_group(fn(group) {
     group.spawn_bg(no_wait=true, fn() {
       sleep(time)
@@ -74,10 +74,7 @@ pub async fn with_timeout(
 ///
 /// - If `f` is still running after `timeout` milliseconds,
 /// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
-pub async fn[X] with_timeout_opt(
-  time : Int,
-  f : async () -> X raise,
-) -> X? raise {
+pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
   with_task_group(fn(group) {
     group.spawn_bg(no_wait=true, fn() {
       sleep(time)
@@ -146,8 +143,8 @@ pub(all) enum RetryMethod {
 pub async fn[X] retry(
   strategy : RetryMethod,
   max_retry? : Int,
-  f : async () -> X raise,
-) -> X raise {
+  f : async () -> X,
+) -> X {
   match strategy {
     Immediate =>
       for i = 0; ; i = i + 1 {

@@ -96,7 +96,7 @@ pub impl @io.Reader for Reader with read(
 }
 
 ///|
-async fn Reader::read_headers(self : Reader) -> Array[Header] raise {
+async fn Reader::read_headers(self : Reader) -> Array[Header] {
   let headers = []
   for {
     let line_end = self.transport.find(b"\r\n")
@@ -151,7 +151,7 @@ async fn Reader::read_headers(self : Reader) -> Array[Header] raise {
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_request`, all header fields will be in lower case.
-pub async fn Reader::read_request(self : Reader) -> Request raise {
+pub async fn Reader::read_request(self : Reader) -> Request {
   guard self.body is Empty
   let request_line_end = self.transport.find("\r\n")
   let request_line = self.transport[:request_line_end]
@@ -192,7 +192,7 @@ pub async fn Reader::read_request(self : Reader) -> Request raise {
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_response`, all header fields will be in lower case.
-pub async fn Reader::read_response(self : Reader) -> Response raise {
+pub async fn Reader::read_response(self : Reader) -> Response {
   guard self.body is Empty
   let response_line_end = self.transport.find("\r\n")
   let response_line = self.transport[:response_line_end]
@@ -216,7 +216,7 @@ pub async fn Reader::read_response(self : Reader) -> Response raise {
 ///|
 /// Discard the body of current HTTP request/response,
 /// so that the next request/response can be processed.
-pub async fn Reader::skip_body(self : Reader) -> Unit raise {
+pub async fn Reader::skip_body(self : Reader) -> Unit {
   if self.body is (Empty | Fixed(0)) {
     return
   }

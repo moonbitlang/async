@@ -43,7 +43,7 @@ fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
 }
 
 ///|
-async fn TLS::handle_error(self : TLS, err : Int) -> Unit raise {
+async fn TLS::handle_error(self : TLS, err : Int) -> Unit {
   match err {
     SSL_ERROR_WANT_READ => self.read_end.wait()
     SSL_ERROR_WANT_WRITE => self.write_end.wait()
@@ -71,7 +71,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
   verify? : Bool = true,
   host? : Bytes,
   sni? : Bool = true,
-) -> TLS raise {
+) -> TLS {
   let self = TLS::from_pair(client_ctx, r, w, host~)
   if not(verify) {
     self.ssl.set_verify(false)
@@ -116,7 +116,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
   verify? : Bool = true,
   host? : Bytes,
   sni? : Bool = true,
-) -> TLS raise {
+) -> TLS {
   TLS::client_from_pair(inner, inner, verify~, host?, sni~)
 }
 
@@ -137,7 +137,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
   private_key_type~ : X509FileType,
   certificate_file~ : Bytes,
   certificate_type~ : X509FileType,
-) -> TLS raise {
+) -> TLS {
   let self = TLS::from_pair(server_ctx, r, w, host=None)
   if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
     self.close()
@@ -174,7 +174,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::server(
   private_key_type~ : X509FileType,
   certificate_file~ : Bytes,
   certificate_type~ : X509FileType,
-) -> TLS raise {
+) -> TLS {
   TLS::server_from_pair(
     inner,
     inner,
@@ -250,7 +250,7 @@ pub fn TLS::close(self : TLS) -> Unit {
 /// Furthermore, some servers may not response correctly to TLS shutdown.
 /// So it is highly recommended to add a timeout when calling this function,
 /// to prevent the program from haning indefinitely.
-pub async fn TLS::shutdown(self : TLS) -> Unit raise {
+pub async fn TLS::shutdown(self : TLS) -> Unit {
   while self.ssl.shutdown() is ret && ret <= 0 {
     let err = if ret == 0 {
       SSL_ERROR_WANT_READ

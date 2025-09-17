@@ -103,7 +103,7 @@ pub async fn open(
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = false,
-) -> File raise {
+) -> File {
   let (create, user_mode) = match create {
     None => (false, 0)
     Some(mode) => (true, mode)
@@ -133,7 +133,7 @@ pub async fn create(
   filename : Bytes,
   permission~ : Int,
   sync? : SyncMode = NoSync,
-) -> File raise {
+) -> File {
   open(filename, mode=WriteOnly, sync~, create=permission, truncate=true)
 }
 
@@ -195,7 +195,7 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 
 ///|
 /// Remove the file located at `path`. `path` must not contain `'\0'`.
-pub async fn remove(path : Bytes) -> Unit raise {
+pub async fn remove(path : Bytes) -> Unit {
   let job = @event_loop.Remove(path~)
   ignore(@event_loop.perform_job(job))
 }
@@ -279,7 +279,7 @@ pub fn File::kind(self : File) -> FileKind {
 
 ///|
 /// Read the contents of the file located at `path`.
-pub async fn read_file(path : Bytes) -> Bytes raise {
+pub async fn read_file(path : Bytes) -> Bytes {
   let file = open(path, mode=ReadOnly)
   defer file.close()
   file.read_all()
@@ -296,7 +296,7 @@ pub async fn write_file(
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = false,
-) -> Unit raise {
+) -> Unit {
   let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
   defer file.close()
   file.write(content)

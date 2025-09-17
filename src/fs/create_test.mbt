@@ -37,7 +37,7 @@ test "create or append" {
   let log = StringBuilder::new()
   @async.with_event_loop(fn(_) {
     let path = b"create_append_test"
-    async fn add_data(data) raise {
+    async fn add_data(data) {
       let w = @fs.open(
         path,
         mode=WriteOnly,

@@ -24,7 +24,7 @@ pub(all) enum Body {
 async fn[Writer : @io.Writer] send_headers(
   w : Writer,
   headers : Array[Header],
-) -> Unit raise {
+) -> Unit {
   for header in headers {
     let Header(k, v) = header
     w..write(k)..write(": ")..write(v)..write("\r\n")
@@ -35,7 +35,7 @@ async fn[Writer : @io.Writer] send_headers(
 async fn[Writer : @io.Writer] send_body_headers(
   w : Writer,
   body : Body,
-) -> Unit raise {
+) -> Unit {
   match body {
     Empty => ()
     Fixed(body) =>
@@ -52,7 +52,7 @@ async fn[Writer : @io.Writer] send_body_chunked(
   w : Writer,
   buf : FixedArray[Byte],
   body : &@io.Reader,
-) -> Unit raise {
+) -> Unit {
   // Reserve enough space for chunk length and '\r\n' in the buffer,
   // so that we can commit the whole chunk in a single write to avoid small writes
   let max_len = buf.length() - 7
@@ -76,7 +76,7 @@ pub async fn[Writer : @io.Writer] send_request(
   w0 : Writer,
   request : Request,
   body : Body,
-) -> Unit raise {
+) -> Unit {
   let w = @io.BufferedWriter::new(w0)
   match request.meth {
     Get => w.write("GET ")
@@ -110,7 +110,7 @@ pub async fn[Writer : @io.Writer] send_response(
   w0 : Writer,
   response : Response,
   body : Body,
-) -> Unit raise {
+) -> Unit {
   let w = @io.BufferedWriter::new(w0)
   w
   ..write("HTTP/1.1 ")

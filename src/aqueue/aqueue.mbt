@@ -50,7 +50,7 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
 /// `get` itself never fail, and will wait indefinitely.
 /// However, since `get` is a blocking point, the task running `get` may be cancelled,
 /// in this case, an cancellation will be raised from `get`.
-pub async fn[X] Queue::get(self : Queue[X]) -> X raise {
+pub async fn[X] Queue::get(self : Queue[X]) -> X {
   loop self.buffer.pop_front() {
     Some(data) => {
       // It is necessary to `pause` here for fairness.

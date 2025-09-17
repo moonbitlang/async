@@ -17,7 +17,7 @@ async fn serve_directory(
   conn : @http.ServerConnection,
   dir : @fs.Directory,
   path~ : Bytes,
-) -> Unit raise {
+) -> Unit {
   let files = dir.read_all()
   files.sort()
   let content = @buffer.new()
@@ -61,7 +61,7 @@ async fn serve_file(
   conn : @http.ServerConnection,
   file : @fs.File,
   path~ : Bytes,
-) -> Unit raise {
+) -> Unit {
   let content_type : Bytes = match path {
     [.., .. ".png"] => "image/png"
     [.., .. ".jpg"] | "jpeg" => "image/jpeg"
@@ -83,7 +83,7 @@ async fn serve_file(
 }
 
 ///|
-async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit raise {
+async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit {
   let base_name = if path.rev_find("/") is Some(i) {
     path[i + 1:].to_bytes()
   } else {
@@ -112,7 +112,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit raise {
 let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></html>"
 
 ///|
-async fn serve_404(conn : @http.ServerConnection) -> Unit raise {
+async fn serve_404(conn : @http.ServerConnection) -> Unit {
   conn.send_response(
     404,
     "NotFound",
@@ -127,7 +127,7 @@ pub async fn server(
   path~ : Bytes,
   port~ : Int,
   log? : (String) -> Unit = println,
-) -> Unit raise {
+) -> Unit {
   let base_path = path
   let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
   defer server.close()

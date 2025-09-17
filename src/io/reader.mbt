@@ -14,9 +14,9 @@
 
 ///|
 pub(open) trait Reader {
-  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int raise
-  async read_exactly(Self, len : Int) -> Bytes raise = _
-  async read_all(Self) -> Bytes raise = _
+  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+  async read_exactly(Self, len : Int) -> Bytes = _
+  async read_all(Self) -> Bytes = _
 }
 
 ///|

@@ -37,7 +37,7 @@ struct TaskGroup[X] {
   mut waiting : Int
   mut state : TaskGroupState
   mut result : X?
-  group_defer : Array[async () -> Unit raise]
+  group_defer : Array[async () -> Unit]
 }
 
 ///|
@@ -46,7 +46,7 @@ pub suberror AlreadyTerminated derive(Show)
 ///|
 fn[X] TaskGroup::spawn_coroutine(
   self : TaskGroup[X],
-  f : async () -> Unit raise,
+  f : async () -> Unit,
   no_wait~ : Bool,
   allow_failure~ : Bool,
 ) -> @coroutine.Coroutine raise {
@@ -56,7 +56,7 @@ fn[X] TaskGroup::spawn_coroutine(
   if not(no_wait) {
     self.waiting += 1
   }
-  async fn worker() raise {
+  async fn worker() {
     let coro = @coroutine.current_coroutine()
     defer {
       if not(no_wait) {
@@ -113,7 +113,7 @@ fn[X] TaskGroup::spawn_coroutine(
 /// before `spawn_bg` returns.
 pub fn[X] TaskGroup::spawn_bg(
   self : TaskGroup[X],
-  f : async () -> Unit raise,
+  f : async () -> Unit,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
 ) -> Unit raise {
@@ -139,7 +139,7 @@ pub fn[X] TaskGroup::spawn_bg(
 /// before `spawn` returns.
 pub fn[G, X] TaskGroup::spawn(
   self : TaskGroup[G],
-  f : async () -> X raise,
+  f : async () -> X,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
 ) -> Task[X] raise {
@@ -165,7 +165,7 @@ pub fn[G, X] TaskGroup::spawn(
 /// to avoid infinite hanging due to blocked operation.
 pub fn[X] TaskGroup::add_defer(
   self : TaskGroup[X],
-  block : async () -> Unit raise,
+  block : async () -> Unit,
 ) -> Unit raise {
   if not(self.state is Running) {
     raise AlreadyTerminated
@@ -181,7 +181,7 @@ pub fn[X] TaskGroup::add_defer(
 ///
 /// If all children task terminate successfully,
 /// `with_task_group` will return the result of `f`.
-pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X raise) -> X raise {
+pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X) -> X {
   let tg = {
     children: Set::new(),
     parent: @coroutine.current_coroutine(),
@@ -265,7 +265,7 @@ fnalias retry as moonbitlang_async_retry
 /// The meaning of `no_wait` and `allow_failure` is the same as `spawn_bg`.
 pub fn[X] TaskGroup::spawn_loop(
   self : TaskGroup[X],
-  f : async () -> IterResult raise,
+  f : async () -> IterResult,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
   retry? : RetryMethod,

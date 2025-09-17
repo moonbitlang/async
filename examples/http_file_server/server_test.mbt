@@ -40,8 +40,8 @@ let port = 4207
 async fn client(
   path : Bytes,
   logger : &Logger,
-  handle_response? : async (@http.Reader) -> Unit raise,
-) -> Unit raise {
+  handle_response? : async (@http.Reader) -> Unit,
+) -> Unit {
   let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
   @http.send_request(conn, { meth: Get, path, headers: [] }, Empty)

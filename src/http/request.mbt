@@ -39,7 +39,7 @@ async fn perform_request(
   headers : Array[Header],
   body : Body,
   port? : Int,
-) -> (Response, Bytes) raise {
+) -> (Response, Bytes) {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -82,7 +82,7 @@ pub async fn get(
   uri : Bytes,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) raise {
+) -> (Response, Bytes) {
   perform_request(uri, Get, headers, Empty, port?)
 }
 
@@ -93,7 +93,7 @@ pub async fn put(
   content : Bytes,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) raise {
+) -> (Response, Bytes) {
   perform_request(uri, Put, headers, Fixed(content), port?)
 }
 
@@ -104,6 +104,6 @@ pub async fn post(
   content : Bytes,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) raise {
+) -> (Response, Bytes) {
   perform_request(uri, Post, headers, Fixed(content), port?)
 }

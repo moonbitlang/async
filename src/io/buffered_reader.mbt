@@ -52,10 +52,7 @@ fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
-async fn[R : Reader] BufferedReader::ensure(
-  self : Self[R],
-  len : Int,
-) -> Unit raise {
+async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
   if self.len >= len {
     return
   }
@@ -74,7 +71,7 @@ async fn[R : Reader] BufferedReader::ensure(
 }
 
 ///|
-async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit raise {
+async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit {
   self.enlarge_to(self.len + SEGMENT_SIZE)
   let offset = self.start + self.len
   let n = self.reader.read(
@@ -97,10 +94,7 @@ async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit raise {
 ///
 /// This operation will advance the reader stream,
 /// and will affect the semantic of all index based operations.
-pub async fn[R : Reader] BufferedReader::drop(
-  self : Self[R],
-  n : Int,
-) -> Unit raise {
+pub async fn[R : Reader] BufferedReader::drop(self : Self[R], n : Int) -> Unit {
   self.ensure(n)
   self.len -= n
   if self.len == 0 {
@@ -145,7 +139,7 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
 pub async fn[R : Reader] BufferedReader::op_get(
   self : Self[R],
   index : Int,
-) -> Byte raise {
+) -> Byte {
   self.ensure(index + 1)
   self.buf[self.start + index]
 }
@@ -170,7 +164,7 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
   self : Self[R],
   start? : Int = 0,
   end~ : Int,
-) -> @bytes.View raise {
+) -> @bytes.View {
   guard start < end
   self.ensure(end)
   self.buf.unsafe_reinterpret_as_bytes()[self.start + start:self.start + end]
@@ -188,7 +182,7 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 pub async fn[R : Reader] BufferedReader::find(
   self : Self[R],
   target : Bytes,
-) -> Int raise {
+) -> Int {
   for searched = self.start {
     let len = self.len
     let end = self.start + len

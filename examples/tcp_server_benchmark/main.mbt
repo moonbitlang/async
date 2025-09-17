@@ -22,7 +22,7 @@ async fn client(
   total_conn~ : Int,
   max_concurrent_conn~ : Int,
   conn_duration~ : Int,
-) -> (Int64, Int64, Double) raise {
+) -> (Int64, Int64, Double) {
   let mut send_throughput_sum : Int64 = 0
   let mut recv_throughput_sum : Int64 = 0
   let mut latency_sum : Int64 = 0

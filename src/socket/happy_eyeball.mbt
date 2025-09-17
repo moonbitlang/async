@@ -14,7 +14,7 @@
 
 ///|
 /// Connect to a remote host using the happy eyeball algorithm.
-pub async fn TCP::connect_to_host(host : Bytes, port~ : Int) -> TCP raise {
+pub async fn TCP::connect_to_host(host : Bytes, port~ : Int) -> TCP {
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
   if ret > 0 {

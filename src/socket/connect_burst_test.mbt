@@ -19,7 +19,7 @@ suberror ServerTerminate
 let port = 4206
 
 ///|
-async fn server() -> Int raise {
+async fn server() -> Int {
   let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
   defer server.close()
   let mut num_connection = 0
@@ -50,7 +50,7 @@ async fn server() -> Int raise {
 }
 
 ///|
-async fn client(msg : Bytes) -> Unit raise {
+async fn client(msg : Bytes) -> Unit {
   let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
   conn.write(msg)

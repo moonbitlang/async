@@ -66,7 +66,7 @@ pub async fn run(
   stderr? : &ProcessOutput,
   cwd? : Bytes,
   orphan? : Bool = false,
-) -> Int raise {
+) -> Int {
   let argv = FixedArray::make(args.length() + 2, None)
   argv[0] = Some(cmd)
   for i in 0..<args.length() {
@@ -175,13 +175,13 @@ pub async fn redirect_to_file(
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = false,
-) -> &ProcessOutput raise {
+) -> &ProcessOutput {
   RedirectToFile(@fs.open(path, mode=WriteOnly, create?, append~, truncate~))
 }
 
 ///|
 /// Redirect the content of a file at `path` to the stdin of a process.
-pub async fn redirect_from_file(path : Bytes) -> &ProcessInput raise {
+pub async fn redirect_from_file(path : Bytes) -> &ProcessInput {
   RedirectToFile(@fs.open(path, mode=ReadOnly))
 }
 

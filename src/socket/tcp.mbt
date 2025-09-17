@@ -50,7 +50,7 @@ pub fn TCPServer::close(self : TCPServer) -> Unit {
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
-pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) raise {
+pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) {
   let TCPServer(listen_sock) = self
   let addr = Addr::new(0, 0)
   let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
@@ -90,7 +90,7 @@ pub fn TCP::enable_keepalive(
 
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
-pub async fn TCP::connect(addr : Addr) -> TCP raise {
+pub async fn TCP::connect(addr : Addr) -> TCP {
   let sock = make_tcp_socket()
   if disable_nagle(sock) < 0 {
     @fd_util.close(sock)

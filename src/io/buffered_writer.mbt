@@ -47,7 +47,7 @@ pub fn[W] BufferedWriter::capacity(self : BufferedWriter[W]) -> Int {
 /// Flush all buffered data and commit them to the underlying writer.
 pub async fn[W : Writer] BufferedWriter::flush(
   self : BufferedWriter[W],
-) -> Unit raise {
+) -> Unit {
   if self.len > 0 {
     self.writer.write(self.buf.unsafe_reinterpret_as_bytes()[:self.len])
     self.len = 0

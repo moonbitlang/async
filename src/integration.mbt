@@ -16,7 +16,7 @@
 /// This function is used for integration of `moonbitlang/async`
 /// into the MoonBit toolchain, do not call directly.
 #coverage.skip
-pub fn run_async_main(main : async () -> Unit raise) -> Unit {
+pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
     err => {
       // TODO: output the error to stderr

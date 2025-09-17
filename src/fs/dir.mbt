@@ -15,7 +15,7 @@
 ///|
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
-pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit raise {
+pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit {
   ignore(@event_loop.perform_job(Mkdir(path~, mode=permission)))
 }
 
@@ -25,7 +25,7 @@ pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit raise {
 /// files and directories in `path` will be removed recursively.
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
-pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit raise {
+pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit {
   if recursive {
     for file in readdir(path) {
       let file = path + "/" + file
@@ -82,7 +82,7 @@ let null_dirent : DirectoryEntry = get_null_dirent()
 extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang_async_dirent_name"
 
 ///|
-async fn Directory::read_next(dir : Directory) -> Bytes? raise {
+async fn Directory::read_next(dir : Directory) -> Bytes? {
   let out = @ref.new(null_dirent)
   ignore(@event_loop.perform_job(Readdir(dir=dir.0, out~)))
   if physical_equal(out.val, null_dirent) {
@@ -102,7 +102,7 @@ pub async fn Directory::read_all(
   dir : Directory,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
-) -> Array[Bytes] raise {
+) -> Array[Bytes] {
   let result = []
   while dir.read_next() is Some(entry) {
     if not(include_special) && entry is ("." | "..") {
@@ -129,7 +129,7 @@ pub async fn readdir(
   include_hidden? : Bool = true,
   include_special? : Bool = false,
   sort? : Bool = false,
-) -> Array[Bytes] raise {
+) -> Array[Bytes] {
   let dir = opendir(path)
   defer dir.close()
   let list = dir.read_all(include_hidden~, include_special~)

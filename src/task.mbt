@@ -25,7 +25,7 @@ struct Task[X] {
 /// If the task fails, `wait` will also fail with the same error.
 ///
 /// If the current task is cancelled, `wait` return immediately with error.
-pub async fn[X] Task::wait(self : Task[X]) -> X raise {
+pub async fn[X] Task::wait(self : Task[X]) -> X {
   self.coro.wait()
   self.value.val.unwrap()
 }

@@ -63,7 +63,7 @@ pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
 }
 
 ///|
-pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
+pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
   guard curr_loop.val is None
   let (notify_recv, notify_send) = @fd_util.pipe()
   try {
@@ -127,7 +127,7 @@ pub fn with_event_loop(f : async () -> Unit raise) -> Unit raise {
 }
 
 ///|
-async fn EventLoop::poll(self : Self) -> Bool raise {
+async fn EventLoop::poll(self : Self) -> Bool {
   if @coroutine.no_more_work() && self.running_workers.is_empty() {
     return false
   }
@@ -257,7 +257,7 @@ fn prepare_fd_read(fd : Int) -> FdHandle raise {
 }
 
 ///|
-async fn FdHandle::wait_read(handle : FdHandle) -> Unit raise {
+async fn FdHandle::wait_read(handle : FdHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
   if handle.read is Ready {
     handle.read = NotSure
@@ -301,7 +301,7 @@ fn prepare_fd_write(fd : Int) -> FdHandle raise {
 }
 
 ///|
-async fn FdHandle::wait_write(handle : FdHandle) -> Unit raise {
+async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
   guard (handle.events & WriteEvent) != 0
   if handle.write is Ready {
     handle.write = NotSure
@@ -320,7 +320,7 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit raise {
 }
 
 ///|
-async fn wait_pid(pid : Int) -> Int raise {
+async fn wait_pid(pid : Int) -> Int {
   guard curr_loop.val is Some(evloop)
   let alt_id = match evloop.poll.register_pid(pid) {
     Running(id) => id
@@ -359,7 +359,7 @@ pub fn close_fd(fd : Int) -> Unit {
 async fn perform_job_in_worker(
   job : JobForWorker,
   allow_cancel? : Bool = false,
-) -> Int raise {
+) -> Int {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {
     None if evloop.running_workers.size() > evloop.max_worker_count =>
@@ -392,7 +392,7 @@ async fn perform_job_in_worker(
 }
 
 ///|
-pub async fn perform_job(job : Job) -> Int raise {
+pub async fn perform_job(job : Job) -> Int {
   match job {
     Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
     Read(fd~, buf~, offset~, len~, can_poll~) =>

@@ -22,7 +22,7 @@ let port = 4201
 pub(all) struct Printer((String) -> Unit)
 
 ///|
-async fn server(println : Printer) -> Unit raise {
+async fn server(println : Printer) -> Unit {
   @async.with_task_group(fn(group) {
     let server_sock = @socket.UDP::new()
     defer server_sock.close()
@@ -53,7 +53,7 @@ async fn server(println : Printer) -> Unit raise {
 }
 
 ///|
-async fn client(println : Printer, id : Int, msg : Bytes) -> Unit raise {
+async fn client(println : Printer, id : Int, msg : Bytes) -> Unit {
   let conn = @socket.UDP::new()
   defer conn.close()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))

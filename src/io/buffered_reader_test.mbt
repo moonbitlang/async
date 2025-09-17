@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-async fn writer(log : StringBuilder, w : @pipe.PipeWrite) -> Unit raise {
+async fn writer(log : StringBuilder, w : @pipe.PipeWrite) -> Unit {
   defer w.close()
   @async.sleep(20)
   log.write_string("writing 4 bytes of data\n")

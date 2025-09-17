@@ -64,21 +64,19 @@ pub impl @io.Reader for ServerConnection with read(
 /// After calling `read_request`,
 /// the body of the request can be obtained by using `ServerConnection`
 /// as a `@io.Reader`.
-pub async fn ServerConnection::read_request(
-  self : ServerConnection,
-) -> Request raise {
+pub async fn ServerConnection::read_request(self : ServerConnection) -> Request {
   self.reader.skip_body()
   self.reader.read_request()
 }
 
 ///|
 /// Manually discard the body of the request currently being processed.
-pub async fn ServerConnection::skip_body(self : ServerConnection) -> Unit raise {
+pub async fn ServerConnection::skip_body(self : ServerConnection) -> Unit {
   self.reader.skip_body()
 }
 
 ///|
-async fn ServerConnection::flush(self : Self) -> Unit raise {
+async fn ServerConnection::flush(self : Self) -> Unit {
   if self.send_len > 0 {
     self.conn.write(self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len])
     self.send_len = 0
@@ -104,7 +102,7 @@ pub async fn ServerConnection::send_response(
   reason : Bytes,
   body : Body,
   extra_headers? : Array[Header] = [],
-) -> Unit raise {
+) -> Unit {
   self
   ..write("HTTP/1.1 ")
   ..write(encode_int(code, base=10))
