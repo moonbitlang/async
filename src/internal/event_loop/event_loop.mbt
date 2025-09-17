@@ -153,7 +153,12 @@ async fn EventLoop::poll(self : Self) -> Bool {
         self.pids.remove(fd)
         handle.waiter.wake()
       }
-      self.poll.remove_pid(fd)
+      self.poll.remove_pid(fd) catch {
+        err => {
+          println("B \{err}")
+          raise err
+        }
+      }
     } else if fd == self.notify_recv {
       while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
         guard self.running_workers.get(job_id) is Some(worker)
@@ -331,8 +336,13 @@ async fn wait_pid(pid : Int) -> Int {
   evloop.pids[alt_id] = handle
   @coroutine.suspend() catch {
     err => {
-      evloop.pids.remove(alt_id)
-      evloop.poll.remove_pid(alt_id)
+      match evloop.pids.get(alt_id) {
+        None => ()
+        Some(_) => {
+          evloop.pids.remove(alt_id)
+          evloop.poll.remove_pid(alt_id)
+        }
+      }
       raise err
     }
   }
