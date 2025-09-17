@@ -27,9 +27,9 @@ async fn writer(log : StringBuilder, w : @pipe.PipeWrite) -> Unit {
 }
 
 ///|
-test "BufferedReader::read" {
+async test "BufferedReader::read" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(() => writer(log, w))
     defer r.close()
@@ -56,20 +56,20 @@ test "BufferedReader::read" {
 }
 
 ///|
-test "BufferedReader::read_exactly" {
+async test "BufferedReader::read_exactly" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(root) {
-      let (r, w) = @pipe.pipe()
-      root.spawn_bg(() => writer(log, w))
-      defer r.close()
-      let reader = @io.BufferedReader::new(r)
-      for {
-        let data = reader.read_exactly(6)
-        log.write_string("received: \{data}\n")
-      }
-    }),
-  )
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    root.spawn_bg(() => writer(log, w))
+    defer r.close()
+    let reader = @io.BufferedReader::new(r)
+    for {
+      let data = reader.read_exactly(6)
+      log.write_string("received: \{data}\n")
+    }
+  }) catch {
+    err => log.write_object(err)
+  }
   inspect(
     log.to_string(),
     content=(
@@ -78,16 +78,16 @@ test "BufferedReader::read_exactly" {
       #|received: b"\x61\x62\x63\x64\x65\x66"
       #|writing 4 bytes of data
       #|received: b"\x67\x68\x69\x6a\x6b\x6c"
-      #|Err(ReaderClosed)
+      #|ReaderClosed
     ),
   )
 }
 
 ///|
-test "BufferedReader::op_get" {
+async test "BufferedReader::op_get" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let (r, w) = @pipe.pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
@@ -120,10 +120,10 @@ test "BufferedReader::op_get" {
 }
 
 ///|
-test "BufferedReader::op_as_view" {
+async test "BufferedReader::op_as_view" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let (r, w) = @pipe.pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
@@ -156,10 +156,10 @@ test "BufferedReader::op_as_view" {
 }
 
 ///|
-test "BufferedReader::find single byte" {
+async test "BufferedReader::find single byte" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let (r, w) = @pipe.pipe()
       root.spawn_bg(fn() {
         defer w.close()
@@ -210,10 +210,10 @@ test "BufferedReader::find single byte" {
 }
 
 ///|
-test "BufferedReader::find bytes" {
+async test "BufferedReader::find bytes" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let (r, w) = @pipe.pipe()
       root.spawn_bg(fn() {
         defer w.close()
@@ -263,9 +263,9 @@ test "BufferedReader::find bytes" {
 }
 
 ///|
-test "lazy drop" {
+async test "lazy drop" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       w.write("abcd")

@@ -14,48 +14,43 @@
 // limitations under the License.
 
 ///|
-test "merge multiple" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "merge multiple" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
-    root.add_defer(() => r.close())
-    root.add_defer(() => w.close())
-    root.spawn_bg(fn() {
-      @process.run("sh", ["-c", "echo abcd"], stdout=w, extra_env={
-        b"LANG": b"en_US.UTF-8",
-      })
-      |> ignore
-    })
-    root.spawn_bg(fn() {
-      @process.run("sh", ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
-        b"LANG": b"en_US.UTF-8",
-      })
-      |> ignore
-    })
     root.spawn_bg(no_wait=true, fn() {
-      let buf = FixedArray::make(1024, b'0')
-      while r.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-        log.write_string(@bytes_util.ascii_to_string(data))
-      }
+      defer r.close()
+      inspect(
+        @bytes_util.ascii_to_string(r.read_all()),
+        content=(
+          #|abcd
+          #|efgh
+          #|
+        ),
+      )
+    })
+    defer w.close()
+    @async.with_task_group(fn(group) {
+      group.spawn_bg(fn() {
+        @process.run("sh", ["-c", "echo abcd"], stdout=w, extra_env={
+          b"LANG": b"en_US.UTF-8",
+        })
+        |> ignore
+      })
+      group.spawn_bg(fn() {
+        @process.run("sh", ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
+          b"LANG": b"en_US.UTF-8",
+        })
+        |> ignore
+      })
     })
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|abcd
-      #|efgh
-      #|
-    ),
-  )
 }
 
 ///|
-test "redirect to file" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
-    let input_file = b"src/process/redirect_test_in.txt"
-    let output_file = b"src/process/redirect_test_out.txt"
+async test "redirect to file" {
+  @async.with_task_group(fn(root) {
+    let input_file = b"target/process_redirect_test_in.txt"
+    let output_file = b"target/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     @fs.write_file(input_file, "abcd", create=0o644)
@@ -65,14 +60,16 @@ test "redirect to file" {
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file, create=0o644),
     )
-    log.write_string(@fs.read_file(output_file) |> @bytes_util.ascii_to_string)
+    inspect(
+      @bytes_util.ascii_to_string(@fs.read_file(output_file)),
+      content="abcd",
+    )
   })
-  inspect(log.to_string(), content="abcd")
 }
 
 ///|
-test "merge stdout and stderr" {
-  @async.with_event_loop(fn(root) {
+async test "merge stdout and stderr" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {

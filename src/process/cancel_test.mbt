@@ -14,13 +14,13 @@
 // limitations under the License.
 
 ///|
-test "cancel process" {
+async test "cancel process" {
   let test_prog = b"sleep 10 &\n" +
     b"child=$!\n" +
     b"trap \"echo received SIGTERM; kill -s TERM $child\" TERM\n" +
     b"wait $child"
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
@@ -51,9 +51,9 @@ test "cancel process" {
 }
 
 ///|
-test "orphan process" {
+async test "orphan process" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "aqueue basic" {
+async test "aqueue basic" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
       for _ in 0..<6 {
@@ -51,9 +51,9 @@ test "aqueue basic" {
 }
 
 ///|
-test "aqueue multi-reader" {
+async test "aqueue multi-reader" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
       @async.sleep(20)
@@ -79,18 +79,18 @@ test "aqueue multi-reader" {
 }
 
 ///|
-test "aqueue cancellation" {
+async test "aqueue cancellation" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
       for x in 0..<6 {
-        @async.sleep(50)
+        @async.sleep(100)
         log.write_string("put(\{x})\n")
         queue.put(x)
       }
     })
-    @async.with_timeout(230, fn() {
+    @async.with_timeout(450, fn() {
       for {
         let x = queue.get() catch {
           err => {
@@ -122,9 +122,9 @@ test "aqueue cancellation" {
 }
 
 ///|
-test "aqueue fairness" {
+async test "aqueue fairness" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
       for _ in 0..<2 {

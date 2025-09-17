@@ -13,24 +13,22 @@
 // limitations under the License.
 
 ///|
-test "write large data" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "write large data" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
       w.write(data)
     })
-    root.spawn_bg(fn() { log.write_object(r.read_all().length()) })
+    root.spawn_bg(fn() { inspect(r.read_all().length(), content="16384") })
   })
-  inspect(log.to_string(), content="16384")
 }
 
 ///|
-test "write reader" {
+async test "write reader" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r1, w1) = @pipe.pipe()
     let (r2, w2) = @pipe.pipe()
     root.spawn_bg(fn() {
@@ -87,9 +85,9 @@ impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-test "write cancel" {
+async test "write cancel" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
+  @async.with_task_group(fn(_) {
     let writer = { logger: log, base_timeout: 40 }
     @async.with_timeout(60, fn() { writer.write(b"abcd") })
   })
@@ -105,8 +103,8 @@ test "write cancel" {
 }
 
 ///|
-test "write_string" {
-  @async.with_event_loop(fn(root) {
+async test "write_string" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     defer r.close()
     root.spawn_bg(fn() {

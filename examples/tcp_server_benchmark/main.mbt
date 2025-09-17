@@ -71,7 +71,7 @@ async fn client(
 }
 
 ///|
-fn main_prog() -> Unit raise {
+async fn main {
   let mut total_conn = 1000
   let mut max_concurrent_conn = 100
   let mut conn_duration = 500
@@ -120,31 +120,22 @@ fn main_prog() -> Unit raise {
     ..write_uint64_le(now)
     @random.Rand::chacha8(seed=seed.contents())
   }
-  @async.with_event_loop(fn(_) {
-    let (throughput, average_latency) = client(
-      rand,
-      addr,
-      total_conn~,
-      max_concurrent_conn~,
-      conn_duration~,
-    )
-    fn show_size(n : Int64) {
-      let units = ["b", "kb", "mb", "gb"]
-      loop (units[:], n.to_double()) {
-        ([], _) => panic()
-        ([_, .. rest], n) if n >= 1024 => continue (rest, n / 1024)
-        ([unit, ..], n) => "\{n} \{unit}"
-      }
+  let (throughput, average_latency) = client(
+    rand,
+    addr,
+    total_conn~,
+    max_concurrent_conn~,
+    conn_duration~,
+  )
+  fn show_size(n : Int64) {
+    let units = ["b", "kb", "mb", "gb"]
+    loop (units[:], n.to_double()) {
+      ([], _) => panic()
+      ([_, .. rest], n) if n >= 1024 => continue (rest, n / 1024)
+      ([unit, ..], n) => "\{n} \{unit}"
     }
-
-    println("average throughput: \{show_size(throughput)}/s")
-    println("average latency: \{average_latency} ms")
-  })
-}
-
-///|
-fn main {
-  main_prog() catch {
-    err => println(err)
   }
+
+  println("average throughput: \{show_size(throughput)}/s")
+  println("average latency: \{average_latency} ms")
 }

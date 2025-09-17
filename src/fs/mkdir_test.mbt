@@ -13,34 +13,24 @@
 // limitations under the License.
 
 ///|
-test "mkdir" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    @fs.mkdir("mkdir_test", permission=0o755)
-    @fs.write_file("mkdir_test/file", "", create=0o644)
-    log.write_object(
-      @fs.readdir("mkdir_test", sort=true).map(name => @bytes_util.ascii_to_string(
-        name,
-      )),
-    )
-    @fs.remove("mkdir_test/file")
-    @fs.rmdir("mkdir_test")
-  })
-  inspect(log.to_string(), content="[\"file\"]")
+async test "mkdir" {
+  @fs.mkdir("mkdir_test", permission=0o755)
+  @fs.write_file("mkdir_test/file", "", create=0o644)
+  let result = @fs.readdir("mkdir_test", sort=true).map(name => @bytes_util.ascii_to_string(
+    name,
+  ))
+  @fs.remove("mkdir_test/file")
+  @fs.rmdir("mkdir_test")
+  inspect(result, content="[\"file\"]")
 }
 
 ///|
-test "rmdir recursive" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    @fs.mkdir("rmdir_test", permission=0o755)
-    @fs.write_file("rmdir_test/file", "", create=0o644)
-    @fs.mkdir("rmdir_test/inner", permission=0o755)
-    @fs.write_file("rmdir_test/inner/file", "", create=0o644)
-    @fs.rmdir("rmdir_test") catch {
-      _ => log.write_string("non-recursive removal fails")
-    }
-    @fs.rmdir("rmdir_test", recursive=true)
-  })
-  inspect(log.to_string(), content="non-recursive removal fails")
+async test "rmdir recursive" {
+  @fs.mkdir("rmdir_test", permission=0o755)
+  @fs.write_file("rmdir_test/file", "", create=0o644)
+  @fs.mkdir("rmdir_test/inner", permission=0o755)
+  @fs.write_file("rmdir_test/inner/file", "", create=0o644)
+  let result = try? @fs.rmdir("rmdir_test")
+  @fs.rmdir("rmdir_test", recursive=true)
+  assert_true(result is Err(_))
 }

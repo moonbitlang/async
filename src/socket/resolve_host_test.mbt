@@ -13,29 +13,25 @@
 // limitations under the License.
 
 ///|
-test "resolve localhost" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let addr = @socket.Addr::resolve("localhost", port=4200)
-    log.write_object(addr)
-  })
-  inspect(log.to_string(), content="127.0.0.1:4200")
+async test "resolve localhost" {
+  inspect(
+    @socket.Addr::resolve("localhost", port=4200),
+    content="127.0.0.1:4200",
+  )
 }
 
 ///|
-test "resolve mooncakes.io" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let addr = @socket.Addr::resolve("mooncakes.io", port=443)
-    log.write_object(addr)
-  })
-  inspect(log.to_string(), content="54.188.190.230:443")
+async test "resolve mooncakes.io" {
+  inspect(
+    @socket.Addr::resolve("mooncakes.io", port=443),
+    content="54.188.190.230:443",
+  )
 }
 
 ///|
-test "resolve cancel" {
+async test "resolve cancel" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let channel = @async.Queue::new()
     let task = root.spawn(allow_failure=true, fn() {
       channel.put(())

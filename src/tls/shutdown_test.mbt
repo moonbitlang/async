@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "peer close connection" {
+async test "peer close connection" {
   let port = 4208
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     // server
     root.spawn_bg(fn() {
       let server = @socket.TCPServer::new(

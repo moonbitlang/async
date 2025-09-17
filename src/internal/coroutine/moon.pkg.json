@@ -1,3 +1,4 @@
 {
-  "import": [ "moonbitlang/async/internal/time" ]
+  "import": [ "moonbitlang/async/internal/time" ],
+  "test-import": [ "moonbitlang/async" ]
 }

@@ -14,9 +14,8 @@
 // limitations under the License.
 
 ///|
-test "set cwd" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "set cwd" {
+  @async.with_task_group(fn(root) {
     guard @env.current_dir() is Some(prev_cwd)
     let (r, w) = @process.read_from_process()
     defer r.close()
@@ -27,27 +26,22 @@ test "set cwd" {
       guard @env.current_dir() is Some(new_cwd)
       guard prev_cwd == new_cwd
     })
-    let buf = FixedArray::make(1024, b'0')
-    while r.read(buf) is n && n > 0 {
-      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(@bytes_util.ascii_to_string(data))
-    }
+    inspect(
+      @bytes_util.ascii_to_string(r.read_all()),
+      content=(
+        #|basic_test.mbt
+        #|cancel_test.mbt
+        #|cwd_test.mbt
+        #|env_test.mbt
+        #|helper_test.mbt
+        #|moon.pkg.json
+        #|pkg.generated.mbti
+        #|process.mbt
+        #|redirect_test.mbt
+        #|stub.c
+        #|wait_test.mbt
+        #|
+      ),
+    )
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|basic_test.mbt
-      #|cancel_test.mbt
-      #|cwd_test.mbt
-      #|env_test.mbt
-      #|helper_test.mbt
-      #|moon.pkg.json
-      #|pkg.generated.mbti
-      #|process.mbt
-      #|redirect_test.mbt
-      #|stub.c
-      #|wait_test.mbt
-      #|
-    ),
-  )
 }

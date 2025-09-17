@@ -13,27 +13,23 @@
 // limitations under the License.
 
 ///|
-test "read EOF" {
+async test "read EOF" {
   let buf = FixedArray::make(16, b'0')
-  @async.with_event_loop(fn(_) {
-    let path = b"read_eof_test"
-    {
-      let w = @fs.create(path, permission=0o644, sync=Full)
-      defer w.close()
-      w.write(b"abcd")
-    }
-    let n = {
-      let r = @fs.open(path, mode=ReadOnly)
-      defer r.close()
-      r.read(buf)
-    }
-    @fs.remove(path)
-    assert_eq(n, 4)
-    inspect(
-      buf.unsafe_reinterpret_as_bytes()[0:n],
-      content=(
-        #|b"\x61\x62\x63\x64"
-      ),
-    )
-  })
+  let path = b"read_eof_test"
+  {
+    let w = @fs.create(path, permission=0o644, sync=Full)
+    defer w.close()
+    w.write(b"abcd")
+  }
+  let n = {
+    let r = @fs.open(path, mode=ReadOnly)
+    defer r.close()
+    r.read(buf)
+  }
+  @fs.remove(path)
+  assert_eq(n, 4)
+  inspect(
+    @bytes_util.ascii_to_string(buf.unsafe_reinterpret_as_bytes()[0:n]),
+    content="abcd",
+  )
 }

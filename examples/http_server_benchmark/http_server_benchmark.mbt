@@ -16,8 +16,8 @@
 let port : Int = 3001
 
 ///|
-fn main_prog() -> Unit raise {
-  @async.with_event_loop(fn(root) {
+async fn main {
+  @async.with_task_group(fn(root) {
     let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
     let headers : Array[@http.Header] = [
       Header("Connection", "Keep-Alive"),
@@ -39,11 +39,4 @@ fn main_prog() -> Unit raise {
       })
     }
   })
-}
-
-///|
-fn main {
-  main_prog() catch {
-    err => println(err)
-  }
 }

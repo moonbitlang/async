@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "no_wait cancelled" {
+async test "no_wait cancelled" {
   let buf = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
       try @async.sleep(1000) catch {
         err => {
@@ -40,9 +40,9 @@ test "no_wait cancelled" {
 }
 
 ///|
-test "no_wait normal exit" {
+async test "no_wait normal exit" {
   let buf = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
       try @async.sleep(100) catch {
         err => {

@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-test "wait basic" {
+async test "wait basic" {
   let buf = StringBuilder::new()
   buf.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(40)
-        buf.write_string("40ms tick\n")
-        @async.sleep(80)
-        buf.write_string("80ms tick\n")
+        @async.sleep(200)
+        buf.write_string("200ms tick\n")
+        @async.sleep(200)
+        buf.write_string("400ms tick\n")
       })
       let task = root.spawn(no_wait=true, fn() {
-        @async.sleep(60)
+        @async.sleep(300)
         buf.write_string("task finished\n")
       })
       task.wait()
@@ -34,41 +34,41 @@ test "wait basic" {
   inspect(
     buf.to_string(),
     content=(
-      #|40ms tick
+      #|200ms tick
       #|task finished
       #|main task exit
-      #|80ms tick
+      #|400ms tick
       #|Ok(())
     ),
   )
 }
 
 ///|
-test "wait cancelled" {
+async test "wait cancelled" {
   let buf = StringBuilder::new()
-  buf.write_object(
-    try? @async.with_event_loop(fn(root) {
-      let task = root.spawn(fn() {
-        @async.sleep(1000)
-        buf.write_string("task finished\n")
-      })
-      root.spawn_bg(fn() {
-        task.wait() catch {
-          err => {
-            buf.write_string("`wait` cancelled with \{err}\n")
-            raise err
-          }
+  @async.with_task_group(fn(root) {
+    let task = root.spawn(fn() {
+      @async.sleep(1000)
+      buf.write_string("task finished\n")
+    })
+    root.spawn_bg(fn() {
+      task.wait() catch {
+        err => {
+          buf.write_string("`wait` cancelled with \{err}\n")
+          raise err
         }
-      })
-      @async.sleep(20)
-      raise Err
-    }),
-  )
+      }
+    })
+    @async.sleep(20)
+    raise Err
+  }) catch {
+    err => buf.write_object(err)
+  }
   inspect(
     buf.to_string(),
     content=(
       #|`wait` cancelled with Cancelled
-      #|Err(Err)
+      #|Err
     ),
   )
 }

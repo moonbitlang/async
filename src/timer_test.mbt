@@ -13,23 +13,23 @@
 // limitations under the License.
 
 ///|
-test "basic_timer" {
+async test "basic_timer" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn(root) {
+  let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
+        @async.sleep(100)
         buf.write_string("task 1, tick 1\n")
-        @async.sleep(20)
+        @async.sleep(200)
         buf.write_string("task 1, tick 2\n")
-        @async.sleep(20)
+        @async.sleep(200)
         buf.write_string("task 1, tick 3\n")
       })
       root.spawn_bg(fn() {
-        @async.sleep(30)
+        @async.sleep(200)
         buf.write_string("task 2, tick 1\n")
-        @async.sleep(20)
+        @async.sleep(200)
         buf.write_string("task 2, tick 2\n")
-        @async.sleep(20)
+        @async.sleep(200)
         buf.write_string("task 2, tick 3\n")
       })
     })

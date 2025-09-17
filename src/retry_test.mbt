@@ -13,53 +13,47 @@
 // limitations under the License.
 
 ///|
-test "retry immediate" {
+async test "retry immediate" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(_) {
-      let mut i = 0
-      @async.retry(Immediate, fn() {
-        log.write_string("tick \{i}\n")
-        i = i + 1
-        if i < 3 {
-          raise Err
-        }
-      })
-    }),
-  )
+  let mut i = 0
+  @async.retry(Immediate, fn() {
+    log.write_string("tick \{i}\n")
+    i = i + 1
+    if i < 3 {
+      raise Err
+    }
+  })
   inspect(
     log.to_string(),
     content=(
       #|tick 0
       #|tick 1
       #|tick 2
-      #|Ok(())
+      #|
     ),
   )
 }
 
 ///|
-test "retry fixed" {
+async test "retry fixed" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(root) {
-      root.spawn_bg(fn() {
-        for i in 0..<3 {
-          @async.sleep(50)
-          log.write_string("tick \{i}\n")
-        }
-      })
-      @async.sleep(25)
-      let mut i = 0
-      @async.retry(FixedDelay(50), fn() {
-        log.write_string("loop \{i}\n")
-        i = i + 1
-        if i < 3 {
-          raise Err
-        }
-      })
-    }),
-  )
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(fn() {
+      for i in 0..<3 {
+        @async.sleep(200)
+        log.write_string("tick \{i}\n")
+      }
+    })
+    @async.sleep(100)
+    let mut i = 0
+    @async.retry(FixedDelay(200), fn() {
+      log.write_string("loop \{i}\n")
+      i = i + 1
+      if i < 3 {
+        raise Err
+      }
+    })
+  })
   inspect(
     log.to_string(),
     content=(
@@ -69,25 +63,25 @@ test "retry fixed" {
       #|tick 1
       #|loop 2
       #|tick 2
-      #|Ok(())
+      #|
     ),
   )
 }
 
 ///|
-test "retry exponential" {
+async test "retry exponential" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
         for i in 0..<7 {
-          @async.sleep(50)
+          @async.sleep(200)
           log.write_string("tick \{i}\n")
         }
       })
-      @async.sleep(25)
+      @async.sleep(100)
       let mut i = 0
-      @async.retry(ExponentialDelay(initial=50, factor=2, maximum=150), fn() {
+      @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), fn() {
         log.write_string("loop \{i}\n")
         i = i + 1
         if i < 4 {
@@ -118,53 +112,45 @@ test "retry exponential" {
 }
 
 ///|
-test "retry cancelled1" {
+async test "retry cancelled1" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(_) {
-      let mut i = 0
-      @async.with_timeout(140, fn() {
-        @async.retry(Immediate, fn() {
-          @async.sleep(50)
-          log.write_string("loop \{i}\n")
-          i = i + 1
-          raise Err
-        })
-      })
-    }),
-  )
+  let mut i = 0
+  @async.with_timeout(500, fn() {
+    @async.retry(Immediate, fn() {
+      @async.sleep(200)
+      log.write_string("loop \{i}\n")
+      i = i + 1
+      raise Err
+    })
+  })
   inspect(
     log.to_string(),
     content=(
       #|loop 0
       #|loop 1
-      #|Ok(())
+      #|
     ),
   )
 }
 
 ///|
-test "retry cancelled2" {
+async test "retry cancelled2" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(_) {
-      let mut i = 0
-      @async.with_timeout(125, fn() {
-        @async.retry(FixedDelay(50), fn() {
-          log.write_string("loop \{i}\n")
-          i = i + 1
-          raise Err
-        })
-      })
-    }),
-  )
+  let mut i = 0
+  @async.with_timeout(500, fn() {
+    @async.retry(FixedDelay(200), fn() {
+      log.write_string("loop \{i}\n")
+      i = i + 1
+      raise Err
+    })
+  })
   inspect(
     log.to_string(),
     content=(
       #|loop 0
       #|loop 1
       #|loop 2
-      #|Ok(())
+      #|
     ),
   )
 }

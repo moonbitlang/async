@@ -57,29 +57,18 @@ async fn client(msg : Bytes) -> Unit {
 }
 
 ///|
-test "connection burst" {
-  let log = StringBuilder::new()
+async test "connection burst" {
   let mut result = 0
-  log.write_object(
-    try? @async.with_event_loop(fn(root) {
-      root.spawn_bg(() => result = server())
-      root.spawn_bg(fn() {
-        @async.with_task_group(fn(ctx) {
-          for _ in 0..<6 {
-            ctx.spawn_bg(() => client(b"ping"))
-          }
-        })
-        root.spawn_bg(() => client(b"exit"))
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(() => result = server())
+    root.spawn_bg(fn() {
+      @async.with_task_group(fn(ctx) {
+        for _ in 0..<6 {
+          ctx.spawn_bg(() => client(b"ping"))
+        }
       })
-    }),
-  )
-  log.write_string("\n")
-  log.write_object(result)
-  inspect(
-    log.to_string(),
-    content=(
-      #|Ok(())
-      #|7
-    ),
-  )
+      root.spawn_bg(() => client(b"exit"))
+    })
+  })
+  inspect(result, content="7")
 }
