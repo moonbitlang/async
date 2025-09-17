@@ -13,16 +13,16 @@
 // limitations under the License.
 
 ///|
-test "worker basic" {
+async test "worker basic" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
-      for _ in 0..<4 {
-        @async.sleep(20)
+      for _ in 0..<3 {
+        @async.sleep(400)
         log.write_string("tick\n")
       }
     })
-    guard @event_loop.perform_job(Sleep(100)) == 0
+    guard @event_loop.perform_job(Sleep(1000)) == 0
     log.write_string("done\n")
   })
   inspect(
@@ -30,27 +30,26 @@ test "worker basic" {
     content=(
       #|tick
       #|tick
-      #|tick
-      #|tick
       #|done
+      #|tick
       #|
     ),
   )
 }
 
 ///|
-test "worker multiple" {
+async test "worker multiple" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<3 {
-        @async.sleep(40)
+        @async.sleep(200)
         log.write_string("tick\n")
       }
     })
     for i in 0..<3 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(Sleep(20 + i * 40)) |> ignore
+        @event_loop.perform_job(Sleep(100 + i * 200)) |> ignore
         log.write_string("#\{i} done\n")
       })
     }
@@ -70,17 +69,17 @@ test "worker multiple" {
 }
 
 ///|
-test "worker cancel1" {
+async test "worker cancel1" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(20)
+        @async.sleep(200)
         log.write_string("tick\n")
       }
     })
     let task = root.spawn(allow_failure=true, fn() {
-      try @event_loop.perform_job(Sleep(100)) catch {
+      try @event_loop.perform_job(Sleep(1000)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -89,7 +88,7 @@ test "worker cancel1" {
         _ => log.write_string("done\n")
       }
     })
-    @async.sleep(50)
+    @async.sleep(500)
     log.write_string("trying to cancel\n")
     task.cancel()
   })
@@ -108,17 +107,17 @@ test "worker cancel1" {
 }
 
 ///|
-test "worker cancel2" {
+async test "worker cancel2" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<3 {
-        @async.sleep(40)
+        @async.sleep(400)
         log.write_string("tick\n")
       }
     })
     root.spawn_bg(allow_failure=true, fn() {
-      try @event_loop.perform_job(Sleep(100)) catch {
+      try @event_loop.perform_job(Sleep(1000)) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -127,7 +126,7 @@ test "worker cancel2" {
         _ => log.write_string("done\n")
       }
     })
-    @async.sleep(60)
+    @async.sleep(600)
     log.write_string("trying to terminate now\n")
     root.return_immediately(())
   })

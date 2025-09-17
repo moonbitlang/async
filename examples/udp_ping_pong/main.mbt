@@ -71,8 +71,8 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit {
 }
 
 ///|
-pub fn main_prog(println : Printer) -> Unit raise {
-  @async.with_event_loop(fn(root) {
+pub async fn main_prog(println : Printer) -> Unit {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(() => server(println))
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
@@ -84,10 +84,13 @@ pub fn main_prog(println : Printer) -> Unit raise {
       })
       root.spawn_bg(() => client(println, 6, b"exit"))
     })
-  })
+  }) catch {
+    ServerTerminate => ()
+    err => raise err
+  }
 }
 
 ///|
-fn main {
-  println(try? main_prog(println))
+async fn main {
+  main_prog(println)
 }

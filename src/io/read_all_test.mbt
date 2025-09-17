@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "read_all basic" {
+async test "read_all basic" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(() => writer(log, w))
     log.write_object(r.read_all())
@@ -32,15 +32,13 @@ test "read_all basic" {
 }
 
 ///|
-test "read_all large data" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "read_all large data" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       w.write(Bytes::make(4097, 0))
     })
-    log.write_object(r.read_all().length())
+    inspect(r.read_all().length(), content="4097")
   })
-  inspect(log.to_string(), content="4097")
 }

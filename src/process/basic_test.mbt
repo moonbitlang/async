@@ -14,9 +14,8 @@
 // limitations under the License.
 
 ///|
-test "basic_ls" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "basic_ls" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
@@ -25,35 +24,29 @@ test "basic_ls" {
       })
       |> ignore
     })
-    let buf = FixedArray::make(1024, b'0')
-    while r.read(buf) is n && n > 0 {
-      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(@bytes_util.ascii_to_string(data))
-    }
+    inspect(
+      @bytes_util.ascii_to_string(r.read_all()),
+      content=(
+        #|basic_test.mbt
+        #|cancel_test.mbt
+        #|cwd_test.mbt
+        #|env_test.mbt
+        #|helper_test.mbt
+        #|moon.pkg.json
+        #|pkg.generated.mbti
+        #|process.mbt
+        #|redirect_test.mbt
+        #|stub.c
+        #|wait_test.mbt
+        #|
+      ),
+    )
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|basic_test.mbt
-      #|cancel_test.mbt
-      #|cwd_test.mbt
-      #|env_test.mbt
-      #|helper_test.mbt
-      #|moon.pkg.json
-      #|pkg.generated.mbti
-      #|process.mbt
-      #|redirect_test.mbt
-      #|stub.c
-      #|wait_test.mbt
-      #|
-    ),
-  )
 }
 
 ///|
-test "basic_cat" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "basic_cat" {
+  @async.with_task_group(fn(root) {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     root.spawn_bg(fn() {
@@ -67,19 +60,14 @@ test "basic_cat" {
     })
     root.spawn_bg(fn() {
       defer we_read.close()
-      let buf = FixedArray::make(1024, b'0')
-      while we_read.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-        log.write_string(@bytes_util.ascii_to_string(data))
-      }
+      inspect(
+        @bytes_util.ascii_to_string(we_read.read_all()),
+        content=(
+          #|abcd
+          #|defg
+          #|
+        ),
+      )
     })
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|abcd
-      #|defg
-      #|
-    ),
-  )
 }

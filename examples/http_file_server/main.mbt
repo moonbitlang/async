@@ -123,7 +123,6 @@ async fn serve_404(conn : @http.ServerConnection) -> Unit {
 
 ///|
 pub async fn server(
-  ctx : @async.TaskGroup[Unit],
   path~ : Bytes,
   port~ : Int,
   log? : (String) -> Unit = println,
@@ -131,55 +130,57 @@ pub async fn server(
   let base_path = path
   let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
   defer server.close()
-  for {
-    let (conn, addr) = server.accept()
-    let conn = @http.ServerConnection::new(conn)
-    log("received new connection from \{addr}")
-    ctx.spawn_bg(allow_failure=true, fn() {
-      defer {
-        log("closing connection from \{addr}")
-        conn.close()
-      }
-      for {
-        let request = conn.read_request()
-        let (path, download_zip) = match request.path {
-          [.. path, .. "?download_zip"] => (path.to_bytes(), true)
-          path => (path, false)
+  @async.with_task_group(fn(ctx) {
+    for {
+      let (conn, addr) = server.accept()
+      let conn = @http.ServerConnection::new(conn)
+      log("received new connection from \{addr}")
+      ctx.spawn_bg(allow_failure=true, fn() {
+        defer {
+          log("closing connection from \{addr}")
+          conn.close()
         }
-        log("serving \{ascii_to_string(path)}")
-        match request.meth {
-          Get => {
-            let file = @fs.open(base_path + path, mode=ReadOnly) catch {
-              _ => {
-                serve_404(conn)
-                continue
-              }
-            }
-            defer file.close()
-            if file.kind() is Directory {
-              if download_zip {
-                serve_zip(conn, base_path + path)
-              } else {
-                serve_directory(conn, file.as_dir(), path~)
-              }
-            } else {
-              serve_file(conn, file, path~)
-            }
+        for {
+          let request = conn.read_request()
+          let (path, download_zip) = match request.path {
+            [.. path, .. "?download_zip"] => (path.to_bytes(), true)
+            path => (path, false)
           }
-          _ => ()
+          log("serving \{ascii_to_string(path)}")
+          match request.meth {
+            Get => {
+              let file = @fs.open(base_path + path, mode=ReadOnly) catch {
+                _ => {
+                  serve_404(conn)
+                  continue
+                }
+              }
+              defer file.close()
+              if file.kind() is Directory {
+                if download_zip {
+                  serve_zip(conn, base_path + path)
+                } else {
+                  serve_directory(conn, file.as_dir(), path~)
+                }
+              } else {
+                serve_file(conn, file, path~)
+              }
+            }
+            _ => ()
+          }
         }
-      }
-    })
-  }
+      })
+    }
+  })
 }
 
 ///|
-fn main {
+async fn main {
   let path = match @env.args() {
     [] | [_] => b"."
     [_, path, ..] => path.to_ascii()
   }
-  @async.with_event_loop(ctx => server(ctx, path~, port=8000)) catch {
+  server(path~, port=8000) catch {
     err => println("server terminate due to \{err}")
   }
 }

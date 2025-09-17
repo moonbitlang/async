@@ -13,16 +13,16 @@
 // limitations under the License.
 
 ///|
-test "return_immediately basic" {
+async test "return_immediately basic" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
+        @async.sleep(200)
         root.return_immediately(())
       })
       root.spawn_bg(fn() {
-        @async.sleep(30)
+        @async.sleep(300)
         log.write_string("task finished\n")
       })
     }),
@@ -31,21 +31,21 @@ test "return_immediately basic" {
 }
 
 ///|
-test "return_immediately nested" {
+async test "return_immediately nested" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(30)
+        @async.sleep(300)
         log.write_string("outer task finished\n")
       })
       @async.with_task_group(fn(group) {
         group.spawn_bg(fn() {
-          @async.sleep(20)
+          @async.sleep(200)
           root.return_immediately(())
         })
         group.spawn_bg(fn() {
-          @async.sleep(30)
+          @async.sleep(300)
           log.write_string("inner task finished\n")
         })
       })
@@ -55,16 +55,16 @@ test "return_immediately nested" {
 }
 
 ///|
-test "return_immediately error on cancel" {
+async test "return_immediately error on cancel" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(20)
+        @async.sleep(200)
         root.return_immediately(())
       })
       root.spawn_bg(fn() {
-        @async.sleep(30) catch {
+        @async.sleep(300) catch {
           _ => {
             log.write_string("task cancelled, causing other error\n")
             raise Err

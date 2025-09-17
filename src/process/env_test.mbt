@@ -14,9 +14,8 @@
 // limitations under the License.
 
 ///|
-test "set_env" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "set_env" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
@@ -25,25 +24,19 @@ test "set_env" {
       })
       |> ignore
     })
-    let buf = FixedArray::make(1024, b'0')
-    while r.read(buf) is n && n > 0 {
-      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(@bytes_util.ascii_to_string(data))
-    }
+    inspect(
+      @bytes_util.ascii_to_string(r.read_all()),
+      content=(
+        #|MAGIC_VALUE
+        #|
+      ),
+    )
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|MAGIC_VALUE
-      #|
-    ),
-  )
 }
 
 ///|
-test "set_env no inherit" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+async test "set_env no inherit" {
+  @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
@@ -61,20 +54,15 @@ test "set_env no inherit" {
       )
       |> ignore
     })
-    let buf = FixedArray::make(1024, b'0')
-    while r.read(buf) is n && n > 0 {
-      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      log.write_string(@bytes_util.ascii_to_string(data))
-    }
+    inspect(
+      @bytes_util.ascii_to_string(r.read_all()),
+      content=(
+        #|MAGIC_VAR_1=MAGIC_VALUE_1
+        #|MAGIC_VAR_2=MAGIC_VALUE_2
+        #|MAGIC_VAR_3=MAGIC_VALUE_3
+        #|MAGIC_VAR_4=MAGIC_VALUE_4
+        #|
+      ),
+    )
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|MAGIC_VAR_1=MAGIC_VALUE_1
-      #|MAGIC_VAR_2=MAGIC_VALUE_2
-      #|MAGIC_VAR_3=MAGIC_VALUE_3
-      #|MAGIC_VAR_4=MAGIC_VALUE_4
-      #|
-    ),
-  )
 }

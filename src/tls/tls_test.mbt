@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "one way" {
+async test "one way" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
@@ -76,9 +76,9 @@ test "one way" {
 }
 
 ///|
-test "echo" {
+async test "echo" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-fn main_prog() -> Unit raise {
-  @async.with_event_loop(fn(root) {
+async fn main {
+  @async.with_task_group(fn(root) {
     let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:4200"))
     defer server.close()
     for {
@@ -25,11 +25,4 @@ fn main_prog() -> Unit raise {
       })
     }
   })
-}
-
-///|
-fn main {
-  main_prog() catch {
-    err => println("server exit with error \{err}")
-  }
 }

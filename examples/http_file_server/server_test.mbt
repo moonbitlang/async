@@ -55,14 +55,14 @@ async fn client(
 }
 
 ///|
-test "basic" {
+async test "basic" {
   fn log(_) -> Unit {
 
   }
 
   let client_log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
-    root.spawn_bg(no_wait=true, () => server(root, path=b".", port~, log~))
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(no_wait=true, () => server(path=b".", port~, log~))
     @async.sleep(50)
     client_log.write_string("client: GET /examples/http_file_server\n")
     client(b"/examples/http_file_server", client_log)

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 ///|
-test "spawn_loop basic" {
+async test "spawn_loop basic" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let mut i = 0
       root.spawn_loop(fn() {
         log.write_string("tick \{i}\n")
@@ -41,10 +41,10 @@ test "spawn_loop basic" {
 }
 
 ///|
-test "spawn_loop basic-error" {
+async test "spawn_loop basic-error" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       let mut i = 0
       root.spawn_loop(fn() {
         log.write_string("tick \{i}\n")
@@ -68,20 +68,20 @@ test "spawn_loop basic-error" {
 }
 
 ///|
-test "spawn_loop retry-exponential" {
+async test "spawn_loop retry-exponential" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
         for i in 0..<9 {
-          @async.sleep(50)
+          @async.sleep(200)
           log.write_string("tick \{i}\n")
         }
       })
-      @async.sleep(20)
+      @async.sleep(100)
       let mut i = 0
       root.spawn_loop(
-        retry=ExponentialDelay(initial=50, factor=2, maximum=150),
+        retry=ExponentialDelay(initial=200, factor=2, maximum=600),
         fn() {
           log.write_string("loop \{i}\n")
           i = i + 1

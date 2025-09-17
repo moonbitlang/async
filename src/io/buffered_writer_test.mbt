@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-test "BufferedWriter" {
+async test "BufferedWriter" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
@@ -53,9 +53,9 @@ test "BufferedWriter" {
 }
 
 ///|
-test "BufferedWriter::write_reader" {
+async test "BufferedWriter::write_reader" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r1, w1) = @pipe.pipe()
     let (r2, w2) = @pipe.pipe()
     root.spawn_bg(fn() {

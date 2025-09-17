@@ -13,27 +13,17 @@
 // limitations under the License.
 
 ///|
-async test "missing_close" {
-  let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    root.spawn_bg(fn() {
-      let data = r.read_exactly(4)
-      @async.sleep(10)
-      log.write_string("received \{data}\n")
-    })
-    root.spawn_bg(fn() {
-      let data = b"abcd"
-      w.write(data)
-      log.write_string("written \{data}\n")
-    })
+test "readdir clear errno" {
+  @event_loop.with_event_loop(fn() {
+    // do something to set a non-zero errno
+    try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
+      _ => ()
+    } noraise {
+      _ => ()
+    }
+    let dir = @fs.opendir("src/internal/event_loop")
+    defer dir.close()
+    let list = dir.read_all()
+    inspect(list.length(), content="10")
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|written b"\x61\x62\x63\x64"
-      #|received b"\x61\x62\x63\x64"
-      #|
-    ),
-  )
 }

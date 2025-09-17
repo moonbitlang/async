@@ -18,26 +18,18 @@ fn String::to_ascii(str : String) -> Bytes {
 }
 
 ///|
-fn main {
-  @async.with_event_loop(fn(_) {
-    try {
-      let args = @env.args()
-      match args {
-        [] | [_] => @pipe.stdout.write_reader(@pipe.stdin)
-        [_, .. files] =>
-          for file in files {
-            if file == "-" {
-              @pipe.stdout.write_reader(@pipe.stdin)
-            } else {
-              let file = @fs.open(file.to_ascii(), mode=ReadOnly)
-              @pipe.stdout.write_reader(file)
-            }
-          }
+async fn main {
+  let args = @env.args()
+  match args {
+    [] | [_] => @pipe.stdout.write_reader(@pipe.stdin)
+    [_, .. files] =>
+      for file in files {
+        if file == "-" {
+          @pipe.stdout.write_reader(@pipe.stdin)
+        } else {
+          let file = @fs.open(file.to_ascii(), mode=ReadOnly)
+          @pipe.stdout.write_reader(file)
+        }
       }
-    } catch {
-      err => @pipe.stderr.write(err.to_string().to_ascii())
-    }
-  }) catch {
-    _ => ()
   }
 }

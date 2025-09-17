@@ -13,22 +13,22 @@
 // limitations under the License.
 
 ///|
-test "group defer basic" {
+async test "group defer basic" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.add_defer(() => log.write_string("first group defer\n"))
     root.spawn_bg(fn() {
       defer log.write_string("defer for first task\n")
-      @async.sleep(20)
+      @async.sleep(200)
       root.add_defer(() => log.write_string("third group defer\n"))
-      @async.sleep(20)
+      @async.sleep(200)
       log.write_string("first task finished\n")
     })
     root.spawn_bg(fn() {
       defer log.write_string("defer for second task\n")
-      @async.sleep(10)
+      @async.sleep(100)
       root.add_defer(() => log.write_string("second group defer\n"))
-      @async.sleep(20)
+      @async.sleep(200)
       log.write_string("second task finished\n")
     })
     root.spawn_bg(no_wait=true, fn() {
@@ -53,23 +53,23 @@ test "group defer basic" {
 }
 
 ///|
-test "group defer error" {
+async test "group defer error" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.add_defer(() => log.write_string("first group defer\n"))
       root.spawn_bg(fn() {
         defer log.write_string("defer for first task\n")
-        @async.sleep(20)
+        @async.sleep(200)
         root.add_defer(() => log.write_string("third group defer\n"))
-        @async.sleep(20)
+        @async.sleep(200)
         log.write_string("first task finished\n")
       })
       root.spawn_bg(fn() {
         defer log.write_string("defer for second task\n")
-        @async.sleep(10)
+        @async.sleep(100)
         root.add_defer(() => log.write_string("second group defer\n"))
-        @async.sleep(20)
+        @async.sleep(200)
         log.write_string("second task raise error\n")
         raise Err
       })
@@ -95,25 +95,25 @@ test "group defer error" {
 }
 
 ///|
-test "group defer cancelled" {
+async test "group defer cancelled" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<4 {
-        @async.sleep(50)
+        @async.sleep(200)
         log.write_string("tick\n")
       }
     })
-    @async.with_timeout(125, fn() {
+    @async.with_timeout(500, fn() {
       @async.with_task_group(fn(group) {
         group.add_defer(fn() {
           @async.protect_from_cancel(fn() {
-            @async.sleep(50)
+            @async.sleep(200)
             log.write_string("protected async defer completed\n")
           })
         })
         group.add_defer(fn() {
-          try @async.sleep(50) catch {
+          try @async.sleep(200) catch {
             err => {
               log.write_string("normal async defer cancelled with \{err}\n")
               raise err
@@ -123,7 +123,7 @@ test "group defer cancelled" {
           }
         })
         defer log.write_string("start group termination\n")
-        @async.sleep(1000)
+        @async.sleep(2000)
       })
     })
     log.write_string("group terminated\n")

@@ -13,62 +13,53 @@
 // limitations under the License.
 
 ///|
-test "basic create" {
-  let buf = FixedArray::make(4, b'0')
-  @async.with_event_loop(fn(_) {
-    let path = b"basic_create_test"
-    {
-      let w = @fs.create(path, permission=0o644, sync=Full)
-      defer w.close()
-      w.write(b"abcd\n")
-    }
-    {
-      let r = @fs.open(path, mode=ReadOnly)
-      defer r.close()
-      guard r.read(buf) == buf.length()
-    }
-    @fs.remove(path)
-  })
-  inspect(buf, content="[b'\\x61', b'\\x62', b'\\x63', b'\\x64']")
+async test "basic create" {
+  let path = b"basic_create_test"
+  {
+    let w = @fs.create(path, permission=0o644, sync=Full)
+    defer w.close()
+    w.write(b"abcd\n")
+  }
+  let result = {
+    let r = @fs.open(path, mode=ReadOnly)
+    defer r.close()
+    @bytes_util.ascii_to_string(r.read_all())
+  }
+  @fs.remove(path)
+  inspect(
+    result,
+    content=(
+      #|abcd
+      #|
+    ),
+  )
 }
 
 ///|
-test "create or append" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let path = b"create_append_test"
-    async fn add_data(data) {
-      let w = @fs.open(
-        path,
-        mode=WriteOnly,
-        create=0o644,
-        sync=Full,
-        append=true,
-      )
-      defer w.close()
-      w.write(data)
-    }
+async test "create or append" {
+  let path = b"create_append_test"
+  async fn add_data(data) {
+    let w = @fs.open(path, mode=WriteOnly, create=0o644, sync=Full, append=true)
+    defer w.close()
+    w.write(data)
+  }
 
-    add_data(b"abcd")
-    add_data(b"efgh")
-    {
-      let r = @fs.open(path, mode=ReadOnly)
-      defer r.close()
-      log.write_string(r.read_all() |> @bytes_util.ascii_to_string)
-    }
-    @fs.remove(path)
-  })
-  inspect(log.to_string(), content="abcdefgh")
+  add_data(b"abcd")
+  add_data(b"efgh")
+  let result = {
+    let r = @fs.open(path, mode=ReadOnly)
+    defer r.close()
+    r.read_all() |> @bytes_util.ascii_to_string
+  }
+  @fs.remove(path)
+  inspect(result, content="abcdefgh")
 }
 
 ///|
-test "wrapper test" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let path = b"fs_wrapper_test"
-    @fs.write_file(path, b"abcd", create=0o644)
-    log.write_string(@fs.read_file(path) |> @bytes_util.ascii_to_string)
-    @fs.remove(path)
-  })
-  inspect(log.to_string(), content="abcd")
+async test "wrapper test" {
+  let path = b"fs_wrapper_test"
+  @fs.write_file(path, b"abcd", create=0o644)
+  let result = @fs.read_file(path) |> @bytes_util.ascii_to_string
+  @fs.remove(path)
+  inspect(result, content="abcd")
 }

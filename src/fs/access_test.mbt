@@ -13,26 +13,22 @@
 // limitations under the License.
 
 ///|
-test "exists" {
-  @async.with_event_loop(fn(_) {
-    assert_true(@fs.exists("moon.mod.json"))
-    assert_false(@fs.exists("moon.mod.json.not_exist"))
-  })
+async test "exists" {
+  assert_true(@fs.exists("moon.mod.json"))
+  assert_false(@fs.exists("moon.mod.json.not_exist"))
 }
 
 ///|
-test "can_read" {
-  @async.with_event_loop(fn(_) { assert_true(@fs.can_read("moon.mod.json")) })
+async test "can_read" {
+  assert_true(@fs.can_read("moon.mod.json"))
 }
 
 ///|
-test "can_write" {
-  @async.with_event_loop(fn(_) { assert_true(@fs.can_write("moon.mod.json")) })
+async test "can_write" {
+  assert_true(@fs.can_write("moon.mod.json"))
 }
 
 ///|
-test "can_execute" {
-  @async.with_event_loop(fn(_) {
-    assert_false(@fs.can_execute("moon.mod.json"))
-  })
+async test "can_execute" {
+  assert_false(@fs.can_execute("moon.mod.json"))
 }

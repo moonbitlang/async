@@ -13,62 +13,42 @@
 // limitations under the License.
 
 ///|
-test "basic seek" {
-  let log = StringBuilder::new()
-  let buf = FixedArray::make(6, b'0')
-  @async.with_event_loop(fn(_) {
-    let path = b"basic_seek_test"
-    // initialize
-    {
-      let w = @fs.create(path, permission=0o644, sync=Full)
-      defer w.close()
-      log.write_string("initial size: \{w.size()}\n")
-      w.write(b"abcdef")
-      log.write_string("size after write: \{w.size()}\n")
-    }
-    // first read
-    {
-      let r = @fs.open(path, mode=ReadOnly)
-      defer r.close()
-      log.write_string("current size: \{r.size()}\n")
-      guard r.read(buf) == buf.length()
-      log.write_string("current content: \{buf}\n")
-    }
-    // update content
-    {
-      let w = @fs.open(path, mode=WriteOnly)
-      defer w.close()
-      ignore(w.seek(-2, mode=FromEnd))
-      log.write_string("writing at position \{w.curr_pos()}\n")
-      w.write(b"56")
-      ignore(w.seek(2, mode=FromStart))
-      log.write_string("writing at position \{w.curr_pos()}\n")
-      w.write(b"34")
-      ignore(w.seek(-4, mode=Relative))
-      log.write_string("writing at position \{w.curr_pos()}\n")
-      w.write(b"12")
-    }
-    // read content
-    {
-      let r = @fs.open(path, mode=ReadOnly)
-      defer r.close()
-      guard r.read(buf) == buf.length()
-      log.write_string("final content: \{buf}\n")
-    }
-    @fs.remove(path)
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|initial size: 0
-      #|size after write: 6
-      #|current size: 6
-      #|current content: [b'\x61', b'\x62', b'\x63', b'\x64', b'\x65', b'\x66']
-      #|writing at position 4
-      #|writing at position 2
-      #|writing at position 0
-      #|final content: [b'\x31', b'\x32', b'\x33', b'\x34', b'\x35', b'\x36']
-      #|
-    ),
-  )
+async test "basic seek" {
+  let path = b"basic_seek_test"
+  // initialize
+  {
+    let w = @fs.create(path, permission=0o644, sync=Full)
+    defer w.close()
+    inspect(w.size(), content="0")
+    w.write(b"abcdef")
+    inspect(w.size(), content="6")
+  }
+  // first read
+  {
+    let r = @fs.open(path, mode=ReadOnly)
+    defer r.close()
+    inspect(r.size(), content="6")
+    inspect(@bytes_util.ascii_to_string(r.read_all()), content="abcdef")
+  }
+  // update content
+  {
+    let w = @fs.open(path, mode=WriteOnly)
+    defer w.close()
+    ignore(w.seek(-2, mode=FromEnd))
+    inspect(w.curr_pos(), content="4")
+    w.write(b"56")
+    ignore(w.seek(2, mode=FromStart))
+    inspect(w.curr_pos(), content="2")
+    w.write(b"34")
+    ignore(w.seek(-4, mode=Relative))
+    inspect(w.curr_pos(), content="0")
+    w.write(b"12")
+  }
+  // read content
+  {
+    let r = @fs.open(path, mode=ReadOnly)
+    defer r.close()
+    inspect(@bytes_util.ascii_to_string(r.read_all()), content="123456")
+  }
+  @fs.remove(path)
 }

@@ -13,12 +13,12 @@
 // limitations under the License.
 
 ///|
-test "manual cancel" {
+async test "manual cancel" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn(root) {
+  let result = try? @async.with_task_group(fn(root) {
       let task = root.spawn(allow_failure=true, fn() {
         try {
-          @async.sleep(30)
+          @async.sleep(300)
           buf.write_string("task finished\n")
         } catch {
           err => {
@@ -27,9 +27,9 @@ test "manual cancel" {
           }
         }
       })
-      @async.sleep(10)
+      @async.sleep(100)
       task.cancel()
-      @async.sleep(20)
+      @async.sleep(200)
       buf.write_string("main task exit\n")
     })
   buf.write_string(result.to_string())
@@ -47,18 +47,18 @@ test "manual cancel" {
 suberror Err derive(Show)
 
 ///|
-test "error propagation" {
+async test "error propagation" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_event_loop(fn(root) {
+  let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(30)
+        @async.sleep(300)
         raise Err
       })
       root.spawn_bg(fn() {
         try {
-          @async.sleep(20)
+          @async.sleep(200)
           buf.write_string("task 2, tick 1\n")
-          @async.sleep(20)
+          @async.sleep(200)
           buf.write_string("task 2, tick 2\n")
         } catch {
           err => {
@@ -82,18 +82,18 @@ test "error propagation" {
 }
 
 ///|
-test "multiple scope" {
+async test "multiple scope" {
   let buf = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            @async.sleep(40)
+            @async.sleep(200)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try @async.sleep(80) catch {
+            try @async.sleep(400) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
                 raise err
@@ -113,11 +113,11 @@ test "multiple scope" {
       try
         @async.with_task_group(fn(ctx) {
           ctx.spawn_bg(fn() {
-            @async.sleep(100)
+            @async.sleep(500)
             raise Err
           })
           ctx.spawn_bg(fn() {
-            try @async.sleep(60) catch {
+            try @async.sleep(300) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
                 raise err
@@ -147,13 +147,13 @@ test "multiple scope" {
 }
 
 ///|
-test "recursive cancel" {
+async test "recursive cancel" {
   let buf = StringBuilder::new()
   buf.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
         for _ in 0..<2 {
-          @async.sleep(40)
+          @async.sleep(400)
           buf.write_string("tick\n")
         }
       })
@@ -166,7 +166,7 @@ test "recursive cancel" {
         }
         buf.write_string("task finished\n")
       })
-      @async.sleep(60)
+      @async.sleep(600)
       task.cancel()
       buf.write_string("main task exit\n")
     }),
@@ -186,20 +186,20 @@ test "recursive cancel" {
 }
 
 ///|
-test "spawn directly error" {
+async test "spawn directly error" {
   let buf = StringBuilder::new()
   buf.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
         @async.with_task_group(fn(group) {
           @async.sleep(1)
           group.spawn_bg(() => raise Err)
           buf.write_string("after spawn\n")
-          @async.sleep(40)
+          @async.sleep(400)
           buf.write_string("main task exit\n")
         })
       })
-      @async.sleep(20)
+      @async.sleep(200)
     }),
   )
   inspect(
@@ -212,10 +212,10 @@ test "spawn directly error" {
 }
 
 ///|
-test "error in cancellation" {
+async test "error in cancellation" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_event_loop(fn(root) {
+    try? @async.with_task_group(fn(root) {
       root.spawn_bg(no_wait=true, fn() {
         @async.sleep(1000) catch {
           _ => {
@@ -224,7 +224,7 @@ test "error in cancellation" {
           }
         }
       })
-      @async.sleep(20)
+      @async.sleep(200)
     }),
   )
   inspect(
@@ -237,9 +237,9 @@ test "error in cancellation" {
 }
 
 ///|
-test "immediately cancelled" {
+async test "immediately cancelled" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("task terminated\n")
       log.write_string("task started\n")

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-test "text file" {
-  @async.with_event_loop(fn(root) {
+async test "text file" {
+  @async.with_task_group(fn(root) {
     let path = b"basic_text_file_test"
     root.add_defer(() => @fs.remove(path))
     @fs.write_text_file(path, "abcd", encoding=UTF8, create=0o644)

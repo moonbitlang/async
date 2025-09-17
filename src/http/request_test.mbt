@@ -13,14 +13,10 @@
 // limitations under the License.
 
 ///|
-test "https request" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let (_, result) = @http.get("https://www.example.org")
-    log.write_string(@bytes_util.ascii_to_string(result))
-  })
+async test "https request" {
+  let (_, result) = @http.get("https://www.example.org")
   inspect(
-    log.to_string(),
+    @bytes_util.ascii_to_string(result),
     content=(
       #|<!doctype html>
       #|<html>
@@ -74,14 +70,10 @@ test "https request" {
 }
 
 ///|
-test "http request" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let (_, result) = @http.get("http://www.example.org")
-    log.write_string(@bytes_util.ascii_to_string(result))
-  })
+async test "http request" {
+  let (_, result) = @http.get("http://www.example.org")
   inspect(
-    log.to_string(),
+    @bytes_util.ascii_to_string(result),
     content=(
       #|<!doctype html>
       #|<html>

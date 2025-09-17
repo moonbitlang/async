@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-test "main" {
+async test "main" {
   let log = StringBuilder::new()
   fn println(msg) -> Unit {
     log..write_string(msg)..write_string("\n")
@@ -74,7 +74,7 @@ test "main" {
       #|server initiate terminate
       #|client 6 received: b"\x70\x6f\x6e\x67"
       #|server terminate: Cancelled
-      #|Err(ServerTerminate)
+      #|Ok(())
     ),
   )
 }

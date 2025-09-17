@@ -14,9 +14,9 @@
 // limitations under the License.
 
 ///|
-test "basic wait" {
+async test "basic wait" {
   let log = StringBuilder::new()
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for i in 0..<4 {
         @async.sleep(300)
@@ -40,11 +40,6 @@ test "basic wait" {
 }
 
 ///|
-test "wait exitcode" {
-  let log = StringBuilder::new()
-  @async.with_event_loop(fn(_) {
-    let result = @process.run(b"sh", [b"-c", b"exit 42"])
-    log.write_string("process completed with \{result}")
-  })
-  inspect(log.to_string(), content="process completed with 42")
+async test "wait exitcode" {
+  inspect(@process.run(b"sh", [b"-c", b"exit 42"]), content="42")
 }

@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-test "read_exactly" {
+async test "read_exactly" {
   let buf = StringBuilder::new()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_event_loop(fn(root) {
+  @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     // reader
     root.spawn_bg(fn() {
@@ -58,42 +58,43 @@ test "read_exactly" {
 }
 
 ///|
-test "read_exactly failure" {
+async test "read_exactly failure" {
   let buf = StringBuilder::new()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
   }
 
-  let result = try? @async.with_event_loop(fn(root) {
-      let (r, w) = @pipe.pipe()
-      // reader
-      root.spawn_bg(fn() {
-        defer r.close()
-        let msg1 = r.read_exactly(4)
-        @async.sleep(10)
-        log("first message: \{msg1}")
-        let msg2 = r.read_exactly(4)
-        @async.sleep(10)
-        log("second message: \{msg2}")
-        let msg3 = r.read_exactly(4)
-        @async.sleep(10)
-        log("third message: \{msg3}")
-      })
-      // writer
-      root.spawn_bg(fn() {
-        defer w.close()
-        w.write([1, 2, 3, 4, 5, 6])
-        log("first message sent")
-        @async.sleep(20)
-      })
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    // reader
+    root.spawn_bg(fn() {
+      defer r.close()
+      let msg1 = r.read_exactly(4)
+      @async.sleep(10)
+      log("first message: \{msg1}")
+      let msg2 = r.read_exactly(4)
+      @async.sleep(10)
+      log("second message: \{msg2}")
+      let msg3 = r.read_exactly(4)
+      @async.sleep(10)
+      log("third message: \{msg3}")
     })
-  log(result.to_string())
+    // writer
+    root.spawn_bg(fn() {
+      defer w.close()
+      w.write([1, 2, 3, 4, 5, 6])
+      log("first message sent")
+      @async.sleep(20)
+    })
+  }) catch {
+    err => log(err.to_string())
+  }
   inspect(
     buf.to_string(),
     content=(
       #|first message sent
       #|first message: b"\x01\x02\x03\x04"
-      #|Err(ReaderClosed)
+      #|ReaderClosed
       #|
     ),
   )

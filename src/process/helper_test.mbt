@@ -14,31 +14,25 @@
 // limitations under the License.
 
 ///|
-test "collect_output" {
-  @async.with_event_loop(fn(_) {
-    let (code, output) = @process.collect_stdout("sh", ["-c", "printf abcd"])
-    inspect(code, content="0")
-    inspect(@bytes_util.ascii_to_string(output), content="abcd")
-  })
+async test "collect_output" {
+  let (code, output) = @process.collect_stdout("sh", ["-c", "printf abcd"])
+  inspect(code, content="0")
+  inspect(@bytes_util.ascii_to_string(output), content="abcd")
 }
 
 ///|
-test "collect_error" {
-  @async.with_event_loop(fn(_) {
-    let (code, output) = @process.collect_stderr("sh", ["-c", "printf abcd >&2"])
-    inspect(code, content="0")
-    inspect(@bytes_util.ascii_to_string(output), content="abcd")
-  })
+async test "collect_error" {
+  let (code, output) = @process.collect_stderr("sh", ["-c", "printf abcd >&2"])
+  inspect(code, content="0")
+  inspect(@bytes_util.ascii_to_string(output), content="abcd")
 }
 
 ///|
-test "collect_output" {
-  @async.with_event_loop(fn(_) {
-    let (code, stdout, stderr) = @process.collect_output("sh", [
-      "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
-    ])
-    inspect(code, content="0")
-    inspect(@bytes_util.ascii_to_string(stdout), content="abcd")
-    inspect(@bytes_util.ascii_to_string(stderr), content="abcd")
-  })
+async test "collect_output" {
+  let (code, stdout, stderr) = @process.collect_output("sh", [
+    "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
+  ])
+  inspect(code, content="0")
+  inspect(@bytes_util.ascii_to_string(stdout), content="abcd")
+  inspect(@bytes_util.ascii_to_string(stderr), content="abcd")
 }
