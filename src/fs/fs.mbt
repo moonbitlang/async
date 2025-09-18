@@ -286,6 +286,13 @@ pub async fn read_file(path : Bytes) -> Bytes {
 }
 
 ///|
+/// Read the contents of a text file located at `path`.
+pub async fn read_text_file(path : Bytes, encoding~ : @io.Encoding) -> String {
+  guard encoding is UTF8
+  @encoding/utf8.decode(read_file(path))
+}
+
+///|
 /// Write data to a file located at `path`.
 /// The meaning of `sync`, `append`, `create`, truncate`
 /// is the same as `open`, see `open` for more details.
@@ -300,4 +307,22 @@ pub async fn write_file(
   let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
   defer file.close()
   file.write(content)
+}
+
+///|
+/// Write data to a text file located at `path`.
+/// The meaning of `sync`, `append`, `create`, truncate` is the same as `open`,
+/// except that `truncate` is `true` by default. See `open` for more details.
+pub async fn write_text_file(
+  path : Bytes,
+  content : String,
+  encoding~ : @io.Encoding,
+  sync? : SyncMode = Data,
+  append? : Bool = false,
+  create? : Int,
+  truncate? : Bool = true,
+) -> Unit {
+  let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
+  defer file.close()
+  file.write_string(content, encoding~)
 }
