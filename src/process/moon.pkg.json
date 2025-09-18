@@ -4,10 +4,10 @@
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/fs",
-    "moonbitlang/async/pipe"
+    "moonbitlang/async/pipe",
+    "moonbitlang/async"
   ],
   "test-import": [
-    "moonbitlang/async",
     "moonbitlang/async/internal/bytes_util"
   ],
   "native-stub": [ "stub.c" ]
