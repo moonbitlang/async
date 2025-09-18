@@ -151,9 +151,12 @@ pub async fn run(
 /// The return value is a pair `(r, w)`,
 /// where `r` is a `@pipe.PipeRead` that can be used to read process output,
 /// and `w` should be passed to `@process.run`.
+///
+/// `w` is temporary: it can only be passed to one `@process.run` call.
+/// However, it is safe to pass `w` to both `stdout` and `stderr` of the same process.
 pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise {
   let (r, w) = @pipe.pipe()
-  (r, TempPipeWrite(w))
+  (r, TempPipeWrite::{ pipe: w, closed: false })
 }
 
 ///|
@@ -163,7 +166,7 @@ pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise {
 /// and `r` should be passed to `@process.run`.
 pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise {
   let (r, w) = @pipe.pipe()
-  (TempPipeRead(r), w)
+  (TempPipeRead::{ pipe: r, closed: false }, w)
 }
 
 ///|
@@ -220,29 +223,41 @@ pub impl ProcessOutput for @pipe.PipeWrite with fd(self) {
 }
 
 ///|
-priv struct TempPipeRead(@pipe.PipeRead)
+priv struct TempPipeRead {
+  pipe : @pipe.PipeRead
+  mut closed : Bool
+}
 
 ///|
-priv struct TempPipeWrite(@pipe.PipeWrite)
+priv struct TempPipeWrite {
+  pipe : @pipe.PipeWrite
+  mut closed : Bool
+}
 
 ///|
 impl ProcessOutput for TempPipeWrite with fd(self) {
-  self.0.fd()
+  self.pipe.fd()
 }
 
 ///|
 impl ProcessOutput for TempPipeWrite with after_spawn(self) {
-  self.0.close()
+  if !self.closed {
+    self.closed = true
+    self.pipe.close()
+  }
 }
 
 ///|
 impl ProcessInput for TempPipeRead with fd(self) {
-  self.0.fd()
+  self.pipe.fd()
 }
 
 ///|
 impl ProcessInput for TempPipeRead with after_spawn(self) {
-  self.0.close()
+  if !self.closed {
+    self.closed = true
+    self.pipe.close()
+  }
 }
 
 ///|
