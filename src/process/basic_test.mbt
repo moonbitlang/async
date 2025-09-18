@@ -38,6 +38,7 @@ test "basic_ls" {
       #|cancel_test.mbt
       #|cwd_test.mbt
       #|env_test.mbt
+      #|helper_test.mbt
       #|moon.pkg.json
       #|pkg.generated.mbti
       #|process.mbt

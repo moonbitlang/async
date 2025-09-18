@@ -147,6 +147,101 @@ pub async fn run(
 }
 
 ///|
+/// Run a process and collect its standard output.
+/// Return the exit code of the process and the content of its standard output.
+///
+/// The meaning of parameters is the same as `@process.run`
+pub async fn collect_stdout(
+  cmd : Bytes,
+  args : Array[Bytes],
+  extra_env? : Map[Bytes, Bytes] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  stderr? : &ProcessOutput,
+  cwd? : Bytes,
+) -> (Int, Bytes) {
+  let (r, w) = read_from_process()
+  @async.with_task_group(fn(group) {
+    let exit_code = group.spawn(() => run(
+      cmd,
+      args,
+      extra_env~,
+      inherit_env~,
+      stdin?,
+      stdout=w,
+      stderr?,
+      cwd?,
+    ))
+    let output = r.read_all()
+    (exit_code.wait(), output)
+  })
+}
+
+///|
+/// Run a process and collect its standard error.
+/// Return the exit code of the process and the content of its standard error.
+///
+/// The meaning of parameters is the same as `@process.run`
+pub async fn collect_stderr(
+  cmd : Bytes,
+  args : Array[Bytes],
+  extra_env? : Map[Bytes, Bytes] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  stdout? : &ProcessOutput,
+  cwd? : Bytes,
+) -> (Int, Bytes) {
+  let (r, w) = read_from_process()
+  @async.with_task_group(fn(group) {
+    let exit_code = group.spawn(() => run(
+      cmd,
+      args,
+      extra_env~,
+      inherit_env~,
+      stdin?,
+      stdout?,
+      stderr=w,
+      cwd?,
+    ))
+    let output = r.read_all()
+    (exit_code.wait(), output)
+  })
+}
+
+///|
+/// Run a process and collect its standard output & standard error.
+/// Return the exit code of the process, the content of its standard output,
+/// and the content of its standard error.
+///
+/// The meaning of parameters is the same as `@process.run`
+pub async fn collect_output(
+  cmd : Bytes,
+  args : Array[Bytes],
+  extra_env? : Map[Bytes, Bytes] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  cwd? : Bytes,
+) -> (Int, Bytes, Bytes) {
+  let (r_out, w_out) = read_from_process()
+  let (r_err, w_err) = read_from_process()
+  @async.with_task_group(fn(group) {
+    let exit_code = group.spawn(() => run(
+      cmd,
+      args,
+      extra_env~,
+      inherit_env~,
+      stdin?,
+      stdout=w_out,
+      stderr=w_err,
+      cwd?,
+    ))
+    let stdout = r_out.read_all()
+    let stderr = r_err.read_all()
+    (exit_code.wait(), stdout, stderr)
+  })
+}
+
+///|
 /// Create a temporary pipe for reading from stdout/stderr of a process.
 /// The return value is a pair `(r, w)`,
 /// where `r` is a `@pipe.PipeRead` that can be used to read process output,
