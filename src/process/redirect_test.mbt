@@ -69,3 +69,23 @@ test "redirect to file" {
   })
   inspect(log.to_string(), content="abcd")
 }
+
+///|
+test "merge stdout and stderr" {
+  @async.with_event_loop(fn(root) {
+    let (r, w) = @process.read_from_process()
+    defer r.close()
+    root.spawn_bg(fn() {
+      @process.run("sh", ["-c", "echo abcd; echo efgh >&2"], stdout=w, stderr=w)
+      |> ignore
+    })
+    inspect(
+      @bytes_util.ascii_to_string(r.read_all()),
+      content=(
+        #|abcd
+        #|efgh
+        #|
+      ),
+    )
+  })
+}
