@@ -22,9 +22,8 @@ async fn client(
   total_conn~ : Int,
   max_concurrent_conn~ : Int,
   conn_duration~ : Int,
-) -> (Int64, Int64, Double) {
-  let mut send_throughput_sum : Int64 = 0
-  let mut recv_throughput_sum : Int64 = 0
+) -> (Int64, Double) {
+  let mut throughput_sum : Int64 = 0
   let mut latency_sum : Int64 = 0
   @async.with_task_group(fn(group) {
     let mut remaining = total_conn
@@ -57,16 +56,16 @@ async fn client(
               IterContinue
             })
             @async.sleep(conn_duration)
-            send_throughput_sum += send_count * 1000 / conn_duration.to_int64()
-            recv_throughput_sum += recv_count * 1000 / conn_duration.to_int64()
+            throughput_sum += (send_count + recv_count) *
+              1000 /
+              conn_duration.to_int64()
           })
         }
       })
     }
   })
   (
-    send_throughput_sum / total_conn.to_int64(),
-    recv_throughput_sum / total_conn.to_int64(),
+    throughput_sum / total_conn.to_int64(),
     latency_sum.to_double() / total_conn.to_double(),
   )
 }
@@ -122,7 +121,7 @@ fn main_prog() -> Unit raise {
     @random.Rand::chacha8(seed=seed.contents())
   }
   @async.with_event_loop(fn(_) {
-    let (send_throughput, recv_throughput, average_latency) = client(
+    let (throughput, average_latency) = client(
       rand,
       addr,
       total_conn~,
@@ -138,8 +137,7 @@ fn main_prog() -> Unit raise {
       }
     }
 
-    println("send throughput: \{show_size(send_throughput)}/s")
-    println("recv throughput: \{show_size(recv_throughput)}/s")
+    println("average throughput: \{show_size(throughput)}/s")
     println("average latency: \{average_latency} ms")
   })
 }
