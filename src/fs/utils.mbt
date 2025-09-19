@@ -92,3 +92,21 @@ pub async fn can_execute(path : Bytes) -> Bool {
     _ => true
   }
 }
+
+///|
+/// Get the absolute real path of `path`,
+/// removing all `..` and `.` in the `path`,
+/// and unfold all symbolic links.
+///
+/// If the path contains cyclic symbolic link,
+/// an error will be raised.
+pub async fn realpath(path : Bytes) -> Bytes {
+  let out = @ref.new(@c_buffer.null)
+  let _ = @event_loop.perform_job(Realpath(path~, out~))
+  let c_path = out.val
+  defer c_path.free()
+  let len = c_path.strlen()
+  let result = FixedArray::make(len, (0 : Byte))
+  c_path.blit_to_bytes(dst=result, offset=0, len~)
+  result.unsafe_reinterpret_as_bytes()
+}

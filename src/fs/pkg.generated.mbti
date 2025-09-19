@@ -30,6 +30,8 @@ async fn read_text_file(Bytes, encoding~ : @io.Encoding) -> String
 
 async fn readdir(Bytes, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[Bytes]
 
+async fn realpath(Bytes) -> Bytes
+
 async fn remove(Bytes) -> Unit
 
 async fn rmdir(Bytes, recursive? : Bool) -> Unit

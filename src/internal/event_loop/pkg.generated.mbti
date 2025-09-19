@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/event_loop"
 
+import(
+  "moonbitlang/async/internal/c_buffer"
+)
+
 // Values
 fn close_fd(Int) -> Unit
 
@@ -37,6 +41,7 @@ pub(all) enum Job {
   Mkdir(path~ : Bytes, mode~ : Int)
   Rmdir(path~ : Bytes)
   Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
+  Realpath(path~ : Bytes, out~ : Ref[@c_buffer.Buffer])
   Spawn(path~ : Bytes, args~ : FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?)
   Recvfrom(sock~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes)
   Sendto(sock~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, addr~ : Bytes)

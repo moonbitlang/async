@@ -449,6 +449,8 @@ pub async fn perform_job(job : Job) -> Int {
     Rmdir(path~) => perform_job_in_worker(JobForWorker::rmdir(path))
     Readdir(dir~, out~) =>
       perform_job_in_worker(JobForWorker::readdir(dir, out))
+    Realpath(path~, out~) =>
+      perform_job_in_worker(JobForWorker::realpath(path, out))
     Spawn(path~, args~, env~, stdin~, stdout~, stderr~, cwd~) =>
       perform_job_in_worker(
         JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),

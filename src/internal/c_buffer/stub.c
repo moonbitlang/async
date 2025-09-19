@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 void moonbitlang_async_blit_to_c(char *dst, char *src, int offset, int len) {
   memcpy(dst, src + offset, len);
@@ -23,4 +24,12 @@ void moonbitlang_async_blit_to_c(char *dst, char *src, int offset, int len) {
 
 void moonbitlang_async_blit_from_c(char *src, char *dst, int offset, int len) {
   memcpy(dst + offset, src, len);
+}
+
+int32_t moonbitlang_async_strlen(char *str) {
+  return strlen(str);
+}
+
+char *moonbitlang_async_null_pointer() {
+  return 0;
 }
