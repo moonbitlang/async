@@ -22,8 +22,8 @@ extern "C" fn load_openssl_ffi(
 
 ///|
 extern "C" fn init_bio_method(
-  read : FuncRef[(BIO, C_Buffer, Int) -> Int],
-  write : FuncRef[(BIO, C_Buffer, Int) -> Int],
+  read : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
+  write : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
 ) = "moonbitlang_async_init_bio_method"
 
 ///|

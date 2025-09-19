@@ -250,11 +250,3 @@ int moonbitlang_async_tls_get_error(void *buf) {
   ERR_error_string(code, buf);
   return strlen(buf);
 }
-
-void moonbitlang_async_blit_to_c(char *src, char *dst, int offset, int len) {
-  memcpy(dst, src + offset, len);
-}
-
-void moonbitlang_async_blit_from_c(char *src, char *dst, int offset, int len) {
-  memcpy(dst + offset, src, len);
-}
