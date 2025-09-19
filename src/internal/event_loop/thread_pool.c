@@ -53,6 +53,7 @@ enum op_code {
   OP_MKDIR,
   OP_RMDIR,
   OP_READDIR,
+  OP_REALPATH,
   OP_SPAWN,
   OP_GETADDRINFO
 };
@@ -105,6 +106,11 @@ struct readdir_job {
   struct dirent **out;
 };
 
+struct realpath_job {
+  char *path;
+  char **out;
+};
+
 struct spawn_job {
   char *path;
   char **args;
@@ -134,6 +140,7 @@ struct job {
     struct mkdir_job mkdir;
     struct rmdir_job rmdir;
     struct readdir_job readdir;
+    struct realpath_job realpath;
     struct spawn_job spawn;
     struct getaddrinfo_job getaddrinfo;
   } payload;
@@ -293,6 +300,16 @@ void *worker_loop(void *data) {
         job->err = errno;
       }
       break;
+
+    case OP_REALPATH: {
+      *(job->payload.realpath.out) = 0;
+      *(job->payload.realpath.out) = realpath(job->payload.realpath.path, 0);
+      if (*(job->payload.realpath.out) == 0) {
+        job->ret = -1;
+        job->err = errno;
+      }
+      break;
+    }
 
     case OP_SPAWN: {
       posix_spawnattr_t attr;
@@ -511,6 +528,10 @@ void free_job(void *jobp) {
   case OP_READDIR:
     moonbit_decref(job->payload.readdir.out);
     break;
+  case OP_REALPATH:
+    moonbit_decref(job->payload.realpath.path);
+    moonbit_decref(job->payload.realpath.out);
+    break;
   case OP_SPAWN:
     moonbit_decref(job->payload.spawn.path);
     moonbit_decref(job->payload.spawn.args);
@@ -624,6 +645,15 @@ struct job *moonbitlang_async_make_readdir_job(DIR *dir, struct dirent **out) {
   job->op_code = OP_READDIR;
   job->payload.readdir.dir = dir;
   job->payload.readdir.out = out;
+  return job;
+}
+
+struct job *moonbitlang_async_make_realpath_job(char *path, char **out) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_REALPATH;
+  job->payload.realpath.path = path;
+  job->payload.realpath.out = out;
   return job;
 }
 

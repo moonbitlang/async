@@ -95,6 +95,13 @@ extern "C" fn JobForWorker::readdir(
 ) -> JobForWorker = "moonbitlang_async_make_readdir_job"
 
 ///|
+#owned(path, out)
+extern "C" fn JobForWorker::realpath(
+  path : Bytes,
+  out : Ref[@c_buffer.Buffer],
+) -> JobForWorker = "moonbitlang_async_make_realpath_job"
+
+///|
 #owned(path, args, env, cwd)
 extern "C" fn JobForWorker::spawn(
   path : Bytes,
@@ -145,6 +152,7 @@ pub(all) enum Job {
   Mkdir(path~ : Bytes, mode~ : Int)
   Rmdir(path~ : Bytes)
   Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
+  Realpath(path~ : Bytes, out~ : Ref[@c_buffer.Buffer])
   Spawn(
     path~ : Bytes,
     args~ : FixedArray[Bytes?],

@@ -28,11 +28,13 @@ test "read_all basic" {
       #|  "import": [
       #|    "moonbitlang/async/os_error",
       #|    "moonbitlang/async/io",
-      #|    "moonbitlang/async/internal/event_loop"
+      #|    "moonbitlang/async/internal/event_loop",
+      #|    "moonbitlang/async/internal/c_buffer"
       #|  ],
       #|  "test-import": [
       #|    "moonbitlang/async",
-      #|    "moonbitlang/async/internal/bytes_util"
+      #|    "moonbitlang/async/internal/bytes_util",
+      #|    "moonbitlang/async/process"
       #|  ],
       #|  "native-stub": [ "stub.c" ]
       #|}

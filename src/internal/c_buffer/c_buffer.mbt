@@ -33,3 +33,15 @@ pub extern "C" fn Buffer::blit_to_bytes(
   offset~ : Int,
   len~ : Int,
 ) = "moonbitlang_async_blit_from_c"
+
+///|
+pub extern "C" fn Buffer::strlen(buf : Buffer) -> Int = "moonbitlang_async_strlen"
+
+///|
+extern "C" fn Buffer::null() -> Buffer = "moonbitlang_async_null_pointer"
+
+///|
+pub let null : Buffer = Buffer::null()
+
+///|
+pub extern "C" fn Buffer::free(buf : Buffer) = "free"
