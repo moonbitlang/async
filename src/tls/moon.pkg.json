@@ -2,7 +2,8 @@
   "import": [
     "moonbitlang/async/io",
     "moonbitlang/async/internal/coroutine",
-    "moonbitlang/async/internal/bytes_util"
+    "moonbitlang/async/internal/bytes_util",
+    "moonbitlang/async/internal/c_buffer"
   ],
   "test-import": [
     "moonbitlang/async",

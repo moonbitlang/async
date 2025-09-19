@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/internal/c_buffer"
+
+// Values
+
+// Errors
+
+// Types and methods
+#external
+pub type Buffer
+fn Buffer::blit_from_bytes(Self, src~ : Bytes, offset~ : Int, len~ : Int) -> Unit
+fn Buffer::blit_to_bytes(Self, dst~ : FixedArray[Byte], offset~ : Int, len~ : Int) -> Unit
+
+// Type aliases
+
+// Traits
+

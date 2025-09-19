@@ -13,28 +13,6 @@
 // limitations under the License.
 
 ///|
-#external
-priv type C_Buffer
-
-///|
-#borrow(src)
-extern "C" fn blit_to_c(
-  src~ : FixedArray[Byte],
-  dst~ : C_Buffer,
-  offset~ : Int,
-  len~ : Int,
-) = "moonbitlang_async_blit_to_c"
-
-///|
-#borrow(dst)
-extern "C" fn blit_from_c(
-  src~ : C_Buffer,
-  dst~ : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-) = "moonbitlang_async_blit_from_c"
-
-///|
 priv enum EndpointState {
   Idle
   Blocked
@@ -176,14 +154,18 @@ fn[W : @io.Writer] Endpoint::new_write(w : W) -> Endpoint noraise {
 }
 
 ///|
-fn Endpoint::try_read(ep : Endpoint, dst : C_Buffer, len : Int) -> Int {
+fn Endpoint::try_read(ep : Endpoint, dst : @c_buffer.Buffer, len : Int) -> Int {
   guard ep.state is (Idle | Blocked) else { return -1 }
   let pending = ep.read_size()
   if pending == 0 {
     return -1
   }
   let actual_len = @cmp.minimum(len, pending)
-  blit_to_c(src=ep.data, dst~, offset=ep.start, len=actual_len)
+  dst.blit_from_bytes(
+    src=ep.data.unsafe_reinterpret_as_bytes(),
+    offset=ep.start,
+    len=actual_len,
+  )
   ep.advance_read(actual_len)
   if ep.state is Blocked {
     ep.worker.unwrap().wake()
@@ -193,14 +175,14 @@ fn Endpoint::try_read(ep : Endpoint, dst : C_Buffer, len : Int) -> Int {
 }
 
 ///|
-fn Endpoint::try_write(ep : Endpoint, src : C_Buffer, len : Int) -> Int {
+fn Endpoint::try_write(ep : Endpoint, src : @c_buffer.Buffer, len : Int) -> Int {
   guard ep.state is (Idle | Blocked) else { return -1 }
   let remaining = ep.write_size()
   if remaining == 0 {
     return -1
   }
   let len = @cmp.minimum(remaining, len)
-  blit_from_c(src~, dst=ep.data, offset=ep.end, len~)
+  src.blit_to_bytes(dst=ep.data, offset=ep.end, len~)
   ep.advance_write(len)
   if ep.state is Blocked {
     ep.worker.unwrap().wake()
@@ -262,7 +244,7 @@ const BIO_FLAGS_WRITE = 0x02
 const BIO_FLAGS_SHOULD_RETRY = 0x08
 
 ///|
-fn BIO::read(bio : BIO, dst : C_Buffer, len : Int) -> Int {
+fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
   ep.incref()
   let ret = ep.try_read(dst, len)
@@ -273,7 +255,7 @@ fn BIO::read(bio : BIO, dst : C_Buffer, len : Int) -> Int {
 }
 
 ///|
-fn BIO::write(bio : BIO, src : C_Buffer, len : Int) -> Int {
+fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
   ep.incref()
   let ret = ep.try_write(src, len)
