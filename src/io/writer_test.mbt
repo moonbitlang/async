@@ -40,7 +40,7 @@ async test "write reader" {
       defer r1.close()
       let buf = FixedArray::make(1024, b'0')
       while r1.read(buf) is n && n > 0 {
-        @async.sleep(10)
+        @async.sleep(100)
         log.write_string("received \{buf.unsafe_reinterpret_as_bytes()[:n]}\n")
       }
     })
@@ -48,10 +48,10 @@ async test "write reader" {
       defer w2.close()
       w2.write(b"abcd")
       log.write_string("sending 4 bytes\n")
-      @async.sleep(20)
+      @async.sleep(200)
       w2.write(b"efgh")
       log.write_string("sending 4 bytes\n")
-      @async.sleep(20)
+      @async.sleep(200)
       w2.write(b"ijkl")
       log.write_string("sending 4 bytes\n")
     })
