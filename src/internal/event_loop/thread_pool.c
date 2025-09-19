@@ -445,6 +445,7 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
   sigset_t sigpipe;
   sigemptyset(&sigpipe);
   sigaddset(&sigpipe, SIGPIPE);
+  sigaddset(&sigpipe, SIGCHLD);
   pthread_sigmask(SIG_BLOCK, &sigpipe, 0);
 
   pool.notify_send = notify_send;
