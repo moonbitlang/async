@@ -94,7 +94,7 @@ pub suberror ResolveHostnameError Int derive(Show)
 pub async fn Addr::resolve(host : Bytes, port~ : Int) -> Addr {
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
-  if ret > 0 {
+  if ret != 0 {
     raise ResolveHostnameError(ret)
   }
   let ai = ai_ref.get_and_clear()
