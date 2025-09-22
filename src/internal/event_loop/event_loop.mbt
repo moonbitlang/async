@@ -322,12 +322,20 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
 ///|
 async fn wait_pid(pid : Int) -> Int {
   guard curr_loop.val is Some(evloop)
-  let alt_id = match evloop.poll.register_pid(pid) {
-    Running(id) => id
-    Stopped(ret) => return ret
+  let alt_id = try {
+    match evloop.poll.register_pid(pid) {
+      Running(id) => id
+      Stopped(ret) => return ret
+    }
+  } catch {
+    err => {
+      println("register_pid() => \{err}")
+      raise err
+    }
   }
   guard evloop.pids.get(alt_id) is None
   let handle = { result: 0, waiter: @coroutine.current_coroutine() }
+
   evloop.pids[alt_id] = handle
   @coroutine.suspend() catch {
     err => {
