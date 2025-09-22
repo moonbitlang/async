@@ -142,7 +142,10 @@ pub async fn run(
       terminate_process(pid)
       raise err
     }
-    err => raise err
+    err => {
+      println("@process.run: \{err}")
+      raise err
+    }
   }
 }
 
