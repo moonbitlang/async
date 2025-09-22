@@ -200,7 +200,7 @@ int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid, int *out) {
 
   // process already terminated
   int wstatus;
-  ret = waitpid(pid, &wstatus, WNOHANG);
+  ret = waitpid(pid, &wstatus, 0);
   if (ret > 0) {
     *out = WEXITSTATUS(wstatus);
     return 1;
