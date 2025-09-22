@@ -394,6 +394,7 @@ void *worker_loop(void *data) {
       if (job->ret == 0) {
         printf("%lu\n", *(job->payload.getaddrinfo.out));
       }
+      fflush(0);
       break;
     }
     }
@@ -702,6 +703,7 @@ struct addrinfo **moonbitlang_async_addrinfo_ref_make() {
 struct addrinfo *moonbitlang_async_addrinfo_ref_get(struct addrinfo **ref) {
   struct addrinfo *result = *ref;
   printf("addrinfo_ref_get() => %lu\n", result);
+  fflush(0);
   *ref = 0;
   return result;
 }
