@@ -390,6 +390,10 @@ void *worker_loop(void *data) {
       );
       if (job->ret == EAI_SYSTEM)
         job->err = errno;
+      printf("getaddrinfo() => %d\n", job->ret);
+      if (job->ret == 0) {
+        printf("%lu\n", *(job->payload.getaddrinfo.out));
+      }
       break;
     }
     }
