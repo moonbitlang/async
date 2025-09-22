@@ -242,6 +242,37 @@ pub async fn collect_output(
 }
 
 ///|
+/// Run a process, merge and collect its standard output & standard error.
+/// Return the exit code of the process,
+/// and the content of its standard output and standard error.
+///
+/// The meaning of parameters is the same as `@process.run`
+pub async fn collect_output_merged(
+  cmd : Bytes,
+  args : Array[Bytes],
+  extra_env? : Map[Bytes, Bytes] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  cwd? : Bytes,
+) -> (Int, Bytes) {
+  let (r, w) = read_from_process()
+  @async.with_task_group(fn(group) {
+    let exit_code = group.spawn(() => run(
+      cmd,
+      args,
+      extra_env~,
+      inherit_env~,
+      stdin?,
+      stdout=w,
+      stderr=w,
+      cwd?,
+    ))
+    let output = r.read_all()
+    (exit_code.wait(), output)
+  })
+}
+
+///|
 /// Create a temporary pipe for reading from stdout/stderr of a process.
 /// The return value is a pair `(r, w)`,
 /// where `r` is a `@pipe.PipeRead` that can be used to read process output,
