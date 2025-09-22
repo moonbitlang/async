@@ -343,7 +343,12 @@ async fn wait_pid(pid : Int) -> Int {
         None => ()
         Some(_) => {
           evloop.pids.remove(alt_id)
-          evloop.poll.remove_pid(alt_id)
+          evloop.poll.remove_pid(alt_id) catch {
+            err => {
+              println("remove_pid() => \{err}")
+              raise err
+            }
+          }
         }
       }
       raise err
