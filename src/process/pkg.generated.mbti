@@ -8,6 +8,8 @@ import(
 // Values
 async fn collect_output(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes, Bytes)
 
+async fn collect_output_merged(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes)
+
 async fn collect_stderr(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)
 
 async fn collect_stdout(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)

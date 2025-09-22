@@ -36,3 +36,12 @@ async test "collect_output" {
   inspect(@bytes_util.ascii_to_string(stdout), content="abcd")
   inspect(@bytes_util.ascii_to_string(stderr), content="abcd")
 }
+
+///|
+async test "collect_output_merged" {
+  let (code, output) = @process.collect_output_merged("sh", [
+    "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
+  ])
+  inspect(code, content="0")
+  inspect(@bytes_util.ascii_to_string(output), content="ababcdcd")
+}
