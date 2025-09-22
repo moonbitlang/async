@@ -7,15 +7,8 @@ on:
   pull_request:
 
 jobs:
-  stable-build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - name: macos-latest
-            path: mac_m1_moon_setup
-
-    runs-on: ${{ matrix.os.name }}
+  sanitizer-check:
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -30,39 +23,22 @@ jobs:
           moon version --all
           moonrun --version
 
-      - name: moon test
+      - name: disable mimalloc
         run: |
-          for i in $(seq 1 20); do
-            moon test --release
-            moon test
+          echo "" >dummy_libmoonbitrun.c
+          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
+
+      - name: setup sanitizer check
+        run: |
+          for f in $(find src -name "moon.pkg.json" -not -wholename "src/internal/*" -print); do
+            content_except_first_brace=$(cat $f | tail -c +2)
+            (
+              echo -e -n '{\n  "link": { "native": { "cc-flags": "-g -fsanitize=address -fno-omit-frame-pointer" }},'
+              printf "%s\n" "$content_except_first_brace"
+            ) >$f
           done
 
-  nightly-build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - name: macos-latest
-            path: mac_m1_moon_setup
-
-    runs-on: ${{ matrix.os.name }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
+      - name: run test with address sanitizer
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon test
-        run: |
-          for i in $(seq 1 20); do
-            moon test --release
-            moon test
-          done
+          export ASAN_OPTIONS=fast_unwind_on_malloc=0
+          moon test
