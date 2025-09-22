@@ -15,6 +15,7 @@
  */
 
 #include <unistd.h>
+#include <stdio.h>
 
 #ifdef __linux__
 #include <sys/syscall.h>
@@ -205,6 +206,7 @@ int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid, int *out) {
     *out = WEXITSTATUS(wstatus);
     return 1;
   } else {
+    printf("waitpid => %d\n", ret);
     return -1;
   }
 }
