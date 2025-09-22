@@ -701,6 +701,7 @@ struct addrinfo **moonbitlang_async_addrinfo_ref_make() {
 
 struct addrinfo *moonbitlang_async_addrinfo_ref_get(struct addrinfo **ref) {
   struct addrinfo *result = *ref;
+  printf("addrinfo_ref_get() => %lu\n", result);
   *ref = 0;
   return result;
 }
