@@ -18,22 +18,22 @@ async test "basic wait" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
-      for i in 0..<4 {
-        @async.sleep(300)
-        log.write_string("\{(i + 1) * 300}ms tick\n")
+      for i in 0..<3 {
+        @async.sleep(500)
+        log.write_string("\{(i + 1) * 500}ms tick\n")
       }
     })
+    @async.sleep(10)
     let result = @process.run(b"sh", [b"-c", b"sleep 1"])
     log.write_string("process completed with \{result}\n")
   })
   inspect(
     log.to_string(),
     content=(
-      #|300ms tick
-      #|600ms tick
-      #|900ms tick
+      #|500ms tick
+      #|1000ms tick
       #|process completed with 0
-      #|1200ms tick
+      #|1500ms tick
       #|
     ),
   )

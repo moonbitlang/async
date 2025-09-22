@@ -143,13 +143,13 @@ async test "with_timeout nested2" {
   log.write_object(
     try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-        @async.sleep(200)
-        log.write_string("400ms tick\n")
+        @async.sleep(300)
+        log.write_string("300ms tick\n")
+        @async.sleep(300)
+        log.write_string("600ms tick\n")
       })
-      @async.with_timeout(500, fn() {
-        @async.with_timeout(300, fn() {
+      @async.with_timeout(750, fn() {
+        @async.with_timeout(450, fn() {
           @async.sleep(2000) catch {
             err => {
               log.write_string("task cancelled\n")
@@ -165,10 +165,10 @@ async test "with_timeout nested2" {
   inspect(
     log.to_string(),
     content=(
-      #|200ms tick
+      #|300ms tick
       #|task cancelled
       #|main task finished
-      #|400ms tick
+      #|600ms tick
       #|Ok(())
     ),
   )
