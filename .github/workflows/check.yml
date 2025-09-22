@@ -32,9 +32,9 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 50); do
-            moon test --release -p moonbitlang/async/fs
-            moon test -p moonbitlang/async/fs
+          for i in $(seq 1 20); do
+            moon test --release
+            moon test
           done
 
   nightly-build:
@@ -62,7 +62,7 @@ jobs:
 
       - name: moon test
         run: |
-          for i in $(seq 1 50); do
-            moon test --release -p moonbitlang/async/fs
-            moon test -p moonbitlang/async/fs
+          for i in $(seq 1 20); do
+            moon test --release
+            moon test
           done
