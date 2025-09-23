@@ -79,7 +79,6 @@ async fn[ReqBody : Body, ResBody : Body] perform_request(
 /// By default it is the standard port for the specified protocol.
 ///
 /// See `Client::request` for more details.
-#alias(request, deprecated)
 pub async fn[ResBody : Body] get(
   uri : String,
   headers? : Map[String, String] = {},
