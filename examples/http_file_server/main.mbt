@@ -33,7 +33,6 @@ async fn serve_directory(
     content.write_string_utf8("<a href=\"\{parent}\">..</a><br/><br/>\n")
   }
   for file in files {
-    let file = @encoding/utf8.decode(file)
     let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
     content.write_string_utf8(
       "<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n",
@@ -85,11 +84,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
     let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
     group.spawn_bg(fn() {
-      @process.run(
-        "zip",
-        ["-q", "-r", "-", @encoding/utf8.encode(path)],
-        stdout=zip_write_to_us,
-      )
+      @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_us)
       |> ignore
     })
     conn.send_response(
@@ -145,10 +140,7 @@ pub async fn server(
           log("serving \{path}")
           match request.meth {
             Get => {
-              let file = @fs.open(
-                @encoding/utf8.encode(base_path + path),
-                mode=ReadOnly,
-              ) catch {
+              let file = @fs.open(base_path + path, mode=ReadOnly) catch {
                 _ => {
                   serve_404(conn)
                   continue

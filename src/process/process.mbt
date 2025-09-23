@@ -24,7 +24,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 ///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
-/// Both `cmd` and elements of `args` must not contain `'\0'`.
+/// Both `cmd` and elements of `args` are encoded using UTF8.
 ///
 /// `run` will block until the new process terminates,
 /// and returns the exit status of the process.
@@ -57,8 +57,8 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 /// If `cwd` is present, the spawned command will be executed
 /// in the directory specified by `cwd`.
 pub async fn run(
-  cmd : Bytes,
-  args : Array[Bytes],
+  cmd : String,
+  args : Array[String],
   extra_env? : Map[Bytes, Bytes] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
@@ -67,10 +67,11 @@ pub async fn run(
   cwd? : Bytes,
   orphan? : Bool = false,
 ) -> Int {
+  let cmd = @encoding/utf8.encode(cmd)
   let argv = FixedArray::make(args.length() + 2, None)
   argv[0] = Some(cmd)
   for i in 0..<args.length() {
-    argv[i + 1] = Some(args[i])
+    argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
   }
   let pid = {
       defer {
@@ -152,8 +153,8 @@ pub async fn run(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_stdout(
-  cmd : Bytes,
-  args : Array[Bytes],
+  cmd : String,
+  args : Array[String],
   extra_env? : Map[Bytes, Bytes] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
@@ -183,8 +184,8 @@ pub async fn collect_stdout(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_stderr(
-  cmd : Bytes,
-  args : Array[Bytes],
+  cmd : String,
+  args : Array[String],
   extra_env? : Map[Bytes, Bytes] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
@@ -215,8 +216,8 @@ pub async fn collect_stderr(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_output(
-  cmd : Bytes,
-  args : Array[Bytes],
+  cmd : String,
+  args : Array[String],
   extra_env? : Map[Bytes, Bytes] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
@@ -248,8 +249,8 @@ pub async fn collect_output(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_output_merged(
-  cmd : Bytes,
-  args : Array[Bytes],
+  cmd : String,
+  args : Array[String],
   extra_env? : Map[Bytes, Bytes] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
@@ -300,7 +301,7 @@ pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise {
 /// The meaning of `append`, `create` and `truncate` is the same as `@fs.open`,
 /// see the document of `@fs.open` for more details.
 pub async fn redirect_to_file(
-  path : Bytes,
+  path : String,
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = false,
@@ -310,7 +311,7 @@ pub async fn redirect_to_file(
 
 ///|
 /// Redirect the content of a file at `path` to the stdin of a process.
-pub async fn redirect_from_file(path : Bytes) -> &ProcessInput {
+pub async fn redirect_from_file(path : String) -> &ProcessInput {
   RedirectToFile(@fs.open(path, mode=ReadOnly))
 }
 

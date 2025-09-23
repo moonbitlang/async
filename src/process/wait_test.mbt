@@ -24,7 +24,7 @@ async test "basic wait" {
       }
     })
     @async.sleep(10)
-    let result = @process.run(b"sh", [b"-c", b"sleep 1"])
+    let result = @process.run("sh", ["-c", "sleep 1"])
     log.write_string("process completed with \{result}\n")
   })
   inspect(
@@ -41,5 +41,5 @@ async test "basic wait" {
 
 ///|
 async test "wait exitcode" {
-  inspect(@process.run(b"sh", [b"-c", b"exit 42"]), content="42")
+  inspect(@process.run("sh", ["-c", "exit 42"]), content="42")
 }

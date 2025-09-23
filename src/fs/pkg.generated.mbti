@@ -6,46 +6,46 @@ import(
 )
 
 // Values
-async fn can_execute(Bytes) -> Bool
+async fn can_execute(String) -> Bool
 
-async fn can_read(Bytes) -> Bool
+async fn can_read(String) -> Bool
 
-async fn can_write(Bytes) -> Bool
+async fn can_write(String) -> Bool
 
-async fn create(Bytes, permission~ : Int, sync? : SyncMode) -> File
+async fn create(String, permission~ : Int, sync? : SyncMode) -> File
 
-async fn exists(Bytes) -> Bool
+async fn exists(String) -> Bool
 
-async fn kind(Bytes) -> FileKind
+async fn kind(String) -> FileKind
 
-async fn mkdir(Bytes, permission~ : Int) -> Unit
+async fn mkdir(String, permission~ : Int) -> Unit
 
-async fn open(Bytes, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
+async fn open(String, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
 
-fn opendir(Bytes) -> Directory raise
+fn opendir(String) -> Directory raise
 
-async fn read_file(Bytes) -> Bytes
+async fn read_file(String) -> Bytes
 
-async fn read_text_file(Bytes, encoding~ : @io.Encoding) -> String
+async fn read_text_file(String, encoding~ : @io.Encoding) -> String
 
-async fn readdir(Bytes, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[Bytes]
+async fn readdir(String, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[String]
 
-async fn realpath(Bytes) -> Bytes
+async fn realpath(String) -> String
 
-async fn remove(Bytes) -> Unit
+async fn remove(String) -> Unit
 
-async fn rmdir(Bytes, recursive? : Bool) -> Unit
+async fn rmdir(String, recursive? : Bool) -> Unit
 
-async fn write_file(Bytes, Bytes, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+async fn write_file(String, Bytes, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
-async fn write_text_file(Bytes, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+async fn write_text_file(String, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 // Errors
 
 // Types and methods
 type Directory
 fn Directory::close(Self) -> Unit
-async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[Bytes]
+async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[String]
 
 type File
 fn File::as_dir(Self) -> Directory raise

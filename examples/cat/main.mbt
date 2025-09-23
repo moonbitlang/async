@@ -13,11 +13,6 @@
 // limitations under the License.
 
 ///|
-fn String::to_ascii(str : String) -> Bytes {
-  Bytes::makei(str.length(), i => str.unsafe_charcode_at(i).to_byte())
-}
-
-///|
 async fn main {
   let args = @env.args()
   match args {
@@ -27,7 +22,7 @@ async fn main {
         if file == "-" {
           @pipe.stdout.write_reader(@pipe.stdin)
         } else {
-          let file = @fs.open(file.to_ascii(), mode=ReadOnly)
+          let file = @fs.open(file, mode=ReadOnly)
           @pipe.stdout.write_reader(file)
         }
       }

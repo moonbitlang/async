@@ -6,21 +6,21 @@ import(
 )
 
 // Values
-async fn collect_output(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes, Bytes)
+async fn collect_output(String, Array[String], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes, Bytes)
 
-async fn collect_output_merged(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes)
+async fn collect_output_merged(String, Array[String], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : Bytes) -> (Int, Bytes)
 
-async fn collect_stderr(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)
+async fn collect_stderr(String, Array[String], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)
 
-async fn collect_stdout(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)
+async fn collect_stdout(String, Array[String], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : Bytes) -> (Int, Bytes)
 
 fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise
 
-async fn redirect_from_file(Bytes) -> &ProcessInput
+async fn redirect_from_file(String) -> &ProcessInput
 
-async fn redirect_to_file(Bytes, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
+async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
 
-async fn run(Bytes, Array[Bytes], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : Bytes, orphan? : Bool) -> Int
+async fn run(String, Array[String], extra_env? : Map[Bytes, Bytes], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : Bytes, orphan? : Bool) -> Int
 
 fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 

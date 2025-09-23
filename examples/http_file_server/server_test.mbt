@@ -64,7 +64,7 @@ async test "basic" {
     )
     client("/examples/http_file_server/moon.pkg.json", client_log)
     client_log.write_string("\n\n")
-    let tmp_file_name = b"examples/test.zip"
+    let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))
     client("/examples/http_file_server?download_zip", client_log, handle_response=out => tmp_file.write_reader(

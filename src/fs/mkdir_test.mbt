@@ -16,9 +16,7 @@
 async test "mkdir" {
   @fs.mkdir("mkdir_test", permission=0o755)
   @fs.write_file("mkdir_test/file", "", create=0o644)
-  let result = @fs.readdir("mkdir_test", sort=true).map(name => @bytes_util.ascii_to_string(
-    name,
-  ))
+  let result = @fs.readdir("mkdir_test", sort=true)
   @fs.remove("mkdir_test/file")
   @fs.rmdir("mkdir_test")
   inspect(result, content="[\"file\"]")

@@ -20,7 +20,8 @@ extern "C" fn file_kind_from_stat(stat : FixedArray[Byte]) -> FileKind = "moonbi
 extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
 
 ///|
-pub async fn kind(path : Bytes) -> FileKind {
+pub async fn kind(path : String) -> FileKind {
+  let path = @encoding/utf8.encode(path)
   let stat = FixedArray::make(sizeof_stat(), b'0')
   let _ = @event_loop.perform_job(Stat(path~, out=stat))
   file_kind_from_stat(stat)
@@ -51,7 +52,8 @@ extern "C" fn get_EACCES() -> Int = "moonbitlang_async_get_EACCES"
 let _EACCES : Int = get_EACCES()
 
 ///|
-pub async fn exists(path : Bytes) -> Bool {
+pub async fn exists(path : String) -> Bool {
+  let path = @encoding/utf8.encode(path)
   try @event_loop.perform_job(Access(path~, amode=f_ok())) catch {
     @os_error.OSError(code) if code == _ENOENT => false
     err => raise err
@@ -61,7 +63,8 @@ pub async fn exists(path : Bytes) -> Bool {
 }
 
 ///|
-pub async fn can_read(path : Bytes) -> Bool {
+pub async fn can_read(path : String) -> Bool {
+  let path = @encoding/utf8.encode(path)
   try @event_loop.perform_job(Access(path~, amode=r_ok())) catch {
     @os_error.OSError(code) if code == _ENOENT => false
     @os_error.OSError(code) if code == _EACCES => false
@@ -72,7 +75,8 @@ pub async fn can_read(path : Bytes) -> Bool {
 }
 
 ///|
-pub async fn can_write(path : Bytes) -> Bool {
+pub async fn can_write(path : String) -> Bool {
+  let path = @encoding/utf8.encode(path)
   try @event_loop.perform_job(Access(path~, amode=w_ok())) catch {
     @os_error.OSError(code) if code == _ENOENT => false
     @os_error.OSError(code) if code == _EACCES => false
@@ -83,7 +87,8 @@ pub async fn can_write(path : Bytes) -> Bool {
 }
 
 ///|
-pub async fn can_execute(path : Bytes) -> Bool {
+pub async fn can_execute(path : String) -> Bool {
+  let path = @encoding/utf8.encode(path)
   try @event_loop.perform_job(Access(path~, amode=x_ok())) catch {
     @os_error.OSError(code) if code == _ENOENT => false
     @os_error.OSError(code) if code == _EACCES => false
@@ -100,7 +105,8 @@ pub async fn can_execute(path : Bytes) -> Bool {
 ///
 /// If the path contains cyclic symbolic link,
 /// an error will be raised.
-pub async fn realpath(path : Bytes) -> Bytes {
+pub async fn realpath(path : String) -> String {
+  let path = @encoding/utf8.encode(path)
   let out = @ref.new(@c_buffer.null)
   let _ = @event_loop.perform_job(Realpath(path~, out~))
   let c_path = out.val
@@ -108,5 +114,5 @@ pub async fn realpath(path : Bytes) -> Bytes {
   let len = c_path.strlen()
   let result = FixedArray::make(len, (0 : Byte))
   c_path.blit_to_bytes(dst=result, offset=0, len~)
-  result.unsafe_reinterpret_as_bytes()
+  @encoding/utf8.decode(result.unsafe_reinterpret_as_bytes())
 }

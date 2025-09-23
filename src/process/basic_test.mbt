@@ -19,7 +19,7 @@ async test "basic_ls" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"ls", [b"src/process"], stdout=w, extra_env={
+      @process.run("ls", ["src/process"], stdout=w, extra_env={
         b"LANG": b"en_US.UTF-8",
       })
       |> ignore
@@ -50,7 +50,7 @@ async test "basic_cat" {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     root.spawn_bg(fn() {
-      @process.run(b"cat", [b"-"], stdin=cat_read, stdout=cat_write) |> ignore
+      @process.run("cat", ["-"], stdin=cat_read, stdout=cat_write) |> ignore
     })
     root.spawn_bg(fn() {
       defer we_write.close()
