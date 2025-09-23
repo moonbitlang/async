@@ -19,8 +19,8 @@ async test "set_env" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run(b"sh", [b"-c", b"echo $MAGIC_VAR"], stdout=w, extra_env={
-        b"MAGIC_VAR": b"MAGIC_VALUE",
+      @process.run("sh", ["-c", "echo $MAGIC_VAR"], stdout=w, extra_env={
+        "MAGIC_VAR": "MAGIC_VALUE",
       })
       |> ignore
     })
@@ -41,7 +41,7 @@ async test "set_env no inherit" {
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(
-        b"env",
+        "env",
         [],
         stdout=w,
         extra_env={

@@ -16,7 +16,7 @@
 async test "read_all" {
   let dir = @fs.opendir("src/fs")
   defer dir.close()
-  let list = dir.read_all().map(name => @bytes_util.ascii_to_string(name))
+  let list = dir.read_all()
   list.sort()
   @json.inspect(list, content=[
     "fs.mbt", "stub.c", "dir.mbt", "utils.mbt", "dir_test.mbt", "eof_test.mbt", "moon.pkg.json",
@@ -36,14 +36,14 @@ async test "as_dir" {
   list.sort()
   let kinds = []
   for file in list {
-    let path = b"src/fs/" + file
+    let path = "src/fs/" + file
     let kind = {
       let file = @fs.open(path, mode=ReadOnly)
       defer file.close()
       file.kind()
     }
     assert_eq(kind, @fs.kind(path))
-    kinds.push("\{@bytes_util.ascii_to_string(file)}: \{kind}")
+    kinds.push("\{file}: \{kind}")
   }
   @json.inspect(kinds, content=[
     "fs.mbt: Regular", "stub.c: Regular", "dir.mbt: Regular", "utils.mbt: Regular",

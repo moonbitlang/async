@@ -14,7 +14,7 @@
 
 ///|
 async test "basic seek" {
-  let path = b"basic_seek_test"
+  let path = "basic_seek_test"
   // initialize
   {
     let w = @fs.create(path, permission=0o644, sync=Full)

@@ -77,7 +77,7 @@ extern "C" fn make_open_flags(
 ) -> Int = "moonbitlang_async_make_open_flags"
 
 ///|
-/// Open a file. `filename` should be a byte string and must not contain `'\0'`.
+/// Open a file. `filename` will be encoded using UTF8.
 ///
 /// - `mode` determines what operations (read/write) are permitted for the file.
 ///
@@ -97,13 +97,14 @@ extern "C" fn make_open_flags(
 /// - if `truncate` is `true` (`false` by default), and the file exists,
 ///   it will be truncated to zero length after opening.
 pub async fn open(
-  filename : Bytes,
+  filename : String,
   mode~ : Mode,
   sync? : SyncMode = NoSync,
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = false,
 ) -> File {
+  let filename = @encoding/utf8.encode(filename)
   let (create, user_mode) = match create {
     None => (false, 0)
     Some(mode) => (true, mode)
@@ -119,7 +120,7 @@ pub async fn open(
 }
 
 ///|
-/// Create a new file at `pathname`. `pathname` must not contain`'\0'`.
+/// Create a new file at `pathname`. `pathname` will be encoded using UTF8.
 ///
 /// - User permission of the new file would be set to `permission`,
 ///   which is an integer in UNIX style. For example, `0o640` means:
@@ -130,7 +131,7 @@ pub async fn open(
 /// - `sync` determines how data will be synchronized to disk after writing,
 ///   see `SyncMode` for more details. The default is `NoSync`
 pub async fn create(
-  filename : Bytes,
+  filename : String,
   permission~ : Int,
   sync? : SyncMode = NoSync,
 ) -> File {
@@ -194,8 +195,9 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-/// Remove the file located at `path`. `path` must not contain `'\0'`.
-pub async fn remove(path : Bytes) -> Unit {
+/// Remove the file located at `path`. `path` is encoded using UTF8.
+pub async fn remove(path : String) -> Unit {
+  let path = @encoding/utf8.encode(path)
   let job = @event_loop.Remove(path~)
   ignore(@event_loop.perform_job(job))
 }
@@ -279,7 +281,7 @@ pub fn File::kind(self : File) -> FileKind {
 
 ///|
 /// Read the contents of the file located at `path`.
-pub async fn read_file(path : Bytes) -> Bytes {
+pub async fn read_file(path : String) -> Bytes {
   let file = open(path, mode=ReadOnly)
   defer file.close()
   file.read_all()
@@ -287,7 +289,7 @@ pub async fn read_file(path : Bytes) -> Bytes {
 
 ///|
 /// Read the contents of a text file located at `path`.
-pub async fn read_text_file(path : Bytes, encoding~ : @io.Encoding) -> String {
+pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
   guard encoding is UTF8
   @encoding/utf8.decode(read_file(path))
 }
@@ -297,7 +299,7 @@ pub async fn read_text_file(path : Bytes, encoding~ : @io.Encoding) -> String {
 /// The meaning of `sync`, `append`, `create`, truncate`
 /// is the same as `open`, see `open` for more details.
 pub async fn write_file(
-  path : Bytes,
+  path : String,
   content : Bytes,
   sync? : SyncMode = Data,
   append? : Bool = false,
@@ -314,7 +316,7 @@ pub async fn write_file(
 /// The meaning of `sync`, `append`, `create`, truncate` is the same as `open`,
 /// except that `truncate` is `true` by default. See `open` for more details.
 pub async fn write_text_file(
-  path : Bytes,
+  path : String,
   content : String,
   encoding~ : @io.Encoding,
   sync? : SyncMode = Data,

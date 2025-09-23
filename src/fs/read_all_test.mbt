@@ -14,7 +14,7 @@
 
 ///|
 async test "read_all basic" {
-  let path = b"LICENSE"
+  let path = "LICENSE"
   let r = @fs.open(path, mode=ReadOnly)
   defer r.close()
   inspect(

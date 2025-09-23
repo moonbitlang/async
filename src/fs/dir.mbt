@@ -15,7 +15,8 @@
 ///|
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
-pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit {
+pub async fn mkdir(path : String, permission~ : Int) -> Unit {
+  let path = @encoding/utf8.encode(path)
   ignore(@event_loop.perform_job(Mkdir(path~, mode=permission)))
 }
 
@@ -25,7 +26,7 @@ pub async fn mkdir(path : Bytes, permission~ : Int) -> Unit {
 /// files and directories in `path` will be removed recursively.
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
-pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit {
+pub async fn rmdir(path : String, recursive? : Bool = false) -> Unit {
   if recursive {
     for file in readdir(path) {
       let file = path + "/" + file
@@ -36,6 +37,7 @@ pub async fn rmdir(path : Bytes, recursive? : Bool = false) -> Unit {
       }
     }
   }
+  let path = @encoding/utf8.encode(path)
   ignore(@event_loop.perform_job(Rmdir(path~)))
 }
 
@@ -59,9 +61,10 @@ extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
 extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
 
 ///|
-/// Open the directory at `path`. `path` must not contain `'\0'`.
+/// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
-pub fn opendir(path : Bytes) -> Directory raise {
+pub fn opendir(path : String) -> Directory raise {
+  let path = @encoding/utf8.encode(path)
   let dir = opendir_ffi(path)
   if dir.is_null() {
     @os_error.check_errno()
@@ -82,13 +85,13 @@ let null_dirent : DirectoryEntry = get_null_dirent()
 extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang_async_dirent_name"
 
 ///|
-async fn Directory::read_next(dir : Directory) -> Bytes? {
+async fn Directory::read_next(dir : Directory) -> String? {
   let out = @ref.new(null_dirent)
   ignore(@event_loop.perform_job(Readdir(dir=dir.0, out~)))
   if physical_equal(out.val, null_dirent) {
     None
   } else {
-    Some(out.val.name())
+    Some(@encoding/utf8.decode(out.val.name()))
   }
 }
 
@@ -98,11 +101,12 @@ async fn Directory::read_next(dir : Directory) -> Bytes? {
 ///   `.` (current directory) and `..` (parent directory) will be included too
 /// - If `include_hidden` is `true` (`true` by default),
 ///   directory entries starting with `.` (except `.` and `..`) will be included
+/// All returned directory entries are encoded using UTF8.
 pub async fn Directory::read_all(
   dir : Directory,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
-) -> Array[Bytes] {
+) -> Array[String] {
   let result = []
   while dir.read_next() is Some(entry) {
     if not(include_special) && entry is ("." | "..") {
@@ -125,11 +129,11 @@ pub async fn Directory::read_all(
 /// - If `sort` is `true` (`false` by default),
 ///   the result will be sorted using `Array::sort`.
 pub async fn readdir(
-  path : Bytes,
+  path : String,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
   sort? : Bool = false,
-) -> Array[Bytes] {
+) -> Array[String] {
   let dir = opendir(path)
   defer dir.close()
   let list = dir.read_all(include_hidden~, include_special~)
