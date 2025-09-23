@@ -89,7 +89,7 @@ async test "write cancel" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(_) {
     let writer = { logger: log, base_timeout: 40 }
-    @async.with_timeout(60, fn() { writer.write(b"abcd") })
+    @async.with_timeout_opt(60, fn() { writer.write(b"abcd") }) |> ignore
   })
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang

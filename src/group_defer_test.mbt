@@ -104,7 +104,7 @@ async test "group defer cancelled" {
         log.write_string("tick\n")
       }
     })
-    @async.with_timeout(500, fn() {
+    @async.with_timeout_opt(500, fn() {
       @async.with_task_group(fn(group) {
         group.add_defer(fn() {
           @async.protect_from_cancel(fn() {
@@ -126,6 +126,7 @@ async test "group defer cancelled" {
         @async.sleep(2000)
       })
     })
+    |> ignore
     log.write_string("group terminated\n")
   })
   inspect(
