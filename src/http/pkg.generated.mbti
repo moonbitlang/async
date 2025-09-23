@@ -8,11 +8,11 @@ import(
 
 // Values
 #alias(request, deprecated)
-async fn[ResBody : Body] get(String, headers? : Array[Header], port? : Int) -> (Response, ResBody)
+async fn[ResBody : Body] get(String, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
 
-async fn[ReqBody : Body, ResBody : Body] post(String, ReqBody, headers? : Array[Header], port? : Int) -> (Response, ResBody)
+async fn[ReqBody : Body, ResBody : Body] post(String, ReqBody, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
 
-async fn[ReqBody : Body, ResBody : Body] put(String, ReqBody, headers? : Array[Header], port? : Int) -> (Response, ResBody)
+async fn[ReqBody : Body, ResBody : Body] put(String, ReqBody, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
 
 // Errors
 pub suberror HttpProtocolError {
@@ -31,20 +31,17 @@ impl Show for URIParseError
 // Types and methods
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(String, headers? : Array[Header], protocol? : Protocol, port? : Int) -> Self
+async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
 async fn Client::end_request(Self) -> Response
-async fn Client::get(Self, String, extra_headers? : Array[Header]) -> Response
-async fn[B : Body] Client::post(Self, String, B, extra_headers? : Array[Header]) -> Response
-async fn[B : Body] Client::put(Self, String, B, extra_headers? : Array[Header]) -> Response
-async fn Client::request(Self, RequestMethod, String, extra_headers? : Array[Header]) -> Unit
+async fn Client::get(Self, String, extra_headers? : Map[String, String]) -> Response
+async fn[B : Body] Client::post(Self, String, B, extra_headers? : Map[String, String]) -> Response
+async fn[B : Body] Client::put(Self, String, B, extra_headers? : Map[String, String]) -> Response
+async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
 #deprecated
 async fn Client::shutdown(Self) -> Unit
 async fn Client::skip_response_body(Self) -> Unit
 impl @io.Reader for Client
 impl @io.Writer for Client
-
-pub(all) struct Header(String, String)
-
 
 pub(all) enum Protocol {
   Http
@@ -62,7 +59,7 @@ impl @io.Reader for Reader
 pub(all) struct Request {
   meth : RequestMethod
   path : String
-  headers : Array[Header]
+  headers : Map[String, String]
 }
 
 pub(all) enum RequestMethod {
@@ -81,15 +78,15 @@ impl Show for RequestMethod
 pub(all) struct Response {
   code : Int
   reason : String
-  headers : Array[Header]
+  headers : Map[String, String]
 }
 
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
-fn ServerConnection::new(@socket.TCP, headers? : Array[Header]) -> Self
+fn ServerConnection::new(@socket.TCP, headers? : Map[String, String]) -> Self
 async fn ServerConnection::read_request(Self) -> Request
-async fn ServerConnection::send_response(Self, Int, Bytes, extra_headers? : Array[Header]) -> Unit
+async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit
 async fn ServerConnection::skip_request_body(Self) -> Unit
 impl @io.Reader for ServerConnection
 impl @io.Writer for ServerConnection

@@ -15,7 +15,6 @@
 ///|
 /// Simple HTTP client which connect to a remote host via TCP
 struct Client {
-  headers : Array[Header]
   reader : Reader
   conn : @socket.TCP
   tls : @tls.TLS?
@@ -39,7 +38,7 @@ struct Client {
 /// - Content-Length, Transfer-Encoding
 pub async fn Client::connect(
   host : String,
-  headers? : Array[Header] = [],
+  headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
 ) -> Client {
@@ -52,12 +51,12 @@ pub async fn Client::connect(
     None => Reader::new(conn)
     Some(tls) => Reader::new(tls)
   }
+  headers["Host"] = host
   let sender = match tls {
-    None => Sender::new(conn)
-    Some(tls) => Sender::new(tls)
+    None => Sender::new(conn, headers~)
+    Some(tls) => Sender::new(tls, headers~)
   }
-  headers.push(Header("Host", host))
-  { headers, conn, tls, reader, sender }
+  { conn, tls, reader, sender }
 }
 
 ///|
@@ -137,24 +136,9 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : String,
-  extra_headers? : Array[Header] = [],
+  extra_headers? : Map[String, String] = {},
 ) -> Unit {
-  match meth {
-    Get => self.sender.write("GET ")
-    Head => self.sender.write("HEAD ")
-    Post => self.sender.write("POST ")
-    Put => self.sender.write("PUT ")
-    Delete => self.sender.write("DELETE ")
-    Connect => self.sender.write("CONNECT ")
-    Options => self.sender.write("OPTIONS ")
-    Trace => self.sender.write("TRACE ")
-    Patch => self.sender.write("PATCH ")
-  }
-  self.sender..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
-  self.sender.send_headers(self.headers)
-  self.sender.send_headers(extra_headers)
-  self.sender.write("Transfer-Encoding: chunked\r\n")
-  self.sender.start_body()
+  self.sender.send_request(meth, path, extra_headers~)
 }
 
 ///|
@@ -169,7 +153,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit {
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Array[Header] = [],
+  extra_headers? : Map[String, String] = {},
 ) -> Response {
   self.request(Get, path, extra_headers~)
   self.end_request()
@@ -181,7 +165,7 @@ pub async fn[B : Body] Client::put(
   self : Client,
   path : String,
   body : B,
-  extra_headers? : Array[Header] = [],
+  extra_headers? : Map[String, String] = {},
 ) -> Response {
   self.request(Put, path, extra_headers~)
   body.write(self.sender)
@@ -194,7 +178,7 @@ pub async fn[B : Body] Client::post(
   self : Client,
   path : String,
   body : B,
-  extra_headers? : Array[Header] = [],
+  extra_headers? : Map[String, String] = {},
 ) -> Response {
   self.request(Post, path, extra_headers~)
   body.write(self.sender)

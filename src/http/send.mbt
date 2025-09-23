@@ -25,15 +25,24 @@ priv struct Sender {
   mut mode : SenderMode
   send_buf : FixedArray[Byte]
   mut send_len : Int
+  headers : Bytes
 }
 
 ///|
-fn[W : @io.Writer] Sender::new(w : W) -> Sender {
+fn[W : @io.Writer] Sender::new(
+  w : W,
+  headers? : Map[String, String] = {},
+) -> Sender {
+  let header_text = @buffer.new()
+  for k, v in headers {
+    header_text.write_string_utf8("\{k}: \{v}\r\n")
+  }
   {
     writer: w,
     mode: SendingHeader,
     send_buf: FixedArray::make(1024, 0),
     send_len: 0,
+    headers: header_text.contents(),
   }
 }
 
@@ -116,26 +125,70 @@ impl @io.Writer for Sender with write_reader(self, reader) {
 }
 
 ///|
-async fn Sender::start_body(self : Sender) -> Unit {
-  self.write("\r\n")
-  self.flush()
-  self.mode = SendingBody
-}
-
-///|
 async fn Sender::end_body(self : Sender) -> Unit {
   self.writer.write("0\r\n\r\n")
   self.mode = SendingHeader
 }
 
 ///|
-async fn Sender::send_headers(self : Sender, headers : Array[Header]) -> Unit {
-  for header in headers {
-    let Header(k, v) = header
+async fn Sender::send_headers(
+  self : Sender,
+  headers : Map[String, String],
+) -> Unit {
+  for pair in headers.to_array() {
+    let (k, v) = pair
     self
     ..write_string(k, encoding=UTF8)
     ..write(": ")
     ..write_string(v, encoding=UTF8)
     ..write("\r\n")
   }
+}
+
+///|
+async fn Sender::send_request(
+  self : Sender,
+  meth : RequestMethod,
+  path : String,
+  extra_headers~ : Map[String, String],
+) -> Unit {
+  guard self.mode is SendingHeader
+  match meth {
+    Get => self.write("GET ")
+    Head => self.write("HEAD ")
+    Post => self.write("POST ")
+    Put => self.write("PUT ")
+    Delete => self.write("DELETE ")
+    Connect => self.write("CONNECT ")
+    Options => self.write("OPTIONS ")
+    Trace => self.write("TRACE ")
+    Patch => self.write("PATCH ")
+  }
+  self..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
+  self.write(self.headers)
+  self.send_headers(extra_headers)
+  self.write("Transfer-Encoding: chunked\r\n\r\n")
+  self.flush()
+  self.mode = SendingBody
+}
+
+///|
+async fn Sender::send_response(
+  self : Sender,
+  code : Int,
+  reason : String,
+  extra_headers~ : Map[String, String],
+) -> Unit {
+  guard self.mode is SendingHeader
+  self
+  ..write("HTTP/1.1 ")
+  ..write(encode_int(code, base=10))
+  ..write(" ")
+  ..write_string(reason, encoding=UTF8)
+  ..write("\r\n")
+  self.write(self.headers)
+  self.send_headers(extra_headers)
+  self.write("Transfer-Encoding: chunked\r\n\r\n")
+  self.flush()
+  self.mode = SendingBody
 }

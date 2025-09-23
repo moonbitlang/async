@@ -20,12 +20,10 @@ async test "send_request basic" {
       defer w.close()
       let sender = Sender::new(w)
       sender
-      ..write("GET / HTTP/1.1\r\n")
-      ..send_headers([
-        Header("Host", "x.y.org"),
-        Header("User-Agent", "MoonBit"),
-      ])
-      ..start_body()
+      ..send_request(Get, "/", extra_headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
       ..end_body()
     })
     defer r.close()
@@ -35,6 +33,7 @@ async test "send_request basic" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|Transfer-Encoding: chunked\r
         #|\r
         #|0\r
         #|\r
@@ -54,13 +53,10 @@ async test "send_request stream" {
       let file = @fs.open("LICENSE", mode=ReadOnly)
       defer file.close()
       sender
-      ..write("GET / HTTP/1.1\r\n")
-      ..send_headers([
-        Header("Host", "x.y.org"),
-        Header("User-Agent", "MoonBit"),
-        Header("Transfer-Encoding", "chunked"),
-      ])
-      ..start_body()
+      ..send_request(Get, "/", extra_headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
       ..write_reader(file)
       ..end_body()
     })
@@ -314,14 +310,10 @@ async test "send_request stream2" {
     root.spawn_bg(fn() {
       defer w.close()
       let sender = Sender::new(w)
-      sender
-      ..write("GET / HTTP/1.1\r\n")
-      ..send_headers([
-        Header("Host", "x.y.org"),
-        Header("User-Agent", "MoonBit"),
-        Header("Transfer-Encoding", "chunked"),
-      ])
-      ..start_body()
+      sender.send_request(Get, "/", extra_headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
       sender.write("abcd")
       @async.sleep(50)
       sender.write("efgh")

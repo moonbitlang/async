@@ -15,7 +15,6 @@
 ///|
 /// A single HTTP server connection
 struct ServerConnection {
-  headers : Array[Header]
   reader : Reader
   conn : @socket.TCP
   sender : Sender
@@ -32,9 +31,9 @@ struct ServerConnection {
 /// - Content-Length, Transfer-Encoding
 pub fn ServerConnection::new(
   conn : @socket.TCP,
-  headers? : Array[Header] = [],
+  headers? : Map[String, String] = {},
 ) -> ServerConnection {
-  { headers, reader: Reader::new(conn), conn, sender: Sender::new(conn) }
+  { reader: Reader::new(conn), conn, sender: Sender::new(conn, headers~) }
 }
 
 ///|
@@ -103,18 +102,8 @@ pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 pub async fn ServerConnection::send_response(
   self : ServerConnection,
   code : Int,
-  reason : Bytes,
-  extra_headers? : Array[Header] = [],
+  reason : String,
+  extra_headers? : Map[String, String] = {},
 ) -> Unit {
-  guard self.sender.mode is SendingHeader
-  self.sender
-  ..write("HTTP/1.1 ")
-  ..write(encode_int(code, base=10))
-  ..write(" ")
-  ..write(reason)
-  ..write("\r\n")
-  self.sender.send_headers(self.headers)
-  self.sender.send_headers(extra_headers)
-  self.sender.write("Transfer-Encoding: chunked\r\n")
-  self.sender.start_body()
+  self.sender.send_response(code, reason, extra_headers~)
 }

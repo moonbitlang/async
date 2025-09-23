@@ -21,11 +21,7 @@ async fn serve_directory(
   let files = dir.read_all()
   files.sort()
   conn
-  ..send_response(
-    200,
-    "OK",
-    extra_headers=[Header("Content-Type", "text/html")],
-  )
+  ..send_response(200, "OK", extra_headers={ "Content-Type": "text/html" })
   ..write("<!DOCTYPE html><html><head></head><body>")
   ..write_string("<h1>\{path}</h1>\n", encoding=UTF8)
   ..write("<div style=\"margin: 1em; font-size: 15pt\">")
@@ -44,9 +40,7 @@ async fn serve_directory(
       encoding=UTF8,
     )
   }
-  conn
-  ..write("</div></body></html>")
-  ..end_response()
+  conn..write("</div></body></html>")..end_response()
 }
 
 ///|
@@ -68,11 +62,7 @@ async fn serve_file(
     _ => "appliaction/octet-stream"
   }
   conn
-  ..send_response(
-    200,
-    "OK",
-    extra_headers=[Header("Content-Type", content_type)],
-  )
+  ..send_response(200, "OK", extra_headers={ "Content-Type": content_type })
   ..write_reader(file)
   ..end_response()
 }
@@ -92,14 +82,10 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
       |> ignore
     })
     conn
-    ..send_response(
-      200,
-      "OK",
-      extra_headers=[
-        Header("Content-Type", "application/octet-stream"),
-        Header("Content-Disposition", "filename=\{base_name}.zip"),
-      ],
-    )
+    ..send_response(200, "OK", extra_headers={
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": "filename=\{base_name}.zip",
+    })
     ..write_reader(we_read_from_zip)
     ..end_response()
   })
@@ -111,11 +97,7 @@ let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></htm
 ///|
 async fn serve_404(conn : @http.ServerConnection) -> Unit {
   conn
-  ..send_response(
-    404,
-    "NotFound",
-    extra_headers=[Header("Content-Type", "text/html")],
-  )
+  ..send_response(404, "NotFound", extra_headers={ "Content-Type": "text/html" })
   ..write(page_for_404)
   ..end_response()
 }

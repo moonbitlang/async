@@ -26,20 +26,17 @@ pub(all) enum RequestMethod {
 } derive(Show)
 
 ///|
-pub(all) struct Header(String, String)
-
-///|
 pub(all) struct Request {
   meth : RequestMethod
   path : String
-  headers : Array[Header]
+  headers : Map[String, String]
 }
 
 ///|
 pub(all) struct Response {
   code : Int
   reason : String
-  headers : Array[Header]
+  headers : Map[String, String]
 }
 
 ///|

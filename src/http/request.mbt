@@ -36,7 +36,7 @@ pub suberror URIParseError {
 async fn[ReqBody : Body, ResBody : Body] perform_request(
   uri : String,
   meth : RequestMethod,
-  headers : Array[Header],
+  headers : Map[String, String],
   body : ReqBody,
   port? : Int,
 ) -> (Response, ResBody) {
@@ -82,7 +82,7 @@ async fn[ReqBody : Body, ResBody : Body] perform_request(
 #alias(request, deprecated)
 pub async fn[ResBody : Body] get(
   uri : String,
-  headers? : Array[Header] = [],
+  headers? : Map[String, String] = {},
   port? : Int,
 ) -> (Response, ResBody) {
   perform_request(uri, Get, headers, b"", port?)
@@ -93,7 +93,7 @@ pub async fn[ResBody : Body] get(
 pub async fn[ReqBody : Body, ResBody : Body] put(
   uri : String,
   content : ReqBody,
-  headers? : Array[Header] = [],
+  headers? : Map[String, String] = {},
   port? : Int,
 ) -> (Response, ResBody) {
   perform_request(uri, Put, headers, content, port?)
@@ -104,7 +104,7 @@ pub async fn[ReqBody : Body, ResBody : Body] put(
 pub async fn[ReqBody : Body, ResBody : Body] post(
   uri : String,
   content : ReqBody,
-  headers? : Array[Header] = [],
+  headers? : Map[String, String] = {},
   port? : Int,
 ) -> (Response, ResBody) {
   perform_request(uri, Post, headers, content, port?)
