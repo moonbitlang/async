@@ -27,7 +27,11 @@ async fn[Writer : @io.Writer] send_headers(
 ) -> Unit {
   for header in headers {
     let Header(k, v) = header
-    w..write(k)..write(": ")..write(v)..write("\r\n")
+    w
+    ..write_string(k, encoding=UTF8)
+    ..write(": ")
+    ..write_string(v, encoding=UTF8)
+    ..write("\r\n")
   }
 }
 

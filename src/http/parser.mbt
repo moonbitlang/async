@@ -106,31 +106,29 @@ async fn Reader::read_headers(self : Reader) -> Array[Header] {
       break
     }
     let header_line = self.transport[:line_end]
-    guard header_line[:].find_index(':') is Some(colon_index) else {
+    guard header_line[:].find(":") is Some(colon_index) else {
       raise BadRequest
     }
-    let key = header_line[:colon_index].to_lower_case()
+    let key = @encoding/utf8.decode(header_line[:colon_index]).to_lower()
     guard colon_index + 1 < header_line.length() else { raise BadRequest }
     let value_start = if header_line[colon_index + 1] == ' ' {
       colon_index + 2
     } else {
       colon_index + 1
     }
-    let value = header_line[value_start:].to_bytes()
+    let value = @encoding/utf8.decode(header_line[value_start:])
     headers.push(Header(key, value))
     match key {
       "content-length" => {
         guard not(self.body is Fixed(_)) else { raise BadRequest }
-        guard parse_int(value, base=10) is Some(len) else { raise BadRequest }
+        let len = @strconv.parse_int(value, base=10)
         if self.body is Empty {
           self.body = Fixed(len)
         }
       }
       "transfer-encoding" => {
         guard not(self.body is Chunked(_)) else { raise BadRequest }
-        guard value[:].to_lower_case() is "chunked" else {
-          raise NotImplemented
-        }
+        guard value.to_lower() is "chunked" else { raise NotImplemented }
         self.body = Chunked(0)
       }
       _ => ()

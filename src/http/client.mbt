@@ -53,7 +53,7 @@ pub async fn Client::connect(
     None => Reader::new(conn)
     Some(tls) => Reader::new(tls)
   }
-  headers.push(Header("Host", @encoding/utf8.encode(host)))
+  headers.push(Header("Host", host))
   let send_buf = FixedArray::make(1024, b'0')
   { headers, conn, tls, reader, send_buf, send_len: 0 }
 }

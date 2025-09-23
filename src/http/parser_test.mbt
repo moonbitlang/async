@@ -16,11 +16,7 @@
 fn log_headers(headers : Array[@http.Header], logger : &Logger) -> Unit {
   for header in headers {
     let Header(k, v) = header
-    logger
-    ..write_string(@bytes_util.ascii_to_string(k))
-    ..write_string(": ")
-    ..write_string(@bytes_util.ascii_to_string(v))
-    ..write_string("\n")
+    logger.write_string("\{k}: \{v}\n")
   }
 }
 
