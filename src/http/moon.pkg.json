@@ -11,7 +11,6 @@
     "moonbitlang/async/fs"
   ],
   "test-import": [
-    "moonbitlang/async",
-    "moonbitlang/async/pipe"
+    "moonbitlang/async"
   ]
 }

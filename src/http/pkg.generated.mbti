@@ -2,7 +2,6 @@
 package "moonbitlang/async/http"
 
 import(
-  "moonbitlang/async/io"
   "moonbitlang/async/socket"
 )
 
@@ -40,21 +39,14 @@ async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[Strin
 #deprecated
 async fn Client::shutdown(Self) -> Unit
 async fn Client::skip_response_body(Self) -> Unit
-impl @io.Reader for Client
-impl @io.Writer for Client
+impl @moonbitlang/async/io.Reader for Client
+impl @moonbitlang/async/io.Writer for Client
 
 pub(all) enum Protocol {
   Http
   Https
 }
 fn Protocol::default_port(Self) -> Int
-
-type Reader
-fn[R : @io.Reader] Reader::new(R) -> Self
-async fn Reader::read_request(Self) -> Request
-async fn Reader::read_response(Self) -> Response
-async fn Reader::skip_body(Self) -> Unit
-impl @io.Reader for Reader
 
 pub(all) struct Request {
   meth : RequestMethod
@@ -88,8 +80,8 @@ fn ServerConnection::new(@socket.TCP, headers? : Map[String, String]) -> Self
 async fn ServerConnection::read_request(Self) -> Request
 async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit
 async fn ServerConnection::skip_request_body(Self) -> Unit
-impl @io.Reader for ServerConnection
-impl @io.Writer for ServerConnection
+impl @moonbitlang/async/io.Reader for ServerConnection
+impl @moonbitlang/async/io.Writer for ServerConnection
 
 // Type aliases
 
