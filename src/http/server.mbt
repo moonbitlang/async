@@ -18,8 +18,7 @@ struct ServerConnection {
   headers : Array[Header]
   reader : Reader
   conn : @socket.TCP
-  send_buf : FixedArray[Byte]
-  mut send_len : Int
+  sender : Sender
 }
 
 ///|
@@ -35,9 +34,7 @@ pub fn ServerConnection::new(
   conn : @socket.TCP,
   headers? : Array[Header] = [],
 ) -> ServerConnection {
-  let reader = Reader::new(conn)
-  let send_buf = FixedArray::make(1024, b'0')
-  { headers, reader, conn, send_buf, send_len: 0 }
+  { headers, reader: Reader::new(conn), conn, sender: Sender::new(conn) }
 }
 
 ///|
@@ -71,52 +68,53 @@ pub async fn ServerConnection::read_request(self : ServerConnection) -> Request 
 
 ///|
 /// Manually discard the body of the request currently being processed.
-pub async fn ServerConnection::skip_body(self : ServerConnection) -> Unit {
+pub async fn ServerConnection::skip_request_body(
+  self : ServerConnection,
+) -> Unit {
   self.reader.skip_body()
 }
 
 ///|
-async fn ServerConnection::flush(self : Self) -> Unit {
-  if self.send_len > 0 {
-    self.conn.write(self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len])
-    self.send_len = 0
-  }
+/// Write data to the body of the response currently being sent.
+/// Must be called after `send_response`.
+/// `end_response` must be called after all content of response body has been sent.
+pub impl @io.Writer for ServerConnection with write_once(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  guard self.sender.mode is SendingBody
+  self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
-impl @io.Writer for ServerConnection with write_once(self, buf, offset~, len~) {
-  if self.send_len >= self.send_buf.length() {
-    self.flush()
-  }
-  let len = @cmp.minimum(len, self.send_buf.length() - self.send_len)
-  self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
-  self.send_len += len
-  len
+/// End the body of the response currently being sent.
+/// Should be called immediately after response body is fully sent.
+pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
+  self.sender.end_body()
 }
 
 ///|
 /// Send a response to the peer.
+/// The `ServerConnection` can be used as a `@io.Writer` later for sending response body.
+/// After calling `send_response`,
+/// `end_response` must be called before sending the next response.
 pub async fn ServerConnection::send_response(
   self : ServerConnection,
   code : Int,
   reason : Bytes,
-  body : Body,
   extra_headers? : Array[Header] = [],
 ) -> Unit {
-  self
+  guard self.sender.mode is SendingHeader
+  self.sender
   ..write("HTTP/1.1 ")
   ..write(encode_int(code, base=10))
   ..write(" ")
   ..write(reason)
   ..write("\r\n")
-  send_headers(self, self.headers)
-  send_headers(self, extra_headers)
-  send_body_headers(self, body)
-  self.write("\r\n")
-  self.flush()
-  match body {
-    Empty => ()
-    Fixed(body) => self.conn.write(body)
-    Stream(body) => send_body_chunked(self.conn, self.send_buf, body)
-  }
+  self.sender.send_headers(self.headers)
+  self.sender.send_headers(extra_headers)
+  self.sender.write("Transfer-Encoding: chunked\r\n")
+  self.sender.start_body()
 }

@@ -32,8 +32,8 @@ async fn main {
         for {
           let request = conn.read_request()
           match (request.meth, request.path) {
-            (Get, "/") => conn.send_response(200, "OK", Fixed(""))
-            _ => conn.send_response(404, "NotFound", Fixed(""))
+            (Get, "/") => conn..send_response(200, "OK")..end_response()
+            _ => conn..send_response(404, "NotFound")..end_response()
           }
         }
       })

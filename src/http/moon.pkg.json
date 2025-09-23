@@ -5,9 +5,13 @@
     "moonbitlang/async/tls",
     "moonbitlang/async/internal/bytes_util"
   ],
-  "test-import": [
+  "wbtest-import": [
     "moonbitlang/async",
     "moonbitlang/async/pipe",
     "moonbitlang/async/fs"
+  ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/pipe"
   ]
 }

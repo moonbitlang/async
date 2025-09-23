@@ -19,8 +19,7 @@ struct Client {
   reader : Reader
   conn : @socket.TCP
   tls : @tls.TLS?
-  send_buf : FixedArray[Byte]
-  mut send_len : Int
+  sender : Sender
 }
 
 ///|
@@ -53,9 +52,12 @@ pub async fn Client::connect(
     None => Reader::new(conn)
     Some(tls) => Reader::new(tls)
   }
+  let sender = match tls {
+    None => Sender::new(conn)
+    Some(tls) => Sender::new(tls)
+  }
   headers.push(Header("Host", host))
-  let send_buf = FixedArray::make(1024, b'0')
-  { headers, conn, tls, reader, send_buf, send_len: 0 }
+  { headers, conn, tls, reader, sender }
 }
 
 ///|
@@ -90,36 +92,39 @@ pub impl @io.Reader for Client with read(
 }
 
 ///|
-async fn Client::flush(self : Self) -> Unit {
-  if self.send_len > 0 {
-    let data = self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len]
-    match self.tls {
-      None => self.conn.write(data)
-      Some(tls) => tls.write(data)
-    }
-    self.send_len = 0
-  }
+/// Write data to the body of the request currently being sent.
+/// Must be called after `send_request`.
+/// `end_request` must be called after all content of response body has been sent.
+pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
+  guard self.sender.mode is SendingBody
+  self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
-impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  if self.send_len >= self.send_buf.length() {
-    self.flush()
-  }
-  let len = @cmp.minimum(len, self.send_buf.length() - self.send_len)
-  self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
-  self.send_len += len
-  len
-}
-
-///|
-/// Send a HTTP request to the server, and return the response from the server.
+/// End the body of the request currently being sent,
+/// and obtain response from the server.
+/// Should be called immediately after request body is fully sent.
+///
 /// Only the header of the response will be received and returned,
 /// the body of the response can be extracted by using `Client` as a `@io.Reader`.
 ///
+/// If the body of the last response is still not consumed,
+/// it will be discarded.
+pub async fn Client::end_request(self : Client) -> Response {
+  self.sender.end_body()
+  self.reader.skip_body()
+  self.reader.read_response()
+}
+
+///|
+/// Send a HTTP request to the server.
+/// Only the header of the request will be sent,
+/// request body can be sent by using `Client` as a `@io.Writer`.
+/// Once request body has been sent,
+/// `end_request` must be called to complete the request and obtain response from the server.
+///
 /// After performing a request,
-/// the next request MUST NOT be made before the body of the response is consumed.
-/// If you don't care about the response body, use `skip_body` to skip it.
+/// the next request MUST NOT be made before the request is completed via `end_request`.
 ///
 /// In addition to headers in `Client::connect`,
 /// extra HTTP headers can be passed via `extra_headers`.
@@ -133,45 +138,29 @@ pub async fn Client::request(
   meth : RequestMethod,
   path : String,
   extra_headers? : Array[Header] = [],
-  body : Body,
-) -> Response {
+) -> Unit {
   match meth {
-    Get => self.write("GET ")
-    Head => self.write("HEAD ")
-    Post => self.write("POST ")
-    Put => self.write("PUT ")
-    Delete => self.write("DELETE ")
-    Connect => self.write("CONNECT ")
-    Options => self.write("OPTIONS ")
-    Trace => self.write("TRACE ")
-    Patch => self.write("PATCH ")
+    Get => self.sender.write("GET ")
+    Head => self.sender.write("HEAD ")
+    Post => self.sender.write("POST ")
+    Put => self.sender.write("PUT ")
+    Delete => self.sender.write("DELETE ")
+    Connect => self.sender.write("CONNECT ")
+    Options => self.sender.write("OPTIONS ")
+    Trace => self.sender.write("TRACE ")
+    Patch => self.sender.write("PATCH ")
   }
-  self..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
-  send_headers(self, self.headers)
-  send_headers(self, extra_headers)
-  send_body_headers(self, body)
-  self.write("\r\n")
-  self.flush()
-  match body {
-    Empty => ()
-    Fixed(body) =>
-      match self.tls {
-        None => self.conn.write(body)
-        Some(tls) => tls.write(body)
-      }
-    Stream(body) =>
-      match self.tls {
-        None => send_body_chunked(self.conn, self.send_buf, body)
-        Some(tls) => send_body_chunked(tls, self.send_buf, body)
-      }
-  }
-  self.reader.read_response()
+  self.sender..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
+  self.sender.send_headers(self.headers)
+  self.sender.send_headers(extra_headers)
+  self.sender.write("Transfer-Encoding: chunked\r\n")
+  self.sender.start_body()
 }
 
 ///|
 /// Skip the body of the response currently being produced,
 /// so that the next request can be made.
-pub async fn Client::skip_body(self : Client) -> Unit {
+pub async fn Client::skip_response_body(self : Client) -> Unit {
   self.reader.skip_body()
 }
 
@@ -181,29 +170,33 @@ pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Array[Header] = [],
-  body? : Body = Empty,
 ) -> Response {
-  self.request(Get, path, extra_headers~, body)
+  self.request(Get, path, extra_headers~)
+  self.end_request()
 }
 
 ///|
 /// Perform a `PUT` request to the server, see `Client::request` for more details.
-pub async fn Client::put(
+pub async fn[B : Body] Client::put(
   self : Client,
   path : String,
-  body : Body,
+  body : B,
   extra_headers? : Array[Header] = [],
 ) -> Response {
-  self.request(Put, path, extra_headers~, body)
+  self.request(Put, path, extra_headers~)
+  body.write(self.sender)
+  self.end_request()
 }
 
 ///|
 /// Perform a `POST` request to the server, see `Client::request` for more details.
-pub async fn Client::post(
+pub async fn[B : Body] Client::post(
   self : Client,
   path : String,
-  body : Body,
+  body : B,
   extra_headers? : Array[Header] = [],
 ) -> Response {
-  self.request(Post, path, extra_headers~, body)
+  self.request(Post, path, extra_headers~)
+  body.write(self.sender)
+  self.end_request()
 }

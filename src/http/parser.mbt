@@ -164,7 +164,7 @@ pub async fn Reader::read_request(self : Reader) -> Request {
     "OPTIONS" => Options
     "TRACE" => Trace
     "PATCH" => Patch
-    _ => abort("handle error")
+    _ => raise BadRequest
   }
   let request_line = request_line[meth_len + 1:]
   guard request_line.find(" ") is Some(path_len) else { raise BadRequest }

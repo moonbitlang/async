@@ -13,125 +13,129 @@
 // limitations under the License.
 
 ///|
-/// Specify the body of a HTTP request/response for sending. `Empty` means no body.
-pub(all) enum Body {
-  Empty
-  Fixed(Bytes)
-  Stream(&@io.Reader)
+priv enum SenderMode {
+  SendingHeader
+  SendingBody
 }
 
 ///|
-async fn[Writer : @io.Writer] send_headers(
-  w : Writer,
-  headers : Array[Header],
-) -> Unit {
+/// Provide send buffering & chunked encoding handling for sending HTTP request/response.
+priv struct Sender {
+  writer : &@io.Writer
+  mut mode : SenderMode
+  send_buf : FixedArray[Byte]
+  mut send_len : Int
+}
+
+///|
+fn[W : @io.Writer] Sender::new(w : W) -> Sender {
+  {
+    writer: w,
+    mode: SendingHeader,
+    send_buf: FixedArray::make(1024, 0),
+    send_len: 0,
+  }
+}
+
+///|
+async fn Sender::flush(self : Sender) -> Unit {
+  if self.send_len > 0 {
+    self.writer.write(
+      self.send_buf.unsafe_reinterpret_as_bytes()[:self.send_len],
+    )
+    self.send_len = 0
+  }
+}
+
+///|
+impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
+  match self.mode {
+    SendingHeader => {
+      if self.send_len >= self.send_buf.length() {
+        self.flush()
+      }
+      let len = @cmp.minimum(len, self.send_buf.length() - self.send_len)
+      self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
+      self.send_len += len
+      len
+    }
+    SendingBody => {
+      // Reserve enough space for chunk length and '\r\n' in the buffer,
+      // so that we can commit the whole chunk in a single write to avoid small writes
+      let max_len = self.send_buf.length() - 7
+      let len = @cmp.minimum(max_len, len)
+      self.send_buf[3] = '\r'
+      self.send_buf[4] = '\n'
+      self.send_buf.blit_from_bytes(5, buf, offset, len)
+      self.send_buf[5 + len] = '\r'
+      self.send_buf[6 + len] = '\n'
+      let len_str = encode_int(len, base=16)
+      let start = 3 - len_str.length()
+      self.send_buf.blit_from_bytes(start, len_str, 0, len_str.length())
+      self.writer.write(
+        self.send_buf.unsafe_reinterpret_as_bytes()[start:len + 7],
+      )
+      len
+    }
+  }
+}
+
+///|
+impl @io.Writer for Sender with write_reader(self, reader) {
+  match self.mode {
+    SendingHeader =>
+      for {
+        if self.send_len >= self.send_buf.length() {
+          self.flush()
+        }
+        let n = reader.read(self.send_buf, offset=self.send_len)
+        if n == 0 {
+          break
+        }
+      }
+    SendingBody => {
+      self.send_buf[3] = '\r'
+      self.send_buf[4] = '\n'
+      let max_len = self.send_buf.length() - 7
+      for {
+        let len = reader.read(self.send_buf, offset=5, max_len~)
+        if len == 0 {
+          break
+        }
+        self.send_buf[5 + len] = '\r'
+        self.send_buf[6 + len] = '\n'
+        let len_str = encode_int(len, base=16)
+        let start = 3 - len_str.length()
+        self.send_buf.blit_from_bytes(start, len_str, 0, len_str.length())
+        self.writer.write(
+          self.send_buf.unsafe_reinterpret_as_bytes()[start:len + 7],
+        )
+      }
+    }
+  }
+}
+
+///|
+async fn Sender::start_body(self : Sender) -> Unit {
+  self.write("\r\n")
+  self.flush()
+  self.mode = SendingBody
+}
+
+///|
+async fn Sender::end_body(self : Sender) -> Unit {
+  self.writer.write("0\r\n\r\n")
+  self.mode = SendingHeader
+}
+
+///|
+async fn Sender::send_headers(self : Sender, headers : Array[Header]) -> Unit {
   for header in headers {
     let Header(k, v) = header
-    w
+    self
     ..write_string(k, encoding=UTF8)
     ..write(": ")
     ..write_string(v, encoding=UTF8)
     ..write("\r\n")
-  }
-}
-
-///|
-async fn[Writer : @io.Writer] send_body_headers(
-  w : Writer,
-  body : Body,
-) -> Unit {
-  match body {
-    Empty => ()
-    Fixed(body) =>
-      w
-      ..write(b"Content-Length: ")
-      ..write(encode_int(body.length(), base=10))
-      ..write("\r\n")
-    Stream(_) => w.write(b"Transfer-Encoding: chunked\r\n")
-  }
-}
-
-///|
-async fn[Writer : @io.Writer] send_body_chunked(
-  w : Writer,
-  buf : FixedArray[Byte],
-  body : &@io.Reader,
-) -> Unit {
-  // Reserve enough space for chunk length and '\r\n' in the buffer,
-  // so that we can commit the whole chunk in a single write to avoid small writes
-  let max_len = buf.length() - 7
-  while body.read(buf, offset=5, max_len~) is n && n > 0 {
-    buf[5 + n] = '\r'
-    buf[6 + n] = '\n'
-    let len = encode_int(n, base=16)
-    let start = 3 - len.length()
-    buf[3] = '\r'
-    buf[4] = '\n'
-    buf.blit_from_bytes(start, len, 0, len.length())
-    w.write(buf.unsafe_reinterpret_as_bytes()[start:n + 7])
-  } else {
-    w.write("0\r\n\r\n")
-  }
-}
-
-///|
-/// Send a HTTP/1.1 request message through a writer.
-pub async fn[Writer : @io.Writer] send_request(
-  w0 : Writer,
-  request : Request,
-  body : Body,
-) -> Unit {
-  let w = @io.BufferedWriter::new(w0)
-  match request.meth {
-    Get => w.write("GET ")
-    Head => w.write("HEAD ")
-    Post => w.write("POST ")
-    Put => w.write("PUT ")
-    Delete => w.write("DELETE ")
-    Connect => w.write("CONNECT ")
-    Options => w.write("OPTIONS ")
-    Trace => w.write("TRACE ")
-    Patch => w.write("PATCH ")
-  }
-  w..write_string(request.path, encoding=UTF8)..write(" HTTP/1.1\r\n")
-  send_headers(w, request.headers)
-  send_body_headers(w, body)
-  w.write("\r\n")
-  w.flush()
-  match body {
-    Empty => ()
-    Fixed(body) => w0.write(body)
-    Stream(body) => {
-      let buf = FixedArray::make(1024, b'0')
-      send_body_chunked(w0, buf, body)
-    }
-  }
-}
-
-///|
-/// Send a HTTP/1.1 request response through a writer.
-pub async fn[Writer : @io.Writer] send_response(
-  w0 : Writer,
-  response : Response,
-  body : Body,
-) -> Unit {
-  let w = @io.BufferedWriter::new(w0)
-  w
-  ..write("HTTP/1.1 ")
-  ..write(encode_int(response.code, base=10))
-  ..write(" ")
-  ..write_string(response.reason, encoding=UTF8)
-  ..write("\r\n")
-  send_headers(w, response.headers)
-  send_body_headers(w, body)
-  w.write("\r\n")
-  w.flush()
-  match body {
-    Empty => ()
-    Fixed(body) => w0.write(body)
-    Stream(body) => {
-      let buf = FixedArray::make(1024, b'0')
-      send_body_chunked(w0, buf, body)
-    }
   }
 }

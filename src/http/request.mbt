@@ -33,13 +33,13 @@ pub suberror URIParseError {
 } derive(Show)
 
 ///|
-async fn perform_request(
+async fn[ReqBody : Body, ResBody : Body] perform_request(
   uri : String,
   meth : RequestMethod,
   headers : Array[Header],
-  body : Body,
+  body : ReqBody,
   port? : Int,
-) -> (Response, Bytes) {
+) -> (Response, ResBody) {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -63,8 +63,10 @@ async fn perform_request(
   let path = if path == "" { "/" } else { path }
   let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
-  let response = client.request(meth, path, body)
-  let body = client.read_all()
+  client.request(meth, path)
+  body.write(client.sender)
+  let response = client.end_request()
+  let body = ResBody::read(client.reader)
   (response, body)
 }
 
@@ -78,32 +80,32 @@ async fn perform_request(
 ///
 /// See `Client::request` for more details.
 #alias(request, deprecated)
-pub async fn get(
+pub async fn[ResBody : Body] get(
   uri : String,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) {
-  perform_request(uri, Get, headers, Empty, port?)
+) -> (Response, ResBody) {
+  perform_request(uri, Get, headers, b"", port?)
 }
 
 ///|
 /// Similar to `get`, but performs a `PUT` request instead.
-pub async fn put(
+pub async fn[ReqBody : Body, ResBody : Body] put(
   uri : String,
-  content : Bytes,
+  content : ReqBody,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) {
-  perform_request(uri, Put, headers, Fixed(content), port?)
+) -> (Response, ResBody) {
+  perform_request(uri, Put, headers, content, port?)
 }
 
 ///|
 /// Similar to `get`, but performs a `POST` request instead.
-pub async fn post(
+pub async fn[ReqBody : Body, ResBody : Body] post(
   uri : String,
-  content : Bytes,
+  content : ReqBody,
   headers? : Array[Header] = [],
   port? : Int,
-) -> (Response, Bytes) {
-  perform_request(uri, Post, headers, Fixed(content), port?)
+) -> (Response, ResBody) {
+  perform_request(uri, Post, headers, content, port?)
 }
