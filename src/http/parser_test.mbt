@@ -26,21 +26,13 @@ fn log_headers(headers : Array[@http.Header], logger : &Logger) -> Unit {
 
 ///|
 fn log_request(req : @http.Request, logger : &Logger) -> Unit {
-  logger
-  ..write_object(req.meth)
-  ..write_string(" ")
-  ..write_object(@bytes_util.ascii_to_string(req.path))
-  ..write_string("\n")
+  logger.write_string("\{req.meth} \{req.path}\n")
   log_headers(req.headers, logger)
 }
 
 ///|
 fn log_response(req : @http.Response, logger : &Logger) -> Unit {
-  logger
-  ..write_object(req.code)
-  ..write_string(" ")
-  ..write_object(@bytes_util.ascii_to_string(req.reason))
-  ..write_string("\n")
+  logger.write_string("\{req.code} \{req.reason}\n")
   log_headers(req.headers, logger)
 }
 
@@ -70,7 +62,7 @@ async test "read_request basic" {
   inspect(
     log.to_string(),
     content=(
-      #|Get "/"
+      #|Get /
       #|host: x.y.org
       #|user-agent: MoonBit
       #|
@@ -104,7 +96,7 @@ async test "read_request fixed body" {
   inspect(
     log.to_string(),
     content=(
-      #|Get "/"
+      #|Get /
       #|host: x.y.org
       #|user-agent: MoonBit
       #|content-length: 7
@@ -141,7 +133,7 @@ async test "read_request chunked" {
   inspect(
     log.to_string(),
     content=(
-      #|Get "/"
+      #|Get /
       #|host: x.y.org
       #|user-agent: MoonBit
       #|transfer-encoding: chunked
@@ -397,7 +389,7 @@ async test "read_request stream" {
   inspect(
     log.to_string(),
     content=(
-      #|Get "/"
+      #|Get /
       #|host: x.y.org
       #|user-agent: MoonBit
       #|transfer-encoding: chunked
@@ -467,7 +459,7 @@ async test "multiple request" {
   inspect(
     log.to_string(),
     content=(
-      #|Get "/"
+      #|Get /
       #|host: x.y.org
       #|user-agent: MoonBit
       #|transfer-encoding: chunked
@@ -478,7 +470,7 @@ async test "multiple request" {
       #|
       #|=========
       #|
-      #|Get "/"
+      #|Get /
       #|host: z.w.org
       #|user-agent: MoonBit
       #|content-length: 8
@@ -509,7 +501,7 @@ async test "read_response basic" {
   inspect(
     log.to_string(),
     content=(
-      #|200 "OK"
+      #|200 OK
       #|content-length: 7
       #|message
     ),

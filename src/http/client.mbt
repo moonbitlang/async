@@ -39,7 +39,7 @@ struct Client {
 /// - Host
 /// - Content-Length, Transfer-Encoding
 pub async fn Client::connect(
-  host : Bytes,
+  host : String,
   headers? : Array[Header] = [],
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
@@ -53,7 +53,7 @@ pub async fn Client::connect(
     None => Reader::new(conn)
     Some(tls) => Reader::new(tls)
   }
-  headers.push(Header("Host", host))
+  headers.push(Header("Host", @encoding/utf8.encode(host)))
   let send_buf = FixedArray::make(1024, b'0')
   { headers, conn, tls, reader, send_buf, send_len: 0 }
 }
@@ -131,7 +131,7 @@ impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : Bytes,
+  path : String,
   extra_headers? : Array[Header] = [],
   body : Body,
 ) -> Response {
@@ -146,7 +146,7 @@ pub async fn Client::request(
     Trace => self.write("TRACE ")
     Patch => self.write("PATCH ")
   }
-  self..write(path)..write(" HTTP/1.1\r\n")
+  self..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
   send_headers(self, self.headers)
   send_headers(self, extra_headers)
   send_body_headers(self, body)
@@ -179,7 +179,7 @@ pub async fn Client::skip_body(self : Client) -> Unit {
 /// Perform a `GET` request to the server, see `Client::request` for more details.
 pub async fn Client::get(
   self : Client,
-  path : Bytes,
+  path : String,
   extra_headers? : Array[Header] = [],
   body? : Body = Empty,
 ) -> Response {
@@ -190,7 +190,7 @@ pub async fn Client::get(
 /// Perform a `PUT` request to the server, see `Client::request` for more details.
 pub async fn Client::put(
   self : Client,
-  path : Bytes,
+  path : String,
   body : Body,
   extra_headers? : Array[Header] = [],
 ) -> Response {
@@ -201,7 +201,7 @@ pub async fn Client::put(
 /// Perform a `POST` request to the server, see `Client::request` for more details.
 pub async fn Client::post(
   self : Client,
-  path : Bytes,
+  path : String,
   body : Body,
   extra_headers? : Array[Header] = [],
 ) -> Response {

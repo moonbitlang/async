@@ -31,13 +31,13 @@ pub(all) struct Header(Bytes, Bytes)
 ///|
 pub(all) struct Request {
   meth : RequestMethod
-  path : Bytes
+  path : String
   headers : Array[Header]
 }
 
 ///|
 pub(all) struct Response {
   code : Int
-  reason : Bytes
+  reason : String
   headers : Array[Header]
 }

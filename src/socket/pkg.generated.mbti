@@ -16,7 +16,7 @@ fn Addr::ip(Self) -> UInt
 fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
-async fn Addr::resolve(Bytes, port~ : Int) -> Self
+async fn Addr::resolve(String, port~ : Int) -> Self
 impl Compare for Addr
 impl Eq for Addr
 impl Hash for Addr
@@ -25,7 +25,7 @@ impl Show for Addr
 type TCP
 fn TCP::close(Self) -> Unit
 async fn TCP::connect(Addr) -> Self
-async fn TCP::connect_to_host(Bytes, port~ : Int) -> Self
+async fn TCP::connect_to_host(String, port~ : Int) -> Self
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP

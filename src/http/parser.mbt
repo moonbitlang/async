@@ -170,7 +170,7 @@ pub async fn Reader::read_request(self : Reader) -> Request {
   }
   let request_line = request_line[meth_len + 1:]
   guard request_line.find(" ") is Some(path_len) else { raise BadRequest }
-  let path = request_line[:path_len].to_bytes()
+  let path = @encoding/utf8.decode(request_line[:path_len])
   match request_line[path_len + 1:] {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol =>
@@ -207,7 +207,7 @@ pub async fn Reader::read_response(self : Reader) -> Response {
   guard parse_int(response_line[:code_len], base=10) is Some(code) else {
     raise BadRequest
   }
-  let reason = response_line[code_len + 1:].to_bytes()
+  let reason = @encoding/utf8.decode(response_line[code_len + 1:])
   self.transport.drop(response_line_end + 2)
   let headers = self.read_headers()
   { code, reason, headers }
