@@ -91,7 +91,8 @@ pub suberror ResolveHostnameError Int derive(Show)
 
 ///|
 /// Resolve a IPv4 address by hostname
-pub async fn Addr::resolve(host : Bytes, port~ : Int) -> Addr {
+pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
+  let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
   if ret != 0 {

@@ -34,7 +34,7 @@ pub suberror URIParseError {
 
 ///|
 async fn perform_request(
-  uri : Bytes,
+  uri : String,
   meth : RequestMethod,
   headers : Array[Header],
   body : Body,
@@ -44,7 +44,7 @@ async fn perform_request(
   let protocol = match uri[:protocol_len] {
     "http" => Http
     "https" => Https
-    protocol => raise UnsupportedProtocol(@bytes_util.ascii_to_string(protocol))
+    protocol => raise UnsupportedProtocol(protocol.to_string())
   }
   let port = match port {
     Some(port) => port
@@ -56,11 +56,11 @@ async fn perform_request(
   }
   let uri = uri[protocol_len + 3:]
   let (host, path) = if uri.find("/") is Some(i) {
-    (uri[:i].to_bytes(), uri[i:].to_bytes())
+    (uri[:i].to_string(), uri[i:].to_string())
   } else {
-    (uri.to_bytes(), "/")
+    (uri.to_string(), "/")
   }
-  let path = if path == "" { b"/" } else { path }
+  let path = if path == "" { "/" } else { path }
   let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
   let response = client.request(meth, path, body)
@@ -79,7 +79,7 @@ async fn perform_request(
 /// See `Client::request` for more details.
 #alias(request, deprecated)
 pub async fn get(
-  uri : Bytes,
+  uri : String,
   headers? : Array[Header] = [],
   port? : Int,
 ) -> (Response, Bytes) {
@@ -89,7 +89,7 @@ pub async fn get(
 ///|
 /// Similar to `get`, but performs a `PUT` request instead.
 pub async fn put(
-  uri : Bytes,
+  uri : String,
   content : Bytes,
   headers? : Array[Header] = [],
   port? : Int,
@@ -100,7 +100,7 @@ pub async fn put(
 ///|
 /// Similar to `get`, but performs a `POST` request instead.
 pub async fn post(
-  uri : Bytes,
+  uri : String,
   content : Bytes,
   headers? : Array[Header] = [],
   port? : Int,

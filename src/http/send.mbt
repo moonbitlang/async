@@ -89,7 +89,7 @@ pub async fn[Writer : @io.Writer] send_request(
     Trace => w.write("TRACE ")
     Patch => w.write("PATCH ")
   }
-  w..write(request.path)..write(" HTTP/1.1\r\n")
+  w..write_string(request.path, encoding=UTF8)..write(" HTTP/1.1\r\n")
   send_headers(w, request.headers)
   send_body_headers(w, body)
   w.write("\r\n")
@@ -116,7 +116,7 @@ pub async fn[Writer : @io.Writer] send_response(
   ..write("HTTP/1.1 ")
   ..write(encode_int(response.code, base=10))
   ..write(" ")
-  ..write(response.reason)
+  ..write_string(response.reason, encoding=UTF8)
   ..write("\r\n")
   send_headers(w, response.headers)
   send_body_headers(w, body)

@@ -16,7 +16,7 @@
 /// A TLS-encrypted connection
 struct TLS {
   ssl : SSL
-  host : Bytes?
+  host : String?
   read_end : Endpoint
   write_end : Endpoint
 }
@@ -32,7 +32,7 @@ fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
   ctx : SSL_CTX,
   r : R,
   w : W,
-  host~ : Bytes?,
+  host~ : String?,
 ) -> TLS {
   let read_end = Endpoint::new_read(r)
   let write_end = Endpoint::new_write(w)
@@ -69,7 +69,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
   r : R,
   w : W,
   verify? : Bool = true,
-  host? : Bytes,
+  host? : String,
   sni? : Bool = true,
 ) -> TLS {
   let self = TLS::from_pair(client_ctx, r, w, host~)
@@ -77,6 +77,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
     self.ssl.set_verify(false)
   }
   if host is Some(host) {
+    let host = @encoding/utf8.encode(host)
     guard self.ssl.set_host(host) > 0 else {
       self.close()
       raise OpenSSLError(err_get_error())
@@ -114,7 +115,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
 pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
   inner : Inner,
   verify? : Bool = true,
-  host? : Bytes,
+  host? : String,
   sni? : Bool = true,
 ) -> TLS {
   TLS::client_from_pair(inner, inner, verify~, host?, sni~)
