@@ -62,6 +62,10 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
+      - name: enable new moon backend
+        run: |
+          export MOON_UNSTABLE=rupes_recta
+
       - name: moon version
         run: |
           moon version --all
