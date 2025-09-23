@@ -16,36 +16,28 @@
 async fn serve_directory(
   conn : @http.ServerConnection,
   dir : @fs.Directory,
-  path~ : Bytes,
+  path~ : String,
 ) -> Unit {
   let files = dir.read_all()
   files.sort()
   let content = @buffer.new()
   content
-  ..write_bytes(b"<!DOCTYPE html><html><head></head><body>")
-  ..write_bytes(b"<h1>")
-  ..write_bytes(path)
-  ..write_bytes(b"</h1>\n")
-  ..write_bytes(b"<div style=\"margin: 1em; font-size: 15pt\">")
-  ..write_bytes(b"<a href=\"")
-  ..write_bytes(path)
-  ..write_bytes(b"?download_zip\">download as zip</a><br/><br/>\n")
+  ..write_bytes("<!DOCTYPE html><html><head></head><body>")
+  ..write_string_utf8("<h1>\{path}</h1>\n")
+  ..write_bytes("<div style=\"margin: 1em; font-size: 15pt\">")
+  ..write_string_utf8(
+    "<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n",
+  )
   if path[:-1].rev_find("/") is Some(index) {
-    content
-    ..write_bytes(b"<a href=\"")
-    ..write_bytesview(if index == 0 { b"/" } else { path[:index] })
-    ..write_bytes(b"\">..</a><br/><br/>\n")
+    let parent : StringView = if index == 0 { "/" } else { path[:index] }
+    content.write_string_utf8("<a href=\"\{parent}\">..</a><br/><br/>\n")
   }
   for file in files {
-    content..write_bytes(b"<a href=\"")..write_bytes(path)
-    if path[path.length() - 1] != '/' {
-      content.write_bytes(b"/")
-    }
-    content
-    ..write_bytes(file)
-    ..write_bytes(b"\">")
-    ..write_bytes(file)
-    ..write_bytes(b"</a><br/>\n")
+    let file = @encoding/utf8.decode(file)
+    let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
+    content.write_string_utf8(
+      "<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n",
+    )
   }
   content.write_bytes(b"</div></body></html>")
   conn.send_response(
@@ -60,9 +52,9 @@ async fn serve_directory(
 async fn serve_file(
   conn : @http.ServerConnection,
   file : @fs.File,
-  path~ : Bytes,
+  path~ : String,
 ) -> Unit {
-  let content_type : Bytes = match path {
+  let content_type = match path {
     [.., .. ".png"] => "image/png"
     [.., .. ".jpg"] | "jpeg" => "image/jpeg"
     [.., .. ".html"] => "text/html"
@@ -83,17 +75,21 @@ async fn serve_file(
 }
 
 ///|
-async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit {
+async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   let base_name = if path.rev_find("/") is Some(i) {
-    path[i + 1:].to_bytes()
+    path[i + 1:].to_string()
   } else {
     path
   }
   @async.with_task_group(fn(group) {
-    let (we_read_from_zip, zip_write_to_use) = @process.read_from_process()
+    let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
     group.spawn_bg(fn() {
-      @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_use)
+      @process.run(
+        "zip",
+        ["-q", "-r", "-", @encoding/utf8.encode(path)],
+        stdout=zip_write_to_us,
+      )
       |> ignore
     })
     conn.send_response(
@@ -101,7 +97,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : Bytes) -> Unit {
       "OK",
       extra_headers=[
         Header("Content-Type", "application/octet-stream"),
-        Header("Content-Disposition", "filename=" + base_name + ".zip"),
+        Header("Content-Disposition", "filename=\{base_name}.zip"),
       ],
       Stream(we_read_from_zip),
     )
@@ -123,7 +119,7 @@ async fn serve_404(conn : @http.ServerConnection) -> Unit {
 
 ///|
 pub async fn server(
-  path~ : Bytes,
+  path~ : String,
   port~ : Int,
   log? : (String) -> Unit = println,
 ) -> Unit {
@@ -143,13 +139,16 @@ pub async fn server(
         for {
           let request = conn.read_request()
           let (path, download_zip) = match request.path {
-            [.. path, .. "?download_zip"] => (path.to_bytes(), true)
+            [.. path, .. "?download_zip"] => (path.to_string(), true)
             path => (path, false)
           }
-          log("serving \{ascii_to_string(path)}")
+          log("serving \{path}")
           match request.meth {
             Get => {
-              let file = @fs.open(base_path + path, mode=ReadOnly) catch {
+              let file = @fs.open(
+                @encoding/utf8.encode(base_path + path),
+                mode=ReadOnly,
+              ) catch {
                 _ => {
                   serve_404(conn)
                   continue
@@ -177,8 +176,8 @@ pub async fn server(
 ///|
 async fn main {
   let path = match @env.args() {
-    [] | [_] => b"."
-    [_, path, ..] => path.to_ascii()
+    [] | [_] => "."
+    [_, path, ..] => path
   }
   server(path~, port=8000) catch {
     err => println("server terminate due to \{err}")

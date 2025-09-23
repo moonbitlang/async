@@ -13,23 +13,11 @@
 // limitations under the License.
 
 ///|
-fnalias @http_file_server.(server, ascii_to_string)
-
-///|
 fn output_response(response : @http.Response, logger : &Logger) -> Unit {
-  logger
-  ..write_string("HTTP/1.1 ")
-  ..write_object(response.code)
-  ..write_string(" ")
-  ..write_string(ascii_to_string(response.reason))
-  ..write_string("\n")
+  logger.write_string("HTTP/1.1 \{response.code} \{response.reason}\n")
   for header in response.headers {
     let Header(k, v) = header
-    logger
-    ..write_string(ascii_to_string(k))
-    ..write_string(": ")
-    ..write_string(ascii_to_string(v))
-    ..write_string("\n")
+    logger.write_string("\{k}: \{v}\n")
   }
 }
 
@@ -38,7 +26,7 @@ let port = 4207
 
 ///|
 async fn client(
-  path : Bytes,
+  path : String,
   logger : &Logger,
   handle_response? : async (@http.Reader) -> Unit,
 ) -> Unit {
@@ -49,7 +37,7 @@ async fn client(
   let response = src.read_response()
   output_response(response, logger)
   match handle_response {
-    None => logger.write_string(src.read_all() |> ascii_to_string)
+    None => logger.write_string(src.read_all() |> @encoding/utf8.decode)
     Some(f) => f(src)
   }
 }
@@ -62,19 +50,24 @@ async test "basic" {
 
   let client_log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    root.spawn_bg(no_wait=true, () => server(path=b".", port~, log~))
+    root.spawn_bg(no_wait=true, () => @http_file_server.server(
+      path=".",
+      port~,
+      log~,
+    ))
     @async.sleep(50)
     client_log.write_string("client: GET /examples/http_file_server\n")
-    client(b"/examples/http_file_server", client_log)
+    client("/examples/http_file_server", client_log)
     client_log.write_string("\n\n")
     client_log.write_string(
       "client: GET /examples/http_file_server/moon.pkg.json\n",
     )
-    client(b"/examples/http_file_server/moon.pkg.json", client_log)
+    client("/examples/http_file_server/moon.pkg.json", client_log)
     client_log.write_string("\n\n")
     let tmp_file_name = b"examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
-    client(b"/examples/http_file_server?download_zip", client_log, handle_response=out => tmp_file.write_reader(
+    root.add_defer(() => @fs.remove(tmp_file_name))
+    client("/examples/http_file_server?download_zip", client_log, handle_response=out => tmp_file.write_reader(
       out,
     ))
     tmp_file.close()
@@ -94,7 +87,7 @@ async test "basic" {
       guard line.rev_find(" ") is Some(i) else {
         fail("invalid output from `unzip`")
       }
-      let last_word = ascii_to_string(line[i + 1:].to_bytes())
+      let last_word = @encoding/utf8.decode(line[i + 1:])
       if last_word.has_prefix("examples/http_file_server") {
         zip_content.push(last_word)
       }
@@ -104,7 +97,6 @@ async test "basic" {
     for file in zip_content {
       client_log..write_string(file)..write_string("\n")
     }
-    @fs.remove(tmp_file_name)
   })
   inspect(
     client_log,
@@ -112,12 +104,11 @@ async test "basic" {
       #|client: GET /examples/http_file_server
       #|HTTP/1.1 200 OK
       #|content-type: text/html
-      #|content-length: 627
+      #|content-length: 561
       #|<!DOCTYPE html><html><head></head><body><h1>/examples/http_file_server</h1>
       #|<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>
       #|<a href="/examples">..</a><br/><br/>
       #|<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>
-      #|<a href="/examples/http_file_server/utils.mbt">utils.mbt</a><br/>
       #|<a href="/examples/http_file_server/moon.pkg.json">moon.pkg.json</a><br/>
       #|<a href="/examples/http_file_server/server_test.mbt">server_test.mbt</a><br/>
       #|<a href="/examples/http_file_server/http_file_server.mbti">http_file_server.mbti</a><br/>
@@ -147,7 +138,6 @@ async test "basic" {
       #|transfer-encoding: chunked
       #|examples/http_file_server/
       #|examples/http_file_server/main.mbt
-      #|examples/http_file_server/utils.mbt
       #|examples/http_file_server/moon.pkg.json
       #|examples/http_file_server/server_test.mbt
       #|examples/http_file_server/http_file_server.mbti
