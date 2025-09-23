@@ -21,7 +21,7 @@ priv enum BodyKind {
 
 ///|
 /// A HTTP reader type that can parse and deliver HTTP request/response
-struct Reader {
+priv struct Reader {
   mut body : BodyKind
   transport : @io.BufferedReader[&@io.Reader]
 }
@@ -29,7 +29,7 @@ struct Reader {
 ///|
 /// Create a new HTTP reader wrapping around existing reader `transport`.
 /// The HTTP reader will read data from `transport`.
-pub fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
+fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
   { body: Empty, transport: @io.BufferedReader::new(transport as &@io.Reader) }
 }
 
@@ -46,7 +46,7 @@ pub suberror HttpProtocolError {
 /// All reader related API of `HttpReader` should be called
 /// after a successful call to `read_request` or `read_response`,
 /// otherwise reading always result in EOF.
-pub impl @io.Reader for Reader with read(
+impl @io.Reader for Reader with read(
   self,
   buf,
   offset? = 0,
@@ -152,7 +152,7 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_request`, all header fields will be in lower case.
-pub async fn Reader::read_request(self : Reader) -> Request {
+async fn Reader::read_request(self : Reader) -> Request {
   guard self.body is Empty
   let request_line_end = self.transport.find("\r\n")
   let request_line = self.transport[:request_line_end]
@@ -193,7 +193,7 @@ pub async fn Reader::read_request(self : Reader) -> Request {
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_response`, all header fields will be in lower case.
-pub async fn Reader::read_response(self : Reader) -> Response {
+async fn Reader::read_response(self : Reader) -> Response {
   guard self.body is Empty
   let response_line_end = self.transport.find("\r\n")
   let response_line = self.transport[:response_line_end]
@@ -217,7 +217,7 @@ pub async fn Reader::read_response(self : Reader) -> Response {
 ///|
 /// Discard the body of current HTTP request/response,
 /// so that the next request/response can be processed.
-pub async fn Reader::skip_body(self : Reader) -> Unit {
+async fn Reader::skip_body(self : Reader) -> Unit {
   if self.body is (Empty | Fixed(0)) {
     return
   }
