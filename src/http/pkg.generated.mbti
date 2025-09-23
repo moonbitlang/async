@@ -51,7 +51,7 @@ async fn Client::shutdown(Self) -> Unit
 async fn Client::skip_body(Self) -> Unit
 impl @io.Reader for Client
 
-pub(all) struct Header(Bytes, Bytes)
+pub(all) struct Header(String, String)
 
 
 pub(all) enum Protocol {

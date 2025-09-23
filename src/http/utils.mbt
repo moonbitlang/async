@@ -53,26 +53,3 @@ fn encode_int(value : Int, base~ : Int) -> Bytes {
   }
   out.unsafe_reinterpret_as_bytes()
 }
-
-///|
-fn @bytes.View::find_index(self : @bytes.View, byte : Byte) -> Int? {
-  for i in 0..<self.length() {
-    if self[i] == byte {
-      break Some(i)
-    }
-  } else {
-    None
-  }
-}
-
-///|
-fn @bytes.View::to_lower_case(ident : @bytes.View) -> Bytes {
-  let result = FixedArray::make(ident.length(), b'0')
-  for i in 0..<ident.length() {
-    match ident[i] {
-      'A'..='Z' as b => result[i] = b - 'A' + 'a'
-      b => result[i] = b
-    }
-  }
-  result.unsafe_reinterpret_as_bytes()
-}
