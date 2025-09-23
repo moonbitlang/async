@@ -6,7 +6,6 @@ import(
 )
 
 // Values
-#alias(request, deprecated)
 async fn[ResBody : Body] get(String, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
 
 async fn[ReqBody : Body, ResBody : Body] post(String, ReqBody, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
@@ -36,8 +35,6 @@ async fn Client::get(Self, String, extra_headers? : Map[String, String]) -> Resp
 async fn[B : Body] Client::post(Self, String, B, extra_headers? : Map[String, String]) -> Response
 async fn[B : Body] Client::put(Self, String, B, extra_headers? : Map[String, String]) -> Response
 async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
-#deprecated
-async fn Client::shutdown(Self) -> Unit
 async fn Client::skip_response_body(Self) -> Unit
 impl @moonbitlang/async/io.Reader for Client
 impl @moonbitlang/async/io.Writer for Client
