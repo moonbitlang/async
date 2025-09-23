@@ -38,7 +38,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 ///
 /// `extra_env`, if present, will set extra environment variables for the new process
 /// (in addition to those inherited ones, if `inherit_env` is `true`).
-/// Keys and values of `extra_env` must not contain `'\0'`.
+/// Keys and values of `extra_env` are encoded using UTF8.
 ///
 /// The standard IO of the new process will be redirected to
 /// `stdin`, stdout` and  stderr`, if set.
@@ -59,7 +59,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 pub async fn run(
   cmd : String,
   args : Array[String],
-  extra_env? : Map[Bytes, Bytes] = {},
+  extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -115,7 +115,7 @@ pub async fn run(
           let envp = FixedArray::make(n + curr_env.length(), None)
           let mut i = 0
           for k, v in extra_env {
-            envp[i] = Some(k + b"=" + v)
+            envp[i] = Some(@encoding/utf8.encode("\{k}=\{v}"))
             i = i + 1
           }
           curr_env.blit_to(
@@ -155,7 +155,7 @@ pub async fn run(
 pub async fn collect_stdout(
   cmd : String,
   args : Array[String],
-  extra_env? : Map[Bytes, Bytes] = {},
+  extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
@@ -186,7 +186,7 @@ pub async fn collect_stdout(
 pub async fn collect_stderr(
   cmd : String,
   args : Array[String],
-  extra_env? : Map[Bytes, Bytes] = {},
+  extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -218,7 +218,7 @@ pub async fn collect_stderr(
 pub async fn collect_output(
   cmd : String,
   args : Array[String],
-  extra_env? : Map[Bytes, Bytes] = {},
+  extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : Bytes,
@@ -251,7 +251,7 @@ pub async fn collect_output(
 pub async fn collect_output_merged(
   cmd : String,
   args : Array[String],
-  extra_env? : Map[Bytes, Bytes] = {},
+  extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : Bytes,

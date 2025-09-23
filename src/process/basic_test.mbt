@@ -20,7 +20,7 @@ async test "basic_ls" {
     defer r.close()
     root.spawn_bg(fn() {
       @process.run("ls", ["src/process"], stdout=w, extra_env={
-        b"LANG": b"en_US.UTF-8",
+        "LANG": "en_US.UTF-8",
       })
       |> ignore
     })

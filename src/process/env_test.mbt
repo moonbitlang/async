@@ -45,10 +45,10 @@ async test "set_env no inherit" {
         [],
         stdout=w,
         extra_env={
-          b"MAGIC_VAR_1": b"MAGIC_VALUE_1",
-          b"MAGIC_VAR_2": b"MAGIC_VALUE_2",
-          b"MAGIC_VAR_3": b"MAGIC_VALUE_3",
-          b"MAGIC_VAR_4": b"MAGIC_VALUE_4",
+          "MAGIC_VAR_1": "MAGIC_VALUE_1",
+          "MAGIC_VAR_2": "MAGIC_VALUE_2",
+          "MAGIC_VAR_3": "MAGIC_VALUE_3",
+          "MAGIC_VAR_4": "MAGIC_VALUE_4",
         },
         inherit_env=false,
       )
