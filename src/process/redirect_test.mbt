@@ -32,13 +32,13 @@ async test "merge multiple" {
     @async.with_task_group(fn(group) {
       group.spawn_bg(fn() {
         @process.run("sh", ["-c", "echo abcd"], stdout=w, extra_env={
-          b"LANG": b"en_US.UTF-8",
+          "LANG": "en_US.UTF-8",
         })
         |> ignore
       })
       group.spawn_bg(fn() {
         @process.run("sh", ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
-          b"LANG": b"en_US.UTF-8",
+          "LANG": "en_US.UTF-8",
         })
         |> ignore
       })

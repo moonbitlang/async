@@ -21,7 +21,7 @@ async test "set cwd" {
     defer r.close()
     root.spawn_bg(fn() {
       let _ = @process.run("ls", [], stdout=w, cwd="src/process", extra_env={
-        b"LANG": b"en_US.UTF-8",
+        "LANG": "en_US.UTF-8",
       })
       guard @env.current_dir() is Some(new_cwd)
       guard prev_cwd == new_cwd
