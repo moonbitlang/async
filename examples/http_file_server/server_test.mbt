@@ -15,8 +15,7 @@
 ///|
 fn output_response(response : @http.Response, logger : &Logger) -> Unit {
   logger.write_string("HTTP/1.1 \{response.code} \{response.reason}\n")
-  for header in response.headers {
-    let Header(k, v) = header
+  for k, v in response.headers {
     logger.write_string("\{k}: \{v}\n")
   }
 }
@@ -65,7 +64,11 @@ async test "basic" {
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))
-    client("/examples/http_file_server?download_zip", client_log, handle_response=tmp_file.write_reader(_))
+    client(
+      "/examples/http_file_server?download_zip",
+      client_log,
+      handle_response=tmp_file.write_reader(_),
+    )
     tmp_file.close()
     let (r, w) = @process.read_from_process()
     defer r.close()
@@ -138,7 +141,6 @@ async test "basic" {
       #|examples/http_file_server/server_test.mbt
       #|examples/http_file_server/http_file_server.mbti
       #|
-
     ),
   )
 }

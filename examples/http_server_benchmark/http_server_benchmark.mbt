@@ -19,10 +19,7 @@ let port : Int = 3001
 async fn main {
   @async.with_task_group(fn(root) {
     let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
-    let headers : Array[@http.Header] = [
-      Header("Connection", "Keep-Alive"),
-      Header("Keep-Alive", "timeout=5"),
-    ]
+    let headers = { "Connection": "Keep-Alive", "Keep-Alive": "timeout=5" }
     defer server.close()
     for {
       let (conn, _) = server.accept()

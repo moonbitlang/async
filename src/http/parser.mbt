@@ -96,8 +96,8 @@ pub impl @io.Reader for Reader with read(
 }
 
 ///|
-async fn Reader::read_headers(self : Reader) -> Array[Header] {
-  let headers = []
+async fn Reader::read_headers(self : Reader) -> Map[String, String] {
+  let headers = {}
   for {
     let line_end = self.transport.find(b"\r\n")
     if line_end == 0 {
@@ -117,7 +117,10 @@ async fn Reader::read_headers(self : Reader) -> Array[Header] {
       colon_index + 1
     }
     let value = @encoding/utf8.decode(header_line[value_start:])
-    headers.push(Header(key, value))
+    match headers.get(key) {
+      None => headers[key] = value
+      Some(value0) => headers[key] = "\{value0},\{value}"
+    }
     match key {
       "content-length" => {
         guard not(self.body is Fixed(_)) else { raise BadRequest }

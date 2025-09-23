@@ -13,9 +13,8 @@
 // limitations under the License.
 
 ///|
-fn log_headers(headers : Array[Header], logger : &Logger) -> Unit {
-  for header in headers {
-    let Header(k, v) = header
+fn log_headers(headers : Map[String, String], logger : &Logger) -> Unit {
+  for k, v in headers {
     logger.write_string("\{k}: \{v}\n")
   }
 }
