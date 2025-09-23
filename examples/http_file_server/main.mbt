@@ -20,31 +20,33 @@ async fn serve_directory(
 ) -> Unit {
   let files = dir.read_all()
   files.sort()
-  let content = @buffer.new()
-  content
-  ..write_bytes("<!DOCTYPE html><html><head></head><body>")
-  ..write_string_utf8("<h1>\{path}</h1>\n")
-  ..write_bytes("<div style=\"margin: 1em; font-size: 15pt\">")
-  ..write_string_utf8(
-    "<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n",
-  )
-  if path[:-1].rev_find("/") is Some(index) {
-    let parent : StringView = if index == 0 { "/" } else { path[:index] }
-    content.write_string_utf8("<a href=\"\{parent}\">..</a><br/><br/>\n")
-  }
-  for file in files {
-    let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
-    content.write_string_utf8(
-      "<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n",
-    )
-  }
-  content.write_bytes(b"</div></body></html>")
-  conn.send_response(
+  conn
+  ..send_response(
     200,
     "OK",
     extra_headers=[Header("Content-Type", "text/html")],
-    Fixed(content.to_bytes()),
   )
+  ..write("<!DOCTYPE html><html><head></head><body>")
+  ..write_string("<h1>\{path}</h1>\n", encoding=UTF8)
+  ..write("<div style=\"margin: 1em; font-size: 15pt\">")
+  ..write_string(
+    "<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n",
+    encoding=UTF8,
+  )
+  if path[:-1].rev_find("/") is Some(index) {
+    let parent : StringView = if index == 0 { "/" } else { path[:index] }
+    conn.write_string("<a href=\"\{parent}\">..</a><br/><br/>\n", encoding=UTF8)
+  }
+  for file in files {
+    let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
+    conn.write_string(
+      "<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n",
+      encoding=UTF8,
+    )
+  }
+  conn
+  ..write("</div></body></html>")
+  ..end_response()
 }
 
 ///|
@@ -65,12 +67,14 @@ async fn serve_file(
     [.., .. ".mkv"] => "video/x-matroska"
     _ => "appliaction/octet-stream"
   }
-  conn.send_response(
+  conn
+  ..send_response(
     200,
     "OK",
     extra_headers=[Header("Content-Type", content_type)],
-    Stream(file),
   )
+  ..write_reader(file)
+  ..end_response()
 }
 
 ///|
@@ -87,15 +91,17 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
       @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_us)
       |> ignore
     })
-    conn.send_response(
+    conn
+    ..send_response(
       200,
       "OK",
       extra_headers=[
         Header("Content-Type", "application/octet-stream"),
         Header("Content-Disposition", "filename=\{base_name}.zip"),
       ],
-      Stream(we_read_from_zip),
     )
+    ..write_reader(we_read_from_zip)
+    ..end_response()
   })
 }
 
@@ -104,12 +110,14 @@ let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></htm
 
 ///|
 async fn serve_404(conn : @http.ServerConnection) -> Unit {
-  conn.send_response(
+  conn
+  ..send_response(
     404,
     "NotFound",
     extra_headers=[Header("Content-Type", "text/html")],
-    Fixed(page_for_404),
   )
+  ..write(page_for_404)
+  ..end_response()
 }
 
 ///|

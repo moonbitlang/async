@@ -28,17 +28,15 @@ let port = 4207
 async fn client(
   path : String,
   logger : &Logger,
-  handle_response? : async (@http.Reader) -> Unit,
+  handle_response? : async (@http.Client) -> Unit,
 ) -> Unit {
-  let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+  let conn = @http.Client::connect("localhost", protocol=Http, port~)
   defer conn.close()
-  @http.send_request(conn, { meth: Get, path, headers: [] }, Empty)
-  let src = @http.Reader::new(conn)
-  let response = src.read_response()
+  let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger.write_string(src.read_all() |> @encoding/utf8.decode)
-    Some(f) => f(src)
+    None => logger.write_string(conn.read_all() |> @encoding/utf8.decode)
+    Some(f) => f(conn)
   }
 }
 
@@ -67,9 +65,7 @@ async test "basic" {
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))
-    client("/examples/http_file_server?download_zip", client_log, handle_response=out => tmp_file.write_reader(
-      out,
-    ))
+    client("/examples/http_file_server?download_zip", client_log, handle_response=tmp_file.write_reader(_))
     tmp_file.close()
     let (r, w) = @process.read_from_process()
     defer r.close()
@@ -104,7 +100,7 @@ async test "basic" {
       #|client: GET /examples/http_file_server
       #|HTTP/1.1 200 OK
       #|content-type: text/html
-      #|content-length: 561
+      #|transfer-encoding: chunked
       #|<!DOCTYPE html><html><head></head><body><h1>/examples/http_file_server</h1>
       #|<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>
       #|<a href="/examples">..</a><br/><br/>
@@ -142,6 +138,7 @@ async test "basic" {
       #|examples/http_file_server/server_test.mbt
       #|examples/http_file_server/http_file_server.mbti
       #|
+
     ),
   )
 }

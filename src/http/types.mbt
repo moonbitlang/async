@@ -41,3 +41,42 @@ pub(all) struct Response {
   reason : String
   headers : Array[Header]
 }
+
+///|
+/// `Body` is a trait for types that can be used as HTTP body.
+/// Currently `Bytes` (for binary data), `String` (UTF8 encoded),
+/// and `Json` (also UTF8 encoded) are supported.
+trait Body {
+  async read(Reader) -> Self
+  async write(Self, Sender) -> Unit
+}
+
+///|
+pub impl Body for Bytes with read(reader) {
+  reader.read_all()
+}
+
+///|
+pub impl Body for Bytes with write(self, sender) {
+  sender.write(self)
+}
+
+///|
+pub impl Body for String with read(reader) {
+  @encoding/utf8.decode(reader.read_all())
+}
+
+///|
+pub impl Body for String with write(self, sender) {
+  sender.write_string(self, encoding=UTF8)
+}
+
+///|
+pub impl Body for Json with read(reader) {
+  @encoding/utf8.decode(reader.read_all()) |> @json.parse
+}
+
+///|
+pub impl Body for Json with write(self, sender) {
+  sender.write_string(self.stringify(), encoding=UTF8)
+}

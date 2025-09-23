@@ -18,15 +18,15 @@ async test "send_request basic" {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
-      @http.send_request(
-        w,
-        {
-          meth: Get,
-          path: "/",
-          headers: [Header("Host", "x.y.org"), Header("User-Agent", "MoonBit")],
-        },
-        Empty,
-      )
+      let sender = Sender::new(w)
+      sender
+      ..write("GET / HTTP/1.1\r\n")
+      ..send_headers([
+        Header("Host", "x.y.org"),
+        Header("User-Agent", "MoonBit"),
+      ])
+      ..start_body()
+      ..end_body()
     })
     defer r.close()
     inspect(
@@ -35,39 +35,10 @@ async test "send_request basic" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|\r
+        #|0\r
         #|\r
         #|
-      ),
-    )
-  })
-}
-
-///|
-async test "send_request fixed body" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    root.spawn_bg(fn() {
-      defer w.close()
-      @http.send_request(
-        w,
-        {
-          meth: Get,
-          path: "/",
-          headers: [Header("Host", "x.y.org"), Header("User-Agent", "MoonBit")],
-        },
-        Fixed("message"),
-      )
-    })
-    defer r.close()
-    inspect(
-      r.read_all() |> @bytes_util.ascii_to_string,
-      content=(
-        #|GET / HTTP/1.1\r
-        #|Host: x.y.org\r
-        #|User-Agent: MoonBit\r
-        #|Content-Length: 7\r
-        #|\r
-        #|message
       ),
     )
   })
@@ -79,17 +50,19 @@ async test "send_request stream" {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
+      let sender = Sender::new(w)
       let file = @fs.open("LICENSE", mode=ReadOnly)
       defer file.close()
-      @http.send_request(
-        w,
-        {
-          meth: Get,
-          path: "/",
-          headers: [Header("Host", "x.y.org"), Header("User-Agent", "MoonBit")],
-        },
-        Stream(file),
-      )
+      sender
+      ..write("GET / HTTP/1.1\r\n")
+      ..send_headers([
+        Header("Host", "x.y.org"),
+        Header("User-Agent", "MoonBit"),
+        Header("Transfer-Encoding", "chunked"),
+      ])
+      ..start_body()
+      ..write_reader(file)
+      ..end_body()
     })
     defer r.close()
     inspect(
@@ -338,27 +311,23 @@ async test "send_request stream" {
 async test "send_request stream2" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
-    let (r2, w2) = @pipe.pipe()
     root.spawn_bg(fn() {
       defer w.close()
-      defer r2.close()
-      @http.send_request(
-        w,
-        {
-          meth: Get,
-          path: "/",
-          headers: [Header("Host", "x.y.org"), Header("User-Agent", "MoonBit")],
-        },
-        Stream(r2),
-      )
-    })
-    root.spawn_bg(fn() {
-      defer w2.close()
-      w2.write("abcd")
+      let sender = Sender::new(w)
+      sender
+      ..write("GET / HTTP/1.1\r\n")
+      ..send_headers([
+        Header("Host", "x.y.org"),
+        Header("User-Agent", "MoonBit"),
+        Header("Transfer-Encoding", "chunked"),
+      ])
+      ..start_body()
+      sender.write("abcd")
       @async.sleep(50)
-      w2.write("efgh")
+      sender.write("efgh")
       @async.sleep(50)
-      w2.write("ijkl")
+      sender.write("ijkl")
+      sender.end_body()
     })
     defer r.close()
     inspect(
@@ -376,26 +345,6 @@ async test "send_request stream2" {
         #|4\r
         #|ijkl\r
         #|0\r
-        #|\r
-        #|
-      ),
-    )
-  })
-}
-
-///|
-async test "send_response basic" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    root.spawn_bg(fn() {
-      defer w.close()
-      @http.send_response(w, { code: 200, reason: "OK", headers: [] }, Empty)
-    })
-    defer r.close()
-    inspect(
-      r.read_all() |> @bytes_util.ascii_to_string,
-      content=(
-        #|HTTP/1.1 200 OK\r
         #|\r
         #|
       ),
