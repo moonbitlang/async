@@ -122,7 +122,10 @@ async test "retry cancelled1" {
       i = i + 1
       raise Err
     })
-  })
+  }) catch {
+    @async.TimeoutError => ()
+    err => raise err
+  }
   inspect(
     log.to_string(),
     content=(
@@ -143,7 +146,10 @@ async test "retry cancelled2" {
       i = i + 1
       raise Err
     })
-  })
+  }) catch {
+    @async.TimeoutError => ()
+    err => raise err
+  }
   inspect(
     log.to_string(),
     content=(

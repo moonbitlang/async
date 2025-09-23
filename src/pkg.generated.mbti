@@ -18,13 +18,16 @@ fn with_event_loop(async (TaskGroup[Unit]) -> Unit) -> Unit raise
 
 async fn[X] with_task_group(async (TaskGroup[X]) -> X) -> X
 
-async fn with_timeout(Int, async () -> Unit, error? : Error) -> Unit
+async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
 
 async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
 pub suberror AlreadyTerminated
 impl Show for AlreadyTerminated
+
+pub suberror TimeoutError
+impl Show for TimeoutError
 
 // Types and methods
 pub(all) enum RetryMethod {

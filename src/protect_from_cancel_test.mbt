@@ -104,23 +104,22 @@ async test "protect_from_cancel wait" {
 ///|
 async test "protect_from_cancel with_timeout" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-        @async.sleep(200)
-        log.write_string("400ms tick\n")
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      log.write_string("200ms tick\n")
+      @async.sleep(200)
+      log.write_string("400ms tick\n")
+    })
+    @async.with_timeout_opt(300, fn() {
+      @async.protect_from_cancel(fn() {
+        @async.sleep(500)
+        log.write_string("critial job finished\n")
       })
-      @async.with_timeout(300, fn() {
-        @async.protect_from_cancel(fn() {
-          @async.sleep(500)
-          log.write_string("critial job finished\n")
-        })
-      })
-      log.write_string("`with_timeout` containing critical job finished\n")
-    }),
-  )
+    })
+    |> ignore
+    log.write_string("`with_timeout` containing critical job finished\n")
+  })
   inspect(
     log.to_string(),
     content=(
@@ -128,7 +127,7 @@ async test "protect_from_cancel with_timeout" {
       #|400ms tick
       #|critial job finished
       #|`with_timeout` containing critical job finished
-      #|Ok(())
+      #|
     ),
   )
 }
@@ -167,25 +166,24 @@ async test "protect_from_cancel fail" {
 ///|
 async test "protect_from_cancel nested1" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-        @async.sleep(200)
-        log.write_string("400ms tick\n")
-      })
-      @async.with_timeout(300, fn() {
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      log.write_string("200ms tick\n")
+      @async.sleep(200)
+      log.write_string("400ms tick\n")
+    })
+    @async.with_timeout_opt(300, fn() {
+      @async.protect_from_cancel(fn() {
         @async.protect_from_cancel(fn() {
-          @async.protect_from_cancel(fn() {
-            @async.sleep(500)
-            log.write_string("critial job finished\n")
-          })
+          @async.sleep(500)
+          log.write_string("critial job finished\n")
         })
       })
-      log.write_string("`with_timeout` containing critical job finished\n")
-    }),
-  )
+    })
+    |> ignore
+    log.write_string("`with_timeout` containing critical job finished\n")
+  })
   inspect(
     log.to_string(),
     content=(
@@ -193,7 +191,7 @@ async test "protect_from_cancel nested1" {
       #|400ms tick
       #|critial job finished
       #|`with_timeout` containing critical job finished
-      #|Ok(())
+      #|
     ),
   )
 }
@@ -201,29 +199,28 @@ async test "protect_from_cancel nested1" {
 ///|
 async test "protect_from_cancel nested2" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-        @async.sleep(200)
-        log.write_string("400ms tick\n")
-        @async.sleep(200)
-        log.write_string("600ms tick\n")
-      })
-      @async.with_timeout(100, fn() {
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      log.write_string("200ms tick\n")
+      @async.sleep(200)
+      log.write_string("400ms tick\n")
+      @async.sleep(200)
+      log.write_string("600ms tick\n")
+    })
+    @async.with_timeout_opt(100, fn() {
+      @async.protect_from_cancel(fn() {
         @async.protect_from_cancel(fn() {
-          @async.protect_from_cancel(fn() {
-            @async.sleep(300)
-            log.write_string("inner critial job finished\n")
-          })
-          @async.sleep(200)
-          log.write_string("outer critial job finished\n")
+          @async.sleep(300)
+          log.write_string("inner critial job finished\n")
         })
+        @async.sleep(200)
+        log.write_string("outer critial job finished\n")
       })
-      log.write_string("`with_timeout` containing critical job finished\n")
-    }),
-  )
+    })
+    |> ignore
+    log.write_string("`with_timeout` containing critical job finished\n")
+  })
   inspect(
     log.to_string(),
     content=(
@@ -233,7 +230,7 @@ async test "protect_from_cancel nested2" {
       #|outer critial job finished
       #|`with_timeout` containing critical job finished
       #|600ms tick
-      #|Ok(())
+      #|
     ),
   )
 }

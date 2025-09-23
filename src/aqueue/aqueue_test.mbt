@@ -100,7 +100,10 @@ async test "aqueue cancellation" {
         }
         log.write_string("get => \{x}\n")
       }
-    })
+    }) catch {
+      @async.TimeoutError => ()
+      err => raise err
+    }
   })
   inspect(
     log.to_string(),
