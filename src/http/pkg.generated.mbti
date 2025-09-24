@@ -31,6 +31,7 @@ type Client
 fn Client::close(Self) -> Unit
 async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
 async fn Client::end_request(Self) -> Response
+async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String]) -> Response
 async fn[B : Body] Client::post(Self, String, B, extra_headers? : Map[String, String]) -> Response
 async fn[B : Body] Client::put(Self, String, B, extra_headers? : Map[String, String]) -> Response
@@ -73,6 +74,7 @@ pub(all) struct Response {
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
+async fn ServerConnection::flush(Self) -> Unit
 fn ServerConnection::new(@socket.TCP, headers? : Map[String, String]) -> Self
 async fn ServerConnection::read_request(Self) -> Request
 async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit

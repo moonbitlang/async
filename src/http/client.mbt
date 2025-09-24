@@ -83,9 +83,24 @@ pub impl @io.Reader for Client with read(
 /// Write data to the body of the request currently being sent.
 /// Must be called after `send_request`.
 /// `end_request` must be called after all content of response body has been sent.
+///
+/// Writing to `@http.Client` MAY be buffered,
+/// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
   guard self.sender.mode is SendingBody
   self.sender.write_once(buf, offset~, len~)
+}
+
+///|
+pub impl @io.Writer for Client with write_reader(self, reader) {
+  guard self.sender.mode is SendingBody
+  self.sender.write_reader(reader)
+}
+
+///|
+/// Flush buffered data in the request body being sent, if any.
+pub async fn Client::flush(self : Client) -> Unit {
+  self.sender.flush()
 }
 
 ///|

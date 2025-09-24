@@ -77,6 +77,9 @@ pub async fn ServerConnection::skip_request_body(
 /// Write data to the body of the response currently being sent.
 /// Must be called after `send_response`.
 /// `end_response` must be called after all content of response body has been sent.
+///
+/// Writing to `@http.ServerConnection` MAY be buffered,
+/// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for ServerConnection with write_once(
   self,
   buf,
@@ -85,6 +88,18 @@ pub impl @io.Writer for ServerConnection with write_once(
 ) {
   guard self.sender.mode is SendingBody
   self.sender.write_once(buf, offset~, len~)
+}
+
+///|
+pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
+  guard self.sender.mode is SendingBody
+  self.sender.write_reader(reader)
+}
+
+///|
+/// Flush buffered data in the response body being sent, if any.
+pub async fn ServerConnection::flush(self : ServerConnection) -> Unit {
+  self.sender.flush()
 }
 
 ///|

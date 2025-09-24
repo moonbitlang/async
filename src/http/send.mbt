@@ -71,19 +71,23 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
     SendingBody => {
       // Reserve enough space for chunk length and '\r\n' in the buffer,
       // so that we can commit the whole chunk in a single write to avoid small writes
-      let max_len = self.send_buf.length() - 7
+      if self.send_len + 7 >= self.send_buf.length() {
+        self.flush()
+      }
+      let max_len = self.send_buf.length() - self.send_len - 7
       let len = @cmp.minimum(max_len, len)
-      self.send_buf[3] = '\r'
-      self.send_buf[4] = '\n'
-      self.send_buf.blit_from_bytes(5, buf, offset, len)
-      self.send_buf[5 + len] = '\r'
-      self.send_buf[6 + len] = '\n'
       let len_str = encode_int(len, base=16)
-      let start = 3 - len_str.length()
-      self.send_buf.blit_from_bytes(start, len_str, 0, len_str.length())
-      self.writer.write(
-        self.send_buf.unsafe_reinterpret_as_bytes()[start:len + 7],
-      )
+      let len_str_len = len_str.length()
+      self.send_buf.blit_from_bytes(self.send_len, len_str, 0, len_str_len)
+      let curr_len = self.send_len + len_str_len
+      self.send_buf[curr_len] = '\r'
+      self.send_buf[curr_len + 1] = '\n'
+      let curr_len = curr_len + 2
+      self.send_buf.blit_from_bytes(curr_len, buf, offset, len)
+      let curr_len = curr_len + len
+      self.send_buf[curr_len] = '\r'
+      self.send_buf[curr_len + 1] = '\n'
+      self.send_len = curr_len + 2
       len
     }
   }
@@ -103,6 +107,7 @@ impl @io.Writer for Sender with write_reader(self, reader) {
         }
       }
     SendingBody => {
+      self.flush()
       self.send_buf[3] = '\r'
       self.send_buf[4] = '\n'
       let max_len = self.send_buf.length() - 7
@@ -126,7 +131,14 @@ impl @io.Writer for Sender with write_reader(self, reader) {
 
 ///|
 async fn Sender::end_body(self : Sender) -> Unit {
-  self.writer.write("0\r\n\r\n")
+  if self.send_len + 5 > self.send_buf.length() {
+    self.flush()
+    self.writer.write("0\r\n\r\n")
+  } else {
+    self.send_buf.blit_from_bytes(self.send_len, "0\r\n\r\n", 0, 5)
+    self.send_len += 5
+    self.flush()
+  }
   self.mode = SendingHeader
 }
 
@@ -168,7 +180,6 @@ async fn Sender::send_request(
   self.write(self.headers)
   self.send_headers(extra_headers)
   self.write("Transfer-Encoding: chunked\r\n\r\n")
-  self.flush()
   self.mode = SendingBody
 }
 
@@ -189,6 +200,5 @@ async fn Sender::send_response(
   self.write(self.headers)
   self.send_headers(extra_headers)
   self.write("Transfer-Encoding: chunked\r\n\r\n")
-  self.flush()
   self.mode = SendingBody
 }
