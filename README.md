@@ -55,7 +55,7 @@ In `moonbitlang/async`, every asynchronous task must be spawned in a *task group
 Task groups can be created with the `with_task_group` function
 
 ```moonbit
-async fn[X] with_task_group(async (TaskGroup) -> X)  -> X 
+async fn[X] with_task_group(async (TaskGroup[X]) -> X)  -> X
 ```
 
 When `with_task_group` returns,
