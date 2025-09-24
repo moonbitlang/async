@@ -34,7 +34,7 @@ async fn client(
   let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger.write_string(conn.read_all() |> @encoding/utf8.decode)
+    None => logger.write_string(conn.read_all().text())
     Some(f) => f(conn)
   }
 }

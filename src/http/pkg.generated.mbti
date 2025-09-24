@@ -6,11 +6,11 @@ import(
 )
 
 // Values
-async fn[ResBody : Body] get(String, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
+async fn get(String, headers? : Map[String, String], port? : Int, body? : &Body) -> (Response, &Body)
 
-async fn[ReqBody : Body, ResBody : Body] post(String, ReqBody, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
+async fn post(String, &Body, headers? : Map[String, String], port? : Int) -> (Response, &Body)
 
-async fn[ReqBody : Body, ResBody : Body] put(String, ReqBody, headers? : Map[String, String], port? : Int) -> (Response, ResBody)
+async fn put(String, &Body, headers? : Map[String, String], port? : Int) -> (Response, &Body)
 
 // Errors
 pub suberror HttpProtocolError {
@@ -32,9 +32,10 @@ fn Client::close(Self) -> Unit
 async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
 async fn Client::end_request(Self) -> Response
 async fn Client::flush(Self) -> Unit
-async fn Client::get(Self, String, extra_headers? : Map[String, String]) -> Response
-async fn[B : Body] Client::post(Self, String, B, extra_headers? : Map[String, String]) -> Response
-async fn[B : Body] Client::put(Self, String, B, extra_headers? : Map[String, String]) -> Response
+async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &Body) -> Response
+async fn Client::post(Self, String, &Body, extra_headers? : Map[String, String]) -> Response
+async fn Client::put(Self, String, &Body, extra_headers? : Map[String, String]) -> Response
+async fn Client::read_all(Self) -> &Body
 async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
 async fn Client::skip_response_body(Self) -> Unit
 impl @moonbitlang/async/io.Reader for Client
@@ -76,11 +77,16 @@ fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
 async fn ServerConnection::flush(Self) -> Unit
 fn ServerConnection::new(@socket.TCP, headers? : Map[String, String]) -> Self
+async fn ServerConnection::read_all(Self) -> &Body
 async fn ServerConnection::read_request(Self) -> Request
 async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit
 async fn ServerConnection::skip_request_body(Self) -> Unit
 impl @moonbitlang/async/io.Reader for ServerConnection
 impl @moonbitlang/async/io.Writer for ServerConnection
+
+async fn Body::binary(&Self) -> Bytes
+async fn Body::json(&Self) -> Json
+async fn Body::text(&Self) -> String
 
 // Type aliases
 

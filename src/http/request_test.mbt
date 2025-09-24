@@ -14,9 +14,9 @@
 
 ///|
 async test "https request" {
-  let (_, (result : String)) = @http.get("https://www.example.org")
+  let (_, result) = @http.get("https://www.example.org")
   inspect(
-    result,
+    result.text(),
     content=(
       #|<!doctype html>
       #|<html>
@@ -71,9 +71,9 @@ async test "https request" {
 
 ///|
 async test "http request" {
-  let (_, (result : String)) = @http.get("http://www.example.org")
+  let (_, result) = @http.get("http://www.example.org")
   inspect(
-    result,
+    result.text(),
     content=(
       #|<!doctype html>
       #|<html>
