@@ -44,36 +44,56 @@ pub(all) struct Response {
 /// Currently `Bytes` (for binary data), `String` (UTF8 encoded),
 /// and `Json` (also UTF8 encoded) are supported.
 trait Body {
-  async read(Reader) -> Self
-  async write(Self, Sender) -> Unit
+  async to_bytes(Self) -> Bytes
 }
 
 ///|
-pub impl Body for Bytes with read(reader) {
-  reader.read_all()
+pub impl Body for Bytes with to_bytes(self) {
+  self
 }
 
 ///|
-pub impl Body for Bytes with write(self, sender) {
-  sender.write(self)
+pub impl Body for String with to_bytes(self) {
+  @encoding/utf8.encode(self)
 }
 
 ///|
-pub impl Body for String with read(reader) {
-  @encoding/utf8.decode(reader.read_all())
+pub impl Body for Json with to_bytes(self) {
+  self.stringify() |> @encoding/utf8.encode
+}
+
+// ==============================================================================
+// internal node: the `Body` trait serves two purpose.
+// When the user is sending data, we use `to_bytes` to convert user data to binary.
+// When the user is receiving data, raw data is always represented as raw binary,
+// so `&Body` always internally hold a `Bytes`,
+// and the user may use these helpers below to convert them to different format.
+//
+// Technically we should use two types for these two purposes,
+// but that would mean two different names, instead of the simple `Body`.
+// So currently we take this rather hacky approach for simplicify of API.
+// ==============================================================================
+
+///|
+/// Extract the raw binary data in request/response body.
+pub async fn &Body::binary(self : &Body) -> Bytes {
+  self.to_bytes()
 }
 
 ///|
-pub impl Body for String with write(self, sender) {
-  sender.write_string(self, encoding=UTF8)
+/// Extract request/response body as a UTF8 encoded string.
+///
+/// Calling this method will cause string decoding,
+/// so user should avoid calling `.text()` more than once.
+pub async fn &Body::text(self : &Body) -> String {
+  self.to_bytes() |> @encoding/utf8.decode
 }
 
 ///|
-pub impl Body for Json with read(reader) {
-  @encoding/utf8.decode(reader.read_all()) |> @json.parse
-}
-
-///|
-pub impl Body for Json with write(self, sender) {
-  sender.write_string(self.stringify(), encoding=UTF8)
+/// Extract request/response body as a UTF8 encoded JSON.
+///
+/// Calling this method will cause string decoding and json parsing,
+/// so user should avoid calling `.json()` more than once.
+pub async fn &Body::json(self : &Body) -> Json {
+  self.to_bytes() |> @encoding/utf8.decode |> @json.parse
 }

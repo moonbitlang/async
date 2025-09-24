@@ -53,6 +53,13 @@ pub impl @io.Reader for ServerConnection with read(
 }
 
 ///|
+/// Read the whole request body from a HTTP server.
+/// Must be called after `read_request`.
+pub async fn ServerConnection::read_all(self : ServerConnection) -> &Body {
+  @io.Reader::read_all(self.reader)
+}
+
+///|
 /// Read a single request from the connection.
 /// If the body of the last request is not consumed yet,
 /// it will be discarded.

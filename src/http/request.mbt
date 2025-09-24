@@ -33,13 +33,13 @@ pub suberror URIParseError {
 } derive(Show)
 
 ///|
-async fn[ReqBody : Body, ResBody : Body] perform_request(
+async fn perform_request(
   uri : String,
   meth : RequestMethod,
   headers : Map[String, String],
-  body : ReqBody,
+  body : &Body,
   port? : Int,
-) -> (Response, ResBody) {
+) -> (Response, &Body) {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -63,11 +63,9 @@ async fn[ReqBody : Body, ResBody : Body] perform_request(
   let path = if path == "" { "/" } else { path }
   let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
-  client.request(meth, path)
-  body.write(client.sender)
+  client..request(meth, path)..write(body.to_bytes())
   let response = client.end_request()
-  let body = ResBody::read(client.reader)
-  (response, body)
+  (response, client.read_all())
 }
 
 ///|
@@ -79,32 +77,33 @@ async fn[ReqBody : Body, ResBody : Body] perform_request(
 /// By default it is the standard port for the specified protocol.
 ///
 /// See `Client::request` for more details.
-pub async fn[ResBody : Body] get(
+pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
-) -> (Response, ResBody) {
-  perform_request(uri, Get, headers, b"", port?)
+  body? : &Body = b"",
+) -> (Response, &Body) {
+  perform_request(uri, Get, headers, body, port?)
 }
 
 ///|
 /// Similar to `get`, but performs a `PUT` request instead.
-pub async fn[ReqBody : Body, ResBody : Body] put(
+pub async fn put(
   uri : String,
-  content : ReqBody,
+  content : &Body,
   headers? : Map[String, String] = {},
   port? : Int,
-) -> (Response, ResBody) {
+) -> (Response, &Body) {
   perform_request(uri, Put, headers, content, port?)
 }
 
 ///|
 /// Similar to `get`, but performs a `POST` request instead.
-pub async fn[ReqBody : Body, ResBody : Body] post(
+pub async fn post(
   uri : String,
-  content : ReqBody,
+  content : &Body,
   headers? : Map[String, String] = {},
   port? : Int,
-) -> (Response, ResBody) {
+) -> (Response, &Body) {
   perform_request(uri, Post, headers, content, port?)
 }
