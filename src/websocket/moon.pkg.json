@@ -1,0 +1,9 @@
+{
+  "import": [
+    "moonbitlang/async/io"
+  ],
+  "wbtest-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/pipe"
+  ]
+}
