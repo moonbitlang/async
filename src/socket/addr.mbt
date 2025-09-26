@@ -52,7 +52,7 @@ pub suberror InvalidAddr derive(Show)
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
   guard src.split(":").collect() is [ip, port] else { raise InvalidAddr }
   guard ip.split(".").collect() is [a, b, c, d] else { raise InvalidAddr }
-  fn parse_octal(x : @string.View) raise InvalidAddr {
+  fn parse_octal(x : StringView) raise InvalidAddr {
     let value = @strconv.parse_uint(x.to_string()) catch {
       _ => raise InvalidAddr
     }

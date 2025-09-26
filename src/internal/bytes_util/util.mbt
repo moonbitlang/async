@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub fn ascii_to_string(ascii : @bytes.View) -> String {
+pub fn ascii_to_string(ascii : BytesView) -> String {
   let builder = StringBuilder::new()
   for byte in ascii {
     match byte {

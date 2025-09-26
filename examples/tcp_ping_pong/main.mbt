@@ -36,9 +36,9 @@ async fn server(println : Printer) -> Unit {
           while conn.read(buf) is n && n > 0 {
             @async.sleep(10)
             let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-            println("server received: \{msg}")
-            let reply = b"pong"
-            conn.write(reply)
+            println("server received: \{@encoding/utf8.decode(msg)}")
+            let reply = "pong"
+            conn.write_string(reply, encoding=UTF8)
             println("server sent: \{reply}")
             if msg == b"exit" {
               println("server initiate terminate")
@@ -60,7 +60,7 @@ async fn server(println : Printer) -> Unit {
 }
 
 ///|
-async fn client(println : Printer, id : Int, msg : Bytes) -> Unit {
+async fn client(println : Printer, id : Int, msg : String) -> Unit {
   let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
   // The sleep here is used to make test result stable and portable,
@@ -68,12 +68,13 @@ async fn client(println : Printer, id : Int, msg : Bytes) -> Unit {
   // with server side "received connection" message
   @async.sleep(10)
   println("client \{id}: connection established")
-  conn.write(msg)
+  conn.write_string(msg, encoding=UTF8)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   if conn.read(buf) is n && n > 0 {
     @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+    let msg = @encoding/utf8.decode(msg)
     println("client \{id} received: \{msg}")
   } else {
     println("client \{id}: connection closed by peer")
@@ -87,12 +88,12 @@ pub async fn main_prog(println : Printer) -> Unit {
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
-          let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
+          let msg = if i % 3 == 1 { "pong" } else { "ping" }
           ctx.spawn_bg(() => client(println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn_bg(() => client(println, 6, b"exit"))
+      root.spawn_bg(() => client(println, 6, "exit"))
     })
   }) catch {
     ServerTerminate => ()

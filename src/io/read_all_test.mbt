@@ -18,17 +18,8 @@ async test "read_all basic" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(() => writer(log, w))
-    log.write_object(r.read_all())
+    inspect(r.read_all() |> @encoding/utf8.decode, content="abcdefghijkl")
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|b"\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c"
-    ),
-  )
 }
 
 ///|
