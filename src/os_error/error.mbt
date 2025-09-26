@@ -24,7 +24,25 @@ pub fn is_nonblocking_io_error() -> Bool {
 }
 
 ///|
-pub(all) suberror OSError Int derive(Show)
+extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "strerror"
+
+///|
+pub(all) suberror OSError Int
+
+///|
+pub impl Show for OSError with output(self, logger) -> Unit {
+  let OSError(errno) = self
+  let c_str = strerror(errno)
+  let len = c_str.strlen()
+  let data = FixedArray::make(len, (0 : Byte))
+  c_str.blit_to_bytes(dst=data, offset=0, len~)
+  logger
+  ..write_string("OSError(")
+  ..write_object(
+    @encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes()),
+  )
+  ..write_string(")")
+}
 
 ///|
 pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
