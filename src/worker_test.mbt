@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+async fn perform_sleep_job(t : Int) -> Unit {
+  @event_loop.perform_job(Sleep(t), context="") |> ignore
+}
+
+///|
 async test "worker basic" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
@@ -22,7 +27,7 @@ async test "worker basic" {
         log.write_string("tick\n")
       }
     })
-    guard @event_loop.perform_job(Sleep(1000)) == 0
+    perform_sleep_job(1000)
     log.write_string("done\n")
   })
   inspect(
@@ -49,7 +54,7 @@ async test "worker multiple" {
     })
     for i in 0..<3 {
       root.spawn_bg(fn() {
-        @event_loop.perform_job(Sleep(100 + i * 200)) |> ignore
+        perform_sleep_job(100 + i * 200)
         log.write_string("#\{i} done\n")
       })
     }
@@ -79,7 +84,7 @@ async test "worker cancel1" {
       }
     })
     let task = root.spawn(allow_failure=true, fn() {
-      try @event_loop.perform_job(Sleep(1000)) catch {
+      try perform_sleep_job(1000) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err
@@ -117,7 +122,7 @@ async test "worker cancel2" {
       }
     })
     root.spawn_bg(allow_failure=true, fn() {
-      try @event_loop.perform_job(Sleep(1000)) catch {
+      try perform_sleep_job(1000) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")
           raise err

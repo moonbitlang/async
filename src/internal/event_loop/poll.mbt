@@ -51,7 +51,7 @@ fn Instance::register(
   oneshot? : Bool = false,
 ) -> Unit raise {
   if self.register_ffi(fd, prev_events~, new_events~, oneshot~) < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("poll_register")
   }
 }
 
@@ -77,7 +77,7 @@ fn Instance::register_pid(
   let out = @ref.new(0)
   let ret = self.register_pid_ffi(pid, out)
   if ret < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("poll_register_pid")
   }
   if ret == 0 {
     Running(out.val)
@@ -96,7 +96,7 @@ extern "C" fn Instance::remove_ffi(
 ///|
 fn Instance::remove(self : Instance, fd : Int, events~ : Int) -> Unit raise {
   if 0 != self.remove_ffi(fd, events~) {
-    @os_error.check_errno()
+    @os_error.check_errno("poll_remove")
   }
 }
 
@@ -109,7 +109,7 @@ extern "C" fn Instance::remove_pid_ffi(
 ///|
 fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit raise {
   if 0 != self.remove_pid_ffi(pid_handle) {
-    @os_error.check_errno()
+    @os_error.check_errno("poll_remove_pid")
   }
 }
 

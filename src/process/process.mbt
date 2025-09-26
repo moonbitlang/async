@@ -87,21 +87,21 @@ pub async fn run(
       }
       let stdin = match stdin {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd())
+          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
           pipe.fd()
         }
         None => -1
       }
       let stdout = match stdout {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd())
+          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
           pipe.fd()
         }
         None => -1
       }
       let stderr = match stderr {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd())
+          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
           pipe.fd()
         }
         None => -1
@@ -136,9 +136,9 @@ pub async fn run(
         stderr~,
         cwd~,
       )
-      @event_loop.perform_job(job)
+      @event_loop.perform_job(job, context="@process.run()")
     }
-  @event_loop.perform_job(WaitProcess(pid)) catch {
+  @event_loop.perform_job(WaitProcess(pid), context="@process.run()") catch {
     err if !orphan && @coroutine.is_being_cancelled() => {
       terminate_process(pid)
       raise err

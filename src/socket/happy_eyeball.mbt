@@ -17,7 +17,10 @@
 pub async fn TCP::connect_to_host(host : String, port~ : Int) -> TCP {
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
-  let ret = @event_loop.perform_job(GetAddrInfo(host~, out=ai_ref))
+  let ret = @event_loop.perform_job(
+    GetAddrInfo(host~, out=ai_ref),
+    context="@socket.TCP::connect_to_host()",
+  )
   if ret > 0 {
     raise ResolveHostnameError(ret)
   }

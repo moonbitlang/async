@@ -17,7 +17,12 @@
 /// The permission of the created directory must be set in `permission`.
 pub async fn mkdir(path : String, permission~ : Int) -> Unit {
   let path = @encoding/utf8.encode(path)
-  ignore(@event_loop.perform_job(Mkdir(path~, mode=permission)))
+  ignore(
+    @event_loop.perform_job(
+      Mkdir(path~, mode=permission),
+      context="@fs.mkdir()",
+    ),
+  )
 }
 
 ///|
@@ -38,7 +43,7 @@ pub async fn rmdir(path : String, recursive? : Bool = false) -> Unit {
     }
   }
   let path = @encoding/utf8.encode(path)
-  ignore(@event_loop.perform_job(Rmdir(path~)))
+  ignore(@event_loop.perform_job(Rmdir(path~), context="@fs.rmdir()"))
 }
 
 ///|
@@ -67,7 +72,7 @@ pub fn opendir(path : String) -> Directory raise {
   let path = @encoding/utf8.encode(path)
   let dir = opendir_ffi(path)
   if dir.is_null() {
-    @os_error.check_errno()
+    @os_error.check_errno("@fs.opendir()")
   }
   dir
 }
@@ -87,7 +92,9 @@ extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang
 ///|
 async fn Directory::read_next(dir : Directory) -> String? {
   let out = @ref.new(null_dirent)
-  ignore(@event_loop.perform_job(Readdir(dir=dir.0, out~)))
+  ignore(
+    @event_loop.perform_job(Readdir(dir=dir.0, out~), context="@fs.readdir()"),
+  )
   if physical_equal(out.val, null_dirent) {
     None
   } else {

@@ -65,22 +65,22 @@ pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
 ///|
 pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
   guard curr_loop.val is None
-  let (notify_recv, notify_send) = @fd_util.pipe()
+  let (notify_recv, notify_send) = @fd_util.pipe("initialze runtime")
   try {
-    @fd_util.set_nonblocking(notify_recv)
-    @fd_util.set_blocking(notify_send)
+    @fd_util.set_nonblocking(notify_recv, context="initialize runtime")
+    @fd_util.set_blocking(notify_send, context="initialize runtime")
   } catch {
     err => {
-      @fd_util.close(notify_recv)
-      @fd_util.close(notify_send)
+      @fd_util.close(notify_recv, context="initialize runtime")
+      @fd_util.close(notify_send, context="initialize runtime")
       raise err
     }
   }
   defer {
-    @fd_util.close(notify_recv) catch {
+    @fd_util.close(notify_recv, context="initialize runtime") catch {
       _ => ()
     }
-    @fd_util.close(notify_send) catch {
+    @fd_util.close(notify_send, context="initialize runtime") catch {
       _ => ()
     }
   }
@@ -137,7 +137,7 @@ async fn EventLoop::poll(self : Self) -> Bool {
   }
   let n = self.poll.wait(timeout~)
   if n < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("runtime internal: poll_wait")
   }
   for i in 0..<n {
     let event = get_event(i)
@@ -147,7 +147,7 @@ async fn EventLoop::poll(self : Self) -> Bool {
       if self.pids.get(fd) is Some(handle) {
         let result = @ref.new(0)
         if event.pid_status(result) < 0 {
-          @os_error.check_errno()
+          @os_error.check_errno("runtime internal: get PID status")
         }
         handle.result = result.val
         self.pids.remove(fd)
@@ -171,7 +171,7 @@ async fn EventLoop::poll(self : Self) -> Bool {
         }
       } else {
         if not(@os_error.is_nonblocking_io_error()) {
-          @os_error.check_errno()
+          @os_error.check_errno("runtime internal: failed to get completed job")
         }
       }
     } else if self.fds.get(fd) is Some(handle) {
@@ -224,7 +224,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
         err => abort("detach \{fd} from loop: \{err}")
       }
     }
-    @fd_util.close(fd)
+    @fd_util.close(fd, context="runtime internal: close leaking fd")
   }
   guard self.pids.is_empty()
   self.fds.clear()
@@ -355,7 +355,7 @@ pub fn close_fd(fd : Int) -> Unit {
       }
     }
   }
-  @fd_util.close(fd) catch {
+  @fd_util.close(fd, context="") catch {
     _ => ()
   }
 }
@@ -363,6 +363,7 @@ pub fn close_fd(fd : Int) -> Unit {
 ///|
 async fn perform_job_in_worker(
   job : JobForWorker,
+  context~ : String,
   allow_cancel? : Bool = false,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
@@ -390,16 +391,16 @@ async fn perform_job_in_worker(
     @coroutine.protect_from_cancel(@coroutine.suspend)
   }
   if job.err() > 0 {
-    raise @os_error.OSError(job.err())
+    raise @os_error.OSError(job.err(), context~)
   } else {
     job.ret()
   }
 }
 
 ///|
-pub async fn perform_job(job : Job) -> Int {
+pub async fn perform_job(job : Job, context~ : String) -> Int {
   match job {
-    Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t))
+    Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t), context~)
     Read(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
         let handle = prepare_fd_read(fd)
@@ -412,12 +413,12 @@ pub async fn perform_job(job : Job) -> Int {
           ret
         }
         if ret < 0 {
-          @os_error.check_errno()
+          @os_error.check_errno(context)
         }
         ret
       } else {
         let job = JobForWorker::read(fd, buf, offset, len)
-        perform_job_in_worker(job)
+        perform_job_in_worker(job, context~)
       }
     Write(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
@@ -431,29 +432,31 @@ pub async fn perform_job(job : Job) -> Int {
           ret
         }
         if ret < 0 {
-          @os_error.check_errno()
+          @os_error.check_errno(context)
         }
         ret
       } else {
         let job = JobForWorker::write(fd, buf, offset, len)
-        perform_job_in_worker(job)
+        perform_job_in_worker(job, context~)
       }
     Open(path~, flags~, mode~) =>
-      perform_job_in_worker(JobForWorker::open(path, flags, mode))
-    Stat(path~, out~) => perform_job_in_worker(JobForWorker::stat(path, out))
+      perform_job_in_worker(JobForWorker::open(path, flags, mode), context~)
+    Stat(path~, out~) =>
+      perform_job_in_worker(JobForWorker::stat(path, out), context~)
     Access(path~, amode~) =>
-      perform_job_in_worker(JobForWorker::access(path, amode))
-    Remove(path~) => perform_job_in_worker(JobForWorker::remove(path))
+      perform_job_in_worker(JobForWorker::access(path, amode), context~)
+    Remove(path~) => perform_job_in_worker(JobForWorker::remove(path), context~)
     Mkdir(path~, mode~) =>
-      perform_job_in_worker(JobForWorker::mkdir(path, mode))
-    Rmdir(path~) => perform_job_in_worker(JobForWorker::rmdir(path))
+      perform_job_in_worker(JobForWorker::mkdir(path, mode), context~)
+    Rmdir(path~) => perform_job_in_worker(JobForWorker::rmdir(path), context~)
     Readdir(dir~, out~) =>
-      perform_job_in_worker(JobForWorker::readdir(dir, out))
+      perform_job_in_worker(JobForWorker::readdir(dir, out), context~)
     Realpath(path~, out~) =>
-      perform_job_in_worker(JobForWorker::realpath(path, out))
+      perform_job_in_worker(JobForWorker::realpath(path, out), context~)
     Spawn(path~, args~, env~, stdin~, stdout~, stderr~, cwd~) =>
       perform_job_in_worker(
         JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
+        context~,
       )
     Recvfrom(sock~, buf~, offset~, len~, addr~) => {
       let handle = prepare_fd_read(sock)
@@ -466,7 +469,7 @@ pub async fn perform_job(job : Job) -> Int {
         ret
       }
       if ret < 0 {
-        @os_error.check_errno()
+        @os_error.check_errno(context)
       }
       ret
     }
@@ -481,7 +484,7 @@ pub async fn perform_job(job : Job) -> Int {
         ret
       }
       if ret < 0 {
-        @os_error.check_errno()
+        @os_error.check_errno(context)
       }
       ret
     }
@@ -494,12 +497,12 @@ pub async fn perform_job(job : Job) -> Int {
         handle.wait_write()
         let err = get_socket_err(sock)
         if err < 0 {
-          @os_error.check_errno()
+          @os_error.check_errno(context)
         } else if err > 0 {
-          raise @os_error.OSError(err)
+          raise @os_error.OSError(err, context~)
         }
       } else {
-        @os_error.check_errno()
+        @os_error.check_errno(context)
       }
       0
     }
@@ -512,7 +515,7 @@ pub async fn perform_job(job : Job) -> Int {
         handle.wait_read()
         accept_ffi(sock, addr)
       } else {
-        @os_error.check_errno()
+        @os_error.check_errno(context)
         -1
       }
     }
@@ -521,6 +524,7 @@ pub async fn perform_job(job : Job) -> Int {
       perform_job_in_worker(
         JobForWorker::getaddrinfo(host, out),
         allow_cancel=true,
+        context~,
       )
   }
 }

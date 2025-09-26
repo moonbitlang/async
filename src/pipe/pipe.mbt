@@ -36,9 +36,9 @@ pub fn PipeWrite::fd(self : PipeWrite) -> Int {
 /// Create a pipe using `pipe(2)` system call.
 /// Return the read end and write end of the pipe.
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
-  let (r, w) = @fd_util.pipe()
-  @fd_util.set_nonblocking(r)
-  @fd_util.set_nonblocking(w)
+  let (r, w) = @fd_util.pipe("@pipe.pipe()")
+  @fd_util.set_nonblocking(r, context="@pipe.pipe()")
+  @fd_util.set_nonblocking(w, context="@pipe.pipe()")
   (PipeRead(r), PipeWrite(w))
 }
 
@@ -50,13 +50,13 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 pub let stdin : PipeRead = {
   if get_blocking(0) > 0 {
     fn init() {
-      @fd_util.set_nonblocking(0) catch {
+      @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`") catch {
         _ => ()
       }
     }
 
     fn exit() {
-      @fd_util.set_nonblocking(0) catch {
+      @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`") catch {
         _ => ()
       }
     }
@@ -74,13 +74,13 @@ pub let stdin : PipeRead = {
 pub let stdout : PipeWrite = {
   if get_blocking(1) > 0 {
     fn init() {
-      @fd_util.set_nonblocking(1) catch {
+      @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`") catch {
         _ => ()
       }
     }
 
     fn exit() {
-      @fd_util.set_nonblocking(1) catch {
+      @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`") catch {
         _ => ()
       }
     }
@@ -98,13 +98,13 @@ pub let stdout : PipeWrite = {
 pub let stderr : PipeWrite = {
   if get_blocking(2) > 0 {
     fn init() {
-      @fd_util.set_nonblocking(2) catch {
+      @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`") catch {
         _ => ()
       }
     }
 
     fn exit() {
-      @fd_util.set_nonblocking(2) catch {
+      @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`") catch {
         _ => ()
       }
     }
@@ -142,11 +142,17 @@ pub impl @io.Reader for PipeRead with read(
   max_len? = buf.length() - offset,
 ) {
   let PipeRead(fd) = self
-  @event_loop.perform_job(Read(fd~, buf~, offset~, len=max_len, can_poll=true))
+  @event_loop.perform_job(
+    Read(fd~, buf~, offset~, len=max_len, can_poll=true),
+    context="@pipe.PipeRead::read()",
+  )
 }
 
 ///|
 pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
   let PipeWrite(fd) = self
-  @event_loop.perform_job(Write(fd~, buf~, offset~, len~, can_poll=true))
+  @event_loop.perform_job(
+    Write(fd~, buf~, offset~, len~, can_poll=true),
+    context="@pipe.PipeRead::write()",
+  )
 }

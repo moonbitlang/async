@@ -8,7 +8,7 @@ import(
 // Values
 fn close_fd(Int) -> Unit
 
-async fn perform_job(Job) -> Int
+async fn perform_job(Job, context~ : String) -> Int
 
 fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
 
