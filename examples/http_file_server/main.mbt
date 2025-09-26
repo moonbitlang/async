@@ -63,8 +63,9 @@ async fn serve_file(
 
 ///|
 async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
-  let base_name = if path.rev_find("/") is Some(i) {
-    path[i + 1:].to_string()
+  let full_path = @fs.realpath(path)
+  let base_name = if full_path.rev_find("/") is Some(i) {
+    full_path[i + 1:].to_string()
   } else {
     path
   }
