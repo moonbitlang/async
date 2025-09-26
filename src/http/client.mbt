@@ -80,13 +80,6 @@ pub impl @io.Reader for Client with read(
 }
 
 ///|
-/// Read the whole response body from a HTTP client.
-/// Must be called after `end_request`.
-pub async fn Client::read_all(self : Client) -> &Body {
-  @io.Reader::read_all(self.reader)
-}
-
-///|
 /// Write data to the body of the request currently being sent.
 /// Must be called after `send_request`.
 /// `end_request` must be called after all content of response body has been sent.
@@ -165,11 +158,11 @@ pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Map[String, String] = {},
-  body? : &Body,
+  body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
   if body is Some(body) {
-    self.write(body.to_bytes())
+    self.write(body)
   }
   self.end_request()
 }
@@ -179,10 +172,10 @@ pub async fn Client::get(
 pub async fn Client::put(
   self : Client,
   path : String,
-  body : &Body,
+  body : &@io.Data,
   extra_headers? : Map[String, String] = {},
 ) -> Response {
-  self..request(Put, path, extra_headers~)..write(body.to_bytes()).end_request()
+  self..request(Put, path, extra_headers~)..write(body).end_request()
 }
 
 ///|
@@ -190,11 +183,8 @@ pub async fn Client::put(
 pub async fn Client::post(
   self : Client,
   path : String,
-  body : &Body,
+  body : &@io.Data,
   extra_headers? : Map[String, String] = {},
 ) -> Response {
-  self
-  ..request(Post, path, extra_headers~)
-  ..write(body.to_bytes())
-  .end_request()
+  self..request(Post, path, extra_headers~)..write(body).end_request()
 }

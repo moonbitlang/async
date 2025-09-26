@@ -37,9 +37,9 @@ async fn perform_request(
   uri : String,
   meth : RequestMethod,
   headers : Map[String, String],
-  body : &Body,
+  body : &@io.Data,
   port? : Int,
-) -> (Response, &Body) {
+) -> (Response, &@io.Data) {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -63,7 +63,7 @@ async fn perform_request(
   let path = if path == "" { "/" } else { path }
   let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
-  client..request(meth, path)..write(body.to_bytes())
+  client..request(meth, path)..write(body)
   let response = client.end_request()
   (response, client.read_all())
 }
@@ -81,8 +81,8 @@ pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
-  body? : &Body = b"",
-) -> (Response, &Body) {
+  body? : &@io.Data = b"",
+) -> (Response, &@io.Data) {
   perform_request(uri, Get, headers, body, port?)
 }
 
@@ -90,10 +90,10 @@ pub async fn get(
 /// Similar to `get`, but performs a `PUT` request instead.
 pub async fn put(
   uri : String,
-  content : &Body,
+  content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
-) -> (Response, &Body) {
+) -> (Response, &@io.Data) {
   perform_request(uri, Put, headers, content, port?)
 }
 
@@ -101,9 +101,9 @@ pub async fn put(
 /// Similar to `get`, but performs a `POST` request instead.
 pub async fn post(
   uri : String,
-  content : &Body,
+  content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
-) -> (Response, &Body) {
+) -> (Response, &@io.Data) {
   perform_request(uri, Post, headers, content, port?)
 }

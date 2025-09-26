@@ -20,13 +20,14 @@ pub(all) enum Encoding {
 ///|
 pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async write(Self, BytesView) -> Unit = _
+  async write(Self, &Data) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
   async write_string(Self, StringView, encoding~ : Encoding) -> Unit = _
 }
 
 ///|
-impl Writer with write(self, view) {
+impl Writer with write(self, data) {
+  let view = data.to_bytesview()
   let start = view.start_offset()
   let len = view.length()
   guard len > 0 else { return }

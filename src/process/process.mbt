@@ -164,7 +164,7 @@ pub async fn collect_stdout(
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
   cwd? : String,
-) -> (Int, Bytes) {
+) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     let exit_code = group.spawn(() => run(
@@ -195,7 +195,7 @@ pub async fn collect_stderr(
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   cwd? : String,
-) -> (Int, Bytes) {
+) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     let exit_code = group.spawn(() => run(
@@ -226,7 +226,7 @@ pub async fn collect_output(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : String,
-) -> (Int, Bytes, Bytes) {
+) -> (Int, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group(fn(group) {
@@ -259,7 +259,7 @@ pub async fn collect_output_merged(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : String,
-) -> (Int, Bytes) {
+) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     let exit_code = group.spawn(() => run(

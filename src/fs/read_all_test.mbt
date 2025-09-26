@@ -18,7 +18,7 @@ async test "read_all basic" {
   let r = @fs.open(path, mode=ReadOnly)
   defer r.close()
   inspect(
-    r.read_all() |> @bytes_util.ascii_to_string,
+    r.read_all().text(),
     content=(
       #|
       #|                                 Apache License

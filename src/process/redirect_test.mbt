@@ -20,7 +20,7 @@ async test "merge multiple" {
     root.spawn_bg(no_wait=true, fn() {
       defer r.close()
       inspect(
-        @bytes_util.ascii_to_string(r.read_all()),
+        r.read_all().text(),
         content=(
           #|abcd
           #|efgh
@@ -60,10 +60,7 @@ async test "redirect to file" {
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file, create=0o644),
     )
-    inspect(
-      @bytes_util.ascii_to_string(@fs.read_file(output_file)),
-      content="abcd",
-    )
+    inspect(@fs.read_file(output_file).text(), content="abcd")
   })
 }
 
@@ -77,7 +74,7 @@ async test "merge stdout and stderr" {
       |> ignore
     })
     inspect(
-      @bytes_util.ascii_to_string(r.read_all()),
+      r.read_all().text(),
       content=(
         #|abcd
         #|efgh

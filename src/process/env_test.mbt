@@ -25,7 +25,7 @@ async test "set_env" {
       |> ignore
     })
     inspect(
-      @bytes_util.ascii_to_string(r.read_all()),
+      r.read_all().text(),
       content=(
         #|MAGIC_VALUE
         #|
@@ -55,7 +55,7 @@ async test "set_env no inherit" {
       |> ignore
     })
     inspect(
-      @bytes_util.ascii_to_string(r.read_all()),
+      r.read_all().text(),
       content=(
         #|MAGIC_VAR_1=MAGIC_VALUE_1
         #|MAGIC_VAR_2=MAGIC_VALUE_2

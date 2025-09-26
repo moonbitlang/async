@@ -28,7 +28,7 @@ async test "basic seek" {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
     inspect(r.size(), content="6")
-    inspect(@bytes_util.ascii_to_string(r.read_all()), content="abcdef")
+    inspect(r.read_all().text(), content="abcdef")
   }
   // update content
   {
@@ -48,7 +48,7 @@ async test "basic seek" {
   {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    inspect(@bytes_util.ascii_to_string(r.read_all()), content="123456")
+    inspect(r.read_all().text(), content="123456")
   }
   @fs.remove(path)
 }

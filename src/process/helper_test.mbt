@@ -17,14 +17,14 @@
 async test "collect_output" {
   let (code, output) = @process.collect_stdout("sh", ["-c", "printf abcd"])
   inspect(code, content="0")
-  inspect(@bytes_util.ascii_to_string(output), content="abcd")
+  inspect(output.text(), content="abcd")
 }
 
 ///|
 async test "collect_error" {
   let (code, output) = @process.collect_stderr("sh", ["-c", "printf abcd >&2"])
   inspect(code, content="0")
-  inspect(@bytes_util.ascii_to_string(output), content="abcd")
+  inspect(output.text(), content="abcd")
 }
 
 ///|
@@ -33,8 +33,8 @@ async test "collect_output" {
     "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
   ])
   inspect(code, content="0")
-  inspect(@bytes_util.ascii_to_string(stdout), content="abcd")
-  inspect(@bytes_util.ascii_to_string(stderr), content="abcd")
+  inspect(stdout.text(), content="abcd")
+  inspect(stderr.text(), content="abcd")
 }
 
 ///|
@@ -43,5 +43,5 @@ async test "collect_output_merged" {
     "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
   ])
   inspect(code, content="0")
-  inspect(@bytes_util.ascii_to_string(output), content="ababcdcd")
+  inspect(output.text(), content="ababcdcd")
 }

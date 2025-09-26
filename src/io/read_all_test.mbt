@@ -18,7 +18,7 @@ async test "read_all basic" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(() => writer(log, w))
-    inspect(r.read_all() |> @encoding/utf8.decode, content="abcdefghijkl")
+    inspect(r.read_all().text(), content="abcdefghijkl")
   })
 }
 
@@ -30,6 +30,6 @@ async test "read_all large data" {
       defer w.close()
       w.write(Bytes::make(4097, 0))
     })
-    inspect(r.read_all().length(), content="4097")
+    inspect(r.read_all().binary().length(), content="4097")
   })
 }

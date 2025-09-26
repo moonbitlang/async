@@ -25,7 +25,7 @@ async test "basic_ls" {
       |> ignore
     })
     inspect(
-      @bytes_util.ascii_to_string(r.read_all()),
+      r.read_all().text(),
       content=(
         #|basic_test.mbt
         #|cancel_test.mbt
@@ -61,7 +61,7 @@ async test "basic_cat" {
     root.spawn_bg(fn() {
       defer we_read.close()
       inspect(
-        @bytes_util.ascii_to_string(we_read.read_all()),
+        we_read.read_all().text(),
         content=(
           #|abcd
           #|defg
