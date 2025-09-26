@@ -26,6 +26,7 @@ fn opendir(String) -> Directory raise
 
 async fn read_file(String) -> &@io.Data
 
+#deprecated
 async fn read_text_file(String, encoding~ : @io.Encoding) -> String
 
 async fn readdir(String, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[String]
@@ -38,6 +39,7 @@ async fn rmdir(String, recursive? : Bool) -> Unit
 
 async fn write_file(String, Bytes, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
+#deprecated
 async fn write_text_file(String, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 // Errors

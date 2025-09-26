@@ -24,7 +24,7 @@ async test "missing_close" {
     })
     root.spawn_bg(fn() {
       let data = "abcd"
-      w.write_string(data, encoding=UTF8)
+      w.write(data)
       log.write_string("written \{data}\n")
     })
   })

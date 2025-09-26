@@ -113,7 +113,7 @@ async test "write_string" {
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
-      w.write_string("abcd中文☺", encoding=UTF8)
+      w.write("abcd中文☺")
     })
     inspect(r.read_all().text(), content="abcd中文☺")
   })
