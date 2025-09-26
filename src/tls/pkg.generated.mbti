@@ -19,8 +19,8 @@ type TLS
 async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool, host? : String, sni? : Bool) -> Self
 async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool) -> Self
 fn TLS::close(Self) -> Unit
-async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self
-async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(R, W, private_key_file~ : Bytes, private_key_type~ : X509FileType, certificate_file~ : Bytes, certificate_type~ : X509FileType) -> Self
+async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
+async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(R, W, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
 async fn TLS::shutdown(Self) -> Unit
 impl @io.Reader for TLS
 impl @io.Writer for TLS

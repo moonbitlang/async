@@ -64,11 +64,15 @@ pub async fn run(
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
-  cwd? : Bytes,
+  cwd? : String,
   orphan? : Bool = false,
 ) -> Int {
   let cmd = @encoding/utf8.encode(cmd)
   let argv = FixedArray::make(args.length() + 2, None)
+  let cwd = match cwd {
+    None => None
+    Some(cwd) => Some(@encoding/utf8.encode(cwd))
+  }
   argv[0] = Some(cmd)
   for i in 0..<args.length() {
     argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
@@ -159,7 +163,7 @@ pub async fn collect_stdout(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
-  cwd? : Bytes,
+  cwd? : String,
 ) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
@@ -190,7 +194,7 @@ pub async fn collect_stderr(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
-  cwd? : Bytes,
+  cwd? : String,
 ) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
@@ -221,7 +225,7 @@ pub async fn collect_output(
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
-  cwd? : Bytes,
+  cwd? : String,
 ) -> (Int, Bytes, Bytes) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
@@ -254,7 +258,7 @@ pub async fn collect_output_merged(
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
-  cwd? : Bytes,
+  cwd? : String,
 ) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {

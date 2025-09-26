@@ -134,11 +134,13 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
 pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
   r : R,
   w : W,
-  private_key_file~ : Bytes,
+  private_key_file~ : String,
   private_key_type~ : X509FileType,
-  certificate_file~ : Bytes,
+  certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> TLS {
+  let private_key_file = @encoding/utf8.encode(private_key_file)
+  let certificate_file = @encoding/utf8.encode(certificate_file)
   let self = TLS::from_pair(server_ctx, r, w, host=None)
   if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
     self.close()
@@ -171,9 +173,9 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
 pub async fn[Inner : @io.Reader + @io.Writer] TLS::server(
   inner : Inner,
-  private_key_file~ : Bytes,
+  private_key_file~ : String,
   private_key_type~ : X509FileType,
-  certificate_file~ : Bytes,
+  certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> TLS {
   TLS::server_from_pair(
