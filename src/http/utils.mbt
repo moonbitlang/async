@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn parse_int(src : @bytes.View, base~ : Int) -> Int? {
+fn parse_int(src : BytesView, base~ : Int) -> Int? {
   for i = 0, acc = 0; i < src.length(); {
     match src[i] {
       '0'..='9' as c => {

@@ -36,6 +36,7 @@ async test "one way" {
       let buf = FixedArray::make(1024, b'0')
       while server.read(buf) is n && n > 0 {
         let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+        let data = @encoding/utf8.decode(data)
         log.write_string("server received: \{data}\n")
       } else {
         server.shutdown()
@@ -67,9 +68,9 @@ async test "one way" {
   inspect(
     log.to_string(),
     content=(
-      #|server received: b"\x61\x62\x63\x64"
-      #|server received: b"\x65\x66\x67\x68"
-      #|server received: b"\x69\x6a\x6b\x6c"
+      #|server received: abcd
+      #|server received: efgh
+      #|server received: ijkl
       #|
     ),
   )
@@ -99,7 +100,7 @@ async test "echo" {
       let buf = FixedArray::make(1024, b'0')
       while server.read(buf) is n && n > 0 {
         let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-        log.write_string("server received: \{data}\n")
+        log.write_string("server received: \{@encoding/utf8.decode(data)}\n")
         server.write(data)
       } else {
         server.shutdown()
@@ -131,9 +132,9 @@ async test "echo" {
   inspect(
     log.to_string(),
     content=(
-      #|server received: b"\x61\x62\x63\x64"
-      #|server received: b"\x65\x66\x67\x68"
-      #|server received: b"\x69\x6a\x6b\x6c"
+      #|server received: abcd
+      #|server received: efgh
+      #|server received: ijkl
       #|
     ),
   )

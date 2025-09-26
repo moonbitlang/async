@@ -18,21 +18,21 @@ async test "missing_close" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
-      let data = r.read_exactly(4)
+      let data = r.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log.write_string("received \{data}\n")
     })
     root.spawn_bg(fn() {
-      let data = b"abcd"
-      w.write(data)
+      let data = "abcd"
+      w.write_string(data, encoding=UTF8)
       log.write_string("written \{data}\n")
     })
   })
   inspect(
     log.to_string(),
     content=(
-      #|written b"\x61\x62\x63\x64"
-      #|received b"\x61\x62\x63\x64"
+      #|written abcd
+      #|received abcd
       #|
     ),
   )

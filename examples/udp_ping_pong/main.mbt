@@ -32,9 +32,9 @@ async fn server(println : Printer) -> Unit {
       group.spawn_bg(fn() {
         @async.sleep(10)
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-        println("server received: \{msg}")
-        let reply = b"pong"
-        server_sock.sendto(reply, addr)
+        println("server received: \{@encoding/utf8.decode(msg)}")
+        let reply = "pong"
+        server_sock.sendto(@encoding/utf8.encode(reply), addr)
         println("server sent: \{reply}")
         if msg == b"exit" {
           println("server initiate terminate")
@@ -53,17 +53,17 @@ async fn server(println : Printer) -> Unit {
 }
 
 ///|
-async fn client(println : Printer, id : Int, msg : Bytes) -> Unit {
+async fn client(println : Printer, id : Int, msg : String) -> Unit {
   let conn = @socket.UDP::new()
   defer conn.close()
   conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
-  conn.send(msg)
+  conn.send(@encoding/utf8.encode(msg))
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   if conn.recv(buf) is n && n > 0 {
     @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-    println("client \{id} received: \{msg}")
+    println("client \{id} received: \{@encoding/utf8.decode(msg)}")
     conn.close()
   } else {
     println("client \{id}: connection closed by peer")
@@ -77,12 +77,12 @@ pub async fn main_prog(println : Printer) -> Unit {
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
-          let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
+          let msg = if i % 3 == 1 { "pong" } else { "ping" }
           ctx.spawn_bg(() => client(println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn_bg(() => client(println, 6, b"exit"))
+      root.spawn_bg(() => client(println, 6, "exit"))
     })
   }) catch {
     ServerTerminate => ()

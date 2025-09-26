@@ -164,7 +164,7 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
   self : Self[R],
   start? : Int = 0,
   end~ : Int,
-) -> @bytes.View {
+) -> BytesView {
   guard start < end
   self.ensure(end)
   self.buf.unsafe_reinterpret_as_bytes()[self.start + start:self.start + end]

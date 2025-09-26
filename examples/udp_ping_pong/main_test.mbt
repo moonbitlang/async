@@ -24,33 +24,33 @@ async test "main" {
   inspect(
     log.to_string(),
     content=(
-      #|client 0 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 0 received: b"\x70\x6f\x6e\x67"
-      #|client 1 sent: b"\x70\x6f\x6e\x67"
-      #|server received: b"\x70\x6f\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 1 received: b"\x70\x6f\x6e\x67"
-      #|client 2 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 2 received: b"\x70\x6f\x6e\x67"
-      #|client 3 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 3 received: b"\x70\x6f\x6e\x67"
-      #|client 4 sent: b"\x70\x6f\x6e\x67"
-      #|server received: b"\x70\x6f\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 4 received: b"\x70\x6f\x6e\x67"
-      #|client 5 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 5 received: b"\x70\x6f\x6e\x67"
-      #|client 6 sent: b"\x65\x78\x69\x74"
-      #|server received: b"\x65\x78\x69\x74"
-      #|server sent: b"\x70\x6f\x6e\x67"
+      #|client 0 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 0 received: pong
+      #|client 1 sent: pong
+      #|server received: pong
+      #|server sent: pong
+      #|client 1 received: pong
+      #|client 2 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 2 received: pong
+      #|client 3 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 3 received: pong
+      #|client 4 sent: pong
+      #|server received: pong
+      #|server sent: pong
+      #|client 4 received: pong
+      #|client 5 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 5 received: pong
+      #|client 6 sent: exit
+      #|server received: exit
+      #|server sent: pong
       #|server initiate terminate
       #|server terminate: ServerTerminate
       #|Ok(())

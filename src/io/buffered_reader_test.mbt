@@ -36,7 +36,9 @@ async test "BufferedReader::read" {
     let reader = @io.BufferedReader::new(r)
     let buf = FixedArray::make(6, b'0')
     while reader.read(buf) is n && n > 0 {
-      log.write_string("received: \{buf.unsafe_reinterpret_as_bytes()[0:n]}\n")
+      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+      let data = @encoding/utf8.decode(data)
+      log.write_string("received: \{data}\n")
     }
     log.write_string("buffered reader closed\n")
   })
@@ -44,11 +46,11 @@ async test "BufferedReader::read" {
     log.to_string(),
     content=(
       #|writing 4 bytes of data
-      #|received: b"\x61\x62\x63\x64"
+      #|received: abcd
       #|writing 4 bytes of data
-      #|received: b"\x65\x66\x67\x68"
+      #|received: efgh
       #|writing 4 bytes of data
-      #|received: b"\x69\x6a\x6b\x6c"
+      #|received: ijkl
       #|buffered reader closed
       #|
     ),
@@ -65,6 +67,7 @@ async test "BufferedReader::read_exactly" {
     let reader = @io.BufferedReader::new(r)
     for {
       let data = reader.read_exactly(6)
+      let data = @encoding/utf8.decode(data)
       log.write_string("received: \{data}\n")
     }
   }) catch {
@@ -75,9 +78,9 @@ async test "BufferedReader::read_exactly" {
     content=(
       #|writing 4 bytes of data
       #|writing 4 bytes of data
-      #|received: b"\x61\x62\x63\x64\x65\x66"
+      #|received: abcdef
       #|writing 4 bytes of data
-      #|received: b"\x67\x68\x69\x6a\x6b\x6c"
+      #|received: ghijkl
       #|ReaderClosed
     ),
   )
@@ -128,15 +131,19 @@ async test "BufferedReader::op_as_view" {
       root.spawn_bg(() => writer(log, w))
       defer r.close()
       let reader = @io.BufferedReader::new(r)
-      log.write_string("reader[0:6]: \{reader[0:6]}\n")
+      let slice = @encoding/utf8.decode(reader[0:6])
+      log.write_string("reader[0:6]: \{slice}\n")
       // should be idempotent
-      log.write_string("reader[0:6]: \{reader[0:6]}\n")
+      let slice = @encoding/utf8.decode(reader[0:6])
+      log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-      log.write_string("reader[0:6]: \{reader[0:6]}\n")
+      let slice = @encoding/utf8.decode(reader[0:6])
+      log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-      log.write_string("reader[0:6]: \{reader[0:6]}\n")
+      let slice = @encoding/utf8.decode(reader[0:6])
+      log.write_string("reader[0:6]: \{slice}\n")
     }),
   )
   inspect(
@@ -144,11 +151,11 @@ async test "BufferedReader::op_as_view" {
     content=(
       #|writing 4 bytes of data
       #|writing 4 bytes of data
-      #|reader[0:6]: b"\x61\x62\x63\x64\x65\x66"
-      #|reader[0:6]: b"\x61\x62\x63\x64\x65\x66"
+      #|reader[0:6]: abcdef
+      #|reader[0:6]: abcdef
       #|reader.drop(4)
       #|writing 4 bytes of data
-      #|reader[0:6]: b"\x65\x66\x67\x68\x69\x6a"
+      #|reader[0:6]: efghij
       #|reader.drop(4)
       #|Err(ReaderClosed)
     ),

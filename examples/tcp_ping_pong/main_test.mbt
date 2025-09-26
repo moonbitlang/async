@@ -26,53 +26,53 @@ async test "main" {
     content=(
       #|received new connection
       #|client 0: connection established
-      #|client 0 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 0 received: b"\x70\x6f\x6e\x67"
+      #|client 0 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 0 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 1: connection established
-      #|client 1 sent: b"\x70\x6f\x6e\x67"
-      #|server received: b"\x70\x6f\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 1 received: b"\x70\x6f\x6e\x67"
+      #|client 1 sent: pong
+      #|server received: pong
+      #|server sent: pong
+      #|client 1 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 2: connection established
-      #|client 2 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 2 received: b"\x70\x6f\x6e\x67"
+      #|client 2 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 2 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 3: connection established
-      #|client 3 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 3 received: b"\x70\x6f\x6e\x67"
+      #|client 3 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 3 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 4: connection established
-      #|client 4 sent: b"\x70\x6f\x6e\x67"
-      #|server received: b"\x70\x6f\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 4 received: b"\x70\x6f\x6e\x67"
+      #|client 4 sent: pong
+      #|server received: pong
+      #|server sent: pong
+      #|client 4 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 5: connection established
-      #|client 5 sent: b"\x70\x69\x6e\x67"
-      #|server received: b"\x70\x69\x6e\x67"
-      #|server sent: b"\x70\x6f\x6e\x67"
-      #|client 5 received: b"\x70\x6f\x6e\x67"
+      #|client 5 sent: ping
+      #|server received: ping
+      #|server sent: pong
+      #|client 5 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 6: connection established
-      #|client 6 sent: b"\x65\x78\x69\x74"
-      #|server received: b"\x65\x78\x69\x74"
-      #|server sent: b"\x70\x6f\x6e\x67"
+      #|client 6 sent: exit
+      #|server received: exit
+      #|server sent: pong
       #|server initiate terminate
-      #|client 6 received: b"\x70\x6f\x6e\x67"
+      #|client 6 received: pong
       #|server terminate: Cancelled
       #|Ok(())
     ),
