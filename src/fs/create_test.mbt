@@ -23,7 +23,7 @@ async test "basic create" {
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    @bytes_util.ascii_to_string(r.read_all())
+    r.read_all().text()
   }
   @fs.remove(path)
   inspect(
@@ -49,7 +49,7 @@ async test "create or append" {
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    r.read_all() |> @bytes_util.ascii_to_string
+    r.read_all().text()
   }
   @fs.remove(path)
   inspect(result, content="abcdefgh")
@@ -59,7 +59,7 @@ async test "create or append" {
 async test "wrapper test" {
   let path = "fs_wrapper_test"
   @fs.write_file(path, b"abcd", create=0o644)
-  let result = @fs.read_file(path) |> @bytes_util.ascii_to_string
+  let result = @fs.read_file(path).text()
   @fs.remove(path)
   inspect(result, content="abcd")
 }

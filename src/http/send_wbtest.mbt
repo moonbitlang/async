@@ -28,7 +28,7 @@ async test "send_request basic" {
     })
     defer r.close()
     inspect(
-      r.read_all() |> @bytes_util.ascii_to_string,
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -62,7 +62,7 @@ async test "send_request stream" {
     })
     defer r.close()
     inspect(
-      r.read_all() |> @bytes_util.ascii_to_string,
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -323,7 +323,7 @@ async test "send_request stream2" {
     })
     defer r.close()
     inspect(
-      r.read_all() |> @bytes_util.ascii_to_string,
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r

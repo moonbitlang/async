@@ -182,7 +182,7 @@ pub impl @io.Reader for File with read_all(self) {
       let size = self.size().to_int()
       let result = FixedArray::make(size, b'0')
       guard self.read(result) == size
-      result.unsafe_reinterpret_as_bytes()
+      result.unsafe_reinterpret_as_bytes() as &@io.Data
     }
     _ => @io.Reader::read_all(DummyFile(self))
   }
@@ -282,7 +282,7 @@ pub fn File::kind(self : File) -> FileKind {
 
 ///|
 /// Read the contents of the file located at `path`.
-pub async fn read_file(path : String) -> Bytes {
+pub async fn read_file(path : String) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
   defer file.close()
   file.read_all()
@@ -292,7 +292,7 @@ pub async fn read_file(path : String) -> Bytes {
 /// Read the contents of a text file located at `path`.
 pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
   guard encoding is UTF8
-  @encoding/utf8.decode(read_file(path))
+  read_file(path).text()
 }
 
 ///|

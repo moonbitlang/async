@@ -47,7 +47,7 @@ async test "read_request basic" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    log.write_string(input.read_all().text())
   })
   inspect(
     log.to_string(),
@@ -78,7 +78,7 @@ async test "read_request fixed body" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    log.write_string(input.read_all().text())
   })
   inspect(
     log.to_string(),
@@ -114,7 +114,7 @@ async test "read_request chunked" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    log.write_string(input.read_all().text())
   })
   inspect(
     log.to_string(),
@@ -215,11 +215,11 @@ async test "multiple request" {
     let request = input.read_request()
     log_request(request, log)
     log
-    ..write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    ..write_string(input.read_all().text())
     ..write_string("\n\n=========\n\n")
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    log.write_string(input.read_all().text())
   })
   inspect(
     log.to_string(),
@@ -260,7 +260,7 @@ async test "read_response basic" {
     let input = Reader::new(r)
     let response = input.read_response()
     log_response(response, log)
-    log.write_string(input.read_all() |> @bytes_util.ascii_to_string)
+    log.write_string(input.read_all().text())
   })
   inspect(
     log.to_string(),

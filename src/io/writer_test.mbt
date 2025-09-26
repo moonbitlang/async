@@ -21,7 +21,9 @@ async test "write large data" {
       let data = Bytes::make(1024 * 16, 0)
       w.write(data)
     })
-    root.spawn_bg(fn() { inspect(r.read_all().length(), content="16384") })
+    root.spawn_bg(fn() {
+      inspect(r.read_all().binary().length(), content="16384")
+    })
   })
 }
 
@@ -113,6 +115,6 @@ async test "write_string" {
       defer w.close()
       w.write_string("abcd中文☺", encoding=UTF8)
     })
-    inspect(@encoding/utf8.decode(r.read_all()), content="abcd中文☺")
+    inspect(r.read_all().text(), content="abcd中文☺")
   })
 }

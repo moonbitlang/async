@@ -2,17 +2,18 @@
 package "moonbitlang/async/process"
 
 import(
+  "moonbitlang/async/io"
   "moonbitlang/async/pipe"
 )
 
 // Values
-async fn collect_output(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, Bytes, Bytes)
+async fn collect_output(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data, &@io.Data)
 
-async fn collect_output_merged(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, Bytes)
+async fn collect_output_merged(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data)
 
-async fn collect_stderr(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : String) -> (Int, Bytes)
+async fn collect_stderr(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
 
-async fn collect_stdout(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : String) -> (Int, Bytes)
+async fn collect_stdout(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
 
 fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise
 

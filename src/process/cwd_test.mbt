@@ -27,7 +27,7 @@ async test "set cwd" {
       guard prev_cwd == new_cwd
     })
     inspect(
-      @bytes_util.ascii_to_string(r.read_all()),
+      r.read_all().text(),
       content=(
         #|basic_test.mbt
         #|cancel_test.mbt

@@ -5,7 +5,8 @@
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/fs",
     "moonbitlang/async/pipe",
-    "moonbitlang/async"
+    "moonbitlang/async",
+    "moonbitlang/async/io"
   ],
   "test-import": [
     "moonbitlang/async/internal/bytes_util"

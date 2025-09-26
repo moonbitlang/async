@@ -29,13 +29,13 @@ async test "read_exactly" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let msg1 = conn.read_exactly(4)
+      let msg1 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("first message: \{msg1}")
-      let msg2 = conn.read_exactly(4)
+      let msg2 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("second message: \{msg2}")
-      let msg3 = conn.read_exactly(4)
+      let msg3 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
       // let the client close first to avoid socket entering `TIME_WAIT` state,
@@ -46,10 +46,10 @@ async test "read_exactly" {
     root.spawn_bg(fn() {
       let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
-      conn.write([1, 2, 3, 4, 5, 6])
+      conn.write("abcdef")
       log("first message sent")
       @async.sleep(30)
-      conn.write([7, 8, 9, 10, 11, 12])
+      conn.write("ghijkl")
       log("second message sent")
     })
   })
@@ -57,10 +57,10 @@ async test "read_exactly" {
     buf.to_string(),
     content=(
       #|first message sent
-      #|first message: b"\x01\x02\x03\x04"
+      #|first message: abcd
       #|second message sent
-      #|second message: b"\x05\x06\x07\x08"
-      #|third message: b"\x09\x0a\x0b\x0c"
+      #|second message: efgh
+      #|third message: ijkl
       #|
     ),
   )
@@ -83,13 +83,13 @@ async test "read_exactly failure" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let msg1 = conn.read_exactly(4)
+      let msg1 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("first message: \{msg1}")
-      let msg2 = conn.read_exactly(4)
+      let msg2 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("second message: \{msg2}")
-      let msg3 = conn.read_exactly(4)
+      let msg3 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
       // let the client close first to avoid socket entering `TIME_WAIT` state,
@@ -100,7 +100,7 @@ async test "read_exactly failure" {
     root.spawn_bg(fn() {
       let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
-      conn.write([1, 2, 3, 4, 5, 6])
+      conn.write("abcdef")
       log("first message sent")
     })
   }) catch {
@@ -110,7 +110,7 @@ async test "read_exactly failure" {
     buf.to_string(),
     content=(
       #|first message sent
-      #|first message: b"\x01\x02\x03\x04"
+      #|first message: abcd
       #|ReaderClosed
       #|
     ),
