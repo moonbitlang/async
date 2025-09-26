@@ -23,7 +23,7 @@ extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
 pub async fn kind(path : String) -> FileKind {
   let path = @encoding/utf8.encode(path)
   let stat = FixedArray::make(sizeof_stat(), b'0')
-  let _ = @event_loop.perform_job(Stat(path~, out=stat))
+  let _ = @event_loop.perform_job(Stat(path~, out=stat), context="@fs.kind()")
   file_kind_from_stat(stat)
 }
 
@@ -54,8 +54,10 @@ let _EACCES : Int = get_EACCES()
 ///|
 pub async fn exists(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try @event_loop.perform_job(Access(path~, amode=f_ok())) catch {
-    @os_error.OSError(code) if code == _ENOENT => false
+  try
+    @event_loop.perform_job(Access(path~, amode=f_ok()), context="@fs.exists()")
+  catch {
+    @os_error.OSError(code, ..) if code == _ENOENT => false
     err => raise err
   } noraise {
     _ => true
@@ -65,9 +67,14 @@ pub async fn exists(path : String) -> Bool {
 ///|
 pub async fn can_read(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try @event_loop.perform_job(Access(path~, amode=r_ok())) catch {
-    @os_error.OSError(code) if code == _ENOENT => false
-    @os_error.OSError(code) if code == _EACCES => false
+  try
+    @event_loop.perform_job(
+      Access(path~, amode=r_ok()),
+      context="@fs.can_read()",
+    )
+  catch {
+    @os_error.OSError(code, ..) if code == _ENOENT => false
+    @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
   } noraise {
     _ => true
@@ -77,9 +84,14 @@ pub async fn can_read(path : String) -> Bool {
 ///|
 pub async fn can_write(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try @event_loop.perform_job(Access(path~, amode=w_ok())) catch {
-    @os_error.OSError(code) if code == _ENOENT => false
-    @os_error.OSError(code) if code == _EACCES => false
+  try
+    @event_loop.perform_job(
+      Access(path~, amode=w_ok()),
+      context="@fs.can_write()",
+    )
+  catch {
+    @os_error.OSError(code, ..) if code == _ENOENT => false
+    @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
   } noraise {
     _ => true
@@ -89,9 +101,14 @@ pub async fn can_write(path : String) -> Bool {
 ///|
 pub async fn can_execute(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try @event_loop.perform_job(Access(path~, amode=x_ok())) catch {
-    @os_error.OSError(code) if code == _ENOENT => false
-    @os_error.OSError(code) if code == _EACCES => false
+  try
+    @event_loop.perform_job(
+      Access(path~, amode=x_ok()),
+      context="@fs.can_execute",
+    )
+  catch {
+    @os_error.OSError(code, ..) if code == _ENOENT => false
+    @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
   } noraise {
     _ => true
@@ -108,7 +125,10 @@ pub async fn can_execute(path : String) -> Bool {
 pub async fn realpath(path : String) -> String {
   let path = @encoding/utf8.encode(path)
   let out = @ref.new(@c_buffer.null)
-  let _ = @event_loop.perform_job(Realpath(path~, out~))
+  let _ = @event_loop.perform_job(
+    Realpath(path~, out~),
+    context="@fs.realpath()",
+  )
   let c_path = out.val
   defer c_path.free()
   let len = c_path.strlen()

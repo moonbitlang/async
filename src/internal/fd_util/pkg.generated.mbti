@@ -2,15 +2,15 @@
 package "moonbitlang/async/internal/fd_util"
 
 // Values
-fn close(Int) -> Unit raise
+fn close(Int, context~ : String) -> Unit raise
 
-fn pipe() -> (Int, Int) raise
+fn pipe(String) -> (Int, Int) raise
 
-fn set_blocking(Int) -> Unit raise
+fn set_blocking(Int, context~ : String) -> Unit raise
 
-fn set_cloexec(Int) -> Unit raise
+fn set_cloexec(Int, context~ : String) -> Unit raise
 
-fn set_nonblocking(Int) -> Unit raise
+fn set_nonblocking(Int, context~ : String) -> Unit raise
 
 // Errors
 

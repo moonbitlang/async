@@ -29,14 +29,14 @@ struct TCPServer(Int)
 /// Create a TCP server that is bound to `addr`,
 /// listening for incoming connections.
 pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
-  let sock = make_tcp_socket()
+  let sock = make_tcp_socket("@socket.TCPServer::new()")
   if 0 != bind_ffi(sock, addr) {
-    @fd_util.close(sock)
-    @os_error.check_errno()
+    @fd_util.close(sock, context="@socket.TCPServer::new()")
+    @os_error.check_errno("@socket.TCPServer::new()")
   }
   if 0 != listen_ffi(sock) {
-    @fd_util.close(sock)
-    @os_error.check_errno()
+    @fd_util.close(sock, context="@socket.TCPServer::new()")
+    @os_error.check_errno("@socket.TCPServer::new()")
   }
   TCPServer(sock)
 }
@@ -53,13 +53,16 @@ pub fn TCPServer::close(self : TCPServer) -> Unit {
 pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) {
   let TCPServer(listen_sock) = self
   let addr = Addr::new(0, 0)
-  let conn = @event_loop.perform_job(Accept(sock=listen_sock, addr=addr.0))
+  let conn = @event_loop.perform_job(
+    Accept(sock=listen_sock, addr=addr.0),
+    context="@socket.TCPServer::accept",
+  )
   if disable_nagle(conn) < 0 {
-    @fd_util.close(conn)
-    @os_error.check_errno()
+    @fd_util.close(conn, context="@socket.TCPServer::accept()")
+    @os_error.check_errno("@socket.TCPServer::accept(): set TCP_NODELAY")
   }
-  @fd_util.set_cloexec(conn)
-  @fd_util.set_nonblocking(conn)
+  @fd_util.set_cloexec(conn, context="@socket.TCPServer::accept()")
+  @fd_util.set_nonblocking(conn, context="@socket.TCPServer::accept()")
   (conn, addr)
 }
 
@@ -84,19 +87,24 @@ pub fn TCP::enable_keepalive(
     sock, idle_before_keep_alive, keep_alive_count, keep_alive_interval,
   )
   if ret < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("@socket.TCP::enable_keepalive()")
   }
 }
 
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn TCP::connect(addr : Addr) -> TCP {
-  let sock = make_tcp_socket()
+  let sock = make_tcp_socket("@socket.TCP::connect()")
   if disable_nagle(sock) < 0 {
-    @fd_util.close(sock)
-    @os_error.check_errno()
+    @fd_util.close(sock, context="@socket.TCP::connect()")
+    @os_error.check_errno("@socket.TCP::connect(): set TCP_NODELAY")
   }
-  try @event_loop.perform_job(Connect(sock~, addr=addr.0)) catch {
+  try
+    @event_loop.perform_job(
+      Connect(sock~, addr=addr.0),
+      context="@socket.TCP::connect",
+    )
+  catch {
     err => {
       @event_loop.close_fd(sock)
       raise err
@@ -124,11 +132,15 @@ pub impl @io.Reader for TCP with read(
   let TCP(sock) = self
   @event_loop.perform_job(
     Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+    context="@socket.TCP::read",
   )
 }
 
 ///|
 pub impl @io.Writer for TCP with write_once(self, buf, offset~, len~) {
   let TCP(sock) = self
-  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
+  @event_loop.perform_job(
+    Write(fd=sock, buf~, offset~, len~, can_poll=true),
+    context="@socket.TCP::write",
+  )
 }

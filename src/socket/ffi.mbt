@@ -16,13 +16,13 @@
 extern "C" fn make_tcp_socket_ffi() -> Int = "moonbitlang_async_make_tcp_socket"
 
 ///|
-fn make_tcp_socket() -> Int raise {
+fn make_tcp_socket(context : String) -> Int raise {
   let sock = make_tcp_socket_ffi()
   if sock < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
-  @fd_util.set_cloexec(sock)
-  @fd_util.set_nonblocking(sock)
+  @fd_util.set_cloexec(sock, context~)
+  @fd_util.set_nonblocking(sock, context~)
   sock
 }
 

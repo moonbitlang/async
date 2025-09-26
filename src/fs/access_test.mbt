@@ -23,7 +23,7 @@ async test "exists" {
   inspect(
     try? ignore(@fs.open("moon.mod.json.not_exist", mode=ReadOnly)),
     content=(
-      #|Err(OSError("No such file or directory"))
+      #|Err(OSError("@fs.open(): No such file or directory"))
     ),
   )
 }

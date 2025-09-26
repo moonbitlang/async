@@ -16,9 +16,9 @@
 extern "C" fn set_blocking_ffi(fd : Int) -> Int = "moonbitlang_async_set_blocking"
 
 ///|
-pub fn set_blocking(fd : Int) -> Unit raise {
+pub fn set_blocking(fd : Int, context~ : String) -> Unit raise {
   if set_blocking_ffi(fd) < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
 }
 
@@ -26,9 +26,9 @@ pub fn set_blocking(fd : Int) -> Unit raise {
 extern "C" fn set_nonblocking_ffi(fd : Int) -> Int = "moonbitlang_async_set_nonblocking"
 
 ///|
-pub fn set_nonblocking(fd : Int) -> Unit raise {
+pub fn set_nonblocking(fd : Int, context~ : String) -> Unit raise {
   if set_nonblocking_ffi(fd) < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
 }
 
@@ -36,9 +36,9 @@ pub fn set_nonblocking(fd : Int) -> Unit raise {
 extern "C" fn set_cloexec_ffi(fd : Int) -> Int = "moonbitlang_async_set_cloexec"
 
 ///|
-pub fn set_cloexec(fd : Int) -> Unit raise {
+pub fn set_cloexec(fd : Int, context~ : String) -> Unit raise {
   if set_cloexec_ffi(fd) < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
 }
 
@@ -47,14 +47,14 @@ pub fn set_cloexec(fd : Int) -> Unit raise {
 extern "C" fn pipe_ffi(fds : FixedArray[Int]) -> Int = "moonbitlang_async_pipe"
 
 ///|
-pub fn pipe() -> (Int, Int) raise {
+pub fn pipe(context : String) -> (Int, Int) raise {
   let fds : FixedArray[Int] = [0, 0]
   if 0 != pipe_ffi(fds) {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
   guard fds is [r, w]
-  set_cloexec(r)
-  set_cloexec(w)
+  set_cloexec(r, context~)
+  set_cloexec(w, context~)
   (r, w)
 }
 
@@ -62,8 +62,8 @@ pub fn pipe() -> (Int, Int) raise {
 extern "C" fn close_ffi(fd : Int) -> Int = "close"
 
 ///|
-pub fn close(fd : Int) -> Unit raise {
+pub fn close(fd : Int, context~ : String) -> Unit raise {
   if close_ffi(fd) < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno(context)
   }
 }

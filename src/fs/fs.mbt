@@ -111,10 +111,10 @@ pub async fn open(
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
   let job = @event_loop.Open(path=filename, flags~, mode=user_mode)
-  let fd = @event_loop.perform_job(job)
+  let fd = @event_loop.perform_job(job, context="@fs.open()")
   let kind = get_file_kind_ffi(fd)
   if kind < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("@fs.open(): get file kind")
   }
   { fd, kind: FileKind::unsafe_from_int(kind) }
 }
@@ -157,6 +157,7 @@ pub impl @io.Reader for File with read(
   let can_poll = self.kind.can_poll()
   @event_loop.perform_job(
     Read(fd=self.fd, buf~, offset~, len=max_len, can_poll~),
+    context="@fs.File::read()",
   )
 }
 
@@ -191,7 +192,7 @@ pub impl @io.Reader for File with read_all(self) {
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
   let job = @event_loop.Write(fd=self.fd, buf~, offset~, len~, can_poll~)
-  @event_loop.perform_job(job)
+  @event_loop.perform_job(job, context="@fs.File::write()")
 }
 
 ///|
@@ -199,7 +200,7 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 pub async fn remove(path : String) -> Unit {
   let path = @encoding/utf8.encode(path)
   let job = @event_loop.Remove(path~)
-  ignore(@event_loop.perform_job(job))
+  ignore(@event_loop.perform_job(job, context="@fs.remove()"))
 }
 
 ///|
@@ -225,7 +226,7 @@ extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = 
 pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise {
   let offset = lseek_ffi(self.fd, offset, mode)
   if offset < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("@fs.File::seek()")
   }
   offset
 }
@@ -255,7 +256,7 @@ extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 pub fn File::as_dir(self : File) -> Directory raise {
   let dir = as_dir_ffi(self.fd)
   if dir.is_null() {
-    @os_error.check_errno()
+    @os_error.check_errno("@fs.File::as_dir()")
   }
   dir
 }

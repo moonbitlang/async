@@ -22,10 +22,10 @@ struct UDP(Int)
 pub fn UDP::new() -> UDP raise {
   let sock = make_udp_socket()
   if sock < 0 {
-    @os_error.check_errno()
+    @os_error.check_errno("@socket.UDP::new()")
   }
-  @fd_util.set_cloexec(sock)
-  @fd_util.set_nonblocking(sock)
+  @fd_util.set_cloexec(sock, context="@socket.UDP::new()")
+  @fd_util.set_nonblocking(sock, context="@socket.UDP::new()")
   UDP(sock)
 }
 
@@ -41,7 +41,7 @@ pub fn UDP::close(self : UDP) -> Unit {
 pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
   if 0 != bind_ffi(sock, addr) {
-    @os_error.check_errno()
+    @os_error.check_errno("@socket.UDP::bind()")
   }
 }
 
@@ -51,7 +51,7 @@ pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
 pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
   if 0 != connect_ffi(sock, addr) {
-    @os_error.check_errno()
+    @os_error.check_errno("@socket.UDP::connect()")
   }
 }
 
@@ -78,6 +78,7 @@ pub async fn UDP::recv(
   let UDP(sock) = self
   @event_loop.perform_job(
     Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+    context="@socket.UDP::recv",
   )
 }
 
@@ -106,6 +107,7 @@ pub async fn UDP::recvfrom(
   let addr = Addr::new(0, 0)
   let n_read = @event_loop.perform_job(
     Recvfrom(sock~, buf~, offset~, len=max_len, addr=addr.0),
+    context="@socket.UDP::recvfrom",
   )
   (n_read, addr)
 }
@@ -126,7 +128,10 @@ pub async fn UDP::send(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UDP(sock) = self
-  @event_loop.perform_job(Write(fd=sock, buf~, offset~, len~, can_poll=true))
+  @event_loop.perform_job(
+    Write(fd=sock, buf~, offset~, len~, can_poll=true),
+    context="@socket.UDP::send",
+  )
   |> ignore
 }
 
@@ -148,6 +153,9 @@ pub async fn UDP::sendto(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UDP(sock) = self
-  @event_loop.perform_job(Sendto(sock~, buf~, offset~, len~, addr=addr.0))
+  @event_loop.perform_job(
+    Sendto(sock~, buf~, offset~, len~, addr=addr.0),
+    context="@socket.UDP::sendto",
+  )
   |> ignore
 }
