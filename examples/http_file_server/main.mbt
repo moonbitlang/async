@@ -23,22 +23,16 @@ async fn serve_directory(
   conn
   ..send_response(200, "OK", extra_headers={ "Content-Type": "text/html" })
   ..write("<!DOCTYPE html><html><head></head><body>")
-  ..write_string("<h1>\{path}</h1>\n", encoding=UTF8)
+  ..write("<h1>\{path}</h1>\n")
   ..write("<div style=\"margin: 1em; font-size: 15pt\">")
-  ..write_string(
-    "<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n",
-    encoding=UTF8,
-  )
+  ..write("<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n")
   if path[:-1].rev_find("/") is Some(index) {
     let parent : StringView = if index == 0 { "/" } else { path[:index] }
-    conn.write_string("<a href=\"\{parent}\">..</a><br/><br/>\n", encoding=UTF8)
+    conn.write("<a href=\"\{parent}\">..</a><br/><br/>\n")
   }
   for file in files {
     let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
-    conn.write_string(
-      "<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n",
-      encoding=UTF8,
-    )
+    conn.write("<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n")
   }
   conn..write("</div></body></html>")..end_response()
 }

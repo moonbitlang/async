@@ -17,7 +17,7 @@ async test "text file" {
   @async.with_task_group(fn(root) {
     let path = "basic_text_file_test"
     root.add_defer(() => @fs.remove(path))
-    @fs.write_text_file(path, "abcd", encoding=UTF8, create=0o644)
-    inspect(@fs.read_text_file(path, encoding=UTF8), content="abcd")
+    @fs.write_file(path, "abcd", create=0o644)
+    inspect(@fs.read_file(path).text(), content="abcd")
   })
 }

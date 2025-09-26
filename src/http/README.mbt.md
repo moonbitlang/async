@@ -82,7 +82,7 @@ pub async fn server(listen_addr : @socket.Addr) -> Unit {
           conn.skip_request_body()
           conn
           ..send_response(404, "NotFound")
-          ..write_string("`\{request.path}` not found", encoding=UTF8)
+          ..write("`\{request.path}` not found")
           ..end_response()
         }
       })

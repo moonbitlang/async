@@ -38,7 +38,7 @@ async fn server(println : Printer) -> Unit {
             let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
             println("server received: \{@encoding/utf8.decode(msg)}")
             let reply = "pong"
-            conn.write_string(reply, encoding=UTF8)
+            conn.write(reply)
             println("server sent: \{reply}")
             if msg == b"exit" {
               println("server initiate terminate")
@@ -68,7 +68,7 @@ async fn client(println : Printer, id : Int, msg : String) -> Unit {
   // with server side "received connection" message
   @async.sleep(10)
   println("client \{id}: connection established")
-  conn.write_string(msg, encoding=UTF8)
+  conn.write(msg)
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   if conn.read(buf) is n && n > 0 {
