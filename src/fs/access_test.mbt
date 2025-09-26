@@ -15,7 +15,17 @@
 ///|
 async test "exists" {
   assert_true(@fs.exists("moon.mod.json"))
+  inspect(
+    try? ignore(@fs.open("moon.mod.json", mode=ReadOnly)),
+    content="Ok(())",
+  )
   assert_false(@fs.exists("moon.mod.json.not_exist"))
+  inspect(
+    try? ignore(@fs.open("moon.mod.json.not_exist", mode=ReadOnly)),
+    content=(
+      #|Err(OSError("No such file or directory"))
+    ),
+  )
 }
 
 ///|
