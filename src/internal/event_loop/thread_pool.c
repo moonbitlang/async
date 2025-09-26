@@ -537,6 +537,8 @@ void free_job(void *jobp) {
     moonbit_decref(job->payload.spawn.path);
     moonbit_decref(job->payload.spawn.args);
     moonbit_decref(job->payload.spawn.envp);
+    if (job->payload.spawn.cwd)
+      moonbit_decref(job->payload.spawn.cwd);
     break;
   case OP_GETADDRINFO:
     moonbit_decref(job->payload.getaddrinfo.hostname);
