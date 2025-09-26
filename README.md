@@ -13,7 +13,7 @@ WARNING: this library is current experimental, API is subjected to future change
 ## Installation
 In your MoonBit project root, run:
 ```bash
-moon add moonbitlang/async@0.7.0
+moon add moonbitlang/async@0.8.0
 ```
 This library provides the following packages:
 
