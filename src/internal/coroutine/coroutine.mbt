@@ -94,18 +94,6 @@ pub async fn suspend() -> Unit {
 }
 
 ///|
-pub async fn sleep(duration : Int) -> Unit {
-  let timer = Timer::new(duration, current_coroutine())
-  scheduler.timers.add(timer)
-  suspend() catch {
-    err => {
-      scheduler.timers.remove(timer)
-      raise err
-    }
-  }
-}
-
-///|
 pub fn spawn(f : async () -> Unit) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {

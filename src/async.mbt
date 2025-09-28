@@ -28,7 +28,7 @@ pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit) -> Unit raise {
 /// `sleep` will wait for the given time (in milliseconds) before returning.
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
-pub fnalias @coroutine.sleep
+pub fnalias @event_loop.sleep
 
 ///|
 /// Pause current task and give other tasks chance to execute.

@@ -13,43 +13,11 @@
 // limitations under the License.
 
 ///|
-#valtype
-priv struct Timer {
-  timer_id : Int
-  expire_time : Int64
-  coro : Coroutine
-}
-
-///|
-let timer_id : Ref[Int] = { val: 0 }
-
-///|
-fn Timer::new(duration : Int, coro : Coroutine) -> Timer {
-  let expire_time = @time.ms_since_epoch() + duration.to_int64()
-  timer_id.val += 1
-  { timer_id: timer_id.val, expire_time, coro }
-}
-
-///|
-impl Eq for Timer with equal(t1, t2) {
-  t1.timer_id == t2.timer_id
-}
-
-///|
-impl Compare for Timer with compare(t1, t2) {
-  match t1.expire_time.compare(t2.expire_time) {
-    0 => t1.timer_id.compare(t2.timer_id)
-    o => o
-  }
-}
-
-///|
 priv struct Scheduler {
   mut coro_id : Int
   mut curr_coro : Coroutine?
   mut blocking : Int
   run_later : @deque.Deque[Coroutine]
-  timers : @sorted_set.SortedSet[Timer]
 }
 
 ///|
@@ -58,7 +26,6 @@ let scheduler : Scheduler = {
   curr_coro: None,
   blocking: 0,
   run_later: @deque.new(),
-  timers: @sorted_set.new(),
 }
 
 ///|
@@ -67,35 +34,17 @@ pub fn current_coroutine() -> Coroutine {
 }
 
 ///|
-pub fn idle_timeout() -> Int64? {
-  if not(scheduler.run_later.is_empty()) {
-    Some(0)
-  } else if scheduler.timers.iter().head() is Some(timer) {
-    Some(@cmp.maximum(timer.expire_time - @time.ms_since_epoch(), 0))
-  } else {
-    None
-  }
+pub fn has_immediately_ready_task() -> Bool {
+  !scheduler.run_later.is_empty()
 }
 
 ///|
 pub fn no_more_work() -> Bool {
-  scheduler.blocking == 0 &&
-  scheduler.run_later.is_empty() &&
-  scheduler.timers.is_empty()
-}
-
-///|
-fn Scheduler::flush_timer(scheduler : Scheduler) -> Unit {
-  while scheduler.timers.iter().head() is Some(timer) &&
-        timer.expire_time <= @time.ms_since_epoch() {
-    scheduler.timers.remove(timer)
-    timer.coro.wake()
-  }
+  scheduler.blocking == 0 && scheduler.run_later.is_empty()
 }
 
 ///|
 pub fn reschedule() -> Unit {
-  scheduler.flush_timer()
   while scheduler.run_later.pop_front() is Some(coro) {
     coro.ready = false
     guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
@@ -108,6 +57,5 @@ pub fn reschedule() -> Unit {
       ok_cont(())
     }
     scheduler.curr_coro = last_coro
-    scheduler.flush_timer()
   }
 }

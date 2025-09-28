@@ -3,7 +3,8 @@
     "moonbitlang/async/os_error",
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
-    "moonbitlang/async/internal/c_buffer"
+    "moonbitlang/async/internal/c_buffer",
+    "moonbitlang/async/internal/time"
   ],
   "test-import": [
     "moonbitlang/async/fs"

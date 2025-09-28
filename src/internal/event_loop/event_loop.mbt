@@ -23,6 +23,7 @@ priv struct EventLoop {
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
+  timers : @sorted_set.SortedSet[Timer]
 }
 
 ///|
@@ -96,6 +97,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     idle_workers: @deque.new(),
     running_workers: {},
     jobs: {},
+    timers: @sorted_set.new(),
   }
   defer evloop.poll.destroy()
   evloop.poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent)
@@ -131,13 +133,21 @@ async fn EventLoop::poll(self : Self) -> Bool {
   if @coroutine.no_more_work() && self.running_workers.is_empty() {
     return false
   }
-  let timeout = match @coroutine.idle_timeout() {
-    Some(t) => t.to_int()
-    None => -1
+  let timeout = if @coroutine.has_immediately_ready_task() {
+    0
+  } else if self.timers.iter().head() is Some(timer) {
+    @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
+  } else {
+    -1
   }
   let n = self.poll.wait(timeout~)
   if n < 0 {
     @os_error.check_errno("runtime internal: poll_wait")
+  }
+  let now = @time.ms_since_epoch()
+  while self.timers.iter().head() is Some(timer) && timer.expire_time <= now {
+    self.timers.remove(timer)
+    timer.coro.wake()
   }
   for i in 0..<n {
     let event = get_event(i)
@@ -231,6 +241,19 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
+pub async fn sleep(duration : Int) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  let timer = Timer::new(duration, @coroutine.current_coroutine())
+  evloop.timers.add(timer)
+  @coroutine.suspend() catch {
+    err => {
+      evloop.timers.remove(timer)
+      raise err
+    }
+  }
+}
+
+///|
 fn prepare_fd_read(fd : Int) -> FdHandle raise {
   guard curr_loop.val is Some(evloop)
   let handle = match evloop.fds.get(fd) {
@@ -309,7 +332,7 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
   }
   let coro = @coroutine.current_coroutine()
   handle.write = Waiting(coro)
-  ignore(@coroutine.suspend()) catch {
+  @coroutine.suspend() catch {
     err => {
       if handle.write is Waiting(_) {
         handle.write = NotSure
