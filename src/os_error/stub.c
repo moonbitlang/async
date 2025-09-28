@@ -15,6 +15,7 @@
  */
 
 #include <errno.h>
+#include <string.h>
 
 int moonbitlang_async_get_errno() {
   return errno;
@@ -22,4 +23,8 @@ int moonbitlang_async_get_errno() {
 
 int moonbitlang_async_is_nonblocking_io_error(int err) {
   return err == EAGAIN || err == EINPROGRESS || err == EWOULDBLOCK;
+}
+
+char *moonbitlang_async_errno_to_string(int err) {
+  return strerror(err);
 }

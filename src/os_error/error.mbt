@@ -24,7 +24,7 @@ pub fn is_nonblocking_io_error() -> Bool {
 }
 
 ///|
-extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "strerror"
+extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_errno_to_string"
 
 ///|
 pub(all) suberror OSError {
