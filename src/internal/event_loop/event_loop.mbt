@@ -27,17 +27,10 @@ priv struct EventLoop {
 }
 
 ///|
-priv enum EventStatus {
-  NotSure
-  Ready
-  Waiting(@coroutine.Coroutine)
-}
-
-///|
 priv struct FdHandle {
   mut events : Int
-  mut read : EventStatus
-  mut write : EventStatus
+  mut read : @coroutine.Coroutine?
+  mut write : @coroutine.Coroutine?
 }
 
 ///|
@@ -185,30 +178,13 @@ async fn EventLoop::poll(self : Self) -> Bool {
         }
       }
     } else if self.fds.get(fd) is Some(handle) {
-      // There is one corner case here: to support precise timer,
-      // we perform a `@coroutine.reschedule` immediately after polling.
-      // However, if a file descriptor is closed during this rescheduling,
-      // it will be removed from `self.fds`, but we can still see it here,
-      // because the poll returns *before* the close
-      if (events & ReadEvent) != 0 {
-        match handle.read {
-          Ready => ()
-          NotSure => handle.read = Ready
-          Waiting(coro) => {
-            handle.read = NotSure
-            coro.wake()
-          }
-        }
+      if (events & ReadEvent) != 0 && handle.read is Some(coro) {
+        handle.read = None
+        coro.wake()
       }
-      if (events & WriteEvent) != 0 {
-        match handle.write {
-          Ready => ()
-          NotSure => handle.write = Ready
-          Waiting(coro) => {
-            handle.write = NotSure
-            coro.wake()
-          }
-        }
+      if (events & WriteEvent) != 0 && handle.write is Some(coro) {
+        handle.write = None
+        coro.wake()
       }
     }
   }
@@ -225,7 +201,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
   })
   @coroutine.reschedule()
   for fd, handle in self.fds {
-    guard not(handle.read is Waiting(_)) && not(handle.write is Waiting(_))
+    guard handle.read is None && handle.write is None
     if not(handle.events is NoEvent) {
       // if `poll_register` fails, `handle.events` may be `NoEvent`,
       // in this case we have never added it to the poller,
@@ -258,13 +234,12 @@ fn prepare_fd_read(fd : Int) -> FdHandle raise {
   guard curr_loop.val is Some(evloop)
   let handle = match evloop.fds.get(fd) {
     None => {
-      let handle = { read: NotSure, write: NotSure, events: NoEvent }
+      let handle = { read: None, write: None, events: NoEvent }
       evloop.fds[fd] = handle
       handle
     }
     Some(handle) => handle
   }
-  guard not(handle.read is Waiting(_))
   if (handle.events & ReadEvent) == 0 {
     evloop.poll.register(
       fd,
@@ -273,8 +248,6 @@ fn prepare_fd_read(fd : Int) -> FdHandle raise {
       oneshot=false,
     )
     handle.events = handle.events | ReadEvent
-  } else {
-    handle.read = NotSure
   }
   handle
 }
@@ -282,16 +255,11 @@ fn prepare_fd_read(fd : Int) -> FdHandle raise {
 ///|
 async fn FdHandle::wait_read(handle : FdHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
-  if handle.read is Ready {
-    handle.read = NotSure
-    return
-  }
-  handle.read = Waiting(@coroutine.current_coroutine())
+  guard handle.read is None
+  handle.read = Some(@coroutine.current_coroutine())
   @coroutine.suspend() catch {
     err => {
-      if handle.read is Waiting(_) {
-        handle.read = NotSure
-      }
+      handle.read = None
       raise err
     }
   }
@@ -302,13 +270,12 @@ fn prepare_fd_write(fd : Int) -> FdHandle raise {
   guard curr_loop.val is Some(evloop)
   let handle = match evloop.fds.get(fd) {
     None => {
-      let handle = { read: NotSure, write: NotSure, events: NoEvent }
+      let handle = { read: None, write: None, events: NoEvent }
       evloop.fds[fd] = handle
       handle
     }
     Some(handle) => handle
   }
-  guard not(handle.write is Waiting(_))
   if (handle.events & WriteEvent) == 0 {
     evloop.poll.register(
       fd,
@@ -317,8 +284,6 @@ fn prepare_fd_write(fd : Int) -> FdHandle raise {
       oneshot=false,
     )
     handle.events = handle.events | WriteEvent
-  } else {
-    handle.write = NotSure
   }
   handle
 }
@@ -326,17 +291,12 @@ fn prepare_fd_write(fd : Int) -> FdHandle raise {
 ///|
 async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
   guard (handle.events & WriteEvent) != 0
-  if handle.write is Ready {
-    handle.write = NotSure
-    return
-  }
+  guard handle.write is None
   let coro = @coroutine.current_coroutine()
-  handle.write = Waiting(coro)
+  handle.write = Some(coro)
   @coroutine.suspend() catch {
     err => {
-      if handle.write is Waiting(_) {
-        handle.write = NotSure
-      }
+      handle.write = None
       raise err
     }
   }
