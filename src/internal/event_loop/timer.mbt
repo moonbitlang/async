@@ -13,17 +13,32 @@
 // limitations under the License.
 
 ///|
-test "readdir clear errno" {
-  @event_loop.with_event_loop(fn() {
-    // do something to set a non-zero errno
-    try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
-      _ => ()
-    } noraise {
-      _ => ()
-    }
-    let dir = @fs.opendir("src/internal/event_loop")
-    defer dir.close()
-    let list = dir.read_all()
-    inspect(list.length(), content="11")
-  })
+#valtype
+priv struct Timer {
+  timer_id : Int
+  expire_time : Int64
+  coro : @coroutine.Coroutine
+}
+
+///|
+let timer_id : Ref[Int] = { val: 0 }
+
+///|
+fn Timer::new(duration : Int, coro : @coroutine.Coroutine) -> Timer {
+  let expire_time = @time.ms_since_epoch() + duration.to_int64()
+  timer_id.val += 1
+  { timer_id: timer_id.val, expire_time, coro }
+}
+
+///|
+impl Eq for Timer with equal(t1, t2) {
+  t1.timer_id == t2.timer_id
+}
+
+///|
+impl Compare for Timer with compare(t1, t2) {
+  match t1.expire_time.compare(t2.expire_time) {
+    0 => t1.timer_id.compare(t2.timer_id)
+    o => o
+  }
 }

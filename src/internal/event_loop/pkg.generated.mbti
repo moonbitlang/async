@@ -12,6 +12,8 @@ async fn perform_job(Job, context~ : String) -> Int
 
 fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
 
+async fn sleep(Int) -> Unit
+
 fn with_event_loop(async () -> Unit) -> Unit raise
 
 // Errors

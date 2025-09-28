@@ -4,7 +4,7 @@ package "moonbitlang/async/internal/coroutine"
 // Values
 fn current_coroutine() -> Coroutine
 
-fn idle_timeout() -> Int64?
+fn has_immediately_ready_task() -> Bool
 
 fn is_being_cancelled() -> Bool
 
@@ -15,8 +15,6 @@ async fn pause() -> Unit
 async fn protect_from_cancel(async () -> Unit) -> Unit
 
 fn reschedule() -> Unit
-
-async fn sleep(Int) -> Unit
 
 fn spawn(async () -> Unit) -> Coroutine
 
