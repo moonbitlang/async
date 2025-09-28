@@ -138,9 +138,12 @@ async fn EventLoop::poll(self : Self) -> Bool {
     @os_error.check_errno("runtime internal: poll_wait")
   }
   let now = @time.ms_since_epoch()
-  while self.timers.iter().head() is Some(timer) && timer.expire_time <= now {
-    self.timers.remove(timer)
-    timer.coro.wake()
+  for timer in self.timers {
+    if timer.expire_time <= now {
+      timer.coro.wake()
+    } else {
+      break
+    }
   }
   for i in 0..<n {
     let event = get_event(i)
@@ -148,15 +151,13 @@ async fn EventLoop::poll(self : Self) -> Bool {
     let fd = event.fd()
     if (events & ProcessEvent) != 0 {
       if self.pids.get(fd) is Some(handle) {
+        handle.waiter.wake()
         let result = @ref.new(0)
         if event.pid_status(result) < 0 {
           @os_error.check_errno("runtime internal: get PID status")
         }
         handle.result = result.val
-        self.pids.remove(fd)
-        handle.waiter.wake()
       }
-      self.poll.remove_pid(fd)
     } else if fd == self.notify_recv {
       while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
         guard self.running_workers.get(job_id) is Some(worker)
@@ -169,7 +170,6 @@ async fn EventLoop::poll(self : Self) -> Bool {
           }
         }
         if self.jobs.get(job_id) is Some(coro) {
-          self.jobs.remove(job_id)
           coro.wake()
         }
       } else {
@@ -179,11 +179,9 @@ async fn EventLoop::poll(self : Self) -> Bool {
       }
     } else if self.fds.get(fd) is Some(handle) {
       if (events & ReadEvent) != 0 && handle.read is Some(coro) {
-        handle.read = None
         coro.wake()
       }
       if (events & WriteEvent) != 0 && handle.write is Some(coro) {
-        handle.write = None
         coro.wake()
       }
     }
@@ -221,12 +219,8 @@ pub async fn sleep(duration : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
   let timer = Timer::new(duration, @coroutine.current_coroutine())
   evloop.timers.add(timer)
-  @coroutine.suspend() catch {
-    err => {
-      evloop.timers.remove(timer)
-      raise err
-    }
-  }
+  defer evloop.timers.remove(timer)
+  @coroutine.suspend()
 }
 
 ///|
@@ -257,12 +251,10 @@ async fn FdHandle::wait_read(handle : FdHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
   guard handle.read is None
   handle.read = Some(@coroutine.current_coroutine())
-  @coroutine.suspend() catch {
-    err => {
-      handle.read = None
-      raise err
-    }
+  defer {
+    handle.read = None
   }
+  @coroutine.suspend()
 }
 
 ///|
@@ -294,12 +286,10 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
   guard handle.write is None
   let coro = @coroutine.current_coroutine()
   handle.write = Some(coro)
-  @coroutine.suspend() catch {
-    err => {
-      handle.write = None
-      raise err
-    }
+  defer {
+    handle.write = None
   }
+  @coroutine.suspend()
 }
 
 ///|
@@ -312,18 +302,11 @@ async fn wait_pid(pid : Int) -> Int {
   guard evloop.pids.get(alt_id) is None
   let handle = { result: 0, waiter: @coroutine.current_coroutine() }
   evloop.pids[alt_id] = handle
-  @coroutine.suspend() catch {
-    err => {
-      match evloop.pids.get(alt_id) {
-        None => ()
-        Some(_) => {
-          evloop.pids.remove(alt_id)
-          evloop.poll.remove_pid(alt_id)
-        }
-      }
-      raise err
-    }
+  defer {
+    evloop.pids.remove(alt_id)
+    evloop.poll.remove_pid(alt_id)
   }
+  @coroutine.suspend()
   handle.result
 }
 
@@ -363,13 +346,9 @@ async fn perform_job_in_worker(
     }
   }
   evloop.jobs[job.id()] = @coroutine.current_coroutine()
+  defer evloop.jobs.remove(job.id())
   if allow_cancel {
-    @coroutine.suspend() catch {
-      err => {
-        evloop.jobs.remove(job.id())
-        raise err
-      }
-    }
+    @coroutine.suspend()
   } else {
     @coroutine.protect_from_cancel(@coroutine.suspend)
   }

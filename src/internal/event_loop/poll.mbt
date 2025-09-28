@@ -107,9 +107,11 @@ extern "C" fn Instance::remove_pid_ffi(
 ) -> Int = "moonbitlang_async_poll_remove_pid"
 
 ///|
-fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit raise {
+fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit {
   if 0 != self.remove_pid_ffi(pid_handle) {
-    @os_error.check_errno("poll_remove_pid")
+    @os_error.check_errno("poll_remove_pid") catch {
+      err => abort(err.to_string())
+    }
   }
 }
 
