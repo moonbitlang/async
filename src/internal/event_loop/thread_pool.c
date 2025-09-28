@@ -36,6 +36,14 @@
 #ifdef __MACH__
 #include <sys/event.h>
 #define WAKEUP_METHOD_COND_VAR
+
+#include <Availability.h>
+#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+#define posix_spawn_file_actions_addchdir_np posix_spawn_file_actions_addchdir
+#endif
+#endif
+
 #else
 #define WAKEUP_METHOD_SIGNAL
 #endif
