@@ -275,6 +275,7 @@ async test "lazy drop" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
+      defer w.close()
       w.write("abcd")
       @async.sleep(20)
       w.write("efgh")

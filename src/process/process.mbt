@@ -167,6 +167,7 @@ pub async fn collect_stdout(
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
+    defer r.close()
     let exit_code = group.spawn(() => run(
       cmd,
       args,
@@ -198,6 +199,7 @@ pub async fn collect_stderr(
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
+    defer r.close()
     let exit_code = group.spawn(() => run(
       cmd,
       args,
@@ -230,6 +232,8 @@ pub async fn collect_output(
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group(fn(group) {
+    defer r_out.close()
+    defer r_err.close()
     let exit_code = group.spawn(() => run(
       cmd,
       args,
@@ -262,6 +266,7 @@ pub async fn collect_output_merged(
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
+    defer r.close()
     let exit_code = group.spawn(() => run(
       cmd,
       args,

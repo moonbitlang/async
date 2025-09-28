@@ -17,6 +17,7 @@ async test "read_all basic" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
+    defer r.close()
     root.spawn_bg(() => writer(log, w))
     inspect(r.read_all().text(), content="abcdefghijkl")
   })
@@ -26,6 +27,7 @@ async test "read_all basic" {
 async test "read_all large data" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
+    defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
       w.write(Bytes::make(4097, 0))
