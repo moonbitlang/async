@@ -22,6 +22,7 @@ async test "write large data" {
       w.write(data)
     })
     root.spawn_bg(fn() {
+      defer r.close()
       inspect(r.read_all().binary().length(), content="16384")
     })
   })
