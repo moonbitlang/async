@@ -122,10 +122,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
 }
 
 ///|
-async fn EventLoop::poll(self : Self) -> Bool {
-  if @coroutine.no_more_work() && self.running_workers.is_empty() {
-    return false
-  }
+fn EventLoop::poll(self : Self) -> Unit raise {
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if self.timers.iter().head() is Some(timer) {
@@ -186,32 +183,53 @@ async fn EventLoop::poll(self : Self) -> Bool {
       }
     }
   }
-  @coroutine.pause()
-  true
 }
 
 ///|
-fn EventLoop::run_forever(self : Self) -> Unit raise {
-  let _ = @coroutine.spawn(fn() {
-    while self.poll() {
-
-    }
-  })
-  @coroutine.reschedule()
+fn EventLoop::cleanup(self : Self) -> Unit raise {
   for fd, handle in self.fds {
-    guard handle.read is None && handle.write is None
+    if handle.read is Some(coro) {
+      coro.cancel()
+    }
+    if handle.write is Some(coro) {
+      coro.cancel()
+    }
     if not(handle.events is NoEvent) {
       // if `poll_register` fails, `handle.events` may be `NoEvent`,
       // in this case we have never added it to the poller,
       // so we must not remove it from the poller here
-      self.poll.remove(fd, events=handle.events) catch {
-        err => abort("detach \{fd} from loop: \{err}")
-      }
+      self.poll.remove(fd, events=handle.events)
     }
     @fd_util.close(fd, context="runtime internal: close leaking fd")
   }
-  guard self.pids.is_empty()
   self.fds.clear()
+  for _, coro in self.jobs {
+    coro.cancel()
+  }
+  for pid, handle in self.pids {
+    handle.waiter.cancel()
+    self.poll.remove_pid(pid)
+  }
+  self.pids.clear()
+}
+
+///|
+fn EventLoop::run_forever(self : Self) -> Unit raise {
+  let poll_coro = @coroutine.spawn(fn() {
+    while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
+      self.poll() catch {
+        err => {
+          self.cleanup()
+          raise err
+        }
+      }
+      @coroutine.pause()
+    } else {
+      self.cleanup()
+    }
+  })
+  @coroutine.reschedule()
+  poll_coro.unwrap()
 }
 
 ///|
