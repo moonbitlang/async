@@ -62,10 +62,10 @@ int moonbitlang_async_poll_register(
 }
 
 // return value:
-// - `-1`: error
-// - `0`: pid not terminated yet, pidfd will be stored in `out`
-// - `1`: pid already terminated, exit status will be stored in `out`
-int moonbitlang_async_poll_register_pid(int epfd, pid_t pid, int *out) {
+// - `>= 0`: success, return the pidfd
+// - `-1`: failure
+// - `-2`: already terminated
+int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
   int pidfd = syscall(SYS_pidfd_open, pid, 0);
   if (pidfd < 0)
     return -1;
@@ -77,11 +77,10 @@ int moonbitlang_async_poll_register_pid(int epfd, pid_t pid, int *out) {
   int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &event);
   if (ret < 0) {
     close(pidfd);
-    return ret;
+    return -1;
   }
 
-  *out = pidfd;
-  return 0;
+  return pidfd;
 }
 
 int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
@@ -126,17 +125,6 @@ int moonbitlang_async_event_get_events(struct epoll_event *ev) {
   return result;
 }
 
-int moonbitlang_async_event_get_pid_status(struct epoll_event *ev, int *out) {
-  int pid_fd = ev->data.u64 & ~pid_mask;
-  siginfo_t info;
-  int ret = waitid(P_PIDFD, pid_fd, &info, WEXITED | WSTOPPED | WNOHANG);
-  if (ret < 0)
-    return ret;
-
-  *out = info.si_status;
-  return 0;
-}
-
 // end of epoll backend
 #elif defined(__MACH__) || defined(BSD)
 
@@ -179,10 +167,10 @@ int moonbitlang_async_poll_register(
 }
 
 // return value:
-// - `-1`: error
-// - `0`: pid not terminated yet, pidfd will be stored in `out`
-// - `1`: pid already terminated, exit status will be stored in `out`
-int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid, int *out) {
+// - `>= 0`: success, return the pid itself
+// - `-1`: failure
+// - `-2`: pid already terminated
+int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid) {
   struct kevent event;
 #ifdef __MACH__
   EV_SET(&event, pid, EVFILT_PROC, EV_ADD, NOTE_EXITSTATUS, 0, 0);
@@ -190,20 +178,11 @@ int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid, int *out) {
   EV_SET(&event, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, 0);
 #endif
   int ret = kevent(kqfd, &event, 1, 0, 0, 0);
+
   if (ret >= 0) {
-    *out = pid;
-    return 0;
-  }
-
-  if (errno != ESRCH)
-    return ret;
-
-  // process already terminated
-  int wstatus;
-  ret = waitpid(pid, &wstatus, 0);
-  if (ret > 0) {
-    *out = WEXITSTATUS(wstatus);
-    return 1;
+    return pid;
+  } else if (errno == ESRCH) {
+    return -2;
   } else {
     return -1;
   }
@@ -250,12 +229,6 @@ int moonbitlang_async_event_get_events(struct kevent *ev) {
   if (ev->flags & EV_ERROR)
     return 3;
 
-  return 0;
-}
-
-int moonbitlang_async_event_get_pid_status(struct kevent *ev, int *out) {
-  int wstatus = ev->data;
-  *out = WEXITSTATUS(wstatus);
   return 0;
 }
 
