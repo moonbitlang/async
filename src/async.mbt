@@ -110,6 +110,9 @@ pub fnalias @time.ms_since_epoch as now
 pub typealias @aqueue.Queue
 
 ///|
+pub typealias @semaphore.Semaphore
+
+///|
 /// `RetryMethod` describes different retry strategies used by various APIs:
 ///
 /// - `Immediate`: failed task will immediately be restarted.

@@ -1,0 +1,162 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+async test "semaphore mutex" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let semaphore = @semaphore.Semaphore::new(1)
+    for i in 0..<3 {
+      root.spawn_bg(fn() {
+        semaphore.acquire()
+        log.write_string("task \{i} obtained resource\n")
+        @async.sleep(150)
+        semaphore.release()
+      })
+    }
+    @async.sleep(75)
+    for _ in 0..<3 {
+      log.write_string("tick\n")
+      @async.sleep(150)
+    }
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task 0 obtained resource
+      #|tick
+      #|task 1 obtained resource
+      #|tick
+      #|task 2 obtained resource
+      #|tick
+      #|
+    ),
+  )
+}
+
+///|
+async test "semaphore multiple value" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let semaphore = @semaphore.Semaphore::new(2)
+    for i in 0..<6 {
+      root.spawn_bg(fn() {
+        semaphore.acquire()
+        log.write_string("task \{i} obtained resource\n")
+        @async.sleep(150)
+        semaphore.release()
+      })
+    }
+    @async.sleep(75)
+    for _ in 0..<3 {
+      log.write_string("tick\n")
+      @async.sleep(150)
+    }
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task 0 obtained resource
+      #|task 1 obtained resource
+      #|tick
+      #|task 2 obtained resource
+      #|task 3 obtained resource
+      #|tick
+      #|task 4 obtained resource
+      #|task 5 obtained resource
+      #|tick
+      #|
+    ),
+  )
+}
+
+///|
+async test "semaphore cancellation" {
+  @async.with_task_group(fn(root) {
+    let semaphore = @semaphore.Semaphore::new(1)
+    root.spawn_bg(fn() {
+      semaphore.acquire()
+      @async.sleep(500)
+      semaphore.release()
+    })
+    inspect(
+      try? @async.with_timeout(250, () => semaphore.acquire()),
+      content="Err(TimeoutError)",
+    )
+    @async.sleep(500)
+    inspect(semaphore.try_acquire(), content="true")
+  })
+}
+
+///|
+async test "semaphore fairness" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let semaphore = @semaphore.Semaphore::new(2)
+    root.spawn_bg(fn() {
+      for _ in 0..<2 {
+        semaphore.acquire()
+        semaphore.acquire()
+        log.write_string("task 1 acquired resource\n")
+        @async.sleep(500)
+        semaphore.release()
+        semaphore.release()
+      }
+    })
+    root.spawn_bg(fn() {
+      @async.sleep(100)
+      for _ in 0..<2 {
+        semaphore.acquire()
+        log.write_string("task 2 acquired resource\n")
+        @async.sleep(500)
+        semaphore.release()
+      }
+    })
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      for _ in 0..<2 {
+        semaphore.acquire()
+        log.write_string("task 3 acquired resource\n")
+        @async.sleep(500)
+        semaphore.release()
+      }
+    })
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task 1 acquired resource
+      #|task 2 acquired resource
+      #|task 3 acquired resource
+      #|task 2 acquired resource
+      #|task 3 acquired resource
+      #|task 1 acquired resource
+      #|
+    ),
+  )
+}
+
+///|
+test "try_acquire" {
+  let semaphore = @semaphore.Semaphore::new(2, initial_value=0)
+  inspect(semaphore.try_acquire(), content="false")
+  semaphore.release()
+  inspect(semaphore.try_acquire(), content="true")
+  inspect(semaphore.try_acquire(), content="false")
+  semaphore.release()
+  semaphore.release()
+  inspect(semaphore.try_acquire(), content="true")
+  inspect(semaphore.try_acquire(), content="true")
+  inspect(semaphore.try_acquire(), content="false")
+}
