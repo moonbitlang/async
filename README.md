@@ -39,9 +39,12 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] pipe
 - [X] asynchronous file system operations
 - [X] process manipulation
+- [ ] signal handling
+- [ ] file system watching
 - [X] structured concurrency
 - [X] cooperative multi tasking
 - [X] IO worker thread
+- [X] native integration with the MoonBit language
 - [X] Linux support (`epoll`)
 - [X] MacOS support (`kqueue`)
 - [ ] Windows support
