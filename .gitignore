@@ -4,3 +4,7 @@ target/
 examples/target/
 examples/.mooncakes/
 .moonagent
+
+# CMake
+build/
+.cache
