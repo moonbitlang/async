@@ -16,7 +16,7 @@
 priv struct EventLoop {
   poll : Instance
   fds : Map[Int, FdHandle]
-  pids : Map[Int, ProcessHandle]
+  pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
   job_queue : @deque.Deque[JobForWorker]
@@ -31,12 +31,6 @@ priv struct FdHandle {
   mut events : Int
   mut read : @coroutine.Coroutine?
   mut write : @coroutine.Coroutine?
-}
-
-///|
-priv struct ProcessHandle {
-  mut result : Int
-  waiter : @coroutine.Coroutine
 }
 
 ///|
@@ -147,13 +141,8 @@ fn EventLoop::poll(self : Self) -> Unit raise {
     let events = event.events()
     let fd = event.fd()
     if (events & ProcessEvent) != 0 {
-      if self.pids.get(fd) is Some(handle) {
-        handle.waiter.wake()
-        let result = @ref.new(0)
-        if event.pid_status(result) < 0 {
-          @os_error.check_errno("runtime internal: get PID status")
-        }
-        handle.result = result.val
+      if self.pids.get(fd) is Some(coro) {
+        coro.wake()
       }
     } else if fd == self.notify_recv {
       while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
@@ -206,8 +195,8 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
   for _, coro in self.jobs {
     coro.cancel()
   }
-  for pid, handle in self.pids {
-    handle.waiter.cancel()
+  for pid, coro in self.pids {
+    coro.cancel()
     self.poll.remove_pid(pid)
   }
   self.pids.clear()
@@ -315,17 +304,16 @@ async fn wait_pid(pid : Int) -> Int {
   guard curr_loop.val is Some(evloop)
   let alt_id = match evloop.poll.register_pid(pid) {
     Running(id) => id
-    Stopped(ret) => return ret
+    Stopped => return 0
   }
   guard evloop.pids.get(alt_id) is None
-  let handle = { result: 0, waiter: @coroutine.current_coroutine() }
-  evloop.pids[alt_id] = handle
+  evloop.pids[alt_id] = @coroutine.current_coroutine()
   defer {
     evloop.pids.remove(alt_id)
     evloop.poll.remove_pid(alt_id)
   }
   @coroutine.suspend()
-  handle.result
+  0
 }
 
 ///|

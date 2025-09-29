@@ -56,17 +56,12 @@ fn Instance::register(
 }
 
 ///|
-#borrow(out)
-extern "C" fn Instance::register_pid_ffi(
-  self : Instance,
-  pid : Int,
-  out : Ref[Int],
-) -> Int = "moonbitlang_async_poll_register_pid"
+extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
 
 ///|
 priv enum RegisterPidResult {
   Running(Int)
-  Stopped(Int)
+  Stopped
 }
 
 ///|
@@ -74,15 +69,14 @@ fn Instance::register_pid(
   self : Instance,
   pid : Int,
 ) -> RegisterPidResult raise {
-  let out = @ref.new(0)
-  let ret = self.register_pid_ffi(pid, out)
-  if ret < 0 {
-    @os_error.check_errno("poll_register_pid")
-  }
-  if ret == 0 {
-    Running(out.val)
+  let ret = self.register_pid_ffi(pid)
+  if ret >= 0 {
+    Running(ret)
+  } else if ret == -2 {
+    Stopped
   } else {
-    Stopped(out.val)
+    @os_error.check_errno("poll_register_pid")
+    Stopped
   }
 }
 
@@ -127,10 +121,6 @@ extern "C" fn Event::fd(self : Event) -> Int = "moonbitlang_async_event_get_fd"
 
 ///|
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
-
-///|
-#borrow(out)
-extern "C" fn Event::pid_status(self : Event, out : Ref[Int]) -> Int = "moonbitlang_async_event_get_pid_status"
 
 ///|
 extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"

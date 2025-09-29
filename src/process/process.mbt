@@ -22,6 +22,10 @@ let curr_env : FixedArray[Bytes?] = get_curr_env()
 extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
 
 ///|
+#borrow(out)
+extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
+
+///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` are encoded using UTF8.
@@ -77,6 +81,7 @@ pub async fn run(
   for i in 0..<args.length() {
     argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
   }
+  let context = "@process.run()"
   let pid = {
       defer {
         if stdin is Some(p) {
@@ -91,21 +96,21 @@ pub async fn run(
       }
       let stdin = match stdin {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
+          @fd_util.set_blocking(pipe.fd(), context~)
           pipe.fd()
         }
         None => -1
       }
       let stdout = match stdout {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
+          @fd_util.set_blocking(pipe.fd(), context~)
           pipe.fd()
         }
         None => -1
       }
       let stderr = match stderr {
         Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context="@process.run()")
+          @fd_util.set_blocking(pipe.fd(), context~)
           pipe.fd()
         }
         None => -1
@@ -140,15 +145,21 @@ pub async fn run(
         stderr~,
         cwd~,
       )
-      @event_loop.perform_job(job, context="@process.run()")
+      @event_loop.perform_job(job, context~)
     }
-  @event_loop.perform_job(WaitProcess(pid), context="@process.run()") catch {
+  ignore(@event_loop.perform_job(WaitProcess(pid), context~)) catch {
     err if !orphan && @coroutine.is_being_cancelled() => {
       terminate_process(pid)
       raise err
     }
     err => raise err
   }
+  let out = @ref.new(0)
+  let ret = get_process_result(pid, out)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  out.val
 }
 
 ///|

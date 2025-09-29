@@ -40,6 +40,17 @@ moonbit_bytes_t *moonbitlang_async_get_curr_env() {
   return result;
 }
 
+int moonbitlang_async_get_process_result(pid_t pid, int *out) {
+  int wstatus;
+  int ret = waitpid(pid, &wstatus, 0);
+  if (ret > 0) {
+    *out = WEXITSTATUS(wstatus);
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
 void moonbitlang_async_terminate_process(pid_t pid) {
   kill(pid, SIGTERM);
 }
