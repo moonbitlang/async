@@ -13,12 +13,22 @@
 // limitations under the License.
 
 ///|
+priv struct Reader[X] {
+  // the value provided the reader.
+  // `value` must be `Some(_)` when the reader is woken
+  mut value : X?
+  // `None` indicates that the reader is cancelled
+  mut coro : @coroutine.Coroutine?
+}
+
+///|
 /// An asynchronous queue, where reader can wait for data to arrive
 /// in a non-blocking manner.
 /// The internal buffer size of this queue is unlimited,
 /// and writing to the queue will never block.
 struct Queue[X] {
-  readers : @deque.Deque[Ref[@coroutine.Coroutine?]]
+  readers : @deque.Deque[Reader[X]]
+  // invariant: if `buffer` is non-empty, `readers` must be empty
   buffer : @deque.Deque[X]
 }
 
@@ -33,11 +43,18 @@ pub fn[X] Queue::new() -> Queue[X] {
 /// If the queue is currently empty and there are readers blocked on this thread,
 /// one reader will be woken to process the data.
 pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
-  self.buffer.push_back(data)
   loop self.readers.pop_front() {
-    None => ()
-    Some({ val: None }) => continue self.readers.pop_front()
-    Some({ val: Some(reader) }) => reader.wake()
+    None => self.buffer.push_back(data)
+    Some({ coro: None, .. }) => continue self.readers.pop_front()
+    Some({ coro: Some(coro), .. } as reader) => {
+      // after waking the reader, it may not start execution immediately.
+      // And a lot of things could happen in the middle.
+      // So instead of using `self.buffer`,
+      // we pass `data` to the woker reader in a point-to-point manner
+      // to avoid some edge cases.
+      reader.value = Some(data)
+      coro.wake()
+    }
   }
 }
 
@@ -51,29 +68,18 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
 /// However, since `get` is a blocking point, the task running `get` may be cancelled,
 /// in this case, an cancellation will be raised from `get`.
 pub async fn[X] Queue::get(self : Queue[X]) -> X {
-  loop self.buffer.pop_front() {
-    Some(data) => {
-      // It is necessary to `pause` here for fairness.
-      // Assume there are multiple blocked readers, and now multiple element arrives,
-      // we expect this currently blocked readers to continue in
-      // first-come-first-serve manner. However, if the first woken reader continues
-      // reading, without pausing in the middle, it will receive extra data before
-      // the other blocked readers are woken, breaking fairness.
-      @coroutine.pause()
-      data
-    }
-    None => {
-      let reader = @ref.new(Some(@coroutine.current_coroutine()))
-      self.readers.push_back(reader)
-      @coroutine.suspend() catch {
-        err => {
-          reader.val = None
-          raise err
-        }
-      }
-      continue self.buffer.pop_front()
+  if self.buffer.pop_front() is Some(data) {
+    return data
+  }
+  let reader = { value: None, coro: Some(@coroutine.current_coroutine()) }
+  self.readers.push_back(reader)
+  @coroutine.suspend() catch {
+    err => {
+      reader.coro = None
+      raise err
     }
   }
+  reader.value.unwrap()
 }
 
 ///|
