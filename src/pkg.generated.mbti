@@ -50,5 +50,7 @@ fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, al
 // Type aliases
 pub typealias @moonbitlang/async/aqueue.Queue as Queue
 
+pub typealias @moonbitlang/async/semaphore.Semaphore as Semaphore
+
 // Traits
 

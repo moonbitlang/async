@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/semaphore"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Semaphore
+async fn Semaphore::acquire(Self) -> Unit
+fn Semaphore::new(Int, initial_value? : Int) -> Self
+fn Semaphore::release(Self) -> Unit
+fn Semaphore::try_acquire(Self) -> Bool
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,6 @@
+{
+  "import": [ "moonbitlang/async/internal/coroutine" ],
+  "test-import": [
+    "moonbitlang/async"
+  ]
+}
