@@ -149,3 +149,48 @@ pub async fn readdir(
   }
   list
 }
+
+///|
+/// `walk(path, f, ..)` recursively walk the directory `path`,
+/// and call `f` on every sub-directory in `path`, including `path` itself.
+///
+/// The directories are walked in parallel.
+/// Use `max_concurrency` to limit the number of workers spawned in parallel.
+/// For example, setting `max_concurrency=1` result in sequential walking.
+/// By default `max_concurrency` is set to a large value.
+///
+/// If `allow_failure` is `true` (`false` by default),
+/// error raised by `f` will be silently ignored.
+/// Otherwise, failure in `f` will stop the whole `walk`,
+/// cancelling the handling of other sub-directories.
+pub async fn walk(
+  path : String,
+  f : async (String, Array[String]) -> Unit,
+  max_concurrency? : Int = 1000,
+  allow_failure? : Bool = false,
+) -> Unit {
+  guard max_concurrency > 0
+  let sem = @semaphore.Semaphore::new(max_concurrency)
+  @async.with_task_group(fn(group) {
+    async fn handle_path(path) {
+      group.spawn_bg(allow_failure~, fn() {
+        sem.acquire()
+        defer sem.release()
+        let files = readdir(path)
+        for file in files {
+          let file_path = if path.length() > 0 && path[path.length() - 1] is '/' {
+            path + file
+          } else {
+            "\{path}/\{file}"
+          }
+          if kind(file_path) is Directory {
+            handle_path(file_path)
+          }
+        }
+        f(path, files)
+      })
+    }
+
+    handle_path(path)
+  })
+}
