@@ -21,14 +21,14 @@ async test "semaphore mutex" {
       root.spawn_bg(fn() {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
-        @async.sleep(150)
+        @async.sleep(300)
         semaphore.release()
       })
     }
-    @async.sleep(75)
+    @async.sleep(150)
     for _ in 0..<3 {
       log.write_string("tick\n")
-      @async.sleep(150)
+      @async.sleep(300)
     }
   })
   inspect(
@@ -54,14 +54,14 @@ async test "semaphore multiple value" {
       root.spawn_bg(fn() {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
-        @async.sleep(150)
+        @async.sleep(300)
         semaphore.release()
       })
     }
-    @async.sleep(75)
+    @async.sleep(150)
     for _ in 0..<3 {
       log.write_string("tick\n")
-      @async.sleep(150)
+      @async.sleep(300)
     }
   })
   inspect(
