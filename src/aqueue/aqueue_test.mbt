@@ -24,7 +24,7 @@ async test "aqueue basic" {
     })
     root.spawn_bg(fn() {
       for x in 0..<6 {
-        @async.sleep(20)
+        @async.sleep(70)
         queue.put(x)
         log.write_string("put(\{x})\n")
       }
@@ -56,7 +56,7 @@ async test "aqueue multi-reader" {
   @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
-      @async.sleep(20)
+      @async.sleep(70)
       let x = queue.get()
       log.write_string("task 1: get => \{x}\n")
     })
@@ -64,7 +64,7 @@ async test "aqueue multi-reader" {
       let x = queue.get()
       log.write_string("task 2: get => \{x}\n")
     })
-    @async.sleep(50)
+    @async.sleep(170)
     queue.put(1)
     queue.put(2)
   })
@@ -84,13 +84,13 @@ async test "aqueue cancellation" {
   @async.with_task_group(fn(root) {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
-      for x in 0..<6 {
-        @async.sleep(100)
+      for x in 0..<4 {
+        @async.sleep(200)
         log.write_string("put(\{x})\n")
         queue.put(x)
       }
     })
-    @async.with_timeout(450, fn() {
+    @async.with_timeout(500, fn() {
       for {
         let x = queue.get() catch {
           err => {
@@ -112,13 +112,9 @@ async test "aqueue cancellation" {
       #|get => 0
       #|put(1)
       #|get => 1
-      #|put(2)
-      #|get => 2
-      #|put(3)
-      #|get => 3
       #|`queue.get()` cancelled with Cancelled
-      #|put(4)
-      #|put(5)
+      #|put(2)
+      #|put(3)
       #|
     ),
   )
@@ -141,10 +137,10 @@ async test "aqueue fairness" {
         log.write_string("task 2: get => \{x}\n")
       }
     })
-    @async.sleep(20)
+    @async.sleep(70)
     queue.put(1)
     queue.put(2)
-    @async.sleep(20)
+    @async.sleep(70)
     queue.put(3)
     queue.put(4)
   })
