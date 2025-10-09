@@ -33,7 +33,7 @@ async test "walk parallel" {
     log.write_string("handling \{path}\n")
     @async.sleep(300)
     log.write_string("finished handling \{path}\n")
-    @async.sleep(50)
+    @async.sleep(100)
   })
   inspect(
     log.to_string(),
