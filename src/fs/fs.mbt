@@ -112,11 +112,7 @@ pub async fn open(
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
   let job = @event_loop.Open(path=filename, flags~, mode=user_mode)
   let fd = @event_loop.perform_job(job, context="@fs.open()")
-  let kind = get_file_kind_ffi(fd)
-  if kind < 0 {
-    @os_error.check_errno("@fs.open(): get file kind")
-  }
-  { fd, kind: FileKind::unsafe_from_int(kind) }
+  { fd, kind: Stat::from_fd(fd, context="@fs.open()").kind() }
 }
 
 ///|
@@ -270,20 +266,44 @@ fn FileKind::can_poll(self : FileKind) -> Bool {
 }
 
 ///|
-fn FileKind::unsafe_from_int(x : Int) -> FileKind = "%identity"
-
-///|
-extern "C" fn get_file_kind_ffi(fd : Int) -> Int = "moonbitlang_async_file_kind"
-
-///|
 pub fn File::kind(self : File) -> FileKind {
   self.kind
 }
 
 ///|
+/// Get the last access time of a file.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub fn File::atime(self : File) -> (Int64, Int) raise {
+  Stat::from_fd(self.fd, context="@fs.File::atime()").atime()
+}
+
+///|
+/// Get the last modification time of a file.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub fn File::mtime(self : File) -> (Int64, Int) raise {
+  Stat::from_fd(self.fd, context="@fs.File::mtime()").mtime()
+}
+
+///|
+/// Get the last status change time of a file.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub fn File::ctime(self : File) -> (Int64, Int) raise {
+  Stat::from_fd(self.fd, context="@fs.File::ctime()").ctime()
+}
+
+///|
 /// Read the contents of the file located at `path`.
-pub async fn read_file(path : String) -> &@io.Data {
-  let file = open(path, mode=ReadOnly)
+/// If `sync_timestamp` is `true` (`false` by default),
+/// `read_file` will block until timestamp change is written to the file system.
+pub async fn read_file(
+  path : String,
+  sync_timestamp? : Bool = false,
+) -> &@io.Data {
+  let sync_mode = if sync_timestamp { Full } else { NoSync }
+  let file = open(path, mode=ReadOnly, sync=sync_mode)
   defer file.close()
   file.read_all()
 }
