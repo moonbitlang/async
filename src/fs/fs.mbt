@@ -302,7 +302,7 @@ pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
 /// is the same as `open`, see `open` for more details.
 pub async fn write_file(
   path : String,
-  content : Bytes,
+  content : &@io.Data,
   sync? : SyncMode = Data,
   append? : Bool = false,
   create? : Int,
@@ -310,7 +310,7 @@ pub async fn write_file(
 ) -> Unit {
   let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
   defer file.close()
-  file.write(content)
+  file.write(content.binary())
 }
 
 ///|

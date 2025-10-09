@@ -39,7 +39,7 @@ async fn rmdir(String, recursive? : Bool) -> Unit
 
 async fn walk(String, async (String, Array[String]) -> Unit, max_concurrency? : Int, allow_failure? : Bool) -> Unit
 
-async fn write_file(String, Bytes, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+async fn write_file(String, &@io.Data, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 #deprecated
 async fn write_text_file(String, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
