@@ -14,6 +14,7 @@ fn run_async_main(async () -> Unit) -> Unit
 
 async fn sleep(Int) -> Unit
 
+#deprecated
 fn with_event_loop(async (TaskGroup[Unit]) -> Unit) -> Unit raise
 
 async fn[X] with_task_group(async (TaskGroup[X]) -> X) -> X

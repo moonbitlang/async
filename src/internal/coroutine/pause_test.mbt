@@ -15,24 +15,24 @@
 ///|
 test "coroutine ping-pong" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_event_loop(fn(root) {
-      root.spawn_bg(fn() {
+  @event_loop.with_event_loop(fn() {
+    @async.with_task_group(fn(group) {
+      group.spawn_bg(fn() {
         log.write_string("ping\n")
         @async.pause()
         log.write_string("ping\n")
         @async.pause()
         log.write_string("ping\n")
       })
-      root.spawn_bg(fn() {
+      group.spawn_bg(fn() {
         log.write_string("pong\n")
         @async.pause()
         log.write_string("pong\n")
         @async.pause()
         log.write_string("pong\n")
       })
-    }),
-  )
+    })
+  })
   inspect(
     log.to_string(),
     content=(
@@ -42,7 +42,7 @@ test "coroutine ping-pong" {
       #|pong
       #|ping
       #|pong
-      #|Ok(())
+      #|
     ),
   )
 }

@@ -20,6 +20,7 @@
 /// There can only one event loop running for every program,
 /// calling `with_event_loop` inside another event loop is invalid,
 /// and will result in immediate failure.
+#deprecated("use `async fn main` or `async test` instead")
 pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit) -> Unit raise {
   @event_loop.with_event_loop(() => with_task_group(f))
 }
