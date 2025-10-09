@@ -13,18 +13,32 @@
 // limitations under the License.
 
 ///|
-#borrow(stat)
-extern "C" fn file_kind_from_stat(stat : FixedArray[Byte]) -> FileKind = "moonbitlang_async_file_kind_from_stat"
-
-///|
-extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
-
-///|
 pub async fn kind(path : String) -> FileKind {
-  let path = @encoding/utf8.encode(path)
-  let stat = FixedArray::make(sizeof_stat(), b'0')
-  let _ = @event_loop.perform_job(Stat(path~, out=stat), context="@fs.kind()")
-  file_kind_from_stat(stat)
+  Stat::from_path(path, context="@fs.kind()").kind()
+}
+
+///|
+/// Get the last access time of a file at `path`.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub async fn atime(path : String) -> (Int64, Int) {
+  Stat::from_path(path, context="@fs.atime()").atime()
+}
+
+///|
+/// Get the last modification time of a file at `path`.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub async fn mtime(path : String) -> (Int64, Int) {
+  Stat::from_path(path, context="@fs.mtime()").mtime()
+}
+
+///|
+/// Get the last status change time of a file at `path`.
+/// The return value is a pair `(s, ns)`,
+/// representing the time of `s` seconds + `ns` nanoseconds.
+pub async fn ctime(path : String) -> (Int64, Int) {
+  Stat::from_path(path, context="@fs.ctime()").ctime()
 }
 
 ///|

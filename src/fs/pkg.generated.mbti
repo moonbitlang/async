@@ -6,6 +6,8 @@ import(
 )
 
 // Values
+async fn atime(String) -> (Int64, Int)
+
 async fn can_execute(String) -> Bool
 
 async fn can_read(String) -> Bool
@@ -14,17 +16,21 @@ async fn can_write(String) -> Bool
 
 async fn create(String, permission~ : Int, sync? : SyncMode) -> File
 
+async fn ctime(String) -> (Int64, Int)
+
 async fn exists(String) -> Bool
 
 async fn kind(String) -> FileKind
 
 async fn mkdir(String, permission~ : Int) -> Unit
 
+async fn mtime(String) -> (Int64, Int)
+
 async fn open(String, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
 
 fn opendir(String) -> Directory raise
 
-async fn read_file(String) -> &@io.Data
+async fn read_file(String, sync_timestamp? : Bool) -> &@io.Data
 
 #deprecated
 async fn read_text_file(String, encoding~ : @io.Encoding) -> String
@@ -53,10 +59,13 @@ async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bo
 
 type File
 fn File::as_dir(Self) -> Directory raise
+fn File::atime(Self) -> (Int64, Int) raise
 fn File::close(Self) -> Unit
+fn File::ctime(Self) -> (Int64, Int) raise
 fn File::curr_pos(Self) -> Int64 raise
 fn File::fd(Self) -> Int
 fn File::kind(Self) -> FileKind
+fn File::mtime(Self) -> (Int64, Int) raise
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise
 impl @io.Reader for File

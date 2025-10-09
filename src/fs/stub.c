@@ -113,3 +113,36 @@ int moonbitlang_async_get_ENOENT() {
 int moonbitlang_async_get_EACCES() {
   return EACCES;
 }
+
+#ifdef __MACH__
+#define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##timespec
+#else
+#define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##tim
+#endif
+
+void moonbitlang_async_atime_from_stat(
+  struct stat *stat,
+  int64_t *sec_out,
+  int32_t *nsec_out
+) {
+  *sec_out = GET_STAT_TIMESTAMP(stat, a).tv_sec;
+  *nsec_out = GET_STAT_TIMESTAMP(stat, a).tv_nsec;
+}
+
+void moonbitlang_async_mtime_from_stat(
+  struct stat *stat,
+  int64_t *sec_out,
+  int32_t *nsec_out
+) {
+  *sec_out = GET_STAT_TIMESTAMP(stat, m).tv_sec;
+  *nsec_out = GET_STAT_TIMESTAMP(stat, m).tv_nsec;
+}
+
+void moonbitlang_async_ctime_from_stat(
+  struct stat *stat,
+  int64_t *sec_out,
+  int32_t *nsec_out
+) {
+  *sec_out = GET_STAT_TIMESTAMP(stat, c).tv_sec;
+  *nsec_out = GET_STAT_TIMESTAMP(stat, c).tv_nsec;
+}
