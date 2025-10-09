@@ -298,15 +298,16 @@ pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
 
 ///|
 /// Write data to a file located at `path`.
-/// The meaning of `sync`, `append`, `create`, truncate`
-/// is the same as `open`, see `open` for more details.
+/// The meaning of `sync`, `append`, `create`, and `truncate`,
+/// is the same as `open`, except that `truncate` is `true` by default.
+/// See `open` for more details.
 pub async fn write_file(
   path : String,
   content : &@io.Data,
   sync? : SyncMode = Data,
   append? : Bool = false,
   create? : Int,
-  truncate? : Bool = false,
+  truncate? : Bool = true,
 ) -> Unit {
   let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
   defer file.close()
