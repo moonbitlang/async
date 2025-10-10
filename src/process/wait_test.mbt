@@ -43,3 +43,27 @@ async test "basic wait" {
 async test "wait exitcode" {
   inspect(@process.run("sh", ["-c", "exit 42"]), content="42")
 }
+
+///|
+async test "wait_pid" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(group) {
+    group.spawn_bg(fn() {
+      for _ in 0..<2 {
+        @async.sleep(800)
+        log.write_string("tick\n")
+      }
+    })
+    let pid = @process.spawn_orphan("sh", ["-c", "sleep 1; exit 42"])
+    log.write_string("process terminated with \{@process.wait_pid(pid)}\n")
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|tick
+      #|process terminated with 42
+      #|tick
+      #|
+    ),
+  )
+}

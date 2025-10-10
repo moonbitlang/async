@@ -58,12 +58,12 @@ async test "orphan process" {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
-      @process.run(
+      let pid = @process.spawn_orphan(
         "sh",
         ["-c", "echo first; sleep 1; echo second"],
         stdout=w,
-        orphan=true,
       )
+      @process.wait_pid(pid)
     })
     root.spawn_bg(fn() {
       defer r.close()
