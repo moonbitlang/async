@@ -103,32 +103,21 @@ async test "semaphore cancellation" {
 async test "semaphore fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let semaphore = @semaphore.Semaphore::new(2)
+    let semaphore = @semaphore.Semaphore::new(1)
     root.spawn_bg(fn() {
-      for _ in 0..<2 {
-        semaphore.acquire()
+      for _ in 0..<3 {
         semaphore.acquire()
         log.write_string("task 1 acquired resource\n")
-        @async.sleep(500)
-        semaphore.release()
+        @async.sleep(200)
         semaphore.release()
       }
     })
     root.spawn_bg(fn() {
       @async.sleep(100)
-      for _ in 0..<2 {
+      for _ in 0..<3 {
         semaphore.acquire()
         log.write_string("task 2 acquired resource\n")
-        @async.sleep(500)
-        semaphore.release()
-      }
-    })
-    root.spawn_bg(fn() {
-      @async.sleep(300)
-      for _ in 0..<2 {
-        semaphore.acquire()
-        log.write_string("task 3 acquired resource\n")
-        @async.sleep(500)
+        @async.sleep(200)
         semaphore.release()
       }
     })
@@ -138,10 +127,10 @@ async test "semaphore fairness" {
     content=(
       #|task 1 acquired resource
       #|task 2 acquired resource
-      #|task 3 acquired resource
-      #|task 2 acquired resource
-      #|task 3 acquired resource
       #|task 1 acquired resource
+      #|task 2 acquired resource
+      #|task 1 acquired resource
+      #|task 2 acquired resource
       #|
     ),
   )

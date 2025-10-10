@@ -157,6 +157,42 @@ async test "aqueue fairness" {
 }
 
 ///|
+async test "aqueue fairness2" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let queue = @aqueue.Queue::new()
+    queue.put(1)
+    root.spawn_bg(fn() {
+      for _ in 0..<2 {
+        let x = queue.get()
+        log.write_string("task 1: get => \{x}\n")
+        @async.sleep(200)
+        queue.put(x + 1)
+      }
+    })
+    root.spawn_bg(fn() {
+      @async.sleep(100)
+      for _ in 0..<2 {
+        let x = queue.get()
+        log.write_string("task 2: get => \{x}\n")
+        @async.sleep(200)
+        queue.put(x + 1)
+      }
+    })
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|task 1: get => 1
+      #|task 2: get => 2
+      #|task 1: get => 3
+      #|task 2: get => 4
+      #|
+    ),
+  )
+}
+
+///|
 test "try_get" {
   let q = @aqueue.Queue::new()
   inspect(q.try_get(), content="None")
