@@ -124,7 +124,7 @@ async test "semaphore fairness" {
       }
     })
     root.spawn_bg(fn() {
-      @async.sleep(200)
+      @async.sleep(300)
       for _ in 0..<2 {
         semaphore.acquire()
         log.write_string("task 3 acquired resource\n")
