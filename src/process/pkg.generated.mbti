@@ -21,7 +21,11 @@ async fn redirect_from_file(String) -> &ProcessInput
 
 async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
 
-async fn run(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String, orphan? : Bool) -> Int
+async fn run(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
+
+async fn spawn_orphan(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
+
+async fn wait_pid(Int) -> Int
 
 fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 

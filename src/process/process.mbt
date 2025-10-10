@@ -26,6 +26,144 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
 
 ///|
+async fn spawn(
+  cmd : String,
+  args : Array[String],
+  extra_env~ : Map[String, String],
+  inherit_env~ : Bool,
+  stdin~ : &ProcessInput?,
+  stdout~ : &ProcessOutput?,
+  stderr~ : &ProcessOutput?,
+  cwd~ : String?,
+  context~ : String,
+) -> Int {
+  let cmd = @encoding/utf8.encode(cmd)
+  let argv = FixedArray::make(args.length() + 2, None)
+  let cwd = match cwd {
+    None => None
+    Some(cwd) => Some(@encoding/utf8.encode(cwd))
+  }
+  argv[0] = Some(cmd)
+  for i in 0..<args.length() {
+    argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
+  }
+  defer {
+    if stdin is Some(p) {
+      p.after_spawn()
+    }
+    if stdout is Some(p) {
+      p.after_spawn()
+    }
+    if stderr is Some(p) {
+      p.after_spawn()
+    }
+  }
+  let stdin = match stdin {
+    Some(pipe) => {
+      @fd_util.set_blocking(pipe.fd(), context~)
+      pipe.fd()
+    }
+    None => -1
+  }
+  let stdout = match stdout {
+    Some(pipe) => {
+      @fd_util.set_blocking(pipe.fd(), context~)
+      pipe.fd()
+    }
+    None => -1
+  }
+  let stderr = match stderr {
+    Some(pipe) => {
+      @fd_util.set_blocking(pipe.fd(), context~)
+      pipe.fd()
+    }
+    None => -1
+  }
+  let extra_count = extra_env.size()
+  let env = match (inherit_env, extra_count) {
+    (true, 0) => curr_env
+    (false, 0) => [None]
+    (_, n) => {
+      let curr_env = if inherit_env { curr_env } else { [None] }
+      let envp = FixedArray::make(n + curr_env.length(), None)
+      let mut i = 0
+      for k, v in extra_env {
+        envp[i] = Some(@encoding/utf8.encode("\{k}=\{v}"))
+        i = i + 1
+      }
+      curr_env.blit_to(envp, src_offset=0, dst_offset=i, len=curr_env.length())
+      envp
+    }
+  }
+  let job = @event_loop.Spawn(
+    path=cmd,
+    args=argv,
+    env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+  )
+  @event_loop.perform_job(job, context~)
+}
+
+///|
+/// Execute a system process with command `cmd`,
+/// and provide `args` as extra arguments to `cmd.
+/// Both `cmd` and elements of `args` are encoded using UTF8.
+/// The process ID of the spawned process will be returned.
+///
+/// The spawned process would be *orphan*, meaning that it will
+/// keep running until completion or explicitly terminated,
+/// even if the task that calls `spawn_orphan` is cancelled.
+/// Users are recommended to use `@process.run` whenever possible,
+/// because `@process.run` has better structured concurrency integration.
+/// `spawn_orphan` should only be used when:
+///
+/// - the process is intended to be orphan,
+///   i.e. keep running after parent process terminates
+/// - operations on the process ID is needed, such as sending signals to the child process
+///
+/// The meaning of the arguments is the same as `@process.run`,
+/// see `@process.run` for more details.
+pub async fn spawn_orphan(
+  cmd : String,
+  args : Array[String],
+  extra_env? : Map[String, String] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  stdout? : &ProcessOutput,
+  stderr? : &ProcessOutput,
+  cwd? : String,
+) -> Int {
+  spawn(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    context="@process.spawn_orphan()",
+  )
+}
+
+///|
+/// Wait for the process with specfic ID to terminate,
+/// and return the exit code of the process.
+pub async fn wait_pid(pid : Int) -> Int {
+  let context = "@process.wait_pid()"
+  ignore(@event_loop.perform_job(WaitProcess(pid), context~))
+  let out = @ref.new(0)
+  let ret = get_process_result(pid, out)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  out.val
+}
+
+///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` are encoded using UTF8.
@@ -33,8 +171,7 @@ extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlan
 /// `run` will block until the new process terminates,
 /// and returns the exit status of the process.
 /// If current task is cancelled while blocking,
-/// the spawned process will be terminated via `SIGTERM`,
-/// unless `orphan` is `true` (`false` by default).
+/// the spawned process will be terminated via `SIGTERM`.
 /// To run the process in background, use `@async.spawn` or `@async.spawn_bg`.
 ///
 /// If `inherit_env` is `true` (`true` by default),
@@ -69,86 +206,21 @@ pub async fn run(
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : String,
-  orphan? : Bool = false,
 ) -> Int {
-  let cmd = @encoding/utf8.encode(cmd)
-  let argv = FixedArray::make(args.length() + 2, None)
-  let cwd = match cwd {
-    None => None
-    Some(cwd) => Some(@encoding/utf8.encode(cwd))
-  }
-  argv[0] = Some(cmd)
-  for i in 0..<args.length() {
-    argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
-  }
   let context = "@process.run()"
-  let pid = {
-      defer {
-        if stdin is Some(p) {
-          p.after_spawn()
-        }
-        if stdout is Some(p) {
-          p.after_spawn()
-        }
-        if stderr is Some(p) {
-          p.after_spawn()
-        }
-      }
-      let stdin = match stdin {
-        Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context~)
-          pipe.fd()
-        }
-        None => -1
-      }
-      let stdout = match stdout {
-        Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context~)
-          pipe.fd()
-        }
-        None => -1
-      }
-      let stderr = match stderr {
-        Some(pipe) => {
-          @fd_util.set_blocking(pipe.fd(), context~)
-          pipe.fd()
-        }
-        None => -1
-      }
-      let extra_count = extra_env.size()
-      let env = match (inherit_env, extra_count) {
-        (true, 0) => curr_env
-        (false, 0) => [None]
-        (_, n) => {
-          let curr_env = if inherit_env { curr_env } else { [None] }
-          let envp = FixedArray::make(n + curr_env.length(), None)
-          let mut i = 0
-          for k, v in extra_env {
-            envp[i] = Some(@encoding/utf8.encode("\{k}=\{v}"))
-            i = i + 1
-          }
-          curr_env.blit_to(
-            envp,
-            src_offset=0,
-            dst_offset=i,
-            len=curr_env.length(),
-          )
-          envp
-        }
-      }
-      let job = @event_loop.Spawn(
-        path=cmd,
-        args=argv,
-        env~,
-        stdin~,
-        stdout~,
-        stderr~,
-        cwd~,
-      )
-      @event_loop.perform_job(job, context~)
-    }
+  let pid = spawn(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    context~,
+  )
   ignore(@event_loop.perform_job(WaitProcess(pid), context~)) catch {
-    err if !orphan && @coroutine.is_being_cancelled() => {
+    err if @coroutine.is_being_cancelled() => {
       terminate_process(pid)
       raise err
     }
