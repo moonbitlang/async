@@ -9,7 +9,7 @@ Simple HTTP request can be made in just one line:
 async test {
   let (response, body) = @http.get("https://www.example.org")
   inspect(response.code, content="200")
-  inspect(body.binary().length(), content="1256")
+  assert_true(body.text().has_prefix("<!doctype html>"))
 }
 ```
 
@@ -47,7 +47,7 @@ async test {
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")
   let body = client.read_all()
-  inspect(body.binary().length(), content="1256")
+  assert_true(body.text().has_prefix("<!doctype html>"))
 }
 ```
 
