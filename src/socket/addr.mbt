@@ -24,7 +24,7 @@ extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
 
 ///|
 #borrow(ip)
-pub extern "C" fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int) -> Addr = "moonbitlang_async_make_ipv6_addr"
+extern "C" fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int) -> Addr = "moonbitlang_async_make_ipv6_addr"
 
 ///|
 #borrow(addr)
