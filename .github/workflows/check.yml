@@ -37,10 +37,11 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release
-          moon test
-          moon test --release -C examples
-          moon test -C examples
+          # Run test with --test-failure-json to avoid the output with colors can't be rendered properly in GitHub Actions
+          moon test --release --test-failure-json
+          moon test --test-failure-json
+          moon test --release -C examples --test-failure-json
+          moon test -C examples --test-failure-json
 
   nightly-build:
     strategy:
@@ -78,10 +79,11 @@ jobs:
 
       - name: moon test
         run: |
-          moon test --release
-          moon test
-          moon test --release -C examples
-          moon test -C examples
+          # Run test with --test-failure-json to avoid the output with colors can't be rendered properly in GitHub Actions
+          moon test --release --test-failure-json
+          moon test --test-failure-json
+          moon test --release -C examples --test-failure-json
+          moon test -C examples --test-failure-json
 
   moon-format:
     runs-on: ubuntu-latest
