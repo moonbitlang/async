@@ -12,11 +12,9 @@ impl Show for ResolveHostnameError
 
 // Types and methods
 type Addr
-fn Addr::empty() -> Self
 fn Addr::ip(Self) -> UInt
 fn Addr::is_ipv6(Self) -> Bool
 fn Addr::new(UInt, Int) -> Self
-fn Addr::new_ipv6(FixedArray[Byte], Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
 async fn Addr::resolve(String, port~ : Int) -> Self
