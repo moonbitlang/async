@@ -23,8 +23,7 @@ async fn server(addr : String) -> Int {
   try
     @async.with_task_group(fn(group) {
       for {
-        let (conn, client_addr) = server.accept()
-        println("Accepted connection from \{client_addr}")
+        let (conn, _) = server.accept()
         num_connection += 1
         group.spawn_bg(fn() {
           defer conn.close()
