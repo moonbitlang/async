@@ -20,7 +20,7 @@ struct Addr(Bytes) derive(Eq, Compare, Hash)
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
-pub extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
+extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
 
 ///|
 #borrow(ip)
