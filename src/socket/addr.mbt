@@ -123,18 +123,46 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 pub suberror ResolveHostnameError Int derive(Show)
 
 ///|
-/// Resolve a IPv4 address by hostname
+/// Resolve a IPv4 address by hostname, prefer ipv4 if both ipv4 and ipv6 are available
+/// TODO: Add option to prefer ipv6 or ipv4
 pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
+  let mut first_addr = None
+  let addrs = Addr::resolve_all(host, port~).collect()
+  // Try to find the first non-IPv6 address
+  for addr in addrs {
+    if first_addr is None {
+      first_addr = Some(addr)
+    }
+    if !addr.is_ipv6() {
+      return addr
+    }
+  }
+  match first_addr {
+    Some(addr) => addr
+    None => raise ResolveHostnameError(-1)
+  }
+}
+
+///|
+async fn Addr::resolve_all(host : String, port~ : Int) -> Iter[Addr] {
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(
     GetAddrInfo(host~, out=ai_ref),
-    context="@socket.Addr::resolve()",
+    context="@socket.Addr::resolve_all()",
   )
   if ret != 0 {
     raise ResolveHostnameError(ret)
   }
   let ai = ai_ref.get_and_clear()
-  defer ai.free()
-  ai.to_addr(port)
+  Iter::new(fn(visit : (Addr) -> IterResult) -> IterResult {
+    defer ai.free()
+    let mut current = ai
+    while !current.is_null() {
+      guard visit(current.to_addr(port)) is IterContinue else { break IterEnd }
+      current = current.next()
+    } else {
+      IterContinue
+    }
+  })
 }
