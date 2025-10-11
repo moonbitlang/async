@@ -146,9 +146,6 @@ uint32_t moonbitlang_async_ip_addr_get_port(struct sockaddr_in *addr) {
 
 int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
   // Check if the address family is AF_INET6
-  if (addr_bytes == NULL) {
-    return 0;
-  }
   // use sa_family to be compatible with more platforms(BSD, Linux)
   struct sockaddr *sa = (struct sockaddr *)addr_bytes;
   return sa->sa_family == AF_INET6;
