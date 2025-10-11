@@ -40,7 +40,12 @@ pub fn UDP::close(self : UDP) -> Unit {
 /// so that the socket can be used to receive packets from the address.
 pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
-  if 0 != bind_ffi(sock, addr) {
+  let bind_result = if addr.is_ipv6() {
+    bind_ipv6_ffi(sock, addr)
+  } else {
+    bind_ffi(sock, addr)
+  }
+  if 0 != bind_result {
     @os_error.check_errno("@socket.UDP::bind()")
   }
 }
@@ -50,7 +55,12 @@ pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
 /// For UDP socket, connect means setting the default address for `send`.
 pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
   let UDP(sock) = self
-  if 0 != connect_ffi(sock, addr) {
+  let connect_result = if addr.is_ipv6() {
+    connect_ipv6_ffi(sock, addr)
+  } else {
+    connect_ffi(sock, addr)
+  }
+  if 0 != connect_result {
     @os_error.check_errno("@socket.UDP::connect()")
   }
 }
@@ -104,7 +114,8 @@ pub async fn UDP::recvfrom(
   max_len? : Int = buf.length() - offset,
 ) -> (Int, Addr) {
   let UDP(sock) = self
-  let addr = Addr::new(0, 0)
+  // Create a big enough Addr to hold both IPv4 and IPv6 address
+  let addr = Addr::empty()
   let n_read = @event_loop.perform_job(
     Recvfrom(sock~, buf~, offset~, len=max_len, addr=addr.0),
     context="@socket.UDP::recvfrom",

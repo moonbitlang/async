@@ -31,7 +31,7 @@ pub async fn TCP::connect_to_host(host : String, port~ : Int) -> TCP {
   @async.with_task_group(fn(group) {
     for ai = ai; not(ai.is_null()); ai = ai.next() {
       group.spawn_bg(allow_failure=true, fn() {
-        let conn = TCP::connect(Addr::new(ai.ip(), port)) catch {
+        let conn = TCP::connect(ai.to_addr(port)) catch {
           err => {
             if conn_err is None {
               conn_err = Some(err)
