@@ -20,6 +20,13 @@ struct Addr(Bytes) derive(Eq, Compare, Hash)
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
+pub extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
+
+///|
+#borrow(ip)
+pub extern "C" fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int) -> Addr = "moonbitlang_async_make_ipv6_addr"
+
+///|
 #borrow(addr)
 pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get_ip"
 
@@ -28,47 +35,72 @@ pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get
 pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
 
 ///|
+#borrow(addr)
+pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
+
+///|
+extern "C" fn ipv6_addrlen() -> Int = "moonbitlang_async_ipv6_addrlen"
+
+///|
+#borrow(addr, buf)
+extern "C" fn ipv6_name_str(addr : Addr, buf : FixedArray[Byte]) -> Int = "moonbitlang_async_ipv6_name_str"
+
+///|
+let _IP_V6_ADDRLEN : Int = ipv6_addrlen()
+
+///|
 pub impl Show for Addr with output(self, logger) {
-  let ip = self.ip()
-  let port = self.port()
-  logger
-  ..write_object(ip >> 24)
-  ..write_char('.')
-  ..write_object((ip >> 16) & 255)
-  ..write_char('.')
-  ..write_object((ip >> 8) & 255)
-  ..write_char('.')
-  ..write_object(ip & 255)
-  ..write_char(':')
-  ..write_object(port)
+  if self.is_ipv6() {
+    // IPv6 address format
+    let buf = FixedArray::make(_IP_V6_ADDRLEN, b'0')
+    let len = ipv6_name_str(self, buf)
+    if len < 0 || len >= _IP_V6_ADDRLEN {
+      logger..write_string("[Invalid IPv6 address]")
+    } else {
+      let addr_str = @encoding/utf8.decode_lossy(
+        buf.unsafe_reinterpret_as_bytes()[0:len],
+      )
+      logger
+      ..write_char('[')
+      ..write_string(addr_str)
+      ..write_char(']')
+      ..write_char(':')
+      ..write_object(self.port())
+    }
+  } else {
+    // IPv4 address format
+    let ip = self.ip()
+    let port = self.port()
+    logger
+    ..write_object(ip >> 24)
+    ..write_char('.')
+    ..write_object((ip >> 16) & 255)
+    ..write_char('.')
+    ..write_object((ip >> 8) & 255)
+    ..write_char('.')
+    ..write_object(ip & 255)
+    ..write_char(':')
+    ..write_object(port)
+  }
 }
 
 ///|
 pub suberror InvalidAddr derive(Show)
 
 ///|
-/// Parse a string into IPv4 address, format should be `ip:port` (no space)
+/// Parse a string into IPv4 or IPv6 address, format should be `ip:port` for IPv4 or `[ip]:port` for IPv6
 // TODO: faster implementation
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
-  guard src.split(":").collect() is [ip, port] else { raise InvalidAddr }
-  guard ip.split(".").collect() is [a, b, c, d] else { raise InvalidAddr }
-  fn parse_octal(x : StringView) raise InvalidAddr {
-    let value = @strconv.parse_uint(x.to_string()) catch {
-      _ => raise InvalidAddr
-    }
-    guard value < 256 else { raise InvalidAddr }
-    value
+  if src.has_prefix("[") {
+    let (ip_bytes, port, _, _) = try_parse_ipv6(src)
+    let ip_bytes = ip_bytes.map(x => x.to_byte())
+    Addr::new_ipv6(ip_bytes, port)
+  } else {
+    // IPv4 format: ip:port
+    let (ip, port) = try_parse_ipv4(src) catch { _ => raise InvalidAddr }
+    guard 0 <= port && port < 65536 else { raise InvalidAddr }
+    Addr::new(ip, port)
   }
-
-  let ip = (parse_octal(a) << 24) |
-    (parse_octal(b) << 16) |
-    (parse_octal(c) << 8) |
-    parse_octal(d)
-  let port = @strconv.parse_int(port.to_string()) catch {
-    _ => raise InvalidAddr
-  }
-  guard 0 <= port && port < 65536 else { raise InvalidAddr }
-  Addr::new(ip, port)
 }
 
 ///|
@@ -78,7 +110,8 @@ typealias @event_loop.(AddrInfo, AddrInfoRef)
 extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
 
 ///|
-extern "C" fn AddrInfo::ip(self : AddrInfo) -> UInt = "moonbitlang_async_addrinfo_get_ip"
+/// Convert AddrInfo to Addr(support both IPv4 and IPv6)
+extern "C" fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr = "moonbitlang_async_addrinfo_to_addr"
 
 ///|
 extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
@@ -103,5 +136,5 @@ pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
   }
   let ai = ai_ref.get_and_clear()
   defer ai.free()
-  Addr::new(ai.ip(), port)
+  ai.to_addr(port)
 }

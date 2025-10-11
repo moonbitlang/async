@@ -385,7 +385,7 @@ void *worker_loop(void *data) {
     case OP_GETADDRINFO: {
       struct addrinfo hint = {
         0, // ai_flags
-        AF_INET, // ai_family
+        AF_UNSPEC, // ai_family, support both IPv4 and IPv6
         0, // ai_socktype
         0, // ai_protocol
         0, 0, 0, 0

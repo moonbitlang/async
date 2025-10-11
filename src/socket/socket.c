@@ -18,13 +18,19 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <netinet/in.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <string.h>
 #include <moonbit.h>
 
 int moonbitlang_async_make_tcp_socket() {
   return socket(AF_INET, SOCK_STREAM, 0);
+}
+
+int moonbitlang_async_make_tcp_socket_ipv6() {
+  return socket(AF_INET6, SOCK_STREAM, 0);
 }
 
 int moonbitlang_async_disable_nagle(int sock) {
@@ -36,8 +42,20 @@ int moonbitlang_async_make_udp_socket() {
   return socket(AF_INET, SOCK_DGRAM, 0);
 }
 
+int moonbitlang_async_make_udp_socket_ipv6() {
+  return socket(AF_INET6, SOCK_DGRAM, 0);
+}
+
 int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {
   return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
+}
+
+int moonbitlang_async_bind_ipv6(int sockfd, struct sockaddr_in6 *addr) {
+  return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in6));
+}
+
+int moonbitlang_async_connect_ipv6(int sockfd, struct sockaddr_in6 *addr) {
+  return connect(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in6));
 }
 
 int moonbitlang_async_listen(int sockfd) {
@@ -86,6 +104,7 @@ int moonbitlang_async_enable_keepalive(
 }
 
 void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
+  // For IPv4, create traditional sockaddr_in structure
   struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
     sizeof(struct sockaddr_in),
     0
@@ -93,6 +112,27 @@ void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
   addr->sin_addr.s_addr = htonl(ip);
+  return addr;
+}
+
+void *moonbitlang_async_make_empty_addr() {
+  // Create a sockaddr_storage structure large enough to hold both IPv4 and IPv6
+  struct sockaddr_storage *addr = (struct sockaddr_storage*)moonbit_make_bytes(
+    sizeof(struct sockaddr_storage),
+    0
+  );
+  return addr;
+}
+
+void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port) {
+  // For IPv6, create sockaddr_in6 structure directly
+  struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
+    sizeof(struct sockaddr_in6),
+    0
+  );
+  addr->sin6_family = AF_INET6;
+  addr->sin6_port = htons(port);
+  memcpy(&addr->sin6_addr, ip, 16);
   return addr;
 }
 
@@ -104,14 +144,62 @@ uint32_t moonbitlang_async_ip_addr_get_port(struct sockaddr_in *addr) {
   return ntohs(addr->sin_port);
 }
 
+int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
+  // Check if the address family is AF_INET6
+  uint16_t family = *((uint16_t*)addr_bytes);
+  return family == AF_INET6;
+}
+
 int32_t moonbitlang_async_addrinfo_is_null(struct addrinfo *addrinfo) {
   return addrinfo == 0;
 }
 
-uint32_t moonbitlang_async_addrinfo_get_ip(struct addrinfo *addrinfo) {
-  return ntohl(((struct sockaddr_in*)(addrinfo->ai_addr))->sin_addr.s_addr);
-}
-
 struct addrinfo *moonbitlang_async_addrinfo_get_next(struct addrinfo *addrinfo) {
   return addrinfo->ai_next;
+}
+
+void* moonbitlang_async_addrinfo_to_addr(struct addrinfo *addrinfo, int port) {
+  if (addrinfo == NULL || addrinfo->ai_addr == NULL) {
+    return NULL;
+  }
+
+  if (addrinfo->ai_family == AF_INET) {
+    // IPv4
+    struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
+      sizeof(struct sockaddr_in),
+      0
+    );
+    memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in));
+    addr->sin_port = htons(port);
+    return addr;
+  } else if (addrinfo->ai_family == AF_INET6) {
+    // IPv6
+    struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
+      sizeof(struct sockaddr_in6),
+      0
+    );
+    memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in6));
+    addr->sin6_port = htons(port);
+    return addr;
+  } else {
+      return NULL;
+  }
+}
+
+int32_t moonbitlang_async_ipv6_name_str(const struct sockaddr_in6 *src, moonbit_bytes_t dst) {
+  if (src == NULL || dst == NULL) {
+    return -1;
+  }
+  char ip_str[INET6_ADDRSTRLEN];
+  if (inet_ntop(AF_INET6, &src->sin6_addr, ip_str, sizeof(ip_str)) == NULL) {
+    return -1;
+  }
+  int len = strlen(ip_str);
+  memcpy(dst, ip_str, len);
+  dst[len] = '\0';
+  return len;
+}
+
+int32_t moonbitlang_async_ipv6_addrlen(void){
+  return INET6_ADDRSTRLEN;
 }

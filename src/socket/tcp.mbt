@@ -29,8 +29,17 @@ struct TCPServer(Int)
 /// Create a TCP server that is bound to `addr`,
 /// listening for incoming connections.
 pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
-  let sock = make_tcp_socket("@socket.TCPServer::new()")
-  if 0 != bind_ffi(sock, addr) {
+  let sock = if addr.is_ipv6() {
+    make_tcp_socket_ipv6("@socket.TCPServer::new()")
+  } else {
+    make_tcp_socket("@socket.TCPServer::new()")
+  }
+  let bind_result = if addr.is_ipv6() {
+    bind_ipv6_ffi(sock, addr)
+  } else {
+    bind_ffi(sock, addr)
+  }
+  if bind_result != 0 {
     @fd_util.close(sock, context="@socket.TCPServer::new()")
     @os_error.check_errno("@socket.TCPServer::new()")
   }
@@ -52,7 +61,8 @@ pub fn TCPServer::close(self : TCPServer) -> Unit {
 /// The accepted connection will be returned together with the address of peer.
 pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) {
   let TCPServer(listen_sock) = self
-  let addr = Addr::new(0, 0)
+  // Create a big enough Addr to hold both IPv4 and IPv6 address
+  let addr = Addr::empty()
   let conn = @event_loop.perform_job(
     Accept(sock=listen_sock, addr=addr.0),
     context="@socket.TCPServer::accept",
@@ -94,7 +104,11 @@ pub fn TCP::enable_keepalive(
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn TCP::connect(addr : Addr) -> TCP {
-  let sock = make_tcp_socket("@socket.TCP::connect()")
+  let sock = if addr.is_ipv6() {
+    make_tcp_socket_ipv6("@socket.TCP::connect()")
+  } else {
+    make_tcp_socket("@socket.TCP::connect()")
+  }
   if disable_nagle(sock) < 0 {
     @fd_util.close(sock, context="@socket.TCP::connect()")
     @os_error.check_errno("@socket.TCP::connect(): set TCP_NODELAY")

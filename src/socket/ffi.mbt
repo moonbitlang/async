@@ -16,8 +16,22 @@
 extern "C" fn make_tcp_socket_ffi() -> Int = "moonbitlang_async_make_tcp_socket"
 
 ///|
+extern "C" fn make_tcp_socket_ipv6_ffi() -> Int = "moonbitlang_async_make_tcp_socket_ipv6"
+
+///|
 fn make_tcp_socket(context : String) -> Int raise {
   let sock = make_tcp_socket_ffi()
+  if sock < 0 {
+    @os_error.check_errno(context)
+  }
+  @fd_util.set_cloexec(sock, context~)
+  @fd_util.set_nonblocking(sock, context~)
+  sock
+}
+
+///|
+fn make_tcp_socket_ipv6(context : String) -> Int raise {
+  let sock = make_tcp_socket_ipv6_ffi()
   if sock < 0 {
     @os_error.check_errno(context)
   }
@@ -32,6 +46,14 @@ extern "C" fn make_udp_socket() -> Int = "moonbitlang_async_make_udp_socket"
 ///|
 #borrow(addr)
 extern "C" fn bind_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind"
+
+///|
+#borrow(addr)
+extern "C" fn bind_ipv6_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind_ipv6"
+
+///|
+#borrow(addr)
+extern "C" fn connect_ipv6_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_connect_ipv6"
 
 ///|
 extern "C" fn listen_ffi(sock : Int) -> Int = "moonbitlang_async_listen"
