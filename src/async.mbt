@@ -144,15 +144,20 @@ pub(all) enum RetryMethod {
 /// However, if `max_retry` is set,
 /// the number of retry attempts will not exceed the value of `max_retry`.
 /// If retry attempts reaches limit, `retry` will raise the error from `f`'s last attempt.
+///
+/// If `fatal_error` is present, and `f` raises an error `err` such that
+/// `fatal_error(err)` is `true`, `retry` will fail immediately with `err`.
 pub async fn[X] retry(
   strategy : RetryMethod,
   max_retry? : Int,
+  fatal_error? : (Error) -> Bool,
   f : async () -> X,
 ) -> X {
   match strategy {
     Immediate =>
       for i = 0; ; i = i + 1 {
         try f() catch {
+          err if fatal_error is Some(f) && f(err) => raise err
           err if @coroutine.is_being_cancelled() => raise err
           err if max_retry is Some(max) && i >= max => raise err
           _ => ()
@@ -163,6 +168,7 @@ pub async fn[X] retry(
     FixedDelay(t) =>
       for i = 0; ; i = i + 1 {
         try f() catch {
+          err if fatal_error is Some(f) && f(err) => raise err
           err if @coroutine.is_being_cancelled() => raise err
           err if max_retry is Some(max) && i >= max => raise err
           _ => sleep(t)
@@ -173,6 +179,7 @@ pub async fn[X] retry(
     ExponentialDelay(initial~, factor~, maximum~) =>
       for i = 0, timeout = initial; ; i = i + 1 {
         try f() catch {
+          err if fatal_error is Some(f) && f(err) => raise err
           err if @coroutine.is_being_cancelled() => raise err
           err if max_retry is Some(max) && i >= max => raise err
           _ => {
