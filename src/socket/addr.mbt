@@ -123,28 +123,17 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 pub suberror ResolveHostnameError Int derive(Show)
 
 ///|
-/// Resolve a IPv4 address by hostname, prefer ipv4 if both ipv4 and ipv6 are available
-/// TODO: Add option to prefer ipv6 or ipv4
+/// Resolve a IPv4 or IPv6 address by hostname.
+///
+/// An IPv4 address will be returned only if
+/// the system has at least one IPv4 address configured.
+/// Similarly an IPv6 address will be returned only if
+/// the system has at least one IPv6 address configured.
+///
+/// When both IPv4 and IPv6 is available,
+/// currently `Addr::resolve` favors IPv4 address.
 pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
-  let mut first_addr = None
-  let addrs = Addr::resolve_all(host, port~).collect()
-  // Try to find the first non-IPv6 address
-  for addr in addrs {
-    if first_addr is None {
-      first_addr = Some(addr)
-    }
-    if !addr.is_ipv6() {
-      return addr
-    }
-  }
-  match first_addr {
-    Some(addr) => addr
-    None => raise ResolveHostnameError(-1)
-  }
-}
-
-///|
-async fn Addr::resolve_all(host : String, port~ : Int) -> Iter[Addr] {
+  // TODO: Add option to prefer ipv6 or ipv4
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(
@@ -154,15 +143,17 @@ async fn Addr::resolve_all(host : String, port~ : Int) -> Iter[Addr] {
   if ret != 0 {
     raise ResolveHostnameError(ret)
   }
-  let ai = ai_ref.get_and_clear()
-  Iter::new(fn(visit : (Addr) -> IterResult) -> IterResult {
-    defer ai.free()
-    let mut current = ai
-    while !current.is_null() {
-      guard visit(current.to_addr(port)) is IterContinue else { break IterEnd }
-      current = current.next()
-    } else {
-      IterContinue
+  let ai_root = ai_ref.get_and_clear()
+  defer ai_root.free()
+  let first_addr = ai_root.to_addr(port)
+  if first_addr.is_ipv6() {
+    // if first address is IPv6, try to search for an IPv4 address
+    for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+      let addr = ai.to_addr(port)
+      if not(addr.is_ipv6()) {
+        return addr
+      }
     }
-  })
+  }
+  first_addr
 }
