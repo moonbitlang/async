@@ -160,3 +160,38 @@ async test "retry cancelled2" {
     ),
   )
 }
+
+///|
+async test "retry fatal_error" {
+  let log = StringBuilder::new()
+  fn fatal_error(err) {
+    not(err is @async.TimeoutError)
+  }
+
+  let mut i = 0
+  async fn worker() {
+    log.write_string("worker run #\{i}\n")
+    i = i + 1
+    if i < 3 {
+      @async.with_timeout(100, () => @async.sleep(1000))
+    } else {
+      raise Failure("fatal error")
+    }
+  }
+
+  inspect(
+    try? @async.retry(Immediate, fatal_error~, worker),
+    content=(
+      #|Err(Failure("fatal error"))
+    ),
+  )
+  inspect(
+    log.to_string(),
+    content=(
+      #|worker run #0
+      #|worker run #1
+      #|worker run #2
+      #|
+    ),
+  )
+}

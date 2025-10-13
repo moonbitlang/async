@@ -259,7 +259,7 @@ fnalias retry as moonbitlang_async_retry
 /// If `retry_method` is set, within each loop,
 /// the spawned task will be automatically restarted on failure.
 /// The restart strategy is determined by the value of `retry_method`.
-/// `max_retry` will be passed as-is to `retry`.
+/// `max_retry` and `fatal_error` will be passed as-is to `retry`.
 /// See `retry` and `RetryMethod` for more details.
 ///
 /// The meaning of `no_wait` and `allow_failure` is the same as `spawn_bg`.
@@ -270,12 +270,14 @@ pub fn[X] TaskGroup::spawn_loop(
   allow_failure? : Bool = false,
   retry? : RetryMethod,
   max_retry? : Int,
+  fatal_error? : (Error) -> Bool,
 ) -> Unit raise {
   self.spawn_bg(no_wait~, allow_failure~, fn() {
     for {
       let result = match retry {
         None => f()
-        Some(strategy) => moonbitlang_async_retry(strategy, f, max_retry?)
+        Some(strategy) =>
+          moonbitlang_async_retry(strategy, f, max_retry?, fatal_error?)
       }
       guard result is IterContinue else { break }
     }
