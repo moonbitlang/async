@@ -26,9 +26,9 @@ pub(all) enum Encoding {
   UTF8
 }
 
-async fn Data::binary(&Self) -> Bytes
-async fn Data::json(&Self) -> Json
-async fn Data::text(&Self) -> String
+fn Data::binary(&Self) -> Bytes
+fn Data::json(&Self) -> Json raise
+fn Data::text(&Self) -> String raise
 
 // Type aliases
 

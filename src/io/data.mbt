@@ -74,7 +74,7 @@ pub impl Data for Json with to_bytes(self) {
 
 ///|
 /// Extract the raw binary data from `&Data`
-pub async fn &Data::binary(self : &Data) -> Bytes {
+pub fn &Data::binary(self : &Data) -> Bytes {
   self.to_bytes()
 }
 
@@ -83,7 +83,7 @@ pub async fn &Data::binary(self : &Data) -> Bytes {
 ///
 /// Calling this method will cause string decoding,
 /// so user should avoid calling `.text()` more than once.
-pub async fn &Data::text(self : &Data) -> String {
+pub fn &Data::text(self : &Data) -> String raise {
   self.to_bytes() |> @encoding/utf8.decode
 }
 
@@ -92,6 +92,6 @@ pub async fn &Data::text(self : &Data) -> String {
 ///
 /// Calling this method will cause string decoding and json parsing,
 /// so user should avoid calling `.json()` more than once.
-pub async fn &Data::json(self : &Data) -> Json {
+pub fn &Data::json(self : &Data) -> Json raise {
   self.to_bytes() |> @encoding/utf8.decode |> @json.parse
 }
