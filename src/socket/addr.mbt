@@ -39,34 +39,16 @@ pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_ge
 pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
 
 ///|
-extern "C" fn ipv6_addrlen() -> Int = "moonbitlang_async_ipv6_addrlen"
-
-///|
-#borrow(addr, buf)
-extern "C" fn ipv6_name_str(addr : Addr, buf : FixedArray[Byte]) -> Int = "moonbitlang_async_ipv6_name_str"
-
-///|
-let _IP_V6_ADDRLEN : Int = ipv6_addrlen()
+#borrow(addr)
+extern "C" fn Addr::get_ipv6_byte(addr : Addr, index : Int) -> Int = "moonbitlang_async_addr_get_ipv6_byte"
 
 ///|
 pub impl Show for Addr with output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
-    let buf = FixedArray::make(_IP_V6_ADDRLEN, b'0')
-    let len = ipv6_name_str(self, buf)
-    if len < 0 || len >= _IP_V6_ADDRLEN {
-      logger..write_string("[Invalid IPv6 address]")
-    } else {
-      let addr_str = @encoding/utf8.decode_lossy(
-        buf.unsafe_reinterpret_as_bytes()[0:len],
-      )
-      logger
-      ..write_char('[')
-      ..write_string(addr_str)
-      ..write_char(']')
-      ..write_char(':')
-      ..write_object(self.port())
-    }
+    logger.write_char('[')
+    self.write_ipv6(logger)
+    logger..write_char(']')..write_char(':')..write_object(self.port())
   } else {
     // IPv4 address format
     let ip = self.ip()

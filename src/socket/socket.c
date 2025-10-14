@@ -151,6 +151,10 @@ int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
   return sa->sa_family == AF_INET6;
 }
 
+int32_t moonbitlang_async_addr_get_ipv6_byte(struct sockaddr_in6 *addr, int32_t index) {
+  return addr->sin6_addr.s6_addr[index];
+}
+
 int32_t moonbitlang_async_addrinfo_is_null(struct addrinfo *addrinfo) {
   return addrinfo == 0;
 }
@@ -185,22 +189,4 @@ void* moonbitlang_async_addrinfo_to_addr(struct addrinfo *addrinfo, int port) {
   } else {
       return NULL;
   }
-}
-
-int32_t moonbitlang_async_ipv6_name_str(const struct sockaddr_in6 *src, moonbit_bytes_t dst) {
-  if (src == NULL || dst == NULL) {
-    return -1;
-  }
-  char ip_str[INET6_ADDRSTRLEN];
-  if (inet_ntop(AF_INET6, &src->sin6_addr, ip_str, sizeof(ip_str)) == NULL) {
-    return -1;
-  }
-  int len = strlen(ip_str);
-  memcpy(dst, ip_str, len);
-  dst[len] = '\0';
-  return len;
-}
-
-int32_t moonbitlang_async_ipv6_addrlen(void){
-  return INET6_ADDRSTRLEN;
 }
