@@ -7,7 +7,7 @@ package "moonbitlang/async/socket"
 pub suberror InvalidAddr
 impl Show for InvalidAddr
 
-pub suberror ResolveHostnameError Int
+pub suberror ResolveHostnameError String
 impl Show for ResolveHostnameError
 
 // Types and methods

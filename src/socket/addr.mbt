@@ -102,7 +102,26 @@ extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_a
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 
 ///|
-pub suberror ResolveHostnameError Int derive(Show)
+/// Error message from failure in resolving a network hostname.
+/// The content of the error message is platfrom-dependent,
+/// so users should never depend on it.
+pub suberror ResolveHostnameError String derive(Show)
+
+///|
+extern "C" fn ResolveHostnameError::gai_strerror(
+  code : Int,
+) -> @c_buffer.Buffer = "gai_strerror"
+
+///|
+fn ResolveHostnameError::from_error_code(code : Int) -> ResolveHostnameError {
+  let c_str = ResolveHostnameError::gai_strerror(code)
+  let len = c_str.strlen()
+  let bytes = FixedArray::make(len, b'\x00')
+  c_str.blit_to_bytes(dst=bytes, offset=0, len~)
+  bytes.unsafe_reinterpret_as_bytes()
+  |> @encoding/utf8.decode_lossy
+  |> ResolveHostnameError
+}
 
 ///|
 /// Resolve a IPv4 or IPv6 address by hostname.
@@ -123,7 +142,7 @@ pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
     context="@socket.Addr::resolve_all()",
   )
   if ret != 0 {
-    raise ResolveHostnameError(ret)
+    raise ResolveHostnameError::from_error_code(ret)
   }
   let ai_root = ai_ref.get_and_clear()
   defer ai_root.free()

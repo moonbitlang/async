@@ -22,7 +22,7 @@ pub async fn TCP::connect_to_host(host : String, port~ : Int) -> TCP {
     context="@socket.TCP::connect_to_host()",
   )
   if ret > 0 {
-    raise ResolveHostnameError(ret)
+    raise ResolveHostnameError::from_error_code(ret)
   }
   let mut result = None
   let mut conn_err = None
