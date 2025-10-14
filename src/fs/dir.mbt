@@ -32,18 +32,21 @@ pub async fn mkdir(path : String, permission~ : Int) -> Unit {
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 pub async fn rmdir(path : String, recursive? : Bool = false) -> Unit {
+  let context = "@fs.rmdir()"
   if recursive {
     for file in readdir(path) {
-      let file = path + "/" + file
-      if kind(file) is Directory {
-        rmdir(file, recursive=true)
+      let path = path + "/" + file
+      let stat = Stat::from_path(path, follow_symlink=false, context~)
+      if stat.kind() is Directory {
+        rmdir(path, recursive=true)
       } else {
-        remove(file)
+        let path = @encoding/utf8.encode(path)
+        ignore(@event_loop.perform_job(Remove(path~), context~))
       }
     }
   }
   let path = @encoding/utf8.encode(path)
-  ignore(@event_loop.perform_job(Rmdir(path~), context="@fs.rmdir()"))
+  ignore(@event_loop.perform_job(Rmdir(path~), context~))
 }
 
 ///|
