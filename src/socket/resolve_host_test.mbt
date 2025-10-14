@@ -13,14 +13,6 @@
 // limitations under the License.
 
 ///|
-async test "resolve localhost" {
-  inspect(
-    @socket.Addr::resolve("localhost", port=4200),
-    content="127.0.0.1:4200",
-  )
-}
-
-///|
 async test "resolve mooncakes.io" {
   inspect(
     @socket.Addr::resolve("mooncakes.io", port=443),
@@ -54,4 +46,24 @@ async test "resolve cancel" {
 async test "resolve failure" {
   let result = try? @socket.Addr::resolve("does.not.exist", port=443)
   assert_true(result is Err(@socket.ResolveHostnameError(_)))
+}
+
+///|
+async test "resolve preference" {
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=Favor_V4),
+    content="127.0.0.1:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=Only_V4),
+    content="127.0.0.1:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=Favor_V6),
+    content="[::1]:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=Only_V6),
+    content="[::1]:80",
+  )
 }
