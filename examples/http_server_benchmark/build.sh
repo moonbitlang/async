@@ -259,7 +259,7 @@ main() {
     log_info "You can now run the benchmark with:"
     log_info "  docker run --rm -it ${FULL_IMAGE_NAME}"
     log_info "Or run individual language benchmarks:"
-    log_info "  docker run --rm -it ${FULL_IMAGE_NAME} sh -c 'sh bench.sh --moonbit-only'"
+    log_info "  docker run --rm -it ${FULL_IMAGE_NAME} sh -c 'bash /app/examples/http_server_benchmark/bench.sh --moonbit-only'"
 }
 
 # Run main function

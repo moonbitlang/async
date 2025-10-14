@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 moon build -C examples
