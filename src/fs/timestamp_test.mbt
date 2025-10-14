@@ -37,7 +37,7 @@ async test "timestamp for path" {
     assert_eq(mtime_2, mtime_1)
     assert_eq(ctime_2, ctime_1)
     @async.sleep(500)
-    @fs.write_file(path, "1234")
+    @fs.write_file(path, "1234", sync=Full)
     let mtime_3 = @fs.mtime(path)
     let ctime_3 = @fs.ctime(path)
     assert_true(diff_timestamp(mtime_3, mtime_2) > 500_000_000)
