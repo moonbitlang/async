@@ -229,3 +229,62 @@ fn parse_port(port_str : @string.View) -> Int raise InvalidAddr {
   guard 0 <= port && port < 65536 else { raise InvalidAddr }
   port
 }
+
+///|
+fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
+  let mut longest_zero_group = None
+  fn add_zero_group(start, end) {
+    if end > start {
+      match longest_zero_group {
+        Some((start0, end0)) if end0 - start0 >= end - start => ()
+        _ => longest_zero_group = Some((start, end))
+      }
+    }
+  }
+
+  for i = 0, zero_group_start = 0; i < 8; i = i + 1 {
+    if addr.get_ipv6_byte(i * 2) == 0 && addr.get_ipv6_byte(i * 2 + 1) == 0 {
+      continue
+    } else {
+      add_zero_group(zero_group_start, i)
+      continue i + 1, i + 1
+    }
+  } else {
+    add_zero_group(zero_group_start, i)
+  }
+  let is_v4_mapped = match longest_zero_group {
+    Some((0, 6)) => true
+    Some((0, 5)) =>
+      addr.get_ipv6_byte(10) is 0xff && addr.get_ipv6_byte(11) is 0xff
+    _ => false
+  }
+  let hex_format_end = if is_v4_mapped { 6 } else { 8 }
+  for i = 0; i < hex_format_end; i = i + 1 {
+    match longest_zero_group {
+      Some((start, end)) if i == start => {
+        if i == 0 {
+          logger.write_string("::")
+        } else {
+          logger.write_string(":")
+        }
+        continue end
+      }
+      _ => ()
+    }
+    let value = (addr.get_ipv6_byte(i * 2) << 8) | addr.get_ipv6_byte(i * 2 + 1)
+    logger.write_string(value.to_string(radix=16))
+    if i < 7 {
+      logger.write_string(":")
+    }
+  }
+  if is_v4_mapped {
+    logger
+    ..write_object(addr.get_ipv6_byte(12))
+    ..write_string(".")
+    ..write_object(addr.get_ipv6_byte(13))
+    ..write_string(".")
+    ..write_object(addr.get_ipv6_byte(14))
+    ..write_string(".")
+    ..write_object(addr.get_ipv6_byte(15))
+  }
+}
