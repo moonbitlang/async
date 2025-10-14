@@ -8,7 +8,7 @@ API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
 You can also find small examples in `examples`,
 these examples can be run via `moon run -C examples <example-name>` in project root.
 
-WARNING: this library is current experimental, API is subjected to future change.
+WARNING: this library is current experimental, API is subject to future change.
 
 ## Installation
 In your MoonBit project root, run:
