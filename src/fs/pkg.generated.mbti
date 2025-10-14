@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-async fn atime(String) -> (Int64, Int)
+async fn atime(String, follow_symlink? : Bool) -> (Int64, Int)
 
 async fn can_execute(String) -> Bool
 
@@ -16,7 +16,7 @@ async fn can_write(String) -> Bool
 
 async fn create(String, permission~ : Int, sync? : SyncMode) -> File
 
-async fn ctime(String) -> (Int64, Int)
+async fn ctime(String, follow_symlink? : Bool) -> (Int64, Int)
 
 async fn exists(String) -> Bool
 
@@ -24,7 +24,7 @@ async fn kind(String, follow_symlink? : Bool) -> FileKind
 
 async fn mkdir(String, permission~ : Int) -> Unit
 
-async fn mtime(String) -> (Int64, Int)
+async fn mtime(String, follow_symlink? : Bool) -> (Int64, Int)
 
 async fn open(String, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
 

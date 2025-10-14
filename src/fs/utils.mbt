@@ -24,24 +24,42 @@ pub async fn kind(path : String, follow_symlink? : Bool = true) -> FileKind {
 /// Get the last access time of a file at `path`.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn atime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, follow_symlink=true, context="@fs.atime()").atime()
+///
+/// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
+/// the timestamp of the target of `path` will be returned.
+pub async fn atime(
+  path : String,
+  follow_symlink? : Bool = true,
+) -> (Int64, Int) {
+  Stat::from_path(path, follow_symlink~, context="@fs.atime()").atime()
 }
 
 ///|
 /// Get the last modification time of a file at `path`.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn mtime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, follow_symlink=true, context="@fs.mtime()").mtime()
+///
+/// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
+/// the timestamp of the target of `path` will be returned.
+pub async fn mtime(
+  path : String,
+  follow_symlink? : Bool = true,
+) -> (Int64, Int) {
+  Stat::from_path(path, follow_symlink~, context="@fs.mtime()").mtime()
 }
 
 ///|
 /// Get the last status change time of a file at `path`.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn ctime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, follow_symlink=true, context="@fs.ctime()").ctime()
+///
+/// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
+/// the timestamp of the target of `path` will be returned.
+pub async fn ctime(
+  path : String,
+  follow_symlink? : Bool = true,
+) -> (Int64, Int) {
+  Stat::from_path(path, follow_symlink~, context="@fs.ctime()").ctime()
 }
 
 ///|
