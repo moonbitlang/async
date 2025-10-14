@@ -47,7 +47,7 @@ fn try_parse_ipv6(
 
 ///|
 fn parse_ipv6_to_bytes(
-  ip_str : @string.View,
+  ip_str : StringView,
 ) -> FixedArray[UInt] raise InvalidAddr {
   // Handle the case where the IPv6 address is "::"
   if ip_str == "::" {
@@ -67,8 +67,8 @@ fn parse_ipv6_to_bytes(
 
 ///|
 fn parse_compressed_ipv6_to_bytes(
-  left_part : @string.View,
-  right_part : @string.View,
+  left_part : StringView,
+  right_part : StringView,
 ) -> FixedArray[UInt] raise InvalidAddr {
   let left_groups = if left_part.is_empty() {
     []
@@ -142,7 +142,7 @@ fn parse_compressed_ipv6_to_bytes(
 
 ///|
 fn parse_full_ipv6_to_bytes(
-  ip_str : @string.View,
+  ip_str : StringView,
 ) -> FixedArray[UInt] raise InvalidAddr {
   let parts = ip_str.split(":").collect()
   let result : FixedArray[UInt] = FixedArray::make(16, 0)
@@ -179,7 +179,7 @@ fn parse_full_ipv6_to_bytes(
 }
 
 ///|
-fn parse_ipv6_group(group : @string.View) -> UInt raise InvalidAddr {
+fn parse_ipv6_group(group : StringView) -> UInt raise InvalidAddr {
   guard !group.is_empty() && group.length() <= 4 else { raise InvalidAddr }
   @strconv.parse_uint(group, base=16) catch {
     _ => raise InvalidAddr
@@ -188,11 +188,11 @@ fn parse_ipv6_group(group : @string.View) -> UInt raise InvalidAddr {
 
 ///|
 fn parse_ipv4_to_bytes(
-  ip_str : @string.View,
+  ip_str : StringView,
 ) -> (UInt, UInt, UInt, UInt) raise InvalidAddr {
   let parts = ip_str.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }
-  fn parse_octal(x : @string.View) raise InvalidAddr {
+  fn parse_octal(x : StringView) raise InvalidAddr {
     let value = @strconv.parse_uint(x.to_string()) catch {
       _ => raise InvalidAddr
     }
@@ -223,7 +223,7 @@ fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
 }
 
 ///|
-fn parse_port(port_str : @string.View) -> Int raise InvalidAddr {
+fn parse_port(port_str : StringView) -> Int raise InvalidAddr {
   guard !port_str.is_empty() else { raise InvalidAddr }
   let port = @strconv.parse_int(port_str) catch { _ => raise InvalidAddr }
   guard 0 <= port && port < 65536 else { raise InvalidAddr }

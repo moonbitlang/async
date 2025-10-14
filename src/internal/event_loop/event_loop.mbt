@@ -340,7 +340,7 @@ async fn perform_job_in_worker(
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.size() > evloop.max_worker_count =>
+    None if evloop.running_workers.length() > evloop.max_worker_count =>
       evloop.job_queue.push_back(job)
     None => {
       let worker = spawn_worker(job)

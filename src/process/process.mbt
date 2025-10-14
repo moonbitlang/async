@@ -79,7 +79,7 @@ async fn spawn(
     }
     None => -1
   }
-  let extra_count = extra_env.size()
+  let extra_count = extra_env.length()
   let env = match (inherit_env, extra_count) {
     (true, 0) => curr_env
     (false, 0) => [None]
