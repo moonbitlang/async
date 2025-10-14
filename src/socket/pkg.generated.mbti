@@ -1,23 +1,39 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/socket"
 
+import(
+  "moonbitlang/async/io"
+)
+
 // Values
 
 // Errors
 pub suberror InvalidAddr
+fn InvalidAddr::output(Self, &Logger) -> Unit // from trait `Show`
+fn InvalidAddr::to_string(Self) -> String // from trait `Show`
 impl Show for InvalidAddr
 
 pub suberror ResolveHostnameError String
+fn ResolveHostnameError::output(Self, &Logger) -> Unit // from trait `Show`
+fn ResolveHostnameError::to_string(Self) -> String // from trait `Show`
 impl Show for ResolveHostnameError
 
 // Types and methods
 type Addr
+fn Addr::compare(Self, Self) -> Int // from trait `Compare`
+fn Addr::equal(Self, Self) -> Bool // from trait `Eq`
+fn Addr::hash(Self) -> Int // from trait `Hash`
+fn Addr::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
 fn Addr::ip(Self) -> UInt
 fn Addr::is_ipv6(Self) -> Bool
 fn Addr::new(UInt, Int) -> Self
+#deprecated
+fn Addr::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Addr::output(Self, &Logger) -> Unit // from trait `Show`
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
 async fn Addr::resolve(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
+fn Addr::to_string(Self) -> String // from trait `Show`
 impl Compare for Addr
 impl Eq for Addr
 impl Hash for Addr
@@ -30,6 +46,8 @@ pub(all) enum IPProtocolPreference {
   Favor_V6
   No_Preference
 }
+fn IPProtocolPreference::output(Self, &Logger) -> Unit // from trait `Show`
+fn IPProtocolPreference::to_string(Self) -> String // from trait `Show`
 impl Show for IPProtocolPreference
 
 type TCP
@@ -37,8 +55,16 @@ fn TCP::close(Self) -> Unit
 async fn TCP::connect(Addr) -> Self
 async fn TCP::connect_to_host(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-impl @moonbitlang/async/io.Reader for TCP
-impl @moonbitlang/async/io.Writer for TCP
+async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
+async fn TCP::read_all(Self) -> &@io.Data // from trait `@io.Reader`
+async fn TCP::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
+async fn TCP::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
+async fn TCP::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
+async fn TCP::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
+#deprecated
+async fn TCP::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
+impl @io.Reader for TCP
+impl @io.Writer for TCP
 
 type TCPServer
 async fn TCPServer::accept(Self) -> (TCP, Addr)
