@@ -124,22 +124,31 @@ fn ResolveHostnameError::from_error_code(code : Int) -> ResolveHostnameError {
 }
 
 ///|
+pub(all) enum IPProtocolPreference {
+  Only_V4
+  Only_V6
+  Favor_V4
+  Favor_V6
+  No_Preference
+} derive(Show)
+
+///|
 /// Resolve a IPv4 or IPv6 address by hostname.
 ///
-/// An IPv4 address will be returned only if
-/// the system has at least one IPv4 address configured.
-/// Similarly an IPv6 address will be returned only if
-/// the system has at least one IPv6 address configured.
-///
-/// When both IPv4 and IPv6 is available,
-/// currently `Addr::resolve` favors IPv4 address.
-pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
+/// By default, `Addr::resolve` return the first available address.
+/// Preference on IPv4 v.s. IPv6 can be configured via `protocol`.
+/// See `IPProtocolPreference` for available options.
+pub async fn Addr::resolve(
+  host : String,
+  port~ : Int,
+  protocol? : IPProtocolPreference = No_Preference,
+) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(
     GetAddrInfo(host~, out=ai_ref),
-    context="@socket.Addr::resolve_all()",
+    context="@socket.Addr::resolve()",
   )
   if ret != 0 {
     raise ResolveHostnameError::from_error_code(ret)
@@ -147,14 +156,41 @@ pub async fn Addr::resolve(host : String, port~ : Int) -> Addr {
   let ai_root = ai_ref.get_and_clear()
   defer ai_root.free()
   let first_addr = ai_root.to_addr(port)
-  if first_addr.is_ipv6() {
-    // if first address is IPv6, try to search for an IPv4 address
-    for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
-      let addr = ai.to_addr(port)
-      if not(addr.is_ipv6()) {
-        return addr
+
+  // search for address with preferred protocol
+  match protocol {
+    Favor_V4 | Only_V4 => {
+      if not(first_addr.is_ipv6()) {
+        return first_addr
+      }
+      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+        let addr = ai.to_addr(port)
+        if not(addr.is_ipv6()) {
+          return addr
+        }
+      }
+      if protocol is Only_V4 {
+        raise ResolveHostnameError("No available IPv4 address")
+      } else {
+        first_addr
       }
     }
+    Favor_V6 | Only_V6 => {
+      if first_addr.is_ipv6() {
+        return first_addr
+      }
+      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+        let addr = ai.to_addr(port)
+        if addr.is_ipv6() {
+          return addr
+        }
+      }
+      if protocol is Only_V6 {
+        raise ResolveHostnameError("No available IPv6 address")
+      } else {
+        first_addr
+      }
+    }
+    No_Preference => first_addr
   }
-  first_addr
 }

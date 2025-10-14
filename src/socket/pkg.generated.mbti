@@ -17,16 +17,25 @@ fn Addr::is_ipv6(Self) -> Bool
 fn Addr::new(UInt, Int) -> Self
 fn Addr::parse(String) -> Self raise InvalidAddr
 fn Addr::port(Self) -> Int
-async fn Addr::resolve(String, port~ : Int) -> Self
+async fn Addr::resolve(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
 impl Compare for Addr
 impl Eq for Addr
 impl Hash for Addr
 impl Show for Addr
 
+pub(all) enum IPProtocolPreference {
+  Only_V4
+  Only_V6
+  Favor_V4
+  Favor_V6
+  No_Preference
+}
+impl Show for IPProtocolPreference
+
 type TCP
 fn TCP::close(Self) -> Unit
 async fn TCP::connect(Addr) -> Self
-async fn TCP::connect_to_host(String, port~ : Int) -> Self
+async fn TCP::connect_to_host(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
 fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
 impl @moonbitlang/async/io.Reader for TCP
 impl @moonbitlang/async/io.Writer for TCP
@@ -35,6 +44,7 @@ type TCPServer
 async fn TCPServer::accept(Self) -> (TCP, Addr)
 fn TCPServer::close(Self) -> Unit
 fn TCPServer::new(Addr) -> Self raise
+fn TCPServer::new_dual_stack(Int) -> Self raise
 
 type UDP
 fn UDP::bind(Self, Addr) -> Unit raise

@@ -28,11 +28,16 @@ struct TCPServer(Int)
 ///|
 /// Create a TCP server that is bound to `addr`,
 /// listening for incoming connections.
+///
+/// If `addr` is an IPv6 (including the wildcard address `[::]`),
+/// the server will be IPv6 only.
+/// For dual stack server, see `@socket.TCPServer::new_dual_stack`.
 pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
+  let context = "@socket.TCPServer::new()"
   let sock = if addr.is_ipv6() {
-    make_tcp_socket_ipv6("@socket.TCPServer::new()")
+    make_tcp_socket_ipv6(context)
   } else {
-    make_tcp_socket("@socket.TCPServer::new()")
+    make_tcp_socket(context)
   }
   let bind_result = if addr.is_ipv6() {
     bind_ipv6_ffi(sock, addr)
@@ -40,12 +45,30 @@ pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
     bind_ffi(sock, addr)
   }
   if bind_result != 0 {
-    @fd_util.close(sock, context="@socket.TCPServer::new()")
-    @os_error.check_errno("@socket.TCPServer::new()")
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
   }
   if 0 != listen_ffi(sock) {
-    @fd_util.close(sock, context="@socket.TCPServer::new()")
-    @os_error.check_errno("@socket.TCPServer::new()")
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
+  }
+  TCPServer(sock)
+}
+
+///|
+/// Create a dual stack TCP server that listen for connections
+/// from all IPv4 and IPv6 clients at `port`.
+/// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
+pub fn TCPServer::new_dual_stack(port : Int) -> TCPServer raise {
+  let context = "@socket.TCPServer::new_dual_stack()"
+  let sock = make_tcp_socket_ipv6(context)
+  if bind_dual_stack(sock, port) != 0 {
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
+  }
+  if 0 != listen_ffi(sock) {
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
   }
   TCPServer(sock)
 }

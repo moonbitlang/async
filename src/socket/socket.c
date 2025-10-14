@@ -51,7 +51,24 @@ int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {
 }
 
 int moonbitlang_async_bind_ipv6(int sockfd, struct sockaddr_in6 *addr) {
+  int ipv6_only = 1;
+  int ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof(int));
+  if (ret < 0) return ret;
+
   return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in6));
+}
+
+int moonbitlang_async_bind_dual_stack(int sockfd, int port) {
+  int ipv6_only = 0;
+  int ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof(int));
+  if (ret < 0) return ret;
+
+  struct sockaddr_in6 addr;
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons(port);
+  memset(&(addr.sin6_addr), 0, sizeof(struct in6_addr));
+  return bind(sockfd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
+
 }
 
 int moonbitlang_async_connect_ipv6(int sockfd, struct sockaddr_in6 *addr) {
