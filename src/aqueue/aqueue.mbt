@@ -14,10 +14,10 @@
 
 ///|
 priv struct Reader[X] {
-  // the value provided the reader.
-  // `value` must be `Some(_)` when the reader is woken
+  /// the value provided the reader.
+  /// `value` must be `Some(_)` when the reader is woken
   mut value : X?
-  // `None` indicates that the reader is cancelled
+  /// `None` indicates that the reader is cancelled
   mut coro : @coroutine.Coroutine?
 }
 
@@ -28,18 +28,19 @@ priv struct Reader[X] {
 /// and writing to the queue will never block.
 struct Queue[X] {
   readers : @deque.Deque[Reader[X]]
-  // invariant: if `buffer` is non-empty, `readers` must be empty
+  /// invariant: if `buffer` is non-empty, `readers` must be empty
   buffer : @deque.Deque[X]
 }
 
 ///|
 /// Create an empty queue.
+#as_free_fn
 pub fn[X] Queue::new() -> Queue[X] {
   { readers: @deque.new(), buffer: @deque.new() }
 }
 
 ///|
-/// Put a new element into a queue. This function neven blocks.
+/// Put a new element into a queue. This function never blocks.
 /// If the queue is currently empty and there are readers blocked on this thread,
 /// one reader will be woken to process the data.
 pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
