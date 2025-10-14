@@ -61,6 +61,7 @@ extern "C" fn JobForWorker::open(
 extern "C" fn JobForWorker::stat(
   path : Bytes,
   out : FixedArray[Byte],
+  follow_symlink~ : Bool,
 ) -> JobForWorker = "moonbitlang_async_make_stat_job"
 
 ///|
@@ -146,7 +147,7 @@ pub(all) enum Job {
   )
   Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
-  Stat(path~ : Bytes, out~ : FixedArray[Byte])
+  Stat(path~ : Bytes, out~ : FixedArray[Byte], follow_symlink~ : Bool)
   Access(path~ : Bytes, amode~ : Int)
   Remove(path~ : Bytes)
   Mkdir(path~ : Bytes, mode~ : Int)

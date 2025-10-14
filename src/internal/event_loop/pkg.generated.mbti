@@ -37,7 +37,7 @@ pub(all) enum Job {
   Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool)
   Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
-  Stat(path~ : Bytes, out~ : FixedArray[Byte])
+  Stat(path~ : Bytes, out~ : FixedArray[Byte], follow_symlink~ : Bool)
   Access(path~ : Bytes, amode~ : Int)
   Remove(path~ : Bytes)
   Mkdir(path~ : Bytes, mode~ : Int)

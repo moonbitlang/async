@@ -89,6 +89,7 @@ struct open_job {
 struct stat_job {
   char *path;
   void *out;
+  int follow_symlink;
 };
 
 struct access_job {
@@ -271,7 +272,11 @@ void *worker_loop(void *data) {
       break;
 
     case OP_STAT:
-      job->ret = stat(job->payload.stat.path, job->payload.stat.out);
+      if (job->payload.stat.follow_symlink) {
+        job->ret = stat(job->payload.stat.path, job->payload.stat.out);
+      } else {
+        job->ret = lstat(job->payload.stat.path, job->payload.stat.out);
+      }
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -607,12 +612,17 @@ struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode)
   return job;
 }
 
-struct job *moonbitlang_async_make_stat_job(char *path, void *out) {
+struct job *moonbitlang_async_make_stat_job(
+  char *path,
+  void *out,
+  int follow_symlink
+) {
   struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_STAT;
   job->payload.stat.path = path;
   job->payload.stat.out = out;
+  job->payload.stat.follow_symlink = follow_symlink;
   return job;
 }
 
