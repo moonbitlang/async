@@ -409,8 +409,11 @@ pub async fn perform_job(job : Job, context~ : String) -> Int {
       }
     Open(path~, flags~, mode~) =>
       perform_job_in_worker(JobForWorker::open(path, flags, mode), context~)
-    Stat(path~, out~) =>
-      perform_job_in_worker(JobForWorker::stat(path, out), context~)
+    Stat(path~, out~, follow_symlink~) =>
+      perform_job_in_worker(
+        JobForWorker::stat(path, out, follow_symlink~),
+        context~,
+      )
     Access(path~, amode~) =>
       perform_job_in_worker(JobForWorker::access(path, amode), context~)
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path), context~)

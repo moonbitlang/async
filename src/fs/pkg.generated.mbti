@@ -20,7 +20,7 @@ async fn ctime(String) -> (Int64, Int)
 
 async fn exists(String) -> Bool
 
-async fn kind(String) -> FileKind
+async fn kind(String, follow_symlink? : Bool) -> FileKind
 
 async fn mkdir(String, permission~ : Int) -> Unit
 

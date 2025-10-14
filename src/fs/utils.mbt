@@ -13,8 +13,11 @@
 // limitations under the License.
 
 ///|
-pub async fn kind(path : String) -> FileKind {
-  Stat::from_path(path, context="@fs.kind()").kind()
+/// Get the kind of a file at `path`.
+/// If `path` is a symbolic link and `follow_symlink` is `true` (`true` by default),
+/// the kind of the target of the link will be returned.
+pub async fn kind(path : String, follow_symlink? : Bool = true) -> FileKind {
+  Stat::from_path(path, follow_symlink~, context="@fs.kind()").kind()
 }
 
 ///|
@@ -22,7 +25,7 @@ pub async fn kind(path : String) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn atime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, context="@fs.atime()").atime()
+  Stat::from_path(path, follow_symlink=true, context="@fs.atime()").atime()
 }
 
 ///|
@@ -30,7 +33,7 @@ pub async fn atime(path : String) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn mtime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, context="@fs.mtime()").mtime()
+  Stat::from_path(path, follow_symlink=true, context="@fs.mtime()").mtime()
 }
 
 ///|
@@ -38,7 +41,7 @@ pub async fn mtime(path : String) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn ctime(path : String) -> (Int64, Int) {
-  Stat::from_path(path, context="@fs.ctime()").ctime()
+  Stat::from_path(path, follow_symlink=true, context="@fs.ctime()").ctime()
 }
 
 ///|

@@ -37,10 +37,17 @@ fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
 }
 
 ///|
-async fn Stat::from_path(path : String, context~ : String) -> Stat {
+async fn Stat::from_path(
+  path : String,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> Stat {
   let stat = Stat::new()
   let path = @encoding/utf8.encode(path)
-  let _ = @event_loop.perform_job(Stat(path~, out=stat.0), context~)
+  let _ = @event_loop.perform_job(
+    Stat(path~, out=stat.0, follow_symlink~),
+    context~,
+  )
   stat
 }
 
