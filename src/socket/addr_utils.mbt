@@ -214,8 +214,7 @@ fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
   guard input.rev_find(":") is Some(last_colon) else { raise InvalidAddr }
   let ip_str = input[:last_colon] catch { _ => raise InvalidAddr }
   let port_str = input[last_colon + 1:] catch { _ => raise InvalidAddr }
-  let port = @strconv.parse_int(port_str) catch { _ => raise InvalidAddr }
-  guard 0 <= port && port < 65536 else { raise InvalidAddr }
+  let port = parse_port(port_str)
   // Parse the IP address
   let (a, b, c, d) = parse_ipv4_to_bytes(ip_str.view())
   let ip = (a << 24) | (b << 16) | (c << 8) | d
