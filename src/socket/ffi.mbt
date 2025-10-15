@@ -77,7 +77,7 @@ extern "C" fn bind_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind
 extern "C" fn bind_ipv6_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind_ipv6"
 
 ///|
-extern "C" fn bind_dual_stack(sock : Int, port : Int) -> Int = "moonbitlang_async_bind_dual_stack"
+extern "C" fn set_ipv6_only(sock : Int, dual_stack : Bool) -> Int = "moonbitlang_async_set_ipv6_only"
 
 ///|
 #borrow(addr)

@@ -69,8 +69,7 @@ impl @io.Writer for Tcp
 type TcpServer
 async fn TcpServer::accept(Self) -> (Tcp, Addr)
 fn TcpServer::close(Self) -> Unit
-fn TcpServer::new(Addr) -> Self raise
-fn TcpServer::new_dual_stack(Int) -> Self raise
+fn TcpServer::new(Addr, dual_stack? : Bool) -> Self raise
 
 type UdpClient
 fn UdpClient::close(Self) -> Unit
@@ -80,8 +79,7 @@ async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
 
 type UdpServer
 fn UdpServer::close(Self) -> Unit
-fn UdpServer::new(Addr) -> Self raise
-fn UdpServer::new_dual_stack(Int) -> Self raise
+fn UdpServer::new(Addr, dual_stack? : Bool) -> Self raise
 async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
 async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 

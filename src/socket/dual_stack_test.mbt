@@ -75,7 +75,10 @@ async test "Only_V6 server" {
   let port = 4210
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}"))
+      let server = @socket.TcpServer::new(
+        @socket.Addr::parse("[::]:\{port}"),
+        dual_stack=false,
+      )
       for {
         let (conn, addr) = server.accept()
         defer conn.close()
@@ -121,7 +124,7 @@ async test "dual stack server" {
   let port = 4211
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TcpServer::new_dual_stack(port)
+      let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}"))
       for {
         let (conn, addr) = server.accept()
         defer conn.close()
@@ -217,7 +220,10 @@ async test "Only_V6 UDP server" {
   let port = 4210
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:\{port}"))
+      let server = @socket.UdpServer::new(
+        @socket.Addr::parse("[::]:\{port}"),
+        dual_stack=false,
+      )
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
@@ -264,7 +270,7 @@ async test "dual stack UDP server" {
   let port = 4211
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.UdpServer::new_dual_stack(port)
+      let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:\{port}"))
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
