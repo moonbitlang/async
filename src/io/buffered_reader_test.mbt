@@ -312,3 +312,16 @@ async test "lazy drop" {
   })
   inspect(log.to_string(), content="cdgh")
 }
+
+///|
+async test "BufferedReader::read_line" {
+  let file = @fs.open("LICENSE", mode=ReadOnly)
+  defer file.close()
+  let reader = @io.BufferedReader::new(file)
+  let lines = []
+  while reader.read_line() is Some(line) {
+    lines.push(line)
+  }
+  inspect(lines.length(), content="202")
+  assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
+}
