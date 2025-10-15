@@ -413,7 +413,7 @@ Trait for types that can be used as process output:
 4. **Handle exit codes** appropriately for error detection
 5. **Set working directory** explicitly when path-dependent
 6. **Use environment variables** for configuration
-7. **Prefer `spawn_orphan`** when you don't need to wait immediately
+7. **Prefer `@process.run`** together with `@async.TaskGroup::spawn`. Only use `spawn_orphan` when necessary.
 
 ## Error Handling
 
@@ -424,10 +424,7 @@ Process operations handle errors through exit codes:
 async test "handle process errors" {
   // Non-existent command fails
   let result = try? @process.run("nonexistent_command", [])
-  match result {
-    Err(_) => inspect(true, content="true")
-    Ok(_) => inspect(false, content="true")
-  }
+  assert_true(result is Err(_))
 }
 
 ///|
