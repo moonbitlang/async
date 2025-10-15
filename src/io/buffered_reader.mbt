@@ -71,7 +71,11 @@ async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
 }
 
 ///|
-async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit {
+/// Fetch some more data from the underlying reader.
+/// The exact number of fetched data may varies.
+/// Returns `true` if data are successfully fetched,
+/// or `false` if the underlying reader already reached EOF.
+async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Bool {
   self.enlarge_to(self.len + SEGMENT_SIZE)
   let offset = self.start + self.len
   let n = self.reader.read(
@@ -79,10 +83,8 @@ async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Unit {
     offset~,
     max_len=self.buf.length() - offset,
   )
-  if n == 0 {
-    raise ReaderClosed
-  }
   self.len += n
+  n > 0
 }
 
 ///|
@@ -173,10 +175,13 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 ///|
 /// Find the start index of the first occurence of `bytes` in the reader.
 /// The returned index is counted from start of reader.
+///
 /// If the target substring is not found in buffered data,
 /// `BufferedReader` will request more data from the inner reader.
+///
 /// If the inner reader is closed before the target substring is found,
 /// `ReaderClosed` will be rasied.
+///
 /// `find` will not advance the reader stream,
 /// so this operation is idempotent.
 pub async fn[R : Reader] BufferedReader::find(
@@ -190,7 +195,39 @@ pub async fn[R : Reader] BufferedReader::find(
     if region.find(target) is Some(i) {
       return searched + i - self.start
     }
-    self.fetch_more()
+    if !self.fetch_more() {
+      raise ReaderClosed
+    }
+    continue self.start + len
+  }
+}
+
+///|
+/// Find the start index of the first occurence of `bytes` in the reader.
+/// The returned index is counted from start of reader.
+///
+/// If the target substring is not found in buffered data,
+/// `BufferedReader` will request more data from the inner reader.
+///
+/// If the inner reader is closed before the target substring is found,
+/// `None` will be returned.
+///
+/// `find_opt` will not advance the reader stream,
+/// so this operation is idempotent.
+pub async fn[R : Reader] BufferedReader::find_opt(
+  self : Self[R],
+  target : Bytes,
+) -> Int? {
+  for searched = self.start {
+    let len = self.len
+    let end = self.start + len
+    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:end]
+    if region.find(target) is Some(i) {
+      return Some(searched + i - self.start)
+    }
+    if !self.fetch_more() {
+      return None
+    }
     continue self.start + len
   }
 }

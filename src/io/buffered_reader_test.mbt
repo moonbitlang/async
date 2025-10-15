@@ -270,6 +270,29 @@ async test "BufferedReader::find bytes" {
 }
 
 ///|
+async test "BufferedReader::find_opt" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    root.spawn_bg(fn() {
+      defer w.close()
+      @async.sleep(20)
+      w.write(b"abcd")
+      @async.sleep(20)
+      w.write(b"aBcd")
+      @async.sleep(20)
+      w.write(b"abcd")
+    })
+    defer r.close()
+    let reader = @io.BufferedReader::new(r)
+    inspect(reader.find_opt(b"ab"), content="Some(0)")
+    reader.drop(4)
+    inspect(reader.find_opt(b"ab"), content="Some(4)")
+    reader.drop(8)
+    inspect(reader.find_opt(b"ab"), content="None")
+  })
+}
+
+///|
 async test "lazy drop" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
