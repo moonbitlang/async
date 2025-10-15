@@ -24,9 +24,10 @@ pub(all) struct Printer((String) -> Unit)
 ///|
 async fn server(println : Printer) -> Unit {
   @async.with_task_group(fn(group) {
-    let server_sock = @socket.UDP::new()
+    let server_sock = @socket.UdpServer::new(
+      @socket.Addr::parse("0.0.0.0:\{port}"),
+    )
     defer server_sock.close()
-    server_sock.bind(@socket.Addr::parse("0.0.0.0:\{port}"))
     let buf = FixedArray::make(1024, b'0')
     while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
       group.spawn_bg(fn() {
@@ -54,9 +55,8 @@ async fn server(println : Printer) -> Unit {
 
 ///|
 async fn client(println : Printer, id : Int, msg : String) -> Unit {
-  let conn = @socket.UDP::new()
+  let conn = @socket.UdpClient::new(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
-  conn.connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   conn.send(@encoding/utf8.encode(msg))
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')

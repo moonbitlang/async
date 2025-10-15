@@ -41,7 +41,32 @@ fn make_tcp_socket_ipv6(context : String) -> Int raise {
 }
 
 ///|
-extern "C" fn make_udp_socket() -> Int = "moonbitlang_async_make_udp_socket"
+extern "C" fn make_udp_socket_ffi() -> Int = "moonbitlang_async_make_udp_socket"
+
+///|
+extern "C" fn make_udp_socket_ipv6_ffi() -> Int = "moonbitlang_async_make_udp_socket_ipv6"
+
+///|
+fn make_udp_socket(context : String) -> Int raise {
+  let sock = make_udp_socket_ffi()
+  if sock < 0 {
+    @os_error.check_errno(context)
+  }
+  @fd_util.set_cloexec(sock, context~)
+  @fd_util.set_nonblocking(sock, context~)
+  sock
+}
+
+///|
+fn make_udp_socket_ipv6(context : String) -> Int raise {
+  let sock = make_udp_socket_ipv6_ffi()
+  if sock < 0 {
+    @os_error.check_errno(context)
+  }
+  @fd_util.set_cloexec(sock, context~)
+  @fd_util.set_nonblocking(sock, context~)
+  sock
+}
 
 ///|
 #borrow(addr)

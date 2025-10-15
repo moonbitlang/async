@@ -72,15 +72,18 @@ fn TCPServer::close(Self) -> Unit
 fn TCPServer::new(Addr) -> Self raise
 fn TCPServer::new_dual_stack(Int) -> Self raise
 
-type UDP
-fn UDP::bind(Self, Addr) -> Unit raise
-fn UDP::close(Self) -> Unit
-fn UDP::connect(Self, Addr) -> Unit raise
-fn UDP::new() -> Self raise
-async fn UDP::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-async fn UDP::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
-async fn UDP::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
-async fn UDP::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
+type UdpClient
+fn UdpClient::close(Self) -> Unit
+fn UdpClient::new(Addr) -> Self raise
+async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
+
+type UdpServer
+fn UdpServer::close(Self) -> Unit
+fn UdpServer::new(Addr) -> Self raise
+fn UdpServer::new_dual_stack(Int) -> Self raise
+async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
+async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 
 // Type aliases
 
