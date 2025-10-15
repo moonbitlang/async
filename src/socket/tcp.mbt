@@ -37,15 +37,28 @@ pub typealias TcpServer as TCPServer
 /// Create a TCP server that is bound to `addr`,
 /// listening for incoming connections.
 ///
-/// If `addr` is an IPv6 (including the wildcard address `[::]`),
-/// the server will be IPv6 only.
-/// For dual stack server, see `@socket.TcpServer::new_dual_stack`.
-pub fn TcpServer::new(addr : Addr) -> TcpServer raise {
+/// If `addr` is the IPv6 wildcard address `[::]`
+/// and `dual_stack` is `true` (`true` by default),
+/// the server will work in dual stack mode,
+/// accepting connections from both IPv4 clients and IPv6 clients.
+/// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
+///
+/// If `addr` is not `[::]`, `dual_stack` is ignored.
+pub fn TcpServer::new(
+  addr : Addr,
+  dual_stack? : Bool = true,
+) -> TcpServer raise {
   let context = "@socket.TcpServer::new()"
   let sock = if addr.is_ipv6() {
     make_tcp_socket_ipv6(context)
   } else {
     make_tcp_socket(context)
+  }
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
+      @fd_util.close(sock, context~)
+      @os_error.check_errno(context)
+    }
   }
   let bind_result = if addr.is_ipv6() {
     bind_ipv6_ffi(sock, addr)
@@ -53,24 +66,6 @@ pub fn TcpServer::new(addr : Addr) -> TcpServer raise {
     bind_ffi(sock, addr)
   }
   if bind_result != 0 {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
-  }
-  if 0 != listen_ffi(sock) {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
-  }
-  TcpServer(sock)
-}
-
-///|
-/// Create a dual stack TCP server that listen for connections
-/// from all IPv4 and IPv6 clients at `port`.
-/// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
-pub fn TcpServer::new_dual_stack(port : Int) -> TcpServer raise {
-  let context = "@socket.TcpServer::new_dual_stack()"
-  let sock = make_tcp_socket_ipv6(context)
-  if bind_dual_stack(sock, port) != 0 {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }

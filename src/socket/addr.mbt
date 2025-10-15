@@ -43,6 +43,17 @@ pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_i
 extern "C" fn Addr::get_ipv6_byte(addr : Addr, index : Int) -> Int = "moonbitlang_async_addr_get_ipv6_byte"
 
 ///|
+fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool {
+  for i in 0..<16 {
+    if addr.get_ipv6_byte(i) != 0 {
+      break false
+    }
+  } else {
+    true
+  }
+}
+
+///|
 pub impl Show for Addr with output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format

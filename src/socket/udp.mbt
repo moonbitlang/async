@@ -62,15 +62,28 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 ///|
 /// Create a UDP server listening at `addr`.
 ///
-/// If `addr` is an IPv6 (including the wildcard address `[::]`),
-/// the server will be IPv6 only.
-/// For dual stack server, see `@socket.UdpServer::new_dual_stack`.
-pub fn UdpServer::new(addr : Addr) -> UdpServer raise {
+/// If `addr` is the IPv6 wildcard address `[::]`
+/// and `dual_stack` is `true` (`true` by default),
+/// the server will work in dual stack mode,
+/// receiving packets from both IPv4 peers and IPv6 peers.
+/// The address of IPv4 peers are represented via IPv4-mapped IPv6 address.
+///
+/// If `addr` is not `[::]`, `dual_stack` is ignored.
+pub fn UdpServer::new(
+  addr : Addr,
+  dual_stack? : Bool = true,
+) -> UdpServer raise {
   let context = "@socket.UdpServer::new()"
   let sock = if addr.is_ipv6() {
     make_udp_socket_ipv6(context)
   } else {
     make_udp_socket(context)
+  }
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
+      @fd_util.close(sock, context~)
+      @os_error.check_errno(context)
+    }
   }
   let bind_result = if addr.is_ipv6() {
     bind_ipv6_ffi(sock, addr)
@@ -78,20 +91,6 @@ pub fn UdpServer::new(addr : Addr) -> UdpServer raise {
     bind_ffi(sock, addr)
   }
   if bind_result != 0 {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
-  }
-  UdpServer(sock)
-}
-
-///|
-/// Create a new dual stack UDP server listening at `port`.
-/// The server will receive packets from both IPv4 peers and IPv6 peers.
-/// The address of IPv4 peers are represented via IPv4-mapped IPv6 address.
-pub fn UdpServer::new_dual_stack(port : Int) -> UdpServer raise {
-  let context = "@socket.UdpServer::new_dual_stack()"
-  let sock = make_udp_socket_ipv6(context)
-  if bind_dual_stack(sock, port) != 0 {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
