@@ -291,23 +291,6 @@ async test "mkdir - create with custom permissions" {
 
 ```moonbit
 ///|
-async test "opendir and Directory::read_all" {
-  let dir_path = "test_opendir"
-  @fs.mkdir(dir_path, permission=0o755)
-  @fs.write_file("\{dir_path}/file1.txt", b"test", create=0o644)
-  @fs.write_file("\{dir_path}/file2.txt", b"test", create=0o644)
-  let dir = @fs.opendir(dir_path)
-  let entries = dir.read_all(include_hidden=false, include_special=false)
-  dir.close()
-  @fs.remove("\{dir_path}/file1.txt")
-  @fs.remove("\{dir_path}/file2.txt")
-  @fs.rmdir(dir_path)
-  inspect(entries.length(), content="2")
-  inspect(entries.contains("file1.txt"), content="true")
-  inspect(entries.contains("file2.txt"), content="true")
-}
-
-///|
 async test "readdir - read directory entries" {
   let dir_path = "test_readdir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -339,6 +322,37 @@ async test "readdir with sorting" {
   inspect(entries[0], content="a.txt")
   inspect(entries[1], content="b.txt")
   inspect(entries[2], content="c.txt")
+}
+
+///|
+async test "opendir and Directory::read_all" {
+  let dir_path = "test_opendir"
+  @fs.mkdir(dir_path, permission=0o755)
+  @fs.write_file("\{dir_path}/file1.txt", b"test", create=0o644)
+  @fs.write_file("\{dir_path}/file2.txt", b"test", create=0o644)
+  let dir = @fs.opendir(dir_path)
+  let entries = dir.read_all(include_hidden=false, include_special=false)
+  dir.close()
+  @fs.remove("\{dir_path}/file1.txt")
+  @fs.remove("\{dir_path}/file2.txt")
+  @fs.rmdir(dir_path)
+  inspect(entries.length(), content="2")
+  inspect(entries.contains("file1.txt"), content="true")
+  inspect(entries.contains("file2.txt"), content="true")
+}
+
+///|
+async test "as_dir - convert existing opened file to directory" {
+  let dir_path = "test_as_dir"
+  @fs.mkdir(dir_path, permission=0o755)
+  @fs.write_file("\{dir_path}/test.txt", b"test", create=0o644)
+  let file = @fs.open(dir_path, mode=ReadOnly)
+  let dir = file.as_dir()
+  let entries = dir.read_all()
+  dir.close()
+  @fs.remove("\{dir_path}/test.txt")
+  @fs.rmdir(dir_path)
+  inspect(entries.contains("test.txt"), content="true")
 }
 ```
 
@@ -569,24 +583,6 @@ async test "remove - delete file" {
   @fs.remove(test_file)
   let exists = @fs.exists(test_file)
   inspect(exists, content="false")
-}
-```
-
-## File Conversion
-
-```moonbit
-///|
-async test "as_dir - convert file to directory" {
-  let dir_path = "test_as_dir"
-  @fs.mkdir(dir_path, permission=0o755)
-  @fs.write_file("\{dir_path}/test.txt", b"test", create=0o644)
-  let file = @fs.open(dir_path, mode=ReadOnly)
-  let dir = file.as_dir()
-  let entries = dir.read_all()
-  dir.close()
-  @fs.remove("\{dir_path}/test.txt")
-  @fs.rmdir(dir_path)
-  inspect(entries.contains("test.txt"), content="true")
 }
 ```
 
