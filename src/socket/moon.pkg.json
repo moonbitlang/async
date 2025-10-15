@@ -5,7 +5,8 @@
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/internal/c_buffer",
     "moonbitlang/async/io",
-    "moonbitlang/async"
+    "moonbitlang/async",
+    "moonbitlang/async/semaphore"
   ],
   "test-import": [
     "moonbitlang/async/aqueue"

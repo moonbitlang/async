@@ -73,7 +73,7 @@ async test "main" {
       #|server sent: pong
       #|server initiate terminate
       #|client 6 received: pong
-      #|server terminate: Cancelled
+      #|server terminate: ServerTerminate
       #|Ok(())
     ),
   )

@@ -104,48 +104,36 @@ pub async fn server(
   log? : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
-  let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
-  defer server.close()
-  @async.with_task_group(fn(ctx) {
+  @http.run_server(@socket.Addr::parse("0.0.0.0:\{port}"), fn(conn, addr) {
+    log("received new connection from \{addr}")
+    defer {
+      log("closing connection from \{addr}")
+      conn.close()
+    }
     for {
-      let (conn, addr) = server.accept()
-      let conn = @http.ServerConnection::new(conn)
-      log("received new connection from \{addr}")
-      ctx.spawn_bg(allow_failure=true, fn() {
-        defer {
-          log("closing connection from \{addr}")
-          conn.close()
+      let request = conn.read_request()
+      let (path, download_zip) = match request.path {
+        [.. path, .. "?download_zip"] => (path.to_string(), true)
+        path => (path, false)
+      }
+      log("serving \{path}")
+      guard request.meth is Get else { return }
+      let file = @fs.open(base_path + path, mode=ReadOnly) catch {
+        _ => {
+          serve_404(conn)
+          continue
         }
-        for {
-          let request = conn.read_request()
-          let (path, download_zip) = match request.path {
-            [.. path, .. "?download_zip"] => (path.to_string(), true)
-            path => (path, false)
-          }
-          log("serving \{path}")
-          match request.meth {
-            Get => {
-              let file = @fs.open(base_path + path, mode=ReadOnly) catch {
-                _ => {
-                  serve_404(conn)
-                  continue
-                }
-              }
-              defer file.close()
-              if file.kind() is Directory {
-                if download_zip {
-                  serve_zip(conn, base_path + path)
-                } else {
-                  serve_directory(conn, file.as_dir(), path~)
-                }
-              } else {
-                serve_file(conn, file, path~)
-              }
-            }
-            _ => ()
-          }
+      }
+      defer file.close()
+      if file.kind() is Directory {
+        if download_zip {
+          serve_zip(conn, base_path + path)
+        } else {
+          serve_directory(conn, file.as_dir(), path~)
         }
-      })
+      } else {
+        serve_file(conn, file, path~)
+      }
     }
   })
 }
