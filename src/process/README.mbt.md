@@ -273,9 +273,11 @@ Execute processes in a specific directory:
 ```moonbit
 ///|
 async test "set working directory" {
-  let (code, output) = @process.collect_stdout("pwd", [], cwd="/tmp")
+  let (code, output) = @process.collect_stdout("pwd", [], cwd="src")
   inspect(code, content="0")
-  inspect(output.text().trim_space(), content="/private/tmp")
+  let text = output.text().trim_space()
+  // Check that the path ends with "src" (works across OSes)
+  inspect(text.has_suffix("src"), content="true")
 }
 
 ///|
