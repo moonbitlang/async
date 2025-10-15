@@ -14,12 +14,16 @@
 
 ///|
 /// A TLS-encrypted connection
-struct TLS {
+struct Tls {
   ssl : SSL
   host : String?
   read_end : Endpoint
   write_end : Endpoint
 }
+
+///|
+#deprecated("use `Tls` instead")
+pub typealias Tls as TLS
 
 ///|
 pub suberror OpenSSLError String derive(Show)
@@ -28,12 +32,12 @@ pub suberror OpenSSLError String derive(Show)
 pub suberror ConnectionClosed derive(Show)
 
 ///|
-fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
+fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   ctx : SSL_CTX,
   r : R,
   w : W,
   host~ : String?,
-) -> TLS {
+) -> Tls {
   let read_end = Endpoint::new_read(r)
   let write_end = Endpoint::new_write(w)
   let rbio = create_bio(read_end)
@@ -43,7 +47,7 @@ fn[R : @io.Reader, W : @io.Writer] TLS::from_pair(
 }
 
 ///|
-async fn TLS::handle_error(self : TLS, err : Int) -> Unit {
+async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
   match err {
     SSL_ERROR_WANT_READ => self.read_end.wait()
     SSL_ERROR_WANT_WRITE => self.write_end.wait()
@@ -65,14 +69,14 @@ async fn TLS::handle_error(self : TLS, err : Int) -> Unit {
 ///
 /// If `host` is present and `sni` is `true` (`true` by default),
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
-pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
+pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   r : R,
   w : W,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
-) -> TLS {
-  let self = TLS::from_pair(client_ctx, r, w, host~)
+) -> Tls {
+  let self = Tls::from_pair(client_ctx, r, w, host~)
   if not(verify) {
     self.ssl.set_verify(false)
   }
@@ -112,13 +116,13 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(
 ///
 /// If `host` is present and `sni` is `true` (`true` by default),
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
-pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
+pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   inner : Inner,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
-) -> TLS {
-  TLS::client_from_pair(inner, inner, verify~, host?, sni~)
+) -> Tls {
+  Tls::client_from_pair(inner, inner, verify~, host?, sni~)
 }
 
 ///|
@@ -131,17 +135,17 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::client(
 ///
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
-pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
+pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   r : R,
   w : W,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
   certificate_file~ : String,
   certificate_type~ : X509FileType,
-) -> TLS {
+) -> Tls {
   let private_key_file = @encoding/utf8.encode(private_key_file)
   let certificate_file = @encoding/utf8.encode(certificate_file)
-  let self = TLS::from_pair(server_ctx, r, w, host=None)
+  let self = Tls::from_pair(server_ctx, r, w, host=None)
   if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
     self.close()
     raise OpenSSLError(err_get_error())
@@ -171,14 +175,14 @@ pub async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(
 ///
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
-pub async fn[Inner : @io.Reader + @io.Writer] TLS::server(
+pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
   inner : Inner,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
   certificate_file~ : String,
   certificate_type~ : X509FileType,
-) -> TLS {
-  TLS::server_from_pair(
+) -> Tls {
+  Tls::server_from_pair(
     inner,
     inner,
     private_key_file~,
@@ -189,7 +193,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] TLS::server(
 }
 
 ///|
-pub impl @io.Reader for TLS with read(
+pub impl @io.Reader for Tls with read(
   self,
   buf,
   offset? : Int = 0,
@@ -211,7 +215,7 @@ pub impl @io.Reader for TLS with read(
 }
 
 ///|
-pub impl @io.Writer for TLS with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
   while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
       return ret
@@ -229,7 +233,7 @@ pub impl @io.Writer for TLS with write_once(self, buf, offset~, len~) {
 ///
 /// Note that this function will not perform the TLS shutdown process,
 /// for graceful shutdown of a TLS connection, see `TLS::shutdown`.
-pub fn TLS::close(self : TLS) -> Unit {
+pub fn Tls::close(self : Tls) -> Unit {
   self.read_end.close()
   self.write_end.close()
   self.ssl.free()
@@ -253,7 +257,7 @@ pub fn TLS::close(self : TLS) -> Unit {
 /// Furthermore, some servers may not response correctly to TLS shutdown.
 /// So it is highly recommended to add a timeout when calling this function,
 /// to prevent the program from haning indefinitely.
-pub async fn TLS::shutdown(self : TLS) -> Unit {
+pub async fn Tls::shutdown(self : Tls) -> Unit {
   while self.ssl.shutdown() is ret && ret <= 0 {
     let err = if ret == 0 {
       SSL_ERROR_WANT_READ

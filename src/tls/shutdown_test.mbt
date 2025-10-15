@@ -24,7 +24,7 @@ async test "peer close connection" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let server = @tls.TLS::server(
+      let server = @tls.Tls::server(
         conn,
         private_key_file="test_keys/key.pem",
         private_key_type=PEM,
@@ -40,7 +40,7 @@ async test "peer close connection" {
     root.spawn_bg(fn() {
       let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
-      let client = @tls.TLS::client(conn, verify=false)
+      let client = @tls.Tls::client(conn, verify=false)
       defer client.close()
       @async.sleep(50)
       // close the underlying connection directly

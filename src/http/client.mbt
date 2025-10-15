@@ -17,7 +17,7 @@
 struct Client {
   reader : Reader
   conn : @socket.Tcp
-  tls : @tls.TLS?
+  tls : @tls.Tls?
   sender : Sender
 }
 
@@ -45,7 +45,7 @@ pub async fn Client::connect(
   let conn = @socket.Tcp::connect_to_host(host, port~)
   let tls = match protocol {
     Http => None
-    Https => Some(@tls.TLS::client(conn, host~))
+    Https => Some(@tls.Tls::client(conn, host~))
   }
   let reader = match tls {
     None => Reader::new(conn)

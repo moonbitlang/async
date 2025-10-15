@@ -19,23 +19,23 @@ fn OpenSSLError::to_string(Self) -> String // from trait `Show`
 impl Show for OpenSSLError
 
 // Types and methods
-type TLS
-async fn[Inner : @io.Reader + @io.Writer] TLS::client(Inner, verify? : Bool, host? : String, sni? : Bool) -> Self
-async fn[R : @io.Reader, W : @io.Writer] TLS::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool) -> Self
-fn TLS::close(Self) -> Unit
-async fn TLS::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
-async fn TLS::read_all(Self) -> &@io.Data // from trait `@io.Reader`
-async fn TLS::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
-async fn[Inner : @io.Reader + @io.Writer] TLS::server(Inner, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
-async fn[R : @io.Reader, W : @io.Writer] TLS::server_from_pair(R, W, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
-async fn TLS::shutdown(Self) -> Unit
-async fn TLS::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
-async fn TLS::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
-async fn TLS::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
+type Tls
+async fn[Inner : @io.Reader + @io.Writer] Tls::client(Inner, verify? : Bool, host? : String, sni? : Bool) -> Self
+async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool) -> Self
+fn Tls::close(Self) -> Unit
+async fn Tls::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
+async fn Tls::read_all(Self) -> &@io.Data // from trait `@io.Reader`
+async fn Tls::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
+async fn[Inner : @io.Reader + @io.Writer] Tls::server(Inner, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
+async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(R, W, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
+async fn Tls::shutdown(Self) -> Unit
+async fn Tls::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
+async fn Tls::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
+async fn Tls::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
 #deprecated
-async fn TLS::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
-impl @io.Reader for TLS
-impl @io.Writer for TLS
+async fn Tls::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
+impl @io.Reader for Tls
+impl @io.Writer for Tls
 
 pub(all) enum X509FileType {
   PEM
@@ -43,6 +43,7 @@ pub(all) enum X509FileType {
 }
 
 // Type aliases
+pub typealias Tls as TLS
 
 // Traits
 
