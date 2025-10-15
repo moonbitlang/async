@@ -51,19 +51,19 @@ async test "resolve failure" {
 ///|
 async test "resolve preference" {
   inspect(
-    @socket.Addr::resolve("localhost", port=80, protocol=Favor_V4),
+    @socket.Addr::resolve("localhost", port=80, protocol=FavorV4),
     content="127.0.0.1:80",
   )
   inspect(
-    @socket.Addr::resolve("localhost", port=80, protocol=Only_V4),
+    @socket.Addr::resolve("localhost", port=80, protocol=OnlyV4),
     content="127.0.0.1:80",
   )
   inspect(
-    @socket.Addr::resolve("localhost", port=80, protocol=Favor_V6),
+    @socket.Addr::resolve("localhost", port=80, protocol=FavorV6),
     content="[::1]:80",
   )
   inspect(
-    @socket.Addr::resolve("localhost", port=80, protocol=Only_V6),
+    @socket.Addr::resolve("localhost", port=80, protocol=OnlyV6),
     content="[::1]:80",
   )
 }

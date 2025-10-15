@@ -24,7 +24,7 @@ async test "one way" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = @tls.TLS::server_from_pair(
+      let server = @tls.Tls::server_from_pair(
         server_read_from_client,
         server_write_to_client,
         private_key_file="test_keys/key.pem",
@@ -50,7 +50,7 @@ async test "one way" {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = @tls.TLS::client_from_pair(
+      let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
         verify=false,
@@ -88,7 +88,7 @@ async test "echo" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = @tls.TLS::server_from_pair(
+      let server = @tls.Tls::server_from_pair(
         server_read_from_client,
         server_write_to_client,
         private_key_file="test_keys/key.pem",
@@ -114,7 +114,7 @@ async test "echo" {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = @tls.TLS::client_from_pair(
+      let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
         verify=false,

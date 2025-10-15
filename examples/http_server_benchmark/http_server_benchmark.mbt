@@ -18,7 +18,7 @@ let port : Int = 3001
 ///|
 async fn main {
   @async.with_task_group(fn(root) {
-    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
     let headers = { "Connection": "Keep-Alive", "Keep-Alive": "timeout=5" }
     defer server.close()
     for {

@@ -104,7 +104,7 @@ pub async fn server(
   log? : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
-  let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+  let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
   defer server.close()
   @async.with_task_group(fn(ctx) {
     for {

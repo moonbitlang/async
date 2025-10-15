@@ -124,12 +124,12 @@ fn ResolveHostnameError::from_error_code(code : Int) -> ResolveHostnameError {
 }
 
 ///|
-pub(all) enum IPProtocolPreference {
-  Only_V4
-  Only_V6
-  Favor_V4
-  Favor_V6
-  No_Preference
+pub(all) enum IpProtocolPreference {
+  OnlyV4
+  OnlyV6
+  FavorV4
+  FavorV6
+  NoPreference
 } derive(Show)
 
 ///|
@@ -141,7 +141,7 @@ pub(all) enum IPProtocolPreference {
 pub async fn Addr::resolve(
   host : String,
   port~ : Int,
-  protocol? : IPProtocolPreference = No_Preference,
+  protocol? : IpProtocolPreference = NoPreference,
 ) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
   let host = @encoding/utf8.encode(host)
@@ -159,7 +159,7 @@ pub async fn Addr::resolve(
 
   // search for address with preferred protocol
   match protocol {
-    Favor_V4 | Only_V4 => {
+    FavorV4 | OnlyV4 => {
       if not(first_addr.is_ipv6()) {
         return first_addr
       }
@@ -169,13 +169,13 @@ pub async fn Addr::resolve(
           return addr
         }
       }
-      if protocol is Only_V4 {
+      if protocol is OnlyV4 {
         raise ResolveHostnameError("No available IPv4 address")
       } else {
         first_addr
       }
     }
-    Favor_V6 | Only_V6 => {
+    FavorV6 | OnlyV6 => {
       if first_addr.is_ipv6() {
         return first_addr
       }
@@ -185,12 +185,12 @@ pub async fn Addr::resolve(
           return addr
         }
       }
-      if protocol is Only_V6 {
+      if protocol is OnlyV6 {
         raise ResolveHostnameError("No available IPv6 address")
       } else {
         first_addr
       }
     }
-    No_Preference => first_addr
+    NoPreference => first_addr
   }
 }

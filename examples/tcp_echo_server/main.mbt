@@ -15,7 +15,7 @@
 ///|
 async fn main {
   @async.with_task_group(fn(root) {
-    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:4200"))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:4200"))
     defer server.close()
     for {
       let (conn, _) = server.accept()

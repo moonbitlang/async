@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-let all_protocol_preferences : FixedArray[@socket.IPProtocolPreference] = [
-  @socket.Favor_V4,
-  @socket.Only_V4,
-  @socket.Favor_V6,
-  @socket.Only_V6,
+let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
+  @socket.FavorV4,
+  @socket.OnlyV4,
+  @socket.FavorV6,
+  @socket.OnlyV6,
 ]
 
 ///|
@@ -26,7 +26,7 @@ async test "Only_V4 server" {
   let port = 4209
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TCPServer::new(
+      let server = @socket.TcpServer::new(
         @socket.Addr::parse("0.0.0.0:\{port}"),
       )
       defer server.close()
@@ -41,7 +41,7 @@ async test "Only_V4 server" {
       }
     })
     async fn client(protocol) {
-      let conn = @socket.TCP::connect_to_host("localhost", port~, protocol~)
+      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
       conn.write("message")
     }
@@ -58,12 +58,12 @@ async test "Only_V4 server" {
     log.to_string(),
     content=(
       #|server received "message" from 127.0.0.1
-      #|client(Favor_V4): Ok(())
+      #|client(FavorV4): Ok(())
       #|server received "message" from 127.0.0.1
-      #|client(Only_V4): Ok(())
+      #|client(OnlyV4): Ok(())
       #|server received "message" from 127.0.0.1
-      #|client(Favor_V6): Ok(())
-      #|client(Only_V6): Err(OSError("@socket.TCP::connect: Connection refused"))
+      #|client(FavorV6): Ok(())
+      #|client(OnlyV6): Err(OSError("@socket.Tcp::connect(): Connection refused"))
       #|
     ),
   )
@@ -75,7 +75,7 @@ async test "Only_V6 server" {
   let port = 4210
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TCPServer::new(@socket.Addr::parse("[::]:\{port}"))
+      let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}"))
       for {
         let (conn, addr) = server.accept()
         defer conn.close()
@@ -87,7 +87,7 @@ async test "Only_V6 server" {
       }
     })
     async fn client(protocol) {
-      let conn = @socket.TCP::connect_to_host("localhost", port~, protocol~)
+      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
       conn.write("message")
     }
@@ -104,12 +104,12 @@ async test "Only_V6 server" {
     log.to_string(),
     content=(
       #|server received "message" from [::1]
-      #|client(Favor_V4): Ok(())
-      #|client(Only_V4): Err(OSError("@socket.TCP::connect: Connection refused"))
+      #|client(FavorV4): Ok(())
+      #|client(OnlyV4): Err(OSError("@socket.Tcp::connect(): Connection refused"))
       #|server received "message" from [::1]
-      #|client(Favor_V6): Ok(())
+      #|client(FavorV6): Ok(())
       #|server received "message" from [::1]
-      #|client(Only_V6): Ok(())
+      #|client(OnlyV6): Ok(())
       #|
     ),
   )
@@ -121,7 +121,7 @@ async test "dual stack server" {
   let port = 4211
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TCPServer::new_dual_stack(port)
+      let server = @socket.TcpServer::new_dual_stack(port)
       for {
         let (conn, addr) = server.accept()
         defer conn.close()
@@ -133,7 +133,7 @@ async test "dual stack server" {
       }
     })
     async fn client(protocol) {
-      let conn = @socket.TCP::connect_to_host("localhost", port~, protocol~)
+      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
       conn.write("message")
     }
@@ -150,13 +150,13 @@ async test "dual stack server" {
     log.to_string(),
     content=(
       #|server received "message" from [::ffff:127.0.0.1]
-      #|client(Favor_V4): Ok(())
+      #|client(FavorV4): Ok(())
       #|server received "message" from [::ffff:127.0.0.1]
-      #|client(Only_V4): Ok(())
+      #|client(OnlyV4): Ok(())
       #|server received "message" from [::1]
-      #|client(Favor_V6): Ok(())
+      #|client(FavorV6): Ok(())
       #|server received "message" from [::1]
-      #|client(Only_V6): Ok(())
+      #|client(OnlyV6): Ok(())
       #|
     ),
   )
@@ -201,11 +201,11 @@ async test "Only_V4 UDP server" {
     log.to_string(),
     content=(
       #|server received "message" from 127.0.0.1
-      #|client(Favor_V4): Ok(())
+      #|client(FavorV4): Ok(())
       #|server received "message" from 127.0.0.1
-      #|client(Only_V4): Ok(())
-      #|client(Favor_V6): Ok(())
-      #|client(Only_V6): Ok(())
+      #|client(OnlyV4): Ok(())
+      #|client(FavorV6): Ok(())
+      #|client(OnlyV6): Ok(())
       #|
     ),
   )
@@ -247,12 +247,12 @@ async test "Only_V6 UDP server" {
   inspect(
     log.to_string(),
     content=(
-      #|client(Favor_V4): Ok(())
-      #|client(Only_V4): Ok(())
+      #|client(FavorV4): Ok(())
+      #|client(OnlyV4): Ok(())
       #|server received "message" from [::1]
-      #|client(Favor_V6): Ok(())
+      #|client(FavorV6): Ok(())
       #|server received "message" from [::1]
-      #|client(Only_V6): Ok(())
+      #|client(OnlyV6): Ok(())
       #|
     ),
   )
@@ -295,13 +295,13 @@ async test "dual stack UDP server" {
     log.to_string(),
     content=(
       #|server received "message" from [::ffff:127.0.0.1]
-      #|client(Favor_V4): Ok(())
+      #|client(FavorV4): Ok(())
       #|server received "message" from [::ffff:127.0.0.1]
-      #|client(Only_V4): Ok(())
+      #|client(OnlyV4): Ok(())
       #|server received "message" from [::1]
-      #|client(Favor_V6): Ok(())
+      #|client(FavorV6): Ok(())
       #|server received "message" from [::1]
-      #|client(Only_V6): Ok(())
+      #|client(OnlyV6): Ok(())
       #|
     ),
   )

@@ -33,7 +33,7 @@ async fn client(
         while remaining > 0 {
           remaining -= 1
           @async.sleep(rand.int(limit=conn_duration / 10))
-          let conn = @socket.TCP::connect(dst)
+          let conn = @socket.Tcp::connect(dst)
           defer conn.close()
           @async.with_task_group(fn(conn_group) {
             let mut send_count : Int64 = 0

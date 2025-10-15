@@ -16,8 +16,8 @@
 /// Simple HTTP client which connect to a remote host via TCP
 struct Client {
   reader : Reader
-  conn : @socket.TCP
-  tls : @tls.TLS?
+  conn : @socket.Tcp
+  tls : @tls.Tls?
   sender : Sender
 }
 
@@ -42,10 +42,10 @@ pub async fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
 ) -> Client {
-  let conn = @socket.TCP::connect_to_host(host, port~)
+  let conn = @socket.Tcp::connect_to_host(host, port~)
   let tls = match protocol {
     Http => None
-    Https => Some(@tls.TLS::client(conn, host~))
+    Https => Some(@tls.Tls::client(conn, host~))
   }
   let reader = match tls {
     None => Reader::new(conn)
