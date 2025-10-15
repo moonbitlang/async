@@ -21,7 +21,7 @@ async test "set cwd" {
     defer r.close()
     root.spawn_bg(fn() {
       let _ = @process.run("ls", [], stdout=w, cwd="src/process", extra_env={
-        "LANG": "en_US.UTF-8",
+        "LC_ALL": "C",
       })
       guard @env.current_dir() is Some(new_cwd)
       guard prev_cwd == new_cwd
@@ -29,6 +29,8 @@ async test "set cwd" {
     inspect(
       r.read_all().text(),
       content=(
+        #|README.mbt.md
+        #|README.md
         #|basic_test.mbt
         #|cancel_test.mbt
         #|cwd_test.mbt
@@ -37,8 +39,6 @@ async test "set cwd" {
         #|moon.pkg.json
         #|pkg.generated.mbti
         #|process.mbt
-        #|README.mbt.md
-        #|README.md
         #|redirect_test.mbt
         #|stub.c
         #|wait_test.mbt

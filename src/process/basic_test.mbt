@@ -19,14 +19,14 @@ async test "basic_ls" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run("ls", ["src/process"], stdout=w, extra_env={
-        "LANG": "en_US.UTF-8",
-      })
+      @process.run("ls", ["src/process"], stdout=w, extra_env={ "LC_ALL": "C" })
       |> ignore
     })
     inspect(
       r.read_all().text(),
       content=(
+        #|README.mbt.md
+        #|README.md
         #|basic_test.mbt
         #|cancel_test.mbt
         #|cwd_test.mbt
@@ -35,8 +35,6 @@ async test "basic_ls" {
         #|moon.pkg.json
         #|pkg.generated.mbti
         #|process.mbt
-        #|README.mbt.md
-        #|README.md
         #|redirect_test.mbt
         #|stub.c
         #|wait_test.mbt
