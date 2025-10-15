@@ -24,7 +24,7 @@ pub(all) struct Printer((String) -> Unit)
 ///|
 async fn server(println : Printer) -> Unit {
   @async.with_task_group(fn(group) {
-    let server = @socket.TCPServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
     defer server.close()
     try {
       for {
@@ -61,7 +61,7 @@ async fn server(println : Printer) -> Unit {
 
 ///|
 async fn client(println : Printer, id : Int, msg : String) -> Unit {
-  let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+  let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
   defer conn.close()
   // The sleep here is used to make test result stable and portable,
   // because this message is in race condition

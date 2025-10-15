@@ -71,7 +71,7 @@ Here's an example server that returns 404 to every request:
 ///|
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
   @async.with_task_group(fn(group) {
-    let server = @socket.TCPServer::new(listen_addr)
+    let server = @socket.TcpServer::new(listen_addr)
     for {
       let (conn, _) = server.accept()
       group.spawn_bg(allow_failure=true, fn() {

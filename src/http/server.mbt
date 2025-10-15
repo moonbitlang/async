@@ -16,7 +16,7 @@
 /// A single HTTP server connection
 struct ServerConnection {
   reader : Reader
-  conn : @socket.TCP
+  conn : @socket.Tcp
   sender : Sender
 }
 
@@ -30,7 +30,7 @@ struct ServerConnection {
 /// 
 /// - Content-Length, Transfer-Encoding
 pub fn ServerConnection::new(
-  conn : @socket.TCP,
+  conn : @socket.Tcp,
   headers? : Map[String, String] = {},
 ) -> ServerConnection {
   { reader: Reader::new(conn), conn, sender: Sender::new(conn, headers~) }

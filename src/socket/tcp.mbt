@@ -13,17 +13,25 @@
 // limitations under the License.
 
 ///|
-/// A TCP connection
-struct TCP(Int)
+/// A Tcp connection
+struct Tcp(Int)
 
 ///|
-pub fn TCP::close(self : TCP) -> Unit {
-  let TCP(sock) = self
+#deprecated("use `Tcp` instead")
+pub typealias Tcp as TCP
+
+///|
+pub fn Tcp::close(self : Tcp) -> Unit {
+  let Tcp(sock) = self
   @event_loop.close_fd(sock)
 }
 
 ///|
-struct TCPServer(Int)
+struct TcpServer(Int)
+
+///|
+#deprecated("use `TcpServer` instead")
+pub typealias TcpServer as TCPServer
 
 ///|
 /// Create a TCP server that is bound to `addr`,
@@ -31,9 +39,9 @@ struct TCPServer(Int)
 ///
 /// If `addr` is an IPv6 (including the wildcard address `[::]`),
 /// the server will be IPv6 only.
-/// For dual stack server, see `@socket.TCPServer::new_dual_stack`.
-pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
-  let context = "@socket.TCPServer::new()"
+/// For dual stack server, see `@socket.TcpServer::new_dual_stack`.
+pub fn TcpServer::new(addr : Addr) -> TcpServer raise {
+  let context = "@socket.TcpServer::new()"
   let sock = if addr.is_ipv6() {
     make_tcp_socket_ipv6(context)
   } else {
@@ -52,15 +60,15 @@ pub fn TCPServer::new(addr : Addr) -> TCPServer raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  TCPServer(sock)
+  TcpServer(sock)
 }
 
 ///|
 /// Create a dual stack TCP server that listen for connections
 /// from all IPv4 and IPv6 clients at `port`.
 /// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
-pub fn TCPServer::new_dual_stack(port : Int) -> TCPServer raise {
-  let context = "@socket.TCPServer::new_dual_stack()"
+pub fn TcpServer::new_dual_stack(port : Int) -> TcpServer raise {
+  let context = "@socket.TcpServer::new_dual_stack()"
   let sock = make_tcp_socket_ipv6(context)
   if bind_dual_stack(sock, port) != 0 {
     @fd_util.close(sock, context~)
@@ -70,32 +78,32 @@ pub fn TCPServer::new_dual_stack(port : Int) -> TCPServer raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  TCPServer(sock)
+  TcpServer(sock)
 }
 
 ///|
-pub fn TCPServer::close(self : TCPServer) -> Unit {
-  let TCPServer(sock) = self
+pub fn TcpServer::close(self : TcpServer) -> Unit {
+  let TcpServer(sock) = self
   @event_loop.close_fd(sock)
 }
 
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
-pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) {
-  let TCPServer(listen_sock) = self
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  let TcpServer(listen_sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
   let conn = @event_loop.perform_job(
     Accept(sock=listen_sock, addr=addr.0),
-    context="@socket.TCPServer::accept",
+    context="@socket.TcpServer::accept",
   )
   if disable_nagle(conn) < 0 {
-    @fd_util.close(conn, context="@socket.TCPServer::accept()")
-    @os_error.check_errno("@socket.TCPServer::accept(): set TCP_NODELAY")
+    @fd_util.close(conn, context="@socket.TcpServer::accept()")
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
-  @fd_util.set_cloexec(conn, context="@socket.TCPServer::accept()")
-  @fd_util.set_nonblocking(conn, context="@socket.TCPServer::accept()")
+  @fd_util.set_cloexec(conn, context="@socket.TcpServer::accept()")
+  @fd_util.set_nonblocking(conn, context="@socket.TcpServer::accept()")
   (conn, addr)
 }
 
@@ -109,45 +117,41 @@ pub async fn TCPServer::accept(self : TCPServer) -> (TCP, Addr) {
 /// before closing the connection.
 ///
 /// `keep_alive_interval` is the time in seconds between two keep alive probes.
-pub fn TCP::enable_keepalive(
-  self : TCP,
+pub fn Tcp::enable_keepalive(
+  self : Tcp,
   idle_before_keep_alive? : Int = -1,
   keep_alive_count? : Int = -1,
   keep_alive_interval? : Int = -1,
 ) -> Unit raise {
-  let TCP(sock) = self
+  let Tcp(sock) = self
   let ret = enable_keepalive_ffi(
     sock, idle_before_keep_alive, keep_alive_count, keep_alive_interval,
   )
   if ret < 0 {
-    @os_error.check_errno("@socket.TCP::enable_keepalive()")
+    @os_error.check_errno("@socket.Tcp::enable_keepalive()")
   }
 }
 
 ///|
 /// Make connection to a remote address using `connect(2)` system call.
-pub async fn TCP::connect(addr : Addr) -> TCP {
+pub async fn Tcp::connect(addr : Addr) -> Tcp {
+  let context = "@socket.Tcp::connect()"
   let sock = if addr.is_ipv6() {
-    make_tcp_socket_ipv6("@socket.TCP::connect()")
+    make_tcp_socket_ipv6(context)
   } else {
-    make_tcp_socket("@socket.TCP::connect()")
+    make_tcp_socket(context)
   }
   if disable_nagle(sock) < 0 {
-    @fd_util.close(sock, context="@socket.TCP::connect()")
-    @os_error.check_errno("@socket.TCP::connect(): set TCP_NODELAY")
+    @fd_util.close(sock, context~)
+    @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
-  try
-    @event_loop.perform_job(
-      Connect(sock~, addr=addr.0),
-      context="@socket.TCP::connect",
-    )
-  catch {
+  try @event_loop.perform_job(Connect(sock~, addr=addr.0), context~) catch {
     err => {
       @event_loop.close_fd(sock)
       raise err
     }
   } noraise {
-    _ => TCP(sock)
+    _ => Tcp(sock)
   }
 }
 
@@ -160,24 +164,24 @@ pub async fn TCP::connect(addr : Addr) -> TCP {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for TCP with read(
+pub impl @io.Reader for Tcp with read(
   self,
   buf,
   offset? = 0,
   max_len? = buf.length() - offset,
 ) {
-  let TCP(sock) = self
+  let Tcp(sock) = self
   @event_loop.perform_job(
     Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
-    context="@socket.TCP::read",
+    context="@socket.Tcp::read()",
   )
 }
 
 ///|
-pub impl @io.Writer for TCP with write_once(self, buf, offset~, len~) {
-  let TCP(sock) = self
+pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
+  let Tcp(sock) = self
   @event_loop.perform_job(
     Write(fd=sock, buf~, offset~, len~, can_poll=true),
-    context="@socket.TCP::write",
+    context="@socket.Tcp::write()",
   )
 }

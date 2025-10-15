@@ -17,7 +17,7 @@ suberror ServerTerminate
 
 ///|
 async fn server(addr : String) -> Int {
-  let server = @socket.TCPServer::new(@socket.Addr::parse(addr))
+  let server = @socket.TcpServer::new(@socket.Addr::parse(addr))
   defer server.close()
   let mut num_connection = 0
   try
@@ -48,7 +48,7 @@ async fn server(addr : String) -> Int {
 
 ///|
 async fn client(msg : Bytes, addr : String) -> Unit {
-  let conn = @socket.TCP::connect(@socket.Addr::parse(addr))
+  let conn = @socket.Tcp::connect(@socket.Addr::parse(addr))
   defer conn.close()
   conn.write(msg)
 }

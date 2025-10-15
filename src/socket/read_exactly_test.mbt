@@ -23,7 +23,7 @@ async test "read_exactly" {
   @async.with_task_group(fn(root) {
     // server
     root.spawn_bg(fn() {
-      let server = @socket.TCPServer::new(
+      let server = @socket.TcpServer::new(
         @socket.Addr::parse("127.0.0.1:\{port}"),
       )
       defer server.close()
@@ -44,7 +44,7 @@ async test "read_exactly" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")
@@ -77,7 +77,7 @@ async test "read_exactly failure" {
   @async.with_task_group(fn(root) {
     // server
     root.spawn_bg(fn() {
-      let server = @socket.TCPServer::new(
+      let server = @socket.TcpServer::new(
         @socket.Addr::parse("127.0.0.1:\{port}"),
       )
       defer server.close()
@@ -98,7 +98,7 @@ async test "read_exactly failure" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.TCP::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")

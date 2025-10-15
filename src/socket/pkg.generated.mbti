@@ -50,27 +50,27 @@ fn IPProtocolPreference::output(Self, &Logger) -> Unit // from trait `Show`
 fn IPProtocolPreference::to_string(Self) -> String // from trait `Show`
 impl Show for IPProtocolPreference
 
-type TCP
-fn TCP::close(Self) -> Unit
-async fn TCP::connect(Addr) -> Self
-async fn TCP::connect_to_host(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
-fn TCP::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-async fn TCP::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
-async fn TCP::read_all(Self) -> &@io.Data // from trait `@io.Reader`
-async fn TCP::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
-async fn TCP::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
-async fn TCP::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
-async fn TCP::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
+type Tcp
+fn Tcp::close(Self) -> Unit
+async fn Tcp::connect(Addr) -> Self
+async fn Tcp::connect_to_host(String, port~ : Int, protocol? : IPProtocolPreference) -> Self
+fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
+async fn Tcp::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
+async fn Tcp::read_all(Self) -> &@io.Data // from trait `@io.Reader`
+async fn Tcp::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
+async fn Tcp::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
+async fn Tcp::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
+async fn Tcp::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
 #deprecated
-async fn TCP::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
-impl @io.Reader for TCP
-impl @io.Writer for TCP
+async fn Tcp::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
+impl @io.Reader for Tcp
+impl @io.Writer for Tcp
 
-type TCPServer
-async fn TCPServer::accept(Self) -> (TCP, Addr)
-fn TCPServer::close(Self) -> Unit
-fn TCPServer::new(Addr) -> Self raise
-fn TCPServer::new_dual_stack(Int) -> Self raise
+type TcpServer
+async fn TcpServer::accept(Self) -> (Tcp, Addr)
+fn TcpServer::close(Self) -> Unit
+fn TcpServer::new(Addr) -> Self raise
+fn TcpServer::new_dual_stack(Int) -> Self raise
 
 type UdpClient
 fn UdpClient::close(Self) -> Unit
@@ -86,6 +86,9 @@ async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : I
 async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 
 // Type aliases
+pub typealias Tcp as TCP
+
+pub typealias TcpServer as TCPServer
 
 // Traits
 

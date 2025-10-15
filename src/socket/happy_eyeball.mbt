@@ -26,16 +26,16 @@
 ///   an IPv6 connection will only be returned if no IPv4 address is available
 /// - if `protocol` is `Only_V6`,
 ///   `connect_to_host` will fail if no IPv4 address is available
-pub async fn TCP::connect_to_host(
+pub async fn Tcp::connect_to_host(
   host : String,
   port~ : Int,
   protocol? : IPProtocolPreference = No_Preference,
-) -> TCP {
+) -> Tcp {
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
   let ret = @event_loop.perform_job(
     GetAddrInfo(host~, out=ai_ref),
-    context="@socket.TCP::connect_to_host()",
+    context="@socket.Tcp::connect_to_host()",
   )
   if ret > 0 {
     raise ResolveHostnameError::from_error_code(ret)
@@ -54,7 +54,7 @@ pub async fn TCP::connect_to_host(
           _ => ()
         }
         group.spawn_bg(allow_failure=true, fn() {
-          let conn = TCP::connect(addr) catch {
+          let conn = Tcp::connect(addr) catch {
             err => {
               if conn_err is None {
                 conn_err = Some(err)
