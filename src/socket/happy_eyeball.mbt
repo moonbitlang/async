@@ -16,20 +16,20 @@
 /// Connect to a remote host using the happy eyeball algorithm.
 /// Preference on IPv4 v.s. IPv6 can be configured via `protocol`:
 ///
-/// - if `protocol` is `No_Preference` (the default behavior),
+/// - if `protocol` is `NoPreference` (the default behavior),
 ///   the first successful connection will be returned, regardless of the protocol.
-/// - if `protocol` is `Favor_V4`,
+/// - if `protocol` is `FavorV4`,
 ///   an IPv6 connection will only be returned if no IPv4 address is available
-/// - if `protocol` is `Only_V4`,
+/// - if `protocol` is `OnlyV4`,
 ///   `connect_to_host` will fail if no IPv4 address is available
-/// - if `protocol` is `Favor_V6`,
+/// - if `protocol` is `FavorV6`,
 ///   an IPv6 connection will only be returned if no IPv4 address is available
-/// - if `protocol` is `Only_V6`,
+/// - if `protocol` is `OnlyV6`,
 ///   `connect_to_host` will fail if no IPv4 address is available
 pub async fn Tcp::connect_to_host(
   host : String,
   port~ : Int,
-  protocol? : IPProtocolPreference = No_Preference,
+  protocol? : IpProtocolPreference = NoPreference,
 ) -> Tcp {
   let host = @encoding/utf8.encode(host)
   let ai_ref = AddrInfoRef::new()
@@ -44,13 +44,13 @@ pub async fn Tcp::connect_to_host(
   let mut conn_err = None
   let ai = ai_ref.get_and_clear()
   defer ai.free()
-  async fn connect_with_protocol(protocol : IPProtocolPreference) {
+  async fn connect_with_protocol(protocol : IpProtocolPreference) {
     @async.with_task_group(fn(group) {
       for ai = ai; not(ai.is_null()); ai = ai.next() {
         let addr = ai.to_addr(port)
         match (protocol, addr.is_ipv6()) {
-          (Only_V4 | Favor_V4, true) => continue
-          (Only_V6 | Favor_V6, false) => continue
+          (OnlyV4 | FavorV4, true) => continue
+          (OnlyV6 | FavorV6, false) => continue
           _ => ()
         }
         group.spawn_bg(allow_failure=true, fn() {
@@ -71,17 +71,17 @@ pub async fn Tcp::connect_to_host(
   }
 
   match protocol {
-    No_Preference | Only_V4 | Only_V6 => connect_with_protocol(protocol)
-    Favor_V4 => {
-      connect_with_protocol(Only_V4)
+    NoPreference | OnlyV4 | OnlyV6 => connect_with_protocol(protocol)
+    FavorV4 => {
+      connect_with_protocol(OnlyV4)
       if result is None {
-        connect_with_protocol(Only_V6)
+        connect_with_protocol(OnlyV6)
       }
     }
-    Favor_V6 => {
-      connect_with_protocol(Only_V6)
+    FavorV6 => {
+      connect_with_protocol(OnlyV6)
       if result is None {
-        connect_with_protocol(Only_V4)
+        connect_with_protocol(OnlyV4)
       }
     }
   }
@@ -90,9 +90,9 @@ pub async fn Tcp::connect_to_host(
     None =>
       match (conn_err, protocol) {
         (Some(err), _) => raise err
-        (None, Only_V4) =>
+        (None, OnlyV4) =>
           raise ResolveHostnameError("No available IPv4 address")
-        (None, Only_V6) =>
+        (None, OnlyV6) =>
           raise ResolveHostnameError("No available IPv6 address")
         (None, _) => panic()
       }
