@@ -1,0 +1,4 @@
+# .dockerignore
+target/
+.git/
+examples/target

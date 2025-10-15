@@ -17,12 +17,14 @@ i.e. limited to a single core.
 
 ## Dockerized HTTP Server Benchmark
 
-Note: Just support `linux/amd64` platform now.
+**Note**: Just support `linux/amd64` platform now.
 
 1. Build the Docker image:
 
+Please run the following command in the project root directory:
+
 ```bash
-bash examples/http_server_benchmark/build.sh
+docker build -f examples/http_server_benchmark/Dockerfile -t http-benchmark .
 ```
 
 2. Then run the benchmark:
