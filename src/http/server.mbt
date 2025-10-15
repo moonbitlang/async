@@ -122,3 +122,41 @@ pub async fn ServerConnection::send_response(
 ) -> Unit {
   self.sender.send_response(code, reason, extra_headers~)
 }
+
+///|
+/// Create a HTTP server listening on `addr` and run its main loop.
+/// New connections are handled by the callback `f`,
+/// `f` will receive the new HTTP connection and the address of the client.
+///
+/// The client connection is closed automatically,
+/// so `f` must not close the connection manually.
+///
+/// `headers` can be used to specify persistent headers for the server,
+/// i.e. all response sent by this server will share these headers.
+///
+/// If `allow_failure` is `true` (`true` by default),
+/// failure in `f` will be silently ignored.
+///
+/// If `max_connections` is present,
+/// at most `max_connections` clients are allowed in parallel.
+/// New clients will only get handled after a previous client terminates.
+///
+/// The meaning of `dual_stack` is the same as `@socket.TcpServer::new`,
+/// see its document for more details.
+pub async fn run_server(
+  addr : @socket.Addr,
+  f : async (ServerConnection, @socket.Addr) -> Unit,
+  headers? : Map[String, String],
+  dual_stack? : Bool,
+  allow_failure? : Bool,
+  max_connections? : Int,
+) -> Unit {
+  @socket.TcpServer::new(addr, dual_stack?).run_forever(
+    allow_failure?,
+    max_connections?,
+    fn(conn, addr) {
+      let conn = ServerConnection::new(conn, headers?)
+      f(conn, addr)
+    },
+  )
+}

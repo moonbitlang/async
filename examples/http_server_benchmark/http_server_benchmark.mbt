@@ -17,23 +17,11 @@ let port : Int = 3001
 
 ///|
 async fn main {
-  @async.with_task_group(fn(root) {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
-    let headers = { "Connection": "Keep-Alive", "Keep-Alive": "timeout=5" }
-    defer server.close()
-    for {
-      let (conn, _) = server.accept()
-      let conn = @http.ServerConnection::new(conn, headers~)
-      root.spawn_bg(allow_failure=true, fn() {
-        defer conn.close()
-        for {
-          let request = conn.read_request()
-          match (request.meth, request.path) {
-            (Get, "/") => conn..send_response(200, "OK")..end_response()
-            _ => conn..send_response(404, "NotFound")..end_response()
-          }
-        }
-      })
+  @http.run_server(@socket.Addr::parse("0.0.0.0:\{port}"), fn(conn, _) {
+    let request = conn.read_request()
+    match (request.meth, request.path) {
+      (Get, "/") => conn..send_response(200, "OK")..end_response()
+      _ => conn..send_response(404, "NotFound")..end_response()
     }
   })
 }

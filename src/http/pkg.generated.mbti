@@ -13,6 +13,8 @@ async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int) ->
 
 async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
 
+async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
+
 // Errors
 pub suberror HttpProtocolError {
   BadRequest

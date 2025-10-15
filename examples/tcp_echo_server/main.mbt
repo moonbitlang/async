@@ -14,15 +14,10 @@
 
 ///|
 async fn main {
-  @async.with_task_group(fn(root) {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:4200"))
-    defer server.close()
-    for {
-      let (conn, _) = server.accept()
-      root.spawn_bg(allow_failure=true, fn() {
-        defer conn.close()
-        conn.write_reader(conn)
-      })
-    }
+  @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:4200")).run_forever(fn(
+    conn,
+    _,
+  ) {
+    conn.write_reader(conn)
   })
 }

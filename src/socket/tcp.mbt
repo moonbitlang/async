@@ -77,6 +77,52 @@ pub fn TcpServer::new(
 }
 
 ///|
+/// Start the main loop of a TCP server,
+/// keep listening for new connections
+/// and handle connections using the callback `f`.
+/// `f` will be supplied the new connection and the address of the client.
+///
+/// The client connection will be closed automatically after `f` exits,
+/// so `f` must not close the client connection.
+/// The server will be automatically closed if `run_forever` fails.
+///
+/// If `allow_failure` is `true` (`true` by default),
+/// failure in `f` will be silently ignored.
+///
+/// If `max_connections` is present,
+/// at most `max_connections` clients are allowed in parallel.
+/// New clients will only get handled after a previous client terminates.
+pub async fn TcpServer::run_forever(
+  self : TcpServer,
+  f : async (Tcp, Addr) -> Unit,
+  allow_failure? : Bool = true,
+  max_connections? : Int,
+) -> Unit {
+  defer self.close()
+  let conn_limit = match max_connections {
+    None => None
+    Some(n) => Some(@semaphore.Semaphore::new(n))
+  }
+  @async.with_task_group(fn(group) {
+    for {
+      let (conn, addr) = self.accept()
+      if conn_limit is Some(limit) {
+        limit.acquire()
+      }
+      group.spawn_bg(allow_failure~, fn() {
+        defer conn.close()
+        if conn_limit is Some(limit) {
+          defer limit.release()
+          f(conn, addr)
+        } else {
+          f(conn, addr)
+        }
+      })
+    }
+  })
+}
+
+///|
 pub fn TcpServer::close(self : TcpServer) -> Unit {
   let TcpServer(sock) = self
   @event_loop.close_fd(sock)

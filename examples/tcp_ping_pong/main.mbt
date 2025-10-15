@@ -23,40 +23,33 @@ pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server(println : Printer) -> Unit {
-  @async.with_task_group(fn(group) {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}"))
-    defer server.close()
-    try {
-      for {
-        let (conn, _) = server.accept()
-        println("received new connection")
-        group.spawn_bg(fn() {
-          defer conn.close()
-          let buf = FixedArray::make(1024, b'0')
-          while conn.read(buf) is n && n > 0 {
-            @async.sleep(10)
-            let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-            println("server received: \{@encoding/utf8.decode(msg)}")
-            let reply = "pong"
-            conn.write(reply)
-            println("server sent: \{reply}")
-            if msg == b"exit" {
-              println("server initiate terminate")
-              @async.sleep(20)
-              raise ServerTerminate
-            }
-          } else {
-            println("server: connection closed by peer")
-          }
-        })
+  @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}")).run_forever(
+    allow_failure=false,
+    fn(conn, _) {
+      println("received new connection")
+      let buf = FixedArray::make(1024, b'0')
+      while conn.read(buf) is n && n > 0 {
+        @async.sleep(10)
+        let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+        println("server received: \{@encoding/utf8.decode(msg)}")
+        let reply = "pong"
+        conn.write(reply)
+        println("server sent: \{reply}")
+        if msg == b"exit" {
+          println("server initiate terminate")
+          @async.sleep(20)
+          raise ServerTerminate
+        }
+      } else {
+        println("server: connection closed by peer")
       }
-    } catch {
-      err => {
-        println("server terminate: \{err}")
-        raise err
-      }
+    },
+  ) catch {
+    err => {
+      println("server terminate: \{err}")
+      raise err
     }
-  })
+  }
 }
 
 ///|

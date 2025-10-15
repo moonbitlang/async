@@ -26,19 +26,17 @@ async test "Only_V4 server" {
   let port = 4209
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TcpServer::new(
-        @socket.Addr::parse("0.0.0.0:\{port}"),
+      @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}")).run_forever(fn(
+          conn,
+          addr,
+        ) {
+          let addr_str = addr.to_string()
+          guard addr_str.rev_find(":") is Some(ip_end)
+          let ip = addr_str[:ip_end]
+          let msg = conn.read_all().text()
+          log.write_string("server received \{repr(msg)} from \{ip}\n")
+        },
       )
-      defer server.close()
-      for {
-        let (conn, addr) = server.accept()
-        defer conn.close()
-        let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
-        let ip = addr_str[:ip_end]
-        let msg = conn.read_all().text()
-        log.write_string("server received \{repr(msg)} from \{ip}\n")
-      }
     })
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
@@ -75,19 +73,16 @@ async test "Only_V6 server" {
   let port = 4210
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TcpServer::new(
+      @socket.TcpServer::new(
         @socket.Addr::parse("[::]:\{port}"),
         dual_stack=false,
-      )
-      for {
-        let (conn, addr) = server.accept()
-        defer conn.close()
+      ).run_forever(fn(conn, addr) {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{repr(msg)} from \{ip}\n")
-      }
+      })
     })
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
@@ -124,16 +119,16 @@ async test "dual stack server" {
   let port = 4211
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}"))
-      for {
-        let (conn, addr) = server.accept()
-        defer conn.close()
+      @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}")).run_forever(fn(
+        conn,
+        addr,
+      ) {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{repr(msg)} from \{ip}\n")
-      }
+      })
     })
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
