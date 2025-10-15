@@ -65,27 +65,23 @@ The workflow of processing a request via `@http.ServerConnection` is:
 1. send response body by using `@http.ServerConnection` as a `@io.Writer`
 1. call `server.end_response()` to complete the response
 
+The `@http` package also provides a helper `@http.run_server`
+for setting up and running a HTTP server directly.
+It accepts a callback function for handling connection,
+the callback will receive a `@http.ServerConnection` and the address of client.
 Here's an example server that returns 404 to every request:
 
 ```moonbit
 ///|
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
-  @async.with_task_group(fn(group) {
-    let server = @socket.TcpServer::new(listen_addr)
+  @http.run_server(listen_addr, fn(conn, _) {
     for {
-      let (conn, _) = server.accept()
-      group.spawn_bg(allow_failure=true, fn() {
-        let conn = @http.ServerConnection::new(conn)
-        defer conn.close()
-        for {
-          let request = conn.read_request()
-          conn.skip_request_body()
-          conn
-          ..send_response(404, "NotFound")
-          ..write("`\{request.path}` not found")
-          ..end_response()
-        }
-      })
+      let request = conn.read_request()
+      conn.skip_request_body()
+      conn
+      ..send_response(404, "NotFound")
+      ..write("`\{request.path}` not found")
+      ..end_response()
     }
   })
 }
