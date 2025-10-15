@@ -92,7 +92,7 @@ async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Bool {
 /// If there are no enough data to drop,
 /// `BufferedReader` will request more data from the inner reader.
 /// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be rasied.
+/// `ReaderClosed` will be raised.
 ///
 /// This operation will advance the reader stream,
 /// and will affect the semantic of all index based operations.
@@ -135,7 +135,7 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
 /// If there are no enough data available,
 /// `BufferedReader` will request more data from the inner reader.
 /// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be rasied.
+/// `ReaderClosed` will be raised.
 /// `op_get` will not advance the reader stream,
 /// so this operation is idempotent.
 pub async fn[R : Reader] BufferedReader::op_get(
@@ -152,7 +152,7 @@ pub async fn[R : Reader] BufferedReader::op_get(
 /// If there are no enough data available,
 /// `BufferedReader` will request more data from the inner reader.
 /// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be rasied.
+/// `ReaderClosed` will be raised.
 ///
 /// `op_as_view` will not advance the reader stream,
 /// so this operation is idempotent.
@@ -183,7 +183,7 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 /// `BufferedReader` will request more data from the inner reader.
 ///
 /// If the inner reader is closed before the target substring is found,
-/// `ReaderClosed` will be rasied.
+/// `ReaderClosed` will be raised.
 ///
 /// `find` will not advance the reader stream,
 /// so this operation is idempotent.
