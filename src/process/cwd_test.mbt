@@ -43,7 +43,6 @@ async test "set cwd" {
         #|stub.c
         #|wait_test.mbt
         #|
-
       ),
     )
   })
