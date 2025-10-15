@@ -37,10 +37,13 @@ async test "set cwd" {
         #|moon.pkg.json
         #|pkg.generated.mbti
         #|process.mbt
+        #|README.mbt.md
+        #|README.md
         #|redirect_test.mbt
         #|stub.c
         #|wait_test.mbt
         #|
+
       ),
     )
   })
