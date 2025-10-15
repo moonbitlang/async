@@ -33,6 +33,13 @@ async test "timestamp for path" {
     let atime_2 = @fs.atime(path)
     let mtime_2 = @fs.mtime(path)
     let ctime_2 = @fs.ctime(path)
+    let diff = diff_timestamp(atime_2, atime_1)
+    if diff <= 499_000_000 {
+      // on Mac OS
+      // Warning: atime did not increase as expected, diff = 32274939
+      // This seems wrong
+      fail("Warning: atime did not increase as expected, diff = \{diff}")
+    }
     assert_true(diff_timestamp(atime_2, atime_1) > 500_000_000)
     assert_eq(mtime_2, mtime_1)
     assert_eq(ctime_2, ctime_1)
@@ -68,6 +75,13 @@ async test "timestamp for opened file" {
     let atime_2 = file.atime()
     let mtime_2 = file.mtime()
     let ctime_2 = file.mtime()
+    let diff = diff_timestamp(atime_2, atime_1)
+    if diff <= 499_000_000 {
+      // on Mac OS
+      // Warning: atime did not increase as expected, diff = 32274939
+      // This seems wrong
+      fail("Warning: atime did not increase as expected, diff = \{diff}")
+    }
     assert_true(diff_timestamp(atime_2, atime_1) > 500_000_000)
     assert_eq(mtime_2, mtime_1)
     assert_eq(ctime_2, ctime_1)
