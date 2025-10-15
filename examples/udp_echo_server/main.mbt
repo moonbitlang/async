@@ -15,9 +15,8 @@
 ///|
 async fn main {
   @async.with_task_group(fn(root) {
-    let server = @socket.UDP::new()
+    let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:4200"))
     defer server.close()
-    server.bind(@socket.Addr::parse("0.0.0.0:4200"))
     for {
       let buf = FixedArray::make(1024, b'0')
       let (n, addr) = server.recvfrom(buf)

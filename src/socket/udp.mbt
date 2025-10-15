@@ -13,60 +13,93 @@
 // limitations under the License.
 
 ///|
-/// A UDP socket directly corresponding to OS socket
-struct UDP(Int)
+/// A UDP client "connected" to a remote UDP server.
+///
+/// UDP is a connectionless protocol, here "connected" means
+/// the client always send packet to and receive packet from
+/// the specified remote server.
+struct UdpClient(Int)
 
 ///|
-/// Create a new UDP socket using the `socket(2)` system call.
-/// The created socket always operate in non-blocking mode.
-pub fn UDP::new() -> UDP raise {
-  let sock = make_udp_socket()
-  if sock < 0 {
-    @os_error.check_errno("@socket.UDP::new()")
+/// Create a new UDP client connected to server at `addr`.
+/// The client always send packet to and receive packet from
+/// the specified remote server.
+pub fn UdpClient::new(server : Addr) -> UdpClient raise {
+  let context = "@socket.UdpClient::new()"
+  let sock = if server.is_ipv6() {
+    make_udp_socket_ipv6(context)
+  } else {
+    make_udp_socket(context)
   }
-  @fd_util.set_cloexec(sock, context="@socket.UDP::new()")
-  @fd_util.set_nonblocking(sock, context="@socket.UDP::new()")
-  UDP(sock)
+  let connect_result = if server.is_ipv6() {
+    connect_ipv6_ffi(sock, server)
+  } else {
+    connect_ffi(sock, server)
+  }
+  if 0 != connect_result {
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
+  }
+  UdpClient(sock)
 }
 
 ///|
-pub fn UDP::close(self : UDP) -> Unit {
-  let UDP(sock) = self
+pub fn UdpClient::close(self : UdpClient) -> Unit {
+  let UdpClient(sock) = self
   @event_loop.close_fd(sock)
 }
 
 ///|
-/// Bind the socket to an address using the `bind(2)` system call,
-/// so that the socket can be used to receive packets from the address.
-pub fn UDP::bind(self : UDP, addr : Addr) -> Unit raise {
-  let UDP(sock) = self
+/// A UDP server bound to a listen address and receive packets from clients.
+struct UdpServer(Int)
+
+///|
+pub fn UdpServer::close(self : UdpServer) -> Unit {
+  let UdpServer(sock) = self
+  @event_loop.close_fd(sock)
+}
+
+///|
+/// Create a UDP server listening at `addr`.
+///
+/// If `addr` is an IPv6 (including the wildcard address `[::]`),
+/// the server will be IPv6 only.
+/// For dual stack server, see `@socket.UdpServer::new_dual_stack`.
+pub fn UdpServer::new(addr : Addr) -> UdpServer raise {
+  let context = "@socket.UdpServer::new()"
+  let sock = if addr.is_ipv6() {
+    make_udp_socket_ipv6(context)
+  } else {
+    make_udp_socket(context)
+  }
   let bind_result = if addr.is_ipv6() {
     bind_ipv6_ffi(sock, addr)
   } else {
     bind_ffi(sock, addr)
   }
-  if 0 != bind_result {
-    @os_error.check_errno("@socket.UDP::bind()")
+  if bind_result != 0 {
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
   }
+  UdpServer(sock)
 }
 
 ///|
-/// "connect" the socket to remote address using `connect(2)` system call.
-/// For UDP socket, connect means setting the default address for `send`.
-pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
-  let UDP(sock) = self
-  let connect_result = if addr.is_ipv6() {
-    connect_ipv6_ffi(sock, addr)
-  } else {
-    connect_ffi(sock, addr)
+/// Create a new dual stack UDP server listening at `port`.
+/// The server will receive packets from both IPv4 peers and IPv6 peers.
+/// The address of IPv4 peers are represented via IPv4-mapped IPv6 address.
+pub fn UdpServer::new_dual_stack(port : Int) -> UdpServer raise {
+  let context = "@socket.UdpServer::new_dual_stack()"
+  let sock = make_udp_socket_ipv6(context)
+  if bind_dual_stack(sock, port) != 0 {
+    @fd_util.close(sock, context~)
+    @os_error.check_errno(context)
   }
-  if 0 != connect_result {
-    @os_error.check_errno("@socket.UDP::connect()")
-  }
+  UdpServer(sock)
 }
 
 ///|
-/// Receive packet from a UDP socket  using `recv(2)` system call.
+/// Receive packet from a UDP client.
 /// For `udp.recv(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
 /// The number of received bytes will be returned.
@@ -76,26 +109,25 @@ pub fn UDP::connect(self : UDP, addr : Addr) -> Unit raise {
 /// If the buffer is smaller than the received packet,
 /// the rest of the packet will be lost.
 ///
-/// At most one task can read from a UDP socket at any time.
+/// At most one task can read from a UDP client at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn UDP::recv(
-  self : UDP,
+pub async fn UdpClient::recv(
+  self : UdpClient,
   buf : FixedArray[Byte],
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> Int {
-  let UDP(sock) = self
+  let UdpClient(sock) = self
   @event_loop.perform_job(
     Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
-    context="@socket.UDP::recv",
+    context="@socket.UdpClient::recv",
   )
 }
 
 ///|
-/// Same as `UDP::recv`, but also return the address of sender.
-/// Receive packet from a UDP socket  using `recvfrom(2)` system call.
-/// For `udp.recv(buf, offset~, max_len~)`,
+/// Receive packet from a UDP server, and obtain the source address of the packet.
+/// For `udp.recvfrom(buf, offset~, max_len~)`,
 /// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
 /// The number of received bytes and the source address of the packet will be returned.
 ///
@@ -104,69 +136,66 @@ pub async fn UDP::recv(
 /// If the buffer is smaller than the received packet,
 /// the rest of the packet will be lost.
 ///
-/// At most one task can read from a UDP socket at any time.
+/// At most one task can read from a UDP server at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub async fn UDP::recvfrom(
-  self : UDP,
+pub async fn UdpServer::recvfrom(
+  self : UdpServer,
   buf : FixedArray[Byte],
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> (Int, Addr) {
-  let UDP(sock) = self
+  let UdpServer(sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
   let n_read = @event_loop.perform_job(
     Recvfrom(sock~, buf~, offset~, len=max_len, addr=addr.0),
-    context="@socket.UDP::recvfrom",
+    context="@socket.UdpServer::recvfrom",
   )
   (n_read, addr)
 }
 
 ///|
-/// Send data through a UDP socket using `send(2)` system call.
-/// The address of the remote peer is determined by `bind` or `connect`.
+/// Send data through a UDP client.
 ///
 /// UDP is a datagram based protocol, every call of `send` will send exactly one packet.
 ///
-/// At most one task can write to a UDP socket at any time.
+/// At most one task can write to a UDP client at any time.
 /// To allow multiple writers,
 /// use a worker task for reading and use `@async.Queue` to gather the data.
-pub async fn UDP::send(
-  self : UDP,
+pub async fn UdpClient::send(
+  self : UdpClient,
   buf : Bytes,
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Unit {
-  let UDP(sock) = self
+  let UdpClient(sock) = self
   @event_loop.perform_job(
     Write(fd=sock, buf~, offset~, len~, can_poll=true),
-    context="@socket.UDP::send",
+    context="@socket.UdpClient::send",
   )
   |> ignore
 }
 
 ///|
-/// Same as `send`, but the address to send is explicitly passed as argument.
-/// Send data through a UDP socket using `sendto(2)` system call.
-/// The address of the remote peer is determined by `bind` or `connect`.
+/// Send a packet to `addr` through a UDP server.
 ///
 /// UDP is a datagram based protocol, every call of `send` will send exactly one packet.
 ///
-/// At most one task can write to a UDP socket at any time.
+/// At most one task can write to a UDP server at any time.
 /// To allow multiple writers,
 /// use a worker task for reading and use `@async.Queue` to gather the data.
-pub async fn UDP::sendto(
-  self : UDP,
+pub async fn UdpServer::sendto(
+  self : UdpServer,
   buf : Bytes,
   addr : Addr,
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Unit {
-  let UDP(sock) = self
+  let UdpServer(sock) = self
   @event_loop.perform_job(
     Sendto(sock~, buf~, offset~, len~, addr=addr.0),
-    context="@socket.UDP::sendto",
+    context="@socket.UdpServer::sendto",
   )
   |> ignore
 }

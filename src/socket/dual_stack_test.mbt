@@ -29,6 +29,7 @@ async test "Only_V4 server" {
       let server = @socket.TCPServer::new(
         @socket.Addr::parse("0.0.0.0:\{port}"),
       )
+      defer server.close()
       for {
         let (conn, addr) = server.accept()
         defer conn.close()
@@ -135,6 +136,151 @@ async test "dual stack server" {
       let conn = @socket.TCP::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
       conn.write("message")
+    }
+
+    for protocol in all_protocol_preferences {
+      let result = try? client(protocol)
+      @async.sleep(100)
+      log.write_string("client(\{protocol}): \{result}\n")
+    }
+    // give some time for the server to process the last connection
+    @async.sleep(300)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|server received "message" from [::ffff:127.0.0.1]
+      #|client(Favor_V4): Ok(())
+      #|server received "message" from [::ffff:127.0.0.1]
+      #|client(Only_V4): Ok(())
+      #|server received "message" from [::1]
+      #|client(Favor_V6): Ok(())
+      #|server received "message" from [::1]
+      #|client(Only_V6): Ok(())
+      #|
+    ),
+  )
+}
+
+///|
+async test "Only_V4 UDP server" {
+  let log = StringBuilder::new()
+  let port = 4209
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(no_wait=true, fn() {
+      let server = @socket.UdpServer::new(
+        @socket.Addr::parse("0.0.0.0:\{port}"),
+      )
+      defer server.close()
+      let buf = FixedArray::make(1024, b'\x00')
+      for {
+        let (len, addr) = server.recvfrom(buf)
+        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let addr_str = addr.to_string()
+        guard addr_str.rev_find(":") is Some(ip_end)
+        let ip = addr_str[:ip_end]
+        log.write_string("server received \{repr(msg)} from \{ip}\n")
+      }
+    })
+    async fn client(protocol) {
+      let addr = @socket.Addr::resolve("localhost", port~, protocol~)
+      let client = @socket.UdpClient::new(addr)
+      defer client.close()
+      client.send("message")
+    }
+
+    for protocol in all_protocol_preferences {
+      let result = try? client(protocol)
+      @async.sleep(100)
+      log.write_string("client(\{protocol}): \{result}\n")
+    }
+    // give some time for the server to process the last connection
+    @async.sleep(300)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|server received "message" from 127.0.0.1
+      #|client(Favor_V4): Ok(())
+      #|server received "message" from 127.0.0.1
+      #|client(Only_V4): Ok(())
+      #|client(Favor_V6): Ok(())
+      #|client(Only_V6): Ok(())
+      #|
+    ),
+  )
+}
+
+///|
+async test "Only_V6 UDP server" {
+  let log = StringBuilder::new()
+  let port = 4210
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(no_wait=true, fn() {
+      let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:\{port}"))
+      defer server.close()
+      let buf = FixedArray::make(1024, b'\x00')
+      for {
+        let (len, addr) = server.recvfrom(buf)
+        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let addr_str = addr.to_string()
+        guard addr_str.rev_find(":") is Some(ip_end)
+        let ip = addr_str[:ip_end]
+        log.write_string("server received \{repr(msg)} from \{ip}\n")
+      }
+    })
+    async fn client(protocol) {
+      let addr = @socket.Addr::resolve("localhost", port~, protocol~)
+      let client = @socket.UdpClient::new(addr)
+      defer client.close()
+      client.send("message")
+    }
+
+    for protocol in all_protocol_preferences {
+      let result = try? client(protocol)
+      @async.sleep(100)
+      log.write_string("client(\{protocol}): \{result}\n")
+    }
+    // give some time for the server to process the last connection
+    @async.sleep(300)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|client(Favor_V4): Ok(())
+      #|client(Only_V4): Ok(())
+      #|server received "message" from [::1]
+      #|client(Favor_V6): Ok(())
+      #|server received "message" from [::1]
+      #|client(Only_V6): Ok(())
+      #|
+    ),
+  )
+}
+
+///|
+async test "dual stack UDP server" {
+  let log = StringBuilder::new()
+  let port = 4211
+  @async.with_task_group(fn(root) {
+    root.spawn_bg(no_wait=true, fn() {
+      let server = @socket.UdpServer::new_dual_stack(port)
+      defer server.close()
+      let buf = FixedArray::make(1024, b'\x00')
+      for {
+        let (len, addr) = server.recvfrom(buf)
+        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let addr_str = addr.to_string()
+        guard addr_str.rev_find(":") is Some(ip_end)
+        let ip = addr_str[:ip_end]
+        log.write_string("server received \{repr(msg)} from \{ip}\n")
+      }
+    })
+    async fn client(protocol) {
+      let addr = @socket.Addr::resolve("localhost", port~, protocol~)
+      let client = @socket.UdpClient::new(addr)
+      defer client.close()
+      client.send("message")
     }
 
     for protocol in all_protocol_preferences {
