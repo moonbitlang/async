@@ -41,7 +41,6 @@ async test "basic_ls" {
         #|stub.c
         #|wait_test.mbt
         #|
-
       ),
     )
   })

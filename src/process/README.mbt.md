@@ -9,6 +9,7 @@ Asynchronous process spawning and management for MoonBit with support for pipes,
 Execute commands and collect their output:
 
 ```moonbit
+///|
 async test "simple command execution" {
   let (exit_code, output) = @process.collect_stdout("echo", ["Hello, World!"])
   inspect(exit_code, content="0")
@@ -16,6 +17,7 @@ async test "simple command execution" {
   inspect(text.has_prefix("Hello"), content="true")
 }
 
+///|
 async test "command with exit code" {
   let exit_code = @process.run("sh", ["-c", "exit 42"])
   inspect(exit_code, content="42")
@@ -29,14 +31,18 @@ async test "command with exit code" {
 Capture stdout from a process:
 
 ```moonbit
+///|
 async test "collect stdout" {
   let (code, output) = @process.collect_stdout("printf", ["test output"])
   inspect(code, content="0")
   inspect(output.text(), content="test output")
 }
 
+///|
 async test "collect stdout with args" {
-  let (code, output) = @process.collect_stdout("sh", ["-c", "echo 'line 1'; echo 'line 2'"])
+  let (code, output) = @process.collect_stdout("sh", [
+    "-c", "echo 'line 1'; echo 'line 2'",
+  ])
   inspect(code, content="0")
   let text = output.text()
   inspect(text.contains("line 1"), content="true")
@@ -49,8 +55,11 @@ async test "collect stdout with args" {
 Capture stderr from a process:
 
 ```moonbit
+///|
 async test "collect stderr" {
-  let (code, output) = @process.collect_stderr("sh", ["-c", "printf 'error message' >&2"])
+  let (code, output) = @process.collect_stderr("sh", [
+    "-c", "printf 'error message' >&2",
+  ])
   inspect(code, content="0")
   inspect(output.text(), content="error message")
 }
@@ -61,6 +70,7 @@ async test "collect stderr" {
 Capture both output streams separately:
 
 ```moonbit
+///|
 async test "collect both streams" {
   let (code, stdout, stderr) = @process.collect_output("sh", [
     "-c", "printf 'out msg'; printf 'err msg' >&2",
@@ -76,6 +86,7 @@ async test "collect both streams" {
 Merge stdout and stderr into a single stream:
 
 ```moonbit
+///|
 async test "collect merged output" {
   let (code, output) = @process.collect_output_merged("sh", [
     "-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'",
@@ -92,15 +103,15 @@ async test "collect merged output" {
 Create a pipe to read from a process:
 
 ```moonbit
+///|
 async test "read from process with pipe" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @process.read_from_process()
     defer reader.close()
-    
     root.spawn_bg(fn() {
       let _ = @process.run("echo", ["Hello from process"], stdout=writer)
+
     })
-    
     let output = reader.read_all().text()
     inspect(output.has_prefix("Hello"), content="true")
   })
@@ -112,20 +123,19 @@ async test "read from process with pipe" {
 Create a pipe to write to a process:
 
 ```moonbit
+///|
 async test "write to process with pipe" {
   @async.with_task_group(fn(root) {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    
     root.spawn_bg(fn() {
       let _ = @process.run("cat", ["-"], stdin=cat_read, stdout=cat_write)
+
     })
-    
     root.spawn_bg(fn() {
       defer we_write.close()
       we_write.write(b"test input\n")
     })
-    
     root.spawn_bg(fn() {
       defer we_read.close()
       let output = we_read.read_all().text()
@@ -142,12 +152,12 @@ async test "write to process with pipe" {
 Use a file as process input:
 
 ```moonbit
+///|
 async test "redirect input from file" {
   @async.with_task_group(fn(root) {
     let input_file = "target/process_test_input.txt"
     @fs.write_file(input_file, "file content", create=0o644)
     root.add_defer(fn() { @fs.remove(input_file) })
-    
     let (code, output) = @process.collect_stdout(
       "cat",
       [],
@@ -164,18 +174,17 @@ async test "redirect input from file" {
 Write process output to a file:
 
 ```moonbit
+///|
 async test "redirect output to file" {
   @async.with_task_group(fn(root) {
     let output_file = "target/process_test_output.txt"
     root.add_defer(fn() { @fs.remove(output_file) })
-    
     let code = @process.run(
       "echo",
       ["test output"],
       stdout=@process.redirect_to_file(output_file, create=0o644),
     )
     inspect(code, content="0")
-    
     let content = @fs.read_file(output_file).text()
     inspect(content.has_prefix("test output"), content="true")
   })
@@ -187,22 +196,20 @@ async test "redirect output to file" {
 Copy file content using process redirection:
 
 ```moonbit
+///|
 async test "file to file redirection" {
   @async.with_task_group(fn(root) {
     let input_file = "target/process_redirect_in.txt"
     let output_file = "target/process_redirect_out.txt"
-    
     @fs.write_file(input_file, "redirect test", create=0o644)
     root.add_defer(fn() { @fs.remove(input_file) })
     root.add_defer(fn() { @fs.remove(output_file) })
-    
     let _ = @process.run(
       "cat",
       [],
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file, create=0o644),
     )
-    
     inspect(@fs.read_file(output_file).text(), content="redirect test")
   })
 }
@@ -215,24 +222,21 @@ async test "file to file redirection" {
 Pass custom environment variables to processes:
 
 ```moonbit
+///|
 async test "set environment variable" {
-  let (code, output) = @process.collect_stdout(
-    "sh",
-    ["-c", "echo $MY_VAR"],
-    extra_env={ "MY_VAR": "my_value" },
-  )
+  let (code, output) = @process.collect_stdout("sh", ["-c", "echo $MY_VAR"], extra_env={
+    "MY_VAR": "my_value",
+  })
   inspect(code, content="0")
   inspect(output.text().trim_space(), content="my_value")
 }
 
+///|
 async test "multiple environment variables" {
   let (code, output) = @process.collect_stdout(
     "sh",
     ["-c", "echo $VAR1-$VAR2"],
-    extra_env={
-      "VAR1": "first",
-      "VAR2": "second",
-    },
+    extra_env={ "VAR1": "first", "VAR2": "second" },
   )
   inspect(code, content="0")
   inspect(output.text().trim_space(), content="first-second")
@@ -244,13 +248,12 @@ async test "multiple environment variables" {
 Run process without inheriting parent environment:
 
 ```moonbit
+///|
 async test "isolated environment" {
   let (code, output) = @process.collect_stdout(
     "env",
     [],
-    extra_env={
-      "ONLY_VAR": "only_value",
-    },
+    extra_env={ "ONLY_VAR": "only_value" },
     inherit_env=false,
   )
   inspect(code, content="0")
@@ -268,12 +271,14 @@ async test "isolated environment" {
 Execute processes in a specific directory:
 
 ```moonbit
+///|
 async test "set working directory" {
   let (code, output) = @process.collect_stdout("pwd", [], cwd="/tmp")
   inspect(code, content="0")
   inspect(output.text().trim_space(), content="/private/tmp")
 }
 
+///|
 async test "relative path in cwd" {
   let (code, output) = @process.collect_stdout("ls", [], cwd="src")
   inspect(code, content="0")
@@ -291,11 +296,13 @@ async test "relative path in cwd" {
 Spawn processes asynchronously and wait for completion:
 
 ```moonbit
+///|
 async test "spawn and wait" {
   let exit_code = @process.run("sleep", ["0.1"])
   inspect(exit_code, content="0")
 }
 
+///|
 async test "wait for specific exit code" {
   let exit_code = @process.run("sh", ["-c", "exit 5"])
   inspect(exit_code, content="5")
@@ -307,12 +314,13 @@ async test "wait for specific exit code" {
 Start a process without blocking:
 
 ```moonbit
+///|
 async test "spawn orphan and wait later" {
   let pid = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
-  
+
   // Do other work...
   @async.sleep(50)
-  
+
   // Wait for the process to complete
   let exit_code = @process.wait_pid(pid)
   inspect(exit_code, content="7")
@@ -326,11 +334,11 @@ async test "spawn orphan and wait later" {
 Combine stdout and stderr into one stream:
 
 ```moonbit
+///|
 async test "merge stdout and stderr" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @process.read_from_process()
     defer reader.close()
-    
     root.spawn_bg(fn() {
       let _ = @process.run(
         "sh",
@@ -338,8 +346,8 @@ async test "merge stdout and stderr" {
         stdout=writer,
         stderr=writer,
       )
+
     })
-    
     let output = reader.read_all().text()
     inspect(output.contains("to stdout"), content="true")
     inspect(output.contains("to stderr"), content="true")
@@ -352,24 +360,25 @@ async test "merge stdout and stderr" {
 Run multiple processes writing to the same pipe:
 
 ```moonbit
+///|
 async test "multiple processes to one pipe" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @pipe.pipe()
-    
     root.spawn_bg(no_wait=true, fn() {
       defer reader.close()
       let output = reader.read_all().text()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })
-    
     defer writer.close()
     @async.with_task_group(fn(group) {
       group.spawn_bg(fn() {
         let _ = @process.run("echo", ["first"], stdout=writer)
+
       })
       group.spawn_bg(fn() {
         let _ = @process.run("echo", ["second"], stdout=writer)
+
       })
     })
   })
@@ -409,6 +418,7 @@ Trait for types that can be used as process output:
 Process operations handle errors through exit codes:
 
 ```moonbit
+///|
 async test "handle process errors" {
   // Non-existent command fails
   let result = try? @process.run("nonexistent_command", [])
@@ -418,6 +428,7 @@ async test "handle process errors" {
   }
 }
 
+///|
 async test "exit code indicates failure" {
   let exit_code = @process.run("sh", ["-c", "exit 1"])
   let is_failure = exit_code != 0
