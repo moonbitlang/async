@@ -167,6 +167,9 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
   start? : Int = 0,
   end~ : Int,
 ) -> BytesView {
+  if start == end {
+    return ""
+  }
   guard start < end
   self.ensure(end)
   self.buf.unsafe_reinterpret_as_bytes()[self.start + start:self.start + end]
@@ -229,5 +232,24 @@ pub async fn[R : Reader] BufferedReader::find_opt(
       return None
     }
     continue self.start + len
+  }
+}
+
+///|
+/// Read content from a buffered reader until newline (`\n`).
+/// If the reader already reaches EOF, `None` is returned.
+/// Otherwise, the content of the line (without the trailing newline) is returned,
+/// and the content of the line and the newline character
+/// will be conusmed from the reader.
+/// The returned string is decoded with UTF8.
+pub async fn[R : Reader] BufferedReader::read_line(self : Self[R]) -> String? {
+  match self.find_opt("\n") {
+    None if self.len == 0 => None
+    None => Some(self.read_all().text())
+    Some(newline_index) => {
+      let line = @encoding/utf8.decode(self[:newline_index])
+      self.drop(newline_index + 1)
+      Some(line)
+    }
   }
 }

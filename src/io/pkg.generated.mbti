@@ -20,6 +20,7 @@ async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
 async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `Reader`
 async fn[R : Reader] BufferedReader::read_all(Self[R]) -> &Data // from trait `Reader`
 async fn[R : Reader] BufferedReader::read_exactly(Self[R], Int) -> Bytes // from trait `Reader`
+async fn[R : Reader] BufferedReader::read_line(Self[R]) -> String?
 impl[R : Reader] Reader for BufferedReader[R]
 
 type BufferedWriter[W]
