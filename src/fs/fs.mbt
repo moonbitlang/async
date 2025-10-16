@@ -192,6 +192,19 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 }
 
 ///|
+/// Flush all in-memory data of an opened file to disk.
+/// If `only_data` is `true` (`false` by default),
+/// some metadata such as timestamp may not be flushed.
+/// Buf file content and important metadata such as file size are always flushed.
+pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
+  @event_loop.perform_job(
+    Fsync(fd=self.fd, only_data~),
+    context="@fs.File::sync()",
+  )
+  |> ignore
+}
+
+///|
 /// Remove the file located at `path`. `path` is encoded using UTF8.
 pub async fn remove(path : String) -> Unit {
   let path = @encoding/utf8.encode(path)
@@ -302,10 +315,17 @@ pub async fn read_file(
   path : String,
   sync_timestamp? : Bool = false,
 ) -> &@io.Data {
-  let sync_mode = if sync_timestamp { Full } else { NoSync }
-  let file = open(path, mode=ReadOnly, sync=sync_mode)
+  let file = open(path, mode=ReadOnly)
   defer file.close()
-  file.read_all()
+  let result = file.read_all()
+  if sync_timestamp {
+    @event_loop.perform_job(
+      Fsync(fd=file.fd, only_data=false),
+      context="@fs.File::read_file(sync_timestamp=true)",
+    )
+    |> ignore
+  }
+  result
 }
 
 ///|

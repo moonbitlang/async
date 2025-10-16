@@ -39,6 +39,7 @@ pub(all) enum Job {
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
   Stat(path~ : Bytes, out~ : FixedArray[Byte], follow_symlink~ : Bool)
   Access(path~ : Bytes, amode~ : Int)
+  Fsync(fd~ : Int, only_data~ : Bool)
   Remove(path~ : Bytes)
   Mkdir(path~ : Bytes, mode~ : Int)
   Rmdir(path~ : Bytes)
