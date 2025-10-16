@@ -13,19 +13,21 @@
 // limitations under the License.
 
 ///|
-async test "missing_close" {
+test "missing_close" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    root.spawn_bg(fn() {
-      let data = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
-      log.write_string("received \{data}\n")
-    })
-    root.spawn_bg(fn() {
-      let data = "abcd"
-      w.write(data)
-      log.write_string("written \{data}\n")
+  @event_loop.with_event_loop(fn() {
+    @async.with_task_group(fn(root) {
+      let (r, w) = @pipe.pipe()
+      root.spawn_bg(fn() {
+        let data = r.read_exactly(4) |> @encoding/utf8.decode
+        @async.sleep(10)
+        log.write_string("received \{data}\n")
+      })
+      root.spawn_bg(fn() {
+        let data = "abcd"
+        w.write(data)
+        log.write_string("written \{data}\n")
+      })
     })
   })
   inspect(

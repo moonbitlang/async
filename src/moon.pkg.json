@@ -5,9 +5,5 @@
     "moonbitlang/async/internal/time",
     "moonbitlang/async/aqueue",
     "moonbitlang/async/semaphore"
-  ],
-  "test-import": [
-    "moonbitlang/async/pipe",
-    "moonbitlang/async/io"
   ]
 }

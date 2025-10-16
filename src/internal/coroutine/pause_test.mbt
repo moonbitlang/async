@@ -15,7 +15,7 @@
 ///|
 test "coroutine ping-pong" {
   let log = StringBuilder::new()
-  @event_loop.with_event_loop(fn() {
+  let coro = @coroutine.spawn(fn() {
     @async.with_task_group(fn(group) {
       group.spawn_bg(fn() {
         log.write_string("ping\n")
@@ -33,6 +33,8 @@ test "coroutine ping-pong" {
       })
     })
   })
+  @coroutine.reschedule()
+  coro.unwrap()
   inspect(
     log.to_string(),
     content=(

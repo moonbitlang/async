@@ -1,7 +1,6 @@
 {
   "import": [],
   "test-import": [
-    "moonbitlang/async",
-    "moonbitlang/async/internal/event_loop"
+    "moonbitlang/async"
   ]
 }
