@@ -33,25 +33,11 @@ async test "basic_ls" {
         x
       })
     // files.sort()
-    inspect(
-      files,
-      content=(
-        #|README.mbt.md
-        #|README.md
-        #|basic_test.mbt
-        #|cancel_test.mbt
-        #|cwd_test.mbt
-        #|env_test.mbt
-        #|helper_test.mbt
-        #|moon.pkg.json
-        #|pkg.generated.mbti
-        #|process.mbt
-        #|redirect_test.mbt
-        #|stub.c
-        #|wait_test.mbt
-        #|
-      ),
-    )
+    @json.inspect(files, content=[
+      "stub.c", "README.md", "process.mbt", "cwd_test.mbt", "env_test.mbt", "README.mbt.md",
+      "moon.pkg.json", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
+      "redirect_test.mbt", "pkg.generated.mbti",
+    ])
   })
 }
 
