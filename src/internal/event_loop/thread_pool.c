@@ -57,6 +57,7 @@ enum op_code {
   OP_OPEN,
   OP_STAT,
   OP_ACCESS,
+  OP_FSYNC,
   OP_REMOVE,
   OP_MKDIR,
   OP_RMDIR,
@@ -95,6 +96,11 @@ struct stat_job {
 struct access_job {
   char *path;
   int amode;
+};
+
+struct fsync_job {
+  int fd;
+  int only_data;
 };
 
 struct remove_job {
@@ -145,6 +151,7 @@ struct job {
     struct open_job open;
     struct stat_job stat;
     struct access_job access;
+    struct fsync_job fsync;
     struct remove_job remove;
     struct mkdir_job mkdir;
     struct rmdir_job rmdir;
@@ -283,6 +290,16 @@ void *worker_loop(void *data) {
 
     case OP_ACCESS:
       job->ret = access(job->payload.access.path, job->payload.access.amode);
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_FSYNC:
+      if (job->payload.fsync.only_data) {
+        job->ret = fdatasync(job->payload.fsync.fd);
+      } else {
+        job->ret = fsync(job->payload.fsync.fd);
+      }
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -530,6 +547,8 @@ void free_job(void *jobp) {
   case OP_ACCESS:
     moonbit_decref(job->payload.access.path);
     break;
+  case OP_FSYNC:
+    break;
   case OP_REMOVE:
     moonbit_decref(job->payload.remove.path);
     break;
@@ -632,6 +651,15 @@ struct job *moonbitlang_async_make_access_job(char *path, int amode) {
   job->op_code = OP_ACCESS;
   job->payload.access.path = path;
   job->payload.access.amode = amode;
+  return job;
+}
+
+struct job *moonbitlang_async_make_fsync_job(int fd, int only_data) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_FSYNC;
+  job->payload.fsync.fd = fd;
+  job->payload.fsync.only_data = only_data;
   return job;
 }
 

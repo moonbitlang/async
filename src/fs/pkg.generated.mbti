@@ -71,6 +71,7 @@ async fn File::read_all(Self) -> &@io.Data // from trait `@io.Reader`
 async fn File::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise
+async fn File::sync(Self, only_data? : Bool) -> Unit
 async fn File::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
 async fn File::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
 async fn File::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`

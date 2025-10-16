@@ -416,6 +416,8 @@ pub async fn perform_job(job : Job, context~ : String) -> Int {
       )
     Access(path~, amode~) =>
       perform_job_in_worker(JobForWorker::access(path, amode), context~)
+    Fsync(fd~, only_data~) =>
+      perform_job_in_worker(JobForWorker::fsync(fd, only_data), context~)
     Remove(path~) => perform_job_in_worker(JobForWorker::remove(path), context~)
     Mkdir(path~, mode~) =>
       perform_job_in_worker(JobForWorker::mkdir(path, mode), context~)

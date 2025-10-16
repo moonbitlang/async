@@ -69,6 +69,9 @@ extern "C" fn JobForWorker::stat(
 extern "C" fn JobForWorker::access(path : Bytes, amode : Int) -> JobForWorker = "moonbitlang_async_make_access_job"
 
 ///|
+extern "C" fn JobForWorker::fsync(fd : Int, only_data : Bool) -> JobForWorker = "moonbitlang_async_make_fsync_job"
+
+///|
 #owned(path)
 extern "C" fn JobForWorker::remove(path : Bytes) -> JobForWorker = "moonbitlang_async_make_remove_job"
 
@@ -149,6 +152,7 @@ pub(all) enum Job {
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)
   Stat(path~ : Bytes, out~ : FixedArray[Byte], follow_symlink~ : Bool)
   Access(path~ : Bytes, amode~ : Int)
+  Fsync(fd~ : Int, only_data~ : Bool)
   Remove(path~ : Bytes)
   Mkdir(path~ : Bytes, mode~ : Int)
   Rmdir(path~ : Bytes)
