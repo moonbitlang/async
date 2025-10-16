@@ -15,15 +15,26 @@
 
 ///|
 async test "basic_ls" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       @process.run("ls", ["src/process"], stdout=w, extra_env={ "LC_ALL": "C" })
       |> ignore
     })
+    let files = r
+      .read_all()
+      .text()
+      .trim(char_set="\n\r ")
+      .split("\n")
+      .to_array()
+      |> then(x => {
+        x.sort()
+        x
+      })
+    // files.sort()
     inspect(
-      r.read_all().text(),
+      files,
       content=(
         #|README.mbt.md
         #|README.md

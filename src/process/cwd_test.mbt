@@ -15,7 +15,8 @@
 
 ///|
 async test "set cwd" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
+    // FIXME(upstram): missing codelens here
     guard @env.current_dir() is Some(prev_cwd)
     let (r, w) = @process.read_from_process()
     defer r.close()
@@ -26,24 +27,20 @@ async test "set cwd" {
       guard @env.current_dir() is Some(new_cwd)
       guard prev_cwd == new_cwd
     })
-    inspect(
-      r.read_all().text(),
-      content=(
-        #|README.mbt.md
-        #|README.md
-        #|basic_test.mbt
-        #|cancel_test.mbt
-        #|cwd_test.mbt
-        #|env_test.mbt
-        #|helper_test.mbt
-        #|moon.pkg.json
-        #|pkg.generated.mbti
-        #|process.mbt
-        #|redirect_test.mbt
-        #|stub.c
-        #|wait_test.mbt
-        #|
-      ),
-    )
+    let files = r
+      .read_all()
+      .text()
+      .trim(char_set="\n\r ")
+      .split("\n")
+      .to_array()
+      |> then(x => {
+        x.sort()
+        x
+      })
+    @json.inspect(files, content=[
+      "stub.c", "README.md", "process.mbt", "cwd_test.mbt", "env_test.mbt", "README.mbt.md",
+      "moon.pkg.json", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
+      "redirect_test.mbt", "pkg.generated.mbti",
+    ])
   })
 }
