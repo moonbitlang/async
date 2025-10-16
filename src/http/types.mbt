@@ -23,7 +23,7 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-} derive(Show)
+} derive(Show, Eq)
 
 ///|
 pub(all) struct Request {

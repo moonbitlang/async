@@ -78,8 +78,12 @@ pub(all) enum RequestMethod {
   Trace
   Patch
 }
+fn RequestMethod::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn RequestMethod::op_equal(Self, Self) -> Bool // from trait `Eq`
 fn RequestMethod::output(Self, &Logger) -> Unit // from trait `Show`
 fn RequestMethod::to_string(Self) -> String // from trait `Show`
+impl Eq for RequestMethod
 impl Show for RequestMethod
 
 pub(all) struct Response {
