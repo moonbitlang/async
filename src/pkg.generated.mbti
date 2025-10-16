@@ -29,6 +29,7 @@ async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
 async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
+#deprecated
 pub suberror AlreadyTerminated
 impl Show for AlreadyTerminated
 
@@ -48,11 +49,11 @@ fn[X] Task::try_wait(Self[X]) -> X? raise
 async fn[X] Task::wait(Self[X]) -> X
 
 type TaskGroup[X]
-fn[X] TaskGroup::add_defer(Self[X], async () -> Unit) -> Unit raise
+fn[X] TaskGroup::add_defer(Self[X], async () -> Unit) -> Unit
 fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
-fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool) -> Task[X] raise
-fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit raise
-fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit raise
+fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool) -> Task[X]
+fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit
+fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
 
 // Type aliases
 pub using @aqueue {type Queue}
