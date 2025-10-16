@@ -41,6 +41,7 @@ struct TaskGroup[X] {
 }
 
 ///|
+#deprecated("this error is no longer emitted")
 pub suberror AlreadyTerminated derive(Show)
 
 ///|
@@ -49,9 +50,9 @@ fn[X] TaskGroup::spawn_coroutine(
   f : async () -> Unit,
   no_wait~ : Bool,
   allow_failure~ : Bool,
-) -> @coroutine.Coroutine raise {
-  if not(self.state is Running) {
-    raise AlreadyTerminated
+) -> @coroutine.Coroutine {
+  guard self.state is Running else {
+    abort("trying to spawn from a terminated task group")
   }
   if not(no_wait) {
     self.waiting += 1
@@ -116,7 +117,7 @@ pub fn[X] TaskGroup::spawn_bg(
   f : async () -> Unit,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
-) -> Unit raise {
+) -> Unit {
   ignore(self.spawn_coroutine(f, no_wait~, allow_failure~))
 }
 
@@ -142,7 +143,7 @@ pub fn[G, X] TaskGroup::spawn(
   f : async () -> X,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
-) -> Task[X] raise {
+) -> Task[X] {
   let value = @ref.new(None)
   let coro = self.spawn_coroutine(
     () => value.val = Some(f()),
@@ -166,9 +167,9 @@ pub fn[G, X] TaskGroup::spawn(
 pub fn[X] TaskGroup::add_defer(
   self : TaskGroup[X],
   block : async () -> Unit,
-) -> Unit raise {
-  if not(self.state is Running) {
-    raise AlreadyTerminated
+) -> Unit {
+  guard self.state is Running else {
+    abort("trying to attach defer to a terminated task group")
   }
   self.group_defer.push(block)
 }
@@ -268,7 +269,7 @@ pub fn[X] TaskGroup::spawn_loop(
   retry? : RetryMethod,
   max_retry? : Int,
   fatal_error? : (Error) -> Bool,
-) -> Unit raise {
+) -> Unit {
   self.spawn_bg(no_wait~, allow_failure~, fn() {
     for {
       let result = match retry {
