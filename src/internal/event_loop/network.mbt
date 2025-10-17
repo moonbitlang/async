@@ -145,9 +145,10 @@ extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
 pub async fn getaddrinfo(
-  host : Bytes,
+  host : String,
   context~ : String,
 ) -> Result[AddrInfo, String] {
+  let host = @encoding/utf8.encode(host)
   let out = AddrInfoRef::new()
   let ret = perform_job_in_worker(
     JobForWorker::getaddrinfo(host, out),

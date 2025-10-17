@@ -16,7 +16,6 @@
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
 pub async fn mkdir(path : String, permission~ : Int) -> Unit {
-  let path = @encoding/utf8.encode(path)
   @event_loop.mkdir(path, mode=permission, context="@fs.mkdir()")
 }
 
@@ -35,12 +34,10 @@ pub async fn rmdir(path : String, recursive? : Bool = false) -> Unit {
       if stat.kind() is Directory {
         rmdir(path, recursive=true)
       } else {
-        let path = @encoding/utf8.encode(path)
         @event_loop.remove(path, context~)
       }
     }
   }
-  let path = @encoding/utf8.encode(path)
   @event_loop.rmdir(path, context~)
 }
 

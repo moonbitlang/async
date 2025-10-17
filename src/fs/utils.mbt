@@ -88,7 +88,6 @@ let _EACCES : Int = get_EACCES()
 
 ///|
 pub async fn exists(path : String) -> Bool {
-  let path = @encoding/utf8.encode(path)
   try @event_loop.access(path, amode=f_ok(), context="@fs.exists()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     err => raise err
@@ -99,7 +98,6 @@ pub async fn exists(path : String) -> Bool {
 
 ///|
 pub async fn can_read(path : String) -> Bool {
-  let path = @encoding/utf8.encode(path)
   try @event_loop.access(path, amode=r_ok(), context="@fs.can_read()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -111,7 +109,6 @@ pub async fn can_read(path : String) -> Bool {
 
 ///|
 pub async fn can_write(path : String) -> Bool {
-  let path = @encoding/utf8.encode(path)
   try @event_loop.access(path, amode=w_ok(), context="@fs.can_write()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -123,7 +120,6 @@ pub async fn can_write(path : String) -> Bool {
 
 ///|
 pub async fn can_execute(path : String) -> Bool {
-  let path = @encoding/utf8.encode(path)
   try @event_loop.access(path, amode=x_ok(), context="@fs.can_execute") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -141,7 +137,6 @@ pub async fn can_execute(path : String) -> Bool {
 /// If the path contains cyclic symbolic link,
 /// an error will be raised.
 pub async fn realpath(path : String) -> String {
-  let path = @encoding/utf8.encode(path)
   let result = @event_loop.realpath(path, context="@fs.realpath()")
   @encoding/utf8.decode(result)
 }

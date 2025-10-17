@@ -34,7 +34,6 @@ async fn Stat::from_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> Stat {
-  let path = @encoding/utf8.encode(path)
   @event_loop.stat(path, follow_symlink~, context~)
 }
 

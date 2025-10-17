@@ -22,11 +22,12 @@ pub type DirectoryEntry
 
 ///|
 pub async fn open(
-  path : Bytes,
+  path : String,
   flags~ : Int,
   mode~ : Int,
   context~ : String,
 ) -> Int {
+  let path = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::open(path, flags, mode), context~)
 }
 
@@ -43,10 +44,11 @@ pub fn Stat::new() -> Stat {
 
 ///|
 pub async fn stat(
-  path : Bytes,
+  path : String,
   follow_symlink~ : Bool,
   context~ : String,
 ) -> Stat {
+  let path = @encoding/utf8.encode(path)
   let stat = Stat::new()
   let _ = perform_job_in_worker(
     JobForWorker::stat(path, stat, follow_symlink~),
@@ -56,7 +58,8 @@ pub async fn stat(
 }
 
 ///|
-pub async fn access(path : Bytes, amode~ : Int, context~ : String) -> Int {
+pub async fn access(path : String, amode~ : Int, context~ : String) -> Int {
+  let path = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::access(path, amode), context~)
 }
 
@@ -66,17 +69,20 @@ pub async fn fsync(fd : Int, only_data~ : Bool, context~ : String) -> Unit {
 }
 
 ///|
-pub async fn remove(path : Bytes, context~ : String) -> Unit {
+pub async fn remove(path : String, context~ : String) -> Unit {
+  let path = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::remove(path), context~) |> ignore
 }
 
 ///|
-pub async fn mkdir(path : Bytes, mode~ : Int, context~ : String) -> Unit {
+pub async fn mkdir(path : String, mode~ : Int, context~ : String) -> Unit {
+  let path = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::mkdir(path, mode), context~) |> ignore
 }
 
 ///|
-pub async fn rmdir(path : Bytes, context~ : String) -> Unit {
+pub async fn rmdir(path : String, context~ : String) -> Unit {
+  let path = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::rmdir(path), context~) |> ignore
 }
 
@@ -91,7 +97,8 @@ pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
 }
 
 ///|
-pub async fn realpath(path : Bytes, context~ : String) -> Bytes {
+pub async fn realpath(path : String, context~ : String) -> Bytes {
+  let path = @encoding/utf8.encode(path)
   let out = @ref.new(@c_buffer.null)
   let _ = perform_job_in_worker(JobForWorker::realpath(path, out), context~)
   let c_path = out.val
