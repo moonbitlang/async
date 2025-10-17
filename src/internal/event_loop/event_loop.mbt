@@ -368,7 +368,6 @@ async fn perform_job_in_worker(
 ///|
 pub async fn perform_job(job : Job, context~ : String) -> Int {
   match job {
-    Sleep(t) => perform_job_in_worker(JobForWorker::sleep(t), context~)
     Read(fd~, buf~, offset~, len~, can_poll~) =>
       if can_poll {
         let handle = prepare_fd_read(fd)

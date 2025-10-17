@@ -33,7 +33,6 @@ pub type Directory
 pub type DirectoryEntry
 
 pub(all) enum Job {
-  Sleep(Int)
   Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool)
   Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
   Open(path~ : Bytes, flags~ : Int, mode~ : Int)

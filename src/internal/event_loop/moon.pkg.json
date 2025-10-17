@@ -6,6 +6,9 @@
     "moonbitlang/async/internal/c_buffer",
     "moonbitlang/async/internal/time"
   ],
+  "wbtest-import": [
+    "moonbitlang/async"
+  ],
   "test-import": [
     "moonbitlang/async/fs",
     "moonbitlang/async",

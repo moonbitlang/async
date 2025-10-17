@@ -24,6 +24,6 @@ test "readdir clear errno" {
     let dir = @fs.opendir("src/internal/event_loop")
     defer dir.close()
     let list = dir.read_all()
-    inspect(list.length(), content="12")
+    inspect(list.length(), content="13")
   })
 }
