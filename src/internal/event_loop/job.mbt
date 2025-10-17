@@ -28,9 +28,6 @@ extern "C" fn JobForWorker::ret(self : JobForWorker) -> Int = "moonbitlang_async
 extern "C" fn JobForWorker::err(self : JobForWorker) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
-extern "C" fn JobForWorker::sleep(time : Int) -> JobForWorker = "moonbitlang_async_make_sleep_job"
-
-///|
 #owned(buf)
 extern "C" fn JobForWorker::read(
   fd : Int,
@@ -140,7 +137,6 @@ extern "C" fn JobForWorker::getaddrinfo(
 
 ///|
 pub(all) enum Job {
-  Sleep(Int)
   Read(
     fd~ : Int,
     buf~ : FixedArray[Byte],
