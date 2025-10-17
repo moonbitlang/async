@@ -85,12 +85,12 @@ async test "aqueue cancellation" {
     let queue = @aqueue.Queue::new()
     root.spawn_bg(fn() {
       for x in 0..<4 {
-        @async.sleep(200)
+        @async.sleep(300)
         log.write_string("put(\{x})\n")
         queue.put(x)
       }
     })
-    @async.with_timeout(500, fn() {
+    @async.with_timeout(750, fn() {
       for {
         let x = queue.get() catch {
           err => {
