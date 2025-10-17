@@ -118,8 +118,12 @@ pub async fn UdpClient::recv(
   max_len? : Int = buf.length() - offset,
 ) -> Int {
   let UdpClient(sock) = self
-  @event_loop.perform_job(
-    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+  @event_loop.read(
+    sock,
+    buf,
+    offset~,
+    len=max_len,
+    can_poll=true,
     context="@socket.UdpClient::recv",
   )
 }
@@ -147,8 +151,12 @@ pub async fn UdpServer::recvfrom(
   let UdpServer(sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
-  let n_read = @event_loop.perform_job(
-    Recvfrom(sock~, buf~, offset~, len=max_len, addr=addr.0),
+  let n_read = @event_loop.recvfrom(
+    sock,
+    buf,
+    offset~,
+    len=max_len,
+    addr=addr.0,
     context="@socket.UdpServer::recvfrom",
   )
   (n_read, addr)
@@ -169,8 +177,12 @@ pub async fn UdpClient::send(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UdpClient(sock) = self
-  @event_loop.perform_job(
-    Write(fd=sock, buf~, offset~, len~, can_poll=true),
+  @event_loop.write(
+    sock,
+    buf,
+    offset~,
+    len~,
+    can_poll=true,
     context="@socket.UdpClient::send",
   )
   |> ignore
@@ -192,8 +204,12 @@ pub async fn UdpServer::sendto(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UdpServer(sock) = self
-  @event_loop.perform_job(
-    Sendto(sock~, buf~, offset~, len~, addr=addr.0),
+  @event_loop.sendto(
+    sock,
+    buf,
+    offset~,
+    len~,
+    addr=addr.0,
     context="@socket.UdpServer::sendto",
   )
   |> ignore

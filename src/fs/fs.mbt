@@ -110,8 +110,12 @@ pub async fn open(
     Some(mode) => (true, mode)
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
-  let job = @event_loop.Open(path=filename, flags~, mode=user_mode)
-  let fd = @event_loop.perform_job(job, context="@fs.open()")
+  let fd = @event_loop.open(
+    filename,
+    flags~,
+    mode=user_mode,
+    context="@fs.open()",
+  )
   { fd, kind: Stat::from_fd(fd, context="@fs.open()").kind() }
 }
 
@@ -151,8 +155,12 @@ pub impl @io.Reader for File with read(
   max_len? = buf.length() - offset,
 ) {
   let can_poll = self.kind.can_poll()
-  @event_loop.perform_job(
-    Read(fd=self.fd, buf~, offset~, len=max_len, can_poll~),
+  @event_loop.read(
+    self.fd,
+    buf,
+    offset~,
+    len=max_len,
+    can_poll~,
     context="@fs.File::read()",
   )
 }
@@ -187,8 +195,14 @@ pub impl @io.Reader for File with read_all(self) {
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
-  let job = @event_loop.Write(fd=self.fd, buf~, offset~, len~, can_poll~)
-  @event_loop.perform_job(job, context="@fs.File::write()")
+  @event_loop.write(
+    self.fd,
+    buf,
+    offset~,
+    len~,
+    can_poll~,
+    context="@fs.File::write()",
+  )
 }
 
 ///|
@@ -197,19 +211,14 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 /// some metadata such as timestamp may not be flushed.
 /// Buf file content and important metadata such as file size are always flushed.
 pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
-  @event_loop.perform_job(
-    Fsync(fd=self.fd, only_data~),
-    context="@fs.File::sync()",
-  )
-  |> ignore
+  @event_loop.fsync(self.fd, only_data~, context="@fs.File::sync()")
 }
 
 ///|
 /// Remove the file located at `path`. `path` is encoded using UTF8.
 pub async fn remove(path : String) -> Unit {
   let path = @encoding/utf8.encode(path)
-  let job = @event_loop.Remove(path~)
-  ignore(@event_loop.perform_job(job, context="@fs.remove()"))
+  @event_loop.remove(path, context="@fs.remove()")
 }
 
 ///|
@@ -319,11 +328,11 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    @event_loop.perform_job(
-      Fsync(fd=file.fd, only_data=false),
+    @event_loop.fsync(
+      file.fd,
+      only_data=false,
       context="@fs.File::read_file(sync_timestamp=true)",
     )
-    |> ignore
   }
   result
 }

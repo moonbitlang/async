@@ -135,8 +135,9 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let TcpServer(listen_sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
-  let conn = @event_loop.perform_job(
-    Accept(sock=listen_sock, addr=addr.0),
+  let conn = @event_loop.accept(
+    listen_sock,
+    addr.0,
     context="@socket.TcpServer::accept",
   )
   if disable_nagle(conn) < 0 {
@@ -186,7 +187,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
     @fd_util.close(sock, context~)
     @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
-  try @event_loop.perform_job(Connect(sock~, addr=addr.0), context~) catch {
+  try @event_loop.connect(sock, addr.0, context~) catch {
     err => {
       @event_loop.close_fd(sock)
       raise err
@@ -212,8 +213,12 @@ pub impl @io.Reader for Tcp with read(
   max_len? = buf.length() - offset,
 ) {
   let Tcp(sock) = self
-  @event_loop.perform_job(
-    Read(fd=sock, buf~, offset~, len=max_len, can_poll=true),
+  @event_loop.read(
+    sock,
+    buf,
+    offset~,
+    len=max_len,
+    can_poll=true,
     context="@socket.Tcp::read()",
   )
 }
@@ -221,8 +226,12 @@ pub impl @io.Reader for Tcp with read(
 ///|
 pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
   let Tcp(sock) = self
-  @event_loop.perform_job(
-    Write(fd=sock, buf~, offset~, len~, can_poll=true),
+  @event_loop.write(
+    sock,
+    buf,
+    offset~,
+    len~,
+    can_poll=true,
     context="@socket.Tcp::write()",
   )
 }

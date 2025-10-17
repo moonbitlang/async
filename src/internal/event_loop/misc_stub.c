@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <moonbit.h>
 
 int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
@@ -75,4 +76,12 @@ int moonbitlang_async_sendto(
   }
   
   return sendto(sock, buf + offset, len, 0, sa, addr_len);
+}
+
+int32_t moonbitlang_async_sizeof_stat() {
+  return sizeof(struct stat);
+}
+
+struct dirent *moonbitlang_async_null_dirent() {
+  return 0;
 }

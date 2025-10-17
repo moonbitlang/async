@@ -142,8 +142,12 @@ pub impl @io.Reader for PipeRead with read(
   max_len? = buf.length() - offset,
 ) {
   let PipeRead(fd) = self
-  @event_loop.perform_job(
-    Read(fd~, buf~, offset~, len=max_len, can_poll=true),
+  @event_loop.read(
+    fd,
+    buf,
+    offset~,
+    len=max_len,
+    can_poll=true,
     context="@pipe.PipeRead::read()",
   )
 }
@@ -151,8 +155,12 @@ pub impl @io.Reader for PipeRead with read(
 ///|
 pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
   let PipeWrite(fd) = self
-  @event_loop.perform_job(
-    Write(fd~, buf~, offset~, len~, can_poll=true),
+  @event_loop.write(
+    fd,
+    buf,
+    offset~,
+    len~,
+    can_poll=true,
     context="@pipe.PipeRead::write()",
   )
 }

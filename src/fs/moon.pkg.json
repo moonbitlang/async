@@ -3,7 +3,6 @@
     "moonbitlang/async/os_error",
     "moonbitlang/async/io",
     "moonbitlang/async/internal/event_loop",
-    "moonbitlang/async/internal/c_buffer",
     "moonbitlang/async",
     "moonbitlang/async/semaphore"
   ],

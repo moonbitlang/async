@@ -89,9 +89,7 @@ let _EACCES : Int = get_EACCES()
 ///|
 pub async fn exists(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try
-    @event_loop.perform_job(Access(path~, amode=f_ok()), context="@fs.exists()")
-  catch {
+  try @event_loop.access(path, amode=f_ok(), context="@fs.exists()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     err => raise err
   } noraise {
@@ -102,12 +100,7 @@ pub async fn exists(path : String) -> Bool {
 ///|
 pub async fn can_read(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try
-    @event_loop.perform_job(
-      Access(path~, amode=r_ok()),
-      context="@fs.can_read()",
-    )
-  catch {
+  try @event_loop.access(path, amode=r_ok(), context="@fs.can_read()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
@@ -119,12 +112,7 @@ pub async fn can_read(path : String) -> Bool {
 ///|
 pub async fn can_write(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try
-    @event_loop.perform_job(
-      Access(path~, amode=w_ok()),
-      context="@fs.can_write()",
-    )
-  catch {
+  try @event_loop.access(path, amode=w_ok(), context="@fs.can_write()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
@@ -136,12 +124,7 @@ pub async fn can_write(path : String) -> Bool {
 ///|
 pub async fn can_execute(path : String) -> Bool {
   let path = @encoding/utf8.encode(path)
-  try
-    @event_loop.perform_job(
-      Access(path~, amode=x_ok()),
-      context="@fs.can_execute",
-    )
-  catch {
+  try @event_loop.access(path, amode=x_ok(), context="@fs.can_execute") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
     err => raise err
@@ -159,15 +142,6 @@ pub async fn can_execute(path : String) -> Bool {
 /// an error will be raised.
 pub async fn realpath(path : String) -> String {
   let path = @encoding/utf8.encode(path)
-  let out = @ref.new(@c_buffer.null)
-  let _ = @event_loop.perform_job(
-    Realpath(path~, out~),
-    context="@fs.realpath()",
-  )
-  let c_path = out.val
-  defer c_path.free()
-  let len = c_path.strlen()
-  let result = FixedArray::make(len, (0 : Byte))
-  c_path.blit_to_bytes(dst=result, offset=0, len~)
-  @encoding/utf8.decode(result.unsafe_reinterpret_as_bytes())
+  let result = @event_loop.realpath(path, context="@fs.realpath()")
+  @encoding/utf8.decode(result)
 }

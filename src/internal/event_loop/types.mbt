@@ -23,3 +23,11 @@ pub type DirectoryEntry
 ///|
 #external
 pub type AddrInfo
+
+///|
+pub(all) struct Stat(Bytes)
+
+///|
+pub fn Stat::new() -> Stat {
+  Bytes::make(sizeof_stat(), 0)
+}
