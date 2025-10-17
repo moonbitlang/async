@@ -119,22 +119,6 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 pub suberror ResolveHostnameError String derive(Show)
 
 ///|
-extern "C" fn ResolveHostnameError::gai_strerror(
-  code : Int,
-) -> @c_buffer.Buffer = "gai_strerror"
-
-///|
-fn ResolveHostnameError::from_error_code(code : Int) -> ResolveHostnameError {
-  let c_str = ResolveHostnameError::gai_strerror(code)
-  let len = c_str.strlen()
-  let bytes = FixedArray::make(len, b'\x00')
-  c_str.blit_to_bytes(dst=bytes, offset=0, len~)
-  bytes.unsafe_reinterpret_as_bytes()
-  |> @encoding/utf8.decode_lossy
-  |> ResolveHostnameError
-}
-
-///|
 pub(all) enum IpProtocolPreference {
   OnlyV4
   OnlyV6
@@ -159,7 +143,7 @@ pub async fn Addr::resolve(
   let context = "@socket.Addr::resolve()"
   let ai_root = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai_root) => ai_root
-    Err(ret) => raise ResolveHostnameError::from_error_code(ret)
+    Err(msg) => raise ResolveHostnameError(msg)
   }
   defer ai_root.free()
   let first_addr = ai_root.to_addr(port)

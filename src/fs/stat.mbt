@@ -13,12 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct Stat(@event_loop.Stat)
-
-///|
-fn Stat::new() -> Stat {
-  @event_loop.Stat::new()
-}
+typealias @event_loop.Stat
 
 ///|
 #borrow(stat)

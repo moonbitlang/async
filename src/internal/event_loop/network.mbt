@@ -141,10 +141,13 @@ extern "C" fn AddrInfoRef::new() -> AddrInfoRef = "moonbitlang_async_addrinfo_re
 extern "C" fn AddrInfoRef::get_and_clear(self : AddrInfoRef) -> AddrInfo = "moonbitlang_async_addrinfo_ref_get"
 
 ///|
+extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
+
+///|
 pub async fn getaddrinfo(
   host : Bytes,
   context~ : String,
-) -> Result[AddrInfo, Int] {
+) -> Result[AddrInfo, String] {
   let out = AddrInfoRef::new()
   let ret = perform_job_in_worker(
     JobForWorker::getaddrinfo(host, out),
@@ -152,7 +155,11 @@ pub async fn getaddrinfo(
     context~,
   )
   if ret != 0 {
-    Err(ret)
+    let c_str = gai_strerror(ret)
+    let len = c_str.strlen()
+    let bytes = FixedArray::make(len, b'\x00')
+    c_str.blit_to_bytes(dst=bytes, offset=0, len~)
+    bytes.unsafe_reinterpret_as_bytes() |> @encoding/utf8.decode |> Err
   } else {
     Ok(out.get_and_clear())
   }
