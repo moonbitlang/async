@@ -11,23 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-///|
-#external
-pub type Directory
-
-///|
-#external
-pub type DirectoryEntry
-
-///|
-#external
-pub type AddrInfo
-
-///|
-pub(all) struct Stat(Bytes)
-
-///|
-pub fn Stat::new() -> Stat {
-  Bytes::make(sizeof_stat(), 0)
-}
