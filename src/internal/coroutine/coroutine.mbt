@@ -154,6 +154,14 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit {
 }
 
 ///|
+pub fn Coroutine::check_error(coro : Coroutine) -> Unit raise {
+  match coro.state {
+    Fail(err) => raise err
+    Done | Running | Suspend(_) => ()
+  }
+}
+
+///|
 pub async fn protect_from_cancel(f : async () -> Unit) -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.shielded {

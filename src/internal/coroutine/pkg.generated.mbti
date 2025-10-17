@@ -29,6 +29,7 @@ impl Show for Cancelled
 // Types and methods
 type Coroutine
 fn Coroutine::cancel(Self) -> Unit
+fn Coroutine::check_error(Self) -> Unit raise
 fn Coroutine::equal(Self, Self) -> Bool // from trait `Eq`
 fn Coroutine::hash(Self) -> Int // from trait `Hash`
 fn Coroutine::hash_combine(Self, Hasher) -> Unit // from trait `Hash`

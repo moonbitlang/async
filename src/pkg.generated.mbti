@@ -43,6 +43,7 @@ pub(all) enum RetryMethod {
 
 type Task[X]
 fn[X] Task::cancel(Self[X]) -> Unit
+fn[X] Task::try_wait(Self[X]) -> X? raise
 async fn[X] Task::wait(Self[X]) -> X
 
 type TaskGroup[X]

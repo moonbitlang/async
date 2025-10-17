@@ -31,6 +31,17 @@ pub async fn[X] Task::wait(self : Task[X]) -> X {
 }
 
 ///|
+/// Try to obtain the result of the task.
+/// If the task already terminated, its result value will be returned.
+/// If the task already failed, `try_wait` will fail immediately.
+/// If the task is still running, `try_wait` returns `None`.
+/// `try_wait` is a synchoronous function: it never blocks.
+pub fn[X] Task::try_wait(self : Task[X]) -> X? raise {
+  self.coro.check_error()
+  self.value.val
+}
+
+///|
 /// Cancel a task. Subsequent attempt to wait for the task will receive error.
 /// Note that if the task is *not* spawned with `allow_failure=true`,
 /// the whole task group will fail too.

@@ -72,3 +72,30 @@ async test "wait cancelled" {
     ),
   )
 }
+
+///|
+async test "try_wait" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let task = root.spawn(no_wait=true, fn() {
+      @async.sleep(450)
+      42
+    })
+    root.spawn_bg(fn() {
+      @async.sleep(300)
+      log.write_string("300ms: \{task.try_wait()}\n")
+      @async.sleep(300)
+      log.write_string("600ms: \{task.try_wait()}\n")
+    })
+    log.write_string("task finished with \{task.wait()}\n")
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|300ms: None
+      #|task finished with 42
+      #|600ms: Some(42)
+      #|
+    ),
+  )
+}
