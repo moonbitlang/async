@@ -32,18 +32,14 @@ pub async fn Tcp::connect_to_host(
   protocol? : IpProtocolPreference = NoPreference,
 ) -> Tcp {
   let host = @encoding/utf8.encode(host)
-  let ai_ref = AddrInfoRef::new()
-  let ret = @event_loop.perform_job(
-    GetAddrInfo(host~, out=ai_ref),
-    context="@socket.Tcp::connect_to_host()",
-  )
-  if ret > 0 {
-    raise ResolveHostnameError::from_error_code(ret)
+  let context = "@socket.Tcp::connect_to_host()"
+  let ai = match @event_loop.getaddrinfo(host, context~) {
+    Ok(ai) => ai
+    Err(ret) => raise ResolveHostnameError::from_error_code(ret)
   }
+  defer ai.free()
   let mut result = None
   let mut conn_err = None
-  let ai = ai_ref.get_and_clear()
-  defer ai.free()
   async fn connect_with_protocol(protocol : IpProtocolPreference) {
     @async.with_task_group(fn(group) {
       for ai = ai; not(ai.is_null()); ai = ai.next() {

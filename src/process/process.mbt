@@ -95,16 +95,7 @@ async fn spawn(
       envp
     }
   }
-  let job = @event_loop.Spawn(
-    path=cmd,
-    args=argv,
-    env~,
-    stdin~,
-    stdout~,
-    stderr~,
-    cwd~,
-  )
-  @event_loop.perform_job(job, context~)
+  @event_loop.spawn(cmd, argv, env~, stdin~, stdout~, stderr~, cwd~, context~)
 }
 
 ///|
@@ -154,7 +145,7 @@ pub async fn spawn_orphan(
 /// and return the exit code of the process.
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
-  ignore(@event_loop.perform_job(WaitProcess(pid), context~))
+  @event_loop.wait_pid(pid)
   let out = @ref.new(0)
   let ret = get_process_result(pid, out)
   if ret < 0 {
@@ -219,7 +210,7 @@ pub async fn run(
     cwd~,
     context~,
   )
-  ignore(@event_loop.perform_job(WaitProcess(pid), context~)) catch {
+  @event_loop.wait_pid(pid) catch {
     err if @coroutine.is_being_cancelled() => {
       terminate_process(pid)
       raise err

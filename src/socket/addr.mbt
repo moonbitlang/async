@@ -97,7 +97,7 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-typealias @event_loop.(AddrInfo, AddrInfoRef)
+typealias @event_loop.AddrInfo
 
 ///|
 extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
@@ -156,15 +156,11 @@ pub async fn Addr::resolve(
 ) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
   let host = @encoding/utf8.encode(host)
-  let ai_ref = AddrInfoRef::new()
-  let ret = @event_loop.perform_job(
-    GetAddrInfo(host~, out=ai_ref),
-    context="@socket.Addr::resolve()",
-  )
-  if ret != 0 {
-    raise ResolveHostnameError::from_error_code(ret)
+  let context = "@socket.Addr::resolve()"
+  let ai_root = match @event_loop.getaddrinfo(host, context~) {
+    Ok(ai_root) => ai_root
+    Err(ret) => raise ResolveHostnameError::from_error_code(ret)
   }
-  let ai_root = ai_ref.get_and_clear()
   defer ai_root.free()
   let first_addr = ai_root.to_addr(port)
 

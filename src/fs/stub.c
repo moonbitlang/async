@@ -53,15 +53,15 @@ int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
 }
 
-struct dirent *moonbitlang_async_null_dirent() {
-  return 0;
-}
-
 moonbit_bytes_t moonbitlang_async_dirent_name(struct dirent *dirent) {
   int len = strlen(dirent->d_name);
   moonbit_bytes_t result = moonbit_make_bytes(len, 0);
   memcpy(result, dirent->d_name, len);
   return result;
+}
+
+int moonbitlang_async_dirent_is_null(struct dirent *dirent) {
+  return dirent == 0;
 }
 
 int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
@@ -84,10 +84,6 @@ int32_t moonbitlang_async_file_kind(int fd) {
     return -1;
 
   return moonbitlang_async_file_kind_from_stat(&stat);
-}
-
-int32_t moonbitlang_async_sizeof_stat() {
-  return sizeof(struct stat);
 }
 
 int moonbitlang_async_r_ok() {

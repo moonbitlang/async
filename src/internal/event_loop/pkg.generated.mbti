@@ -1,20 +1,50 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/event_loop"
 
-import(
-  "moonbitlang/async/internal/c_buffer"
-)
-
 // Values
+async fn accept(Int, Bytes, context~ : String) -> Int
+
+async fn access(Bytes, amode~ : Int, context~ : String) -> Int
+
 fn close_fd(Int) -> Unit
 
-async fn perform_job(Job, context~ : String) -> Int
+async fn connect(Int, Bytes, context~ : String) -> Int
+
+async fn fsync(Int, only_data~ : Bool, context~ : String) -> Unit
+
+async fn getaddrinfo(Bytes, context~ : String) -> Result[AddrInfo, Int]
+
+async fn mkdir(Bytes, mode~ : Int, context~ : String) -> Unit
+
+async fn open(Bytes, flags~ : Int, mode~ : Int, context~ : String) -> Int
+
+async fn read(Int, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
+
+async fn readdir(Directory, context~ : String) -> DirectoryEntry
+
+async fn realpath(Bytes, context~ : String) -> Bytes
+
+async fn recvfrom(Int, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
 fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
 
+async fn remove(Bytes, context~ : String) -> Unit
+
+async fn rmdir(Bytes, context~ : String) -> Unit
+
+async fn sendto(Int, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+
 async fn sleep(Int) -> Unit
 
+async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
+
+async fn stat(Bytes, follow_symlink~ : Bool, context~ : String) -> Stat
+
+async fn wait_pid(Int) -> Unit
+
 fn with_event_loop(async () -> Unit) -> Unit raise
+
+async fn write(Int, Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
 
 // Errors
 
@@ -22,36 +52,16 @@ fn with_event_loop(async () -> Unit) -> Unit raise
 #external
 pub type AddrInfo
 
-type AddrInfoRef
-fn AddrInfoRef::get_and_clear(Self) -> AddrInfo
-fn AddrInfoRef::new() -> Self
-
 #external
 pub type Directory
 
 #external
 pub type DirectoryEntry
 
-pub(all) enum Job {
-  Read(fd~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool)
-  Write(fd~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool)
-  Open(path~ : Bytes, flags~ : Int, mode~ : Int)
-  Stat(path~ : Bytes, out~ : FixedArray[Byte], follow_symlink~ : Bool)
-  Access(path~ : Bytes, amode~ : Int)
-  Fsync(fd~ : Int, only_data~ : Bool)
-  Remove(path~ : Bytes)
-  Mkdir(path~ : Bytes, mode~ : Int)
-  Rmdir(path~ : Bytes)
-  Readdir(dir~ : Directory, out~ : Ref[DirectoryEntry])
-  Realpath(path~ : Bytes, out~ : Ref[@c_buffer.Buffer])
-  Spawn(path~ : Bytes, args~ : FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?)
-  Recvfrom(sock~ : Int, buf~ : FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes)
-  Sendto(sock~ : Int, buf~ : Bytes, offset~ : Int, len~ : Int, addr~ : Bytes)
-  Connect(sock~ : Int, addr~ : Bytes)
-  Accept(sock~ : Int, addr~ : Bytes)
-  WaitProcess(Int)
-  GetAddrInfo(host~ : Bytes, out~ : AddrInfoRef)
-}
+pub(all) struct Stat(Bytes)
+#deprecated
+fn Stat::inner(Self) -> Bytes
+fn Stat::new() -> Self
 
 // Type aliases
 

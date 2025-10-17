@@ -13,14 +13,11 @@
 // limitations under the License.
 
 ///|
-priv struct Stat(FixedArray[Byte])
-
-///|
-extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
+priv struct Stat(@event_loop.Stat)
 
 ///|
 fn Stat::new() -> Stat {
-  FixedArray::make(sizeof_stat(), b'0')
+  @event_loop.Stat::new()
 }
 
 ///|
@@ -42,13 +39,8 @@ async fn Stat::from_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> Stat {
-  let stat = Stat::new()
   let path = @encoding/utf8.encode(path)
-  let _ = @event_loop.perform_job(
-    Stat(path~, out=stat.0, follow_symlink~),
-    context~,
-  )
-  stat
+  @event_loop.stat(path, follow_symlink~, context~)
 }
 
 ///|
