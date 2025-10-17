@@ -20,14 +20,14 @@ async test "BufferedWriter" {
     root.spawn_bg(fn() {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
+      log.write_string("2 bytes written\n")
       w.write("ab")
-      log.write_string("2 bytes written\n")
       @async.sleep(20)
+      log.write_string("2 bytes written\n")
       w.write("cd")
-      log.write_string("2 bytes written\n")
       @async.sleep(20)
-      w.write("ef")
       log.write_string("2 bytes written\n")
+      w.write("ef")
       w.flush()
     })
     root.spawn_bg(fn() {
@@ -69,7 +69,6 @@ async test "BufferedWriter::write_reader" {
       defer r1.close()
       let buf = FixedArray::make(1024, b'0')
       while r1.read(buf) is n && n > 0 {
-        @async.sleep(10)
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         let data = @encoding/utf8.decode(data)
         log.write_string("received \{data}\n")
@@ -77,14 +76,14 @@ async test "BufferedWriter::write_reader" {
     })
     root.spawn_bg(fn() {
       defer w2.close()
+      log.write_string("sending 4 bytes\n")
       w2.write(b"abcd")
-      log.write_string("sending 4 bytes\n")
       @async.sleep(100)
+      log.write_string("sending 4 bytes\n")
       w2.write(b"efgh")
-      log.write_string("sending 4 bytes\n")
       @async.sleep(100)
-      w2.write(b"ijkl")
       log.write_string("sending 4 bytes\n")
+      w2.write(b"ijkl")
     })
   })
   inspect(
