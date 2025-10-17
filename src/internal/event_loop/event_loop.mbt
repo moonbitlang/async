@@ -300,22 +300,6 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
 }
 
 ///|
-pub async fn wait_pid(pid : Int) -> Unit {
-  guard curr_loop.val is Some(evloop)
-  let alt_id = match evloop.poll.register_pid(pid) {
-    Running(id) => id
-    Stopped => return
-  }
-  guard evloop.pids.get(alt_id) is None
-  evloop.pids[alt_id] = @coroutine.current_coroutine()
-  defer {
-    evloop.pids.remove(alt_id)
-    evloop.poll.remove_pid(alt_id)
-  }
-  @coroutine.suspend()
-}
-
-///|
 pub fn close_fd(fd : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
   if evloop.fds.get(fd) is Some(handle) {
@@ -441,80 +425,6 @@ pub async fn write(
 }
 
 ///|
-pub async fn open(
-  path : Bytes,
-  flags~ : Int,
-  mode~ : Int,
-  context~ : String,
-) -> Int {
-  perform_job_in_worker(JobForWorker::open(path, flags, mode), context~)
-}
-
-///|
-extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
-
-///|
-pub async fn stat(
-  path : Bytes,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> Stat {
-  let out = FixedArray::make(sizeof_stat(), b'\x00')
-  let _ = perform_job_in_worker(
-    JobForWorker::stat(path, out, follow_symlink~),
-    context~,
-  )
-  out.unsafe_reinterpret_as_bytes()
-}
-
-///|
-pub async fn access(path : Bytes, amode~ : Int, context~ : String) -> Int {
-  perform_job_in_worker(JobForWorker::access(path, amode), context~)
-}
-
-///|
-pub async fn fsync(fd : Int, only_data~ : Bool, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::fsync(fd, only_data), context~) |> ignore
-}
-
-///|
-pub async fn remove(path : Bytes, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::remove(path), context~) |> ignore
-}
-
-///|
-pub async fn mkdir(path : Bytes, mode~ : Int, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::mkdir(path, mode), context~) |> ignore
-}
-
-///|
-pub async fn rmdir(path : Bytes, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::rmdir(path), context~) |> ignore
-}
-
-///|
-extern "C" fn DirectoryEntry::null() -> DirectoryEntry = "moonbitlang_async_null_dirent"
-
-///|
-pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
-  let out = @ref.new(DirectoryEntry::null())
-  let _ = perform_job_in_worker(JobForWorker::readdir(dir, out), context~)
-  out.val
-}
-
-///|
-pub async fn realpath(path : Bytes, context~ : String) -> Bytes {
-  let out = @ref.new(@c_buffer.null)
-  let _ = perform_job_in_worker(JobForWorker::realpath(path, out), context~)
-  let c_path = out.val
-  defer c_path.free()
-  let len = c_path.strlen()
-  let result = FixedArray::make(len, b'\x00')
-  c_path.blit_to_bytes(dst=result, offset=0, len~)
-  result.unsafe_reinterpret_as_bytes()
-}
-
-///|
 pub async fn spawn(
   path : Bytes,
   args : FixedArray[Bytes?],
@@ -532,143 +442,17 @@ pub async fn spawn(
 }
 
 ///|
-#borrow(buf, addr)
-extern "C" fn recvfrom_ffi(
-  fd : Int,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-) -> Int = "moonbitlang_async_recvfrom"
-
-///|
-pub async fn recvfrom(
-  sock : Int,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  context~ : String,
-) -> Int {
-  let handle = prepare_fd_read(sock)
-  let ret = recvfrom_ffi(sock, buf, offset~, len~, addr~)
-  let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    recvfrom_ffi(sock, buf, offset~, len~, addr~)
-  } else {
-    @coroutine.pause()
-    ret
+pub async fn wait_pid(pid : Int) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  let alt_id = match evloop.poll.register_pid(pid) {
+    Running(id) => id
+    Stopped => return
   }
-  if ret < 0 {
-    @os_error.check_errno(context)
+  guard evloop.pids.get(alt_id) is None
+  evloop.pids[alt_id] = @coroutine.current_coroutine()
+  defer {
+    evloop.pids.remove(alt_id)
+    evloop.poll.remove_pid(alt_id)
   }
-  ret
-}
-
-///|
-#borrow(buf, addr)
-extern "C" fn sendto_ffi(
-  fd : Int,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-) -> Int = "moonbitlang_async_sendto"
-
-///|
-pub async fn sendto(
-  sock : Int,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  context~ : String,
-) -> Int {
-  let handle = prepare_fd_write(sock)
-  let ret = sendto_ffi(sock, buf, offset~, len~, addr~)
-  let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
-    sendto_ffi(sock, buf, offset~, len~, addr~)
-  } else {
-    @coroutine.pause()
-    ret
-  }
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  ret
-}
-
-///|
-#borrow(addr)
-extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_connect"
-
-///|
-extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
-
-///|
-pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
-  let handle = prepare_fd_write(sock)
-  if 0 == connect_ffi(sock, addr) {
-    return 0
-  }
-  if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
-    let err = get_socket_err(sock)
-    if err < 0 {
-      @os_error.check_errno(context)
-    } else if err > 0 {
-      raise @os_error.OSError(err, context~)
-    }
-  } else {
-    @os_error.check_errno(context)
-  }
-  0
-}
-
-///|
-#borrow(addr_buf)
-extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
-
-///|
-pub async fn accept(sock : Int, addr : Bytes, context~ : String) -> Int {
-  let handle = prepare_fd_read(sock)
-  let conn = accept_ffi(sock, addr)
-  if conn > 0 {
-    conn
-  } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    accept_ffi(sock, addr)
-  } else {
-    @os_error.check_errno(context)
-    -1
-  }
-}
-
-///|
-priv type AddrInfoRef
-
-///|
-extern "C" fn AddrInfoRef::new() -> AddrInfoRef = "moonbitlang_async_addrinfo_ref_make"
-
-///|
-#borrow(self)
-extern "C" fn AddrInfoRef::get_and_clear(self : AddrInfoRef) -> AddrInfo = "moonbitlang_async_addrinfo_ref_get"
-
-///|
-pub async fn getaddrinfo(
-  host : Bytes,
-  context~ : String,
-) -> Result[AddrInfo, Int] {
-  let out = AddrInfoRef::new()
-  let ret = perform_job_in_worker(
-    JobForWorker::getaddrinfo(host, out),
-    allow_cancel=true,
-    context~,
-  )
-  if ret != 0 {
-    Err(ret)
-  } else {
-    Ok(out.get_and_clear())
-  }
+  @coroutine.suspend()
 }
