@@ -12,7 +12,7 @@ async fn connect(Int, Bytes, context~ : String) -> Int
 
 async fn fsync(Int, only_data~ : Bool, context~ : String) -> Unit
 
-async fn getaddrinfo(Bytes, context~ : String) -> Result[AddrInfo, Int]
+async fn getaddrinfo(Bytes, context~ : String) -> Result[AddrInfo, String]
 
 async fn mkdir(Bytes, mode~ : Int, context~ : String) -> Unit
 
@@ -58,9 +58,7 @@ pub type Directory
 #external
 pub type DirectoryEntry
 
-pub(all) struct Stat(Bytes)
-#deprecated
-fn Stat::inner(Self) -> Bytes
+type Stat
 fn Stat::new() -> Self
 
 // Type aliases

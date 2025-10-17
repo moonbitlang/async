@@ -21,14 +21,6 @@ pub type Directory
 pub type DirectoryEntry
 
 ///|
-pub(all) struct Stat(Bytes)
-
-///|
-pub fn Stat::new() -> Stat {
-  Bytes::make(sizeof_stat(), 0)
-}
-
-///|
 pub async fn open(
   path : Bytes,
   flags~ : Int,
@@ -39,7 +31,15 @@ pub async fn open(
 }
 
 ///|
+struct Stat(FixedArray[Byte])
+
+///|
 extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
+
+///|
+pub fn Stat::new() -> Stat {
+  FixedArray::make(sizeof_stat(), b'\x00')
+}
 
 ///|
 pub async fn stat(
@@ -47,12 +47,12 @@ pub async fn stat(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> Stat {
-  let out = FixedArray::make(sizeof_stat(), b'\x00')
+  let stat = Stat::new()
   let _ = perform_job_in_worker(
-    JobForWorker::stat(path, out, follow_symlink~),
+    JobForWorker::stat(path, stat, follow_symlink~),
     context~,
   )
-  out.unsafe_reinterpret_as_bytes()
+  stat
 }
 
 ///|

@@ -35,7 +35,7 @@ pub async fn Tcp::connect_to_host(
   let context = "@socket.Tcp::connect_to_host()"
   let ai = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai) => ai
-    Err(ret) => raise ResolveHostnameError::from_error_code(ret)
+    Err(msg) => raise ResolveHostnameError(msg)
   }
   defer ai.free()
   let mut result = None
