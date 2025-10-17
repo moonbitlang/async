@@ -31,7 +31,6 @@ pub async fn Tcp::connect_to_host(
   port~ : Int,
   protocol? : IpProtocolPreference = NoPreference,
 ) -> Tcp {
-  let host = @encoding/utf8.encode(host)
   let context = "@socket.Tcp::connect_to_host()"
   let ai = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai) => ai

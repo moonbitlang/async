@@ -104,7 +104,6 @@ pub async fn open(
   create? : Int,
   truncate? : Bool = false,
 ) -> File {
-  let filename = @encoding/utf8.encode(filename)
   let (create, user_mode) = match create {
     None => (false, 0)
     Some(mode) => (true, mode)
@@ -217,7 +216,6 @@ pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
 ///|
 /// Remove the file located at `path`. `path` is encoded using UTF8.
 pub async fn remove(path : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
   @event_loop.remove(path, context="@fs.remove()")
 }
 

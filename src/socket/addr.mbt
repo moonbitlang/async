@@ -139,7 +139,6 @@ pub async fn Addr::resolve(
   protocol? : IpProtocolPreference = NoPreference,
 ) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
-  let host = @encoding/utf8.encode(host)
   let context = "@socket.Addr::resolve()"
   let ai_root = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai_root) => ai_root
