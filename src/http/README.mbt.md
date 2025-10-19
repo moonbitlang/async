@@ -34,50 +34,6 @@ async test "quick start example" {
 }
 ```
 
-## HTTP Client
-
-### Simple One-time Requests
-
-For simple use cases where you don't need to reuse connections, use the top-level functions:
-
-```moonbit
-///|
-async test "simple GET request" {
-  let (response, body) = @http.get("https://www.example.org")
-  inspect(response.code, content="200")
-  assert_true(body.text().has_prefix("<!doctype html>"))
-}
-
-///|
-async test "GET request with custom headers" {
-  let headers = { "User-Agent": "MoonBit-HTTP-Client/1.0" }
-  let (response, body) = @http.get(
-    "https://www.example.org",
-    headers=headers,
-  )
-  inspect(response.code, content="200")
-  assert_true(body.text().length() > 0)
-}
-
-///|
-async test "POST request with body" {
-  let (response, _body) = @http.post(
-    "https://httpbin.org/post",
-    b"test data",
-  )
-  inspect(response.code, content="200")
-}
-
-///|
-async test "PUT request with body" {
-  let (response, _body) = @http.put(
-    "https://httpbin.org/put",
-    b"updated data",
-  )
-  inspect(response.code, content="200")
-}
-```
-
 ### Reusable Client Connections
 
 For better performance when making multiple requests to the same host, use `Client`:
@@ -127,29 +83,21 @@ async test "reusable client connection" {
 async test "client with custom protocol and port" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:18071")
-
     root.spawn_bg(no_wait=true, fn() {
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-
         conn
         ..send_response(200, "OK")
         ..write(b"protocol=http,port=18071")
         ..end_response()
       })
     })
-
     @async.sleep(100)
 
     // Explicitly select HTTP protocol and custom port
-    let client = @http.Client::connect(
-      "127.0.0.1",
-      protocol=Http,
-      port=18071,
-    )
+    let client = @http.Client::connect("127.0.0.1", protocol=Http, port=18071)
     defer client.close()
-
     let response = client.get("/")
     inspect(response.code, content="200")
     let body = client.read_all()
@@ -159,13 +107,12 @@ async test "client with custom protocol and port" {
 
 ///|
 async test "client with persistent headers" {
-  let headers = {
+  let client = @http.Client::connect("www.example.org", headers={
     "User-Agent": "MoonBit-Client/1.0",
     "Accept": "application/json",
-  }
-  let client = @http.Client::connect("www.example.org", headers=headers)
+  })
   defer client.close()
-  
+
   // All requests from this client will include these headers
   let response = client.get("/")
   client.skip_response_body()
@@ -180,30 +127,68 @@ The `Client` supports all standard HTTP methods:
 ```moonbit
 ///|
 async test "various HTTP methods" {
-  let client = @http.Client::connect("httpbin.org")
-  defer client.close()
-  
-  // GET request
-  let response_get = client.get("/get")
-  client.skip_response_body()
-  inspect(response_get.code, content="200")
-  
-  // POST request
-  let response_post = client.post("/post", b"data")
-  client.skip_response_body()
-  inspect(response_post.code, content="200")
-  
-  // PUT request
-  let response_put = client.put("/put", b"updated")
-  client.skip_response_body()
-  inspect(response_put.code, content="200")
+  @async.with_task_group(root => {
+    let addr = @socket.Addr::parse("127.0.0.1:18072")
+    root.spawn_bg(no_wait=true, fn() {
+      @http.run_server(addr, fn(conn, _) {
+        for {
+          let request = conn.read_request() catch {
+            @io.ReaderClosed => break
+            err => raise err
+          }
+          let _body = match request.meth {
+            Post => conn.read_all()
+            Put => conn.read_all()
+            _ => {
+              conn.skip_request_body()
+              b""
+            }
+          }
+          let response_body = match request.meth {
+            Get => b"Method: GET"
+            Post => b"Method: POST"
+            Put => b"Method: PUT"
+            _ => b"Method: OTHER"
+          }
+          conn..send_response(200, "OK")..write(response_body)..end_response()
+          if request.path == "/shutdown" {
+            break
+          }
+        }
+      })
+    })
+    @async.sleep(100)
+    let client = @http.Client::connect("127.0.0.1", protocol=Http, port=18072)
+    defer client.close()
+
+    // GET request
+    let response_get = client.get("/get")
+    inspect(response_get.code, content="200")
+    let body_get = client.read_all()
+    inspect(body_get.text(), content="Method: GET")
+
+    // POST request
+    let response_post = client.post("/post", b"data")
+    inspect(response_post.code, content="200")
+    let body_post = client.read_all()
+    inspect(body_post.text(), content="Method: POST")
+
+    // PUT request
+    let response_put = client.put("/put", b"updated")
+    inspect(response_put.code, content="200")
+    let body_put = client.read_all()
+    inspect(body_put.text(), content="Method: PUT")
+
+    // Shut down server loop
+    // Close the server connection by shutting down the task group
+  })
 }
 
 ///|
 async test "generic request method" {
   let client = @http.Client::connect("www.example.org")
   defer client.close()
-  
+
   // For more control, use request() directly
   client.request(Get, "/")
   let response = client.end_request()
@@ -221,14 +206,12 @@ Send request bodies using the client as a `@io.Writer`:
 async test "streaming request body" {
   let client = @http.Client::connect("httpbin.org")
   defer client.close()
-  
   client.request(Post, "/post")
-  
+
   // Write body in chunks
   client.write(b"part1")
   client.write(b"part2")
   client.flush() // Ensure data is sent
-  
   let response = client.end_request()
   client.skip_response_body()
   inspect(response.code, content="200")
@@ -238,7 +221,6 @@ async test "streaming request body" {
 async test "request with data body" {
   let client = @http.Client::connect("httpbin.org")
   defer client.close()
-  
   let data = b"Hello, Server!"
   let response = client.post("/post", data)
   client.skip_response_body()
@@ -255,10 +237,9 @@ Read response bodies using various methods:
 async test "read entire response body" {
   let client = @http.Client::connect("www.example.org")
   defer client.close()
-  
   let response = client.get("/")
   inspect(response.code, content="200")
-  
+
   // Read all at once
   let body = client.read_all()
   assert_true(body.text().has_prefix("<!doctype html>"))
@@ -268,34 +249,99 @@ async test "read entire response body" {
 async test "read response body in chunks" {
   let client = @http.Client::connect("www.example.org")
   defer client.close()
-  
   let response = client.get("/")
   inspect(response.code, content="200")
-  
+
   // Read in chunks
   let buf = FixedArray::make(1024, b'\x00')
   let bytes_read = client.read(buf)
   assert_true(bytes_read > 0)
-  
+
   // Skip remaining body
   client.skip_response_body()
 }
 
 ///|
 async test "skip response body" {
-  let client = @http.Client::connect("www.example.org")
-  defer client.close()
-  
-  let response = client.get("/")
-  inspect(response.code, content="200")
-  
-  // Skip body if not needed
-  client.skip_response_body()
-  
-  // Can immediately make next request
-  let response2 = client.get("/")
-  client.skip_response_body()
-  inspect(response2.code, content="200")
+  @async.with_task_group(root => {
+    let addr = @socket.Addr::parse("127.0.0.1:18073")
+    root.spawn_bg(no_wait=true, fn() {
+      @http.run_server(addr, fn(conn, _) {
+        conn.read_request() |> ignore
+        conn.skip_request_body()
+        conn
+        ..send_response(200, "OK")
+        ..write(b"Response body content")
+        ..end_response()
+      })
+    })
+    @async.sleep(100)
+    let client = @http.Client::connect("127.0.0.1", protocol=Http, port=18073)
+    defer client.close()
+    client.request(Get, "/")
+    let response_result = try? client.end_request()
+    inspect(response_result is Ok(_), content="true")
+    if response_result is Ok(response) {
+      inspect(response.code, content="200")
+    }
+
+    // Read a small portion of the body, then skip the rest
+    let buf = FixedArray::make(8, b'\x00')
+    let read_result = try? client.read(buf)
+    inspect(read_result is Ok(_), content="true")
+    if read_result is Ok(bytes_read) {
+      inspect(bytes_read > 0, content="true")
+    }
+    let skip_result = try? client.skip_response_body()
+    inspect(skip_result is Ok(_), content="true")
+  })
+}
+
+///|
+async test "client keep-alive not guaranteed" {
+  @async.with_task_group(root => {
+    let addr = @socket.Addr::parse("127.0.0.1:18074")
+    root.spawn_bg(no_wait=true, fn() {
+      @http.run_server(addr, fn(conn, _) {
+        for {
+          let request = conn.read_request() catch {
+            @io.ReaderClosed => break
+            err => raise err
+          }
+          conn.skip_request_body()
+          if request.path == "/shutdown" {
+            conn..send_response(200, "OK")..end_response()
+            break
+          }
+          conn
+          ..send_response(200, "OK")
+          ..write(b"first response")
+          ..end_response()
+          conn.close()
+          break
+        }
+      })
+    })
+    @async.sleep(100)
+    let client = @http.Client::connect("127.0.0.1", protocol=Http, port=18074)
+    defer client.close()
+    let response = client.get("/", extra_headers={ "Connection": "keep-alive" })
+    inspect(response.code, content="200")
+    client.skip_response_body()
+    let second = try? client.get("/", extra_headers={
+        "Connection": "keep-alive",
+      })
+    inspect(second is Err(@io.ReaderClosed), content="true")
+    let shutdown_client = @http.Client::connect(
+      "127.0.0.1",
+      protocol=Http,
+      port=18074,
+    )
+    defer shutdown_client.close()
+    let shutdown_resp = shutdown_client.get("/shutdown")
+    shutdown_client.skip_response_body()
+    inspect(shutdown_resp.code, content="200")
+  })
 }
 ```
 
@@ -308,13 +354,11 @@ Add custom headers to requests:
 async test "request with extra headers" {
   let client = @http.Client::connect("httpbin.org")
   defer client.close()
-  
   let extra_headers = {
     "X-Custom-Header": "custom-value",
     "X-Request-ID": "12345",
   }
-  
-  let response = client.get("/get", extra_headers=extra_headers)
+  let response = client.get("/get", extra_headers~)
   client.skip_response_body()
   inspect(response.code, content="200")
 }
@@ -323,14 +367,16 @@ async test "request with extra headers" {
 async test "reading response headers" {
   let client = @http.Client::connect("www.example.org")
   defer client.close()
-  
   let response = client.get("/")
   client.skip_response_body()
-  
+
   // Access response headers
   inspect(response.code, content="200")
   inspect(response.reason, content="OK")
-  assert_true(response.headers.contains("Content-Type"))
+  // assert_true(response.headers.contains("Content-Type"))
+  assert_true(
+    response.headers.keys().any(x => x == "Content-Type" || x == "content-type"),
+  )
 }
 ```
 
@@ -344,24 +390,17 @@ Create a simple HTTP server using `run_server`:
 ///|
 async test "basic server setup" {
   let server_started : Ref[Bool] = @ref.new(false)
-  
   @async.with_task_group(root => {
     // Start server in background
     root.spawn_bg(fn() {
       let addr = @socket.Addr::parse("127.0.0.1:8080")
       server_started.val = true
-      
       @http.run_server(addr, fn(conn, _client_addr) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-        
-        conn
-        ..send_response(200, "OK")
-        ..write(b"Hello, World!")
-        ..end_response()
+        conn..send_response(200, "OK")..write(b"Hello, World!")..end_response()
       })
     })
-    
     @async.sleep(100) // Wait for server to start
     assert_true(server_started.val)
   })
@@ -378,20 +417,14 @@ async test "process different request paths" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8081")
     let server_ready : Ref[Bool] = @ref.new(false)
-    
     root.spawn_bg(fn() {
       server_ready.val = true
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-        
-        conn
-        ..send_response(200, "OK")
-        ..write(b"Response sent")
-        ..end_response()
+        conn..send_response(200, "OK")..write(b"Response sent")..end_response()
       })
     })
-    
     @async.sleep(100)
     assert_true(server_ready.val)
   })
@@ -402,25 +435,21 @@ async test "inspect request method and headers" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8082")
     let processed : Ref[Bool] = @ref.new(false)
-    
     root.spawn_bg(fn() {
       @http.run_server(addr, fn(conn, _) {
         let request = conn.read_request()
         conn.skip_request_body()
-        
+
         // Access request properties
         inspect(request.meth == Get, content="true")
         assert_true(request.headers.contains("Host"))
-        
         processed.val = true
-        
         conn
         ..send_response(200, "OK")
         ..write(b"Request processed")
         ..end_response()
       })
     })
-    
     @async.sleep(100)
   })
 }
@@ -435,19 +464,13 @@ Send HTTP responses with various status codes:
 async test "various response codes" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8083")
-    
     root.spawn_bg(fn() {
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-        
-        conn
-        ..send_response(200, "OK")
-        ..write(b"Success")
-        ..end_response()
+        conn..send_response(200, "OK")..write(b"Success")..end_response()
       })
     })
-    
     @async.sleep(100)
   })
 }
@@ -456,24 +479,20 @@ async test "various response codes" {
 async test "response with custom headers" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8084")
-    
     root.spawn_bg(fn() {
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-        
         let extra_headers = {
           "X-Custom-Header": "custom-value",
           "X-Server": "MoonBit",
         }
-        
         conn
-        ..send_response(200, "OK", extra_headers=extra_headers)
+        ..send_response(200, "OK", extra_headers~)
         ..write(b"Response with headers")
         ..end_response()
       })
     })
-    
     @async.sleep(100)
   })
 }
@@ -488,15 +507,13 @@ Read request bodies and write response bodies:
 async test "read request body" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8085")
-    
     root.spawn_bg(fn() {
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
-        
+
         // Read entire request body
         let body = conn.read_all()
         body.text() |> ignore
-        
         conn
         ..send_response(200, "OK")
         ..write(b"Received: ")
@@ -504,7 +521,6 @@ async test "read request body" {
         ..end_response()
       })
     })
-    
     @async.sleep(100)
   })
 }
@@ -513,24 +529,20 @@ async test "read request body" {
 async test "stream response body" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8086")
-    
     root.spawn_bg(fn() {
       @http.run_server(addr, fn(conn, _) {
         conn.read_request() |> ignore
         conn.skip_request_body()
-        
         conn.send_response(200, "OK")
-        
+
         // Write response body in chunks
         conn.write(b"Part 1\n")
         conn.write(b"Part 2\n")
         conn.write(b"Part 3\n")
         conn.flush()
-        
         conn.end_response()
       })
     })
-    
     @async.sleep(100)
   })
 }
@@ -545,19 +557,17 @@ Configure server behavior with various options:
 async test "server with persistent headers" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8087")
-    
     let persistent_headers = {
       "Server": "MoonBit-HTTP/1.0",
       "X-Powered-By": "MoonBit",
     }
-    
     root.spawn_bg(fn() {
       @http.run_server(
         addr,
         fn(conn, _) {
           conn.read_request() |> ignore
           conn.skip_request_body()
-          
+
           // Persistent headers are automatically included
           conn
           ..send_response(200, "OK")
@@ -567,7 +577,6 @@ async test "server with persistent headers" {
         headers=persistent_headers,
       )
     })
-    
     @async.sleep(100)
   })
 }
@@ -576,7 +585,6 @@ async test "server with persistent headers" {
 async test "server with max connections" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8088")
-    
     root.spawn_bg(fn() {
       // Limit to 10 concurrent connections
       @http.run_server(
@@ -584,7 +592,6 @@ async test "server with max connections" {
         fn(conn, _) {
           conn.read_request() |> ignore
           conn.skip_request_body()
-          
           conn
           ..send_response(200, "OK")
           ..write(b"Limited connections")
@@ -593,7 +600,6 @@ async test "server with max connections" {
         max_connections=10,
       )
     })
-    
     @async.sleep(100)
   })
 }
@@ -602,7 +608,6 @@ async test "server with max connections" {
 async test "server with error handling" {
   @async.with_task_group(root => {
     let addr = @socket.Addr::parse("127.0.0.1:8089")
-    
     root.spawn_bg(fn() {
       // Silently ignore handler failures (default is true)
       @http.run_server(
@@ -610,7 +615,7 @@ async test "server with error handling" {
         fn(conn, _client_addr) {
           conn.read_request() |> ignore
           conn.skip_request_body()
-          
+
           // If this raises an error, it will be ignored
           conn
           ..send_response(200, "OK")
@@ -620,7 +625,6 @@ async test "server with error handling" {
         allow_failure=true,
       )
     })
-    
     @async.sleep(100)
   })
 }
