@@ -78,7 +78,10 @@ async test "read from reader" {
     let n = r.read(buf, offset=0, max_len=13)
     inspect(n, content="13")
     // Convert the binary slice to UTF-8 text for inspection.
-    inspect(@encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()), content="Hello, World!")
+    inspect(
+      @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
+      content="Hello, World!",
+    )
   })
 }
 
@@ -305,7 +308,7 @@ async test "data as json" {
     let data = r.read_all()
     let json = data.json()
     // `@json.inspect` asserts that the parsed JSON matches the expected structure.
-    @json.inspect(json, content=({"name":"John","age":30}))
+    @json.inspect(json, content={ "name": "John", "age": 30 })
   })
 }
 ```
@@ -479,7 +482,7 @@ async test "BufferedReader::op_as_view - slice data" {
       log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-  // After dropping, index 0 maps to the next unread segment.
+      // After dropping, index 0 maps to the next unread segment.
       let slice = @encoding/utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
@@ -548,7 +551,7 @@ async test "BufferedReader::find - search for substring" {
       log.write_string("index of 'a': \{i}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-  // After consuming four bytes, the next 'a' occurs later in the buffer.
+      // After consuming four bytes, the next 'a' occurs later in the buffer.
       let i = reader.find(b"a")
       log.write_string("index of 'a': \{i}\n")
       log.write_string("reader.drop(4)\n")
@@ -764,7 +767,6 @@ async test "fan-out and fan-in" {
       @async.sleep(10)
       intermediate_writer.write(b"PAYLOAD")
     })
-
     let buffered = @io.BufferedReader::new(intermediate_reader)
 
     // A downstream consumer receives the header via its own pipe.
@@ -774,7 +776,6 @@ async test "fan-out and fan-in" {
       let header = buffered.read_exactly(3)
       header_writer.write(header)
     })
-
     root.spawn_bg(fn() {
       defer header_reader.close()
       inspect(header_reader.read_all().text(), content="HDR")
@@ -829,13 +830,13 @@ When reading, treat `ReaderClosed` as a signal to flush any buffered state and t
 ///|
 async test "error handling example" {
   let result = try? @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    defer r.close()
-    root.spawn_bg(fn() { w.close() })
-    let reader = @io.BufferedReader::new(r)
-    // Will raise ReaderClosed because fewer than 100 bytes are available.
-    reader.read_exactly(100)
-  })
+      let (r, w) = @pipe.pipe()
+      defer r.close()
+      root.spawn_bg(fn() { w.close() })
+      let reader = @io.BufferedReader::new(r)
+      // Will raise ReaderClosed because fewer than 100 bytes are available.
+      reader.read_exactly(100)
+    })
   inspect(result is Err(_), content="true")
 }
 ```
