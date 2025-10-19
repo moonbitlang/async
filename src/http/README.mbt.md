@@ -85,34 +85,76 @@ For better performance when making multiple requests to the same host, use `Clie
 ```moonbit
 ///|
 async test "reusable client connection" {
-  let client = @http.Client::connect("www.example.org")
-  defer client.close()
-  
-  // First request
-  let response1 = client.get("/")
-  inspect(response1.code, content="200")
-  let body1 = client.read_all()
-  assert_true(body1.text().has_prefix("<!doctype html>"))
-  
-  // Second request on same connection
-  let response2 = client.get("/")
-  inspect(response2.code, content="200")
-  let body2 = client.read_all()
-  assert_true(body2.text().has_prefix("<!doctype html>"))
+  @async.with_task_group(root => {
+    let addr = @socket.Addr::parse("127.0.0.1:18070")
+    root.spawn_bg(no_wait=true, fn() {
+      @http.run_server(addr, fn(conn, _) {
+        for {
+          let request = conn.read_request() catch {
+            @io.ReaderClosed => break
+            err => raise err
+          }
+          conn.skip_request_body()
+          conn
+          ..send_response(200, "OK")
+          ..write(b"Hello from server")
+          ..end_response()
+          if request.path == "/shutdown" {
+            break
+          }
+        }
+      })
+    })
+    @async.sleep(100)
+    let client = @http.Client::connect("127.0.0.1", protocol=Http, port=18070)
+    defer client.close()
+
+    // First request
+    let response1 = client.get("/")
+    inspect(response1.code, content="200")
+    let body1 = client.read_all()
+    inspect(body1.text(), content="Hello from server")
+
+    // Second request on same connection
+    let response2 = client.get("/")
+    inspect(response2.code, content="200")
+    let body2 = client.read_all()
+    inspect(body2.text(), content="Hello from server")
+  })
 }
 
 ///|
 async test "client with custom protocol and port" {
-  // HTTP (not HTTPS) on custom port
-  let client = @http.Client::connect(
-    "example.com",
-    protocol=Http,
-    port=8080,
-  )
-  defer client.close()
-  let response = client.get("/")
-  client.skip_response_body()
-  inspect(response.code >= 200, content="true")
+  @async.with_task_group(root => {
+    let addr = @socket.Addr::parse("127.0.0.1:18071")
+
+    root.spawn_bg(no_wait=true, fn() {
+      @http.run_server(addr, fn(conn, _) {
+        conn.read_request() |> ignore
+        conn.skip_request_body()
+
+        conn
+        ..send_response(200, "OK")
+        ..write(b"protocol=http,port=18071")
+        ..end_response()
+      })
+    })
+
+    @async.sleep(100)
+
+    // Explicitly select HTTP protocol and custom port
+    let client = @http.Client::connect(
+      "127.0.0.1",
+      protocol=Http,
+      port=18071,
+    )
+    defer client.close()
+
+    let response = client.get("/")
+    inspect(response.code, content="200")
+    let body = client.read_all()
+    inspect(body.text(), content="protocol=http,port=18071")
+  })
 }
 
 ///|
