@@ -43,7 +43,6 @@ async test "write reader" {
       defer r1.close()
       let buf = FixedArray::make(1024, b'0')
       while r1.read(buf) is n && n > 0 {
-        @async.sleep(100)
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         let data = @encoding/utf8.decode(data)
         log.write_string("received \{data}\n")
@@ -51,14 +50,14 @@ async test "write reader" {
     })
     root.spawn_bg(fn() {
       defer w2.close()
+      log.write_string("sending 4 bytes\n")
       w2.write(b"abcd")
+      @async.sleep(300)
       log.write_string("sending 4 bytes\n")
-      @async.sleep(200)
       w2.write(b"efgh")
+      @async.sleep(300)
       log.write_string("sending 4 bytes\n")
-      @async.sleep(200)
       w2.write(b"ijkl")
-      log.write_string("sending 4 bytes\n")
     })
   })
   inspect(
