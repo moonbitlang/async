@@ -26,13 +26,15 @@ pub async fn open(
   flags~ : Int,
   mode~ : Int,
   context~ : String,
-) -> Int {
+) -> IOHandle {
   let path_bytes = @encoding/utf8.encode(path)
   let job = JobForWorker::open(path_bytes, flags, mode)
-  perform_job_in_worker(job, context~) catch {
+  try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
+  } noraise {
+    fd => IOHandle::from_fd(fd)
   }
 }
 
@@ -66,8 +68,13 @@ pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
 }
 
 ///|
-pub async fn fsync(fd : Int, only_data~ : Bool, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::fsync(fd, only_data), context~) |> ignore
+pub async fn IOHandle::fsync(
+  handle : IOHandle,
+  only_data~ : Bool,
+  context~ : String,
+) -> Unit {
+  perform_job_in_worker(JobForWorker::fsync(handle.fd, only_data), context~)
+  |> ignore
 }
 
 ///|

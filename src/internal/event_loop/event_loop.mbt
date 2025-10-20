@@ -15,7 +15,7 @@
 ///|
 priv struct EventLoop {
   poll : Instance
-  fds : Map[Int, FdHandle]
+  fds : Map[Int, IOHandle]
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
@@ -27,7 +27,8 @@ priv struct EventLoop {
 }
 
 ///|
-priv struct FdHandle {
+struct IOHandle {
+  mut fd : Int
   mut events : Int
   mut read : @coroutine.Coroutine?
   mut write : @coroutine.Coroutine?
@@ -205,17 +206,13 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
       self.poll() catch {
         @os_error.OSError(_) as err if err.is_EINTR() => continue
-        err => {
-          self.cleanup()
-          raise err
-        }
+        err => raise err
       }
       @coroutine.pause()
-    } else {
-      self.cleanup()
     }
   })
   @coroutine.reschedule()
+  self.cleanup()
   poll_coro.unwrap()
 }
 
@@ -229,31 +226,45 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
-fn prepare_fd_read(fd : Int) -> FdHandle raise {
+pub fn IOHandle::from_fd(fd : Int) -> IOHandle {
   guard curr_loop.val is Some(evloop)
-  let handle = match evloop.fds.get(fd) {
-    None => {
-      let handle = { read: None, write: None, events: NoEvent }
-      evloop.fds[fd] = handle
-      handle
-    }
-    Some(handle) => handle
-  }
+  guard evloop.fds.get(fd) is None
+  let handle = { fd, read: None, write: None, events: NoEvent }
+  evloop.fds[fd] = handle
+  handle
+}
+
+///|
+pub fn IOHandle::from_existing_fd(fd : Int) -> IOHandle {
+  guard curr_loop.val is Some(evloop)
+  guard evloop.fds.get(fd) is Some(io)
+  io
+}
+
+///|
+pub fn IOHandle::fd(handle : IOHandle) -> Int {
+  handle.fd
+}
+
+///|
+fn IOHandle::prepare_read(handle : IOHandle) -> Unit raise {
+  guard curr_loop.val is Some(evloop)
+  guard handle.fd >= 0 else { abort("file descriptor already closed") }
   if (handle.events & ReadEvent) == 0 {
     evloop.poll.register(
-      fd,
+      handle.fd,
       prev_events=handle.events,
       new_events=ReadEvent,
       oneshot=false,
     )
     handle.events = handle.events | ReadEvent
   }
-  handle
 }
 
 ///|
-async fn FdHandle::wait_read(handle : FdHandle) -> Unit {
+async fn IOHandle::wait_read(handle : IOHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
+  guard handle.fd >= 0 else { abort("file descriptor already closed") }
   guard handle.read is None
   handle.read = Some(@coroutine.current_coroutine())
   defer {
@@ -263,31 +274,24 @@ async fn FdHandle::wait_read(handle : FdHandle) -> Unit {
 }
 
 ///|
-fn prepare_fd_write(fd : Int) -> FdHandle raise {
+fn IOHandle::prepare_write(handle : IOHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  let handle = match evloop.fds.get(fd) {
-    None => {
-      let handle = { read: None, write: None, events: NoEvent }
-      evloop.fds[fd] = handle
-      handle
-    }
-    Some(handle) => handle
-  }
+  guard handle.fd >= 0 else { abort("file descriptor already closed") }
   if (handle.events & WriteEvent) == 0 {
     evloop.poll.register(
-      fd,
+      handle.fd,
       prev_events=handle.events,
       new_events=WriteEvent,
       oneshot=false,
     )
     handle.events = handle.events | WriteEvent
   }
-  handle
 }
 
 ///|
-async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
+async fn IOHandle::wait_write(handle : IOHandle) -> Unit {
   guard (handle.events & WriteEvent) != 0
+  guard handle.fd >= 0 else { abort("file descriptor already closed") }
   guard handle.write is None
   let coro = @coroutine.current_coroutine()
   handle.write = Some(coro)
@@ -298,19 +302,19 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
 }
 
 ///|
-pub fn close_fd(fd : Int) -> Unit {
+pub fn IOHandle::close(handle : IOHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
-  if evloop.fds.get(fd) is Some(handle) {
-    evloop.fds.remove(fd)
-    if not(handle.events is NoEvent) {
-      evloop.poll.remove(fd, events=handle.events) catch {
-        err => abort("detach \{fd} from loop: \{err}")
-      }
+  guard handle.fd >= 0 else { abort("closing already closed fd") }
+  evloop.fds.remove(handle.fd)
+  if not(handle.events is NoEvent) {
+    evloop.poll.remove(handle.fd, events=handle.events) catch {
+      err => abort("detach \{handle.fd} from loop: \{err}")
     }
   }
-  @fd_util.close(fd, context="") catch {
+  @fd_util.close(handle.fd, context="") catch {
     _ => ()
   }
+  handle.fd = -1
 }
 
 ///|
@@ -356,8 +360,8 @@ extern "C" fn read_ffi(
 ) -> Int = "moonbitlang_async_read"
 
 ///|
-pub async fn read(
-  fd : Int,
+pub async fn IOHandle::read(
+  handle : IOHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -365,11 +369,11 @@ pub async fn read(
   context~ : String,
 ) -> Int {
   if can_poll {
-    let handle = prepare_fd_read(fd)
-    let ret = read_ffi(fd, buf, offset~, len~)
+    handle.prepare_read()
+    let ret = read_ffi(handle.fd, buf, offset~, len~)
     let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
       handle.wait_read()
-      read_ffi(fd, buf, offset~, len~)
+      read_ffi(handle.fd, buf, offset~, len~)
     } else {
       @coroutine.pause()
       ret
@@ -379,7 +383,7 @@ pub async fn read(
     }
     ret
   } else {
-    let job = JobForWorker::read(fd, buf, offset, len)
+    let job = JobForWorker::read(handle.fd, buf, offset, len)
     perform_job_in_worker(job, context~)
   }
 }
@@ -394,8 +398,8 @@ extern "C" fn write_ffi(
 ) -> Int = "moonbitlang_async_write"
 
 ///|
-pub async fn write(
-  fd : Int,
+pub async fn IOHandle::write(
+  handle : IOHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
@@ -403,11 +407,11 @@ pub async fn write(
   context~ : String,
 ) -> Int {
   if can_poll {
-    let handle = prepare_fd_write(fd)
-    let ret = write_ffi(fd, buf, offset~, len~)
+    handle.prepare_write()
+    let ret = write_ffi(handle.fd, buf, offset~, len~)
     let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
       handle.wait_write()
-      write_ffi(fd, buf, offset~, len~)
+      write_ffi(handle.fd, buf, offset~, len~)
     } else {
       @coroutine.pause()
       ret
@@ -417,7 +421,7 @@ pub async fn write(
     }
     ret
   } else {
-    let job = JobForWorker::write(fd, buf, offset, len)
+    let job = JobForWorker::write(handle.fd, buf, offset, len)
     perform_job_in_worker(job, context~)
   }
 }

@@ -17,13 +17,13 @@ using @fs {type FileKind}
 
 ///|
 struct Input {
-  fd : Int
+  io : @event_loop.IOHandle
   kind : FileKind
 }
 
 ///|
 pub fn Input::fd(self : Input) -> Int {
-  self.fd
+  self.io.fd()
 }
 
 ///|
@@ -34,8 +34,7 @@ pub impl @io.Reader for Input with read(
   max_len? = buf.length() - offset,
 ) {
   let can_poll = self.kind.can_poll()
-  @event_loop.read(
-    self.fd,
+  self.io.read(
     buf,
     offset~,
     len=max_len,
@@ -46,26 +45,19 @@ pub impl @io.Reader for Input with read(
 
 ///|
 struct Output {
-  fd : Int
+  io : @event_loop.IOHandle
   kind : FileKind
 }
 
 ///|
 pub fn Output::fd(self : Output) -> Int {
-  self.fd
+  self.io.fd()
 }
 
 ///|
 pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
-  @event_loop.write(
-    self.fd,
-    buf,
-    offset~,
-    len~,
-    can_poll~,
-    context="@fs.File::write()",
-  )
+  self.io.write(buf, offset~, len~, can_poll~, context="@fs.File::write()")
 }
 
 ///|
@@ -112,7 +104,7 @@ pub let stdin : Input = {
       context~,
       restore_context="restore `stdin`",
     )
-    { fd: 0, kind }
+    { io: @event_loop.IOHandle::from_fd(0), kind }
   } catch {
     err => abort(err.to_string())
   }
@@ -130,7 +122,7 @@ pub let stdout : Output = {
       context~,
       restore_context="restore `stdout`",
     )
-    { fd: 1, kind }
+    { io: @event_loop.IOHandle::from_fd(1), kind }
   } catch {
     err => abort(err.to_string())
   }
@@ -148,7 +140,7 @@ pub let stderr : Output = {
       context~,
       restore_context="restore `stderr`",
     )
-    { fd: 2, kind }
+    { io: @event_loop.IOHandle::from_fd(2), kind }
   } catch {
     err => abort(err.to_string())
   }

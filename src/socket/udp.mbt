@@ -18,7 +18,7 @@
 /// UDP is a connectionless protocol, here "connected" means
 /// the client always send packet to and receive packet from
 /// the specified remote server.
-struct UdpClient(Int)
+struct UdpClient(@event_loop.IOHandle)
 
 ///|
 /// Create a new UDP client connected to server at `addr`.
@@ -40,23 +40,23 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpClient(sock)
+  UdpClient(@event_loop.IOHandle::from_fd(sock))
 }
 
 ///|
 pub fn UdpClient::close(self : UdpClient) -> Unit {
   let UdpClient(sock) = self
-  @event_loop.close_fd(sock)
+  sock.close()
 }
 
 ///|
 /// A UDP server bound to a listen address and receive packets from clients.
-struct UdpServer(Int)
+struct UdpServer(@event_loop.IOHandle)
 
 ///|
 pub fn UdpServer::close(self : UdpServer) -> Unit {
   let UdpServer(sock) = self
-  @event_loop.close_fd(sock)
+  sock.close()
 }
 
 ///|
@@ -94,7 +94,7 @@ pub fn UdpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpServer(sock)
+  UdpServer(@event_loop.IOHandle::from_fd(sock))
 }
 
 ///|
@@ -118,8 +118,7 @@ pub async fn UdpClient::recv(
   max_len? : Int = buf.length() - offset,
 ) -> Int {
   let UdpClient(sock) = self
-  @event_loop.read(
-    sock,
+  sock.read(
     buf,
     offset~,
     len=max_len,
@@ -151,8 +150,7 @@ pub async fn UdpServer::recvfrom(
   let UdpServer(sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
-  let n_read = @event_loop.recvfrom(
-    sock,
+  let n_read = sock.recvfrom(
     buf,
     offset~,
     len=max_len,
@@ -177,8 +175,7 @@ pub async fn UdpClient::send(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UdpClient(sock) = self
-  @event_loop.write(
-    sock,
+  sock.write(
     buf,
     offset~,
     len~,
@@ -204,8 +201,7 @@ pub async fn UdpServer::sendto(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UdpServer(sock) = self
-  @event_loop.sendto(
-    sock,
+  sock.sendto(
     buf,
     offset~,
     len~,
