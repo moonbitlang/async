@@ -64,7 +64,6 @@ async fn client(println : Printer, id : Int, msg : String) -> Unit {
     @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
     println("client \{id} received: \{@encoding/utf8.decode(msg)}")
-    conn.close()
   } else {
     println("client \{id}: connection closed by peer")
   }

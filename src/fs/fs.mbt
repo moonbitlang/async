@@ -31,20 +31,19 @@ pub(all) enum FileKind {
 fn FileKind::from_int(x : Int) -> FileKind = "%identity"
 
 ///|
-#valtype
 struct File {
-  fd : Int
+  io : @event_loop.IOHandle
   kind : FileKind
 }
 
 ///|
 pub fn File::fd(self : File) -> Int {
-  self.fd
+  self.io.fd()
 }
 
 ///|
 pub fn File::close(self : File) -> Unit {
-  @event_loop.close_fd(self.fd)
+  self.io.close()
 }
 
 ///|
@@ -115,14 +114,14 @@ pub async fn open(
     Some(mode) => (true, mode)
   }
   let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
-  let fd = @event_loop.open(
+  let io = @event_loop.open(
     filename,
     flags~,
     mode=user_mode,
     context="@fs.open()",
   )
-  let kind = FileKind::from_int(Stat::from_fd(fd, context="@fs.open()").kind())
-  { fd, kind }
+  let kind = Stat::from_fd(io.fd(), context="@fs.open()").kind()
+  { io, kind: FileKind::from_int(kind) }
 }
 
 ///|
@@ -161,14 +160,7 @@ pub impl @io.Reader for File with read(
   max_len? = buf.length() - offset,
 ) {
   let can_poll = self.kind.can_poll()
-  @event_loop.read(
-    self.fd,
-    buf,
-    offset~,
-    len=max_len,
-    can_poll~,
-    context="@fs.File::read()",
-  )
+  self.io.read(buf, offset~, len=max_len, can_poll~, context="@fs.File::read()")
 }
 
 ///|
@@ -201,14 +193,7 @@ pub impl @io.Reader for File with read_all(self) {
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
-  @event_loop.write(
-    self.fd,
-    buf,
-    offset~,
-    len~,
-    can_poll~,
-    context="@fs.File::write()",
-  )
+  self.io.write(buf, offset~, len~, can_poll~, context="@fs.File::write()")
 }
 
 ///|
@@ -217,7 +202,7 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 /// some metadata such as timestamp may not be flushed.
 /// Buf file content and important metadata such as file size are always flushed.
 pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
-  @event_loop.fsync(self.fd, only_data~, context="@fs.File::sync()")
+  self.io.fsync(only_data~, context="@fs.File::sync()")
 }
 
 ///|
@@ -247,7 +232,7 @@ extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = 
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
 pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise {
-  let offset = lseek_ffi(self.fd, offset, mode)
+  let offset = lseek_ffi(self.fd(), offset, mode)
   if offset < 0 {
     @os_error.check_errno("@fs.File::seek()")
   }
@@ -277,7 +262,7 @@ extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 pub fn File::as_dir(self : File) -> Directory raise {
-  let dir = as_dir_ffi(self.fd)
+  let dir = as_dir_ffi(self.fd())
   if dir.is_null() {
     @os_error.check_errno("@fs.File::as_dir()")
   }
@@ -302,7 +287,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub fn File::atime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd, context="@fs.File::atime()").atime()
+  Stat::from_fd(self.fd(), context="@fs.File::atime()").atime()
 }
 
 ///|
@@ -310,7 +295,7 @@ pub fn File::atime(self : File) -> (Int64, Int) raise {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub fn File::mtime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd, context="@fs.File::mtime()").mtime()
+  Stat::from_fd(self.fd(), context="@fs.File::mtime()").mtime()
 }
 
 ///|
@@ -318,7 +303,7 @@ pub fn File::mtime(self : File) -> (Int64, Int) raise {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub fn File::ctime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd, context="@fs.File::ctime()").ctime()
+  Stat::from_fd(self.fd(), context="@fs.File::ctime()").ctime()
 }
 
 ///|
@@ -333,8 +318,7 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    @event_loop.fsync(
-      file.fd,
+    file.io.fsync(
       only_data=false,
       context="@fs.File::read_file(sync_timestamp=true)",
     )

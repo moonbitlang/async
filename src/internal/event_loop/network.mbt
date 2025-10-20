@@ -23,19 +23,19 @@ extern "C" fn recvfrom_ffi(
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
-pub async fn recvfrom(
-  sock : Int,
+pub async fn IOHandle::recvfrom(
+  handle : IOHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
-  let handle = prepare_fd_read(sock)
-  let ret = recvfrom_ffi(sock, buf, offset~, len~, addr~)
+  handle.prepare_read()
+  let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    recvfrom_ffi(sock, buf, offset~, len~, addr~)
+    recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     @coroutine.pause()
     ret
@@ -57,19 +57,19 @@ extern "C" fn sendto_ffi(
 ) -> Int = "moonbitlang_async_sendto"
 
 ///|
-pub async fn sendto(
-  sock : Int,
+pub async fn IOHandle::sendto(
+  handle : IOHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
-  let handle = prepare_fd_write(sock)
-  let ret = sendto_ffi(sock, buf, offset~, len~, addr~)
+  handle.prepare_write()
+  let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    sendto_ffi(sock, buf, offset~, len~, addr~)
+    sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     @coroutine.pause()
     ret
@@ -88,14 +88,18 @@ extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_
 extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
-pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
-  let handle = prepare_fd_write(sock)
-  if 0 == connect_ffi(sock, addr) {
-    return 0
+pub async fn IOHandle::connect(
+  handle : IOHandle,
+  addr : Bytes,
+  context~ : String,
+) -> Unit {
+  handle.prepare_write()
+  if 0 == connect_ffi(handle.fd, addr) {
+    return
   }
   if @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    let err = get_socket_err(sock)
+    let err = get_socket_err(handle.fd)
     if err < 0 {
       @os_error.check_errno(context)
     } else if err > 0 {
@@ -104,7 +108,6 @@ pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
   } else {
     @os_error.check_errno(context)
   }
-  0
 }
 
 ///|
@@ -112,18 +115,23 @@ pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
 extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
 
 ///|
-pub async fn accept(sock : Int, addr : Bytes, context~ : String) -> Int {
-  let handle = prepare_fd_read(sock)
-  let conn = accept_ffi(sock, addr)
-  if conn > 0 {
+pub async fn IOHandle::accept(
+  handle : IOHandle,
+  addr : Bytes,
+  context~ : String,
+) -> IOHandle {
+  handle.prepare_read()
+  let conn = accept_ffi(handle.fd, addr)
+  let conn = if conn > 0 {
     conn
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    accept_ffi(sock, addr)
+    accept_ffi(handle.fd, addr)
   } else {
     @os_error.check_errno(context)
     -1
   }
+  IOHandle::from_fd(conn)
 }
 
 ///|

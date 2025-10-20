@@ -14,7 +14,7 @@
 
 ///|
 /// A Tcp connection
-struct Tcp(Int)
+struct Tcp(@event_loop.IOHandle)
 
 ///|
 #deprecated("use `Tcp` instead")
@@ -23,11 +23,11 @@ pub typealias Tcp as TCP
 ///|
 pub fn Tcp::close(self : Tcp) -> Unit {
   let Tcp(sock) = self
-  @event_loop.close_fd(sock)
+  sock.close()
 }
 
 ///|
-struct TcpServer(Int)
+struct TcpServer(@event_loop.IOHandle)
 
 ///|
 #deprecated("use `TcpServer` instead")
@@ -73,7 +73,7 @@ pub fn TcpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  TcpServer(sock)
+  TcpServer(@event_loop.IOHandle::from_fd(sock))
 }
 
 ///|
@@ -125,7 +125,7 @@ pub async fn TcpServer::run_forever(
 ///|
 pub fn TcpServer::close(self : TcpServer) -> Unit {
   let TcpServer(sock) = self
-  @event_loop.close_fd(sock)
+  sock.close()
 }
 
 ///|
@@ -135,17 +135,13 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let TcpServer(listen_sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty()
-  let conn = @event_loop.accept(
-    listen_sock,
-    addr.0,
-    context="@socket.TcpServer::accept",
-  )
-  if disable_nagle(conn) < 0 {
-    @fd_util.close(conn, context="@socket.TcpServer::accept()")
+  let conn = listen_sock.accept(addr.0, context="@socket.TcpServer::accept")
+  if disable_nagle(conn.fd()) < 0 {
+    @fd_util.close(conn.fd(), context="@socket.TcpServer::accept()")
     @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
-  @fd_util.set_cloexec(conn, context="@socket.TcpServer::accept()")
-  @fd_util.set_nonblocking(conn, context="@socket.TcpServer::accept()")
+  @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
+  @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
   (conn, addr)
 }
 
@@ -167,7 +163,10 @@ pub fn Tcp::enable_keepalive(
 ) -> Unit raise {
   let Tcp(sock) = self
   let ret = enable_keepalive_ffi(
-    sock, idle_before_keep_alive, keep_alive_count, keep_alive_interval,
+    sock.fd(),
+    idle_before_keep_alive,
+    keep_alive_count,
+    keep_alive_interval,
   )
   if ret < 0 {
     @os_error.check_errno("@socket.Tcp::enable_keepalive()")
@@ -187,13 +186,14 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
     @fd_util.close(sock, context~)
     @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
-  try @event_loop.connect(sock, addr.0, context~) catch {
+  let conn = @event_loop.IOHandle::from_fd(sock)
+  try conn.connect(addr.0, context~) catch {
     err => {
-      @event_loop.close_fd(sock)
+      conn.close()
       raise err
     }
   } noraise {
-    _ => Tcp(sock)
+    _ => Tcp(conn)
   }
 }
 
@@ -213,8 +213,7 @@ pub impl @io.Reader for Tcp with read(
   max_len? = buf.length() - offset,
 ) {
   let Tcp(sock) = self
-  @event_loop.read(
-    sock,
+  sock.read(
     buf,
     offset~,
     len=max_len,
@@ -226,12 +225,5 @@ pub impl @io.Reader for Tcp with read(
 ///|
 pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
   let Tcp(sock) = self
-  @event_loop.write(
-    sock,
-    buf,
-    offset~,
-    len~,
-    can_poll=true,
-    context="@socket.Tcp::write()",
-  )
+  sock.write(buf, offset~, len~, can_poll=true, context="@socket.Tcp::write()")
 }

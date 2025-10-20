@@ -14,22 +14,22 @@
 
 ///|
 /// The read end of a pipe
-struct PipeRead(Int)
+struct PipeRead(@event_loop.IOHandle)
 
 ///|
 pub fn PipeRead::fd(self : PipeRead) -> Int {
-  let PipeRead(fd) = self
-  fd
+  let PipeRead(io) = self
+  io.fd()
 }
 
 ///|
 /// The write end of a pipe
-struct PipeWrite(Int)
+struct PipeWrite(@event_loop.IOHandle)
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> Int {
-  let PipeWrite(fd) = self
-  fd
+  let PipeWrite(io) = self
+  io.fd()
 }
 
 ///|
@@ -39,31 +39,40 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @fd_util.pipe("@pipe.pipe()")
   @fd_util.set_nonblocking(r, context="@pipe.pipe()")
   @fd_util.set_nonblocking(w, context="@pipe.pipe()")
-  (PipeRead(r), PipeWrite(w))
+  (
+    PipeRead(@event_loop.IOHandle::from_fd(r)),
+    PipeWrite(@event_loop.IOHandle::from_fd(w)),
+  )
 }
 
 ///|
 #deprecated("use `@stdio.stdin` instead")
-pub let stdin : PipeRead = @stdio.stdin.fd()
+pub let stdin : PipeRead = @event_loop.IOHandle::from_existing_fd(
+  @stdio.stdin.fd(),
+)
 
 ///|
 #deprecated("use `@stdio.stdout` instead")
-pub let stdout : PipeWrite = @stdio.stdout.fd()
+pub let stdout : PipeWrite = @event_loop.IOHandle::from_existing_fd(
+  @stdio.stdout.fd(),
+)
 
 ///|
 #deprecated("use `@stdio.stderr` instead")
-pub let stderr : PipeWrite = @stdio.stderr.fd()
+pub let stderr : PipeWrite = @event_loop.IOHandle::from_existing_fd(
+  @stdio.stderr.fd(),
+)
 
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
-  let PipeRead(fd) = self
-  @event_loop.close_fd(fd)
+  let PipeRead(io) = self
+  io.close()
 }
 
 ///|
 pub fn PipeWrite::close(self : PipeWrite) -> Unit {
-  let PipeWrite(fd) = self
-  @event_loop.close_fd(fd)
+  let PipeWrite(io) = self
+  io.close()
 }
 
 ///|
@@ -81,9 +90,8 @@ pub impl @io.Reader for PipeRead with read(
   offset? = 0,
   max_len? = buf.length() - offset,
 ) {
-  let PipeRead(fd) = self
-  @event_loop.read(
-    fd,
+  let PipeRead(io) = self
+  io.read(
     buf,
     offset~,
     len=max_len,
@@ -94,13 +102,6 @@ pub impl @io.Reader for PipeRead with read(
 
 ///|
 pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
-  let PipeWrite(fd) = self
-  @event_loop.write(
-    fd,
-    buf,
-    offset~,
-    len~,
-    can_poll=true,
-    context="@pipe.PipeRead::write()",
-  )
+  let PipeWrite(io) = self
+  io.write(buf, offset~, len~, can_poll=true, context="@pipe.PipeRead::write()")
 }

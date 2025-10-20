@@ -6,37 +6,23 @@ import(
 )
 
 // Values
-async fn accept(Int, Bytes, context~ : String) -> Int
-
 async fn access(StringView, amode~ : Int, context~ : String) -> Int
-
-fn close_fd(Int) -> Unit
-
-async fn connect(Int, Bytes, context~ : String) -> Int
-
-async fn fsync(Int, only_data~ : Bool, context~ : String) -> Unit
 
 async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
 async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> Int
-
-async fn read(Int, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
+async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IOHandle
 
 async fn readdir(Directory, context~ : String) -> DirectoryEntry
 
 async fn realpath(StringView, context~ : String) -> Bytes
-
-async fn recvfrom(Int, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
 fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit
 
 async fn remove(StringView, context~ : String) -> Unit
 
 async fn rmdir(StringView, context~ : String) -> Unit
-
-async fn sendto(Int, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
 async fn sleep(Int) -> Unit
 
@@ -47,8 +33,6 @@ async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util
 async fn wait_pid(Int) -> Unit
 
 fn with_event_loop(async () -> Unit) -> Unit raise
-
-async fn write(Int, Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
 
 // Errors
 
@@ -61,6 +45,19 @@ pub type Directory
 
 #external
 pub type DirectoryEntry
+
+type IOHandle
+async fn IOHandle::accept(Self, Bytes, context~ : String) -> Self
+fn IOHandle::close(Self) -> Unit
+async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
+fn IOHandle::fd(Self) -> Int
+fn IOHandle::from_existing_fd(Int) -> Self
+fn IOHandle::from_fd(Int) -> Self
+async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
+async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
+async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+async fn IOHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
 
 // Type aliases
 
