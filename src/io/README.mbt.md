@@ -14,7 +14,6 @@ Asynchronous I/O primitives for MoonBit. This package provides fundamental abstr
   - [BufferedWriter](#bufferedwriter)
 - [Working with Task Groups and Pipes](#working-with-task-groups-and-pipes)
 - [Flow Control & Buffering Strategies](#flow-control--buffering-strategies)
-- [Error Handling & Cancellation](#error-handling--cancellation)
 - [Types Reference](#types-reference)
 - [Best Practices](#best-practices)
 
@@ -51,11 +50,72 @@ This pattern generalises to sockets, files, and any type that implements the `Re
 
 ## Core Traits
 
+### Data Trait
+
+`Data` is a lightweight trait for types that can be read/write via IO endpoints.
+On the sender side, `Data` is implemented by `Bytes`, `BytesView`, `String`, `StringView` and `Json`.
+If an API accepts `&Data` as input (for example `Writer::write`), any value of the above types can be passed directly.
+On the receiver side, the trait object type `&Data` provides helper methods `.binary()`, `.text()` and `.json()`,
+which converts receive data to raw binary/UTF-8 encoded string/UTF-8 encoded JSON string in respect.
+This allows convenient conversion of received data to various formats.
+
+```moonbit
+///|
+async test "data as binary" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      // Send raw binary bytes.
+      w.write(b"binary data")
+    })
+    let data = r.read_all()
+    let binary = data.binary()
+    inspect(@encoding/utf8.decode(binary), content="binary data")
+  })
+}
+
+///|
+async test "data as text" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      // Send UTF-8 encoded string
+      w.write("Hello, MoonBit!")
+    })
+    let data = r.read_all()
+    // Decoding happens lazily when `.text()` is invoked.
+    inspect(data.text(), content="Hello, MoonBit!")
+  })
+}
+
+///|
+async test "data as json" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      // send UTF-8 encoded JSON string
+      let data : Json = { "name": "John", "age": 30 }
+      w.write(data)
+    })
+    let data = r.read_all()
+    let json = data.json()
+    // `@json.inspect` asserts that the parsed JSON matches the expected structure.
+    @json.inspect(json, content={ "name": "John", "age": 30 })
+  })
+}
+```
+
 ### Reader Trait
 
 The `Reader` trait exposes three complementary levels of granularity:
 
-- `read` performs a best-effort read into an existing buffer and is ideal for incremental protocols.
+- `read` performs a best-effort read into an existing buffer and is ideal for incremental protocols. A zero return value indicates EOF.
 - `read_exactly` loops until it fills the requested number of bytes or raises `ReaderClosed`, which is helpful when parsing fixed-width frames.
 - `read_all` drains the stream into memory, returning a `&Data` handle for convenient conversion to text, JSON, or binary.
 
@@ -136,8 +196,8 @@ async test "read_all large data" {
 
 `Writer` focuses on pushing bytes downstream. The three key helpers build on top of the fundamental `write_once` contract:
 
-- `write_once` performs a single syscall-sized write and returns how many bytes were accepted.
-- `write` retries until the entire payload is delivered, which is the most common helper when you already own the data.
+- `write_once` performs a single best-effort write and returns how many bytes were accepted. Note that partial write is allowed for `write_once`: only a portion of data may be succesfully written. End users should not call `write_once` directly in general.
+- `write` encodes and writes a `&Data` to the writer, is will keep calling `write_once` until all data are succesfully written. This is the most common helper users should use.
 - `write_reader` streams from any `Reader`, making it perfect for relaying pipes, sockets, or files without copying into intermediate strings.
 
 The snippets below demonstrate each mode with progressive complexity.
@@ -259,65 +319,15 @@ async test "write string" {
 }
 ```
 
-### Data Trait
-
-`Data` is a lightweight adapter that lets senders provide many different payload types while giving receivers ergonomic conversion helpers. Internally the trait funnels everything through `Bytes`, so you only pay the conversion cost when you call helper methods like `.text()` or `.json()`.
-
-```moonbit
-///|
-async test "data as binary" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    defer r.close()
-    root.spawn_bg(fn() {
-      defer w.close()
-      // Send raw binary bytes.
-      w.write(b"binary data")
-    })
-    let data = r.read_all()
-    let binary = data.binary()
-    inspect(@encoding/utf8.decode(binary), content="binary data")
-  })
-}
-
-///|
-async test "data as text" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    defer r.close()
-    root.spawn_bg(fn() {
-      defer w.close()
-      w.write(b"Hello, MoonBit!")
-    })
-    let data = r.read_all()
-    // Decoding happens lazily when `.text()` is invoked.
-    inspect(data.text(), content="Hello, MoonBit!")
-  })
-}
-
-///|
-async test "data as json" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
-    defer r.close()
-    root.spawn_bg(fn() {
-      defer w.close()
-      // JSON data is just UTF-8 under the hood.
-      w.write(b"{\"name\":\"John\",\"age\":30}")
-    })
-    let data = r.read_all()
-    let json = data.json()
-    // `@json.inspect` asserts that the parsed JSON matches the expected structure.
-    @json.inspect(json, content={ "name": "John", "age": 30 })
-  })
-}
-```
-
 ## Buffered I/O
 
 ### BufferedReader
 
-`BufferedReader` wraps any `Reader` to provide lookahead, zero-copy slicing, and high-level utilities like `find` and `read_line`. It keeps an internal ring buffer so repeated inspections (`op_get`, `op_as_view`) do not advance the stream unless you explicitly call `drop` or `read`.
+`BufferedReader` wraps any `Reader` to provide buffering.
+When data are received from the underlying transport of a buffered reader, these data are save in an internal buffer,
+and can be accessed repeated via `op_get`, `op_as_view` etc.
+Using the internal buffer, `BufferedReader` provides high-level utilities like `find` and `read_line`.
+Users can advance the stream via methods such as `read` and `drop`, discarding content that are no longer useful.
 
 In the examples below, pay attention to how buffering reduces the number of syscalls while still supporting random access patterns.
 
@@ -580,7 +590,7 @@ async test "BufferedReader::find - search for substring" {
 }
 
 ///|
-async test "BufferedReader::find_opt - safe search" {
+async test "BufferedReader::find_opt - search for substring with explicit EOF handling" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(fn() {
@@ -797,51 +807,8 @@ Efficient asynchronous I/O is mostly about balancing throughput and memory usage
 
 - **Prefer streaming copies for large payloads.** `Writer::write_reader` efficiently bridges readers and writers without allocating entire buffers up front.
 - **Tune buffer sizes per transport.** A 4 KB buffer is often enough for network sockets, whereas disk-backed streams may benefit from larger chunks. Use `BufferedWriter::new(size=...)` and `BufferedReader::SEGMENT_SIZE` multiples strategically.
-- **Drop consumed data promptly.** `BufferedReader::drop(n)` ensures stale bytes do not accumulate when implementing protocols with headers and bodies.
-- **Use `find_opt` and `op_as_view` for zero-copy parsing.** They let you search and slice without paying repeated allocation costs.
+- **Avoid a lot of small drops.** `BufferedReader::drop` and `BufferedReader::read` are expensive operations, as they need to copy data when advancing the reader stream. It is recommended to use `op_as_view` to extract data and batch small `read` operations into a single `drop` call at the end when reading multiple small data fragments. `drop` should still be called from time to time, though, to reduce the memory consumption of `BufferedReader`.
 - **Flush deliberately.** Frequent flushes lower latency but reduce batching efficiency; schedule them at protocol boundaries (e.g., end of a response frame).
-
-## Error Handling & Cancellation
-
-I/O inevitably encounters EOFs, timeouts, and cancellations. `ReaderClosed` signals that no further bytes will arrive, while helpers like `@async.with_timeout_opt` and `try?` let you recover gracefully.
-
-```moonbit
-///|
-async test "timeout during write propagates gracefully" {
-  let log = StringBuilder::new()
-  @async.with_task_group(fn(_) {
-    let writer = { logger: log, base_timeout: 40 }
-    // Cancel the write if it takes longer than 60 ms; partial writes are possible.
-    @async.with_timeout_opt(60, fn() { writer.write(b"abcd") }) |> ignore
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing byte b'\x61'
-      #|
-    ),
-  )
-}
-```
-
-When reading, treat `ReaderClosed` as a signal to flush any buffered state and terminate loops. For operations that must consume a precise amount of data, wrap them in a `try` and surface a descriptive error:
-
-```moonbit
-///|
-async test "error handling example" {
-  let result = try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
-      defer r.close()
-      root.spawn_bg(fn() { w.close() })
-      let reader = @io.BufferedReader::new(r)
-      // Will raise ReaderClosed because fewer than 100 bytes are available.
-      reader.read_exactly(100)
-    })
-  inspect(result is Err(_), content="true")
-}
-```
-
-Pair these techniques with retries or fallback logic when interacting with real-world transports.
 
 ## Types Reference
 
@@ -909,12 +876,11 @@ Error raised when attempting to read from a closed reader.
 
 ## Best Practices
 
-1. **Compose with task groups**: Treat `@async.with_task_group` as the default orchestration primitive so writers can run concurrently with readers.
+1. **Only one reader/writer at the same time**. Attempting to read from/write to the same reader/writer from multiple tasks easily lead to race condition.
+  When multiple readers/writers are needed, it is recommended to adapt the actor pattern by spawning a dedicated reader/writer task and use `@aqueue.Queue` to distribute data atomically.
 2. **Use buffered I/O for performance**: Wrap readers and writers with `BufferedReader` and `BufferedWriter` when performing many small reads or writes.
-3. **Flush intentionally**: Call `flush()` before handing the writer to another subsystem or before closing it to guarantee delivery.
-4. **Handle `ReaderClosed` explicitly**: Use `try?` + pattern matching to differentiate between expected EOFs and unexpected shutdowns.
-5. **Pick the right data view**: Prefer `.text()` for UTF-8, `.json()` for structured payloads, and `.binary()` when forwarding raw bytes.
-6. **Leverage zero-copy helpers**: Use `op_as_view`, `find_opt`, and `drop` to parse headers without cloning buffers.
+3. **Pick the right data view and cache the result**: Prefer `.text()` for UTF-8, `.json()` for structured payloads, and `.binary()` when forwarding raw bytes.
+  `.text()` and `.json()` methods need to perform decoding and parsing, so users should cache the result of these conversion methods instead of calling them repeatedly
 
 For more examples and detailed usage, explore the test suites in this package—they double as executable documentation.
 
