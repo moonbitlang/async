@@ -145,7 +145,7 @@ extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
 pub async fn getaddrinfo(
-  host : String,
+  host : StringView,
   context~ : String,
 ) -> Result[AddrInfo, String] {
   let host = @encoding/utf8.encode(host)

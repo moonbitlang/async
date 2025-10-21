@@ -12,7 +12,7 @@ async fn connect(Int, Bytes, context~ : String) -> Int
 
 async fn fsync(Int, only_data~ : Bool, context~ : String) -> Unit
 
-async fn getaddrinfo(String, context~ : String) -> Result[AddrInfo, String]
+async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
 async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
