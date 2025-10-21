@@ -4,7 +4,7 @@ package "moonbitlang/async/internal/event_loop"
 // Values
 async fn accept(Int, Bytes, context~ : String) -> Int
 
-async fn access(String, amode~ : Int, context~ : String) -> Int
+async fn access(StringView, amode~ : Int, context~ : String) -> Int
 
 fn close_fd(Int) -> Unit
 
@@ -14,23 +14,23 @@ async fn fsync(Int, only_data~ : Bool, context~ : String) -> Unit
 
 async fn getaddrinfo(String, context~ : String) -> Result[AddrInfo, String]
 
-async fn mkdir(String, mode~ : Int, context~ : String) -> Unit
+async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-async fn open(String, flags~ : Int, mode~ : Int, context~ : String) -> Int
+async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> Int
 
 async fn read(Int, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
 
 async fn readdir(Directory, context~ : String) -> DirectoryEntry
 
-async fn realpath(String, context~ : String) -> Bytes
+async fn realpath(StringView, context~ : String) -> Bytes
 
 async fn recvfrom(Int, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
 fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
 
-async fn remove(String, context~ : String) -> Unit
+async fn remove(StringView, context~ : String) -> Unit
 
-async fn rmdir(String, context~ : String) -> Unit
+async fn rmdir(StringView, context~ : String) -> Unit
 
 async fn sendto(Int, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
@@ -38,7 +38,7 @@ async fn sleep(Int) -> Unit
 
 async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
 
-async fn stat(String, follow_symlink~ : Bool, context~ : String) -> Stat
+async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> Stat
 
 async fn wait_pid(Int) -> Unit
 
