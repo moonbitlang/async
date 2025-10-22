@@ -14,6 +14,7 @@
 
 ///|
 async test "allow_failure ignored" {
+  random_delay()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(allow_failure=true, fn() { raise Err })
@@ -31,6 +32,7 @@ async test "allow_failure ignored" {
 
 ///|
 async test "allow_failure waited" {
+  random_delay()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -45,6 +47,7 @@ async test "allow_failure waited" {
 
 ///|
 async test "allow_failure no error" {
+  random_delay()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {

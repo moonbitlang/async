@@ -14,6 +14,7 @@
 
 ///|
 async test "with_timeout normal exit" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -41,6 +42,7 @@ async test "with_timeout normal exit" {
 
 ///|
 async test "with_timeout failure" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -70,6 +72,7 @@ async test "with_timeout failure" {
 
 ///|
 async test "with_timeout timeout" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -105,6 +108,7 @@ async test "with_timeout timeout" {
 
 ///|
 async test "with_timeout nested1" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -148,6 +152,7 @@ async test "with_timeout nested1" {
 
 ///|
 async test "with_timeout nested2" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -190,6 +195,7 @@ async test "with_timeout nested2" {
 
 ///|
 async test "with_timeout error_on_cancel" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -220,6 +226,7 @@ async test "with_timeout error_on_cancel" {
 
 ///|
 async test "with_timeout error-on-timeout" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -251,6 +258,7 @@ async test "with_timeout error-on-timeout" {
 
 ///|
 async test "with_timeout_opt normal exit" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -281,6 +289,7 @@ async test "with_timeout_opt normal exit" {
 
 ///|
 async test "with_timeout_opt failure" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -310,6 +319,7 @@ async test "with_timeout_opt failure" {
 
 ///|
 async test "with_timeout_opt timeout" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {

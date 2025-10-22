@@ -14,6 +14,7 @@
 
 ///|
 async test "spawn_loop basic" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -42,6 +43,7 @@ async test "spawn_loop basic" {
 
 ///|
 async test "spawn_loop basic-error" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -69,6 +71,7 @@ async test "spawn_loop basic-error" {
 
 ///|
 async test "spawn_loop retry-exponential" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {

@@ -14,6 +14,7 @@
 
 ///|
 async test "return_immediately basic" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -32,6 +33,7 @@ async test "return_immediately basic" {
 
 ///|
 async test "return_immediately nested" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -56,6 +58,7 @@ async test "return_immediately nested" {
 
 ///|
 async test "return_immediately error on cancel" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {

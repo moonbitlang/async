@@ -14,6 +14,7 @@
 
 ///|
 async test "protect_from_cancel" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -61,6 +62,7 @@ async test "protect_from_cancel" {
 
 ///|
 async test "protect_from_cancel wait" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -103,6 +105,7 @@ async test "protect_from_cancel wait" {
 
 ///|
 async test "protect_from_cancel with_timeout" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -134,6 +137,7 @@ async test "protect_from_cancel with_timeout" {
 
 ///|
 async test "protect_from_cancel fail" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -165,6 +169,7 @@ async test "protect_from_cancel fail" {
 
 ///|
 async test "protect_from_cancel nested1" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -198,6 +203,7 @@ async test "protect_from_cancel nested1" {
 
 ///|
 async test "protect_from_cancel nested2" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -237,6 +243,7 @@ async test "protect_from_cancel nested2" {
 
 ///|
 async test "protect_from_cancel in cancellation handler" {
+  random_delay()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -269,6 +276,7 @@ async test "protect_from_cancel in cancellation handler" {
 
 ///|
 async test "cancel while scheduled" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -312,6 +320,7 @@ async test "cancel while scheduled" {
 
 ///|
 async test "error in async cancel" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {

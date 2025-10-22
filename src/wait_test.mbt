@@ -14,6 +14,7 @@
 
 ///|
 async test "wait basic" {
+  random_delay()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -45,6 +46,7 @@ async test "wait basic" {
 
 ///|
 async test "wait cancelled" {
+  random_delay()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(fn() {
@@ -75,6 +77,7 @@ async test "wait cancelled" {
 
 ///|
 async test "try_wait" {
+  random_delay()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(no_wait=true, fn() {
