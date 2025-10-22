@@ -21,7 +21,7 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 
 ///|
 async test "timestamp for path" {
-  let path = "target/timestamp_test"
+  let path = "/tmp/timestamp_test"
   @async.with_task_group(fn(group) {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
@@ -53,7 +53,7 @@ async test "timestamp for path" {
 
 ///|
 async test "timestamp for opened file" {
-  let path = "target/opened_file_timestamp_test"
+  let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group(fn(group) {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
