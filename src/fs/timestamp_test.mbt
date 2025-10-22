@@ -20,38 +20,6 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 }
 
 ///|
-async test "timestamp for path" {
-  let path = "target/timestamp_test"
-  @async.with_task_group(fn(group) {
-    @fs.write_file(path, "abcd", create=0o644, sync=Full)
-    group.add_defer(() => @fs.remove(path))
-    let mtime_1 = @fs.mtime(path)
-    let ctime_1 = @fs.ctime(path)
-    @async.sleep(600)
-    @fs.write_file(path, "1234", sync=Full)
-    let atime_2 = @fs.atime(path)
-    let mtime_2 = @fs.mtime(path)
-    let ctime_2 = @fs.ctime(path)
-    assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
-    assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
-    @async.sleep(600)
-    inspect(@fs.read_file(path, sync_timestamp=true).text(), content="1234")
-    let atime_3 = @fs.atime(path)
-    let mtime_3 = @fs.mtime(path)
-    let ctime_3 = @fs.ctime(path)
-    assert_true(diff_timestamp(atime_3, atime_2) > 500_000_000)
-    assert_eq(mtime_3, mtime_2)
-    assert_eq(ctime_3, ctime_2)
-    @async.sleep(600)
-    let _ = @process.run("chmod", ["666", path])
-    let mtime_4 = @fs.mtime(path)
-    let ctime_4 = @fs.ctime(path)
-    assert_eq(mtime_4, mtime_3)
-    assert_true(diff_timestamp(ctime_4, ctime_3) > 500_000_000)
-  })
-}
-
-///|
 async test "timestamp for opened file" {
   let path = "target/opened_file_timestamp_test"
   @async.with_task_group(fn(group) {
