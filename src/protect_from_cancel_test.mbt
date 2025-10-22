@@ -316,7 +316,7 @@ async test "error in async cancel" {
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for _ in 0..<2 {
-        @async.sleep(200)
+        @async.sleep(300)
         log.write_string("tick\n")
       }
     })
@@ -327,14 +327,14 @@ async test "error in async cancel" {
             _ => {
               log.write_string("performing async cleanup\n")
               @async.protect_from_cancel(fn() {
-                @async.sleep(200)
+                @async.sleep(300)
                 log.write_string("raising error from async cleanup\n")
                 raise Err
               })
             }
           }
         })
-        @async.sleep(100)
+        @async.sleep(150)
         log.write_string("main task of inner group done\n")
       }),
     )
