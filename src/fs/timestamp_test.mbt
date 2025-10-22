@@ -76,6 +76,10 @@ async test "timestamp for opened file" {
     let atime_3 = file.atime()
     let mtime_3 = file.mtime()
     let ctime_3 = file.mtime()
+    let d = diff_timestamp(atime_3, atime_2)
+    if d <= 500_000_000 {
+      println("atime diff: \{d / 1_000_000} ms")
+    }
     assert_true(diff_timestamp(atime_3, atime_2) > 500_000_000)
     assert_eq(mtime_3, mtime_2)
     assert_eq(ctime_3, ctime_2)
