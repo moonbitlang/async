@@ -97,7 +97,7 @@ extern "C" fn make_open_flags(
 /// - if `truncate` is `true` (`false` by default), and the file exists,
 ///   it will be truncated to zero length after opening.
 pub async fn open(
-  filename : String,
+  filename : StringView,
   mode~ : Mode,
   sync? : SyncMode = NoSync,
   append? : Bool = false,
@@ -130,7 +130,7 @@ pub async fn open(
 /// - `sync` determines how data will be synchronized to disk after writing,
 ///   see `SyncMode` for more details. The default is `NoSync`
 pub async fn create(
-  filename : String,
+  filename : StringView,
   permission~ : Int,
   sync? : SyncMode = NoSync,
 ) -> File {
@@ -215,7 +215,7 @@ pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
 
 ///|
 /// Remove the file located at `path`. `path` is encoded using UTF8.
-pub async fn remove(path : String) -> Unit {
+pub async fn remove(path : StringView) -> Unit {
   @event_loop.remove(path, context="@fs.remove()")
 }
 
@@ -319,7 +319,7 @@ pub fn File::ctime(self : File) -> (Int64, Int) raise {
 /// If `sync_timestamp` is `true` (`false` by default),
 /// `read_file` will block until timestamp change is written to the file system.
 pub async fn read_file(
-  path : String,
+  path : StringView,
   sync_timestamp? : Bool = false,
 ) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
@@ -338,7 +338,10 @@ pub async fn read_file(
 ///|
 /// Read the contents of a text file located at `path`.
 #deprecated("use `read_file(path).text()` instead")
-pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
+pub async fn read_text_file(
+  path : StringView,
+  encoding~ : @io.Encoding,
+) -> String {
   guard encoding is UTF8
   read_file(path).text()
 }
@@ -349,7 +352,7 @@ pub async fn read_text_file(path : String, encoding~ : @io.Encoding) -> String {
 /// is the same as `open`, except that `truncate` is `true` by default.
 /// See `open` for more details.
 pub async fn write_file(
-  path : String,
+  path : StringView,
   content : &@io.Data,
   sync? : SyncMode = Data,
   append? : Bool = false,
@@ -367,7 +370,7 @@ pub async fn write_file(
 /// except that `truncate` is `true` by default. See `open` for more details.
 #deprecated("use `write_file(path, content)` instead")
 pub async fn write_text_file(
-  path : String,
+  path : StringView,
   content : String,
   encoding~ : @io.Encoding,
   sync? : SyncMode = Data,

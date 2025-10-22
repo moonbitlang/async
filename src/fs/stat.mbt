@@ -30,7 +30,7 @@ fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
 
 ///|
 async fn Stat::from_path(
-  path : String,
+  path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
 ) -> Stat {

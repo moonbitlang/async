@@ -16,7 +16,7 @@
 /// Get the kind of a file at `path`.
 /// If `path` is a symbolic link and `follow_symlink` is `true` (`true` by default),
 /// the kind of the target of the link will be returned.
-pub async fn kind(path : String, follow_symlink? : Bool = true) -> FileKind {
+pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind {
   Stat::from_path(path, follow_symlink~, context="@fs.kind()").kind()
 }
 
@@ -28,7 +28,7 @@ pub async fn kind(path : String, follow_symlink? : Bool = true) -> FileKind {
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn atime(
-  path : String,
+  path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
   Stat::from_path(path, follow_symlink~, context="@fs.atime()").atime()
@@ -42,7 +42,7 @@ pub async fn atime(
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn mtime(
-  path : String,
+  path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
   Stat::from_path(path, follow_symlink~, context="@fs.mtime()").mtime()
@@ -56,7 +56,7 @@ pub async fn mtime(
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn ctime(
-  path : String,
+  path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
   Stat::from_path(path, follow_symlink~, context="@fs.ctime()").ctime()
@@ -87,7 +87,7 @@ extern "C" fn get_EACCES() -> Int = "moonbitlang_async_get_EACCES"
 let _EACCES : Int = get_EACCES()
 
 ///|
-pub async fn exists(path : String) -> Bool {
+pub async fn exists(path : StringView) -> Bool {
   try @event_loop.access(path, amode=f_ok(), context="@fs.exists()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     err => raise err
@@ -97,7 +97,7 @@ pub async fn exists(path : String) -> Bool {
 }
 
 ///|
-pub async fn can_read(path : String) -> Bool {
+pub async fn can_read(path : StringView) -> Bool {
   try @event_loop.access(path, amode=r_ok(), context="@fs.can_read()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -108,7 +108,7 @@ pub async fn can_read(path : String) -> Bool {
 }
 
 ///|
-pub async fn can_write(path : String) -> Bool {
+pub async fn can_write(path : StringView) -> Bool {
   try @event_loop.access(path, amode=w_ok(), context="@fs.can_write()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -119,7 +119,7 @@ pub async fn can_write(path : String) -> Bool {
 }
 
 ///|
-pub async fn can_execute(path : String) -> Bool {
+pub async fn can_execute(path : StringView) -> Bool {
   try @event_loop.access(path, amode=x_ok(), context="@fs.can_execute") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
     @os_error.OSError(code, ..) if code == _EACCES => false
@@ -136,7 +136,7 @@ pub async fn can_execute(path : String) -> Bool {
 ///
 /// If the path contains cyclic symbolic link,
 /// an error will be raised.
-pub async fn realpath(path : String) -> String {
+pub async fn realpath(path : StringView) -> String {
   let result = @event_loop.realpath(path, context="@fs.realpath()")
   @encoding/utf8.decode(result)
 }

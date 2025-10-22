@@ -15,7 +15,7 @@
 ///|
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
-pub async fn mkdir(path : String, permission~ : Int) -> Unit {
+pub async fn mkdir(path : StringView, permission~ : Int) -> Unit {
   @event_loop.mkdir(path, mode=permission, context="@fs.mkdir()")
 }
 
@@ -25,16 +25,17 @@ pub async fn mkdir(path : String, permission~ : Int) -> Unit {
 /// files and directories in `path` will be removed recursively.
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
-pub async fn rmdir(path : String, recursive? : Bool = false) -> Unit {
+pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
-    for file in readdir(path) {
-      let path = path + "/" + file
-      let stat = Stat::from_path(path, follow_symlink=false, context~)
+    let base = path.to_string()
+    for file in readdir(base) {
+      let child_path = base + "/" + file
+      let stat = Stat::from_path(child_path, follow_symlink=false, context~)
       if stat.kind() is Directory {
-        rmdir(path, recursive=true)
+        rmdir(child_path, recursive=true)
       } else {
-        @event_loop.remove(path, context~)
+        @event_loop.remove(child_path, context~)
       }
     }
   }
@@ -63,7 +64,7 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 ///|
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
-pub fn opendir(path : String) -> Directory raise {
+pub fn opendir(path : StringView) -> Directory raise {
   let path = @encoding/utf8.encode(path)
   let dir = opendir_ffi(path)
   if dir.is_null() {
@@ -125,7 +126,7 @@ pub async fn Directory::read_all(
 /// - If `sort` is `true` (`false` by default),
 ///   the result will be sorted using `Array::sort`.
 pub async fn readdir(
-  path : String,
+  path : StringView,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
   sort? : Bool = false,
@@ -153,7 +154,7 @@ pub async fn readdir(
 /// Otherwise, failure in `f` will stop the whole `walk`,
 /// cancelling the handling of other sub-directories.
 pub async fn walk(
-  path : String,
+  path : StringView,
   f : async (String, Array[String]) -> Unit,
   max_concurrency? : Int = 1000,
   allow_failure? : Bool = false,
@@ -161,7 +162,7 @@ pub async fn walk(
   guard max_concurrency > 0
   let sem = @semaphore.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
-    async fn handle_path(path) {
+    async fn handle_path(path : String) {
       group.spawn_bg(allow_failure~, fn() {
         sem.acquire()
         defer sem.release()
@@ -180,6 +181,6 @@ pub async fn walk(
       })
     }
 
-    handle_path(path)
+    handle_path(path.to_string())
   })
 }

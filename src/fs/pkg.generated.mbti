@@ -6,49 +6,49 @@ import(
 )
 
 // Values
-async fn atime(String, follow_symlink? : Bool) -> (Int64, Int)
+async fn atime(StringView, follow_symlink? : Bool) -> (Int64, Int)
 
-async fn can_execute(String) -> Bool
+async fn can_execute(StringView) -> Bool
 
-async fn can_read(String) -> Bool
+async fn can_read(StringView) -> Bool
 
-async fn can_write(String) -> Bool
+async fn can_write(StringView) -> Bool
 
-async fn create(String, permission~ : Int, sync? : SyncMode) -> File
+async fn create(StringView, permission~ : Int, sync? : SyncMode) -> File
 
-async fn ctime(String, follow_symlink? : Bool) -> (Int64, Int)
+async fn ctime(StringView, follow_symlink? : Bool) -> (Int64, Int)
 
-async fn exists(String) -> Bool
+async fn exists(StringView) -> Bool
 
-async fn kind(String, follow_symlink? : Bool) -> FileKind
+async fn kind(StringView, follow_symlink? : Bool) -> FileKind
 
-async fn mkdir(String, permission~ : Int) -> Unit
+async fn mkdir(StringView, permission~ : Int) -> Unit
 
-async fn mtime(String, follow_symlink? : Bool) -> (Int64, Int)
+async fn mtime(StringView, follow_symlink? : Bool) -> (Int64, Int)
 
-async fn open(String, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
+async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> File
 
-fn opendir(String) -> Directory raise
+fn opendir(StringView) -> Directory raise
 
-async fn read_file(String, sync_timestamp? : Bool) -> &@io.Data
-
-#deprecated
-async fn read_text_file(String, encoding~ : @io.Encoding) -> String
-
-async fn readdir(String, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[String]
-
-async fn realpath(String) -> String
-
-async fn remove(String) -> Unit
-
-async fn rmdir(String, recursive? : Bool) -> Unit
-
-async fn walk(String, async (String, Array[String]) -> Unit, max_concurrency? : Int, allow_failure? : Bool) -> Unit
-
-async fn write_file(String, &@io.Data, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+async fn read_file(StringView, sync_timestamp? : Bool) -> &@io.Data
 
 #deprecated
-async fn write_text_file(String, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+async fn read_text_file(StringView, encoding~ : @io.Encoding) -> String
+
+async fn readdir(StringView, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[String]
+
+async fn realpath(StringView) -> String
+
+async fn remove(StringView) -> Unit
+
+async fn rmdir(StringView, recursive? : Bool) -> Unit
+
+async fn walk(StringView, async (String, Array[String]) -> Unit, max_concurrency? : Int, allow_failure? : Bool) -> Unit
+
+async fn write_file(StringView, &@io.Data, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+
+#deprecated
+async fn write_text_file(StringView, String, encoding~ : @io.Encoding, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 // Errors
 
