@@ -338,7 +338,10 @@ pub async fn read_file(
 ///|
 /// Read the contents of a text file located at `path`.
 #deprecated("use `read_file(path).text()` instead")
-pub async fn read_text_file(path : StringView, encoding~ : @io.Encoding) -> String {
+pub async fn read_text_file(
+  path : StringView,
+  encoding~ : @io.Encoding,
+) -> String {
   guard encoding is UTF8
   read_file(path).text()
 }
