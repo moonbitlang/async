@@ -1,6 +1,6 @@
 # File System API (`@moonbitlang/async/fs`)
 
-Asynchronous file system operations for MoonBit. This package provides comprehensive APIs for working with files, directories, and file metadata.
+Asynchronous file system operations for MoonBit. This package provides comprehensive APIs for working with files, directories, and file metadata. All operations are non-blocking and designed to work with MoonBit's async/await system.
 
 ## Table of Contents
 
@@ -659,14 +659,58 @@ Directory handle for reading directory entries:
 
 ## Error Handling
 
-All async file operations can raise errors. Use proper error handling:
+All async file operations can raise errors when files don't exist, permissions are insufficient, or other I/O errors occur. Common error types include:
+
+- **File not found**: When trying to access non-existent files
+- **Permission denied**: When lacking read/write/execute permissions
+- **Is a directory**: When trying to perform file operations on directories
+- **Not a directory**: When trying to perform directory operations on files
+- **No space left**: When disk is full during write operations
+- **Too many open files**: When file descriptor limit is reached
+
+
+Use try-catch blocks or the `try?` operator for proper error handling:
 
 ```moonbit
 ///|
-async test "error handling example" {
-  let result = try? @fs.read_file("nonexistent.txt")
-  inspect(result is Err(_), content="true")
+async test "comprehensive error handling" {
+  // Try? operator for optional-style error handling
+  let result = try? @fs.read_file("might_not_exist.txt")
+  match result {
+    Ok(data) => inspect(data.text(), content="File content")
+    Err(_) => inspect("File not found", content="File not found")
+  }
+}
+
+///|
+async test "try-catch error handling" {
+  try {
+    let _file = @fs.open("nonexistent_file.txt", mode=ReadOnly)
+    inspect("Should not reach here", content="Should not reach here")
+  } catch {
+    @os_error.OSError(_, context~) => {
+      inspect(context.contains("@fs.open"), content="true")
+    }
+    _ => {
+      inspect("Other error", content="Other error")
+    }
+  }
 }
 ```
+
+## Performance Considerations
+
+- **File Size**: Use `read_all()` for small files, chunked reading for large files
+- **Concurrency**: The `walk()` function supports parallel directory traversal with `max_concurrency`
+- **Sync Modes**: `NoSync` offers best performance, `Data`/`Full` provide durability guarantees
+- **Buffer Reuse**: Reuse buffers when doing multiple read operations to reduce allocations
+
+## Platform Notes
+
+This package uses POSIX-style file operations and permissions. File permission values (like `0o644`) follow UNIX conventions:
+- First digit: owner permissions
+- Second digit: group permissions  
+- Third digit: other users permissions
+- Each digit is the sum of: 4 (read) + 2 (write) + 1 (execute)
 
 For more examples and detailed usage, see the individual test files in this package.

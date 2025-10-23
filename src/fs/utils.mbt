@@ -86,7 +86,8 @@ extern "C" fn get_EACCES() -> Int = "moonbitlang_async_get_EACCES"
 ///|
 let _EACCES : Int = get_EACCES()
 
-///|
+/// Check if a file exists at the given path.
+/// Returns true if the file exists, false otherwise.
 pub async fn exists(path : StringView) -> Bool {
   try @event_loop.access(path, amode=f_ok(), context="@fs.exists()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
@@ -96,7 +97,8 @@ pub async fn exists(path : StringView) -> Bool {
   }
 }
 
-///|
+/// Check if the current user can read the file at the given path.
+/// Returns true if the file is readable, false otherwise.
 pub async fn can_read(path : StringView) -> Bool {
   try @event_loop.access(path, amode=r_ok(), context="@fs.can_read()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
@@ -107,7 +109,8 @@ pub async fn can_read(path : StringView) -> Bool {
   }
 }
 
-///|
+/// Check if the current user can write to the file at the given path.
+/// Returns true if the file is writable, false otherwise.
 pub async fn can_write(path : StringView) -> Bool {
   try @event_loop.access(path, amode=w_ok(), context="@fs.can_write()") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false
@@ -118,7 +121,8 @@ pub async fn can_write(path : StringView) -> Bool {
   }
 }
 
-///|
+/// Check if the current user can execute the file at the given path.
+/// Returns true if the file is executable, false otherwise.
 pub async fn can_execute(path : StringView) -> Bool {
   try @event_loop.access(path, amode=x_ok(), context="@fs.can_execute") catch {
     @os_error.OSError(code, ..) if code == _ENOENT => false

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// Create a directory at `path`.
+/// The permission of the created directory must be set in `permission`.
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
 pub async fn mkdir(path : StringView, permission~ : Int) -> Unit {
@@ -42,14 +43,16 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   @event_loop.rmdir(path, context~)
 }
 
-///|
+/// A directory in file system.
+/// Wraps the underlying system directory handle for directory operations.
 /// A directory in file system
 struct Directory(@event_loop.Directory)
 
 ///|
 extern "C" fn Directory::close_ffi(self : Directory) -> Int = "closedir"
 
-///|
+/// Close the directory handle and release associated resources.
+/// After calling this method, the directory should not be used for further operations.
 pub fn Directory::close(self : Directory) -> Unit {
   guard self.close_ffi() == 0
 }
@@ -61,7 +64,8 @@ extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
 ///|
 extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
 
-///|
+/// Open the directory at `path`. `path` is encoded UTF8.
+/// If `path` is not a directory, an error will be raised.
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
 pub fn opendir(path : StringView) -> Directory raise {
