@@ -207,6 +207,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
   let poll_coro = @coroutine.spawn(fn() {
     while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
       self.poll() catch {
+        @os_error.OSError(_) as err if err.is_EINTR() => continue
         err => {
           self.cleanup()
           raise err

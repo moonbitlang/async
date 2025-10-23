@@ -19,6 +19,9 @@ pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
 extern "C" fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbitlang_async_is_nonblocking_io_error"
 
 ///|
+extern "C" fn errno_is_EINTR(errno : Int) -> Bool = "moonbitlang_async_is_EINTR"
+
+///|
 pub fn is_nonblocking_io_error() -> Bool {
   errno_is_nonblocking_io_error(get_errno())
 }
@@ -51,6 +54,12 @@ pub impl Show for OSError with output(self, logger) -> Unit {
 pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno_is_nonblocking_io_error(errno)
+}
+
+///|
+pub fn OSError::is_EINTR(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_EINTR(errno)
 }
 
 ///|

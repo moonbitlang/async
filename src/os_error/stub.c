@@ -25,6 +25,10 @@ int moonbitlang_async_is_nonblocking_io_error(int err) {
   return err == EAGAIN || err == EINPROGRESS || err == EWOULDBLOCK;
 }
 
+int moonbitlang_async_is_EINTR(int err) {
+  return err == EINTR;
+}
+
 char *moonbitlang_async_errno_to_string(int err) {
   return strerror(err);
 }
