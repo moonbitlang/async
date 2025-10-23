@@ -12,18 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
-/// A UDP client "connected" to a remote UDP server.
+/// A UDP client "connected" to a remote server.
 ///
-/// UDP is a connectionless protocol, here "connected" means
-/// the client always send packet to and receive packet from
-/// the specified remote server.
+/// UDP is connectionless, but this client is bound to send and receive
+/// packets only to/from the specified remote server address.
+/// This provides a convenient interface for UDP communication
+/// with a single remote endpoint.
 struct UdpClient(Int)
 
-///|
-/// Create a new UDP client connected to server at `addr`.
-/// The client always send packet to and receive packet from
-/// the specified remote server.
+/// Create a new UDP client "connected" to a remote server.
+///
+/// # Parameters
+/// - `server`: The remote server address to connect to
+///
+/// # Returns
+/// A UDP client that sends/receives packets to/from the specified server
+///
+/// # Raises
+/// System errors if the UDP socket cannot be created or connected
+///
+/// # Usage
+/// See package documentation for examples.
 pub fn UdpClient::new(server : Addr) -> UdpClient raise {
   let context = "@socket.UdpClient::new()"
   let sock = if server.is_ipv6() {
@@ -43,32 +52,54 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
   UdpClient(sock)
 }
 
-///|
+/// Close the UDP client.
+///
+/// This releases system resources associated with the client.
+/// The client should not be used after calling this method.
+///
+/// # Usage
+/// See package documentation for examples.
 pub fn UdpClient::close(self : UdpClient) -> Unit {
   let UdpClient(sock) = self
   @event_loop.close_fd(sock)
 }
 
-///|
-/// A UDP server bound to a listen address and receive packets from clients.
+/// A UDP server that listens for packets from any client.
+///
+/// Unlike TCP, UDP is connectionless, so the server receives individual
+/// packets from various clients rather than maintaining persistent connections.
+/// Each packet includes the sender's address.
 struct UdpServer(Int)
 
-///|
+/// Close the UDP server.
+///
+/// This stops the server from receiving packets and releases
+/// system resources associated with the server.
+///
+/// # Usage
+/// See package documentation for complete examples.
 pub fn UdpServer::close(self : UdpServer) -> Unit {
   let UdpServer(sock) = self
   @event_loop.close_fd(sock)
 }
 
-///|
-/// Create a UDP server listening at `addr`.
+/// Create a UDP server listening at the specified address.
 ///
-/// If `addr` is the IPv6 wildcard address `[::]`
-/// and `dual_stack` is `true` (`true` by default),
-/// the server will work in dual stack mode,
-/// receiving packets from both IPv4 peers and IPv6 peers.
-/// The address of IPv4 peers are represented via IPv4-mapped IPv6 address.
+/// # Parameters
+/// - `addr`: The address to bind the server to
+/// - `dual_stack`: Enable dual-stack mode for IPv6 wildcard addresses (default: `true`)
 ///
-/// If `addr` is not `[::]`, `dual_stack` is ignored.
+/// # Dual Stack Mode
+/// If `addr` is the IPv6 wildcard address `[::]` and `dual_stack` is `true`,
+/// the server will receive packets from both IPv4 and IPv6 clients.
+/// IPv4 client addresses are represented as IPv4-mapped IPv6 addresses.
+/// For other addresses, `dual_stack` is ignored.
+///
+/// # Raises
+/// System errors if the UDP socket cannot be created or bound
+///
+/// # Usage
+/// See package documentation for complete examples.
 pub fn UdpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,

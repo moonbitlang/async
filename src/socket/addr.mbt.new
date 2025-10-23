@@ -1,0 +1,111 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/// A network address containing an IP address and port number.
+/// Supports both IPv4 and IPv6 addresses.
+///
+/// IPv4 addresses are stored as 32-bit integers, while IPv6 addresses
+/// are stored as 16-byte arrays. The address type is automatically
+/// detected and handled transparently.
+struct Addr(Bytes) derive(Eq, Compare, Hash)
+
+/// Create a new IPv4 address from an IP address and port number.
+///
+/// # Parameters
+/// - `ip`: The IPv4 address as a 32-bit unsigned integer in network byte order
+/// - `port`: The port number (0-65535)
+///
+/// # Example
+/// ```
+/// let addr = Addr::new(0x7F000001U, 8080) // 127.0.0.1:8080
+/// ```
+pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
+
+/// Create an empty address for internal use.
+extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
+
+/// Create a new IPv6 address from a byte array and port number.
+///
+/// # Parameters
+/// - `ip`: A 16-byte array representing the IPv6 address
+/// - `port`: The port number (0-65535)
+#borrow(ip)
+extern "C" fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int) -> Addr = "moonbitlang_async_make_ipv6_addr"
+
+/// Get the IPv4 address as a 32-bit unsigned integer.
+///
+/// # Returns
+/// The IPv4 address in network byte order. For IPv6 addresses, the behavior is undefined.
+///
+/// # Example
+/// ```
+/// let addr = Addr::new(0x7F000001U, 8080)
+/// println(addr.ip()) // 2130706433 (0x7F000001)
+/// ```
+#borrow(addr)
+pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get_ip"
+
+/// Get the port number from an address.
+///
+/// # Returns
+/// The port number as an integer (0-65535)
+///
+/// # Example
+/// ```
+/// let addr = Addr::parse("127.0.0.1:8080")!
+/// println(addr.port()) // 8080
+/// ```
+#borrow(addr)
+pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
+
+/// Check if this address is an IPv6 address.
+///
+/// # Returns
+/// `true` if this is an IPv6 address, `false` if it's an IPv4 address.
+///
+/// # Example
+/// ```
+/// let ipv4 = Addr::parse("127.0.0.1:8080")!
+/// let ipv6 = Addr::parse("[::1]:8080")!
+/// println(ipv4.is_ipv6()) // false
+/// println(ipv6.is_ipv6()) // true
+/// ```
+#borrow(addr)
+pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
+
+/// Get a specific byte from an IPv6 address.
+///
+/// # Parameters
+/// - `index`: The byte index (0-15)
+///
+/// # Returns
+/// The byte value at the specified index for IPv6 addresses.
+/// For IPv4 addresses, the behavior is undefined.
+#borrow(addr)
+extern "C" fn Addr::get_ipv6_byte(addr : Addr, index : Int) -> Int = "moonbitlang_async_addr_get_ipv6_byte"
+
+/// Check if an IPv6 address is the wildcard address (::).
+///
+/// # Returns
+/// `true` if this IPv6 address is all zeros (wildcard), `false` otherwise.
+/// For IPv4 addresses, this always returns `false`.
+fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool {
+  for i in 0..<16 {
+    if addr.get_ipv6_byte(i) != 0 {
+      break false
+    }
+  } else {
+    true
+  }
+}
