@@ -13,20 +13,8 @@
 // limitations under the License.
 
 ///|
-/// Internal integration function for running async main functions.
-/// 
-/// This function is used by the MoonBit toolchain to execute async main functions
-/// by setting up the necessary event loop infrastructure. It should not be called
-/// directly by user code.
-/// 
-/// The function handles error propagation by printing any unhandled errors to
-/// stdout and terminating the program with exit code 1.
-/// 
-/// # Parameters
-/// - `main`: The async main function to execute
-/// 
-/// # Note
-/// This is an internal implementation detail and may change in future versions.
+/// This function is used for integration of `moonbitlang/async`
+/// into the MoonBit toolchain, do not call directly.
 #coverage.skip
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
@@ -39,10 +27,4 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 }
 
 ///|
-/// Foreign function interface binding to the C `exit` function.
-/// 
-/// This function terminates the program with the specified exit code.
-/// 
-/// # Parameters
-/// - `code`: The exit code to return to the operating system
 extern "C" fn exit(code : Int) = "exit"

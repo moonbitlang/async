@@ -31,31 +31,6 @@ priv enum TaskGroupState {
 ///
 /// The type parameter `X` in `TaskGroup[X]` is the result type of the group,
 /// see `with_task_group` for more detail.
-///|
-/// A `TaskGroup[X]` manages a collection of concurrent tasks with structured concurrency.
-/// 
-/// Task groups implement structured concurrency principles:
-/// - The group only completes after all child tasks have terminated
-/// - Errors in child tasks propagate to cancel other tasks (unless `allow_failure=true`)
-/// - Resources are properly cleaned up through group defer blocks
-/// 
-/// The type parameter `X` represents the result type returned by the group.
-/// 
-/// # Example
-/// ```moonbit
-/// async fn example() {
-///   let result = @async.with_task_group(fn(group) {
-///     group.spawn_bg(fn() {
-///       @async.sleep(100)
-///       println("Background task completed")
-///     })
-///     
-///     42  // Return value from the group
-///   })
-///   
-///   inspect(result, content="42")
-/// }
-/// ```
 struct TaskGroup[X] {
   children : Set[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
@@ -66,11 +41,6 @@ struct TaskGroup[X] {
 }
 
 ///|
-///|
-/// Error raised when attempting to operate on a task group that has already terminated.
-/// 
-/// This error occurs when trying to spawn new tasks or add defer blocks to a
-/// task group that has finished execution or been cancelled.
 pub suberror AlreadyTerminated derive(Show)
 
 ///|
@@ -141,44 +111,6 @@ fn[X] TaskGroup::spawn_coroutine(
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn_bg` returns.
-///|
-/// Spawn a background task that runs concurrently with other tasks in the group.
-/// 
-/// The spawned task will execute asynchronously alongside the current task.
-/// By default, the task group will wait for this task to complete before terminating.
-/// 
-/// # Parameters
-/// - `self`: The task group to spawn the task in
-/// - `f`: The async function to execute
-/// - `no_wait`: If `true`, the group won't wait for this task to complete (default: `false`)
-/// - `allow_failure`: If `true`, task failure won't terminate the group (default: `false`)
-/// 
-/// # Raises
-/// - `AlreadyTerminated` if the task group has already finished
-/// 
-/// # Example
-/// ```moonbit
-/// async fn example() {
-///   @async.with_task_group(fn(group) {
-///     // Regular background task - group waits for completion
-///     group.spawn_bg(fn() {
-///       @async.sleep(100)
-///       println("Task 1 done")
-///     })
-///     
-///     // Fire-and-forget task - group doesn't wait
-///     group.spawn_bg(no_wait=true, fn() {
-///       @async.sleep(200)
-///       println("Task 2 done (maybe)")
-///     })
-///     
-///     // Task that can fail without affecting others
-///     group.spawn_bg(allow_failure=true, fn() {
-///       raise @async.TimeoutError
-///     })
-///   })
-/// }
-/// ```
 pub fn[X] TaskGroup::spawn_bg(
   self : TaskGroup[X],
   f : async () -> Unit,
@@ -205,43 +137,6 @@ pub fn[X] TaskGroup::spawn_bg(
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn` returns.
-///|
-/// Spawn a task that returns a value, providing a handle for monitoring and control.
-/// 
-/// Unlike `spawn_bg`, this function returns a `Task` handle that can be used to
-/// wait for the result, check completion status, or cancel the task.
-/// 
-/// # Parameters
-/// - `self`: The task group to spawn the task in
-/// - `f`: The async function to execute
-/// - `no_wait`: If `true`, the group won't wait for this task to complete (default: `false`)
-/// - `allow_failure`: If `true`, task failure won't terminate the group (default: `false`)
-/// 
-/// # Returns
-/// A `Task[G]` handle for monitoring and controlling the spawned task
-/// 
-/// # Raises
-/// - `AlreadyTerminated` if the task group has already finished
-/// 
-/// # Example
-/// ```moonbit
-/// async fn example() {
-///   @async.with_task_group(fn(group) {
-///     let task1 = group.spawn(fn() {
-///       @async.sleep(100)
-///       "Hello"
-///     })
-///     
-///     let task2 = group.spawn(fn() {
-///       @async.sleep(50)
-///       "World"
-///     })
-///     
-///     let greeting = task2.wait() + ", " + task1.wait() + "!"
-///     inspect(greeting, content="World, Hello!")
-///   })
-/// }
-/// ```
 pub fn[G, X] TaskGroup::spawn(
   self : TaskGroup[G],
   f : async () -> X,
