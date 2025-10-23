@@ -34,12 +34,17 @@ fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
 }
 
 ///|
+/// Error type for HTTP protocol violations and unsupported features.
+/// These errors are raised when parsing malformed HTTP messages or
+/// encountering protocol features that are not yet implemented.
 pub suberror HttpProtocolError {
+  /// The HTTP request or response is malformed or invalid
   BadRequest
+  /// The HTTP version is not supported (only HTTP/1.0 and HTTP/1.1 are supported)
   HttpVersionNotSupported(String)
+  /// A valid but unimplemented HTTP feature was encountered
   NotImplemented
 } derive(Show)
-
 ///|
 /// Read from the body of the HTTP request/response
 /// that is currently being processed by the HTTP reader.
