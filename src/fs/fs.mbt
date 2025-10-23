@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// Represents different kinds of file system entries.
+/// Used to identify the type of a file, directory, or special file.
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -24,24 +25,27 @@ pub(all) enum FileKind {
   CharDevice = 7
 } derive(Eq, Show)
 
-///|
+/// A file handle for performing I/O operations on a file.
+/// Contains the file descriptor and the kind of file.
 #valtype
 struct File {
   fd : Int
   kind : FileKind
 }
 
-///|
+/// Get the file descriptor of the file.
+/// Returns the underlying file descriptor as an integer.
 pub fn File::fd(self : File) -> Int {
   self.fd
 }
 
-///|
+/// Close the file and release associated resources.
+/// After calling this method, the file should not be used for further operations.
 pub fn File::close(self : File) -> Unit {
   @event_loop.close_fd(self.fd)
 }
 
-///|
+/// File access modes for opening files.
 pub(all) enum Mode {
   ReadOnly = 0
   WriteOnly
@@ -178,7 +182,8 @@ impl @io.Reader for DummyFile with read(
   @io.Reader::read(self.0, buf, offset~, max_len~)
 }
 
-///|
+/// Read all data from the file.
+/// For regular files, reads the entire file content efficiently.
 pub impl @io.Reader for File with read_all(self) {
   match self.kind {
     Regular => {
@@ -191,7 +196,8 @@ pub impl @io.Reader for File with read_all(self) {
   }
 }
 
-///|
+/// Write data to the file.
+/// Writes the specified buffer to the file at the current position.
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   let can_poll = self.kind.can_poll()
   @event_loop.write(
@@ -213,7 +219,8 @@ pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
   @event_loop.fsync(self.fd, only_data~, context="@fs.File::sync()")
 }
 
-///|
+/// Remove the file located at `path`.
+/// `path` is encoded using UTF8. The file will be permanently deleted.
 /// Remove the file located at `path`. `path` is encoded using UTF8.
 pub async fn remove(path : StringView) -> Unit {
   @event_loop.remove(path, context="@fs.remove()")
@@ -247,13 +254,14 @@ pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise 
   offset
 }
 
-///|
+/// Get current position in the file. Can only be applied to a regular file.
 /// Get current position in the file. Can only be applied to a regular file.
 pub fn File::curr_pos(self : File) -> Int64 raise {
   self.seek(0, mode=Relative)
 }
 
-///|
+/// Get the size of the file. This method will not change position in the file.
+/// Can only be applied to a regular file.
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub fn File::size(self : File) -> Int64 raise {
@@ -266,7 +274,8 @@ pub fn File::size(self : File) -> Int64 raise {
 ///|
 extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 
-///|
+/// Convert a file to directory.
+/// If the file is not a directory, an error will be raised.
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 pub fn File::as_dir(self : File) -> Directory raise {
@@ -285,7 +294,8 @@ fn FileKind::can_poll(self : FileKind) -> Bool {
   }
 }
 
-///|
+/// Get the kind of file.
+/// Returns the FileKind that represents the type of this file.
 pub fn File::kind(self : File) -> FileKind {
   self.kind
 }
