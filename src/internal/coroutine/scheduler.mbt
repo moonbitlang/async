@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// The scheduler manages coroutine execution and maintains the global state
+/// for the async runtime system.
 priv struct Scheduler {
+  /// Counter for generating unique coroutine IDs
   mut coro_id : Int
+  /// The currently executing coroutine, if any
   mut curr_coro : Coroutine?
+  /// Number of coroutines that are blocked waiting for external events
   mut blocking : Int
+  /// Queue of coroutines that are ready to run
   run_later : @deque.Deque[Coroutine]
 }
 
-///|
+/// Global scheduler instance that manages all coroutine execution
 let scheduler : Scheduler = {
   coro_id: 0,
   curr_coro: None,
@@ -28,22 +33,29 @@ let scheduler : Scheduler = {
   run_later: @deque.new(),
 }
 
-///|
+/// Returns the currently executing coroutine.
+/// Panics if called outside of a coroutine context.
 pub fn current_coroutine() -> Coroutine {
   scheduler.curr_coro.unwrap()
 }
 
-///|
+/// Checks if there are any coroutines ready to run immediately.
+/// Returns true if the scheduler has coroutines queued for execution.
 pub fn has_immediately_ready_task() -> Bool {
   !scheduler.run_later.is_empty()
 }
 
-///|
+/// Checks if the scheduler has no more work to do.
+/// Returns true if there are no ready coroutines and no blocked coroutines.
+/// This indicates that all async work has completed.
 pub fn no_more_work() -> Bool {
   scheduler.blocking == 0 && scheduler.run_later.is_empty()
 }
 
-///|
+/// Executes all ready coroutines in the scheduler queue.
+/// This function runs each ready coroutine until it either completes,
+/// suspends, or yields control. Coroutines that are cancelled will
+/// receive the Cancelled error.
 pub fn reschedule() -> Unit {
   while scheduler.run_later.pop_front() is Some(coro) {
     coro.ready = false

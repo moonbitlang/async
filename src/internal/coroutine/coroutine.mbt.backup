@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// Internal state of a coroutine representing its execution status
+///|
 priv enum State {
   Done
   Fail(Error)
@@ -20,8 +20,7 @@ priv enum State {
   Suspend(ok_cont~ : (Unit) -> Unit, err_cont~ : (Error) -> Unit)
 }
 
-/// A coroutine represents an asynchronous task that can be suspended and resumed.
-/// Each coroutine has a unique ID and maintains its execution state.
+///|
 struct Coroutine {
   coro_id : Int
   mut state : State
@@ -31,35 +30,32 @@ struct Coroutine {
   downstream : Set[Coroutine]
 }
 
-/// Implements equality comparison for coroutines based on their unique ID
+///|
 pub impl Eq for Coroutine with equal(c1, c2) {
   c1.coro_id == c2.coro_id
 }
 
-/// Implements hashing for coroutines based on their unique ID
+///|
 pub impl Hash for Coroutine with hash_combine(self, hasher) {
   self.coro_id.hash_combine(hasher)
 }
 
-/// Wakes up a suspended coroutine by marking it as ready and adding it to the scheduler queue.
-/// This function is used to resume a coroutine that was previously suspended.
+///|
 pub fn Coroutine::wake(self : Coroutine) -> Unit {
   self.ready = true
   scheduler.run_later.push_back(self)
 }
 
-/// Checks if the current coroutine is being cancelled.
-/// Returns true if the current coroutine has been marked for cancellation and is not shielded.
+///|
 pub fn is_being_cancelled() -> Bool {
   let coro = current_coroutine()
   coro.cancelled && not(coro.shielded)
 }
 
-/// Error type raised when a coroutine is cancelled
+///|
 pub(all) suberror Cancelled derive(Show)
 
-/// Cancels a coroutine by setting its cancelled flag.
-/// If the coroutine is not shielded and not already ready, it will be woken up.
+///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
   self.cancelled = true
   if not(self.shielded || self.ready) {
@@ -67,10 +63,7 @@ pub fn Coroutine::cancel(self : Coroutine) -> Unit {
   }
 }
 
-/// Voluntarily yields control to allow other coroutines to run.
-/// This function suspends the current coroutine briefly and then resumes it,
-/// allowing the scheduler to run other ready coroutines.
-/// Raises Cancelled if the coroutine has been cancelled and is not shielded.
+///|
 pub async fn pause() -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.cancelled && not(coro.shielded) {
@@ -84,10 +77,7 @@ pub async fn pause() -> Unit {
   })
 }
 
-/// Suspends the current coroutine until it is explicitly woken up.
-/// This is typically used for I/O operations or waiting for external events.
-/// The coroutine will not be automatically resumed and must be woken by another coroutine.
-/// Raises Cancelled if the coroutine has been cancelled and is not shielded.
+///|
 pub async fn suspend() -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.cancelled && not(coro.shielded) {
@@ -103,10 +93,7 @@ pub async fn suspend() -> Unit {
   })
 }
 
-/// Spawns a new coroutine to execute the given async function.
-/// The spawned coroutine will be added to the scheduler's queue and can be executed
-/// by calling reschedule(). The function returns a Coroutine handle that can be used
-/// to wait for completion or check for errors.
+///|
 pub fn spawn(f : async () -> Unit) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
@@ -137,10 +124,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
   coro
 }
 
-/// Waits for the coroutine to complete and returns its result.
-/// If the coroutine completed successfully, returns Unit.
-/// If the coroutine failed with an error, raises that error.
-/// Panics if the coroutine is still running or suspended.
+///|
 pub fn Coroutine::unwrap(self : Coroutine) -> Unit raise {
   match self.state {
     Done => ()
@@ -149,11 +133,7 @@ pub fn Coroutine::unwrap(self : Coroutine) -> Unit raise {
   }
 }
 
-/// Waits for the target coroutine to complete.
-/// The current coroutine will be suspended until the target coroutine finishes.
-/// If the target coroutine completes successfully, this function returns normally.
-/// If the target coroutine fails, this function raises the same error.
-/// If the current coroutine is cancelled while waiting, it stops waiting and raises Cancelled.
+///|
 pub async fn Coroutine::wait(target : Coroutine) -> Unit {
   guard scheduler.curr_coro is Some(coro)
   guard not(physical_equal(coro, target))
@@ -173,9 +153,7 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit {
   }
 }
 
-/// Checks if the coroutine has failed and raises the error if so.
-/// If the coroutine completed successfully or is still running, does nothing.
-/// If the coroutine failed, raises the error that caused the failure.
+///|
 pub fn Coroutine::check_error(coro : Coroutine) -> Unit raise {
   match coro.state {
     Fail(err) => raise err
@@ -183,11 +161,7 @@ pub fn Coroutine::check_error(coro : Coroutine) -> Unit raise {
   }
 }
 
-/// Executes an async function while protecting it from cancellation.
-/// While executing the protected function, the current coroutine cannot be cancelled.
-/// If the coroutine was already cancelled before entering the protected section,
-/// the Cancelled error will be raised after the protected function completes.
-/// If the coroutine is already in a protected section, this function has no additional effect.
+///|
 pub async fn protect_from_cancel(f : async () -> Unit) -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.shielded {
