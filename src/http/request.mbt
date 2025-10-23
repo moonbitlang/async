@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// HTTP protocol type specifying whether to use HTTP or HTTPS.
+/// Used to determine connection security and default port.
 pub(all) enum Protocol {
+  /// Plain HTTP protocol (default port 80)
   Http
+  /// Secure HTTPS protocol with TLS encryption (default port 443)
   Https
 }
 
-///|
+/// Get the default port number for a given HTTP protocol.
+/// Returns 80 for HTTP and 443 for HTTPS.
 pub fn Protocol::default_port(p : Protocol) -> Int {
   match p {
     Http => 80
@@ -26,13 +30,17 @@ pub fn Protocol::default_port(p : Protocol) -> Int {
   }
 }
 
-///|
+/// Error type for URI parsing failures.
+/// Represents various issues that can occur when parsing URIs.
 pub suberror URIParseError {
+  /// The URI format is invalid or malformed
   InvalidFormat
+  /// The protocol scheme is not supported (only http and https are supported)
   UnsupportedProtocol(String)
 } derive(Show)
 
-///|
+/// Internal function to perform HTTP requests.
+/// This is the core implementation used by the convenience functions like get, post, etc.
 async fn perform_request(
   uri : String,
   meth : RequestMethod,
@@ -68,15 +76,25 @@ async fn perform_request(
   (response, client.read_all())
 }
 
-///|
-/// Perform a HTTP `GET` request to `uri`.
+/// Perform a HTTP GET request to the specified URI.
+/// 
+/// This is a convenience function for making simple GET requests.
 /// Supported protocols are `http://` and `https://`.
-/// The HTTP response message and the whole response body will be returned.
+/// Returns a tuple containing the HTTP response and the complete response body.
 ///
-/// `port` is the port number to connect to.
-/// By default it is the standard port for the specified protocol.
+/// # Parameters
+/// - `uri`: The complete URI to request (e.g., "https://example.com/api/data")
+/// - `headers`: Optional additional HTTP headers to include in the request
+/// - `port`: Optional port number to connect to (defaults to protocol standard port)
+/// - `body`: Optional request body data (defaults to empty for GET requests)
 ///
-/// See `Client::request` for more details.
+/// # Example
+/// ```moonbit
+/// let (response, body) = @http.get("https://api.github.com/users/octocat")
+/// if response.code == 200 {
+///   println(body.text())
+/// }
+/// ```
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
@@ -86,8 +104,23 @@ pub async fn get(
   perform_request(uri, Get, headers, body, port?)
 }
 
-///|
-/// Similar to `get`, but performs a `PUT` request instead.
+/// Perform a HTTP PUT request to the specified URI.
+/// 
+/// Similar to `get`, but performs a PUT request with the provided content.
+/// PUT requests are typically used to create or update resources on the server.
+///
+/// # Parameters
+/// - `uri`: The complete URI to request
+/// - `content`: The data to send as the request body
+/// - `headers`: Optional additional HTTP headers
+/// - `port`: Optional port number to connect to
+///
+/// # Example
+/// ```moonbit
+/// let data = b"{'name': 'John', 'age': 30}"
+/// let headers = Map::from_array([("Content-Type", "application/json")])
+/// let (response, body) = @http.put("https://api.example.com/users/1", data, headers~)
+/// ```
 pub async fn put(
   uri : String,
   content : &@io.Data,
@@ -97,8 +130,23 @@ pub async fn put(
   perform_request(uri, Put, headers, content, port?)
 }
 
-///|
-/// Similar to `get`, but performs a `POST` request instead.
+/// Perform a HTTP POST request to the specified URI.
+/// 
+/// Similar to `get`, but performs a POST request with the provided content.
+/// POST requests are typically used to submit data to be processed by the server.
+///
+/// # Parameters
+/// - `uri`: The complete URI to request
+/// - `content`: The data to send as the request body
+/// - `headers`: Optional additional HTTP headers
+/// - `port`: Optional port number to connect to
+///
+/// # Example
+/// ```moonbit
+/// let form_data = b"username=alice&password=secret"
+/// let headers = Map::from_array([("Content-Type", "application/x-www-form-urlencoded")])
+/// let (response, body) = @http.post("https://api.example.com/login", form_data, headers~)
+/// ```
 pub async fn post(
   uri : String,
   content : &@io.Data,
