@@ -203,8 +203,15 @@ int moonbitlang_async_poll_remove_pid(int kqfd, pid_t pid) {
 static struct kevent event_buffer[EVENT_BUFFER_SIZE];
 
 int moonbitlang_async_poll_wait(int kqfd, int timeout) {
-  struct timespec timeout_spec = { timeout / 1000, (timeout / 1000) * 1000000 };
-  return kevent(kqfd, 0, 0, event_buffer, EVENT_BUFFER_SIZE, &timeout_spec);
+  struct timespec timeout_spec = { timeout / 1000, (timeout % 1000) * 1000000 };
+  return kevent(
+    kqfd,
+    0,
+    0,
+    event_buffer,
+    EVENT_BUFFER_SIZE,
+    timeout < 0 ? 0 : &timeout_spec
+  );
 }
 
 // wrapper for handling event list
