@@ -12,6 +12,7 @@ fn is_nonblocking_io_error() -> Bool
 pub(all) suberror OSError {
   OSError(Int, context~ : String)
 }
+fn OSError::is_EINTR(Self) -> Bool
 fn OSError::is_nonblocking_io_error(Self) -> Bool
 fn OSError::output(Self, &Logger) -> Unit // from trait `Show`
 fn OSError::to_string(Self) -> String // from trait `Show`
