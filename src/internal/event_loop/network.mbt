@@ -22,6 +22,24 @@ extern "C" fn recvfrom_ffi(
   addr~ : Bytes,
 ) -> Int = "moonbitlang_async_recvfrom"
 
+/// Receives data from a socket asynchronously, optionally retrieving sender address.
+/// 
+/// This function performs a non-blocking receive operation on a socket,
+/// integrating with the event loop for efficient I/O handling.
+/// 
+/// # Parameters
+/// - `sock`: Socket file descriptor to receive from
+/// - `buf`: Buffer to store received data
+/// - `offset`: Offset within buffer to start writing
+/// - `len`: Maximum number of bytes to receive
+/// - `addr`: Buffer to store sender address (optional)
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Number of bytes received
+/// 
+/// # Errors
+/// Raises OSError on receive failures
 ///|
 pub async fn recvfrom(
   sock : Int,
@@ -56,6 +74,24 @@ extern "C" fn sendto_ffi(
   addr~ : Bytes,
 ) -> Int = "moonbitlang_async_sendto"
 
+/// Sends data to a socket asynchronously, optionally specifying destination address.
+/// 
+/// This function performs a non-blocking send operation on a socket,
+/// integrating with the event loop for efficient I/O handling.
+/// 
+/// # Parameters
+/// - `sock`: Socket file descriptor to send to
+/// - `buf`: Buffer containing data to send
+/// - `offset`: Offset within buffer to start reading from
+/// - `len`: Number of bytes to send
+/// - `addr`: Destination address (optional)
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Number of bytes sent
+/// 
+/// # Errors
+/// Raises OSError on send failures
 ///|
 pub async fn sendto(
   sock : Int,
@@ -87,6 +123,21 @@ extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_
 ///|
 extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
 
+/// Connects a socket to a remote address asynchronously.
+/// 
+/// This function initiates a connection to the specified address.
+/// For non-blocking sockets, it handles the asynchronous connection process.
+/// 
+/// # Parameters
+/// - `sock`: Socket file descriptor
+/// - `addr`: Address to connect to
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// 0 on successful connection
+/// 
+/// # Errors
+/// Raises OSError on connection failures
 ///|
 pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
   let handle = prepare_fd_write(sock)
@@ -111,6 +162,21 @@ pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
 #borrow(addr_buf)
 extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
 
+/// Accepts an incoming connection on a listening socket asynchronously.
+/// 
+/// This function waits for and accepts the next pending connection
+/// on the specified listening socket.
+/// 
+/// # Parameters
+/// - `sock`: Listening socket file descriptor
+/// - `addr`: Buffer to store client address
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// File descriptor of the accepted connection
+/// 
+/// # Errors
+/// Raises OSError on accept failures
 ///|
 pub async fn accept(sock : Int, addr : Bytes, context~ : String) -> Int {
   let handle = prepare_fd_read(sock)
@@ -126,6 +192,11 @@ pub async fn accept(sock : Int, addr : Bytes, context~ : String) -> Int {
   }
 }
 
+/// Address information structure for network operations.
+/// 
+/// This opaque type contains address information returned by `getaddrinfo`,
+/// including IP addresses, port numbers, and socket types. It is used for
+/// network address resolution and socket operations.
 ///|
 #external
 pub type AddrInfo
@@ -143,6 +214,25 @@ extern "C" fn AddrInfoRef::get_and_clear(self : AddrInfoRef) -> AddrInfo = "moon
 ///|
 extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
+/// Resolves a hostname to network address information asynchronously.
+/// 
+/// This function performs DNS resolution and returns address information
+/// suitable for creating sockets and establishing connections.
+/// 
+/// # Parameters
+/// - `host`: Hostname or IP address to resolve
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Result containing AddrInfo on success or error message on failure
+/// 
+/// # Example
+/// ```moonbit
+/// match getaddrinfo("example.com", context~="resolve") {
+///   Ok(addr_info) => // Use address info for connection
+///   Err(error) => println("Resolution failed: " + error)
+/// }
+/// ```
 ///|
 pub async fn getaddrinfo(
   host : StringView,

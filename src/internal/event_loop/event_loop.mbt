@@ -45,11 +45,51 @@ priv struct EventLoopHook {
 ///|
 let hooks : Array[EventLoopHook] = []
 
+/// Registers initialization and cleanup hooks for the event loop lifecycle.
+/// 
+/// This function allows registering optional callbacks that will be invoked at specific event loop lifecycle points:
+/// - `init`: Called after the event loop is initialized but before processing begins
+/// - `exit`: Called during event loop cleanup, even if an error occurred
+/// 
+/// # Parameters
+/// - `init` (optional): Function to call during event loop initialization
+/// - `exit` (optional): Function to call during event loop cleanup
+/// 
+/// # Example
+/// ```moonbit
+/// register_hook(
+///   init=fn() { println("Event loop starting") },
+///   exit=fn() { println("Event loop stopping") }
+/// )
+/// ```
 ///|
 pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
   hooks.push({ init, exit })
 }
 
+/// Runs an async function within an event loop context.
+/// 
+/// This is the primary entry point for running asynchronous code. It creates and manages
+/// an event loop, initializes a thread pool for blocking operations, and handles cleanup.
+/// The event loop provides:
+/// - File descriptor polling for non-blocking I/O
+/// - Timer management for delayed execution
+/// - Process management for spawning and waiting on child processes
+/// - Thread pool integration for blocking operations
+/// 
+/// # Parameters
+/// - `f`: The async function to execute within the event loop
+/// 
+/// # Errors
+/// Raises exceptions from the async function or event loop initialization failures
+/// 
+/// # Example
+/// ```moonbit
+/// with_event_loop(async fn() {
+///   sleep(100)  // Sleep for 100ms
+///   println("Hello from event loop!")
+/// })
+/// ```
 ///|
 pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
   guard curr_loop.val is None
@@ -221,6 +261,19 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
   poll_coro.unwrap()
 }
 
+/// Suspends the current coroutine for the specified duration in milliseconds.
+/// 
+/// This function integrates with the event loop's timer system to provide non-blocking delays.
+/// The coroutine will be resumed after at least the specified duration has elapsed.
+/// 
+/// # Parameters
+/// - `duration`: Duration to sleep in milliseconds
+/// 
+/// # Example
+/// ```moonbit
+/// // Sleep for 1 second
+/// sleep(1000)
+/// ```
 ///|
 pub async fn sleep(duration : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
@@ -299,6 +352,20 @@ async fn FdHandle::wait_write(handle : FdHandle) -> Unit {
   @coroutine.suspend()
 }
 
+/// Closes a file descriptor and removes it from the event loop.
+/// 
+/// This function properly deregisters the file descriptor from polling events
+/// and closes the underlying file descriptor. It should be called when done
+/// with any file descriptor that was used with the event loop.
+/// 
+/// # Parameters
+/// - `fd`: The file descriptor to close
+/// 
+/// # Example
+/// ```moonbit
+/// // Close a file descriptor
+/// close_fd(fd)
+/// ```
 ///|
 pub fn close_fd(fd : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
@@ -357,6 +424,25 @@ extern "C" fn read_ffi(
   len~ : Int,
 ) -> Int = "moonbitlang_async_read"
 
+/// Reads data from a file descriptor asynchronously.
+/// 
+/// This function provides non-blocking read operations through the event loop.
+/// It can operate in two modes: polling mode for non-blocking file descriptors,
+/// or worker thread mode for potentially blocking operations.
+/// 
+/// # Parameters
+/// - `fd`: File descriptor to read from
+/// - `buf`: Buffer to read data into
+/// - `offset`: Offset within the buffer to start writing
+/// - `len`: Maximum number of bytes to read
+/// - `can_poll`: Whether to use polling mode (true) or worker thread mode (false)
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Number of bytes read, or -1 on error
+/// 
+/// # Errors
+/// Raises OSError on read failures
 ///|
 pub async fn read(
   fd : Int,
@@ -395,6 +481,25 @@ extern "C" fn write_ffi(
   len~ : Int,
 ) -> Int = "moonbitlang_async_write"
 
+/// Writes data to a file descriptor asynchronously.
+/// 
+/// This function provides non-blocking write operations through the event loop.
+/// It can operate in two modes: polling mode for non-blocking file descriptors,
+/// or worker thread mode for potentially blocking operations.
+/// 
+/// # Parameters
+/// - `fd`: File descriptor to write to
+/// - `buf`: Buffer containing data to write
+/// - `offset`: Offset within the buffer to start reading from
+/// - `len`: Number of bytes to write
+/// - `can_poll`: Whether to use polling mode (true) or worker thread mode (false)
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Number of bytes written, or -1 on error
+/// 
+/// # Errors
+/// Raises OSError on write failures
 ///|
 pub async fn write(
   fd : Int,
@@ -424,6 +529,27 @@ pub async fn write(
   }
 }
 
+/// Spawns a new process asynchronously.
+/// 
+/// This function creates a new child process with the specified executable,
+/// arguments, and environment. The operation is performed in a worker thread
+/// to avoid blocking the event loop.
+/// 
+/// # Parameters
+/// - `path`: Path to the executable to spawn
+/// - `args`: Array of command-line arguments (including argv[0])
+/// - `env`: Environment variables for the new process
+/// - `stdin`: File descriptor for stdin (or -1 to inherit)
+/// - `stdout`: File descriptor for stdout (or -1 to inherit)
+/// - `stderr`: File descriptor for stderr (or -1 to inherit)
+/// - `cwd`: Working directory for the new process
+/// - `context`: Error context for debugging
+/// 
+/// # Returns
+/// Process ID of the spawned process
+/// 
+/// # Errors
+/// Raises OSError if process creation fails
 ///|
 pub async fn spawn(
   path : Bytes,
@@ -441,6 +567,20 @@ pub async fn spawn(
   )
 }
 
+/// Waits for a process to exit asynchronously.
+/// 
+/// This function suspends the current coroutine until the specified process
+/// terminates. It integrates with the event loop's process management to
+/// provide non-blocking process waiting.
+/// 
+/// # Parameters
+/// - `pid`: Process ID to wait for
+/// 
+/// # Example
+/// ```moonbit
+/// let pid = spawn(b"/bin/echo", [Some(b"hello")], context~="test")
+/// wait_pid(pid)  // Wait for echo to finish
+/// ```
 ///|
 pub async fn wait_pid(pid : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
