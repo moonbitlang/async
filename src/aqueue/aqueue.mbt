@@ -12,37 +12,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// Internal structure representing a reader waiting for data from the queue.
+/// This is used internally by the Queue implementation to manage blocked readers.
 priv struct Reader[X] {
-  /// the value provided the reader.
+  /// The value provided to the reader.
   /// `value` must be `Some(_)` when the reader is woken
   mut value : X?
+  /// The coroutine associated with this reader.
   /// `None` indicates that the reader is cancelled
   mut coro : @coroutine.Coroutine?
 }
 
-///|
-/// An asynchronous queue, where reader can wait for data to arrive
+/// An asynchronous queue that allows readers to wait for data to arrive
 /// in a non-blocking manner.
+/// 
 /// The internal buffer size of this queue is unlimited,
 /// and writing to the queue will never block.
+/// 
+/// # Features
+/// - Non-blocking writes: `put` operations never block
+/// - Blocking reads: `get` operations block until data is available  
+/// - Fair scheduling: Multiple readers are served in FIFO order
+/// - Cancellation support: Blocked readers can be cancelled
+/// - Try-read support: `try_get` provides non-blocking read option
 struct Queue[X] {
+  /// Queue of readers waiting for data
   readers : @deque.Deque[Reader[X]]
-  /// invariant: if `buffer` is non-empty, `readers` must be empty
+  /// Internal buffer for storing queued elements
+  /// Invariant: if `buffer` is non-empty, `readers` must be empty
   buffer : @deque.Deque[X]
 }
 
-///|
-/// Create an empty queue.
+/// Create an empty asynchronous queue.
+/// 
+/// # Returns
+/// A new empty Queue that can hold elements of type X.
+/// 
+/// # Example
+/// ```moonbit
+/// let queue : @aqueue.Queue[Int] = @aqueue.Queue::new()
+/// ```
 #as_free_fn
 pub fn[X] Queue::new() -> Queue[X] {
   { readers: @deque.new(), buffer: @deque.new() }
 }
 
-///|
-/// Put a new element into a queue. This function never blocks.
-/// If the queue is currently empty and there are readers blocked on this thread,
-/// one reader will be woken to process the data.
+/// Put a new element into the queue. This function never blocks.
+/// 
+/// If the queue is currently empty and there are readers blocked waiting for data,
+/// one reader will be woken to process the data immediately.
+/// Otherwise, the data is stored in the internal buffer.
+/// 
+/// # Parameters
+/// - `data`: The element to add to the queue
+/// 
+/// # Example
+/// ```moonbit
+/// let queue : @aqueue.Queue[Int] = @aqueue.Queue::new()
+/// queue.put(42)
+/// queue.put(100)
+/// ```
 pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
   loop self.readers.pop_front() {
     None => self.buffer.push_back(data)
@@ -59,15 +88,19 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
   }
 }
 
-///|
-/// Fetch an element from the queue.
-/// If the queue is currently empty, `get` will block and wait until data arrive.
-/// If there are multiple readers blocked on `get`,
-/// new data will be delivered in a first-come-first-serve manner.
-///
-/// `get` itself never fail, and will wait indefinitely.
-/// However, since `get` is a blocking point, the task running `get` may be cancelled,
-/// in this case, an cancellation will be raised from `get`.
+/// Fetch an element from the queue asynchronously.
+/// 
+/// If the queue is currently empty, `get` will block and wait until data arrives.
+/// If there are multiple readers blocked on `get`, new data will be delivered 
+/// in a first-come-first-serve manner.
+/// 
+/// # Returns
+/// The next available element from the queue.
+/// 
+/// # Cancellation
+/// `get` itself never fails and will wait indefinitely for data.
+/// However, since `get` is a blocking point, the task running `get` may be cancelled.
+/// In this case, a cancellation error will be raised from `get`.
 pub async fn[X] Queue::get(self : Queue[X]) -> X {
   if self.buffer.pop_front() is Some(data) {
     return data
@@ -83,9 +116,22 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
   reader.value.unwrap()
 }
 
-///|
 /// Try to fetch an element from the queue without blocking.
-/// If no element is in the queue at the moment, `None` is returned.
+/// 
+/// This is the non-blocking variant of `get`. If no element is available 
+/// in the queue at the moment, `None` is returned immediately.
+/// 
+/// # Returns
+/// - `Some(data)` if an element is available
+/// - `None` if the queue is empty
+/// 
+/// # Example
+/// ```moonbit
+/// let queue : @aqueue.Queue[Int] = @aqueue.Queue::new()
+/// inspect(queue.try_get(), content="None")
+/// queue.put(42)
+/// inspect(queue.try_get(), content="Some(42)")
+/// ```
 pub fn[X] Queue::try_get(self : Queue[X]) -> X? {
   self.buffer.pop_front()
 }
