@@ -12,5 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// Check if a file descriptor is in blocking mode.
+/// 
+/// This function uses a C foreign function interface to check whether
+/// a given file descriptor is currently set to blocking or non-blocking mode.
+/// It's used internally to determine the current state of standard streams
+/// (stdin, stdout, stderr) before modifying their blocking behavior.
+/// 
+/// # Arguments
+/// 
+/// * `fd` - The file descriptor to check (e.g., 0 for stdin, 1 for stdout, 2 for stderr)
+/// 
+/// # Returns
+/// 
+/// An integer where:
+/// - A positive value indicates the file descriptor is in blocking mode
+/// - Zero or negative indicates non-blocking mode
+/// 
+/// # Note
+/// 
+/// This function is primarily used internally by the pipe module to manage
+/// the blocking state of standard streams when they are wrapped as pipes.
 extern "C" fn get_blocking(fd : Int) -> Int = "moonbitlang_async_get_blocking"
