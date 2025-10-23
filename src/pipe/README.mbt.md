@@ -24,27 +24,25 @@ Pipes are a fundamental IPC (Inter-Process Communication) mechanism that allow d
 ### Creating and Using Pipes
 
 ```moonbit
-fn init {
-  @async.with_event_loop(fn() {
-    // Create a new pipe
-    let (reader, writer) = @pipe.pipe()
+async fn example() -> Unit {
+  // Create a new pipe
+  let (reader, writer) = @pipe.pipe()
+  
+  // Create a buffer for reading
+  let buffer : FixedArray[Byte] = FixedArray::make(1024, 0)
+  
+  @async.with_task_group(fn(group) {
+    // Writer task
+    group.spawn_bg(fn() {
+      defer writer.close()
+      writer.write("Hello, pipe!")
+    })
     
-    // Create a buffer for reading
-    let buffer : FixedArray[Byte] = FixedArray::make(1024, 0)
-    
-    @async.with_task_group(fn(group) {
-      // Writer task
-      group.spawn_bg(fn() {
-        defer writer.close()
-        writer.write("Hello, pipe!")
-      })
-      
-      // Reader task  
-      group.spawn_bg(fn() {
-        defer reader.close()
-        let bytes_read = reader.read(buffer)
-        ignore(bytes_read)
-      })
+    // Reader task  
+    group.spawn_bg(fn() {
+      defer reader.close()
+      let bytes_read = reader.read(buffer)
+      ignore(bytes_read)
     })
   })
 }
@@ -53,16 +51,14 @@ fn init {
 ### Working with Standard Streams
 
 ```moonbit
-fn init {
-  @async.with_event_loop(fn() {
-    @async.with_task_group(fn(group) {
-      group.spawn_bg(fn() {
-        // Write to stdout
-        @pipe.stdout.write("Hello, world!\n")
-        
-        // Write errors to stderr
-        @pipe.stderr.write("An error occurred\n")
-      })
+async fn example_2() -> Unit {
+  @async.with_task_group(fn(group) {
+    group.spawn_bg(fn() {
+      // Write to stdout
+      @pipe.stdout.write("Hello, world!\n")
+      
+      // Write errors to stderr
+      @pipe.stderr.write("An error occurred\n")
     })
   })
 }
@@ -71,33 +67,31 @@ fn init {
 ### Task-based Communication
 
 ```moonbit
-fn init {
-  @async.with_event_loop(fn() {
-    @async.with_task_group(fn(group) {
-      let (reader, writer) = @pipe.pipe()
-      
-      // Producer task
-      group.spawn_bg(fn() {
-        defer writer.close()
-        for i = 0; i < 3; i = i + 1 {
-          let message = "Message \{i}\n"
-          writer.write(message)
-          @async.sleep(10)
-        }
-      })
-      
-      // Consumer task
-      group.spawn_bg(fn() {
-        defer reader.close()
-        let buffer : FixedArray[Byte] = FixedArray::make(1024, 0)
-        loop {
-          let n = reader.read(buffer)
-          if n == 0 { break } // EOF
-          let data = Bytes::from_fixedarray(buffer, 0, n)
-          let text = @encoding/utf8.decode(data)
-          println("Received: \{text}")
-        }
-      })
+async fn example_3() -> Unit {
+  @async.with_task_group(fn(group) {
+    let (reader, writer) = @pipe.pipe()
+    
+    // Producer task
+    group.spawn_bg(fn() {
+      defer writer.close()
+      for i = 0; i < 3; i = i + 1 {
+        let message = "Message \{i}\n"
+        writer.write(message)
+        @async.sleep(10)
+      }
+    })
+    
+    // Consumer task
+    group.spawn_bg(fn() {
+      defer reader.close()
+      let buffer : FixedArray[Byte] = FixedArray::make(1024, 0)
+      while true {
+        let n = reader.read(buffer)
+        if n == 0 { break } // EOF
+        let data = Bytes::from_fixedarray(buffer, len=n)
+        let text = @encoding/utf8.decode(data)
+        println("Received: \{text}")
+      }
     })
   })
 }
@@ -108,22 +102,20 @@ fn init {
 ### Reading Exact Amounts
 
 ```moonbit
-fn init {
-  @async.with_event_loop(fn() {
-    @async.with_task_group(fn(group) {
-      let (reader, writer) = @pipe.pipe()
-      
-      group.spawn_bg(fn() {
-        defer writer.close()
-        writer.write("Hello, world! This is a test message.")
-      })
-      
-      group.spawn_bg(fn() {
-        defer reader.close()
-        let first_part = reader.read_exactly(5)
-        let decoded = @encoding/utf8.decode(first_part)
-        println("First part: \{decoded}")
-      })
+async fn example_4() -> Unit {
+  @async.with_task_group(fn(group) {
+    let (reader, writer) = @pipe.pipe()
+    
+    group.spawn_bg(fn() {
+      defer writer.close()
+      writer.write("Hello, world! This is a test message.")
+    })
+    
+    group.spawn_bg(fn() {
+      defer reader.close()
+      let first_part = reader.read_exactly(5)
+      let decoded = @encoding/utf8.decode(first_part)
+      println("First part: \{decoded}")
     })
   })
 }
@@ -183,21 +175,19 @@ Standard error as an async-compatible pipe writer. Automatically manages blockin
 The pipe operations integrate with MoonBit's error handling system:
 
 ```moonbit
-fn init {
-  @async.with_event_loop(fn() {
-    // Pipe creation can raise
-    let result = try {
-      let (reader, writer) = @pipe.pipe()
-      defer { reader.close(); writer.close() }
-      (reader, writer)
-    } catch {
-      err => {
-        println("Failed to create pipe: \{err}")
-        return
-      }
+async fn example_5() -> Unit {
+  // Pipe creation can raise
+  let result = try {
+    let (reader, writer) = @pipe.pipe()
+    defer { reader.close(); writer.close() }
+    (reader, writer)
+  } catch {
+    err => {
+      println("Failed to create pipe: \{err}")
+      return
     }
-    ignore(result)
-  })
+  }
+  ignore(result)
 }
 ```
 
