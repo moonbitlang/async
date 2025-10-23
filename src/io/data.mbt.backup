@@ -15,71 +15,50 @@
 ///|
 /// `Data` is an abstraction over various kinds of data format
 /// that can be read from/write to a reader/writer.
-/// 
 /// Currently, available formats of data include:
 ///
 /// - `Bytes` and `BytesView` for raw binary data
 /// - `String` and `StringView`, for string (UTF8 encoded)
 /// - `Json` for JSON string (UTF8 encoded)
-///
-/// ## Usage
-///
-/// On the sender side, `Data` is implemented by various types,
-/// allowing them to be passed directly to `Writer::write()`.
-/// On the receiver side, `&Data` provides conversion methods
-/// to extract data in different formats.
 trait Data {
   to_bytesview(Self) -> BytesView = _
   to_bytes(Self) -> Bytes
 }
 
 ///|
-/// Default implementation of `to_bytesview` that creates a view
-/// from the result of `to_bytes()`.
 impl Data with to_bytesview(self) {
   self.to_bytes()[:]
 }
 
 ///|
-/// Implementation of `Data` for `Bytes` - returns the bytes directly.
 pub impl Data for Bytes with to_bytes(self) {
   self
 }
 
 ///|
-/// Implementation of `Data` for `BytesView` - converts view to bytes.
 pub impl Data for BytesView with to_bytes(self) {
   self.to_bytes()
 }
 
 ///|
-/// Implementation of `to_bytesview` for `BytesView` - returns the view directly.
 pub impl Data for BytesView with to_bytesview(self) {
   self
 }
 
 ///|
-/// Implementation of `Data` for `String` - encodes to UTF-8 bytes.
 pub impl Data for String with to_bytes(self) {
   @encoding/utf8.encode(self)
 }
 
 ///|
-/// Implementation of `Data` for `StringView` - encodes to UTF-8 bytes.
 pub impl Data for StringView with to_bytes(self) {
   @encoding/utf8.encode(self)
 }
 
 ///|
-/// Implementation of `Data` for `Json` - stringifies then encodes to UTF-8.
 pub impl Data for Json with to_bytes(self) {
   @encoding/utf8.encode(self.stringify())
 }
-
-///|
-/// Helper methods for received data conversion.
-/// These methods are available on `&Data` instances returned
-/// from read operations like `Reader::read_all()`.
 
 // ==============================================================================
 // internal node: the `Data` trait serves two purpose.
@@ -95,10 +74,6 @@ pub impl Data for Json with to_bytes(self) {
 
 ///|
 /// Extract the raw binary data from `&Data`
-///
-/// This method returns the underlying bytes without any conversion.
-/// Use this when you need to work with raw binary data or
-/// forward bytes to another writer.
 pub fn &Data::binary(self : &Data) -> Bytes {
   self.to_bytes()
 }
@@ -108,11 +83,6 @@ pub fn &Data::binary(self : &Data) -> Bytes {
 ///
 /// Calling this method will cause string decoding,
 /// so user should avoid calling `.text()` more than once.
-/// Cache the result if you need to use it multiple times.
-///
-/// # Errors
-///
-/// Raises an error if the data is not valid UTF-8.
 pub fn &Data::text(self : &Data) -> String raise {
   self.to_bytes() |> @encoding/utf8.decode
 }
@@ -122,11 +92,6 @@ pub fn &Data::text(self : &Data) -> String raise {
 ///
 /// Calling this method will cause string decoding and json parsing,
 /// so user should avoid calling `.json()` more than once.
-/// Cache the result if you need to use it multiple times.
-///
-/// # Errors
-///
-/// Raises an error if the data is not valid UTF-8 or valid JSON.
 pub fn &Data::json(self : &Data) -> Json raise {
   self.to_bytes() |> @encoding/utf8.decode |> @json.parse
 }

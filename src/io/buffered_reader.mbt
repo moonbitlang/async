@@ -14,8 +14,26 @@
 
 ///|
 /// A buffered wrapper around a normal reader.
-/// This reader will buffer already read content,
-/// and supports searching & arbitrary slicing of read content.
+/// 
+/// This reader buffers already read content and supports advanced operations like:
+/// - Searching for byte patterns within buffered data
+/// - Arbitrary slicing of read content without advancing the stream
+/// - Indexed access to buffered data
+/// - Line-by-line reading
+///
+/// ## Performance Considerations
+///
+/// `BufferedReader` is designed for scenarios where you need to:
+/// - Look ahead in the data stream
+/// - Search for patterns before consuming data
+/// - Parse structured data that requires backtracking
+///
+/// For simple sequential reading, a plain `Reader` may be more efficient.
+///
+/// ## Memory Management
+///
+/// The buffer grows dynamically as needed. Call `drop()` periodically
+/// to reduce memory usage by removing consumed data from the buffer.
 struct BufferedReader[R] {
   reader : R
   mut buf : FixedArray[Byte]
@@ -24,15 +42,32 @@ struct BufferedReader[R] {
 }
 
 ///|
+/// Default segment size for buffer allocation (1024 bytes).
+/// 
+/// The buffer grows in multiples of this size to balance
+/// memory usage and allocation efficiency.
 const SEGMENT_SIZE = 1024
 
 ///|
-/// Create a new buffered reader that wrap around an existing reader.
+/// Create a new buffered reader that wraps around an existing reader.
+///
+/// The buffer starts with a default size of `SEGMENT_SIZE` bytes
+/// and grows automatically as needed.
+///
+/// # Parameters
+/// - `reader`: The underlying reader to wrap
+///
+/// # Returns
+/// A new `BufferedReader` instance
 pub fn[R] BufferedReader::new(reader : R) -> BufferedReader[R] {
   { reader, buf: FixedArray::make(SEGMENT_SIZE, 0), start: 0, len: 0 }
 }
 
 ///|
+/// Enlarge the internal buffer to accommodate at least `n` bytes.
+/// 
+/// This method handles buffer management by either shifting existing
+/// data or allocating a larger buffer as needed.
 fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
   let capacity = self.buf.length()
   if self.start + n <= capacity {
@@ -52,6 +87,11 @@ fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
+/// Ensure that at least `len` bytes are available in the buffer.
+/// 
+/// This method reads from the underlying reader as needed to satisfy
+/// the requirement. If the underlying reader reaches EOF before
+/// enough data is available, `ReaderClosed` is raised.
 async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
   if self.len >= len {
     return
@@ -71,10 +111,15 @@ async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
 }
 
 ///|
-/// Fetch some more data from the underlying reader.
-/// The exact number of fetched data may varies.
-/// Returns `true` if data are successfully fetched,
-/// or `false` if the underlying reader already reached EOF.
+/// Fetch additional data from the underlying reader.
+/// 
+/// This method attempts to read more data into the buffer.
+/// The exact amount fetched may vary based on what the underlying
+/// reader provides.
+///
+/// # Returns
+/// `true` if data was successfully fetched, `false` if the
+/// underlying reader has reached EOF
 async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Bool {
   self.enlarge_to(self.len + SEGMENT_SIZE)
   let offset = self.start + self.len
@@ -88,14 +133,18 @@ async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Bool {
 }
 
 ///|
-/// `reader.drop(n)` drops the first `n` bytes of data in the reader.
-/// If there are no enough data to drop,
-/// `BufferedReader` will request more data from the inner reader.
-/// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be raised.
+/// Drop the first `n` bytes of data from the reader.
+/// 
+/// This operation advances the reader stream and affects the semantics
+/// of all index-based operations. If there isn't enough buffered data,
+/// the method will request more data from the inner reader.
 ///
-/// This operation will advance the reader stream,
-/// and will affect the semantic of all index based operations.
+/// # Parameters
+/// - `n`: Number of bytes to drop
+///
+/// # Errors
+/// Raises `ReaderClosed` if the inner reader reaches EOF before
+/// enough data is available to drop.
 pub async fn[R : Reader] BufferedReader::drop(self : Self[R], n : Int) -> Unit {
   self.ensure(n)
   self.len -= n
@@ -107,13 +156,11 @@ pub async fn[R : Reader] BufferedReader::drop(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
-/// Copy some data into the given buffer from the reader.
-/// If there is no buffered data,
-/// `BufferedReader` will request more data from the inner reader.
-/// The number of read bytes will be returned, which is always positive,
-/// unless the stream already reaches its end,
-/// i.e. there are no buffered data and the inner reader has been closed.
-/// Copied data will be removed from the reader stream.
+/// Implementation of the `Reader` trait for `BufferedReader`.
+/// 
+/// This method reads data from the buffer if available, otherwise
+/// delegates to the underlying reader. Copied data is removed
+/// from the reader stream.
 pub impl[R : Reader] Reader for BufferedReader[R] with read(
   self,
   buf,
@@ -131,13 +178,21 @@ pub impl[R : Reader] Reader for BufferedReader[R] with read(
 }
 
 ///|
-/// Get the nth byte from the start of the reader.
-/// If there are no enough data available,
-/// `BufferedReader` will request more data from the inner reader.
-/// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be raised.
-/// `op_get` will not advance the reader stream,
-/// so this operation is idempotent.
+/// Get the nth byte from the start of the reader stream.
+/// 
+/// This operation is idempotent and does not advance the reader stream.
+/// If there isn't enough buffered data, the method will request more
+/// data from the inner reader.
+///
+/// # Parameters
+/// - `index`: Zero-based index of the byte to retrieve
+///
+/// # Returns
+/// The byte at the specified index
+///
+/// # Errors
+/// Raises `ReaderClosed` if the inner reader reaches EOF before
+/// the indexed byte is available.
 pub async fn[R : Reader] BufferedReader::op_get(
   self : Self[R],
   index : Int,
@@ -147,21 +202,28 @@ pub async fn[R : Reader] BufferedReader::op_get(
 }
 
 ///|
-/// Get a slice of data from the reader,
-/// `start` and `end` count from start of stream.
-/// If there are no enough data available,
-/// `BufferedReader` will request more data from the inner reader.
-/// If the inner reader is closed before enough data is available,
-/// `ReaderClosed` will be raised.
+/// Get a slice of data from the reader as a `BytesView`.
+/// 
+/// This operation is idempotent and does not advance the reader stream.
+/// If there isn't enough buffered data, the method will request more
+/// data from the inner reader.
 ///
-/// `op_as_view` will not advance the reader stream,
-/// so this operation is idempotent.
+/// # Parameters
+/// - `start`: Starting index (default: 0)
+/// - `end`: Ending index (exclusive)
 ///
-/// The returned bytes view MUST be temporary.
-/// If data is consumed (for example via `.drop()` or `.read()`)
-/// from the reader after `op_as_view`, the view MUST NOT be used again.
-/// The view should be copied via `.to_bytes()`
-/// before consuming data from the reader.
+/// # Returns
+/// A `BytesView` containing the requested slice
+///
+/// # Errors
+/// Raises `ReaderClosed` if the inner reader reaches EOF before
+/// the requested slice is available.
+///
+/// # Safety
+/// The returned `BytesView` is temporary and MUST NOT be used after
+/// calling methods that consume data from the reader (like `drop()` or `read()`).
+/// Copy the view with `.to_bytes()` before consuming data if you need
+/// to retain the data.
 pub async fn[R : Reader] BufferedReader::op_as_view(
   self : Self[R],
   start? : Int = 0,
@@ -176,17 +238,22 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 }
 
 ///|
-/// Find the start index of the first occurence of `bytes` in the reader.
-/// The returned index is counted from start of reader.
+/// Find the first occurrence of a byte pattern in the buffered data.
+/// 
+/// This operation is idempotent and does not advance the reader stream.
+/// If the pattern is not found in currently buffered data, the method
+/// will request more data from the inner reader.
 ///
-/// If the target substring is not found in buffered data,
-/// `BufferedReader` will request more data from the inner reader.
+/// # Parameters
+/// - `target`: The byte pattern to search for
 ///
-/// If the inner reader is closed before the target substring is found,
-/// `ReaderClosed` will be raised.
+/// # Returns
+/// The index of the first occurrence of the pattern, counted from
+/// the start of the reader stream
 ///
-/// `find` will not advance the reader stream,
-/// so this operation is idempotent.
+/// # Errors
+/// Raises `ReaderClosed` if the inner reader reaches EOF before
+/// the target pattern is found.
 pub async fn[R : Reader] BufferedReader::find(
   self : Self[R],
   target : Bytes,
@@ -206,17 +273,19 @@ pub async fn[R : Reader] BufferedReader::find(
 }
 
 ///|
-/// Find the start index of the first occurence of `bytes` in the reader.
-/// The returned index is counted from start of reader.
+/// Find the first occurrence of a byte pattern, returning `None` if not found.
+/// 
+/// This operation is idempotent and does not advance the reader stream.
+/// If the pattern is not found in currently buffered data, the method
+/// will request more data from the inner reader. Unlike `find()`, this
+/// method returns `None` if the pattern is not found when EOF is reached.
 ///
-/// If the target substring is not found in buffered data,
-/// `BufferedReader` will request more data from the inner reader.
+/// # Parameters
+/// - `target`: The byte pattern to search for
 ///
-/// If the inner reader is closed before the target substring is found,
-/// `None` will be returned.
-///
-/// `find_opt` will not advance the reader stream,
-/// so this operation is idempotent.
+/// # Returns
+/// `Some(index)` if the pattern is found, `None` if EOF is reached
+/// without finding the pattern
 pub async fn[R : Reader] BufferedReader::find_opt(
   self : Self[R],
   target : Bytes,
@@ -236,12 +305,20 @@ pub async fn[R : Reader] BufferedReader::find_opt(
 }
 
 ///|
-/// Read content from a buffered reader until newline (`\n`).
-/// If the reader already reaches EOF, `None` is returned.
-/// Otherwise, the content of the line (without the trailing newline) is returned,
-/// and the content of the line and the newline character
-/// will be conusmed from the reader.
-/// The returned string is decoded with UTF8.
+/// Read a line of text from the buffered reader.
+/// 
+/// This method reads content until a newline character (`\n`) is found.
+/// The returned string excludes the trailing newline, but the newline
+/// character is consumed from the reader.
+///
+/// # Returns
+/// - `Some(line)` if a line is successfully read
+/// - `None` if the reader has reached EOF with no data
+///
+/// # Behavior
+/// - If a newline is found, returns the line content (without newline)
+/// - If EOF is reached with data but no newline, returns all remaining data
+/// - If EOF is reached with no data, returns `None`
 pub async fn[R : Reader] BufferedReader::read_line(self : Self[R]) -> String? {
   match self.find_opt("\n") {
     None if self.len == 0 => None
