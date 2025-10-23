@@ -12,5 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
+/// Get the number of milliseconds elapsed since the Unix epoch (January 1, 1970 UTC).
+///
+/// This function provides high-precision timing information by returning the current time
+/// as milliseconds since the Unix epoch. It's commonly used for timestamping, performance
+/// measurement, and time-based calculations in async operations.
+///
+/// @return The current time in milliseconds since Unix epoch as an Int64
 pub extern "C" fn ms_since_epoch() -> Int64 = "moonbitlang_async_get_ms_since_epoch"
