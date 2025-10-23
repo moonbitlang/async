@@ -13,19 +13,31 @@
 // limitations under the License.
 
 ///|
+/// Gets the current environment variables as an array of byte strings.
+/// This is used internally to inherit environment variables from the parent process.
 extern "C" fn get_curr_env() -> FixedArray[Bytes?] = "moonbitlang_async_get_curr_env"
 
 ///|
+/// The current environment variables inherited from the parent process.
 let curr_env : FixedArray[Bytes?] = get_curr_env()
 
 ///|
+/// Terminates a process with the given process ID.
+/// This function is used internally for cleanup when processes are cancelled.
 extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
 
 ///|
+/// Gets the exit code result of a completed process.
+/// Returns 0 on success, negative value on error.
 #borrow(out)
 extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
 
 ///|
+/// Internal function to spawn a new process asynchronously.
+/// This is the core implementation used by both `run` and `spawn_orphan`.
+/// 
+/// The function handles UTF-8 encoding of command and arguments,
+/// environment variable setup, and I/O redirection.
 async fn spawn(
   cmd : String,
   args : Array[String],
@@ -406,11 +418,14 @@ trait ProcessInput {
 }
 
 ///|
+/// Default implementation for after_spawn cleanup. Does nothing.
 impl ProcessInput with after_spawn(_) {
   ()
 }
 
 ///|
+/// Implementation of ProcessInput trait for @pipe.PipeRead.
+/// Allows pipe readers to be used as process input (stdin).
 pub impl ProcessInput for @pipe.PipeRead with fd(self) {
   self.fd()
 }
@@ -423,33 +438,42 @@ trait ProcessOutput {
 }
 
 ///|
+/// Default implementation for after_spawn cleanup. Does nothing.
 impl ProcessOutput with after_spawn(_) {
   ()
 }
 
 ///|
+/// Implementation of ProcessOutput trait for @pipe.PipeWrite.
+/// Allows pipe writers to be used as process output (stdout/stderr).
 pub impl ProcessOutput for @pipe.PipeWrite with fd(self) {
   self.fd()
 }
 
 ///|
+/// Internal wrapper for pipe reads used in temporary process pipes.
+/// The `closed` flag ensures proper cleanup when the process starts.
 priv struct TempPipeRead {
   pipe : @pipe.PipeRead
   mut closed : Bool
 }
 
 ///|
+/// Internal wrapper for pipe writes used in temporary process pipes.
+/// The `closed` flag ensures proper cleanup when the process starts.
 priv struct TempPipeWrite {
   pipe : @pipe.PipeWrite
   mut closed : Bool
 }
 
 ///|
+/// Returns the file descriptor of the wrapped pipe.
 impl ProcessOutput for TempPipeWrite with fd(self) {
   self.pipe.fd()
 }
 
 ///|
+/// Cleans up the pipe after process spawning by closing it.
 impl ProcessOutput for TempPipeWrite with after_spawn(self) {
   if !self.closed {
     self.closed = true
@@ -458,11 +482,13 @@ impl ProcessOutput for TempPipeWrite with after_spawn(self) {
 }
 
 ///|
+/// Returns the file descriptor of the wrapped pipe.
 impl ProcessInput for TempPipeRead with fd(self) {
   self.pipe.fd()
 }
 
 ///|
+/// Cleans up the pipe after process spawning by closing it.
 impl ProcessInput for TempPipeRead with after_spawn(self) {
   if !self.closed {
     self.closed = true
@@ -471,24 +497,30 @@ impl ProcessInput for TempPipeRead with after_spawn(self) {
 }
 
 ///|
+/// Internal wrapper for file-based I/O redirection.
+/// Wraps a file handle for use as process input or output.
 priv struct RedirectToFile(@fs.File)
 
 ///|
+/// Returns the file descriptor of the wrapped file.
 impl ProcessOutput for RedirectToFile with fd(self) {
   self.0.fd()
 }
 
 ///|
+/// Closes the file after process spawning.
 impl ProcessOutput for RedirectToFile with after_spawn(self) {
   self.0.close()
 }
 
 ///|
+/// Returns the file descriptor of the wrapped file.
 impl ProcessInput for RedirectToFile with fd(self) {
   self.0.fd()
 }
 
 ///|
+/// Closes the file after process spawning.
 impl ProcessInput for RedirectToFile with after_spawn(self) {
   self.0.close()
 }
