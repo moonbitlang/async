@@ -28,6 +28,10 @@ jobs:
           echo "" >dummy_libmoonbitrun.c
           gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
 
+      - name: patch runtime for backtrace
+        run: |
+          mv patched-runtime.c ~/.moon/lib/runtime.c
+
       - name: setup sanitizer check
         run: |
           for f in $(find src -name "moon.pkg.json" -not -wholename "src/internal/*" -print); do
