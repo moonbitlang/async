@@ -1,0 +1,45 @@
+# Bytes Utility Package
+
+This package provides utility functions for working with byte arrays in MoonBit async library.
+
+## Overview
+
+The `bytes_util` package contains helper functions to process and convert byte data, particularly for ASCII string representations. This is primarily used internally by the async library for debugging and logging purposes.
+
+## Functions
+
+### `ascii_to_string`
+
+Converts a `BytesView` containing ASCII bytes to a human-readable string representation.
+
+```moonbit
+pub fn ascii_to_string(ascii : BytesView) -> String
+```
+
+**Description:**
+This function processes each byte in the input and converts it to a string representation suitable for display or debugging. It handles various ASCII characters differently:
+
+- Newline characters (`'\n'`) are preserved as literal newlines in the output
+- Carriage returns (`'\r'`) are escaped and displayed as `"\\r"`
+- Tab characters (`'\t'`) are escaped and displayed as `"\\t"`
+- Printable ASCII characters (codes 32-126) are converted directly to their character representation
+- Non-printable bytes are escaped as hexadecimal values (e.g., `"\\x0a"`)
+
+**Parameters:**
+- `ascii`: A `BytesView` containing the ASCII bytes to convert
+
+**Returns:**
+A `String` with human-readable representation of the ASCII bytes
+
+**Example:**
+```moonbit
+let test_data = "Hello\tWorld\n".to_bytes()
+let result = ascii_to_string(test_data.op_as_view())
+println(result) // Output includes escaped tab and literal newline
+```
+
+## Usage Notes
+
+- This package is primarily intended for internal use within the async library
+- The `ascii_to_string` function is useful for debugging binary data that may contain both printable and non-printable characters
+- Non-ASCII bytes (values > 126) are displayed as hexadecimal escape sequences

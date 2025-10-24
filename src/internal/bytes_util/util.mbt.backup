@@ -12,27 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// Converts a BytesView containing ASCII bytes to a human-readable string.
-/// 
-/// This function processes each byte in the input and converts it to a string representation:
-/// - Newline characters (`'\n'`) are preserved as literal newlines
-/// - Carriage returns (`'\r'`) are escaped as `"\\r"`
-/// - Tab characters (`'\t'`) are escaped as `"\\t"`  
-/// - Printable ASCII characters (32-126) are converted directly to their character representation
-/// - Non-printable bytes are escaped as hexadecimal values (e.g., `"\\x0a"`)
-/// 
-/// # Parameters
-/// - `ascii`: A BytesView containing the ASCII bytes to convert
-/// 
-/// # Returns
-/// A String with human-readable representation of the ASCII bytes
-/// 
-/// # Example
-/// ```moonbit
-/// let bytes = @encoding/utf8.encode("Hello\tWorld\n")
-/// let result = ascii_to_string(bytes.op_as_view())
-/// // result contains escaped tab and literal newline
-/// ```
+///|
 pub fn ascii_to_string(ascii : BytesView) -> String {
   let builder = StringBuilder::new()
   for byte in ascii {
