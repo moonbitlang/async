@@ -13,6 +13,18 @@
 // limitations under the License.
 
 ///|
+extern "C" fn fd_is_nonblocking_ffi(fd : Int) -> Int = "moonbitlang_async_fd_is_nonblocking"
+
+///|
+pub fn fd_is_nonblocking(fd : Int, context~ : String) -> Bool raise {
+  let ret = fd_is_nonblocking_ffi(fd)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret > 0
+}
+
+///|
 extern "C" fn set_blocking_ffi(fd : Int) -> Int = "moonbitlang_async_set_blocking"
 
 ///|

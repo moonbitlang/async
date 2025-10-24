@@ -6,6 +6,5 @@
   ],
   "test-import": [
     "moonbitlang/async"
-  ],
-  "native-stub": [ "stub.c" ]
+  ]
 }

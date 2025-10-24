@@ -17,6 +17,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+int moonbitlang_async_fd_is_nonblocking(int fd) {
+  int flags = fcntl(fd, F_GETFL);
+  if (flags < 0)
+    return flags;
+
+  return (flags & O_NONBLOCK) > 0;
+}
+
 int moonbitlang_async_set_blocking(int fd) {
   int flags = fcntl(fd, F_GETFL);
   if (flags < 0) return flags;

@@ -4,6 +4,8 @@ package "moonbitlang/async/internal/fd_util"
 // Values
 fn close(Int, context~ : String) -> Unit raise
 
+fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
+
 fn pipe(String) -> (Int, Int) raise
 
 fn set_blocking(Int, context~ : String) -> Unit raise

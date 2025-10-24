@@ -48,16 +48,21 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 /// `@async.with_event_loop` will reset standard input
 /// back to its original state on exit.
 pub let stdin : PipeRead = {
-  if get_blocking(0) > 0 {
-    fn init() raise {
-      @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`")
-    }
+  try @fd_util.fd_is_nonblocking(0, context="initialize `@pipe.stdin`") catch {
+    err => abort(err.to_string())
+  } noraise {
+    true => ()
+    false => {
+      fn init() raise {
+        @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`")
+      }
 
-    fn exit() raise {
-      @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`")
-    }
+      fn exit() raise {
+        @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`")
+      }
 
-    @event_loop.register_hook(init~, exit~)
+      @event_loop.register_hook(init~, exit~)
+    }
   }
   PipeRead(0)
 }
@@ -68,16 +73,21 @@ pub let stdin : PipeRead = {
 /// `@async.with_event_loop` will reset standard output
 /// back to its original state on exit.
 pub let stdout : PipeWrite = {
-  if get_blocking(1) > 0 {
-    fn init() raise {
-      @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`")
-    }
+  try @fd_util.fd_is_nonblocking(1, context="initialize `@pipe.stdout`") catch {
+    err => abort(err.to_string())
+  } noraise {
+    true => ()
+    false => {
+      fn init() raise {
+        @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`")
+      }
 
-    fn exit() raise {
-      @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`")
-    }
+      fn exit() raise {
+        @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`")
+      }
 
-    @event_loop.register_hook(init~, exit~)
+      @event_loop.register_hook(init~, exit~)
+    }
   }
   PipeWrite(1)
 }
@@ -88,16 +98,21 @@ pub let stdout : PipeWrite = {
 /// `@async.with_event_loop` will reset standard error
 /// back to its original state on exit.
 pub let stderr : PipeWrite = {
-  if get_blocking(2) > 0 {
-    fn init() raise {
-      @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`")
-    }
+  try @fd_util.fd_is_nonblocking(2, context="initialize `@pipe.stderr`") catch {
+    err => abort(err.to_string())
+  } noraise {
+    true => ()
+    false => {
+      fn init() raise {
+        @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`")
+      }
 
-    fn exit() raise {
-      @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`")
-    }
+      fn exit() raise {
+        @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`")
+      }
 
-    @event_loop.register_hook(init~, exit~)
+      @event_loop.register_hook(init~, exit~)
+    }
   }
   PipeWrite(2)
 }
