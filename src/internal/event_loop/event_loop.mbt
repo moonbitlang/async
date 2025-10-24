@@ -99,23 +99,12 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
       init()
     }
   }
-  try {
-    defer {
-      curr_loop.val = None
-    }
-    let main = @coroutine.spawn(f)
-    evloop.run_forever()
-    main.unwrap()
-  } catch {
-    err => {
-      for hook in hooks {
-        if hook.exit is Some(exit) {
-          exit()
-        }
-      }
-      raise err
-    }
+  defer {
+    curr_loop.val = None
   }
+  let main = @coroutine.spawn(f)
+  evloop.run_forever()
+  main.unwrap()
 }
 
 ///|
@@ -179,6 +168,11 @@ fn EventLoop::poll(self : Self) -> Unit raise {
 
 ///|
 fn EventLoop::cleanup(self : Self) -> Unit raise {
+  for hook in hooks {
+    if hook.exit is Some(exit) {
+      exit()
+    }
+  }
   for fd, handle in self.fds {
     if handle.read is Some(coro) {
       coro.cancel()
