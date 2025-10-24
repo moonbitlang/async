@@ -13,6 +13,9 @@
 // limitations under the License.
 
 ///|
+using @fd_util {type Stat}
+
+///|
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -23,6 +26,9 @@ pub(all) enum FileKind {
   BlockDevice = 6
   CharDevice = 7
 } derive(Eq, Show)
+
+///|
+fn FileKind::from_int(x : Int) -> FileKind = "%identity"
 
 ///|
 #valtype
@@ -115,7 +121,8 @@ pub async fn open(
     mode=user_mode,
     context="@fs.open()",
   )
-  { fd, kind: Stat::from_fd(fd, context="@fs.open()").kind() }
+  let kind = FileKind::from_int(Stat::from_fd(fd, context="@fs.open()").kind())
+  { fd, kind }
 }
 
 ///|

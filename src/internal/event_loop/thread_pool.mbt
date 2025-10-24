@@ -78,7 +78,7 @@ extern "C" fn JobForWorker::open(
 #owned(path, out)
 extern "C" fn JobForWorker::stat(
   path : Bytes,
-  out : Stat,
+  out : @fd_util.Stat,
   follow_symlink~ : Bool,
 ) -> JobForWorker = "moonbitlang_async_make_stat_job"
 

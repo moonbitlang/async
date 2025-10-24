@@ -18,12 +18,7 @@ async test "read_all" {
   defer dir.close()
   let list = dir.read_all()
   list.sort()
-  @json.inspect(list, content=[
-    "fs.mbt", "stub.c", "dir.mbt", "stat.mbt", "README.md", "utils.mbt", "dir_test.mbt",
-    "eof_test.mbt", "README.mbt.md", "moon.pkg.json", "seek_test.mbt", "stat_test.mbt",
-    "walk_test.mbt", "mkdir_test.mbt", "access_test.mbt", "create_test.mbt", "read_all_test.mbt",
-    "realpath_test.mbt", "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt",
-  ])
+  @json.inspect(list, content=(["fs.mbt","stub.c","dir.mbt","README.md","utils.mbt","dir_test.mbt","eof_test.mbt","README.mbt.md","moon.pkg.json","seek_test.mbt","stat_test.mbt","walk_test.mbt","mkdir_test.mbt","access_test.mbt","create_test.mbt","read_all_test.mbt","realpath_test.mbt","pkg.generated.mbti","text_file_test.mbt","timestamp_test.mbt"]))
 }
 
 ///|
@@ -46,13 +41,5 @@ async test "as_dir" {
     assert_eq(kind, @fs.kind(path))
     kinds.push("\{file}: \{kind}")
   }
-  @json.inspect(kinds, content=[
-    "fs.mbt: Regular", "stub.c: Regular", "dir.mbt: Regular", "stat.mbt: Regular",
-    "README.md: Regular", "utils.mbt: Regular", "dir_test.mbt: Regular", "eof_test.mbt: Regular",
-    "README.mbt.md: Regular", "moon.pkg.json: Regular", "seek_test.mbt: Regular",
-    "stat_test.mbt: Regular", "walk_test.mbt: Regular", "mkdir_test.mbt: Regular",
-    "access_test.mbt: Regular", "create_test.mbt: Regular", "read_all_test.mbt: Regular",
-    "realpath_test.mbt: Regular", "pkg.generated.mbti: Regular", "text_file_test.mbt: Regular",
-    "timestamp_test.mbt: Regular",
-  ])
+  @json.inspect(kinds, content=(["fs.mbt: Regular","stub.c: Regular","dir.mbt: Regular","README.md: Regular","utils.mbt: Regular","dir_test.mbt: Regular","eof_test.mbt: Regular","README.mbt.md: Regular","moon.pkg.json: Regular","seek_test.mbt: Regular","stat_test.mbt: Regular","walk_test.mbt: Regular","mkdir_test.mbt: Regular","access_test.mbt: Regular","create_test.mbt: Regular","read_all_test.mbt: Regular","realpath_test.mbt: Regular","pkg.generated.mbti: Regular","text_file_test.mbt: Regular","timestamp_test.mbt: Regular"]))
 }
