@@ -42,5 +42,5 @@ jobs:
         run: |
           export ASAN_OPTIONS=fast_unwind_on_malloc=0
           for _ in $(seq 1 100); do
-            moon test -p moonbitlang/async/io
+            moon test
           done
