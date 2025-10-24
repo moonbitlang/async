@@ -26,7 +26,7 @@ async fn realpath(StringView, context~ : String) -> Bytes
 
 async fn recvfrom(Int, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 
-fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit
+fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit
 
 async fn remove(StringView, context~ : String) -> Unit
 

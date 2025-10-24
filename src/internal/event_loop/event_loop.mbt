@@ -38,15 +38,18 @@ let curr_loop : Ref[EventLoop?] = @ref.new(None)
 
 ///|
 priv struct EventLoopHook {
-  init : (() -> Unit)?
-  exit : (() -> Unit)?
+  init : (() -> Unit raise)?
+  exit : (() -> Unit raise)?
 }
 
 ///|
 let hooks : Array[EventLoopHook] = []
 
 ///|
-pub fn register_hook(init? : () -> Unit, exit? : () -> Unit) -> Unit {
+pub fn register_hook(
+  init? : () -> Unit raise,
+  exit? : () -> Unit raise,
+) -> Unit {
   hooks.push({ init, exit })
 }
 

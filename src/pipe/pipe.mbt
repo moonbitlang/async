@@ -49,16 +49,12 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 /// back to its original state on exit.
 pub let stdin : PipeRead = {
   if get_blocking(0) > 0 {
-    fn init() {
-      @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`") catch {
-        _ => ()
-      }
+    fn init() raise {
+      @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`")
     }
 
-    fn exit() {
-      @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`") catch {
-        _ => ()
-      }
+    fn exit() raise {
+      @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`")
     }
 
     @event_loop.register_hook(init~, exit~)
@@ -73,16 +69,12 @@ pub let stdin : PipeRead = {
 /// back to its original state on exit.
 pub let stdout : PipeWrite = {
   if get_blocking(1) > 0 {
-    fn init() {
-      @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`") catch {
-        _ => ()
-      }
+    fn init() raise {
+      @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`")
     }
 
-    fn exit() {
-      @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`") catch {
-        _ => ()
-      }
+    fn exit() raise {
+      @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`")
     }
 
     @event_loop.register_hook(init~, exit~)
@@ -97,16 +89,12 @@ pub let stdout : PipeWrite = {
 /// back to its original state on exit.
 pub let stderr : PipeWrite = {
   if get_blocking(2) > 0 {
-    fn init() {
-      @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`") catch {
-        _ => ()
-      }
+    fn init() raise {
+      @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`")
     }
 
-    fn exit() {
-      @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`") catch {
-        _ => ()
-      }
+    fn exit() raise {
+      @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`")
     }
 
     @event_loop.register_hook(init~, exit~)
