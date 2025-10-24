@@ -416,6 +416,11 @@ pub impl ProcessInput for @pipe.PipeRead with fd(self) {
 }
 
 ///|
+pub impl ProcessInput for @stdio.Input with fd(self) {
+  self.fd()
+}
+
+///|
 /// An entity that can be used to redirect stdout/stderr of a process
 trait ProcessOutput {
   fd(Self) -> Int
@@ -429,6 +434,11 @@ impl ProcessOutput with after_spawn(_) {
 
 ///|
 pub impl ProcessOutput for @pipe.PipeWrite with fd(self) {
+  self.fd()
+}
+
+///|
+pub impl ProcessOutput for @stdio.Output with fd(self) {
   self.fd()
 }
 

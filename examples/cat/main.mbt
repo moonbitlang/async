@@ -16,14 +16,15 @@
 async fn main {
   let args = @env.args()
   match args {
-    [] | [_] => @pipe.stdout.write_reader(@pipe.stdin)
+    [] | [_] => @stdio.stdout.write_reader(@stdio.stdin)
     [_, .. files] =>
       for file in files {
         if file == "-" {
-          @pipe.stdout.write_reader(@pipe.stdin)
+          @stdio.stdout.write_reader(@stdio.stdin)
         } else {
           let file = @fs.open(file, mode=ReadOnly)
-          @pipe.stdout.write_reader(file)
+          defer file.close()
+          @stdio.stdout.write_reader(file)
         }
       }
   }

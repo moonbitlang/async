@@ -4,6 +4,7 @@ package "moonbitlang/async/process"
 import(
   "moonbitlang/async/io"
   "moonbitlang/async/pipe"
+  "moonbitlang/async/stdio"
 )
 
 // Values
@@ -38,7 +39,9 @@ fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 // Traits
 trait ProcessInput
 impl ProcessInput for @pipe.PipeRead
+impl ProcessInput for @stdio.Input
 
 trait ProcessOutput
 impl ProcessOutput for @pipe.PipeWrite
+impl ProcessOutput for @stdio.Output
 

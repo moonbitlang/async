@@ -8,10 +8,13 @@ import(
 // Values
 fn pipe() -> (PipeRead, PipeWrite) raise
 
+#deprecated
 let stderr : PipeWrite
 
+#deprecated
 let stdin : PipeRead
 
+#deprecated
 let stdout : PipeWrite
 
 // Errors

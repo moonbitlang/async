@@ -287,8 +287,8 @@ pub fn File::as_dir(self : File) -> Directory raise {
 ///|
 fn FileKind::can_poll(self : FileKind) -> Bool {
   match self {
-    Socket | Pipe => true
-    Unknown | Regular | Directory | SymLink | BlockDevice | CharDevice => false
+    Socket | Pipe | CharDevice => true
+    Unknown | Regular | Directory | SymLink | BlockDevice => false
   }
 }
 
