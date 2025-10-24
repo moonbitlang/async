@@ -26,8 +26,10 @@ struct Addr(Bytes) derive(Eq, Compare, Hash)
 /// - `ip`: The IPv4 address as a 32-bit unsigned integer in network byte order
 /// - `port`: The port number (0-65535)
 ///
-/// # Usage
-/// See package documentation for examples.
+/// # Example
+/// ```
+/// let addr = Addr::new(0x7F000001U, 8080) // 127.0.0.1:8080
+/// ```
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
@@ -46,8 +48,11 @@ pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get
 /// # Returns
 /// The port number as an integer (0-65535)
 ///
-/// # Usage
-/// See package documentation for examples.
+/// # Example
+/// ```
+/// let addr = Addr::parse("127.0.0.1:8080")!
+/// println(addr.port()) // 8080
+/// ```
 #borrow(addr)
 pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
 
@@ -56,8 +61,13 @@ pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_ge
 /// # Returns
 /// `true` if this is an IPv6 address, `false` if it's an IPv4 address.
 ///
-/// # Usage
-/// See package documentation for examples.
+/// # Example
+/// ```
+/// let ipv4 = Addr::parse("127.0.0.1:8080")!
+/// let ipv6 = Addr::parse("[::1]:8080")!
+/// println(ipv4.is_ipv6()) // false
+/// println(ipv6.is_ipv6()) // true
+/// ```
 #borrow(addr)
 pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
 
@@ -123,8 +133,11 @@ pub suberror InvalidAddr derive(Show)
 /// # Raises
 /// `InvalidAddr` if the string format is invalid
 ///
-/// # Usage
-/// See package documentation for examples.
+/// # Example
+/// ```
+/// let ipv4 = Addr::parse("127.0.0.1:8080")!
+/// let ipv6 = Addr::parse("[::1]:8080")!
+/// ```
 // TODO: faster implementation
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
   if src.has_prefix("[") {
@@ -180,6 +193,7 @@ pub(all) enum IpProtocolPreference {
 ///|
 /// Resolve a IPv4 or IPv6 address by hostname.
 ///
+By default, `Addr::resolve` returns the first available address.
 /// Preference on IPv4 v.s. IPv6 can be configured via `protocol`.
 /// See `IpProtocolPreference` for available options.
 ///
@@ -194,8 +208,11 @@ pub(all) enum IpProtocolPreference {
 /// # Raises
 /// `ResolveHostnameError` if hostname resolution fails or no address of the preferred type is found.
 ///
-/// # Usage
-/// This function performs asynchronous hostname resolution.
+/// # Example
+/// ```
+/// let addr = Addr::resolve("example.com", port=80)!
+/// let ipv4_addr = Addr::resolve("example.com", port=80, protocol=OnlyV4)!
+/// ```
 pub async fn Addr::resolve(
   host : String,
   port~ : Int,

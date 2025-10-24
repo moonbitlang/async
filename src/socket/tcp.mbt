@@ -12,38 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
-/// A Tcp connection
+/// A TCP connection for reliable, stream-oriented communication.
+///
+/// TCP connections provide ordered, error-checked delivery of data.
+/// The connection is automatically managed and can be used for
+/// both reading and writing data.
 struct Tcp(Int)
 
 ///|
 #deprecated("use `Tcp` instead")
 pub typealias Tcp as TCP
 
-///|
+/// Close the TCP connection.
+///
+/// This releases system resources associated with the connection.
+/// The connection should not be used after calling this method.
+///
+/// # Usage
+/// See package documentation for examples.
 pub fn Tcp::close(self : Tcp) -> Unit {
   let Tcp(sock) = self
   @event_loop.close_fd(sock)
 }
 
-///|
+/// A TCP server that listens for incoming connections.
+///
+/// The server can accept multiple client connections concurrently
+/// and supports both IPv4 and IPv6 with dual-stack mode.
 struct TcpServer(Int)
 
 ///|
 #deprecated("use `TcpServer` instead")
 pub typealias TcpServer as TCPServer
 
-///|
-/// Create a TCP server that is bound to `addr`,
-/// listening for incoming connections.
+/// Create a TCP server that listens for incoming connections.
 ///
-/// If `addr` is the IPv6 wildcard address `[::]`
-/// and `dual_stack` is `true` (`true` by default),
-/// the server will work in dual stack mode,
-/// accepting connections from both IPv4 clients and IPv6 clients.
-/// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
+/// # Parameters
+/// - `addr`: The address to bind the server to
+/// - `dual_stack`: Enable dual-stack mode for IPv6 wildcard addresses (default: `true`)
 ///
-/// If `addr` is not `[::]`, `dual_stack` is ignored.
+/// # Dual Stack Mode
+/// If `addr` is the IPv6 wildcard address `[::]` and `dual_stack` is `true`,
+/// the server will accept connections from both IPv4 and IPv6 clients.
+/// IPv4 client addresses are represented as IPv4-mapped IPv6 addresses.
+/// For other addresses, `dual_stack` is ignored.
+///
+/// # Raises
+/// Various system errors if the server cannot be created or bound.
+///
+/// # Usage
+/// See package documentation for complete examples.
 pub fn TcpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
@@ -76,22 +94,21 @@ pub fn TcpServer::new(
   TcpServer(sock)
 }
 
-///|
-/// Start the main loop of a TCP server,
-/// keep listening for new connections
-/// and handle connections using the callback `f`.
-/// `f` will be supplied the new connection and the address of the client.
+/// Run the main server loop, accepting and handling client connections.
 ///
-/// The client connection will be closed automatically after `f` exits,
-/// so `f` must not close the client connection.
-/// The server will be automatically closed if `run_forever` fails.
+/// # Parameters
+/// - `f`: Async callback function to handle each client connection
+/// - `allow_failure`: Whether to ignore failures in the callback (default: `true`)
+/// - `max_connections`: Maximum number of concurrent connections (optional)
 ///
-/// If `allow_failure` is `true` (`true` by default),
-/// failure in `f` will be silently ignored.
+/// # Behavior
+/// - Client connections are automatically closed when the callback exits
+/// - The callback receives the client connection and client address
+/// - The server is automatically closed if `run_forever` fails
+/// - If `max_connections` is set, new clients wait until existing ones finish
 ///
-/// If `max_connections` is present,
-/// at most `max_connections` clients are allowed in parallel.
-/// New clients will only get handled after a previous client terminates.
+/// # Usage
+/// See package documentation for complete examples.
 pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
@@ -122,7 +139,13 @@ pub async fn TcpServer::run_forever(
   })
 }
 
-///|
+/// Close the TCP server.
+///
+/// This stops the server from accepting new connections and releases
+/// system resources. Existing client connections are not affected.
+///
+/// # Usage
+/// See package documentation for complete examples.
 pub fn TcpServer::close(self : TcpServer) -> Unit {
   let TcpServer(sock) = self
   @event_loop.close_fd(sock)

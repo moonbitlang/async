@@ -12,20 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
-/// Connect to a remote host using the happy eyeball algorithm.
-/// Preference on IPv4 v.s. IPv6 can be configured via `protocol`:
+/// Connect to a remote host using the Happy Eyeballs algorithm (RFC 6555).
 ///
-/// - if `protocol` is `NoPreference` (the default behavior),
-///   the first successful connection will be returned, regardless of the protocol.
-/// - if `protocol` is `FavorV4`,
-///   an IPv6 connection will only be returned if no IPv4 address is available
-/// - if `protocol` is `OnlyV4`,
-///   `connect_to_host` will fail if no IPv4 address is available
-/// - if `protocol` is `FavorV6`,
-///   an IPv6 connection will only be returned if no IPv4 address is available
-/// - if `protocol` is `OnlyV6`,
-///   `connect_to_host` will fail if no IPv4 address is available
+/// This algorithm attempts to connect to both IPv4 and IPv6 addresses
+/// simultaneously to improve connection reliability and speed.
+///
+/// # Parameters
+/// - `host`: The hostname to connect to
+/// - `port`: The port number
+/// - `protocol`: IP protocol preference (default: `NoPreference`)
+///
+/// # Protocol Preference Behavior
+/// - `NoPreference`: Return the first successful connection
+/// - `FavorV4`: Prefer IPv4, only use IPv6 if IPv4 unavailable
+/// - `OnlyV4`: Only attempt IPv4 connections
+/// - `FavorV6`: Prefer IPv6, only use IPv4 if IPv6 unavailable
+/// - `OnlyV6`: Only attempt IPv6 connections
+///
+/// # Returns
+/// A connected TCP socket
+///
+/// # Raises
+/// `ResolveHostnameError` if hostname resolution fails or no suitable address is found
+///
+/// # Example
+/// ```
+/// // Usage: let conn = Tcp::connect_to_host("example.com", port=80)!
+/// // Usage: let ipv4_conn = Tcp::connect_to_host("example.com", port=80, protocol=OnlyV4)!
+/// ```
 pub async fn Tcp::connect_to_host(
   host : String,
   port~ : Int,
