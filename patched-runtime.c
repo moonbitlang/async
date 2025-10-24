@@ -38,6 +38,7 @@ int write(int fd, void const *buf, size_t count);
 #include <stdlib.h>
 #include <string.h>
 #include <execinfo.h>
+#include <unistd.h>
 
 #endif
 
