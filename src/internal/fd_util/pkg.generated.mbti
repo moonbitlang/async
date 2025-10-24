@@ -17,6 +17,13 @@ fn set_nonblocking(Int, context~ : String) -> Unit raise
 // Errors
 
 // Types and methods
+type Stat
+fn Stat::atime(Self) -> (Int64, Int)
+fn Stat::ctime(Self) -> (Int64, Int)
+fn Stat::from_fd(Int, context~ : String) -> Self raise
+fn Stat::kind(Self) -> Int
+fn Stat::mtime(Self) -> (Int64, Int)
+fn Stat::new() -> Self
 
 // Type aliases
 

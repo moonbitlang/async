@@ -13,14 +13,22 @@
 // limitations under the License.
 
 ///|
-typealias @event_loop.Stat
+struct Stat(FixedArray[Byte])
+
+///|
+extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
+
+///|
+pub fn Stat::new() -> Stat {
+  FixedArray::make(sizeof_stat(), b'\x00')
+}
 
 ///|
 #borrow(stat)
 extern "C" fn Stat::from_fd_ffi(fd : Int, stat : Stat) -> Int = "fstat"
 
 ///|
-fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
+pub fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
   let stat = Stat::new()
   if Stat::from_fd_ffi(fd, stat) < 0 {
     @os_error.check_errno(context)
@@ -29,17 +37,8 @@ fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
 }
 
 ///|
-async fn Stat::from_path(
-  path : StringView,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> Stat {
-  @event_loop.stat(path, follow_symlink~, context~)
-}
-
-///|
 #borrow(stat)
-extern "C" fn Stat::kind(stat : Stat) -> FileKind = "moonbitlang_async_file_kind_from_stat"
+pub extern "C" fn Stat::kind(stat : Stat) -> Int = "moonbitlang_async_file_kind_from_stat"
 
 ///|
 #borrow(stat, sec_out, nsec_out)
@@ -50,7 +49,7 @@ extern "C" fn Stat::atime_ffi(
 ) = "moonbitlang_async_atime_from_stat"
 
 ///|
-fn Stat::atime(stat : Stat) -> (Int64, Int) {
+pub fn Stat::atime(stat : Stat) -> (Int64, Int) {
   let sec = @ref.new(0L)
   let nsec = @ref.new(0)
   stat.atime_ffi(sec, nsec)
@@ -66,7 +65,7 @@ extern "C" fn Stat::mtime_ffi(
 ) = "moonbitlang_async_mtime_from_stat"
 
 ///|
-fn Stat::mtime(stat : Stat) -> (Int64, Int) {
+pub fn Stat::mtime(stat : Stat) -> (Int64, Int) {
   let sec = @ref.new(0L)
   let nsec = @ref.new(0)
   stat.mtime_ffi(sec, nsec)
@@ -82,7 +81,7 @@ extern "C" fn Stat::ctime_ffi(
 ) = "moonbitlang_async_ctime_from_stat"
 
 ///|
-fn Stat::ctime(stat : Stat) -> (Int64, Int) {
+pub fn Stat::ctime(stat : Stat) -> (Int64, Int) {
   let sec = @ref.new(0L)
   let nsec = @ref.new(0)
   stat.ctime_ffi(sec, nsec)

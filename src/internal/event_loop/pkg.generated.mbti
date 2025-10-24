@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/event_loop"
 
+import(
+  "moonbitlang/async/internal/fd_util"
+)
+
 // Values
 async fn accept(Int, Bytes, context~ : String) -> Int
 
@@ -38,7 +42,7 @@ async fn sleep(Int) -> Unit
 
 async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
 
-async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> Stat
+async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.Stat
 
 async fn wait_pid(Int) -> Unit
 
@@ -57,9 +61,6 @@ pub type Directory
 
 #external
 pub type DirectoryEntry
-
-type Stat
-fn Stat::new() -> Self
 
 // Type aliases
 

@@ -32,24 +32,13 @@ pub async fn open(
 }
 
 ///|
-struct Stat(FixedArray[Byte])
-
-///|
-extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
-
-///|
-pub fn Stat::new() -> Stat {
-  FixedArray::make(sizeof_stat(), b'\x00')
-}
-
-///|
 pub async fn stat(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
-) -> Stat {
+) -> @fd_util.Stat {
   let path = @encoding/utf8.encode(path)
-  let stat = Stat::new()
+  let stat = @fd_util.Stat::new()
   let _ = perform_job_in_worker(
     JobForWorker::stat(path, stat, follow_symlink~),
     context~,
