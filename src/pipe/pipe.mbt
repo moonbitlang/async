@@ -43,79 +43,16 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 }
 
 ///|
-/// The standard input treated as a pipe.
-/// Using this value will result in standard input being set to non-blocking mode.
-/// `@async.with_event_loop` will reset standard input
-/// back to its original state on exit.
-pub let stdin : PipeRead = {
-  try @fd_util.fd_is_nonblocking(0, context="initialize `@pipe.stdin`") catch {
-    err => abort(err.to_string())
-  } noraise {
-    true => ()
-    false => {
-      fn init() raise {
-        @fd_util.set_nonblocking(0, context="initialize `@pipe.stdin`")
-      }
-
-      fn exit() raise {
-        @fd_util.set_nonblocking(0, context="restore `@pipe.stdin`")
-      }
-
-      @event_loop.register_hook(init~, exit~)
-    }
-  }
-  PipeRead(0)
-}
+#deprecated("use `@stdio.stdin` instead")
+pub let stdin : PipeRead = @stdio.stdin.fd()
 
 ///|
-/// The standard output treated as a pipe.
-/// Using this value will result in standard output being set to non-blocking mode.
-/// `@async.with_event_loop` will reset standard output
-/// back to its original state on exit.
-pub let stdout : PipeWrite = {
-  try @fd_util.fd_is_nonblocking(1, context="initialize `@pipe.stdout`") catch {
-    err => abort(err.to_string())
-  } noraise {
-    true => ()
-    false => {
-      fn init() raise {
-        @fd_util.set_nonblocking(1, context="initialize `@pipe.stdout`")
-      }
-
-      fn exit() raise {
-        @fd_util.set_nonblocking(1, context="restore `@pipe.stdout`")
-      }
-
-      @event_loop.register_hook(init~, exit~)
-    }
-  }
-  PipeWrite(1)
-}
+#deprecated("use `@stdio.stdout` instead")
+pub let stdout : PipeWrite = @stdio.stdout.fd()
 
 ///|
-/// The standard error treated as a pipe.
-/// Using this value will result in standard error being set to non-blocking mode.
-/// `@async.with_event_loop` will reset standard error
-/// back to its original state on exit.
-pub let stderr : PipeWrite = {
-  try @fd_util.fd_is_nonblocking(2, context="initialize `@pipe.stderr`") catch {
-    err => abort(err.to_string())
-  } noraise {
-    true => ()
-    false => {
-      fn init() raise {
-        @fd_util.set_nonblocking(2, context="initialize `@pipe.stderr`")
-      }
-
-      fn exit() raise {
-        @fd_util.set_nonblocking(2, context="restore `@pipe.stderr`")
-      }
-
-      @event_loop.register_hook(init~, exit~)
-    }
-  }
-  PipeWrite(2)
-}
+#deprecated("use `@stdio.stderr` instead")
+pub let stderr : PipeWrite = @stdio.stderr.fd()
 
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {

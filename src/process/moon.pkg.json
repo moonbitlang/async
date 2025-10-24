@@ -5,6 +5,7 @@
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/fs",
     "moonbitlang/async/pipe",
+    "moonbitlang/async/stdio",
     "moonbitlang/async",
     "moonbitlang/async/io",
     "moonbitlang/async/os_error"
