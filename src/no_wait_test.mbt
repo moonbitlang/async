@@ -14,7 +14,8 @@
 
 ///|
 async test "no_wait cancelled" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {
@@ -42,7 +43,8 @@ async test "no_wait cancelled" {
 
 ///|
 async test "no_wait normal exit" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(no_wait=true, fn() {

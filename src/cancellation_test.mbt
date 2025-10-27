@@ -14,7 +14,8 @@
 
 ///|
 async test "manual cancel" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
       let task = root.spawn(allow_failure=true, fn() {
@@ -49,7 +50,8 @@ suberror Err derive(Show)
 
 ///|
 async test "error propagation" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
@@ -85,7 +87,8 @@ async test "error propagation" {
 
 ///|
 async test "multiple scope" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -151,7 +154,8 @@ async test "multiple scope" {
 
 ///|
 async test "recursive cancel" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -191,7 +195,8 @@ async test "recursive cancel" {
 
 ///|
 async test "spawn directly error" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -218,7 +223,8 @@ async test "spawn directly error" {
 
 ///|
 async test "error in cancellation" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -244,7 +250,8 @@ async test "error in cancellation" {
 
 ///|
 async test "immediately cancelled" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(allow_failure=true, fn() {

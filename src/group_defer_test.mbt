@@ -14,7 +14,8 @@
 
 ///|
 async test "group defer basic" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.add_defer(() => log.write_string("first group defer\n"))
@@ -55,7 +56,8 @@ async test "group defer basic" {
 
 ///|
 async test "group defer error" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -98,7 +100,8 @@ async test "group defer error" {
 
 ///|
 async test "group defer cancelled" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {

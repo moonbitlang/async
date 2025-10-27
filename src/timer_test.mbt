@@ -14,7 +14,8 @@
 
 ///|
 async test "basic_timer" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {

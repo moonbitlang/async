@@ -13,25 +13,4 @@
 // limitations under the License.
 
 ///|
-/// add a random delay before every test,
-/// so that there won't be a lot of timers expiring at the same time,
-/// causing inaccurate result
-async fn random_delay() -> Unit {
-  let rand = match rand_seed.val {
-    Some(r) => r
-    None => {
-      let now = @async.now()
-      let seed = @buffer.new()
-      for _ in 0..<4 {
-        seed.write_int64_le(now)
-      }
-      let rand = @random.Rand::chacha8(seed=seed.to_bytes())
-      rand_seed.val = Some(rand)
-      rand
-    }
-  }
-  @async.sleep(rand.int(limit=100))
-}
-
-///|
-let rand_seed : Ref[@random.Rand?] = @ref.new(None)
+let rate_limit : @semaphore.Semaphore = @semaphore.Semaphore::new(20)
