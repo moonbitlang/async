@@ -121,6 +121,24 @@ async test "aqueue cancellation" {
 }
 
 ///|
+async test "aqueue cancellation no_swallow" {
+  // `get` should not swallow the value
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(group) {
+    let q = @aqueue.Queue::new()
+    let get_task = group.spawn(allow_failure=true, fn() {
+      log.write_string("get() => \{q.get()}\n")
+    })
+    @async.sleep(100)
+    q.put(42)
+    get_task.cancel()
+    @async.sleep(100)
+    inspect(q.try_get(), content="None")
+  })
+  inspect(log.to_string(), content="")
+}
+
+///|
 async test "aqueue fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
