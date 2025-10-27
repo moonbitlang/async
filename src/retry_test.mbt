@@ -14,7 +14,8 @@
 
 ///|
 async test "retry immediate" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   let mut i = 0
   @async.retry(Immediate, fn() {
@@ -37,7 +38,8 @@ async test "retry immediate" {
 
 ///|
 async test "retry fixed" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -72,7 +74,8 @@ async test "retry fixed" {
 
 ///|
 async test "retry exponential" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -116,7 +119,8 @@ async test "retry exponential" {
 
 ///|
 async test "retry cancelled1" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   let mut i = 0
   @async.with_timeout(500, fn() {
@@ -142,7 +146,8 @@ async test "retry cancelled1" {
 
 ///|
 async test "retry cancelled2" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   let mut i = 0
   @async.with_timeout(500, fn() {
@@ -168,7 +173,8 @@ async test "retry cancelled2" {
 
 ///|
 async test "retry fatal_error" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let log = StringBuilder::new()
   fn fatal_error(err) {
     not(err is @async.TimeoutError)

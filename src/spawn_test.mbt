@@ -14,7 +14,8 @@
 
 ///|
 async test "spawn basic" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -50,7 +51,8 @@ async test "spawn basic" {
 
 ///|
 async test "spawn error1" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
@@ -68,7 +70,8 @@ async test "spawn error1" {
 
 ///|
 async test "spawn error2" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
       root.spawn_bg(fn() {
@@ -86,7 +89,8 @@ async test "spawn error2" {
 
 ///|
 async test "spawn after cancelled 1" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -120,7 +124,8 @@ async test "spawn after cancelled 1" {
 
 ///|
 async test "spawn after cancelled 2" {
-  random_delay()
+  rate_limit.acquire()
+  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
