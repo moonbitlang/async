@@ -28,6 +28,7 @@ async test "walk sequential" {
 
 ///|
 async test "walk parallel" {
+  @async.sleep(300)
   let log = StringBuilder::new()
   @fs.walk("test_directory", max_concurrency=2, fn(path, _) {
     log.write_string("handling \{path}\n")
