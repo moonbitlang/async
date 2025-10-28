@@ -29,13 +29,13 @@ pub fn with_event_loop(f : async (TaskGroup[Unit]) -> Unit) -> Unit raise {
 /// `sleep` will wait for the given time (in milliseconds) before returning.
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
-pub fnalias @event_loop.sleep
+pub using @event_loop {sleep}
 
 ///|
 /// Pause current task and give other tasks chance to execute.
 /// When performing long running pure computation (i.e. no IO involved),
 /// `pause` can be used to avoid starving other tasks.
-pub fnalias @coroutine.pause
+pub using @coroutine {pause}
 
 ///|
 pub suberror TimeoutError derive(Show)
@@ -96,7 +96,7 @@ pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
 /// This function should be use with extra care and only when absolutely necessary,
 /// because it will break other abstraction such as `with_timeout`.
 /// A common scenario is avoiding corrupted state due to partial write to file etc.
-pub fnalias @coroutine.protect_from_cancel
+pub using @coroutine {protect_from_cancel}
 
 ///|
 /// Get current time, measured in milliseconds.
@@ -105,13 +105,15 @@ pub fnalias @coroutine.protect_from_cancel
 /// `now` can be used to measure elapsed time, such as benchmarking,
 /// but the meaning of the absolute time value returned by `now`
 /// is undefined, and should not be depended on.
-pub fnalias @time.ms_since_epoch as now
+pub fn now() -> Int64 {
+  @time.ms_since_epoch()
+}
 
 ///|
-pub typealias @aqueue.Queue
+pub using @aqueue {type Queue}
 
 ///|
-pub typealias @semaphore.Semaphore
+pub using @semaphore {type Semaphore}
 
 ///|
 /// `RetryMethod` describes different retry strategies used by various APIs:
@@ -147,7 +149,10 @@ pub(all) enum RetryMethod {
 ///
 /// If `fatal_error` is present, and `f` raises an error `err` such that
 /// `fatal_error(err)` is `true`, `retry` will fail immediately with `err`.
-pub async fn[X] retry(
+#alias(retry, visibility="pub")
+// the long name here is used to avoid name clash with
+// labelled argument `retry` of `spawn_loop`.
+async fn[X] moonbitlang_async_retry(
   strategy : RetryMethod,
   max_retry? : Int,
   fatal_error? : (Error) -> Bool,

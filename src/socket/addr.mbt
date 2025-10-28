@@ -97,7 +97,7 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-typealias @event_loop.AddrInfo
+using @event_loop {type AddrInfo}
 
 ///|
 extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"

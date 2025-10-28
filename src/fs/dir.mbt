@@ -74,7 +74,7 @@ pub fn opendir(path : StringView) -> Directory raise {
 }
 
 ///|
-typealias @event_loop.DirectoryEntry
+using @event_loop {type DirectoryEntry}
 
 ///|
 extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang_async_dirent_name"

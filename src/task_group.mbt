@@ -249,9 +249,6 @@ pub fn[X] TaskGroup::return_immediately(
 }
 
 ///|
-fnalias retry as moonbitlang_async_retry
-
-///|
 /// Similar to `spawn_bg`, but the spawn a loop,
 /// i.e. the spawned task will be restarted after it terminates.
 /// The spawned task can terminate the loop by returning `IterEnd`.

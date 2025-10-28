@@ -14,7 +14,7 @@
 // limitations under the License.
 
 ///|
-async test "collect_output" {
+async test "collect_stdout" {
   let (code, output) = @process.collect_stdout("sh", ["-c", "printf abcd"])
   inspect(code, content="0")
   inspect(output.text(), content="abcd")
