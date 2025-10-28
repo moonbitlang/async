@@ -135,7 +135,13 @@ async test "aqueue cancellation no_swallow" {
     @async.sleep(100)
     inspect(q.try_get(), content="None")
   })
-  inspect(log.to_string(), content="")
+  inspect(
+    log.to_string(),
+    content=(
+      #|get() => 42
+      #|
+    ),
+  )
 }
 
 ///|

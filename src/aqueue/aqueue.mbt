@@ -75,6 +75,20 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
   let reader = { value: None, coro: Some(@coroutine.current_coroutine()) }
   self.readers.push_back(reader)
   @coroutine.suspend() catch {
+    _ if reader.value is Some(value) =>
+      // This may happen if:
+      //
+      // - `put` is called, the value is removed from the queue
+      //   and assigned to `reader.value`
+      // - the task is called after `put`, before `get` is actually woken
+      //
+      // In this case, if we cancel `get`,
+      // the value would be swollen, which is incorrect.
+      // It is also difficult to put the value back to the queue
+      // while maintaining correct order.
+      // So we choose to swallow the cancellation signal here,
+      // which is fine because cancellation is level-triggered.
+      return value
     err => {
       reader.coro = None
       raise err

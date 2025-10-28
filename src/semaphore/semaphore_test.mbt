@@ -100,6 +100,31 @@ async test "semaphore cancellation" {
 }
 
 ///|
+async test "semaphore cancellation no_swallow" {
+  let log = StringBuilder::new()
+  @async.with_task_group(fn(root) {
+    let semaphore = @semaphore.Semaphore::new(1)
+    semaphore.acquire()
+    let acquire_taskire_task = root.spawn(allow_failure=true, fn() {
+      semaphore.acquire()
+      log.write_string("acquire() succeed\n")
+    })
+    @async.sleep(100)
+    semaphore.release()
+    acquire_taskire_task.cancel()
+    @async.sleep(100)
+    inspect(semaphore.try_acquire(), content="false")
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|acquire() succeed
+      #|
+    ),
+  )
+}
+
+///|
 async test "semaphore fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
