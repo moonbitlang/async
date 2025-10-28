@@ -17,7 +17,8 @@ extern "C" fn JobForWorker::sleep(time : Int) -> JobForWorker = "moonbitlang_asy
 
 ///|
 async fn perform_sleep_job(t : Int) -> Unit {
-  perform_job_in_worker(JobForWorker::sleep(t), context="") |> ignore
+  perform_job_in_worker(JobForWorker::sleep(t), context="", extra=None)
+  |> ignore
 }
 
 ///|

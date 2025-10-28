@@ -99,7 +99,7 @@ pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
     if err < 0 {
       @os_error.check_errno(context)
     } else if err > 0 {
-      raise @os_error.OSError(err, context~)
+      raise @os_error.OSError(err, context~, extra=None)
     }
   } else {
     @os_error.check_errno(context)
@@ -148,12 +148,13 @@ pub async fn getaddrinfo(
   host : StringView,
   context~ : String,
 ) -> Result[AddrInfo, String] {
-  let host = @encoding/utf8.encode(host)
+  let host_bytes = @encoding/utf8.encode(host)
   let out = AddrInfoRef::new()
   let ret = perform_job_in_worker(
-    JobForWorker::getaddrinfo(host, out),
+    JobForWorker::getaddrinfo(host_bytes, out),
     allow_cancel=true,
     context~,
+    extra=Some(host),
   )
   if ret != 0 {
     let c_str = gai_strerror(ret)

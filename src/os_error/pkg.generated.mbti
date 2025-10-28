@@ -10,7 +10,7 @@ fn is_nonblocking_io_error() -> Bool
 
 // Errors
 pub(all) suberror OSError {
-  OSError(Int, context~ : String)
+  OSError(Int, context~ : String, extra~ : String?)
 }
 fn OSError::is_EINTR(Self) -> Bool
 fn OSError::is_nonblocking_io_error(Self) -> Bool
