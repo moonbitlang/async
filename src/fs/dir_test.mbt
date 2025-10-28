@@ -16,7 +16,9 @@
 async test "read_all" {
   let dir = @fs.opendir("src/fs")
   defer dir.close()
-  let list = dir.read_all()
+  let list = dir
+    .read_all()
+    .filter_map(x => if x is "target" { None } else { Some(x) })
   list.sort()
   @json.inspect(list, content=[
     "fs.mbt", "stub.c", "dir.mbt", "README.md", "utils.mbt", "dir_test.mbt", "eof_test.mbt",
@@ -33,7 +35,9 @@ async test "as_dir" {
   guard dir_file.kind() is Directory
   let dir = dir_file.as_dir()
   defer dir.close()
-  let list = dir.read_all()
+  let list = dir
+    .read_all()
+    .filter_map(x => if x is "target" { None } else { Some(x) })
   list.sort()
   let kinds = []
   for file in list {
