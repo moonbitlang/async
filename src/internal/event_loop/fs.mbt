@@ -27,8 +27,12 @@ pub async fn open(
   mode~ : Int,
   context~ : String,
 ) -> Int {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::open(path, flags, mode), context~)
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(
+    JobForWorker::open(path_bytes, flags, mode),
+    context~,
+    extra=Some(path),
+  )
 }
 
 ///|
@@ -37,42 +41,67 @@ pub async fn stat(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> @fd_util.Stat {
-  let path = @encoding/utf8.encode(path)
+  let path_bytes = @encoding/utf8.encode(path)
   let stat = @fd_util.Stat::new()
   let _ = perform_job_in_worker(
-    JobForWorker::stat(path, stat, follow_symlink~),
+    JobForWorker::stat(path_bytes, stat, follow_symlink~),
     context~,
+    extra=Some(path),
   )
   stat
 }
 
 ///|
 pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::access(path, amode), context~)
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(
+    JobForWorker::access(path_bytes, amode),
+    context~,
+    extra=Some(path),
+  )
 }
 
 ///|
 pub async fn fsync(fd : Int, only_data~ : Bool, context~ : String) -> Unit {
-  perform_job_in_worker(JobForWorker::fsync(fd, only_data), context~) |> ignore
+  perform_job_in_worker(
+    JobForWorker::fsync(fd, only_data),
+    context~,
+    extra=None,
+  )
+  |> ignore
 }
 
 ///|
 pub async fn remove(path : StringView, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::remove(path), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(
+    JobForWorker::remove(path_bytes),
+    context~,
+    extra=Some(path),
+  )
+  |> ignore
 }
 
 ///|
 pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::mkdir(path, mode), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(
+    JobForWorker::mkdir(path_bytes, mode),
+    context~,
+    extra=Some(path),
+  )
+  |> ignore
 }
 
 ///|
 pub async fn rmdir(path : StringView, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::rmdir(path), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(
+    JobForWorker::rmdir(path_bytes),
+    context~,
+    extra=Some(path),
+  )
+  |> ignore
 }
 
 ///|
@@ -81,15 +110,23 @@ extern "C" fn DirectoryEntry::null() -> DirectoryEntry = "moonbitlang_async_null
 ///|
 pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
   let out = @ref.new(DirectoryEntry::null())
-  let _ = perform_job_in_worker(JobForWorker::readdir(dir, out), context~)
+  let _ = perform_job_in_worker(
+    JobForWorker::readdir(dir, out),
+    context~,
+    extra=None,
+  )
   out.val
 }
 
 ///|
 pub async fn realpath(path : StringView, context~ : String) -> Bytes {
-  let path = @encoding/utf8.encode(path)
+  let path_bytes = @encoding/utf8.encode(path)
   let out = @ref.new(@c_buffer.null)
-  let _ = perform_job_in_worker(JobForWorker::realpath(path, out), context~)
+  let _ = perform_job_in_worker(
+    JobForWorker::realpath(path_bytes, out),
+    context~,
+    extra=Some(path),
+  )
   let c_path = out.val
   defer c_path.free()
   let len = c_path.strlen()
