@@ -13,10 +13,27 @@
 // limitations under the License.
 
 ///|
+priv struct Waiter {
+  // In the rare case where:
+  //
+  // - `release` wake up a waiter, the piece of resource is assigned to that waiter
+  // - the waiter is immediately cancelled after woken up by `release`,
+  //   but before the waiter's coroutine actually resumes execution
+  //
+  // we must swallow the cancellation signal,
+  // as otherwise the piece of resource will be gone forever.
+  // So we set `acquired = true` after waking up a waiter,
+  // and use this flag to protect against dangerous cancellation.
+  mut acquired : Bool
+  // `None` indicates that the waiter is cancelled
+  mut coro : @coroutine.Coroutine?
+}
+
+///|
 struct Semaphore {
   mut value : Int
   size : Int
-  waiters : @deque.Deque[Ref[@coroutine.Coroutine?]]
+  waiters : @deque.Deque[Waiter]
 }
 
 ///|
@@ -43,8 +60,11 @@ pub fn Semaphore::release(self : Semaphore) -> Unit {
   }
   loop self.waiters.pop_front() {
     None => self.value += 1
-    Some({ val: None }) => continue self.waiters.pop_front()
-    Some({ val: Some(waiter) }) => waiter.wake()
+    Some({ coro: None, .. }) => continue self.waiters.pop_front()
+    Some({ coro: Some(coro), .. } as waiter) => {
+      waiter.acquired = true
+      coro.wake()
+    }
   }
 }
 
@@ -63,11 +83,12 @@ pub async fn Semaphore::acquire(self : Semaphore) -> Unit {
   if self.value > 0 {
     self.value -= 1
   } else {
-    let waiter = @ref.new(Some(@coroutine.current_coroutine()))
+    let waiter = { coro: Some(@coroutine.current_coroutine()), acquired: false }
     self.waiters.push_back(waiter)
     @coroutine.suspend() catch {
+      _ if waiter.acquired => ()
       err => {
-        waiter.val = None
+        waiter.coro = None
         raise err
       }
     }
