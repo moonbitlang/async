@@ -99,7 +99,7 @@ pub async fn connect(sock : Int, addr : Bytes, context~ : String) -> Int {
     if err < 0 {
       @os_error.check_errno(context)
     } else if err > 0 {
-      raise @os_error.OSError(err, context~, extra=None)
+      raise @os_error.OSError(err, context~)
     }
   } else {
     @os_error.check_errno(context)
@@ -154,8 +154,11 @@ pub async fn getaddrinfo(
     JobForWorker::getaddrinfo(host_bytes, out),
     allow_cancel=true,
     context~,
-    extra=Some(host),
-  )
+  ) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(host)}")
+    err => raise err
+  }
   if ret != 0 {
     let c_str = gai_strerror(ret)
     let len = c_str.strlen()

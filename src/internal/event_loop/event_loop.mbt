@@ -317,7 +317,6 @@ pub fn close_fd(fd : Int) -> Unit {
 async fn perform_job_in_worker(
   job : JobForWorker,
   context~ : String,
-  extra~ : StringView?,
   allow_cancel? : Bool = false,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
@@ -341,11 +340,7 @@ async fn perform_job_in_worker(
     @coroutine.protect_from_cancel(@coroutine.suspend)
   }
   if job.err() > 0 {
-    raise @os_error.OSError(
-      job.err(),
-      context~,
-      extra=extra.map(x => x.to_string()),
-    )
+    raise @os_error.OSError(job.err(), context~)
   } else {
     job.ret()
   }
@@ -385,7 +380,7 @@ pub async fn read(
     ret
   } else {
     let job = JobForWorker::read(fd, buf, offset, len)
-    perform_job_in_worker(job, context~, extra=None)
+    perform_job_in_worker(job, context~)
   }
 }
 
@@ -423,7 +418,7 @@ pub async fn write(
     ret
   } else {
     let job = JobForWorker::write(fd, buf, offset, len)
-    perform_job_in_worker(job, context~, extra=None)
+    perform_job_in_worker(job, context~)
   }
 }
 
@@ -441,7 +436,6 @@ pub async fn spawn(
   perform_job_in_worker(
     JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
     context~,
-    extra=None,
   )
 }
 
