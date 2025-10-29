@@ -42,19 +42,27 @@ pub async fn stat(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> @fd_util.Stat {
-  let path = @encoding/utf8.encode(path)
+  let path_bytes = @encoding/utf8.encode(path)
   let stat = @fd_util.Stat::new()
-  let _ = perform_job_in_worker(
-    JobForWorker::stat(path, stat, follow_symlink~),
-    context~,
-  )
+  let job = JobForWorker::stat(path_bytes, stat, follow_symlink~)
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
   stat
 }
 
 ///|
 pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::access(path, amode), context~)
+  let path_bytes = @encoding/utf8.encode(path)
+  perform_job_in_worker(JobForWorker::access(path_bytes, amode), context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  }
 }
 
 ///|
@@ -64,20 +72,40 @@ pub async fn fsync(fd : Int, only_data~ : Bool, context~ : String) -> Unit {
 
 ///|
 pub async fn remove(path : StringView, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::remove(path), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  try perform_job_in_worker(JobForWorker::remove(path_bytes), context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
 }
 
 ///|
 pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::mkdir(path, mode), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  try
+    perform_job_in_worker(JobForWorker::mkdir(path_bytes, mode), context~)
+  catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
 }
 
 ///|
 pub async fn rmdir(path : StringView, context~ : String) -> Unit {
-  let path = @encoding/utf8.encode(path)
-  perform_job_in_worker(JobForWorker::rmdir(path), context~) |> ignore
+  let path_bytes = @encoding/utf8.encode(path)
+  try perform_job_in_worker(JobForWorker::rmdir(path_bytes), context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
 }
 
 ///|
@@ -92,9 +120,16 @@ pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
 
 ///|
 pub async fn realpath(path : StringView, context~ : String) -> Bytes {
-  let path = @encoding/utf8.encode(path)
+  let path_bytes = @encoding/utf8.encode(path)
   let out = @ref.new(@c_buffer.null)
-  let _ = perform_job_in_worker(JobForWorker::realpath(path, out), context~)
+  let job = JobForWorker::realpath(path_bytes, out)
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
   let c_path = out.val
   defer c_path.free()
   let len = c_path.strlen()
