@@ -102,14 +102,6 @@ int moonbitlang_async_f_ok() {
   return F_OK;
 }
 
-int moonbitlang_async_get_ENOENT() {
-  return ENOENT;
-}
-
-int moonbitlang_async_get_EACCES() {
-  return EACCES;
-}
-
 #ifdef __MACH__
 #define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##timespec
 #else

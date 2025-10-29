@@ -29,6 +29,18 @@ int moonbitlang_async_is_EINTR(int err) {
   return err == EINTR;
 }
 
+int moonbitlang_async_is_ENOENT(int err) {
+  return err == ENOENT;
+}
+
+int moonbitlang_async_is_EEXIST(int err) {
+  return err == EEXIST;
+}
+
+int moonbitlang_async_is_EACCES(int err) {
+  return err == EACCES;
+}
+
 char *moonbitlang_async_errno_to_string(int err) {
   return strerror(err);
 }

@@ -2,5 +2,9 @@
   "import": [
     "moonbitlang/async/internal/c_buffer"
   ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/fs"
+  ],
   "native-stub": [ "stub.c" ]
 }
