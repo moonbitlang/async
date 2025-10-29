@@ -76,21 +76,9 @@ extern "C" fn w_ok() -> Int = "moonbitlang_async_w_ok"
 extern "C" fn x_ok() -> Int = "moonbitlang_async_x_ok"
 
 ///|
-extern "C" fn get_ENOENT() -> Int = "moonbitlang_async_get_ENOENT"
-
-///|
-let _ENOENT : Int = get_ENOENT()
-
-///|
-extern "C" fn get_EACCES() -> Int = "moonbitlang_async_get_EACCES"
-
-///|
-let _EACCES : Int = get_EACCES()
-
-///|
 pub async fn exists(path : StringView) -> Bool {
   try @event_loop.access(path, amode=f_ok(), context="@fs.exists()") catch {
-    @os_error.OSError(code, ..) if code == _ENOENT => false
+    @os_error.OSError(_) as err if err.is_ENOENT() => false
     err => raise err
   } noraise {
     _ => true
@@ -100,8 +88,8 @@ pub async fn exists(path : StringView) -> Bool {
 ///|
 pub async fn can_read(path : StringView) -> Bool {
   try @event_loop.access(path, amode=r_ok(), context="@fs.can_read()") catch {
-    @os_error.OSError(code, ..) if code == _ENOENT => false
-    @os_error.OSError(code, ..) if code == _EACCES => false
+    @os_error.OSError(_) as err if err.is_ENOENT() => false
+    @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err
   } noraise {
     _ => true
@@ -111,8 +99,8 @@ pub async fn can_read(path : StringView) -> Bool {
 ///|
 pub async fn can_write(path : StringView) -> Bool {
   try @event_loop.access(path, amode=w_ok(), context="@fs.can_write()") catch {
-    @os_error.OSError(code, ..) if code == _ENOENT => false
-    @os_error.OSError(code, ..) if code == _EACCES => false
+    @os_error.OSError(_) as err if err.is_ENOENT() => false
+    @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err
   } noraise {
     _ => true
@@ -122,8 +110,8 @@ pub async fn can_write(path : StringView) -> Bool {
 ///|
 pub async fn can_execute(path : StringView) -> Bool {
   try @event_loop.access(path, amode=x_ok(), context="@fs.can_execute") catch {
-    @os_error.OSError(code, ..) if code == _ENOENT => false
-    @os_error.OSError(code, ..) if code == _EACCES => false
+    @os_error.OSError(_) as err if err.is_ENOENT() => false
+    @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err
   } noraise {
     _ => true

@@ -22,6 +22,15 @@ extern "C" fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbitlang_
 extern "C" fn errno_is_EINTR(errno : Int) -> Bool = "moonbitlang_async_is_EINTR"
 
 ///|
+extern "C" fn errno_is_ENOENT(errno : Int) -> Bool = "moonbitlang_async_is_ENOENT"
+
+///|
+extern "C" fn errno_is_EEXIST(errno : Int) -> Bool = "moonbitlang_async_is_EEXIST"
+
+///|
+extern "C" fn errno_is_EACCES(errno : Int) -> Bool = "moonbitlang_async_is_EACCES"
+
+///|
 pub fn is_nonblocking_io_error() -> Bool {
   errno_is_nonblocking_io_error(get_errno())
 }
@@ -60,6 +69,27 @@ pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
 pub fn OSError::is_EINTR(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno_is_EINTR(errno)
+}
+
+///|
+/// Detect whether the error is the `ENOENT` (no such file or directory) error.
+pub fn OSError::is_ENOENT(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_ENOENT(errno)
+}
+
+///|
+/// Detect whether the error is the `EEXIST` (already exists) error.
+pub fn OSError::is_EEXIST(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_EEXIST(errno)
+}
+
+///|
+/// Detect whether the error is the `EACCES` (permission denied) error.
+pub fn OSError::is_EACCES(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_EACCES(errno)
 }
 
 ///|
