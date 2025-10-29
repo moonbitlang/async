@@ -1,0 +1,100 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/websocket"
+
+import(
+  "moonbitlang/async/socket"
+)
+
+// Values
+async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
+
+// Errors
+pub suberror WebSocketError {
+  ProtocolError(String)
+  InvalidOpCode
+  InvalidCloseCode
+  ConnectionClosed
+  InvalidFrame
+  InvalidHandshake
+}
+impl Show for WebSocketError
+
+// Types and methods
+pub struct Client {
+  conn : @socket.Tcp
+  mut closed : Bool
+}
+fn Client::close(Self) -> Unit
+async fn Client::connect(String, String, port? : Int, headers? : Map[String, String]) -> Self
+async fn Client::ping(Self, data? : Bytes) -> Unit
+async fn Client::pong(Self, data? : Bytes) -> Unit
+async fn Client::receive(Self) -> Message
+async fn Client::send_binary(Self, Bytes) -> Unit
+async fn Client::send_text(Self, String) -> Unit
+
+pub(all) enum CloseCode {
+  Normal
+  GoingAway
+  ProtocolError
+  UnsupportedData
+  InvalidFramePayload
+  PolicyViolation
+  MessageTooBig
+  InternalError
+}
+fn CloseCode::from_int(Int) -> Self?
+fn CloseCode::to_int(Self) -> Int
+impl Eq for CloseCode
+impl Show for CloseCode
+
+pub(all) struct Frame {
+  fin : Bool
+  opcode : OpCode
+  payload : Bytes
+}
+impl Show for Frame
+
+pub(all) struct Message {
+  mtype : MessageType
+  data : Bytes
+}
+impl Show for Message
+
+pub(all) enum MessageType {
+  Text
+  Binary
+}
+impl Eq for MessageType
+impl Show for MessageType
+
+pub(all) enum OpCode {
+  Continuation
+  Text
+  Binary
+  Close
+  Ping
+  Pong
+}
+fn OpCode::from_byte(Byte) -> Self?
+fn OpCode::to_byte(Self) -> Byte
+impl Eq for OpCode
+impl Show for OpCode
+
+pub struct ServerConnection {
+  conn : @socket.Tcp
+  mut closed : Bool
+}
+fn ServerConnection::close(Self) -> Unit
+fn ServerConnection::from_tcp(@socket.Tcp) -> Self
+async fn ServerConnection::handshake(@socket.Tcp) -> Self?
+async fn ServerConnection::ping(Self, data? : Bytes) -> Unit
+async fn ServerConnection::pong(Self, data? : Bytes) -> Unit
+async fn ServerConnection::receive(Self) -> Message
+async fn ServerConnection::send_binary(Self, Bytes) -> Unit
+async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : String) -> Unit
+async fn ServerConnection::send_text(Self, String) -> Unit
+
+// Type aliases
+
+// Traits
+
