@@ -31,12 +31,12 @@ extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_err
 
 ///|
 pub(all) suberror OSError {
-  OSError(Int, context~ : String, extra~ : String?)
+  OSError(Int, context~ : String)
 }
 
 ///|
 pub impl Show for OSError with output(self, logger) -> Unit {
-  let OSError(errno, context~, extra~) = self
+  let OSError(errno, context~) = self
   let c_str = strerror(errno)
   let len = c_str.strlen()
   let data = FixedArray::make(len, (0 : Byte))
@@ -44,13 +44,10 @@ pub impl Show for OSError with output(self, logger) -> Unit {
   let errno_desc = @encoding/utf8.decode_lossy(
     data.unsafe_reinterpret_as_bytes(),
   )
-  logger.write_string("OSError(")
-  logger.write_object("\{context}: \{errno_desc}")
-  if extra is Some(info) {
-    logger.write_string(", ")
-    logger.write_object(info)
-  }
-  logger.write_string(")")
+  logger
+  ..write_string("OSError(")
+  ..write_object("\{context}: \{errno_desc}")
+  ..write_string(")")
 }
 
 ///|
@@ -69,6 +66,6 @@ pub fn OSError::is_EINTR(err : OSError) -> Bool {
 pub fn check_errno(context : String) -> Unit raise OSError {
   let err_code = get_errno()
   if err_code != 0 {
-    raise OSError(err_code, context~, extra=None)
+    raise OSError(err_code, context~)
   }
 }
