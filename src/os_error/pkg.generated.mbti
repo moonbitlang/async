@@ -17,8 +17,6 @@ fn OSError::is_EEXIST(Self) -> Bool
 fn OSError::is_EINTR(Self) -> Bool
 fn OSError::is_ENOENT(Self) -> Bool
 fn OSError::is_nonblocking_io_error(Self) -> Bool
-fn OSError::output(Self, &Logger) -> Unit // from trait `Show`
-fn OSError::to_string(Self) -> String // from trait `Show`
 impl Show for OSError
 
 // Types and methods
