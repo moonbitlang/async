@@ -1,6 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async"
 
+import(
+  "moonbitlang/async/aqueue"
+  "moonbitlang/async/semaphore"
+)
+
 // Values
 fn now() -> Int64
 
@@ -25,13 +30,9 @@ async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
 pub suberror AlreadyTerminated
-fn AlreadyTerminated::output(Self, &Logger) -> Unit // from trait `Show`
-fn AlreadyTerminated::to_string(Self) -> String // from trait `Show`
 impl Show for AlreadyTerminated
 
 pub suberror TimeoutError
-fn TimeoutError::output(Self, &Logger) -> Unit // from trait `Show`
-fn TimeoutError::to_string(Self) -> String // from trait `Show`
 impl Show for TimeoutError
 
 // Types and methods
@@ -54,9 +55,9 @@ fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_fail
 fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit raise
 
 // Type aliases
-pub typealias @moonbitlang/async/aqueue.Queue as Queue
+pub using @aqueue {type Queue}
 
-pub typealias @moonbitlang/async/semaphore.Semaphore as Semaphore
+pub using @semaphore {type Semaphore}
 
 // Traits
 

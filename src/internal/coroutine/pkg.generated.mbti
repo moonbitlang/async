@@ -22,19 +22,12 @@ async fn suspend() -> Unit
 
 // Errors
 pub(all) suberror Cancelled
-fn Cancelled::output(Self, &Logger) -> Unit // from trait `Show`
-fn Cancelled::to_string(Self) -> String // from trait `Show`
 impl Show for Cancelled
 
 // Types and methods
 type Coroutine
 fn Coroutine::cancel(Self) -> Unit
 fn Coroutine::check_error(Self) -> Unit raise
-fn Coroutine::equal(Self, Self) -> Bool // from trait `Eq`
-fn Coroutine::hash(Self) -> Int // from trait `Hash`
-fn Coroutine::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
-#deprecated
-fn Coroutine::op_equal(Self, Self) -> Bool // from trait `Eq`
 fn Coroutine::unwrap(Self) -> Unit raise
 async fn Coroutine::wait(Self) -> Unit
 fn Coroutine::wake(Self) -> Unit

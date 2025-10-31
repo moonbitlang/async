@@ -5,8 +5,6 @@ package "moonbitlang/async/io"
 
 // Errors
 pub suberror ReaderClosed
-fn ReaderClosed::output(Self, &Logger) -> Unit // from trait `Show`
-fn ReaderClosed::to_string(Self) -> String // from trait `Show`
 impl Show for ReaderClosed
 
 // Types and methods
@@ -17,9 +15,6 @@ async fn[R : Reader] BufferedReader::find_opt(Self[R], Bytes) -> Int?
 fn[R] BufferedReader::new(R) -> Self[R]
 async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> BytesView
 async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
-async fn[R : Reader] BufferedReader::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `Reader`
-async fn[R : Reader] BufferedReader::read_all(Self[R]) -> &Data // from trait `Reader`
-async fn[R : Reader] BufferedReader::read_exactly(Self[R], Int) -> Bytes // from trait `Reader`
 async fn[R : Reader] BufferedReader::read_line(Self[R]) -> String?
 impl[R : Reader] Reader for BufferedReader[R]
 
@@ -27,11 +22,6 @@ type BufferedWriter[W]
 fn[W] BufferedWriter::capacity(Self[W]) -> Int
 async fn[W : Writer] BufferedWriter::flush(Self[W]) -> Unit
 fn[W] BufferedWriter::new(W, size? : Int) -> Self[W]
-async fn[W : Writer] BufferedWriter::write(Self[W], &Data) -> Unit // from trait `Writer`
-async fn[W : Writer] BufferedWriter::write_once(Self[W], Bytes, offset~ : Int, len~ : Int) -> Int // from trait `Writer`
-async fn[W : Writer] BufferedWriter::write_reader(Self[W], &Reader) -> Unit // from trait `Writer`
-#deprecated
-async fn[W : Writer] BufferedWriter::write_string(Self[W], StringView, encoding~ : Encoding) -> Unit // from trait `Writer`
 impl[W : Writer] Writer for BufferedWriter[W]
 
 pub(all) enum Encoding {

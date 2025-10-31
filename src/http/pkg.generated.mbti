@@ -21,16 +21,12 @@ pub suberror HttpProtocolError {
   HttpVersionNotSupported(String)
   NotImplemented
 }
-fn HttpProtocolError::output(Self, &Logger) -> Unit // from trait `Show`
-fn HttpProtocolError::to_string(Self) -> String // from trait `Show`
 impl Show for HttpProtocolError
 
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 }
-fn URIParseError::output(Self, &Logger) -> Unit // from trait `Show`
-fn URIParseError::to_string(Self) -> String // from trait `Show`
 impl Show for URIParseError
 
 // Types and methods
@@ -42,16 +38,8 @@ async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
 async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
-async fn Client::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
-async fn Client::read_all(Self) -> &@io.Data // from trait `@io.Reader`
-async fn Client::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
 async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
 async fn Client::skip_response_body(Self) -> Unit
-async fn Client::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
-async fn Client::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
-async fn Client::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
-#deprecated
-async fn Client::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
 impl @io.Reader for Client
 impl @io.Writer for Client
 
@@ -78,11 +66,6 @@ pub(all) enum RequestMethod {
   Trace
   Patch
 }
-fn RequestMethod::equal(Self, Self) -> Bool // from trait `Eq`
-#deprecated
-fn RequestMethod::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn RequestMethod::output(Self, &Logger) -> Unit // from trait `Show`
-fn RequestMethod::to_string(Self) -> String // from trait `Show`
 impl Eq for RequestMethod
 impl Show for RequestMethod
 
@@ -97,17 +80,9 @@ fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
 async fn ServerConnection::flush(Self) -> Unit
 fn ServerConnection::new(@socket.Tcp, headers? : Map[String, String]) -> Self
-async fn ServerConnection::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
-async fn ServerConnection::read_all(Self) -> &@io.Data // from trait `@io.Reader`
-async fn ServerConnection::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
 async fn ServerConnection::read_request(Self) -> Request
 async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit
 async fn ServerConnection::skip_request_body(Self) -> Unit
-async fn ServerConnection::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
-async fn ServerConnection::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
-async fn ServerConnection::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
-#deprecated
-async fn ServerConnection::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
 impl @io.Reader for ServerConnection
 impl @io.Writer for ServerConnection
 

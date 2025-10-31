@@ -66,17 +66,9 @@ fn File::curr_pos(Self) -> Int64 raise
 fn File::fd(Self) -> Int
 fn File::kind(Self) -> FileKind
 fn File::mtime(Self) -> (Int64, Int) raise
-async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int // from trait `@io.Reader`
-async fn File::read_all(Self) -> &@io.Data // from trait `@io.Reader`
-async fn File::read_exactly(Self, Int) -> Bytes // from trait `@io.Reader`
 fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
 fn File::size(Self) -> Int64 raise
 async fn File::sync(Self, only_data? : Bool) -> Unit
-async fn File::write(Self, &@io.Data) -> Unit // from trait `@io.Writer`
-async fn File::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int // from trait `@io.Writer`
-async fn File::write_reader(Self, &@io.Reader) -> Unit // from trait `@io.Writer`
-#deprecated
-async fn File::write_string(Self, StringView, encoding~ : @io.Encoding) -> Unit // from trait `@io.Writer`
 impl @io.Reader for File
 impl @io.Writer for File
 
@@ -90,11 +82,6 @@ pub(all) enum FileKind {
   BlockDevice
   CharDevice
 }
-fn FileKind::equal(Self, Self) -> Bool // from trait `Eq`
-#deprecated
-fn FileKind::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn FileKind::output(Self, &Logger) -> Unit // from trait `Show`
-fn FileKind::to_string(Self) -> String // from trait `Show`
 impl Eq for FileKind
 impl Show for FileKind
 
