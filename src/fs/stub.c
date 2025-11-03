@@ -64,28 +64,6 @@ int moonbitlang_async_dirent_is_null(struct dirent *dirent) {
   return dirent == 0;
 }
 
-int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
-  switch (stat->st_mode & S_IFMT) {
-  case S_IFREG:  return 1;
-  case S_IFDIR:  return 2;
-  case S_IFLNK:  return 3;
-  case S_IFSOCK: return 4;
-  case S_IFIFO:  return 5;
-  case S_IFBLK:  return 6;
-  case S_IFCHR:  return 7;
-  default:       return 0;
-  }
-}
-
-int32_t moonbitlang_async_file_kind(int fd) {
-  struct stat stat;
-
-  if (fstat(fd, &stat) < 0)
-    return -1;
-
-  return moonbitlang_async_file_kind_from_stat(&stat);
-}
-
 int moonbitlang_async_r_ok() {
   return R_OK;
 }
@@ -100,37 +78,4 @@ int moonbitlang_async_x_ok() {
 
 int moonbitlang_async_f_ok() {
   return F_OK;
-}
-
-#ifdef __MACH__
-#define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##timespec
-#else
-#define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##tim
-#endif
-
-void moonbitlang_async_atime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, a).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, a).tv_nsec;
-}
-
-void moonbitlang_async_mtime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, m).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, m).tv_nsec;
-}
-
-void moonbitlang_async_ctime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, c).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, c).tv_nsec;
 }
