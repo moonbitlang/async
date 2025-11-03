@@ -106,10 +106,7 @@ pub async fn server(
   let base_path = path
   @http.run_server(@socket.Addr::parse("0.0.0.0:\{port}"), fn(conn, addr) {
     log("received new connection from \{addr}")
-    defer {
-      log("closing connection from \{addr}")
-      conn.close()
-    }
+    defer log("closing connection from \{addr}")
     for {
       let request = conn.read_request()
       let (path, download_zip) = match request.path {
@@ -124,14 +121,17 @@ pub async fn server(
           continue
         }
       }
-      defer file.close()
       if file.kind() is Directory {
         if download_zip {
+          file.close()
           serve_zip(conn, base_path + path)
         } else {
-          serve_directory(conn, file.as_dir(), path~)
+          let dir = file.as_dir()
+          defer dir.close()
+          serve_directory(conn, dir, path~)
         }
       } else {
+        defer file.close()
         serve_file(conn, file, path~)
       }
     }

@@ -50,6 +50,7 @@ type IOHandle
 async fn IOHandle::accept(Self, Bytes, context~ : String) -> Self
 fn IOHandle::close(Self) -> Unit
 async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
+fn IOHandle::detach_from_event_loop(Self) -> Int
 fn IOHandle::fd(Self) -> Int
 fn IOHandle::from_existing_fd(Int) -> Self
 fn IOHandle::from_fd(Int) -> Self

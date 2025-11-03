@@ -302,7 +302,10 @@ async fn IOHandle::wait_write(handle : IOHandle) -> Unit {
 }
 
 ///|
-pub fn IOHandle::close(handle : IOHandle) -> Unit {
+/// Detach a file descriptor from the event loop,
+/// but does not close the file descriptor itself.
+/// The underlying file descriptor is returned.
+pub fn IOHandle::detach_from_event_loop(handle : IOHandle) -> Int {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { abort("closing already closed fd") }
   evloop.fds.remove(handle.fd)
@@ -311,10 +314,18 @@ pub fn IOHandle::close(handle : IOHandle) -> Unit {
       err => abort("detach \{handle.fd} from loop: \{err}")
     }
   }
-  @fd_util.close(handle.fd, context="") catch {
+  let fd = handle.fd
+  handle.fd = -1
+  fd
+}
+
+///|
+/// Close a file descriptor and detach it from the event loop.
+pub fn IOHandle::close(handle : IOHandle) -> Unit {
+  let fd = handle.detach_from_event_loop()
+  @fd_util.close(fd, context="") catch {
     _ => ()
   }
-  handle.fd = -1
 }
 
 ///|
