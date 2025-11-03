@@ -20,12 +20,12 @@ async test "exists" {
     content="Ok(())",
   )
   assert_false(@fs.exists("moon.mod.json.not_exist"))
-  inspect(
-    try? ignore(@fs.open("moon.mod.json.not_exist", mode=ReadOnly)),
-    content=(
-      #|Err(OSError("@fs.open(): \"moon.mod.json.not_exist\": No such file or directory"))
-    ),
-  )
+  try @fs.open("moon.mod.json.not_exist", mode=ReadOnly) catch {
+    @os_error.OSError(_) as err if err.is_ENOENT() => ()
+    err => fail("incorrect error: \{err}")
+  } noraise {
+    _ => fail("`@fs.open` succeed unexpectedly")
+  }
 }
 
 ///|
