@@ -23,27 +23,6 @@
 #include <sys/stat.h>
 #include <moonbit.h>
 
-int moonbitlang_async_make_open_flags(
-  int mode,
-  int sync_mode,
-  int append,
-  int create,
-  int trunc
-) {
-  static int modes[] = { O_RDONLY, O_WRONLY, O_RDWR };
-  static int sync_modes[] = { 0, O_DSYNC, O_SYNC };
-
-  int flags = modes[mode] | sync_modes[sync_mode];
-  if (append)
-    flags |= O_APPEND;
-  if (trunc)
-    flags |= O_TRUNC;
-  if (create)
-    flags |= O_CREAT;
-
-  return flags;
-}
-
 int64_t moonbitlang_async_lseek(int fd, int64_t offset, int mode) {
   static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
   return lseek(fd, offset, whence_list[mode]);
@@ -64,18 +43,50 @@ int moonbitlang_async_dirent_is_null(struct dirent *dirent) {
   return dirent == 0;
 }
 
-int moonbitlang_async_r_ok() {
+int moonbitlang_async_get_R_OK() {
   return R_OK;
 }
 
-int moonbitlang_async_w_ok() {
+int moonbitlang_async_get_W_OK() {
   return W_OK;
 }
 
-int moonbitlang_async_x_ok() {
+int moonbitlang_async_get_X_OK() {
   return X_OK;
 }
 
-int moonbitlang_async_f_ok() {
+int moonbitlang_async_get_F_OK() {
   return F_OK;
+}
+
+int moonbitlang_async_get_O_RDONLY() {
+  return O_RDONLY;
+}
+
+int moonbitlang_async_get_O_WRONLY() {
+  return O_WRONLY;
+}
+
+int moonbitlang_async_get_O_RDWR() {
+  return O_RDWR;
+}
+
+int moonbitlang_async_get_O_SYNC() {
+  return O_SYNC;
+}
+
+int moonbitlang_async_get_O_DSYNC() {
+  return O_DSYNC;
+}
+
+int moonbitlang_async_get_O_APPEND() {
+  return O_APPEND;
+}
+
+int moonbitlang_async_get_O_TRUNC() {
+  return O_TRUNC;
+}
+
+int moonbitlang_async_get_O_CREAT() {
+  return O_CREAT;
 }
