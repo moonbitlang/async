@@ -31,7 +31,6 @@ async test "read_all" {
 ///|
 async test "as_dir" {
   let dir_file = @fs.open("src/fs", mode=ReadOnly)
-  defer dir_file.close()
   guard dir_file.kind() is Directory
   let dir = dir_file.as_dir()
   defer dir.close()
