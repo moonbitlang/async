@@ -16,21 +16,6 @@
 using @fd_util {type Stat}
 
 ///|
-pub(all) enum FileKind {
-  Unknown = 0
-  Regular = 1
-  Directory = 2
-  SymLink = 3
-  Socket = 4
-  Pipe = 5
-  BlockDevice = 6
-  CharDevice = 7
-} derive(Eq, Show)
-
-///|
-fn FileKind::from_int(x : Int) -> FileKind = "%identity"
-
-///|
 struct File {
   io : @event_loop.IOHandle
   kind : FileKind
@@ -73,15 +58,6 @@ pub(all) enum SyncMode {
 }
 
 ///|
-extern "C" fn make_open_flags(
-  mode~ : Mode,
-  sync~ : SyncMode,
-  append~ : Bool,
-  create~ : Bool,
-  truncate~ : Bool,
-) -> Int = "moonbitlang_async_make_open_flags"
-
-///|
 /// Open a file. `filename` will be encoded using UTF8.
 ///
 /// - `mode` determines what operations (read/write) are permitted for the file.
@@ -109,11 +85,29 @@ pub async fn open(
   create? : Int,
   truncate? : Bool = false,
 ) -> File {
-  let (create, user_mode) = match create {
-    None => (false, 0)
-    Some(mode) => (true, mode)
+  let mut flags = match mode {
+    ReadOnly => const_O_RDONLY
+    WriteOnly => const_O_WRONLY
+    ReadWrite => const_O_RDWR
   }
-  let flags = make_open_flags(mode~, sync~, append~, create~, truncate~)
+  let user_mode = match create {
+    None => 0
+    Some(mode) => {
+      flags = flags | const_O_CREAT
+      mode
+    }
+  }
+  if append {
+    flags = flags | const_O_APPEND
+  }
+  if truncate {
+    flags = flags | const_O_TRUNC
+  }
+  match sync {
+    NoSync => ()
+    Data => flags = flags | const_O_DSYNC
+    Full => flags = flags | const_O_SYNC
+  }
   let io = @event_loop.open(
     filename,
     flags~,
