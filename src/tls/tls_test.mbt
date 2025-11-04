@@ -139,3 +139,79 @@ async test "echo" {
     ),
   )
 }
+
+///|
+async test "`connect` accidental close" {
+  @async.with_task_group(fn(root) {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    // server
+    root.spawn_bg(fn() {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let buf = FixedArray::make(1024, b'\x00')
+      let _ = server_read_from_client.read(buf)
+
+    })
+    // client
+    root.spawn_bg(fn() {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      let client = try? @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          verify=false,
+        )
+      match client {
+        Ok(client) => {
+          client.close()
+          fail("expected `ConnectionClosed` error")
+        }
+        Err(err) => inspect(err, content="ConnectionClosed")
+      }
+    })
+  })
+}
+
+///|
+async test "`read` accidental close" {
+  @async.with_task_group(fn(root) {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    // server
+    root.spawn_bg(fn() {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let server = @tls.Tls::server_from_pair(
+        server_read_from_client,
+        server_write_to_client,
+        private_key_file="test_keys/key.pem",
+        private_key_type=PEM,
+        certificate_file="test_keys/cert.pem",
+        certificate_type=PEM,
+      )
+      server.close()
+    })
+    // client
+    root.spawn_bg(fn() {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      let client = @tls.Tls::client_from_pair(
+        client_read_from_server,
+        client_write_to_server,
+        verify=false,
+      )
+      defer client.close()
+      let buf = FixedArray::make(1024, b'\x00')
+      inspect(try? client.read(buf), content="Err(ConnectionClosed)")
+    })
+  })
+}

@@ -49,7 +49,11 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 ///|
 async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
   match err {
+    SSL_ERROR_WANT_READ if self.read_end.state is Closed =>
+      raise ConnectionClosed
     SSL_ERROR_WANT_READ => self.read_end.wait()
+    SSL_ERROR_WANT_WRITE if self.write_end.state is Closed =>
+      raise ConnectionClosed
     SSL_ERROR_WANT_WRITE => self.write_end.wait()
     SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise OpenSSLError(err_get_error())
     SSL_ERROR_ZERO_RETURN => raise ConnectionClosed
