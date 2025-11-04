@@ -10,11 +10,8 @@ async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr)
 
 // Errors
 pub suberror WebSocketError {
-  ProtocolError(String)
   InvalidOpCode
-  InvalidCloseCode
   ConnectionClosed
-  InvalidFrame
   InvalidHandshake
 }
 impl Show for WebSocketError
@@ -47,13 +44,6 @@ fn CloseCode::to_int(Self) -> Int
 impl Eq for CloseCode
 impl Show for CloseCode
 
-pub(all) struct Frame {
-  fin : Bool
-  opcode : OpCode
-  payload : Bytes
-}
-impl Show for Frame
-
 pub(all) struct Message {
   mtype : MessageType
   data : Bytes
@@ -67,26 +57,11 @@ pub(all) enum MessageType {
 impl Eq for MessageType
 impl Show for MessageType
 
-pub(all) enum OpCode {
-  Continuation
-  Text
-  Binary
-  Close
-  Ping
-  Pong
-}
-fn OpCode::from_byte(Byte) -> Self?
-fn OpCode::to_byte(Self) -> Byte
-impl Eq for OpCode
-impl Show for OpCode
-
 pub struct ServerConnection {
   conn : @socket.Tcp
   mut closed : Bool
 }
 fn ServerConnection::close(Self) -> Unit
-fn ServerConnection::from_tcp(@socket.Tcp) -> Self
-async fn ServerConnection::handshake(@socket.Tcp) -> Self?
 async fn ServerConnection::ping(Self, data? : Bytes) -> Unit
 async fn ServerConnection::pong(Self, data? : Bytes) -> Unit
 async fn ServerConnection::receive(Self) -> Message
