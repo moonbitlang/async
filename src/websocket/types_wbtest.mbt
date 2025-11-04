@@ -26,10 +26,3 @@ test "CloseCode conversions" {
   // Invalid code
   assert_eq(CloseCode::from_int(9999), None)
 }
-
-///|
-test "Message structure" {
-  let msg = Message::{ mtype: MessageType::Text, data: b"Test message" }
-  assert_eq(msg.mtype, MessageType::Text)
-  assert_eq(msg.data, b"Test message")
-}

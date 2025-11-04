@@ -57,17 +57,10 @@ priv struct Frame {
 }
 
 ///|
-/// WebSocket message type
-pub(all) enum MessageType {
-  Text
-  Binary
-} derive(Show, Eq)
-
-///|
 /// WebSocket message
-pub(all) struct Message {
-  mtype : MessageType
-  data : Bytes
+pub(all) enum Message {
+  Binary(BytesView)
+  Text(StringView)
 } derive(Show)
 
 ///|
@@ -84,7 +77,7 @@ pub(all) enum CloseCode {
 } derive(Show, Eq)
 
 ///|
-pub fn CloseCode::to_int(self : CloseCode) -> Int {
+fn CloseCode::to_int(self : CloseCode) -> Int {
   match self {
     Normal => 1000
     GoingAway => 1001
@@ -98,7 +91,7 @@ pub fn CloseCode::to_int(self : CloseCode) -> Int {
 }
 
 ///|
-pub fn CloseCode::from_int(code : Int) -> CloseCode? {
+fn CloseCode::from_int(code : Int) -> CloseCode? {
   match code {
     1000 => Some(Normal)
     1001 => Some(GoingAway)
@@ -115,6 +108,6 @@ pub fn CloseCode::from_int(code : Int) -> CloseCode? {
 ///|
 pub suberror WebSocketError {
   InvalidOpCode // Invalid frame opcode
-  ConnectionClosed // Connection was closed
+  ConnectionClosed(CloseCode) // Connection was closed
   InvalidHandshake // Handshake failed
 } derive(Show)

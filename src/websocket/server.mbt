@@ -14,9 +14,9 @@
 
 ///|
 /// WebSocket server connection
-pub struct ServerConnection {
+struct ServerConnection {
   conn : @socket.Tcp
-  mut closed : Bool
+  mut closed : CloseCode?
 }
 
 ///|
@@ -78,15 +78,15 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
     "Sec-WebSocket-Accept: \{accept_key}\r\n" +
     "\r\n"
   conn.write(@encoding/utf8.encode(response))
-  Some({ conn, closed: false })
+  Some({ conn, closed: None })
 }
 
 ///|
 /// Close the WebSocket connection
 pub fn ServerConnection::close(self : ServerConnection) -> Unit {
-  if not(self.closed) {
+  if self.closed is None {
     self.conn.close()
-    self.closed = true
+    self.closed = Some(Normal)
   }
 }
 
@@ -96,7 +96,9 @@ pub async fn ServerConnection::send_text(
   self : ServerConnection,
   text : String,
 ) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   let payload = @encoding/utf8.encode(text)
   write_frame(self.conn, true, OpCode::Text, payload, false)
 }
@@ -107,7 +109,9 @@ pub async fn ServerConnection::send_binary(
   self : ServerConnection,
   data : Bytes,
 ) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Binary, data, false)
 }
 
@@ -117,7 +121,9 @@ pub async fn ServerConnection::ping(
   self : ServerConnection,
   data? : Bytes = Bytes::new(0),
 ) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Ping, data, false)
 }
 
@@ -127,7 +133,9 @@ pub async fn ServerConnection::pong(
   self : ServerConnection,
   data? : Bytes = Bytes::new(0),
 ) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Pong, data, false)
 }
 
@@ -138,7 +146,9 @@ pub async fn ServerConnection::send_close(
   code? : CloseCode = Normal,
   reason? : String = "",
 ) -> Unit {
-  guard not(self.closed) else { return }
+  if self.closed is Some(c) {
+    raise ConnectionClosed(c)
+  }
   let payload_size = 2 + reason.length()
   let payload = FixedArray::make(payload_size, b'\x00')
 
@@ -162,14 +172,16 @@ pub async fn ServerConnection::send_close(
     payload.unsafe_reinterpret_as_bytes(),
     false,
   )
-  self.closed = true
+  self.closed = Some(code)
 }
 
 ///|
 /// Receive a message from the WebSocket
 /// Returns the complete message after assembling all frames
 pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   let frames : Array[Frame] = []
   let mut first_opcode : OpCode? = None
   for {
@@ -178,10 +190,10 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
     // Handle control frames immediately
     match frame.opcode {
       OpCode::Close => {
-        // Echo close frame
+        // TODO : Handle close code and reason
         self.send_close()
-        self.closed = true
-        raise ConnectionClosed
+        self.closed = Some(Normal)
+        raise ConnectionClosed(Normal)
       }
       OpCode::Ping => {
         // Auto-respond to ping with pong
@@ -217,40 +229,23 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
     }
     offset += payload_arr.length()
   }
-  let message_type = match first_opcode {
-    Some(OpCode::Text) => MessageType::Text
-    Some(OpCode::Binary) => MessageType::Binary
-    _ => MessageType::Binary // Default to binary
-  }
-  { mtype: message_type, data: data.unsafe_reinterpret_as_bytes() }
+  match first_opcode {
+    Some(OpCode::Text) =>
+      Text(@encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes()))
+    Some(OpCode::Binary) => Binary(data.unsafe_reinterpret_as_bytes())
+    _ => Binary(data.unsafe_reinterpret_as_bytes())
+  } // Default to binary
 }
 
 ///|
 /// Create and run a WebSocket server
 ///
-/// `addr` - The address to bind the server to
-/// `path` - The WebSocket path to accept connections on (e.g., "/ws")
-/// `f` - Callback function to handle each WebSocket connection
-/// `allow_failure` - Whether to silently ignore failures in the callback
-/// `max_connections` - Maximum number of concurrent connections
+/// - `addr` The address to bind the server to
+/// - `path` The WebSocket path to accept connections on (e.g., "/ws")
+/// - `f` Callback function to handle each WebSocket connection
+/// - `allow_failure` Whether to silently ignore failures in the callback
+/// - `max_connections` Maximum number of concurrent connections
 ///
-/// Example:
-/// ```moonbit no-check
-/// run_server(
-///   @socket.Addr::parse("0.0.0.0:8080"),
-///   "/ws",
-///   async fn(ws, _addr) raise {
-///     let msg = ws.receive()
-///     match msg.mtype {
-///       Text => {
-///         let text = @encoding/utf8.decode(msg.data)
-///         ws.send_text("Echo: " + text)
-///       }
-///       Binary => ws.send_binary(msg.data)
-///     }
-///   }
-/// )
-/// ```
 pub async fn run_server(
   addr : @socket.Addr,
   _path : String, // Currently unused in this simplified implementation
