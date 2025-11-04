@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-/// WebSocket opcode types
-pub(all) enum OpCode {
+/// WebSocket opcode types - internal implementation detail
+priv enum OpCode {
   Continuation // 0x0
   Text // 0x1
   Binary // 0x2
   Close // 0x8
   Ping // 0x9
   Pong // 0xA
-} derive(Show, Eq)
+}
 
 ///|
-pub fn OpCode::to_byte(self : OpCode) -> Byte {
+fn OpCode::to_byte(self : OpCode) -> Byte {
   match self {
     Continuation => b'\x00'
     Text => b'\x01'
@@ -36,7 +36,7 @@ pub fn OpCode::to_byte(self : OpCode) -> Byte {
 }
 
 ///|
-pub fn OpCode::from_byte(byte : Byte) -> OpCode? {
+fn OpCode::from_byte(byte : Byte) -> OpCode? {
   match byte {
     b'\x00' => Some(Continuation)
     b'\x01' => Some(Text)
@@ -49,12 +49,12 @@ pub fn OpCode::from_byte(byte : Byte) -> OpCode? {
 }
 
 ///|
-/// WebSocket frame
-pub(all) struct Frame {
+/// WebSocket frame - internal implementation detail
+priv struct Frame {
   fin : Bool
   opcode : OpCode
   payload : Bytes
-} derive(Show)
+}
 
 ///|
 /// WebSocket message type
@@ -114,10 +114,7 @@ pub fn CloseCode::from_int(code : Int) -> CloseCode? {
 
 ///|
 pub suberror WebSocketError {
-  ProtocolError(String)
-  InvalidOpCode
-  InvalidCloseCode
-  ConnectionClosed
-  InvalidFrame
-  InvalidHandshake
+  InvalidOpCode // Invalid frame opcode
+  ConnectionClosed // Connection was closed
+  InvalidHandshake // Handshake failed
 } derive(Show)

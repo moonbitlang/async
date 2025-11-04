@@ -29,79 +29,45 @@
 ///     console.log('Received:', event.data);
 /// };
 /// ```
-
 fn init {
   println("WebSocket echo server example")
 }
 
+///|
+/// Start the WebSocket echo server
+/// This function starts a server that listens on localhost:8080
+/// and echoes back any messages it receives from clients
 pub async fn start_echo_server() -> Unit {
   println("Starting WebSocket echo server on localhost:8080")
-  
   @websocket.run_server(
     @socket.Addr::parse("127.0.0.1:8080"),
     "/ws",
-    async fn(ws, client_addr) raise {
+    async fn(ws, client_addr) {
       println("New WebSocket connection from \{client_addr}")
-      
+
       // Simple echo loop - receive and echo back
-      for {
-        let msg = ws.receive()
-        match msg.mtype {
-          @websocket.MessageType::Text => {
-            let text = @encoding/utf8.decode(msg.data)
-            println("Received text: \{text}")
-            ws.send_text("Echo: " + text)
-          }
-          @websocket.MessageType::Binary => {
-            println("Received binary data (\{msg.data.length()} bytes)")
-            ws.send_binary(msg.data)
+      // Connection errors will automatically close the handler
+      try {
+        for {
+          let msg = ws.receive()
+          match msg.mtype {
+            @websocket.MessageType::Text => {
+              let text = @encoding/utf8.decode(msg.data)
+              println("Received text: \{text}")
+              ws.send_text("Echo: " + text)
+            }
+            @websocket.MessageType::Binary => {
+              println("Received binary data (\{msg.data.length()} bytes)")
+              ws.send_binary(msg.data)
+            }
           }
         }
+      } catch {
+        @websocket.ConnectionClosed =>
+          println("Client \{client_addr} disconnected")
+        e => println("Error with client \{client_addr}: \{e}")
       }
     },
     allow_failure=true,
   )
-}
-fn main {
-  println("Starting WebSocket echo server on localhost:8080")
-  println("Connect with: new WebSocket('ws://localhost:8080')")
-  
-  @async.run_async(fn() {
-    @websocket.run_server(
-      @socket.Addr::parse("127.0.0.1:8080"),
-      "/ws",
-      async fn(ws, client_addr) raise {
-        println("New WebSocket connection from \{client_addr}")
-        
-        // Keep receiving and echoing messages
-        for {
-          match {
-            let msg = ws.receive()
-            match msg.mtype {
-              @websocket.MessageType::Text => {
-                let text = @encoding/utf8.decode(msg.data)
-                println("Received text: \{text}")
-                ws.send_text("Echo: " + text)
-              }
-              @websocket.MessageType::Binary => {
-                println("Received binary data (\{msg.data.length()} bytes)")
-                ws.send_binary(msg.data)
-              }
-            }
-          } {
-            Err(@websocket.ConnectionClosed) => {
-              println("Client disconnected")
-              break
-            }
-            Err(e) => {
-              println("Error: \{e}")
-              break
-            }
-            Ok(_) => continue
-          }
-        }
-      },
-      allow_failure=true,
-    )
-  })
 }

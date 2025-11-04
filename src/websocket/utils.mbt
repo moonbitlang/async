@@ -72,10 +72,14 @@ fn base64_encode(data : Bytes) -> String {
 ///|
 /// Generate WebSocket accept key from client key using SHA-1 and base64
 fn generate_accept_key(client_key : String) -> String {
-  // WebSocket magic string
+  // WebSocket magic string as defined in RFC 6455
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
   let combined = client_key + magic
   let combined_bytes = @encoding/utf8.encode(combined)
+
+  // Use the crypto library for proper SHA-1 hashing
   let hash = @crypto.sha1(combined_bytes)
+
+  // Use our base64 encoding function for now
   base64_encode(hash.unsafe_reinterpret_as_bytes())
 }
