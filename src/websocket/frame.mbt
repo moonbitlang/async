@@ -31,10 +31,12 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   // Read extended payload length if needed
   if payload_len == 126L {
     let len_bytes = reader.read_exactly(2)
-    payload_len = decode_u16(len_bytes[:]).to_int64()
+    guard len_bytes is [u16be(len), ..]
+    payload_len = len.to_int64()
   } else if payload_len == 127L {
     let len_bytes = reader.read_exactly(8)
-    payload_len = decode_u64(len_bytes[:])
+    guard len_bytes is [u64be(len), ..]
+    payload_len = len.reinterpret_as_int64()
   }
 
   // Read masking key if present
@@ -101,17 +103,12 @@ async fn[W : @io.Writer] write_frame(
   } else if payload_len <= 65535L {
     header[offset] = (mask_bit | 126).to_byte()
     offset += 1
-    let len_bytes = encode_u16(payload_len.to_int())
-    header[offset] = len_bytes[0]
-    header[offset + 1] = len_bytes[1]
+    header.unsafe_write_uint16_be(offset, payload_len.to_uint16())
     offset += 2
   } else {
     header[offset] = (mask_bit | 127).to_byte()
     offset += 1
-    let len_bytes = encode_u64(payload_len)
-    for i = 0; i < 8; i = i + 1 {
-      header[offset + i] = len_bytes[i]
-    }
+    header.unsafe_write_uint64_be(offset, payload_len.reinterpret_as_uint64())
     offset += 8
   }
 
