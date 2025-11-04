@@ -14,9 +14,9 @@
 
 ///|
 /// WebSocket client connection
-pub struct Client {
+struct Client {
   conn : @socket.Tcp
-  mut closed : Bool
+  mut closed : CloseCode?
 }
 
 ///|
@@ -69,22 +69,24 @@ pub async fn Client::connect(
     conn.close()
     raise InvalidHandshake
   }
-  { conn, closed: false }
+  { conn, closed: Some(Normal) }
 }
 
 ///|
 /// Close the WebSocket connection
 pub fn Client::close(self : Client) -> Unit {
-  if not(self.closed) {
+  if self.closed is None {
     self.conn.close()
-    self.closed = true
+    self.closed = Some(Normal)
   }
 }
 
 ///|
 /// Send a text message
 pub async fn Client::send_text(self : Client, text : String) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   let payload = @encoding/utf8.encode(text)
   write_frame(self.conn, true, OpCode::Text, payload, true)
 }
@@ -92,21 +94,27 @@ pub async fn Client::send_text(self : Client, text : String) -> Unit {
 ///|
 /// Send a binary message
 pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Binary, data, true)
 }
 
 ///|
 /// Send a ping frame
 pub async fn Client::ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Ping, data, true)
 }
 
 ///|
 /// Send a pong frame
 pub async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   write_frame(self.conn, true, OpCode::Pong, data, true)
 }
 
@@ -114,7 +122,9 @@ pub async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit 
 /// Receive a message from the WebSocket
 /// Returns the complete message after assembling all frames
 pub async fn Client::receive(self : Client) -> Message {
-  guard not(self.closed) else { raise ConnectionClosed }
+  if self.closed is Some(code) {
+    raise ConnectionClosed(code)
+  }
   let frames : Array[Frame] = []
   let mut first_opcode : OpCode? = None
   for {
@@ -123,8 +133,9 @@ pub async fn Client::receive(self : Client) -> Message {
     // Handle control frames immediately
     match frame.opcode {
       OpCode::Close => {
-        self.closed = true
-        raise ConnectionClosed
+        // TODO : Handle close code and reason
+        self.closed = Some(CloseCode::Normal)
+        raise ConnectionClosed(Normal)
       }
       OpCode::Ping => {
         // Auto-respond to ping with pong
@@ -160,10 +171,10 @@ pub async fn Client::receive(self : Client) -> Message {
     }
     offset += payload_arr.length()
   }
-  let message_type = match first_opcode {
-    Some(OpCode::Text) => MessageType::Text
-    Some(OpCode::Binary) => MessageType::Binary
-    _ => MessageType::Binary // Default to binary
+  match first_opcode {
+    Some(OpCode::Text) =>
+      Text(@encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes()))
+    Some(OpCode::Binary) => Binary(data.unsafe_reinterpret_as_bytes())
+    _ => Binary(data.unsafe_reinterpret_as_bytes())
   }
-  { mtype: message_type, data: data.unsafe_reinterpret_as_bytes() }
 }

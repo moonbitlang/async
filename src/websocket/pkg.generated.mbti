@@ -11,16 +11,13 @@ async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr)
 // Errors
 pub suberror WebSocketError {
   InvalidOpCode
-  ConnectionClosed
+  ConnectionClosed(CloseCode)
   InvalidHandshake
 }
 impl Show for WebSocketError
 
 // Types and methods
-pub struct Client {
-  conn : @socket.Tcp
-  mut closed : Bool
-}
+type Client
 fn Client::close(Self) -> Unit
 async fn Client::connect(String, String, port? : Int, headers? : Map[String, String]) -> Self
 async fn Client::ping(Self, data? : Bytes) -> Unit
@@ -39,28 +36,16 @@ pub(all) enum CloseCode {
   MessageTooBig
   InternalError
 }
-fn CloseCode::from_int(Int) -> Self?
-fn CloseCode::to_int(Self) -> Int
 impl Eq for CloseCode
 impl Show for CloseCode
 
-pub(all) struct Message {
-  mtype : MessageType
-  data : Bytes
+pub(all) enum Message {
+  Binary(BytesView)
+  Text(StringView)
 }
 impl Show for Message
 
-pub(all) enum MessageType {
-  Text
-  Binary
-}
-impl Eq for MessageType
-impl Show for MessageType
-
-pub struct ServerConnection {
-  conn : @socket.Tcp
-  mut closed : Bool
-}
+type ServerConnection
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::ping(Self, data? : Bytes) -> Unit
 async fn ServerConnection::pong(Self, data? : Bytes) -> Unit
