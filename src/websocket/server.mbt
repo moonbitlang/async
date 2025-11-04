@@ -20,17 +20,9 @@ pub struct ServerConnection {
 }
 
 ///|
-/// Create a WebSocket server connection from a TCP connection
-pub fn ServerConnection::from_tcp(conn : @socket.Tcp) -> ServerConnection {
-  { conn, closed: false }
-}
-
-///|
-/// Handle WebSocket handshake on raw TCP connection
+/// Handle WebSocket handshake on raw TCP connection - internal use
 /// This performs the full HTTP upgrade handshake
-pub async fn ServerConnection::handshake(
-  conn : @socket.Tcp,
-) -> ServerConnection? {
+async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
   // Read HTTP request
   let request_data = conn.read_exactly(4096) // Read reasonable amount
   let request_str = @encoding/utf8.decode(request_data)

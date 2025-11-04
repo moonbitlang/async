@@ -12,25 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///|
-test "OpCode conversions" {
-  // Test OpCode to byte conversion
-  assert_eq(OpCode::Text.to_byte(), b'\x01')
-  assert_eq(OpCode::Binary.to_byte(), b'\x02')
-  assert_eq(OpCode::Close.to_byte(), b'\x08')
-  assert_eq(OpCode::Ping.to_byte(), b'\x09')
-  assert_eq(OpCode::Pong.to_byte(), b'\x0A')
-
-  // Test byte to OpCode conversion
-  assert_eq(OpCode::from_byte(b'\x01'), Some(OpCode::Text))
-  assert_eq(OpCode::from_byte(b'\x02'), Some(OpCode::Binary))
-  assert_eq(OpCode::from_byte(b'\x08'), Some(OpCode::Close))
-  assert_eq(OpCode::from_byte(b'\x09'), Some(OpCode::Ping))
-  assert_eq(OpCode::from_byte(b'\x0A'), Some(OpCode::Pong))
-
-  // Invalid opcode
-  assert_eq(OpCode::from_byte(b'\xFF'), None)
-}
+/// Tests for public WebSocket API
 
 ///|
 test "CloseCode conversions" {
@@ -43,14 +25,6 @@ test "CloseCode conversions" {
 
   // Invalid code
   assert_eq(CloseCode::from_int(9999), None)
-}
-
-///|
-test "Frame structure" {
-  let frame = Frame::{ fin: true, opcode: OpCode::Text, payload: b"Hello" }
-  assert_eq(frame.fin, true)
-  assert_eq(frame.opcode, OpCode::Text)
-  assert_eq(frame.payload, b"Hello")
 }
 
 ///|

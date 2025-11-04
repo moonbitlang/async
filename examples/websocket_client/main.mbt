@@ -12,35 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+///|
 /// WebSocket client example
 /// 
 /// This demonstrates how to connect to a WebSocket server,
 /// send messages, and receive responses.
-
 fn init {
   println("WebSocket client example")
 }
 
+///|
 pub async fn connect_to_echo_server() -> Unit {
   println("Connecting to WebSocket echo server at localhost:8080")
-  
+
   // Connect to the server
   let client = @websocket.Client::connect("localhost", "/ws", port=8080)
   println("Connected successfully!")
-  
+
   // Send some test messages
   let test_messages = [
-    "Hello, WebSocket!",
-    "This is a test message",
-    "MoonBit WebSocket client works!",
-    "Final message"
+    "Hello, WebSocket!", "This is a test message", "MoonBit WebSocket client works!",
+    "Final message",
   ]
-  
   for message in test_messages {
     // Send text message
     println("Sending: \{message}")
     client.send_text(message)
-    
+
     // Receive echo response
     let response = client.receive()
     match response.mtype {
@@ -48,36 +46,35 @@ pub async fn connect_to_echo_server() -> Unit {
         let text = @encoding/utf8.decode(response.data)
         println("Received: \{text}")
       }
-      @websocket.MessageType::Binary => {
+      @websocket.MessageType::Binary =>
         println("Received binary data (\{response.data.length()} bytes)")
-      }
     }
-    
-    // Small delay between messages
-    // Note: In a real implementation, you might want to add a sleep function
-    // For now, we'll just continue immediately
   }
-  
+
+  // Small delay between messages
+  // Note: In a real implementation, you might want to add a sleep function
+  // For now, we'll just continue immediately
+
   // Test binary message
   println("Sending binary data...")
   let binary_data = @encoding/utf8.encode("Binary test data")
   client.send_binary(binary_data)
-  
   let binary_response = client.receive()
   match binary_response.mtype {
     @websocket.MessageType::Text => {
       let text = @encoding/utf8.decode(binary_response.data)
       println("Received text response: \{text}")
     }
-    @websocket.MessageType::Binary => {
-      println("Received binary response (\{binary_response.data.length()} bytes)")
-    }
+    @websocket.MessageType::Binary =>
+      println(
+        "Received binary response (\{binary_response.data.length()} bytes)",
+      )
   }
-  
+
   // Test ping
   println("Sending ping...")
   client.ping()
-  
+
   // Close the connection
   println("Closing connection...")
   client.close()
