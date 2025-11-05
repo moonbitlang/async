@@ -101,6 +101,10 @@ extern "C" fn Job::fsync(fd : Int, only_data : Bool) -> Job = "moonbitlang_async
 extern "C" fn Job::remove(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|
+#owned(target, path)
+extern "C" fn Job::symlink(target : Bytes, path : Bytes) -> Job = "moonbitlang_async_make_symlink_job"
+
+///|
 #owned(path)
 extern "C" fn Job::mkdir(path : Bytes, mode : Int) -> Job = "moonbitlang_async_make_mkdir_job"
 

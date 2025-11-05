@@ -36,6 +36,8 @@ let stdin : IOHandle
 
 let stdout : IOHandle
 
+async fn symlink(StringView, StringView, context~ : String) -> Unit
+
 async fn wait_pid(Int) -> Unit
 
 fn with_event_loop(async () -> Unit) -> Unit raise

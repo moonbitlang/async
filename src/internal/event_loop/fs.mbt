@@ -113,6 +113,28 @@ pub async fn remove(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
+pub async fn symlink(
+  target : StringView,
+  path : StringView,
+  context~ : String,
+) -> Unit {
+  let target_bytes = @encoding/utf8.encode(target)
+  let path_bytes = @encoding/utf8.encode(path)
+  try
+    perform_job_in_worker(Job::symlink(target_bytes, path_bytes), context~)
+  catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(
+        errno,
+        context="\{context}: \{repr(target)} => \{repr(path)}",
+      )
+    err => raise err
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
   let path_bytes = @encoding/utf8.encode(path)
   try perform_job_in_worker(Job::mkdir(path_bytes, mode), context~) catch {

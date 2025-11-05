@@ -29,7 +29,7 @@ async test "realpath link to absolute" {
       _ => cwd + "/src/fs/realpath_test.mbt"
     }
     let link_path = "target/realpath_test_link_to_absolute.test"
-    inspect(@process.run("ln", ["-s", path, link_path]), content="0")
+    @fs.symlink(link_path, target=path)
     root.add_defer(() => @fs.remove(link_path))
     let rp = @fs.realpath(link_path)
     assert_true(rp.has_prefix(cwd))
@@ -43,7 +43,7 @@ async test "realpath link to relative" {
     guard @env.current_dir() is Some(cwd)
     let rel_path = "../src/fs/realpath_test.mbt"
     let link_path = "target/realpath_test_link_to_relative.test"
-    inspect(@process.run("ln", ["-s", rel_path, link_path]), content="0")
+    @fs.symlink(link_path, target=rel_path)
     root.add_defer(() => @fs.remove(link_path))
     let rp = @fs.realpath(link_path)
     assert_true(rp.has_prefix(cwd))
@@ -57,7 +57,7 @@ async test "realpath link to dir" {
     guard @env.current_dir() is Some(cwd)
     let rel_path = "../src/fs"
     let link_path = "target/realpath_test_link_to_dir.test"
-    inspect(@process.run("ln", ["-s", rel_path, link_path]), content="0")
+    @fs.symlink(link_path, target=rel_path)
     root.add_defer(() => @fs.remove(link_path))
     let rp = @fs.realpath(link_path + "/realpath_test.mbt")
     assert_true(rp.has_prefix(cwd))

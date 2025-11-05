@@ -622,6 +622,37 @@ struct remove_job *moonbitlang_async_make_remove_job(char *path) {
   return job;
 }
 
+// ===== symlink job, create symbolic link =====
+
+struct symlink_job {
+  struct job job;
+  char *target;
+  char *path;
+};
+
+static
+void free_symlink_job(void *obj) {
+  struct symlink_job *job = (struct symlink_job*)obj;
+  moonbit_decref(job->target);
+  moonbit_decref(job->path);
+}
+
+static
+void symlink_job_worker(struct job *job) {
+  struct symlink_job *symlink_job = (struct symlink_job*)job;
+  job->ret = symlink(symlink_job->target, symlink_job->path);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct symlink_job *moonbitlang_async_make_symlink_job(char *target, char *path) {
+  struct symlink_job *job = MAKE_JOB(symlink);
+  job->target = target;
+  job->path = path;
+  return job;
+}
+
+
 // ===== mkdir job, create new directory =====
 
 struct mkdir_job {

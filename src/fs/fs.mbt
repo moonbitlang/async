@@ -352,3 +352,9 @@ pub async fn write_text_file(
   defer file.close()
   file.write_string(content, encoding~)
 }
+
+///|
+/// Create a symbolic link to `old_path` at `new_path`.
+pub async fn symlink(target~ : StringView, path : StringView) -> Unit {
+  @event_loop.symlink(target, path, context="@fs.link()")
+}

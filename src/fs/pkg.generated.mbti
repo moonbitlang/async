@@ -43,6 +43,8 @@ async fn remove(StringView) -> Unit
 
 async fn rmdir(StringView, recursive? : Bool) -> Unit
 
+async fn symlink(target~ : StringView, StringView) -> Unit
+
 async fn walk(StringView, async (String, Array[String]) -> Unit, max_concurrency? : Int, allow_failure? : Bool) -> Unit
 
 async fn write_file(StringView, &@io.Data, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
