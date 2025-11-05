@@ -47,21 +47,15 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 
 ///|
 #deprecated("use `@stdio.stdin` instead")
-pub let stdin : PipeRead = @event_loop.IOHandle::from_existing_fd(
-  @stdio.stdin.fd(),
-)
+pub let stdin : PipeRead = @event_loop.stdin
 
 ///|
 #deprecated("use `@stdio.stdout` instead")
-pub let stdout : PipeWrite = @event_loop.IOHandle::from_existing_fd(
-  @stdio.stdout.fd(),
-)
+pub let stdout : PipeWrite = @event_loop.stdout
 
 ///|
 #deprecated("use `@stdio.stderr` instead")
-pub let stderr : PipeWrite = @event_loop.IOHandle::from_existing_fd(
-  @stdio.stderr.fd(),
-)
+pub let stderr : PipeWrite = @event_loop.stderr
 
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {

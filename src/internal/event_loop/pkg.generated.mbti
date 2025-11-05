@@ -18,8 +18,6 @@ async fn readdir(Directory, context~ : String) -> DirectoryEntry
 
 async fn realpath(StringView, context~ : String) -> Bytes
 
-fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit
-
 async fn remove(StringView, context~ : String) -> Unit
 
 async fn rmdir(StringView, context~ : String) -> Unit
@@ -29,6 +27,12 @@ async fn sleep(Int) -> Unit
 async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
 
 async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.Stat
+
+let stderr : IOHandle
+
+let stdin : IOHandle
+
+let stdout : IOHandle
 
 async fn wait_pid(Int) -> Unit
 
