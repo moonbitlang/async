@@ -16,19 +16,16 @@
 using @fd_util {type Stat}
 
 ///|
-struct File {
-  io : @event_loop.IOHandle
-  kind : @fd_util.FileKind
-}
+struct File(@event_loop.IOHandle)
 
 ///|
 pub fn File::fd(self : File) -> Int {
-  self.io.fd()
+  self.0.fd()
 }
 
 ///|
 pub fn File::close(self : File) -> Unit {
-  self.io.close()
+  self.0.close()
 }
 
 ///|
@@ -108,13 +105,7 @@ pub async fn open(
     Data => flags = flags | const_O_DSYNC
     Full => flags = flags | const_O_SYNC
   }
-  let io = @event_loop.open(
-    filename,
-    flags~,
-    mode=user_mode,
-    context="@fs.open()",
-  )
-  { io, kind: io.fstat(context="@fs.open()").kind() }
+  @event_loop.open(filename, flags~, mode=user_mode, context="@fs.open()")
 }
 
 ///|
@@ -152,7 +143,7 @@ pub impl @io.Reader for File with read(
   offset? = 0,
   max_len? = buf.length() - offset,
 ) {
-  self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
+  self.0.read(buf, offset~, len=max_len, context="@fs.File::read()")
 }
 
 ///|
@@ -171,7 +162,7 @@ impl @io.Reader for DummyFile with read(
 
 ///|
 pub impl @io.Reader for File with read_all(self) {
-  match self.kind {
+  match self.0.kind() {
     Regular => {
       let size = self.size().to_int()
       let result = FixedArray::make(size, b'0')
@@ -184,7 +175,7 @@ pub impl @io.Reader for File with read_all(self) {
 
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
-  self.io.write(buf, offset~, len~, context="@fs.File::write()")
+  self.0.write(buf, offset~, len~, context="@fs.File::write()")
 }
 
 ///|
@@ -193,7 +184,7 @@ pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
 /// some metadata such as timestamp may not be flushed.
 /// Buf file content and important metadata such as file size are always flushed.
 pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
-  self.io.fsync(only_data~, context="@fs.File::sync()")
+  self.0.fsync(only_data~, context="@fs.File::sync()")
 }
 
 ///|
@@ -223,7 +214,7 @@ fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
 pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
-  self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
+  self.0.seek(offset, mode.to_int(), context="@fs.File::seek()")
 }
 
 ///|
@@ -236,7 +227,7 @@ pub async fn File::curr_pos(self : File) -> Int64 {
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
-  self.io.fstat(context="@fs.File::size()").size()
+  self.0.fstat(context="@fs.File::size()").size()
 }
 
 ///|
@@ -252,7 +243,7 @@ extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 /// Caller should call `.close()` on the returned directory object instead
 /// (or, if `as_dir` fails, the input file is closed automatically).
 pub fn File::as_dir(self : File) -> Directory raise {
-  let fd = self.io.detach_from_event_loop()
+  let fd = self.0.detach_from_event_loop()
   let dir = as_dir_ffi(fd)
   if dir.is_null() {
     let context = "@fs.File::as_dir()"
@@ -264,7 +255,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
 
 ///|
 pub fn File::kind(self : File) -> FileKind {
-  FileKind::from_fd_util_file_kind(self.kind)
+  FileKind::from_fd_util_file_kind(self.0.kind())
 }
 
 ///|
@@ -272,7 +263,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::atime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::atime()").atime()
+  self.0.fstat(context="@fs.File::atime()").atime()
 }
 
 ///|
@@ -280,7 +271,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::mtime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::mtime()").mtime()
+  self.0.fstat(context="@fs.File::mtime()").mtime()
 }
 
 ///|
@@ -288,7 +279,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::ctime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::ctime()").ctime()
+  self.0.fstat(context="@fs.File::ctime()").ctime()
 }
 
 ///|
@@ -303,7 +294,7 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    file.io.fsync(
+    file.0.fsync(
       only_data=false,
       context="@fs.File::read_file(sync_timestamp=true)",
     )

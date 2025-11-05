@@ -248,6 +248,11 @@ pub fn IOHandle::fd(handle : IOHandle) -> Int {
 }
 
 ///|
+pub fn IOHandle::kind(handle : IOHandle) -> @fd_util.FileKind {
+  handle.kind
+}
+
+///|
 fn IOHandle::prepare_read(handle : IOHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { abort("file descriptor already closed") }
