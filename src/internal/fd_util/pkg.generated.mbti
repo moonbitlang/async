@@ -19,10 +19,24 @@ fn set_nonblocking(Int, context~ : String) -> Unit raise
 // Errors
 
 // Types and methods
+pub(all) enum FileKind {
+  Unknown
+  Regular
+  Directory
+  SymLink
+  Socket
+  Pipe
+  BlockDevice
+  CharDevice
+}
+fn FileKind::can_poll(Self) -> Bool
+impl Eq for FileKind
+impl Show for FileKind
+
 type Stat
 fn Stat::atime(Self) -> (Int64, Int)
 fn Stat::ctime(Self) -> (Int64, Int)
-fn Stat::kind(Self) -> Int
+fn Stat::kind(Self) -> FileKind
 fn Stat::mtime(Self) -> (Int64, Int)
 fn Stat::new() -> Self
 fn Stat::size(Self) -> Int64

@@ -18,7 +18,7 @@ using @fd_util {type Stat}
 ///|
 struct File {
   io : @event_loop.IOHandle
-  kind : FileKind
+  kind : @fd_util.FileKind
 }
 
 ///|
@@ -114,8 +114,7 @@ pub async fn open(
     mode=user_mode,
     context="@fs.open()",
   )
-  let kind = io.fstat(context="@fs.open()").kind()
-  { io, kind: FileKind::from_int(kind) }
+  { io, kind: io.fstat(context="@fs.open()").kind() }
 }
 
 ///|
@@ -266,16 +265,8 @@ pub fn File::as_dir(self : File) -> Directory raise {
 }
 
 ///|
-fn FileKind::can_poll(self : FileKind) -> Bool {
-  match self {
-    Socket | Pipe | CharDevice => true
-    Unknown | Regular | Directory | SymLink | BlockDevice => false
-  }
-}
-
-///|
 pub fn File::kind(self : File) -> FileKind {
-  self.kind
+  FileKind::from_fd_util_file_kind(self.kind)
 }
 
 ///|

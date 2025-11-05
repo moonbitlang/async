@@ -37,8 +37,28 @@ pub fn fstat_sync(fd : Int, context~ : String) -> Stat raise {
 }
 
 ///|
+pub(all) enum FileKind {
+  Unknown = 0
+  Regular = 1
+  Directory = 2
+  SymLink = 3
+  Socket = 4
+  Pipe = 5
+  BlockDevice = 6
+  CharDevice = 7
+} derive(Eq, Show)
+
+///|
+pub fn FileKind::can_poll(self : FileKind) -> Bool {
+  match self {
+    Socket | Pipe | CharDevice => true
+    Unknown | Regular | Directory | SymLink | BlockDevice => false
+  }
+}
+
+///|
 #borrow(stat)
-pub extern "C" fn Stat::kind(stat : Stat) -> Int = "moonbitlang_async_file_kind_from_stat"
+pub extern "C" fn Stat::kind(stat : Stat) -> FileKind = "moonbitlang_async_file_kind_from_stat"
 
 ///|
 #borrow(stat)

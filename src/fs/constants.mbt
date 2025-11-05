@@ -25,7 +25,9 @@ pub(all) enum FileKind {
 } derive(Eq, Show)
 
 ///|
-fn FileKind::from_int(x : Int) -> FileKind = "%identity"
+// currently we cannot re-export constructors,
+// so we have to use a hack to make the `FileKind` type available to users.
+fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind = "%identity"
 
 ///|
 let const_F_OK : Int = get_F_OK()
