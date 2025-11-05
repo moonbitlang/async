@@ -56,6 +56,7 @@ enum op_code {
   OP_WRITE,
   OP_OPEN,
   OP_STAT,
+  OP_FSTAT,
   OP_SEEK,
   OP_ACCESS,
   OP_FSYNC,
@@ -92,6 +93,11 @@ struct stat_job {
   char *path;
   void *out;
   int follow_symlink;
+};
+
+struct fstat_job {
+  int fd;
+  void *out;
 };
 
 struct seek_job {
@@ -158,6 +164,7 @@ struct job {
     struct write_job write;
     struct open_job open;
     struct stat_job stat;
+    struct fstat_job fstat;
     struct seek_job seek;
     struct access_job access;
     struct fsync_job fsync;
@@ -293,6 +300,12 @@ void *worker_loop(void *data) {
       } else {
         job->ret = lstat(job->payload.stat.path, job->payload.stat.out);
       }
+      if (job->ret < 0)
+        job->err = errno;
+      break;
+
+    case OP_FSTAT:
+      job->ret = fstat(job->payload.fstat.fd, job->payload.fstat.out);
       if (job->ret < 0)
         job->err = errno;
       break;
@@ -566,6 +579,9 @@ void free_job(void *jobp) {
     moonbit_decref(job->payload.stat.path);
     moonbit_decref(job->payload.stat.out);
     break;
+  case OP_FSTAT:
+    moonbit_decref(job->payload.stat.out);
+    break;
   case OP_SEEK:
     moonbit_decref(job->payload.seek.out);
     break;
@@ -667,6 +683,15 @@ struct job *moonbitlang_async_make_stat_job(
   job->payload.stat.path = path;
   job->payload.stat.out = out;
   job->payload.stat.follow_symlink = follow_symlink;
+  return job;
+}
+
+struct job *moonbitlang_async_make_fstat_job(int fd, void *out) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_FSTAT;
+  job->payload.fstat.fd = fd;
+  job->payload.fstat.out = out;
   return job;
 }
 

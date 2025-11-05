@@ -25,12 +25,12 @@ pub fn Stat::new() -> Stat {
 
 ///|
 #borrow(stat)
-extern "C" fn Stat::from_fd_ffi(fd : Int, stat : Stat) -> Int = "fstat"
+extern "C" fn fstat_sync_ffi(fd : Int, stat : Stat) -> Int = "fstat"
 
 ///|
-pub fn Stat::from_fd(fd : Int, context~ : String) -> Stat raise {
+pub fn fstat_sync(fd : Int, context~ : String) -> Stat raise {
   let stat = Stat::new()
-  if Stat::from_fd_ffi(fd, stat) < 0 {
+  if fstat_sync_ffi(fd, stat) < 0 {
     @os_error.check_errno(context)
   }
   stat

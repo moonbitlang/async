@@ -77,7 +77,7 @@ fn setup_nonblocking_fd(
   context~ : String,
   restore_context~ : String,
 ) -> FileKind raise {
-  let kind = FileKind::from_int(@fd_util.Stat::from_fd(fd, context~).kind())
+  let kind = FileKind::from_int(@fd_util.fstat_sync(fd, context~).kind())
   if kind.can_poll() && not(@fd_util.fd_is_nonblocking(fd, context~)) {
     fn init() raise {
       @fd_util.set_nonblocking(fd, context~)
