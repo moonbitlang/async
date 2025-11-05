@@ -88,6 +88,10 @@ int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
   }
 }
 
+int64_t moonbitlang_async_file_size_from_stat(struct stat *stat) {
+  return stat->st_size;
+}
+
 #ifdef __MACH__
 #define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##timespec
 #else

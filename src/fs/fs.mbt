@@ -239,10 +239,7 @@ pub async fn File::curr_pos(self : File) -> Int64 {
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
-  let curr_pos = self.curr_pos()
-  let size = self.seek(0, mode=FromEnd)
-  ignore(self.seek(curr_pos, mode=FromStart))
-  size
+  self.io.fstat(context="@fs.File::size()").size()
 }
 
 ///|

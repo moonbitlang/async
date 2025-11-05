@@ -25,6 +25,7 @@ fn Stat::ctime(Self) -> (Int64, Int)
 fn Stat::kind(Self) -> Int
 fn Stat::mtime(Self) -> (Int64, Int)
 fn Stat::new() -> Self
+fn Stat::size(Self) -> Int64
 
 // Type aliases
 
