@@ -15,7 +15,7 @@
 ///|
 async test "read EOF" {
   let buf = FixedArray::make(16, b'0')
-  let path = "read_eof_test"
+  let path = "target/read_eof_test"
   {
     let w = @fs.create(path, permission=0o644, sync=Full)
     defer w.close()
