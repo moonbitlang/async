@@ -48,148 +48,26 @@
 #define WAKEUP_METHOD_SIGNAL
 #endif
 
-extern char **environ;
-
-enum op_code {
-  OP_SLEEP = 0, // for testing only
-  OP_READ,
-  OP_WRITE,
-  OP_OPEN,
-  OP_STAT,
-  OP_FSTAT,
-  OP_SEEK,
-  OP_ACCESS,
-  OP_FSYNC,
-  OP_REMOVE,
-  OP_MKDIR,
-  OP_RMDIR,
-  OP_READDIR,
-  OP_REALPATH,
-  OP_SPAWN,
-  OP_GETADDRINFO
-};
-
-struct read_job {
-  int fd;
-  char *buf;
-  int offset;
-  int len;
-};
-
-struct write_job {
-  int fd;
-  char *buf;
-  int offset;
-  int len;
-};
-
-struct open_job {
-  char *filename;
-  int flags;
-  int mode;
-  void *stat_out;
-};
-
-struct stat_job {
-  char *path;
-  void *out;
-  int follow_symlink;
-};
-
-struct fstat_job {
-  int fd;
-  void *out;
-};
-
-struct seek_job {
-  int fd;
-  int64_t offset;
-  int whence;
-  int64_t *out;
-};
-
-struct access_job {
-  char *path;
-  int amode;
-};
-
-struct fsync_job {
-  int fd;
-  int only_data;
-};
-
-struct remove_job {
-  char *path;
-};
-
-struct mkdir_job {
-  char *path;
-  int mode;
-};
-
-struct rmdir_job {
-  char *path;
-};
-
-struct readdir_job {
-  DIR *dir;
-  struct dirent **out;
-};
-
-struct realpath_job {
-  char *path;
-  char **out;
-};
-
-struct spawn_job {
-  char *path;
-  char **args;
-  char **envp;
-  int stdio[3];
-  char *cwd;
-};
-
-struct getaddrinfo_job {
-  char *hostname;
-  struct addrinfo **out;
-};
-
 struct job {
+  // an unique identifier for the job,
+  // used to find the waiter of a job
   int32_t job_id;
-  enum op_code op_code;
-  int64_t ret;
+
+  // the return value of the job.
+  // should be set by the worker and read by waiter.
+  // for result that cannot fit in an integer,
+  // jobs can also store extra result in their payload
+  int32_t ret;
+
+  // the error code of the job.
+  // should be zefo iff the job succeeds
   int32_t err;
-  union {
-    struct timespec sleep;
-    struct read_job read;
-    struct write_job write;
-    struct open_job open;
-    struct stat_job stat;
-    struct fstat_job fstat;
-    struct seek_job seek;
-    struct access_job access;
-    struct fsync_job fsync;
-    struct remove_job remove;
-    struct mkdir_job mkdir;
-    struct rmdir_job rmdir;
-    struct readdir_job readdir;
-    struct realpath_job realpath;
-    struct spawn_job spawn;
-    struct getaddrinfo_job getaddrinfo;
-  } payload;
+
+  // the worker that actually performs the job.
+  // it will receive the job itself as parameter.
+  // extra payload can be placed after the header fields in `struct job`
+  void (*worker)(struct job*);
 };
-
-struct {
-  int initialized;
-
-  int notify_send;
-
-#ifdef WAKEUP_METHOD_SIGNAL
-  sigset_t wakeup_signal;
-  sigset_t old_sigmask;
-#endif
-  int32_t job_id;
-} pool;
 
 int32_t moonbitlang_async_job_get_id(struct job *job) {
   return job->job_id;
@@ -203,21 +81,21 @@ int32_t moonbitlang_async_job_get_err(struct job *job) {
   return job->err;
 }
 
-int32_t moonbitlang_async_job_poll_event(struct job *job) {
-  switch (job->op_code) {
-  case OP_READ: return 1;
-  case OP_WRITE: return 2;
-  default: return 0;
-  }
-}
+// =======================================================
+// =================== the thread pool ===================
+// =======================================================
 
-int moonbitlang_async_job_poll_fd(struct job *job) {
-  switch (job->op_code) {
-  case OP_READ: return job->payload.read.fd;
-  case OP_WRITE: return job->payload.write.fd;
-  default: return -1;
-  }
-}
+struct {
+  int initialized;
+
+  int notify_send;
+
+#ifdef WAKEUP_METHOD_SIGNAL
+  sigset_t wakeup_signal;
+  sigset_t old_sigmask;
+#endif
+  int32_t job_id;
+} pool;
 
 struct worker {
   pthread_t id;
@@ -245,225 +123,8 @@ void *worker_loop(void *data) {
     job->ret = 0;
     job->err = 0;
 
-    switch (job->op_code) {
-    case OP_SLEEP:
-#ifdef __MACH__
-      {
-        // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
-        // causing corrupted test result.
-        // However `kqueue` seems to have very accurate timing.
-        // Since `OP_SLEEP` is only for testing purpose,
-        // here we use `kqueue` (in an absolutely wrong way) to perform sleep.
-        int kqfd = kqueue();
-        struct kevent kev;
-        kevent(kqfd, 0, 0, &kev, 1, &(job->payload.sleep));
-        close(kqfd);
-      }
-#else
-      nanosleep(&job->payload.sleep, 0);
-#endif
-      job->ret = 0;
-      break;
+    job->worker(job);
 
-    case OP_READ:
-      job->ret = read(
-        job->payload.read.fd,
-        job->payload.read.buf + job->payload.read.offset,
-        job->payload.read.len
-      );
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_WRITE:
-      job->ret = write(
-        job->payload.write.fd,
-        job->payload.write.buf + job->payload.write.offset,
-        job->payload.write.len
-      );
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_OPEN:
-      job->ret = open(
-        job->payload.open.filename,
-        job->payload.open.flags | O_CLOEXEC,
-        job->payload.open.mode
-      );
-      if (job->ret < 0) {
-        job->err = errno;
-        break;
-      }
-      if (fstat(job->ret, job->payload.open.stat_out) < 0) {
-        job->err = errno;
-      }
-      break;
-
-    case OP_STAT:
-      if (job->payload.stat.follow_symlink) {
-        job->ret = stat(job->payload.stat.path, job->payload.stat.out);
-      } else {
-        job->ret = lstat(job->payload.stat.path, job->payload.stat.out);
-      }
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_FSTAT:
-      job->ret = fstat(job->payload.fstat.fd, job->payload.fstat.out);
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_SEEK: {
-      static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
-      *(job->payload.seek.out) = lseek(
-        job->payload.seek.fd,
-        job->payload.seek.offset,
-        whence_list[job->payload.seek.whence]
-      );
-      if (*(job->payload.seek.out) < 0) {
-        job->err = errno;
-      }
-      break;
-    }
-
-    case OP_ACCESS:
-      job->ret = access(job->payload.access.path, job->payload.access.amode);
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_FSYNC:
-      if (job->payload.fsync.only_data) {
-        job->ret = fdatasync(job->payload.fsync.fd);
-      } else {
-        job->ret = fsync(job->payload.fsync.fd);
-      }
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_REMOVE:
-      job->ret = remove(job->payload.remove.path);
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_MKDIR:
-      job->ret = mkdir(job->payload.mkdir.path, job->payload.mkdir.mode);
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_RMDIR:
-      job->ret = rmdir(job->payload.rmdir.path);
-      if (job->ret < 0)
-        job->err = errno;
-      break;
-
-    case OP_READDIR:
-      errno = 0;
-      *(job->payload.readdir.out) = readdir(job->payload.readdir.dir);
-      if (*(job->payload.readdir.out) == 0 && errno) {
-        job->ret = -1;
-        job->err = errno;
-      }
-      break;
-
-    case OP_REALPATH: {
-      *(job->payload.realpath.out) = 0;
-      *(job->payload.realpath.out) = realpath(job->payload.realpath.path, 0);
-      if (*(job->payload.realpath.out) == 0) {
-        job->ret = -1;
-        job->err = errno;
-      }
-      break;
-    }
-
-    case OP_SPAWN: {
-      posix_spawnattr_t attr;
-      posix_spawnattr_init(&attr);
-#ifdef WAKEUP_METHOD_SIGNAL
-      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
-      posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
-#else
-      posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
-#endif
-
-      sigset_t sigdefault_set;
-      sigemptyset(&sigdefault_set);
-      sigaddset(&sigdefault_set, SIGCHLD);
-      sigaddset(&sigdefault_set, SIGHUP);
-      sigaddset(&sigdefault_set, SIGINT);
-      sigaddset(&sigdefault_set, SIGQUIT);
-      sigaddset(&sigdefault_set, SIGTERM);
-      sigaddset(&sigdefault_set, SIGALRM);
-      posix_spawnattr_setsigdefault(&attr, &sigdefault_set);
-
-      posix_spawn_file_actions_t file_actions;
-      posix_spawn_file_actions_init(&file_actions);
-      for (int i = 0; i < 3; ++i) {
-        int fd = job->payload.spawn.stdio[i];
-        if (fd >= 0) {
-          job->err = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
-          if (job->err) goto exit;
-        }
-      }
-      if (job->payload.spawn.cwd) {
-        job->err = posix_spawn_file_actions_addchdir_np(&file_actions, job->payload.spawn.cwd);
-        if (job->err) goto exit;
-      }
-
-      int32_t pid;
-      if (strchr(job->payload.spawn.path, '/')) {
-        job->err = posix_spawn(
-          &pid,
-          job->payload.spawn.path,
-          &file_actions,
-          &attr,
-          job->payload.spawn.args,
-          job->payload.spawn.envp ? job->payload.spawn.envp : environ
-        );
-      } else {
-        job->err = posix_spawnp(
-          &pid,
-          job->payload.spawn.path,
-          &file_actions,
-          &attr,
-          job->payload.spawn.args,
-          job->payload.spawn.envp ? job->payload.spawn.envp : environ
-        );
-      }
-    exit:
-      posix_spawnattr_destroy(&attr);
-      posix_spawn_file_actions_destroy(&file_actions);
-      if (!(job->err)) {
-        job->ret = pid;
-      }
-      break;
-    }
-
-    case OP_GETADDRINFO: {
-      struct addrinfo hint = {
-        AI_ADDRCONFIG, // ai_flags
-        AF_UNSPEC, // ai_family, support both IPv4 and IPv6
-        0, // ai_socktype
-        0, // ai_protocol
-        0, 0, 0, 0
-      };
-      job->ret = getaddrinfo(
-        job->payload.getaddrinfo.hostname, 
-        0,
-        &hint,
-        job->payload.getaddrinfo.out
-      );
-      if (job->ret == EAI_SYSTEM)
-        job->err = errno;
-      break;
-    }
-    }
     self->waiting = 1;
     write(pool.notify_send, &(job->job_id), sizeof(int));
 
@@ -563,229 +224,608 @@ struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
   return worker;
 }
 
-int moonbitlang_async_job_id(struct job *job) {
-  return job->job_id;
+int32_t moonbitlang_async_fetch_completion(int notify_recv) {
+  int job_id;
+  int32_t ret = read(notify_recv, &job_id, sizeof(int));
+  if (ret < 0)
+    return ret;
+
+  return job_id;
+}
+
+// =========================================================
+// ===================== concrete jobs =====================
+// =========================================================
+
+static
+struct job *make_job(
+  int32_t size,
+  void (*free_job)(void*),
+  void (*worker)(struct job*)
+) {
+  struct job *job = (struct job*)moonbit_make_external_object(
+    free_job,
+    size
+  );
+  job->job_id = pool.job_id++;
+  job->ret = 0;
+  job->err = 0;
+  job->worker = worker;
+  return job;
+}
+
+#define MAKE_JOB(name) (struct name##_job*)make_job(\
+  sizeof(struct name##_job),\
+  free_##name##_job,\
+  name##_job_worker\
+)
+
+// ===== sleep job, sleep via thread pool, for testing only =====
+
+struct sleep_job {
+  struct job job;
+  struct timespec duration;
+};
+
+static
+void free_sleep_job(void *job) {}
+
+static
+void sleep_job_worker(struct job *job) {
+  struct timespec duration = ((struct sleep_job*)job)->duration;
+#ifdef __MACH__
+  // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
+  // causing corrupted test result.
+  // However `kqueue` seems to have very accurate timing.
+  // Since `OP_SLEEP` is only for testing purpose,
+  // here we use `kqueue` (in an absolutely wrong way) to perform sleep.
+  int kqfd = kqueue();
+  struct kevent kev;
+  kevent(kqfd, 0, 0, &kev, 1, &duration);
+  close(kqfd);
+#else
+  nanosleep(&duration, 0);
+#endif
+}
+
+struct sleep_job *moonbitlang_async_make_sleep_job(int ms) {
+  struct sleep_job *job = MAKE_JOB(sleep);
+  job->duration.tv_sec = ms / 1000;
+  job->duration.tv_nsec = (ms % 1000) * 1000000;
+  return job;
+}
+
+// ===== read job, for reading non-pollable stuff =====
+
+struct read_job {
+  struct job job;
+  int fd;
+  char *buf;
+  int offset;
+  int len;
+};
+
+static
+void free_read_job(void *obj) {
+  struct read_job *job = (struct read_job*)obj;
+  moonbit_decref(job->buf);
 }
 
 static
-void free_job(void *jobp) {
-  struct job *job = (struct job*)jobp;
-  switch (job->op_code) {
-  case OP_SLEEP: break;
-  case OP_READ:
-    moonbit_decref(job->payload.read.buf);
-    break;
-  case OP_WRITE:
-    moonbit_decref(job->payload.write.buf);
-    break;
-  case OP_OPEN:
-    moonbit_decref(job->payload.open.filename);
-    moonbit_decref(job->payload.open.stat_out);
-    break;
-  case OP_STAT:
-    moonbit_decref(job->payload.stat.path);
-    moonbit_decref(job->payload.stat.out);
-    break;
-  case OP_FSTAT:
-    moonbit_decref(job->payload.stat.out);
-    break;
-  case OP_SEEK:
-    moonbit_decref(job->payload.seek.out);
-    break;
-  case OP_ACCESS:
-    moonbit_decref(job->payload.access.path);
-    break;
-  case OP_FSYNC:
-    break;
-  case OP_REMOVE:
-    moonbit_decref(job->payload.remove.path);
-    break;
-  case OP_MKDIR:
-    moonbit_decref(job->payload.mkdir.path);
-    break;
-  case OP_RMDIR:
-    moonbit_decref(job->payload.rmdir.path);
-    break;
-  case OP_READDIR:
-    moonbit_decref(job->payload.readdir.out);
-    break;
-  case OP_REALPATH:
-    moonbit_decref(job->payload.realpath.path);
-    moonbit_decref(job->payload.realpath.out);
-    break;
-  case OP_SPAWN:
-    moonbit_decref(job->payload.spawn.path);
-    moonbit_decref(job->payload.spawn.args);
-    moonbit_decref(job->payload.spawn.envp);
-    if (job->payload.spawn.cwd)
-      moonbit_decref(job->payload.spawn.cwd);
-    break;
-  case OP_GETADDRINFO:
-    moonbit_decref(job->payload.getaddrinfo.hostname);
-    moonbit_decref(job->payload.getaddrinfo.out);
-    break;
+void read_job_worker(struct job *job) {
+  struct read_job *read_job = (struct read_job*)job;
+  job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct read_job *moonbitlang_async_make_read_job(
+  int fd,
+  char *buf,
+  int offset,
+  int len
+) {
+  struct read_job *job = MAKE_JOB(read);
+  job->fd = fd;
+  job->buf = buf;
+  job->offset = offset;
+  job->len = len;
+  return job;
+}
+
+// ===== write job, for writing non-pollable stuff =====
+
+struct write_job {
+  struct job job;
+  int fd;
+  char *buf;
+  int offset;
+  int len;
+};
+
+static
+void free_write_job(void *obj) {
+  struct write_job *job = (struct write_job*)obj;
+  moonbit_decref(job->buf);
+}
+
+static
+void write_job_worker(struct job *job) {
+  struct write_job *write_job = (struct write_job*)job;
+  job->ret = write(
+    write_job->fd,
+    write_job->buf + write_job->offset,
+    write_job->len
+  );
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct write_job *moonbitlang_async_make_write_job(
+  int fd,
+  char *buf,
+  int offset,
+  int len
+) {
+  struct write_job *job = MAKE_JOB(write);
+  job->fd = fd;
+  job->buf = buf;
+  job->offset = offset;
+  job->len = len;
+  return job;
+}
+
+// ===== open job =====
+
+struct open_job {
+  struct job job;
+  char *filename;
+  int flags;
+  int mode;
+  void *stat_out;
+};
+
+static
+void free_open_job(void *obj) {
+  struct open_job *job = (struct open_job*)obj;
+  moonbit_decref(job->filename);
+  moonbit_decref(job->stat_out);
+}
+
+static
+void open_job_worker(struct job *job) {
+  struct open_job *open_job = (struct open_job*)job;
+  job->ret = open(
+    open_job->filename,
+    open_job->flags | O_CLOEXEC,
+    open_job->mode
+  );
+  if (job->ret < 0) {
+    job->err = errno;
+    return;
+  }
+  if (fstat(job->ret, open_job->stat_out) < 0) {
+    job->err = errno;
   }
 }
 
-static
-struct job *make_job() {
-  struct job *job = (struct job*)moonbit_make_external_object(
-    &free_job,
-    sizeof(struct job)
-  );
-  job->ret = 0;
-  job->err = 0;
-  return job;
-}
-
-struct job *moonbitlang_async_make_sleep_job(int ms) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_SLEEP;
-  job->payload.sleep.tv_sec = ms / 1000;
-  job->payload.sleep.tv_nsec = (ms % 1000) * 1000000;
-  return job;
-}
-
-struct job *moonbitlang_async_make_read_job(int fd, char *buf, int offset, int len) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_READ;
-  job->payload.read.fd = fd;
-  job->payload.read.buf = buf;
-  job->payload.read.offset = offset;
-  job->payload.read.len = len;
-  return job;
-}
-
-struct job *moonbitlang_async_make_write_job(int fd, char *buf, int offset, int len) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_WRITE;
-  job->payload.read.fd = fd;
-  job->payload.read.buf = buf;
-  job->payload.read.offset = offset;
-  job->payload.read.len = len;
-  return job;
-}
-
-struct job *moonbitlang_async_make_open_job(
+struct open_job *moonbitlang_async_make_open_job(
   char *filename,
   int flags,
   int mode,
   int *stat_out
 ) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_OPEN;
-  job->payload.open.filename = filename;
-  job->payload.open.flags = flags;
-  job->payload.open.mode = mode;
-  job->payload.open.stat_out = stat_out;
+  struct open_job *job = MAKE_JOB(open);
+  job->filename = filename;
+  job->flags = flags;
+  job->mode = mode;
+  job->stat_out = stat_out;
   return job;
 }
 
-struct job *moonbitlang_async_make_stat_job(
+// ===== stat job, get info of file path =====
+
+struct stat_job {
+  struct job job;
+  char *path;
+  void *out;
+  int follow_symlink;
+};
+
+static
+void free_stat_job(void *obj) {
+  struct stat_job *job = (struct stat_job*)obj;
+  moonbit_decref(job->path);
+  moonbit_decref(job->out);
+}
+
+static
+void stat_job_worker(struct job *job) {
+  struct stat_job *stat_job = (struct stat_job*)job;
+  if (stat_job->follow_symlink) {
+    job->ret = stat(stat_job->path, stat_job->out);
+  } else {
+    job->ret = lstat(stat_job->path, stat_job->out);
+  }
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct stat_job *moonbitlang_async_make_stat_job(
   char *path,
   void *out,
   int follow_symlink
 ) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_STAT;
-  job->payload.stat.path = path;
-  job->payload.stat.out = out;
-  job->payload.stat.follow_symlink = follow_symlink;
+  struct stat_job *job = MAKE_JOB(stat);
+  job->path = path;
+  job->out = out;
+  job->follow_symlink = follow_symlink;
   return job;
 }
 
-struct job *moonbitlang_async_make_fstat_job(int fd, void *out) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_FSTAT;
-  job->payload.fstat.fd = fd;
-  job->payload.fstat.out = out;
+// ===== fstat job, get info of file descriptor =====
+
+struct fstat_job {
+  struct job job;
+  int fd;
+  void *out;
+};
+
+static
+void free_fstat_job(void *obj) {
+  struct fstat_job *job = (struct fstat_job*)obj;
+  moonbit_decref(job->out);
+}
+
+static
+void fstat_job_worker(struct job *job) {
+  struct fstat_job *fstat_job = (struct fstat_job*)job;
+  job->ret = fstat(fstat_job->fd, fstat_job->out);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct fstat_job *moonbitlang_async_make_fstat_job(int fd, void *out) {
+  struct fstat_job *job = MAKE_JOB(fstat);
+  job->fd = fd;
+  job->out = out;
   return job;
 }
 
-struct job *moonbitlang_async_make_seek_job(
+// ===== seek job, move cursor within opened file =====
+
+struct seek_job {
+  struct job job;
+  int fd;
+  int64_t offset;
+  int whence;
+  int64_t result;
+};
+
+static
+void free_seek_job(void *obj) {}
+
+static
+void seek_job_worker(struct job *job) {
+  static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
+
+  struct seek_job *seek_job = (struct seek_job*)job;
+  seek_job->result = lseek(
+    seek_job->fd,
+    seek_job->offset,
+    whence_list[seek_job->whence]
+  );
+  if (seek_job->result < 0) {
+    job->err = errno;
+  }
+}
+
+struct seek_job *moonbitlang_async_make_seek_job(
   int fd,
   int64_t offset,
-  int whence,
-  int64_t *out
+  int whence
 ) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_SEEK;
-  job->payload.seek.fd = fd;
-  job->payload.seek.offset = offset;
-  job->payload.seek.whence = whence;
-  job->payload.seek.out = out;
+  struct seek_job *job = MAKE_JOB(seek);
+  job->fd = fd;
+  job->offset = offset;
+  job->whence = whence;
   return job;
 }
 
-struct job *moonbitlang_async_make_access_job(char *path, int amode) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_ACCESS;
-  job->payload.access.path = path;
-  job->payload.access.amode = amode;
+int64_t moonbitlang_async_get_seek_result(struct seek_job *job) {
+  return job->result;
+}
+
+// ===== access job, test permission of file path =====
+
+struct access_job {
+  struct job job;
+  char *path;
+  int amode;
+};
+
+static
+void free_access_job(void *obj) {
+  struct access_job *job = (struct access_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void access_job_worker(struct job *job) {
+  struct access_job *access_job = (struct access_job*)job;
+  job->ret = access(access_job->path, access_job->amode);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
+  struct access_job *job = MAKE_JOB(access);
+  job->path = path;
+  job->amode = amode;
   return job;
 }
 
-struct job *moonbitlang_async_make_fsync_job(int fd, int only_data) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_FSYNC;
-  job->payload.fsync.fd = fd;
-  job->payload.fsync.only_data = only_data;
+// ===== fsync job, synchronize file modification to disk =====
+
+struct fsync_job {
+  struct job job;
+  int fd;
+  int only_data;
+};
+
+static
+void free_fsync_job(void *obj) {}
+
+static
+void fsync_job_worker(struct job *job) {
+  struct fsync_job *fsync_job = (struct fsync_job*)job;
+  if (fsync_job->only_data) {
+    job->ret = fdatasync(fsync_job->fd);
+  } else {
+    job->ret = fsync(fsync_job->fd);
+  }
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct fsync_job *moonbitlang_async_make_fsync_job(int fd, int only_data) {
+  struct fsync_job *job = MAKE_JOB(fsync);
+  job->fd = fd;
+  job->only_data = only_data;
   return job;
 }
 
-struct job *moonbitlang_async_make_remove_job(char *path) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_REMOVE;
-  job->payload.remove.path = path;
+// ===== remove job, remove file from file system =====
+
+struct remove_job {
+  struct job job;
+  char *path;
+};
+
+static
+void free_remove_job(void *obj) {
+  struct remove_job *job = (struct remove_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void remove_job_worker(struct job *job) {
+  struct remove_job *remove_job = (struct remove_job*)job;
+  job->ret = remove(remove_job->path);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct remove_job *moonbitlang_async_make_remove_job(char *path) {
+  struct remove_job *job = MAKE_JOB(remove);
+  job->path = path;
   return job;
 }
 
-struct job *moonbitlang_async_make_mkdir_job(char *path, int mode) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_MKDIR;
-  job->payload.mkdir.path = path;
-  job->payload.mkdir.mode = mode;
+// ===== mkdir job, create new directory =====
+
+struct mkdir_job {
+  struct job job;
+  char *path;
+  int mode;
+};
+
+static
+void free_mkdir_job(void *obj) {
+  struct mkdir_job *job = (struct mkdir_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void mkdir_job_worker(struct job *job) {
+  struct mkdir_job *mkdir_job = (struct mkdir_job*)job;
+  job->ret = mkdir(mkdir_job->path, mkdir_job->mode);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct mkdir_job *moonbitlang_async_make_mkdir_job(char *path, int mode) {
+  struct mkdir_job *job = MAKE_JOB(mkdir);
+  job->path = path;
+  job->mode = mode;
   return job;
 }
 
-struct job *moonbitlang_async_make_rmdir_job(char *path) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_RMDIR;
-  job->payload.rmdir.path = path;
+// ===== rmdir job, remove directory =====
+
+struct rmdir_job {
+  struct job job;
+  char *path;
+};
+
+static
+void free_rmdir_job(void *obj) {
+  struct rmdir_job *job = (struct rmdir_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void rmdir_job_worker(struct job *job) {
+  struct rmdir_job *rmdir_job = (struct rmdir_job*)job;
+  job->ret = rmdir(rmdir_job->path);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct rmdir_job *moonbitlang_async_make_rmdir_job(char *path) {
+  struct rmdir_job *job = MAKE_JOB(rmdir);
+  job->path = path;
   return job;
 }
 
-struct job *moonbitlang_async_make_readdir_job(DIR *dir, struct dirent **out) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_READDIR;
-  job->payload.readdir.dir = dir;
-  job->payload.readdir.out = out;
+// ===== readdir job, read directory entry =====
+
+struct readdir_job {
+  struct job job;
+  DIR *dir;
+  struct dirent *result;
+};
+
+static
+void free_readdir_job(void *obj) {}
+
+static
+void readdir_job_worker(struct job *job) {
+  struct readdir_job *readdir_job = (struct readdir_job*)job;
+  errno = 0;
+  readdir_job->result = readdir(readdir_job->dir);
+  if (readdir_job->result == 0 && errno) {
+    job->ret = -1;
+    job->err = errno;
+  }
+}
+
+struct readdir_job *moonbitlang_async_make_readdir_job(DIR *dir) {
+  struct readdir_job *job = MAKE_JOB(readdir);
+  job->dir = dir;
   return job;
 }
 
-struct job *moonbitlang_async_make_realpath_job(char *path, char **out) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_REALPATH;
-  job->payload.realpath.path = path;
-  job->payload.realpath.out = out;
+struct dirent *moonbitlang_async_get_readdir_result(struct readdir_job *job) {
+  return job->result;
+}
+
+// ===== realpath job, get canonical representation of a path =====
+
+struct realpath_job {
+  struct job job;
+  char *path;
+  char *result;
+};
+
+static
+void free_realpath_job(void *obj) {
+  struct realpath_job *job = (struct realpath_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void realpath_job_worker(struct job *job) {
+  struct realpath_job *realpath_job = (struct realpath_job*)job;
+  realpath_job->result = realpath(realpath_job->path, 0);
+  if (!realpath_job->result) {
+    job->ret = -1;
+    job->err = errno;
+  }
+}
+
+struct realpath_job *moonbitlang_async_make_realpath_job(char *path) {
+  struct realpath_job *job = MAKE_JOB(realpath);
+  job->path = path;
   return job;
 }
 
-struct job *moonbitlang_async_make_spawn_job(
+char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
+  return job->result;
+}
+
+// ===== spawn job, spawn foreign process =====
+
+struct spawn_job {
+  struct job job;
+  char *path;
+  char **args;
+  char **envp;
+  int stdio[3];
+  char *cwd;
+};
+
+static
+void free_spawn_job(void *obj) {
+  struct spawn_job *job = (struct spawn_job*)obj;
+  moonbit_decref(job->path);
+  moonbit_decref(job->args);
+  moonbit_decref(job->envp);
+  if (job->cwd)
+    moonbit_decref(job->cwd);
+}
+
+static
+void spawn_job_worker(struct job *job) {
+  struct spawn_job *spawn_job = (struct spawn_job *)job;
+  posix_spawnattr_t attr;
+  posix_spawnattr_init(&attr);
+#ifdef WAKEUP_METHOD_SIGNAL
+  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
+  posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
+#else
+  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
+#endif
+
+  sigset_t sigdefault_set;
+  sigemptyset(&sigdefault_set);
+  sigaddset(&sigdefault_set, SIGCHLD);
+  sigaddset(&sigdefault_set, SIGHUP);
+  sigaddset(&sigdefault_set, SIGINT);
+  sigaddset(&sigdefault_set, SIGQUIT);
+  sigaddset(&sigdefault_set, SIGTERM);
+  sigaddset(&sigdefault_set, SIGALRM);
+  posix_spawnattr_setsigdefault(&attr, &sigdefault_set);
+
+  posix_spawn_file_actions_t file_actions;
+  posix_spawn_file_actions_init(&file_actions);
+  for (int i = 0; i < 3; ++i) {
+    int fd = spawn_job->stdio[i];
+    if (fd >= 0) {
+      job->err = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
+      if (job->err) goto exit;
+    }
+  }
+  if (spawn_job->cwd) {
+    job->err = posix_spawn_file_actions_addchdir_np(&file_actions, spawn_job->cwd);
+    if (job->err) goto exit;
+  }
+
+  if (strchr(spawn_job->path, '/')) {
+    job->err = posix_spawn(
+      &(job->ret),
+      spawn_job->path,
+      &file_actions,
+      &attr,
+      spawn_job->args,
+      spawn_job->envp
+    );
+  } else {
+    job->err = posix_spawnp(
+      &(job->ret),
+      spawn_job->path,
+      &file_actions,
+      &attr,
+      spawn_job->args,
+      spawn_job->envp
+    );
+  }
+exit:
+  posix_spawnattr_destroy(&attr);
+  posix_spawn_file_actions_destroy(&file_actions);
+}
+
+struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,
   char **args,
   char **envp,
@@ -794,57 +834,57 @@ struct job *moonbitlang_async_make_spawn_job(
   int stderr_fd,
   char *cwd
 ) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_SPAWN;
-  job->payload.spawn.path = path;
-  job->payload.spawn.args = args;
-  job->payload.spawn.envp = envp;
-  job->payload.spawn.stdio[0] = stdin_fd;
-  job->payload.spawn.stdio[1] = stdout_fd;
-  job->payload.spawn.stdio[2] = stderr_fd;
-  job->payload.spawn.cwd = cwd;
+  struct spawn_job *job = MAKE_JOB(spawn);
+  job->path = path;
+  job->args = args;
+  job->envp = envp;
+  job->stdio[0] = stdin_fd;
+  job->stdio[1] = stdout_fd;
+  job->stdio[2] = stderr_fd;
+  job->cwd = cwd;
   return job;
+}
+
+// ===== getaddrinfo job, resolve host name via `getaddrinfo` =====
+
+struct getaddrinfo_job {
+  struct job job;
+  char *hostname;
+  struct addrinfo *result;
+};
+
+static
+void free_getaddrinfo_job(void *obj) {
+  struct getaddrinfo_job *job = (struct getaddrinfo_job*)obj;
+  moonbit_decref(job->hostname);
 }
 
 static
-void free_addrinfo_ref(void *obj) {
-  struct addrinfo *ai = *((struct addrinfo**)obj);
-  if (ai) freeaddrinfo(ai);
-}
-
-struct addrinfo **moonbitlang_async_addrinfo_ref_make() {
-  struct addrinfo **result = (struct addrinfo**)moonbit_make_external_object(
-    free_addrinfo_ref,
-    sizeof(struct addrinfo*)
+void getaddrinfo_job_worker(struct job *job) {
+  struct getaddrinfo_job *getaddrinfo_job = (struct getaddrinfo_job*)job;
+  struct addrinfo hint = {
+    AI_ADDRCONFIG, // ai_flags
+    AF_UNSPEC, // ai_family, support both IPv4 and IPv6
+    0, // ai_socktype
+    0, // ai_protocol
+    0, 0, 0, 0
+  };
+  job->ret = getaddrinfo(
+    getaddrinfo_job->hostname, 
+    0,
+    &hint,
+    &(getaddrinfo_job->result)
   );
-  *result = 0;
-  return result;
+  if (job->ret == EAI_SYSTEM)
+    job->err = errno;
 }
 
-struct addrinfo *moonbitlang_async_addrinfo_ref_get(struct addrinfo **ref) {
-  struct addrinfo *result = *ref;
-  *ref = 0;
-  return result;
-}
-
-struct job *moonbitlang_async_make_getaddrinfo_job(
-  char *hostname,
-  struct addrinfo **out
-) {
-  struct job *job = make_job();
-  job->job_id = pool.job_id++;
-  job->op_code = OP_GETADDRINFO;
-  job->payload.getaddrinfo.hostname = hostname;
-  job->payload.getaddrinfo.out = out;
+struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
+  struct getaddrinfo_job *job = MAKE_JOB(getaddrinfo);
+  job->hostname = hostname;
   return job;
 }
 
-int32_t moonbitlang_async_fetch_completion(int notify_recv) {
-  int job_id;
-  int32_t ret = read(notify_recv, &job_id, sizeof(int));
-  if (ret < 0)
-    return ret;
-
-  return job_id;
+struct addrinfo *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job) {
+  return job->result;
 }
