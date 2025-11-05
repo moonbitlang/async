@@ -152,8 +152,7 @@ pub impl @io.Reader for File with read(
   offset? = 0,
   max_len? = buf.length() - offset,
 ) {
-  let can_poll = self.kind.can_poll()
-  self.io.read(buf, offset~, len=max_len, can_poll~, context="@fs.File::read()")
+  self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
 }
 
 ///|
@@ -185,8 +184,7 @@ pub impl @io.Reader for File with read_all(self) {
 
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
-  let can_poll = self.kind.can_poll()
-  self.io.write(buf, offset~, len~, can_poll~, context="@fs.File::write()")
+  self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
 
 ///|

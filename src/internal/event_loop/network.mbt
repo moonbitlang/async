@@ -131,7 +131,7 @@ pub async fn IOHandle::accept(
     @os_error.check_errno(context)
     -1
   }
-  IOHandle::from_fd(conn)
+  IOHandle::from_fd(conn, kind=Socket)
 }
 
 ///|

@@ -40,8 +40,8 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
   @fd_util.set_nonblocking(r, context="@pipe.pipe()")
   @fd_util.set_nonblocking(w, context="@pipe.pipe()")
   (
-    PipeRead(@event_loop.IOHandle::from_fd(r)),
-    PipeWrite(@event_loop.IOHandle::from_fd(w)),
+    PipeRead(@event_loop.IOHandle::from_fd(r, kind=Pipe)),
+    PipeWrite(@event_loop.IOHandle::from_fd(w, kind=Pipe)),
   )
 }
 
@@ -91,17 +91,11 @@ pub impl @io.Reader for PipeRead with read(
   max_len? = buf.length() - offset,
 ) {
   let PipeRead(io) = self
-  io.read(
-    buf,
-    offset~,
-    len=max_len,
-    can_poll=true,
-    context="@pipe.PipeRead::read()",
-  )
+  io.read(buf, offset~, len=max_len, context="@pipe.PipeRead::read()")
 }
 
 ///|
 pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
   let PipeWrite(io) = self
-  io.write(buf, offset~, len~, can_poll=true, context="@pipe.PipeRead::write()")
+  io.write(buf, offset~, len~, context="@pipe.PipeRead::write()")
 }

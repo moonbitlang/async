@@ -67,11 +67,12 @@ extern "C" fn JobForWorker::write(
 ) -> JobForWorker = "moonbitlang_async_make_write_job"
 
 ///|
-#owned(filename)
+#owned(filename, stat)
 extern "C" fn JobForWorker::open(
   filename : Bytes,
   flags : Int,
   mode : Int,
+  stat : @fd_util.Stat,
 ) -> JobForWorker = "moonbitlang_async_make_open_job"
 
 ///|

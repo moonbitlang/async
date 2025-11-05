@@ -40,7 +40,7 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpClient(@event_loop.IOHandle::from_fd(sock))
+  UdpClient(@event_loop.IOHandle::from_fd(sock, kind=Socket))
 }
 
 ///|
@@ -94,7 +94,7 @@ pub fn UdpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpServer(@event_loop.IOHandle::from_fd(sock))
+  UdpServer(@event_loop.IOHandle::from_fd(sock, kind=Socket))
 }
 
 ///|
@@ -118,13 +118,7 @@ pub async fn UdpClient::recv(
   max_len? : Int = buf.length() - offset,
 ) -> Int {
   let UdpClient(sock) = self
-  sock.read(
-    buf,
-    offset~,
-    len=max_len,
-    can_poll=true,
-    context="@socket.UdpClient::recv",
-  )
+  sock.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
 }
 
 ///|
@@ -175,14 +169,7 @@ pub async fn UdpClient::send(
   len? : Int = buf.length() - offset,
 ) -> Unit {
   let UdpClient(sock) = self
-  sock.write(
-    buf,
-    offset~,
-    len~,
-    can_poll=true,
-    context="@socket.UdpClient::send",
-  )
-  |> ignore
+  sock.write(buf, offset~, len~, context="@socket.UdpClient::send") |> ignore
 }
 
 ///|
