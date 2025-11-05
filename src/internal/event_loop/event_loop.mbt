@@ -19,7 +19,7 @@ priv struct EventLoop {
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
-  job_queue : @deque.Deque[JobForWorker]
+  job_queue : @deque.Deque[Job]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
@@ -333,7 +333,7 @@ pub fn IOHandle::close(handle : IOHandle) -> Unit {
 
 ///|
 async fn perform_job_in_worker(
-  job : JobForWorker,
+  job : Job,
   context~ : String,
   allow_cancel? : Bool = false,
 ) -> Int {
@@ -396,7 +396,7 @@ pub async fn IOHandle::read(
     }
     ret
   } else {
-    let job = JobForWorker::read(handle.fd, buf, offset, len)
+    let job = Job::read(handle.fd, buf, offset, len)
     perform_job_in_worker(job, context~)
   }
 }
@@ -433,7 +433,7 @@ pub async fn IOHandle::write(
     }
     ret
   } else {
-    let job = JobForWorker::write(handle.fd, buf, offset, len)
+    let job = Job::write(handle.fd, buf, offset, len)
     perform_job_in_worker(job, context~)
   }
 }
@@ -450,7 +450,7 @@ pub async fn spawn(
   context~ : String,
 ) -> Int {
   perform_job_in_worker(
-    JobForWorker::spawn(path, args, env, stdin, stdout, stderr, cwd),
+    Job::spawn(path, args, env, stdin, stdout, stderr, cwd),
     context~,
   )
 }

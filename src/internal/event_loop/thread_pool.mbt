@@ -23,125 +23,109 @@ extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
 #owned(init_job)
-extern "C" fn spawn_worker(init_job : JobForWorker) -> Worker = "moonbitlang_async_spawn_worker"
+extern "C" fn spawn_worker(init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
 #borrow(worker)
 #owned(job)
-extern "C" fn wake_worker(worker : Worker, job : JobForWorker) = "moonbitlang_async_wake_worker"
+extern "C" fn wake_worker(worker : Worker, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
 extern "C" fn fetch_completion_ffi(notify_recv : Int) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
-priv type JobForWorker
+priv type Job
 
 ///|
 #borrow(self)
-extern "C" fn JobForWorker::id(self : JobForWorker) -> Int = "moonbitlang_async_job_get_id"
+extern "C" fn Job::id(self : Job) -> Int = "moonbitlang_async_job_get_id"
 
 ///|
 #borrow(self)
-extern "C" fn JobForWorker::ret(self : JobForWorker) -> Int = "moonbitlang_async_job_get_ret"
+extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
 
 ///|
 #borrow(self)
-extern "C" fn JobForWorker::err(self : JobForWorker) -> Int = "moonbitlang_async_job_get_err"
+extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
 #owned(buf)
-extern "C" fn JobForWorker::read(
+extern "C" fn Job::read(
   fd : Int,
   buf : FixedArray[Byte],
   offset : Int,
   len : Int,
-) -> JobForWorker = "moonbitlang_async_make_read_job"
+) -> Job = "moonbitlang_async_make_read_job"
 
 ///|
 #owned(buf)
-extern "C" fn JobForWorker::write(
-  fd : Int,
-  buf : Bytes,
-  offset : Int,
-  len : Int,
-) -> JobForWorker = "moonbitlang_async_make_write_job"
+extern "C" fn Job::write(fd : Int, buf : Bytes, offset : Int, len : Int) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
 #owned(filename, stat)
-extern "C" fn JobForWorker::open(
+extern "C" fn Job::open(
   filename : Bytes,
   flags : Int,
   mode : Int,
   stat : @fd_util.Stat,
-) -> JobForWorker = "moonbitlang_async_make_open_job"
+) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
 #owned(path, out)
-extern "C" fn JobForWorker::stat(
+extern "C" fn Job::stat(
   path : Bytes,
   out : @fd_util.Stat,
   follow_symlink~ : Bool,
-) -> JobForWorker = "moonbitlang_async_make_stat_job"
+) -> Job = "moonbitlang_async_make_stat_job"
 
 ///|
 #owned(out)
-extern "C" fn JobForWorker::fstat(
-  fd : Int,
-  out : @fd_util.Stat,
-) -> JobForWorker = "moonbitlang_async_make_fstat_job"
+extern "C" fn Job::fstat(fd : Int, out : @fd_util.Stat) -> Job = "moonbitlang_async_make_fstat_job"
 
 ///|
-extern "C" fn JobForWorker::seek(
-  fd : Int,
-  offset : Int64,
-  whence : Int,
-) -> JobForWorker = "moonbitlang_async_make_seek_job"
+extern "C" fn Job::seek(fd : Int, offset : Int64, whence : Int) -> Job = "moonbitlang_async_make_seek_job"
 
 ///|
 #borrow(job)
-extern "C" fn JobForWorker::get_seek_result(job : JobForWorker) -> Int64 = "moonbitlang_async_get_seek_result"
+extern "C" fn Job::get_seek_result(job : Job) -> Int64 = "moonbitlang_async_get_seek_result"
 
 ///|
 #owned(path)
-extern "C" fn JobForWorker::access(path : Bytes, amode : Int) -> JobForWorker = "moonbitlang_async_make_access_job"
+extern "C" fn Job::access(path : Bytes, amode : Int) -> Job = "moonbitlang_async_make_access_job"
 
 ///|
-extern "C" fn JobForWorker::fsync(fd : Int, only_data : Bool) -> JobForWorker = "moonbitlang_async_make_fsync_job"
-
-///|
-#owned(path)
-extern "C" fn JobForWorker::remove(path : Bytes) -> JobForWorker = "moonbitlang_async_make_remove_job"
+extern "C" fn Job::fsync(fd : Int, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
 
 ///|
 #owned(path)
-extern "C" fn JobForWorker::mkdir(path : Bytes, mode : Int) -> JobForWorker = "moonbitlang_async_make_mkdir_job"
+extern "C" fn Job::remove(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|
 #owned(path)
-extern "C" fn JobForWorker::rmdir(path : Bytes) -> JobForWorker = "moonbitlang_async_make_rmdir_job"
+extern "C" fn Job::mkdir(path : Bytes, mode : Int) -> Job = "moonbitlang_async_make_mkdir_job"
 
 ///|
-extern "C" fn JobForWorker::readdir(dir : Directory) -> JobForWorker = "moonbitlang_async_make_readdir_job"
+#owned(path)
+extern "C" fn Job::rmdir(path : Bytes) -> Job = "moonbitlang_async_make_rmdir_job"
+
+///|
+extern "C" fn Job::readdir(dir : Directory) -> Job = "moonbitlang_async_make_readdir_job"
 
 ///|
 #borrow(job)
-extern "C" fn JobForWorker::get_readdir_result(
-  job : JobForWorker,
-) -> DirectoryEntry = "moonbitlang_async_get_readdir_result"
+extern "C" fn Job::get_readdir_result(job : Job) -> DirectoryEntry = "moonbitlang_async_get_readdir_result"
 
 ///|
 #owned(path)
-extern "C" fn JobForWorker::realpath(path : Bytes) -> JobForWorker = "moonbitlang_async_make_realpath_job"
+extern "C" fn Job::realpath(path : Bytes) -> Job = "moonbitlang_async_make_realpath_job"
 
 ///|
 #borrow(job)
-extern "C" fn JobForWorker::get_realpath_result(
-  job : JobForWorker,
-) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
+extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
 
 ///|
 #owned(path, args, env, cwd)
-extern "C" fn JobForWorker::spawn(
+extern "C" fn Job::spawn(
   path : Bytes,
   args : FixedArray[Bytes?],
   env : FixedArray[Bytes?],
@@ -149,14 +133,12 @@ extern "C" fn JobForWorker::spawn(
   stdout : Int,
   stderr : Int,
   cwd : Bytes?,
-) -> JobForWorker = "moonbitlang_async_make_spawn_job"
+) -> Job = "moonbitlang_async_make_spawn_job"
 
 ///|
 #owned(host)
-extern "C" fn JobForWorker::getaddrinfo(host : Bytes) -> JobForWorker = "moonbitlang_async_make_getaddrinfo_job"
+extern "C" fn Job::getaddrinfo(host : Bytes) -> Job = "moonbitlang_async_make_getaddrinfo_job"
 
 ///|
 #borrow(job)
-extern "C" fn JobForWorker::get_getaddrinfo_result(
-  job : JobForWorker,
-) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
+extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
