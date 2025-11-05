@@ -25,23 +25,20 @@ async test "read_exactly" {
     root.spawn_bg(fn() {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("first message: \{msg1}")
       let msg2 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("third message: \{msg3}")
     })
     // writer
     root.spawn_bg(fn() {
       defer w.close()
-      w.write("abcdef")
       log("first message sent")
-      @async.sleep(50)
-      w.write("ghijkl")
+      w.write("abcdef")
+      @async.sleep(100)
       log("second message sent")
+      w.write("ghijkl")
     })
   })
   inspect(
@@ -70,21 +67,17 @@ async test "read_exactly failure" {
     root.spawn_bg(fn() {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("first message: \{msg1}")
       let msg2 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4) |> @encoding/utf8.decode
-      @async.sleep(10)
       log("third message: \{msg3}")
     })
     // writer
     root.spawn_bg(fn() {
       defer w.close()
-      w.write("abcdef")
       log("first message sent")
-      @async.sleep(20)
+      w.write("abcdef")
     })
   }) catch {
     err => log(err.to_string())
