@@ -14,6 +14,8 @@ async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IOHandle
 
+async fn opendir(StringView, context~ : String) -> Directory
+
 async fn readdir(Directory, context~ : String) -> DirectoryEntry
 
 async fn realpath(StringView, context~ : String) -> Bytes

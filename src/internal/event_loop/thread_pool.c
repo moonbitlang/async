@@ -678,6 +678,50 @@ struct rmdir_job *moonbitlang_async_make_rmdir_job(char *path) {
   return job;
 }
 
+// ===== opendir job, open directory =====
+
+struct opendir_job {
+  struct job job;
+  char *path;
+  DIR *result;
+
+  // if the waiter is cancelled before `opendir` succeed,
+  // we need to call `closedir` to free resource on the result.
+  // however, if the waiter is not cancelled,
+  // the ownership of the result should be transferred to the waiter.
+  // here we use a flag `result_fetched` to determine which case it is.
+  int result_fetched;
+};
+
+static
+void free_opendir_job(void *obj) {
+  struct opendir_job *job = (struct opendir_job*)obj;
+  moonbit_decref(job->path);
+  if (job->result && !(job->result_fetched))
+    closedir(job->result);
+}
+
+static
+void opendir_job_worker(struct job *job) {
+  struct opendir_job *opendir_job = (struct opendir_job*)job;
+  opendir_job->result = opendir(opendir_job->path);
+  if (!(opendir_job->result)) {
+    job->err = errno;
+  }
+}
+
+struct opendir_job *moonbitlang_async_make_opendir_job(char *path) {
+  struct opendir_job *job = MAKE_JOB(opendir);
+  job->path = path;
+  job->result_fetched = 0;
+  return job;
+}
+
+DIR *moonbitlang_async_get_opendir_result(struct opendir_job *job) {
+  job->result_fetched = 1;
+  return job->result;
+}
+
 // ===== readdir job, read directory entry =====
 
 struct readdir_job {

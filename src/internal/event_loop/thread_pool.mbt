@@ -109,6 +109,14 @@ extern "C" fn Job::mkdir(path : Bytes, mode : Int) -> Job = "moonbitlang_async_m
 extern "C" fn Job::rmdir(path : Bytes) -> Job = "moonbitlang_async_make_rmdir_job"
 
 ///|
+#owned(path)
+extern "C" fn Job::opendir(path : Bytes) -> Job = "moonbitlang_async_make_opendir_job"
+
+///|
+#borrow(job)
+extern "C" fn Job::get_opendir_result(job : Job) -> Directory = "moonbitlang_async_get_opendir_result"
+
+///|
 extern "C" fn Job::readdir(dir : Directory) -> Job = "moonbitlang_async_make_readdir_job"
 
 ///|
