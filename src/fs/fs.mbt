@@ -217,7 +217,7 @@ pub(all) enum SeekMode {
 }
 
 ///|
-extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = "moonbitlang_async_lseek"
+fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
 
 ///|
 /// Change current position in file for reading and writing.
@@ -225,24 +225,20 @@ extern "C" fn lseek_ffi(fd : Int, offset : Int64, whence : SeekMode) -> Int64 = 
 /// The offset is interpreted using `mode`, see `SeekMode` for more detail.
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
-pub fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 raise {
-  let offset = lseek_ffi(self.fd(), offset, mode)
-  if offset < 0 {
-    @os_error.check_errno("@fs.File::seek()")
-  }
-  offset
+pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
+  self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
 }
 
 ///|
 /// Get current position in the file. Can only be applied to a regular file.
-pub fn File::curr_pos(self : File) -> Int64 raise {
+pub async fn File::curr_pos(self : File) -> Int64 {
   self.seek(0, mode=Relative)
 }
 
 ///|
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
-pub fn File::size(self : File) -> Int64 raise {
+pub async fn File::size(self : File) -> Int64 {
   let curr_pos = self.curr_pos()
   let size = self.seek(0, mode=FromEnd)
   ignore(self.seek(curr_pos, mode=FromStart))

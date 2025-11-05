@@ -83,6 +83,15 @@ extern "C" fn JobForWorker::stat(
 ) -> JobForWorker = "moonbitlang_async_make_stat_job"
 
 ///|
+#owned(out)
+extern "C" fn JobForWorker::seek(
+  fd : Int,
+  offset : Int64,
+  whence : Int,
+  out : Ref[Int64],
+) -> JobForWorker = "moonbitlang_async_make_seek_job"
+
+///|
 #owned(path)
 extern "C" fn JobForWorker::access(path : Bytes, amode : Int) -> JobForWorker = "moonbitlang_async_make_access_job"
 

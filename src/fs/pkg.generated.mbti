@@ -62,12 +62,12 @@ fn File::as_dir(Self) -> Directory raise
 fn File::atime(Self) -> (Int64, Int) raise
 fn File::close(Self) -> Unit
 fn File::ctime(Self) -> (Int64, Int) raise
-fn File::curr_pos(Self) -> Int64 raise
+async fn File::curr_pos(Self) -> Int64
 fn File::fd(Self) -> Int
 fn File::kind(Self) -> FileKind
 fn File::mtime(Self) -> (Int64, Int) raise
-fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64 raise
-fn File::size(Self) -> Int64 raise
+async fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64
+async fn File::size(Self) -> Int64
 async fn File::sync(Self, only_data? : Bool) -> Unit
 impl @io.Reader for File
 impl @io.Writer for File
