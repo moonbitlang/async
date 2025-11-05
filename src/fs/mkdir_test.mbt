@@ -30,7 +30,7 @@ async test "rmdir recursive" {
   @fs.write_file("\{path}/file", "", create=0o644)
   @fs.mkdir("\{path}/inner", permission=0o755)
   @fs.write_file("\{path}/inner/file", "", create=0o644)
-  let _ = @process.run("ln", ["-s", "../../target", "\{path}/symlink"])
+  @fs.symlink("\{path}/symlink", target="../../target")
   let result = try? @fs.rmdir(path)
   @fs.rmdir(path, recursive=true)
   assert_true(result is Err(_))

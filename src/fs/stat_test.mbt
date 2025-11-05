@@ -15,9 +15,7 @@
 ///|
 async test "stat" {
   let link_path = "target/fs_stat_test"
-  guard @process.run("ln", ["-s", "../LICENSE", link_path]) is 0 else {
-    fail("ln failure")
-  }
+  @fs.symlink(link_path, target="../LICENSE")
   @async.with_task_group(fn(group) {
     group.add_defer(() => @fs.remove(link_path))
     inspect(@fs.kind(link_path), content="Regular")
