@@ -67,9 +67,19 @@ pub async fn Client::connect(
   guard response_str.contains("101") &&
     response_str.contains("Switching Protocols") else {
     conn.close()
-    raise InvalidHandshake
+    raise InvalidHandshake(
+      "Server did not respond with 101 Switching Protocols",
+    )
   }
-  { conn, closed: Some(Normal) }
+
+  // Basic validation that the response looks like a proper WebSocket upgrade
+  guard response_str.contains("websocket") else {
+    conn.close()
+    raise InvalidHandshake(
+      "Server response does not contain websocket upgrade confirmation",
+    )
+  }
+  { conn, closed: None }
 }
 
 ///|
@@ -133,9 +143,25 @@ pub async fn Client::receive(self : Client) -> Message {
     // Handle control frames immediately
     match frame.opcode {
       OpCode::Close => {
-        // TODO : Handle close code and reason
-        self.closed = Some(CloseCode::Normal)
-        raise ConnectionClosed(Normal)
+        // Parse close code and reason
+        let mut close_code = Normal
+        if frame.payload.length() >= 2 {
+          let payload_arr = frame.payload.to_fixedarray()
+          let code_int = (payload_arr[0].to_int() << 8) |
+            payload_arr[1].to_int()
+          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
+          // Reason is parsed but not used in client close handling
+          // let mut reason = ""
+          // if frame.payload.length() > 2 {
+          //   let reason_bytes = FixedArray::make(frame.payload.length() - 2, b'\x00')
+          //   for i = 2; i < frame.payload.length(); i = i + 1 {
+          //     reason_bytes[i - 2] = payload_arr[i]
+          //   }
+          //   reason = @encoding/utf8.decode_lossy(reason_bytes.unsafe_reinterpret_as_bytes())
+          // }
+        }
+        self.closed = Some(close_code)
+        raise ConnectionClosed(close_code)
       }
       OpCode::Ping => {
         // Auto-respond to ping with pong
@@ -171,10 +197,10 @@ pub async fn Client::receive(self : Client) -> Message {
     }
     offset += payload_arr.length()
   }
+  let message_data = data.unsafe_reinterpret_as_bytes()
   match first_opcode {
-    Some(OpCode::Text) =>
-      Text(@encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes()))
-    Some(OpCode::Binary) => Binary(data.unsafe_reinterpret_as_bytes())
-    _ => Binary(data.unsafe_reinterpret_as_bytes())
+    Some(OpCode::Text) => Text(@encoding/utf8.decode_lossy(message_data))
+    Some(OpCode::Binary) => Binary(message_data)
+    _ => Binary(message_data)
   }
 }

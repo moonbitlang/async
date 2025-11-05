@@ -50,20 +50,19 @@ pub async fn start_echo_server() -> Unit {
       try {
         for {
           let msg = ws.receive()
-          match msg.mtype {
-            @websocket.MessageType::Text => {
-              let text = @encoding/utf8.decode(msg.data)
+          match msg {
+            @websocket.Text(text) => {
               println("Received text: \{text}")
-              ws.send_text("Echo: " + text)
+              ws.send_text("Echo: " + text.to_string())
             }
-            @websocket.MessageType::Binary => {
-              println("Received binary data (\{msg.data.length()} bytes)")
-              ws.send_binary(msg.data)
+            @websocket.Binary(data) => {
+              println("Received binary data (\{data.length()} bytes)")
+              ws.send_binary(data.to_bytes())
             }
           }
         }
       } catch {
-        @websocket.ConnectionClosed =>
+        @websocket.ConnectionClosed(_) =>
           println("Client \{client_addr} disconnected")
         e => println("Error with client \{client_addr}: \{e}")
       }
