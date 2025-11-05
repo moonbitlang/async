@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-using @fs {type FileKind}
+using @fd_util {type FileKind}
 
 ///|
 struct Input {
@@ -61,23 +61,12 @@ pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-fn FileKind::from_int(x : Int) -> FileKind = "%identity"
-
-///|
-fn FileKind::can_poll(self : FileKind) -> Bool {
-  match self {
-    Socket | Pipe | CharDevice => true
-    Unknown | Regular | Directory | SymLink | BlockDevice => false
-  }
-}
-
-///|
 fn setup_nonblocking_fd(
   fd : Int,
   context~ : String,
   restore_context~ : String,
 ) -> FileKind raise {
-  let kind = FileKind::from_int(@fd_util.fstat_sync(fd, context~).kind())
+  let kind = @fd_util.fstat_sync(fd, context~).kind()
   if kind.can_poll() && not(@fd_util.fd_is_nonblocking(fd, context~)) {
     fn init() raise {
       @fd_util.set_nonblocking(fd, context~)

@@ -18,7 +18,7 @@
 /// the kind of the target of the link will be returned.
 pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind {
   @event_loop.stat(path, follow_symlink~, context="@fs.kind()").kind()
-  |> FileKind::from_int
+  |> FileKind::from_fd_util_file_kind
 }
 
 ///|
