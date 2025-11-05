@@ -77,7 +77,3 @@ int moonbitlang_async_sendto(
   
   return sendto(sock, buf + offset, len, 0, sa, addr_len);
 }
-
-int32_t moonbitlang_async_sizeof_stat() {
-  return sizeof(struct stat);
-}

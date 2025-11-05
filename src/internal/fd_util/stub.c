@@ -75,6 +75,10 @@ int moonbitlang_async_pipe(int *fds) {
   return 0;
 }
 
+int32_t moonbitlang_async_sizeof_stat() {
+  return sizeof(struct stat);
+}
+
 int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
   switch (stat->st_mode & S_IFMT) {
   case S_IFREG:  return 1;
