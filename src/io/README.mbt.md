@@ -776,6 +776,7 @@ async test "fan-out and fan-in" {
       @async.sleep(10)
       intermediate_writer.write(b"PAYLOAD")
     })
+    defer intermediate_reader.close()
     let buffered = @io.BufferedReader::new(intermediate_reader)
 
     // A downstream consumer receives the header via its own pipe.
