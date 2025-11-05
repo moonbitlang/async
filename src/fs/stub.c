@@ -23,11 +23,6 @@
 #include <sys/stat.h>
 #include <moonbit.h>
 
-int64_t moonbitlang_async_lseek(int fd, int64_t offset, int mode) {
-  static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
-  return lseek(fd, offset, whence_list[mode]);
-}
-
 int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
 }

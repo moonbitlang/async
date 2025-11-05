@@ -56,6 +56,7 @@ enum op_code {
   OP_WRITE,
   OP_OPEN,
   OP_STAT,
+  OP_SEEK,
   OP_ACCESS,
   OP_FSYNC,
   OP_REMOVE,
@@ -91,6 +92,13 @@ struct stat_job {
   char *path;
   void *out;
   int follow_symlink;
+};
+
+struct seek_job {
+  int fd;
+  int64_t offset;
+  int whence;
+  int64_t *out;
 };
 
 struct access_job {
@@ -142,7 +150,7 @@ struct getaddrinfo_job {
 struct job {
   int32_t job_id;
   enum op_code op_code;
-  int32_t ret;
+  int64_t ret;
   int32_t err;
   union {
     struct timespec sleep;
@@ -150,6 +158,7 @@ struct job {
     struct write_job write;
     struct open_job open;
     struct stat_job stat;
+    struct seek_job seek;
     struct access_job access;
     struct fsync_job fsync;
     struct remove_job remove;
@@ -178,7 +187,7 @@ int32_t moonbitlang_async_job_get_id(struct job *job) {
   return job->job_id;
 }
 
-int32_t moonbitlang_async_job_get_ret(struct job *job) {
+int64_t moonbitlang_async_job_get_ret(struct job *job) {
   return job->ret;
 }
 
@@ -287,6 +296,19 @@ void *worker_loop(void *data) {
       if (job->ret < 0)
         job->err = errno;
       break;
+
+    case OP_SEEK: {
+      static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
+      *(job->payload.seek.out) = lseek(
+        job->payload.seek.fd,
+        job->payload.seek.offset,
+        whence_list[job->payload.seek.whence]
+      );
+      if (*(job->payload.seek.out) < 0) {
+        job->err = errno;
+      }
+      break;
+    }
 
     case OP_ACCESS:
       job->ret = access(job->payload.access.path, job->payload.access.amode);
@@ -544,6 +566,9 @@ void free_job(void *jobp) {
     moonbit_decref(job->payload.stat.path);
     moonbit_decref(job->payload.stat.out);
     break;
+  case OP_SEEK:
+    moonbit_decref(job->payload.seek.out);
+    break;
   case OP_ACCESS:
     moonbit_decref(job->payload.access.path);
     break;
@@ -642,6 +667,22 @@ struct job *moonbitlang_async_make_stat_job(
   job->payload.stat.path = path;
   job->payload.stat.out = out;
   job->payload.stat.follow_symlink = follow_symlink;
+  return job;
+}
+
+struct job *moonbitlang_async_make_seek_job(
+  int fd,
+  int64_t offset,
+  int whence,
+  int64_t *out
+) {
+  struct job *job = make_job();
+  job->job_id = pool.job_id++;
+  job->op_code = OP_SEEK;
+  job->payload.seek.fd = fd;
+  job->payload.seek.offset = offset;
+  job->payload.seek.whence = whence;
+  job->payload.seek.out = out;
   return job;
 }
 

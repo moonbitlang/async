@@ -58,6 +58,19 @@ pub async fn stat(
 }
 
 ///|
+pub async fn IOHandle::seek(
+  handle : IOHandle,
+  offset : Int64,
+  whence : Int,
+  context~ : String,
+) -> Int64 {
+  let out = @ref.new(0L)
+  let job = JobForWorker::seek(handle.fd, offset, whence, out)
+  let _ = perform_job_in_worker(job, context~)
+  out.val
+}
+
+///|
 pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
   let path_bytes = @encoding/utf8.encode(path)
   perform_job_in_worker(JobForWorker::access(path_bytes, amode), context~) catch {
