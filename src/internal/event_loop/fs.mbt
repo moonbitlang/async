@@ -137,6 +137,18 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
+pub async fn opendir(path : StringView, context~ : String) -> Directory {
+  let path_bytes = @encoding/utf8.encode(path)
+  let job = Job::opendir(path_bytes)
+  let _ = perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  }
+  job.get_opendir_result()
+}
+
+///|
 pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
   let job = Job::readdir(dir)
   let _ = perform_job_in_worker(job, context~)

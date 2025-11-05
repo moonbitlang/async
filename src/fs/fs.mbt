@@ -234,6 +234,9 @@ pub async fn File::size(self : File) -> Int64 {
 extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
 
 ///|
+extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
+
+///|
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 ///

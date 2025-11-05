@@ -55,22 +55,10 @@ pub fn Directory::close(self : Directory) -> Unit {
 }
 
 ///|
-#borrow(path)
-extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
-
-///|
-extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
-
-///|
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
-pub fn opendir(path : StringView) -> Directory raise {
-  let path = @encoding/utf8.encode(path)
-  let dir = opendir_ffi(path)
-  if dir.is_null() {
-    @os_error.check_errno("@fs.opendir()")
-  }
-  dir
+pub async fn opendir(path : StringView) -> Directory {
+  @event_loop.opendir(path, context="@fs.opendir()")
 }
 
 ///|
@@ -131,7 +119,7 @@ pub async fn readdir(
   include_special? : Bool = false,
   sort? : Bool = false,
 ) -> Array[String] {
-  let dir = opendir(path)
+  let dir : Directory = @event_loop.opendir(path, context="@fs.readdir()")
   defer dir.close()
   let list = dir.read_all(include_hidden~, include_special~)
   if sort {
