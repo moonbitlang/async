@@ -81,7 +81,3 @@ int moonbitlang_async_sendto(
 int32_t moonbitlang_async_sizeof_stat() {
   return sizeof(struct stat);
 }
-
-struct dirent *moonbitlang_async_null_dirent() {
-  return 0;
-}

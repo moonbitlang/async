@@ -76,10 +76,9 @@ pub async fn IOHandle::seek(
   whence : Int,
   context~ : String,
 ) -> Int64 {
-  let out = @ref.new(0L)
-  let job = JobForWorker::seek(handle.fd, offset, whence, out)
+  let job = JobForWorker::seek(handle.fd, offset, whence)
   let _ = perform_job_in_worker(job, context~)
-  out.val
+  job.get_seek_result()
 }
 
 ///|
@@ -141,28 +140,22 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
-extern "C" fn DirectoryEntry::null() -> DirectoryEntry = "moonbitlang_async_null_dirent"
-
-///|
 pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
-  let out = @ref.new(DirectoryEntry::null())
-  let _ = perform_job_in_worker(JobForWorker::readdir(dir, out), context~)
-  out.val
+  let job = JobForWorker::readdir(dir)
+  let _ = perform_job_in_worker(job, context~)
+  job.get_readdir_result()
 }
 
 ///|
 pub async fn realpath(path : StringView, context~ : String) -> Bytes {
   let path_bytes = @encoding/utf8.encode(path)
-  let out = @ref.new(@c_buffer.null)
-  let job = JobForWorker::realpath(path_bytes, out)
-  try perform_job_in_worker(job, context~) catch {
+  let job = JobForWorker::realpath(path_bytes)
+  let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
-  } noraise {
-    _ => ()
   }
-  let c_path = out.val
+  let c_path = job.get_realpath_result()
   defer c_path.free()
   let len = c_path.strlen()
   let result = FixedArray::make(len, b'\x00')

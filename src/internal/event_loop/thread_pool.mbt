@@ -91,13 +91,15 @@ extern "C" fn JobForWorker::fstat(
 ) -> JobForWorker = "moonbitlang_async_make_fstat_job"
 
 ///|
-#owned(out)
 extern "C" fn JobForWorker::seek(
   fd : Int,
   offset : Int64,
   whence : Int,
-  out : Ref[Int64],
 ) -> JobForWorker = "moonbitlang_async_make_seek_job"
+
+///|
+#borrow(job)
+extern "C" fn JobForWorker::get_seek_result(job : JobForWorker) -> Int64 = "moonbitlang_async_get_seek_result"
 
 ///|
 #owned(path)
@@ -119,18 +121,23 @@ extern "C" fn JobForWorker::mkdir(path : Bytes, mode : Int) -> JobForWorker = "m
 extern "C" fn JobForWorker::rmdir(path : Bytes) -> JobForWorker = "moonbitlang_async_make_rmdir_job"
 
 ///|
-#owned(out)
-extern "C" fn JobForWorker::readdir(
-  dir : Directory,
-  out : Ref[DirectoryEntry],
-) -> JobForWorker = "moonbitlang_async_make_readdir_job"
+extern "C" fn JobForWorker::readdir(dir : Directory) -> JobForWorker = "moonbitlang_async_make_readdir_job"
 
 ///|
-#owned(path, out)
-extern "C" fn JobForWorker::realpath(
-  path : Bytes,
-  out : Ref[@c_buffer.Buffer],
-) -> JobForWorker = "moonbitlang_async_make_realpath_job"
+#borrow(job)
+extern "C" fn JobForWorker::get_readdir_result(
+  job : JobForWorker,
+) -> DirectoryEntry = "moonbitlang_async_get_readdir_result"
+
+///|
+#owned(path)
+extern "C" fn JobForWorker::realpath(path : Bytes) -> JobForWorker = "moonbitlang_async_make_realpath_job"
+
+///|
+#borrow(job)
+extern "C" fn JobForWorker::get_realpath_result(
+  job : JobForWorker,
+) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
 
 ///|
 #owned(path, args, env, cwd)
@@ -145,8 +152,11 @@ extern "C" fn JobForWorker::spawn(
 ) -> JobForWorker = "moonbitlang_async_make_spawn_job"
 
 ///|
-#owned(host, out)
-extern "C" fn JobForWorker::getaddrinfo(
-  host : Bytes,
-  out : AddrInfoRef,
-) -> JobForWorker = "moonbitlang_async_make_getaddrinfo_job"
+#owned(host)
+extern "C" fn JobForWorker::getaddrinfo(host : Bytes) -> JobForWorker = "moonbitlang_async_make_getaddrinfo_job"
+
+///|
+#borrow(job)
+extern "C" fn JobForWorker::get_getaddrinfo_result(
+  job : JobForWorker,
+) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"

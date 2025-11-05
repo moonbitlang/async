@@ -139,16 +139,6 @@ pub async fn IOHandle::accept(
 pub type AddrInfo
 
 ///|
-priv type AddrInfoRef
-
-///|
-extern "C" fn AddrInfoRef::new() -> AddrInfoRef = "moonbitlang_async_addrinfo_ref_make"
-
-///|
-#borrow(self)
-extern "C" fn AddrInfoRef::get_and_clear(self : AddrInfoRef) -> AddrInfo = "moonbitlang_async_addrinfo_ref_get"
-
-///|
 extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
@@ -157,12 +147,8 @@ pub async fn getaddrinfo(
   context~ : String,
 ) -> Result[AddrInfo, String] {
   let host_bytes = @encoding/utf8.encode(host)
-  let out = AddrInfoRef::new()
-  let ret = perform_job_in_worker(
-    JobForWorker::getaddrinfo(host_bytes, out),
-    allow_cancel=true,
-    context~,
-  ) catch {
+  let job = JobForWorker::getaddrinfo(host_bytes)
+  let ret = perform_job_in_worker(job, allow_cancel=true, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(host)}")
     err => raise err
@@ -174,6 +160,6 @@ pub async fn getaddrinfo(
     c_str.blit_to_bytes(dst=bytes, offset=0, len~)
     bytes.unsafe_reinterpret_as_bytes() |> @encoding/utf8.decode |> Err
   } else {
-    Ok(out.get_and_clear())
+    Ok(job.get_getaddrinfo_result())
   }
 }
