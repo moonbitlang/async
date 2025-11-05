@@ -10,9 +10,9 @@ async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr)
 
 // Errors
 pub suberror WebSocketError {
-  InvalidOpCode
   ConnectionClosed(CloseCode)
-  InvalidHandshake
+  InvalidHandshake(String)
+  FrameError(String)
 }
 impl Show for WebSocketError
 

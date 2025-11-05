@@ -23,20 +23,40 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   let opcode_byte = byte0 & b'\x0F'
   let opcode = match OpCode::from_byte(opcode_byte) {
     Some(op) => op
-    None => raise InvalidOpCode
+    None => raise FrameError("Invalid opcode: \{opcode_byte}")
   }
   let masked = (byte1.to_int() & 0x80) != 0
   let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
 
-  // Read extended payload length if needed
+  // Validate payload length according to RFC 6455
   if payload_len == 126L {
     let len_bytes = reader.read_exactly(2)
     guard len_bytes is [u16be(len), ..]
     payload_len = len.to_int64()
+    if payload_len < 126L {
+      raise FrameError(
+        "Invalid payload length: 126-byte length used for length < 126",
+      )
+    }
   } else if payload_len == 127L {
     let len_bytes = reader.read_exactly(8)
     guard len_bytes is [u64be(len), ..]
     payload_len = len.reinterpret_as_int64()
+    if payload_len < 65536L {
+      raise FrameError(
+        "Invalid payload length: 64-bit length used for length < 65536",
+      )
+    }
+    if payload_len < 0L {
+      raise FrameError(
+        "Payload length too large (negative when interpreted as signed)",
+      )
+    }
+  }
+
+  // Check for reasonable payload size limit (1MB for now)
+  if payload_len > 1048576L {
+    raise FrameError("Payload too large: \{payload_len} bytes (max 1MB)")
   }
 
   // Read masking key if present
@@ -68,8 +88,15 @@ async fn[W : @io.Writer] write_frame(
   payload : Bytes,
   masked : Bool,
 ) -> Unit {
-  let mut header_len = 2
   let payload_len = payload.length().to_int64()
+
+  // Validate payload size
+  if payload_len > 1048576L {
+    raise FrameError(
+      "Payload too large for sending: \{payload_len} bytes (max 1MB)",
+    )
+  }
+  let mut header_len = 2
 
   // Calculate extended length size
   if payload_len >= 126L && payload_len <= 65535L {
