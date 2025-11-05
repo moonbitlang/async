@@ -41,6 +41,10 @@ pub fn fstat_sync(fd : Int, context~ : String) -> Stat raise {
 pub extern "C" fn Stat::kind(stat : Stat) -> Int = "moonbitlang_async_file_kind_from_stat"
 
 ///|
+#borrow(stat)
+pub extern "C" fn Stat::size(stat : Stat) -> Int64 = "moonbitlang_async_file_size_from_stat"
+
+///|
 #borrow(stat, sec_out, nsec_out)
 extern "C" fn Stat::atime_ffi(
   stat : Stat,
