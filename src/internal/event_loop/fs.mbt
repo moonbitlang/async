@@ -28,13 +28,14 @@ pub async fn open(
   context~ : String,
 ) -> IOHandle {
   let path_bytes = @encoding/utf8.encode(path)
-  let job = JobForWorker::open(path_bytes, flags, mode)
+  let stat = @fd_util.Stat::new()
+  let job = JobForWorker::open(path_bytes, flags, mode, stat)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    fd => IOHandle::from_fd(fd)
+    fd => IOHandle::from_fd(fd, kind=stat.kind())
   }
 }
 

@@ -87,6 +87,7 @@ struct open_job {
   char *filename;
   int flags;
   int mode;
+  void *stat_out;
 };
 
 struct stat_job {
@@ -290,8 +291,13 @@ void *worker_loop(void *data) {
         job->payload.open.flags | O_CLOEXEC,
         job->payload.open.mode
       );
-      if (job->ret < 0)
+      if (job->ret < 0) {
         job->err = errno;
+        break;
+      }
+      if (fstat(job->ret, job->payload.open.stat_out) < 0) {
+        job->err = errno;
+      }
       break;
 
     case OP_STAT:
@@ -574,6 +580,7 @@ void free_job(void *jobp) {
     break;
   case OP_OPEN:
     moonbit_decref(job->payload.open.filename);
+    moonbit_decref(job->payload.open.stat_out);
     break;
   case OP_STAT:
     moonbit_decref(job->payload.stat.path);
@@ -662,13 +669,19 @@ struct job *moonbitlang_async_make_write_job(int fd, char *buf, int offset, int 
   return job;
 }
 
-struct job *moonbitlang_async_make_open_job(char *filename, int flags, int mode) {
+struct job *moonbitlang_async_make_open_job(
+  char *filename,
+  int flags,
+  int mode,
+  int *stat_out
+) {
   struct job *job = make_job();
   job->job_id = pool.job_id++;
   job->op_code = OP_OPEN;
   job->payload.open.filename = filename;
   job->payload.open.flags = flags;
   job->payload.open.mode = mode;
+  job->payload.open.stat_out = stat_out;
   return job;
 }
 

@@ -53,14 +53,14 @@ async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
 fn IOHandle::detach_from_event_loop(Self) -> Int
 fn IOHandle::fd(Self) -> Int
 fn IOHandle::from_existing_fd(Int) -> Self
-fn IOHandle::from_fd(Int) -> Self
+fn IOHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
 async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
 async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
-async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
+async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
 async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 async fn IOHandle::seek(Self, Int64, Int, context~ : String) -> Int64
 async fn IOHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
-async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
+async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 
 // Type aliases
 

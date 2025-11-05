@@ -73,7 +73,7 @@ pub fn TcpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  TcpServer(@event_loop.IOHandle::from_fd(sock))
+  TcpServer(@event_loop.IOHandle::from_fd(sock, kind=Socket))
 }
 
 ///|
@@ -186,7 +186,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
     @fd_util.close(sock, context~)
     @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
-  let conn = @event_loop.IOHandle::from_fd(sock)
+  let conn = @event_loop.IOHandle::from_fd(sock, kind=Socket)
   try conn.connect(addr.0, context~) catch {
     err => {
       conn.close()
@@ -213,17 +213,11 @@ pub impl @io.Reader for Tcp with read(
   max_len? = buf.length() - offset,
 ) {
   let Tcp(sock) = self
-  sock.read(
-    buf,
-    offset~,
-    len=max_len,
-    can_poll=true,
-    context="@socket.Tcp::read()",
-  )
+  sock.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
 }
 
 ///|
 pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
   let Tcp(sock) = self
-  sock.write(buf, offset~, len~, can_poll=true, context="@socket.Tcp::write()")
+  sock.write(buf, offset~, len~, context="@socket.Tcp::write()")
 }
