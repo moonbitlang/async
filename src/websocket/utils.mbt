@@ -24,13 +24,19 @@ fn mask_payload(data : FixedArray[Byte], mask : FixedArray[Byte]) -> Unit {
 /// Generate a random 4-byte masking key
 fn generate_mask() -> FixedArray[Byte] {
   let mask = FixedArray::make(4, b'\x00')
-  // Use simple random generation - in production, use cryptographically secure random
-  // Using current time as seed for simple randomness
-  let t = 123456 // Placeholder - should use actual time/random source
-  mask[0] = (t % 256).to_byte()
-  mask[1] = (t / 256 % 256).to_byte()
-  mask[2] = (t / 65536 % 256).to_byte()
-  mask[3] = (t / 16777216 % 256).to_byte()
+  // Use current time as seed for simple randomness
+  // In production, consider using a cryptographically secure random source
+  let t = @time.ms_since_epoch()
+
+  // Create more entropy by combining time with simple operations
+  let seed1 = t
+  let seed2 = t ^ (t >> 13)
+  let seed3 = seed2 ^ (seed2 << 7)
+  let seed4 = seed3 ^ (seed3 >> 17)
+  mask[0] = (seed1 & 0xFF).to_byte()
+  mask[1] = (seed2 & 0xFF).to_byte()
+  mask[2] = (seed3 & 0xFF).to_byte()
+  mask[3] = (seed4 & 0xFF).to_byte()
   mask
 }
 

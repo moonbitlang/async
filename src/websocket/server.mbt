@@ -30,43 +30,55 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
   // Parse request line and headers
   let lines = request_str.split("\r\n").to_array()
   if lines.length() == 0 {
-    return None
+    raise InvalidHandshake("Empty request")
   }
   let request_line = lines[0]
   if not(request_line.contains("GET")) || not(request_line.contains("HTTP/1.1")) {
-    return None
+    raise InvalidHandshake("Invalid request line: must be GET with HTTP/1.1")
   }
 
-  // Parse headers
+  // Parse headers with more robust handling
   let headers : Map[String, String] = {}
   for i = 1; i < lines.length(); i = i + 1 {
     let line = lines[i]
     if line.is_empty() {
       break
     }
+    // Handle header lines more robustly
     if line.contains(":") {
       let parts = line.split(":").to_array()
       if parts.length() >= 2 {
-        let key = parts[0].trim(chars=" \t").to_string()
-        let value = parts[1].trim(chars=" \t").to_string()
-        headers[key] = value
+        let key = parts[0].trim(chars=" \t").to_string().to_lower()
+        // Join remaining parts in case the value contains colons
+        let value_parts = parts[1:]
+        let value = if value_parts.length() == 1 {
+          value_parts[0].trim(chars=" \t").to_string()
+        } else {
+          value_parts.join(":").trim(chars=" \t").to_string()
+        }
+        // Handle multi-value headers by taking the first value
+        if not(headers.contains(key)) {
+          headers[key] = value
+        }
       }
     }
   }
 
   // Validate WebSocket handshake headers
-  guard headers.get("Upgrade") is Some(upgrade) &&
+  guard headers.get("upgrade") is Some(upgrade) &&
     upgrade.to_lower() == "websocket" else {
-    return None
+    raise InvalidHandshake("Missing or invalid Upgrade header")
   }
-  guard headers.get("Connection") is Some(connection) &&
+  guard headers.get("connection") is Some(connection) &&
     connection.to_lower().contains("upgrade") else {
-    return None
+    raise InvalidHandshake("Missing or invalid Connection header")
   }
-  guard headers.get("Sec-WebSocket-Version") is Some(version) && version == "13" else {
-    return None
+  guard headers.get("sec-websocket-version") is Some(version) && version == "13" else {
+    raise InvalidHandshake("Missing or unsupported WebSocket version")
   }
-  guard headers.get("Sec-WebSocket-Key") is Some(key) else { return None }
+  guard headers.get("sec-websocket-key") is Some(key) else {
+    raise InvalidHandshake("Missing Sec-WebSocket-Key header")
+  }
 
   // Generate accept key
   let accept_key = generate_accept_key(key)
@@ -190,10 +202,31 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
     // Handle control frames immediately
     match frame.opcode {
       OpCode::Close => {
-        // TODO : Handle close code and reason
-        self.send_close()
-        self.closed = Some(Normal)
-        raise ConnectionClosed(Normal)
+        // Parse close code and reason
+        let mut close_code = Normal
+        let mut reason = ""
+        if frame.payload.length() >= 2 {
+          let payload_arr = frame.payload.to_fixedarray()
+          let code_int = (payload_arr[0].to_int() << 8) |
+            payload_arr[1].to_int()
+          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
+          if frame.payload.length() > 2 {
+            let reason_bytes = FixedArray::make(
+              frame.payload.length() - 2,
+              b'\x00',
+            )
+            for i = 2; i < frame.payload.length(); i = i + 1 {
+              reason_bytes[i - 2] = payload_arr[i]
+            }
+            reason = @encoding/utf8.decode_lossy(
+              reason_bytes.unsafe_reinterpret_as_bytes(),
+            )
+          }
+        }
+        // Echo the close frame back and close
+        self.send_close(code=close_code, reason~)
+        self.closed = Some(close_code)
+        raise ConnectionClosed(close_code)
       }
       OpCode::Ping => {
         // Auto-respond to ping with pong
@@ -229,11 +262,11 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
     }
     offset += payload_arr.length()
   }
+  let message_data = data.unsafe_reinterpret_as_bytes()
   match first_opcode {
-    Some(OpCode::Text) =>
-      Text(@encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes()))
-    Some(OpCode::Binary) => Binary(data.unsafe_reinterpret_as_bytes())
-    _ => Binary(data.unsafe_reinterpret_as_bytes())
+    Some(OpCode::Text) => Text(@encoding/utf8.decode_lossy(message_data))
+    Some(OpCode::Binary) => Binary(message_data)
+    _ => Binary(message_data)
   } // Default to binary
 }
 
@@ -259,11 +292,25 @@ pub async fn run_server(
       server.run_forever(
         async fn(tcp_conn, client_addr) {
           // Try to perform WebSocket handshake
-          if ServerConnection::handshake(tcp_conn) is Some(ws_conn) {
-            f(ws_conn, client_addr)
-          } else {
-            // Not a valid WebSocket request, close connection
-            tcp_conn.close()
+          try {
+            let ws_conn = ServerConnection::handshake(tcp_conn)
+            match ws_conn {
+              Some(conn) => f(conn, client_addr)
+              None => tcp_conn.close()
+            }
+          } catch {
+            InvalidHandshake(_) => {
+              // Send proper HTTP error response before closing
+              let error_response = "HTTP/1.1 400 Bad Request\r\n" +
+                "Content-Length: 0\r\n" +
+                "\r\n"
+              tcp_conn.write(@encoding/utf8.encode(error_response))
+              tcp_conn.close()
+            }
+            err => {
+              tcp_conn.close()
+              raise err
+            }
           }
         },
         allow_failure~,
@@ -273,11 +320,25 @@ pub async fn run_server(
       server.run_forever(
         async fn(tcp_conn, client_addr) {
           // Try to perform WebSocket handshake
-          if ServerConnection::handshake(tcp_conn) is Some(ws_conn) {
-            f(ws_conn, client_addr)
-          } else {
-            // Not a valid WebSocket request, close connection
-            tcp_conn.close()
+          try {
+            let ws_conn = ServerConnection::handshake(tcp_conn)
+            match ws_conn {
+              Some(conn) => f(conn, client_addr)
+              None => tcp_conn.close()
+            }
+          } catch {
+            InvalidHandshake(_) => {
+              // Send proper HTTP error response before closing
+              let error_response = "HTTP/1.1 400 Bad Request\r\n" +
+                "Content-Length: 0\r\n" +
+                "\r\n"
+              tcp_conn.write(@encoding/utf8.encode(error_response))
+              tcp_conn.close()
+            }
+            err => {
+              tcp_conn.close()
+              raise err
+            }
           }
         },
         allow_failure~,

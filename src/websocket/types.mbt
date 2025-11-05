@@ -107,7 +107,7 @@ fn CloseCode::from_int(code : Int) -> CloseCode? {
 
 ///|
 pub suberror WebSocketError {
-  InvalidOpCode // Invalid frame opcode
   ConnectionClosed(CloseCode) // Connection was closed
-  InvalidHandshake // Handshake failed
+  InvalidHandshake(String) // Handshake failed with specific reason
+  FrameError(String) // Malformed frame with details
 } derive(Show)

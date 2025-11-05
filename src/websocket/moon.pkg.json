@@ -2,6 +2,7 @@
   "import": [
     "moonbitlang/async/io",
     "moonbitlang/async/socket",
+    "moonbitlang/async/internal/time",
     "moonbitlang/x/crypto"
   ]
 }

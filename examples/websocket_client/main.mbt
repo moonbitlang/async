@@ -41,13 +41,12 @@ pub async fn connect_to_echo_server() -> Unit {
 
     // Receive echo response
     let response = client.receive()
-    match response.mtype {
-      @websocket.MessageType::Text => {
-        let text = @encoding/utf8.decode(response.data)
+    match response {
+      @websocket.Text(text) => {
         println("Received: \{text}")
       }
-      @websocket.MessageType::Binary =>
-        println("Received binary data (\{response.data.length()} bytes)")
+      @websocket.Binary(data) =>
+        println("Received binary data (\{data.length()} bytes)")
     }
   }
 
@@ -60,14 +59,13 @@ pub async fn connect_to_echo_server() -> Unit {
   let binary_data = @encoding/utf8.encode("Binary test data")
   client.send_binary(binary_data)
   let binary_response = client.receive()
-  match binary_response.mtype {
-    @websocket.MessageType::Text => {
-      let text = @encoding/utf8.decode(binary_response.data)
+  match binary_response {
+    @websocket.Text(text) => {
       println("Received text response: \{text}")
     }
-    @websocket.MessageType::Binary =>
+    @websocket.Binary(data) =>
       println(
-        "Received binary response (\{binary_response.data.length()} bytes)",
+        "Received binary response (\{data.length()} bytes)",
       )
   }
 
