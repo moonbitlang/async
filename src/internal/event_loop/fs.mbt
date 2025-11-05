@@ -58,6 +58,17 @@ pub async fn stat(
 }
 
 ///|
+pub async fn IOHandle::fstat(
+  handle : IOHandle,
+  context~ : String,
+) -> @fd_util.Stat {
+  let stat = @fd_util.Stat::new()
+  let job = JobForWorker::fstat(handle.fd, stat)
+  let _ = perform_job_in_worker(job, context~)
+  stat
+}
+
+///|
 pub async fn IOHandle::seek(
   handle : IOHandle,
   offset : Int64,

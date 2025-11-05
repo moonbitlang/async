@@ -6,6 +6,8 @@ fn close(Int, context~ : String) -> Unit raise
 
 fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
 
+fn fstat_sync(Int, context~ : String) -> Stat raise
+
 fn pipe(String) -> (Int, Int) raise
 
 fn set_blocking(Int, context~ : String) -> Unit raise
@@ -20,7 +22,6 @@ fn set_nonblocking(Int, context~ : String) -> Unit raise
 type Stat
 fn Stat::atime(Self) -> (Int64, Int)
 fn Stat::ctime(Self) -> (Int64, Int)
-fn Stat::from_fd(Int, context~ : String) -> Self raise
 fn Stat::kind(Self) -> Int
 fn Stat::mtime(Self) -> (Int64, Int)
 fn Stat::new() -> Self

@@ -54,6 +54,7 @@ fn IOHandle::detach_from_event_loop(Self) -> Int
 fn IOHandle::fd(Self) -> Int
 fn IOHandle::from_existing_fd(Int) -> Self
 fn IOHandle::from_fd(Int) -> Self
+async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
 async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
 async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, can_poll~ : Bool, context~ : String) -> Int
 async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int

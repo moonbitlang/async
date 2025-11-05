@@ -84,6 +84,13 @@ extern "C" fn JobForWorker::stat(
 
 ///|
 #owned(out)
+extern "C" fn JobForWorker::fstat(
+  fd : Int,
+  out : @fd_util.Stat,
+) -> JobForWorker = "moonbitlang_async_make_fstat_job"
+
+///|
+#owned(out)
 extern "C" fn JobForWorker::seek(
   fd : Int,
   offset : Int64,

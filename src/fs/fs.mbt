@@ -114,7 +114,7 @@ pub async fn open(
     mode=user_mode,
     context="@fs.open()",
   )
-  let kind = Stat::from_fd(io.fd(), context="@fs.open()").kind()
+  let kind = io.fstat(context="@fs.open()").kind()
   { io, kind: FileKind::from_int(kind) }
 }
 
@@ -285,24 +285,24 @@ pub fn File::kind(self : File) -> FileKind {
 /// Get the last access time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub fn File::atime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd(), context="@fs.File::atime()").atime()
+pub async fn File::atime(self : File) -> (Int64, Int) {
+  self.io.fstat(context="@fs.File::atime()").atime()
 }
 
 ///|
 /// Get the last modification time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub fn File::mtime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd(), context="@fs.File::mtime()").mtime()
+pub async fn File::mtime(self : File) -> (Int64, Int) {
+  self.io.fstat(context="@fs.File::mtime()").mtime()
 }
 
 ///|
 /// Get the last status change time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub fn File::ctime(self : File) -> (Int64, Int) raise {
-  Stat::from_fd(self.fd(), context="@fs.File::ctime()").ctime()
+pub async fn File::ctime(self : File) -> (Int64, Int) {
+  self.io.fstat(context="@fs.File::ctime()").ctime()
 }
 
 ///|
