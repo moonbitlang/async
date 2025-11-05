@@ -1,0 +1,14 @@
+{
+  "name": "moonbitlang/async/stdio_test",
+  "version": "0.0.1",
+  "deps": {
+    "moonbitlang/async": {
+      "path": ".."
+    }
+  },
+  "repository": "https://github.com/moonbitlang/async",
+  "license": "Apache-2.0",
+  "keywords": [],
+  "source": ".",
+  "preferred-target": "native"
+}
