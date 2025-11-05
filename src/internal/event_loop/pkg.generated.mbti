@@ -56,6 +56,7 @@ fn IOHandle::from_existing_fd(Int) -> Self
 fn IOHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
 async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
 async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
+fn IOHandle::kind(Self) -> @fd_util.FileKind
 async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
 async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 async fn IOHandle::seek(Self, Int64, Int, context~ : String) -> Int64

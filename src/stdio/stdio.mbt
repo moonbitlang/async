@@ -16,14 +16,11 @@
 using @fd_util {type FileKind}
 
 ///|
-struct Input {
-  io : @event_loop.IOHandle
-  kind : FileKind
-}
+struct Input(@event_loop.IOHandle)
 
 ///|
 pub fn Input::fd(self : Input) -> Int {
-  self.io.fd()
+  self.0.fd()
 }
 
 ///|
@@ -33,23 +30,20 @@ pub impl @io.Reader for Input with read(
   offset? = 0,
   max_len? = buf.length() - offset,
 ) {
-  self.io.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+  self.0.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
 }
 
 ///|
-struct Output {
-  io : @event_loop.IOHandle
-  kind : FileKind
-}
+struct Output(@event_loop.IOHandle)
 
 ///|
 pub fn Output::fd(self : Output) -> Int {
-  self.io.fd()
+  self.0.fd()
 }
 
 ///|
 pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
-  self.io.write(buf, offset~, len~, context="@fs.File::write()")
+  self.0.write(buf, offset~, len~, context="@fs.File::write()")
 }
 
 ///|
@@ -85,7 +79,7 @@ pub let stdin : Input = {
       context~,
       restore_context="restore `stdin`",
     )
-    { io: @event_loop.IOHandle::from_fd(0, kind~), kind }
+    @event_loop.IOHandle::from_fd(0, kind~)
   } catch {
     err => abort(err.to_string())
   }
@@ -103,7 +97,7 @@ pub let stdout : Output = {
       context~,
       restore_context="restore `stdout`",
     )
-    { io: @event_loop.IOHandle::from_fd(1, kind~), kind }
+    @event_loop.IOHandle::from_fd(1, kind~)
   } catch {
     err => abort(err.to_string())
   }
@@ -121,7 +115,7 @@ pub let stderr : Output = {
       context~,
       restore_context="restore `stderr`",
     )
-    { io: @event_loop.IOHandle::from_fd(2, kind~), kind }
+    @event_loop.IOHandle::from_fd(2, kind~)
   } catch {
     err => abort(err.to_string())
   }
