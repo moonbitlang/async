@@ -70,6 +70,7 @@ pub(all) enum CloseCode {
   GoingAway // 1001
   ProtocolError // 1002
   UnsupportedData // 1003
+  Abnormal // 1006
   InvalidFramePayload // 1007
   PolicyViolation // 1008
   MessageTooBig // 1009
@@ -83,6 +84,7 @@ fn CloseCode::to_int(self : CloseCode) -> Int {
     GoingAway => 1001
     ProtocolError => 1002
     UnsupportedData => 1003
+    Abnormal => 1006
     InvalidFramePayload => 1007
     PolicyViolation => 1008
     MessageTooBig => 1009
@@ -97,6 +99,7 @@ fn CloseCode::from_int(code : Int) -> CloseCode? {
     1001 => Some(GoingAway)
     1002 => Some(ProtocolError)
     1003 => Some(UnsupportedData)
+    1006 => Some(Abnormal)
     1007 => Some(InvalidFramePayload)
     1008 => Some(PolicyViolation)
     1009 => Some(MessageTooBig)
