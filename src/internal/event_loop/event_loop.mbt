@@ -384,11 +384,14 @@ pub async fn IOHandle::read(
   if handle.kind.can_poll() {
     handle.prepare_read()
     let ret = read_ffi(handle.fd, buf, offset~, len~)
-    let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+    if ret >= 0 {
+      @coroutine.pause()
+      return ret
+    }
+    let ret = if @os_error.is_nonblocking_io_error() {
       handle.wait_read()
       read_ffi(handle.fd, buf, offset~, len~)
     } else {
-      @coroutine.pause()
       ret
     }
     if ret < 0 {
@@ -421,11 +424,14 @@ pub async fn IOHandle::write(
   if handle.kind.can_poll() {
     handle.prepare_write()
     let ret = write_ffi(handle.fd, buf, offset~, len~)
-    let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+    if ret >= 0 {
+      @coroutine.pause()
+      return ret
+    }
+    let ret = if @os_error.is_nonblocking_io_error() {
       handle.wait_write()
       write_ffi(handle.fd, buf, offset~, len~)
     } else {
-      @coroutine.pause()
       ret
     }
     if ret < 0 {

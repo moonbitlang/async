@@ -33,11 +33,14 @@ pub async fn IOHandle::recvfrom(
 ) -> Int {
   handle.prepare_read()
   let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
-  let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+  if ret >= 0 {
+    @coroutine.pause()
+    return ret
+  }
+  let ret = if @os_error.is_nonblocking_io_error() {
     handle.wait_read()
     recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
-    @coroutine.pause()
     ret
   }
   if ret < 0 {
@@ -67,11 +70,14 @@ pub async fn IOHandle::sendto(
 ) -> Int {
   handle.prepare_write()
   let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
-  let ret = if ret < 0 && @os_error.is_nonblocking_io_error() {
+  if ret >= 0 {
+    @coroutine.pause()
+    return ret
+  }
+  let ret = if @os_error.is_nonblocking_io_error() {
     handle.wait_write()
     sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
-    @coroutine.pause()
     ret
   }
   if ret < 0 {
@@ -122,14 +128,16 @@ pub async fn IOHandle::accept(
 ) -> IOHandle {
   handle.prepare_read()
   let conn = accept_ffi(handle.fd, addr)
-  let conn = if conn > 0 {
+  let conn = if conn >= 0 {
     conn
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read()
     accept_ffi(handle.fd, addr)
   } else {
+    conn
+  }
+  if conn < 0 {
     @os_error.check_errno(context)
-    -1
   }
   IOHandle::from_fd(conn, kind=Socket)
 }
