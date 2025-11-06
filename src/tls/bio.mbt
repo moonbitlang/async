@@ -45,19 +45,44 @@ fn Endpoint::read_size(ep : Endpoint) -> Int {
 
 ///|
 fn Endpoint::advance_read(ep : Endpoint, len : Int) -> Unit {
+  guard len > 0 else { abort("advance_read: negative length") }
   ep.start = (ep.start + len) % ep.data.length()
   ep.len -= len
+  guard ep.len >= 0 else {
+    abort("after advance_read: negative length. request=\{len}, len=\{ep.len}")
+  }
+  guard ep.len <= ep.data.length() else {
+    abort("after advance_read: len=\{ep.end} > capacity=\{ep.data.length()}")
+  }
 }
 
 ///|
 fn Endpoint::write_size(ep : Endpoint) -> Int {
+  guard ep.end < ep.data.length() else {
+    abort("before write_size: end=\{ep.end} >= capacity=\{ep.data.length()}")
+  }
+  guard ep.len <= ep.data.length() else {
+    abort("before write_size: len=\{ep.end} > capacity=\{ep.data.length()}")
+  }
   ep.data.length() - @cmp.maximum(ep.end, ep.len)
 }
 
 ///|
 fn Endpoint::advance_write(ep : Endpoint, len : Int) -> Unit {
+  guard ep.end < ep.data.length() else {
+    abort("before advance_write: end=\{ep.end} >= capacity=\{ep.data.length()}")
+  }
+  guard ep.len <= ep.data.length() else {
+    abort("before advance_write: len=\{ep.end} > capacity=\{ep.data.length()}")
+  }
   ep.end = (ep.end + len) % ep.data.length()
   ep.len += len
+  guard ep.end < ep.data.length() else {
+    abort("after advance_write: end=\{ep.end} >= capacity=\{ep.data.length()}")
+  }
+  guard ep.len <= ep.data.length() else {
+    abort("after advance_write: len=\{ep.end} > capacity=\{ep.data.length()}")
+  }
 }
 
 ///|
@@ -182,6 +207,14 @@ fn Endpoint::try_write(ep : Endpoint, src : @c_buffer.Buffer, len : Int) -> Int 
     return -1
   }
   let len = @cmp.minimum(remaining, len)
+  guard len > 0 else {
+    abort(
+      (
+        $| try_write: non-positive length.
+        $| remaining=\{remaining}, request_len=\{len}, end=\{ep.end}, len=\{ep.len}
+      ),
+    )
+  }
   src.blit_to_bytes(dst=ep.data, offset=ep.end, len~)
   ep.advance_write(len)
   if ep.state is Blocked {
