@@ -24,27 +24,28 @@ struct ServerConnection {
 /// This performs the full HTTP upgrade handshake
 async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
   // Read HTTP request
-  let request_data = conn.read_exactly(4096) // Read reasonable amount
-  let request_str = @encoding/utf8.decode(request_data)
+  let reader = @io.BufferedReader::new(conn)
 
-  // Parse request line and headers
-  let lines = request_str.split("\r\n").to_array()
-  if lines.length() == 0 {
-    raise InvalidHandshake("Empty request")
+  // Read request line
+  let request_line = match reader.read_line() {
+    Some(line) => line[:-1] // Remove trailing \r
+    None => raise InvalidHandshake("Empty request")
   }
-  let request_line = lines[0]
+
+  // Validate request line
   if not(request_line.contains("GET")) || not(request_line.contains("HTTP/1.1")) {
     raise InvalidHandshake("Invalid request line: must be GET with HTTP/1.1")
   }
 
-  // Parse headers with more robust handling
+  // Read and parse headers
   let headers : Map[String, String] = {}
-  for i = 1; i < lines.length(); i = i + 1 {
-    let line = lines[i]
-    if line.is_empty() {
+  while reader.read_line() is Some(line) {
+    // Empty line marks end of headers
+    if line.is_blank() {
       break
     }
-    // Handle header lines more robustly
+
+    // Parse header line
     if line.contains(":") {
       let parts = line.split(":").to_array()
       if parts.length() >= 2 {
@@ -52,9 +53,9 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
         // Join remaining parts in case the value contains colons
         let value_parts = parts[1:]
         let value = if value_parts.length() == 1 {
-          value_parts[0].trim(chars=" \t").to_string()
+          value_parts[0].trim(chars=" \t\r").to_string()
         } else {
-          value_parts.join(":").trim(chars=" \t").to_string()
+          value_parts.map(_.trim(chars=" \t\r")).join(":").to_string()
         }
         // Handle multi-value headers by taking the first value
         if not(headers.contains(key)) {

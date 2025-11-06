@@ -29,8 +29,8 @@
 ///     console.log('Received:', event.data);
 /// };
 /// ```
-fn init {
-  println("WebSocket echo server example")
+async fn main {
+  start_echo_server()
 }
 
 ///|
