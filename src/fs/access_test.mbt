@@ -42,3 +42,23 @@ async test "can_write" {
 async test "can_execute" {
   assert_false(@fs.can_execute("moon.mod.json"))
 }
+
+///|
+async test "chmod" {
+  let path = "target/chmod_test"
+  @async.with_task_group(fn(group) {
+    @fs.write_file(path, "abcd", create=0o444)
+    group.add_defer(() => @fs.remove(path))
+    inspect(@fs.can_read(path), content="true")
+    inspect(@fs.can_write(path), content="false")
+    inspect(@fs.can_execute(path), content="false")
+    @fs.chmod(path, 0o644)
+    inspect(@fs.can_read(path), content="true")
+    inspect(@fs.can_write(path), content="true")
+    inspect(@fs.can_execute(path), content="false")
+    @fs.chmod(path, 0o755)
+    inspect(@fs.can_read(path), content="true")
+    inspect(@fs.can_write(path), content="true")
+    inspect(@fs.can_execute(path), content="true")
+  })
+}

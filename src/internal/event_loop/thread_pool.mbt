@@ -94,6 +94,10 @@ extern "C" fn Job::get_seek_result(job : Job) -> Int64 = "moonbitlang_async_get_
 extern "C" fn Job::access(path : Bytes, amode : Int) -> Job = "moonbitlang_async_make_access_job"
 
 ///|
+#owned(path)
+extern "C" fn Job::chmod(path : Bytes, mode : Int) -> Job = "moonbitlang_async_make_chmod_job"
+
+///|
 extern "C" fn Job::fsync(fd : Int, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
 
 ///|

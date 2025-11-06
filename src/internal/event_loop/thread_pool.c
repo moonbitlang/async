@@ -565,6 +565,36 @@ struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
   return job;
 }
 
+// ===== chmod job, change permission of file =====
+
+struct chmod_job {
+  struct job job;
+  char *path;
+  mode_t mode;
+};
+
+static
+void free_chmod_job(void *obj) {
+  struct chmod_job *job = (struct chmod_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void chmod_job_worker(struct job *job) {
+  struct chmod_job *chmod_job = (struct chmod_job*)job;
+  job->ret = chmod(chmod_job->path, chmod_job->mode);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct chmod_job *moonbitlang_async_make_chmod_job(char *path, int mode) {
+  struct chmod_job *job = MAKE_JOB(chmod);
+  job->path = path;
+  job->mode = mode;
+  return job;
+}
+
+ 
 // ===== fsync job, synchronize file modification to disk =====
 
 struct fsync_job {

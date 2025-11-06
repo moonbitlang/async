@@ -92,6 +92,18 @@ pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
 }
 
 ///|
+pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
+  let path_bytes = @encoding/utf8.encode(path)
+  try perform_job_in_worker(Job::chmod(path_bytes, mode), context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 pub async fn IOHandle::fsync(
   handle : IOHandle,
   only_data~ : Bool,

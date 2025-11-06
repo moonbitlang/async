@@ -14,6 +14,8 @@ async fn can_read(StringView) -> Bool
 
 async fn can_write(StringView) -> Bool
 
+async fn chmod(StringView, Int) -> Unit
+
 async fn create(StringView, permission~ : Int, sync? : SyncMode) -> File
 
 async fn ctime(StringView, follow_symlink? : Bool) -> (Int64, Int)
