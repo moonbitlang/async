@@ -45,7 +45,7 @@ fn Endpoint::read_size(ep : Endpoint) -> Int {
 
 ///|
 fn Endpoint::advance_read(ep : Endpoint, len : Int) -> Unit {
-  guard len > 0 else { abort("advance_read: negative length") }
+  guard len > 0 else { abort("advance_read: non-positive length \{len}") }
   ep.start = (ep.start + len) % ep.data.length()
   ep.len -= len
   guard ep.len >= 0 else {
@@ -162,6 +162,9 @@ fn[W : @io.Writer] Endpoint::new_write(w : W) -> Endpoint noraise {
           offset=ep.start,
           len=pending,
         )
+        guard n >= 0 else {
+          abort("write_once returns \{n}, request_len=\{pending}")
+        }
         ep.advance_read(n)
         for waiter in ep.waiters {
           waiter.wake()
