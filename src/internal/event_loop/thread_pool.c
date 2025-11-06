@@ -303,6 +303,7 @@ struct read_job {
   char *buf;
   int offset;
   int len;
+  int64_t position;
 };
 
 static
@@ -314,7 +315,16 @@ void free_read_job(void *obj) {
 static
 void read_job_worker(struct job *job) {
   struct read_job *read_job = (struct read_job*)job;
-  job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
+  if (read_job->position < 0) {
+    job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
+  } else {
+    job->ret = pread(
+      read_job->fd,
+      read_job->buf + read_job->offset,
+      read_job->len,
+      read_job->position
+    );
+  }
   if (job->ret < 0)
     job->err = errno;
 }
@@ -323,13 +333,15 @@ struct read_job *moonbitlang_async_make_read_job(
   int fd,
   char *buf,
   int offset,
-  int len
+  int len,
+  int64_t position
 ) {
   struct read_job *job = MAKE_JOB(read);
   job->fd = fd;
   job->buf = buf;
   job->offset = offset;
   job->len = len;
+  job->position = position;
   return job;
 }
 
@@ -341,6 +353,7 @@ struct write_job {
   char *buf;
   int offset;
   int len;
+  int64_t position;
 };
 
 static
@@ -352,11 +365,20 @@ void free_write_job(void *obj) {
 static
 void write_job_worker(struct job *job) {
   struct write_job *write_job = (struct write_job*)job;
-  job->ret = write(
-    write_job->fd,
-    write_job->buf + write_job->offset,
-    write_job->len
-  );
+  if (write_job->position < 0) {
+    job->ret = write(
+      write_job->fd,
+      write_job->buf + write_job->offset,
+      write_job->len
+    );
+  } else {
+    job->ret = pwrite(
+      write_job->fd,
+      write_job->buf + write_job->offset,
+      write_job->len,
+      write_job->position
+    );
+  }
   if (job->ret < 0)
     job->err = errno;
 }
@@ -365,13 +387,15 @@ struct write_job *moonbitlang_async_make_write_job(
   int fd,
   char *buf,
   int offset,
-  int len
+  int len,
+  int64_t position
 ) {
   struct write_job *job = MAKE_JOB(write);
   job->fd = fd;
   job->buf = buf;
   job->offset = offset;
   job->len = len;
+  job->position = position;
   return job;
 }
 

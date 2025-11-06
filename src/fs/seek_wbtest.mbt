@@ -17,7 +17,7 @@ async test "basic seek" {
   let path = "target/basic_seek_test"
   // initialize
   {
-    let w = @fs.create(path, permission=0o644, sync=Full)
+    let w = create(path, permission=0o644, sync=Full)
     defer w.close()
     inspect(w.size(), content="0")
     w.write(b"abcdef")
@@ -25,14 +25,14 @@ async test "basic seek" {
   }
   // first read
   {
-    let r = @fs.open(path, mode=ReadOnly)
+    let r = open(path, mode=ReadOnly)
     defer r.close()
     inspect(r.size(), content="6")
     inspect(r.read_all().text(), content="abcdef")
   }
   // update content
   {
-    let w = @fs.open(path, mode=WriteOnly)
+    let w = open(path, mode=WriteOnly)
     defer w.close()
     ignore(w.seek(-2, mode=FromEnd))
     inspect(w.curr_pos(), content="4")
@@ -46,9 +46,9 @@ async test "basic seek" {
   }
   // read content
   {
-    let r = @fs.open(path, mode=ReadOnly)
+    let r = open(path, mode=ReadOnly)
     defer r.close()
     inspect(r.read_all().text(), content="123456")
   }
-  @fs.remove(path)
+  remove(path)
 }

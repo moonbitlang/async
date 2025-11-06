@@ -20,7 +20,7 @@ pub(open) trait Reader {
 }
 
 ///|
-pub suberror ReaderClosed derive(Show)
+pub(all) suberror ReaderClosed derive(Show)
 
 ///|
 impl Reader with read_exactly(self, len) {
