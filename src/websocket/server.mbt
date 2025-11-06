@@ -44,6 +44,7 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
     if line.is_blank() {
       break
     }
+    let line = line[:-1] // Remove trailing \r
 
     // Parse header line
     if line.contains(":") {
@@ -53,9 +54,9 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
         // Join remaining parts in case the value contains colons
         let value_parts = parts[1:]
         let value = if value_parts.length() == 1 {
-          value_parts[0].trim(chars=" \t\r").to_string()
+          value_parts[0].trim(chars=" \t").to_string()
         } else {
-          value_parts.map(_.trim(chars=" \t\r")).join(":").to_string()
+          value_parts.join(":").trim(chars=" \t").to_string()
         }
         // Handle multi-value headers by taking the first value
         if not(headers.contains(key)) {
@@ -85,11 +86,13 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
   let accept_key = generate_accept_key(key)
 
   // Send upgrade response
-  let response = "HTTP/1.1 101 Switching Protocols\r\n" +
-    "Upgrade: websocket\r\n" +
-    "Connection: Upgrade\r\n" +
-    "Sec-WebSocket-Accept: \{accept_key}\r\n" +
-    "\r\n"
+  let response =
+    $|HTTP/1.1 101 Switching Protocols\r
+    $|Upgrade: websocket\r
+    $|Connection: Upgrade\r
+    $|Sec-WebSocket-Accept: \{accept_key}\r
+    $|\r
+    $|
   conn.write(@encoding/utf8.encode(response))
   Some({ conn, closed: None })
 }
@@ -157,7 +160,7 @@ pub async fn ServerConnection::pong(
 pub async fn ServerConnection::send_close(
   self : ServerConnection,
   code? : CloseCode = Normal,
-  reason? : String = "",
+  reason? : BytesView = "",
 ) -> Unit {
   if self.closed is Some(c) {
     raise ConnectionClosed(c)
@@ -172,11 +175,7 @@ pub async fn ServerConnection::send_close(
 
   // Encode reason
   if reason != "" {
-    let reason_bytes = @encoding/utf8.encode(reason)
-    let reason_arr = reason_bytes.to_fixedarray()
-    for i = 0; i < reason_arr.length(); i = i + 1 {
-      payload[2 + i] = reason_arr[i]
-    }
+    payload.blit_from_bytesview(2, reason)
   }
   write_frame(
     self.conn,
@@ -205,28 +204,26 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
       OpCode::Close => {
         // Parse close code and reason
         let mut close_code = Normal
-        let mut reason = ""
         if frame.payload.length() >= 2 {
           let payload_arr = frame.payload.to_fixedarray()
           let code_int = (payload_arr[0].to_int() << 8) |
             payload_arr[1].to_int()
           close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
           if frame.payload.length() > 2 {
-            let reason_bytes = FixedArray::make(
-              frame.payload.length() - 2,
-              b'\x00',
-            )
-            for i = 2; i < frame.payload.length(); i = i + 1 {
-              reason_bytes[i - 2] = payload_arr[i]
-            }
-            reason = @encoding/utf8.decode_lossy(
-              reason_bytes.unsafe_reinterpret_as_bytes(),
-            )
+            // As per spec https://datatracker.ietf.org/doc/html/rfc6455#autoid-27
+            // The data is not guaranteed to be human readable
+            // So we do not decode it here
+            // And we are not using it further
+            let _reason_bytes = payload_arr.unsafe_reinterpret_as_bytes()[2:]
+
           }
         }
-        // Echo the close frame back and close
-        self.send_close(code=close_code, reason~)
-        self.closed = Some(close_code)
+        // If we didn't send close first, respond with close
+        if self.closed is None {
+          // Echo the close frame back and close
+          self.send_close(code=close_code)
+          self.closed = Some(close_code)
+        }
         raise ConnectionClosed(close_code)
       }
       OpCode::Ping => {

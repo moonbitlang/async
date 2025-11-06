@@ -21,17 +21,14 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   let byte1 = header[1]
   let fin = (byte0.to_int() & 0x80) != 0
   let opcode_byte = byte0 & b'\x0F'
-  let opcode = match OpCode::from_byte(opcode_byte) {
-    Some(op) => op
-    None => raise FrameError("Invalid opcode: \{opcode_byte}")
-  }
+  let opcode = OpCode::from_byte(opcode_byte)
   let masked = (byte1.to_int() & 0x80) != 0
   let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
 
-  // Validate payload length according to RFC 6455
+  // Validate payload length according to RFC 6455 Section 5.2
   if payload_len == 126L {
     let len_bytes = reader.read_exactly(2)
-    guard len_bytes is [u16be(len), ..]
+    guard len_bytes is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
       raise FrameError(
@@ -40,7 +37,7 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
     }
   } else if payload_len == 127L {
     let len_bytes = reader.read_exactly(8)
-    guard len_bytes is [u64be(len), ..]
+    guard len_bytes is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
     if payload_len < 65536L {
       raise FrameError(
@@ -49,14 +46,12 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
     }
     if payload_len < 0L {
       raise FrameError(
-        "Payload length too large (negative when interpreted as signed)",
+        "Invalid payload length: MSB must be 0 for 64-bit length",
       )
     }
   }
-
-  // Check for reasonable payload size limit (1MB for now)
-  if payload_len > 1048576L {
-    raise FrameError("Payload too large: \{payload_len} bytes (max 1MB)")
+  if payload_len > @int.max_value.to_int64() {
+    raise FrameError("Payload too large: \{payload_len} bytes")
   }
 
   // Read masking key if present
@@ -89,13 +84,6 @@ async fn[W : @io.Writer] write_frame(
   masked : Bool,
 ) -> Unit {
   let payload_len = payload.length().to_int64()
-
-  // Validate payload size
-  if payload_len > 1048576L {
-    raise FrameError(
-      "Payload too large for sending: \{payload_len} bytes (max 1MB)",
-    )
-  }
   let mut header_len = 2
 
   // Calculate extended length size
@@ -105,45 +93,37 @@ async fn[W : @io.Writer] write_frame(
     header_len += 8
   }
 
-  // Add mask size if needed
-  if masked {
-    header_len += 4
+  // Build header
+  let header = if masked {
+    FixedArray::make(header_len + 4, b'\x00')
+  } else {
+    FixedArray::make(header_len, b'\x00')
   }
 
-  // Build header
-  let header = FixedArray::make(header_len, b'\x00')
-  let mut offset = 0
-
   // First byte: FIN + opcode
-  header[offset] = if fin {
+  header[0] = if fin {
     (0x80 | opcode.to_byte().to_int()).to_byte()
   } else {
     opcode.to_byte()
   }
-  offset += 1
 
   // Second byte: MASK + payload length
   let mask_bit = if masked { 0x80 } else { 0 }
   if payload_len < 126L {
-    header[offset] = (mask_bit | payload_len.to_int()).to_byte()
-    offset += 1
+    header[1] = (mask_bit | payload_len.to_int()).to_byte()
   } else if payload_len <= 65535L {
-    header[offset] = (mask_bit | 126).to_byte()
-    offset += 1
-    header.unsafe_write_uint16_be(offset, payload_len.to_uint16())
-    offset += 2
+    header[1] = (mask_bit | 126).to_byte()
+    header.unsafe_write_uint16_be(2, payload_len.to_uint16())
   } else {
-    header[offset] = (mask_bit | 127).to_byte()
-    offset += 1
-    header.unsafe_write_uint64_be(offset, payload_len.reinterpret_as_uint64())
-    offset += 8
+    header[1] = (mask_bit | 127).to_byte()
+    header.unsafe_write_uint64_be(2, payload_len.reinterpret_as_uint64())
   }
 
   // Add masking key and mask payload if needed
   let final_payload = if masked {
     let mask = generate_mask()
     for i = 0; i < 4; i = i + 1 {
-      header[offset + i] = mask[i]
+      header[header_len + i] = mask[i]
     }
     let payload_arr = payload.to_fixedarray()
     mask_payload(payload_arr, mask)
