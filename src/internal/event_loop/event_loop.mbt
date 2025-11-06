@@ -399,9 +399,23 @@ pub async fn IOHandle::read(
     }
     ret
   } else {
-    let job = Job::read(handle.fd, buf, offset, len)
+    let job = Job::read(handle.fd, buf, offset, len, position=-1)
     perform_job_in_worker(job, context~)
   }
+}
+
+///|
+pub async fn IOHandle::read_at(
+  handle : IOHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+  context~ : String,
+) -> Int {
+  guard !handle.kind.can_poll()
+  let job = Job::read(handle.fd, buf, offset, len, position~)
+  perform_job_in_worker(job, context~)
 }
 
 ///|
@@ -439,9 +453,23 @@ pub async fn IOHandle::write(
     }
     ret
   } else {
-    let job = Job::write(handle.fd, buf, offset, len)
+    let job = Job::write(handle.fd, buf, offset, len, position=-1)
     perform_job_in_worker(job, context~)
   }
+}
+
+///|
+pub async fn IOHandle::write_at(
+  handle : IOHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+  context~ : String,
+) -> Unit {
+  guard !handle.kind.can_poll()
+  let job = Job::write(handle.fd, buf, offset, len, position~)
+  perform_job_in_worker(job, context~) |> ignore
 }
 
 ///|

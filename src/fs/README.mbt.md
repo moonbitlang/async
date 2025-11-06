@@ -180,75 +180,44 @@ async test "write_once for single write operation" {
 }
 ```
 
-### File Seeking
+### Random access on files
 
-Navigate within files using seek operations:
+Read and write file from specified position:
 
 ```moonbit
 ///|
-async test "seek to specific position" {
-  let test_file = "target/test_seek.txt"
+async test "read at specific position" {
+  let test_file = "target/read_at_test.txt"
   @fs.write_file(test_file, b"0123456789", create=0o644)
-  let file = @fs.open(test_file, mode=ReadOnly)
-  defer file.close()
+  {
+    let file = @fs.open(test_file, mode=ReadOnly)
+    defer file.close()
 
-  // Seek to position 5 from start
-  let pos = file.seek(5, mode=FromStart)
-  let buf = FixedArray::make(3, b'0')
-  let _ = file.read(buf)
+    // read 3 bytes at position 5
+    @json.inspect(file.read_exactly_at(3, position=5), content="567")
+
+    // use `read_at` to handle EOF robustly
+    let buf = FixedArray::make(10, b'\x00')
+    let n = file.read_at(buf, position=5)
+    inspect(n, content="5")
+    @json.inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="56789")
+  }
   @fs.remove(test_file)
-  inspect(pos, content="5")
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
-    content="567",
-  )
 }
 
 ///|
-async test "seek relative to current position" {
-  let test_file = "target/test_seek_relative.txt"
-  @fs.write_file(test_file, b"ABCDEFGHIJ", create=0o644)
-  let file = @fs.open(test_file, mode=ReadOnly)
-  defer file.close()
-  let _ = file.seek(3, mode=FromStart)
-  let _ = file.seek(2, mode=Relative) // Now at position 5
-  let buf = FixedArray::make(2, b'0')
-  let _ = file.read(buf)
-  @fs.remove(test_file)
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
-    content="FG",
-  )
-}
+async test "write at specific position" {
+  let test_file = "target/write_at_test.txt"
+  {
+    let file = @fs.open(test_file, mode=WriteOnly, create=0o644)
+    defer file.close()
+    file.write("abcdef")
+    file.write_at("CD", position=2)
+  }
 
-///|
-async test "seek from end" {
-  let test_file = "target/test_seek_end.txt"
-  @fs.write_file(test_file, b"0123456789", create=0o644)
-  let file = @fs.open(test_file, mode=ReadOnly)
-  defer file.close()
-  let pos = file.seek(-3, mode=FromEnd) // 3 bytes before end
-  let buf = FixedArray::make(3, b'0')
-  let _ = file.read(buf)
+  // read 3 bytes at position 5
+  inspect(@fs.read_file(test_file).text(), content="abCDef")
   @fs.remove(test_file)
-  inspect(pos, content="7")
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
-    content="789",
-  )
-}
-
-///|
-async test "curr_pos - get current position" {
-  let test_file = "target/test_curr_pos.txt"
-  @fs.write_file(test_file, b"0123456789", create=0o644)
-  let file = @fs.open(test_file, mode=ReadOnly)
-  defer file.close()
-  let buf = FixedArray::make(5, b'0')
-  let _ = file.read(buf)
-  let pos = file.curr_pos()
-  @fs.remove(test_file)
-  inspect(pos, content="5")
 }
 
 ///|
@@ -262,6 +231,12 @@ async test "size - get file size" {
   inspect(size, content="5")
 }
 ```
+
+Some important notes when using `read_at` and `write_at`:
+
+- only seekable files (i.e. regular files or block devices) support `read_at` and `write_at`. Calling `read_at` and `write_at` on unsupported file types result in error
+- `read_at` and `write_at` does not modify the cursor for reading/writing the file as a stream
+- `read_at` always read as much as possible. When its return value is smaller than requested length, it always indicates EOF
 
 ## Directory Operations
 
@@ -635,8 +610,9 @@ Main file handle type. Methods include:
 - `read_exactly()` - Read exact number of bytes
 - `write()` - Write data
 - `write_once()` - Single write operation
-- `seek()` - Change file position
-- `curr_pos()` - Get current position
+- `read_at()` - Read file at specified position
+- `read_exact_at()` - Read exect number of bytes at specified position
+- `write_at()` - Write file at specified position
 - `size()` - Get file size
 - `kind()` - Get file kind
 - `atime()`, `mtime()`, `ctime()` - Get timestamps

@@ -55,11 +55,20 @@ extern "C" fn Job::read(
   buf : FixedArray[Byte],
   offset : Int,
   len : Int,
+  // `-1` indicates no offset
+  position~ : Int64,
 ) -> Job = "moonbitlang_async_make_read_job"
 
 ///|
 #owned(buf)
-extern "C" fn Job::write(fd : Int, buf : Bytes, offset : Int, len : Int) -> Job = "moonbitlang_async_make_write_job"
+extern "C" fn Job::write(
+  fd : Int,
+  buf : Bytes,
+  offset : Int,
+  len : Int,
+  // `-1` indicates no offset
+  position~ : Int64,
+) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
 #owned(filename, stat)

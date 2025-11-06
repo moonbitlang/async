@@ -4,7 +4,7 @@ package "moonbitlang/async/io"
 // Values
 
 // Errors
-pub suberror ReaderClosed
+pub(all) suberror ReaderClosed
 impl Show for ReaderClosed
 
 // Types and methods

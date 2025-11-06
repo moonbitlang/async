@@ -147,7 +147,50 @@ pub impl @io.Reader for File with read(
 }
 
 ///|
+/// Read from a file at the offset given by `position`.
+/// Only seekable files (e.g. regular files and block devices) support this operation,
+/// calling `read_at` on unsupported file, such as pipe or socket, result in error.
+///
+/// This function does not change the cursor for reading/writing the file
+/// as a stream (i.e. using API based on `@io.Reader` and `@io.Writer`),
+/// so it is safe to perform multiple `read_at` on the same file simutaneously.
+///
+/// Up to `len` bytes of data will be read into `buf[offset:]`.
+/// The number of bytes actually read would be returned.
+/// The number of read bytes will be smaller than `len` only when EOF is reached.
+pub async fn File::read_at(
+  self : File,
+  buf : FixedArray[Byte],
+  position~ : Int64,
+  offset? : Int = 0,
+  len? : Int = buf.length() - offset,
+) -> Int {
+  self.0.read_at(buf, offset~, len~, position~, context="@fs.File::read_at()")
+}
+
+///|
+pub async fn File::read_exactly_at(
+  self : File,
+  len : Int,
+  position~ : Int64,
+) -> Bytes {
+  let buf = FixedArray::make(len, b'\x00')
+  let n = self.0.read_at(
+    buf,
+    offset=0,
+    len~,
+    position~,
+    context="@fs.File::read_exactly_at()",
+  )
+  if n < len {
+    raise @io.ReaderClosed
+  }
+  buf.unsafe_reinterpret_as_bytes()
+}
+
 // used for obtaining the default implementation of `@io.Reader::read_all`
+
+///|
 priv struct DummyFile(File)
 
 ///|
@@ -176,6 +219,31 @@ pub impl @io.Reader for File with read_all(self) {
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
   self.0.write(buf, offset~, len~, context="@fs.File::write()")
+}
+
+///|
+/// Write to a file at the offset given by `position`.
+/// Only seekable files (e.g. regular files and block devices) support this operation,
+/// calling `write_at` on unsupported file, such as pipe or socket, result in error.
+///
+/// This function does not change the cursor for reading/writing the file
+/// as a stream (i.e. using API based on `@io.Reader` and `@io.Writer`),
+/// so it is safe to perform multiple `write_at` on the same file simutaneously,
+/// as long as the regions they write do not overlap.
+///
+/// `write_at` would only return after all data is written.
+pub async fn File::write_at(
+  self : File,
+  buf : BytesView,
+  position~ : Int64,
+) -> Unit {
+  self.0.write_at(
+    buf.data(),
+    offset=buf.start_offset(),
+    len=buf.length(),
+    position~,
+    context="@fs.File::read_at()",
+  )
 }
 
 ///|
@@ -213,12 +281,14 @@ fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
 /// The offset is interpreted using `mode`, see `SeekMode` for more detail.
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
+#deprecated("use `read_at` or `write_at` instead")
 pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
   self.0.seek(offset, mode.to_int(), context="@fs.File::seek()")
 }
 
 ///|
 /// Get current position in the file. Can only be applied to a regular file.
+#deprecated("use `read_at` or `write_at` instead")
 pub async fn File::curr_pos(self : File) -> Int64 {
   self.seek(0, mode=Relative)
 }
