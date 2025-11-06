@@ -18,10 +18,12 @@ let port : Int = 3001
 ///|
 async fn main {
   @http.run_server(@socket.Addr::parse("0.0.0.0:\{port}"), fn(conn, _) {
-    let request = conn.read_request()
-    match (request.meth, request.path) {
-      (Get, "/") => conn..send_response(200, "OK")..end_response()
-      _ => conn..send_response(404, "NotFound")..end_response()
+    for {
+      let request = conn.read_request()
+      match (request.meth, request.path) {
+        (Get, "/") => conn..send_response(200, "OK")..end_response()
+        _ => conn..send_response(404, "NotFound")..end_response()
+      }
     }
   })
 }
