@@ -52,39 +52,35 @@ fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
-async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
+/// Make sure at least `len` bytes of data are buffered,
+/// read from the underlying reader if necessary.
+/// The actual amount of data fetched may be larger than `len`.
+/// Returns `true` if data are successfully fetched,
+/// or `false` if the underlying reader already reached EOF.
+async fn[R : Reader] BufferedReader::try_ensure(
+  self : Self[R],
+  len : Int,
+) -> Bool {
   if self.len >= len {
-    return
+    return true
   }
   self.enlarge_to(len)
   while self.len < len {
-    let n = self.reader.read(
-      self.buf,
-      offset=self.start + self.len,
-      max_len=len - self.len,
-    )
+    let n = self.reader.read(self.buf, offset=self.start + self.len)
     if n == 0 {
-      raise ReaderClosed
+      return false
     }
     self.len += n
+  } else {
+    true
   }
 }
 
 ///|
-/// Fetch some more data from the underlying reader.
-/// The exact number of fetched data may varies.
-/// Returns `true` if data are successfully fetched,
-/// or `false` if the underlying reader already reached EOF.
-async fn[R : Reader] BufferedReader::fetch_more(self : Self[R]) -> Bool {
-  self.enlarge_to(self.len + SEGMENT_SIZE)
-  let offset = self.start + self.len
-  let n = self.reader.read(
-    self.buf,
-    offset~,
-    max_len=self.buf.length() - offset,
-  )
-  self.len += n
-  n > 0
+async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
+  if !self.try_ensure(len) {
+    raise ReaderClosed
+  }
 }
 
 ///|
@@ -183,25 +179,25 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
 /// `BufferedReader` will request more data from the inner reader.
 ///
 /// If the inner reader is closed before the target substring is found,
-/// `ReaderClosed` will be raised.
+/// `None` will be returned.
 ///
-/// `find` will not advance the reader stream,
+/// `find_opt` will not advance the reader stream,
 /// so this operation is idempotent.
-pub async fn[R : Reader] BufferedReader::find(
+pub async fn[R : Reader] BufferedReader::find_opt(
   self : Self[R],
   target : Bytes,
-) -> Int {
-  for searched = self.start {
+) -> Int? {
+  let target_len = target.length()
+  for searched = 0 {
+    guard self.try_ensure(searched + target_len) else { return None }
     let len = self.len
+    let start = self.start + searched
     let end = self.start + len
-    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:end]
+    let region = self.buf.unsafe_reinterpret_as_bytes()[start:end]
     if region.find(target) is Some(i) {
-      return searched + i - self.start
+      return Some(searched + i)
     }
-    if !self.fetch_more() {
-      raise ReaderClosed
-    }
-    continue self.start + len
+    continue len - target_len + 1
   }
 }
 
@@ -213,25 +209,17 @@ pub async fn[R : Reader] BufferedReader::find(
 /// `BufferedReader` will request more data from the inner reader.
 ///
 /// If the inner reader is closed before the target substring is found,
-/// `None` will be returned.
+/// `ReaderClosed` will be raised.
 ///
-/// `find_opt` will not advance the reader stream,
+/// `find` will not advance the reader stream,
 /// so this operation is idempotent.
-pub async fn[R : Reader] BufferedReader::find_opt(
+pub async fn[R : Reader] BufferedReader::find(
   self : Self[R],
   target : Bytes,
-) -> Int? {
-  for searched = self.start {
-    let len = self.len
-    let end = self.start + len
-    let region = self.buf.unsafe_reinterpret_as_bytes()[searched:end]
-    if region.find(target) is Some(i) {
-      return Some(searched + i - self.start)
-    }
-    if !self.fetch_more() {
-      return None
-    }
-    continue self.start + len
+) -> Int {
+  match self.find_opt(target) {
+    None => raise ReaderClosed
+    Some(index) => index
   }
 }
 

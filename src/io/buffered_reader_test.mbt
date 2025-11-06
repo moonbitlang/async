@@ -270,6 +270,22 @@ async test "BufferedReader::find bytes" {
 }
 
 ///|
+async test "BufferedReader::find_bytes splitted" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @pipe.pipe()
+    root.spawn_bg(fn() {
+      defer w.close()
+      w.write(b"abcd")
+      @async.sleep(100)
+      w.write(b"efgh")
+    })
+    defer r.close()
+    let reader = @io.BufferedReader::new(r)
+    inspect(reader.find_opt("cdef"), content="Some(2)")
+  })
+}
+
+///|
 async test "BufferedReader::find_opt" {
   @async.with_task_group(fn(root) {
     let (r, w) = @pipe.pipe()
