@@ -8,8 +8,7 @@
     "moonbitlang/async/semaphore"
   ],
   "test-import": [
-    "moonbitlang/async/internal/bytes_util",
-    "moonbitlang/async/process"
+    "moonbitlang/async/internal/bytes_util"
   ],
   "native-stub": [ "stub.c" ]
 }

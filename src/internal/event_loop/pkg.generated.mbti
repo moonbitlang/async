@@ -8,6 +8,8 @@ import(
 // Values
 async fn access(StringView, amode~ : Int, context~ : String) -> Int
 
+async fn chmod(StringView, Int, context~ : String) -> Unit
+
 async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
 async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
