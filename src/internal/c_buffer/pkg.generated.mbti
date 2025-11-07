@@ -12,6 +12,8 @@ pub type Buffer
 fn Buffer::blit_from_bytes(Self, src~ : Bytes, offset~ : Int, len~ : Int) -> Unit
 fn Buffer::blit_to_bytes(Self, dst~ : FixedArray[Byte], offset~ : Int, len~ : Int) -> Unit
 fn Buffer::free(Self) -> Unit
+#alias("_[_]")
+fn Buffer::get(Self, Int) -> Byte
 fn Buffer::strlen(Self) -> Int
 
 // Type aliases

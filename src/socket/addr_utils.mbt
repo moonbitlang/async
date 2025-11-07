@@ -15,7 +15,7 @@
 ///|
 fn try_parse_ipv6(
   input : String,
-) -> (FixedArray[UInt], Int, Int, Int) raise InvalidAddr {
+) -> (FixedArray[Byte], Int, Int, Int) raise InvalidAddr {
   // Make sure the format is [addr]:port
   guard input.has_prefix("[") else {
     // IPv6 address must start with '['
@@ -48,7 +48,7 @@ fn try_parse_ipv6(
 ///|
 fn parse_ipv6_to_bytes(
   ip_str : StringView,
-) -> FixedArray[UInt] raise InvalidAddr {
+) -> FixedArray[Byte] raise InvalidAddr {
   // Handle the case where the IPv6 address is "::"
   if ip_str == "::" {
     return FixedArray::make(16, 0)
@@ -69,7 +69,7 @@ fn parse_ipv6_to_bytes(
 fn parse_compressed_ipv6_to_bytes(
   left_part : StringView,
   right_part : StringView,
-) -> FixedArray[UInt] raise InvalidAddr {
+) -> FixedArray[Byte] raise InvalidAddr {
   let left_groups = if left_part.is_empty() {
     []
   } else {
@@ -104,14 +104,14 @@ fn parse_compressed_ipv6_to_bytes(
   let compression_groups = 8 - total_explicit_groups
 
   // Build a 16-byte array initialized to zero
-  let result : FixedArray[UInt] = FixedArray::make(16, 0)
+  let result : FixedArray[Byte] = FixedArray::make(16, 0)
   let mut byte_index = 0
 
   // Add left side groups
   for group_str in left_groups {
     let group_value = parse_ipv6_group(group_str)
-    result[byte_index] = (group_value >> 8) & 0xFF
-    result[byte_index + 1] = group_value & 0xFF
+    result[byte_index] = ((group_value >> 8) & 0xFF).to_byte()
+    result[byte_index + 1] = (group_value & 0xFF).to_byte()
     byte_index += 2
   }
 
@@ -125,17 +125,17 @@ fn parse_compressed_ipv6_to_bytes(
   // Add right side groups
   for group_str in right_groups {
     let group_value = parse_ipv6_group(group_str)
-    result[byte_index] = (group_value >> 8) & 0xFF
-    result[byte_index + 1] = group_value & 0xFF
+    result[byte_index] = ((group_value >> 8) & 0xFF).to_byte()
+    result[byte_index + 1] = (group_value & 0xFF).to_byte()
     byte_index += 2
   }
 
   // Add IPv4 bytes if they were parsed
   if ipv4_bytes is Some((a, b, c, d)) {
-    result[byte_index + 0] = a
-    result[byte_index + 1] = b
-    result[byte_index + 2] = c
-    result[byte_index + 3] = d
+    result[byte_index + 0] = a.to_byte()
+    result[byte_index + 1] = b.to_byte()
+    result[byte_index + 2] = c.to_byte()
+    result[byte_index + 3] = d.to_byte()
   }
   result
 }
@@ -143,9 +143,9 @@ fn parse_compressed_ipv6_to_bytes(
 ///|
 fn parse_full_ipv6_to_bytes(
   ip_str : StringView,
-) -> FixedArray[UInt] raise InvalidAddr {
+) -> FixedArray[Byte] raise InvalidAddr {
   let parts = ip_str.split(":").collect()
-  let result : FixedArray[UInt] = FixedArray::make(16, 0)
+  let result : FixedArray[Byte] = FixedArray::make(16, 0)
   // Check if the last part contains a dot, indicating an embedded IPv4 address
   let ipv4_bytes = if parts[parts.length() - 1].contains(".") {
     guard parts.length() == 7 else {
@@ -165,15 +165,15 @@ fn parse_full_ipv6_to_bytes(
   let mut byte_index = 0
   for part in parts {
     let group_value = parse_ipv6_group(part)
-    result[byte_index] = (group_value >> 8) & 0xFF
-    result[byte_index + 1] = group_value & 0xFF
+    result[byte_index] = ((group_value >> 8) & 0xFF).to_byte()
+    result[byte_index + 1] = (group_value & 0xFF).to_byte()
     byte_index += 2
   }
   if ipv4_bytes is Some((a, b, c, d)) {
-    result[byte_index + 0] = a
-    result[byte_index + 1] = b
-    result[byte_index + 2] = c
-    result[byte_index + 3] = d
+    result[byte_index + 0] = a.to_byte()
+    result[byte_index + 1] = b.to_byte()
+    result[byte_index + 2] = c.to_byte()
+    result[byte_index + 3] = d.to_byte()
   }
   result
 }
@@ -230,7 +230,7 @@ fn parse_port(port_str : StringView) -> Int raise InvalidAddr {
 }
 
 ///|
-fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
+fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
   let mut longest_zero_group = None
   fn add_zero_group(start, end) {
     if end > start {
@@ -242,7 +242,7 @@ fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
   }
 
   for i = 0, zero_group_start = 0; i < 8; i = i + 1 {
-    if addr.get_ipv6_byte(i * 2) == 0 && addr.get_ipv6_byte(i * 2 + 1) == 0 {
+    if addr[i * 2] == 0 && addr[i * 2 + 1] == 0 {
       continue
     } else {
       add_zero_group(zero_group_start, i)
@@ -253,8 +253,7 @@ fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
   }
   let is_v4_mapped = match longest_zero_group {
     Some((0, 6)) => true
-    Some((0, 5)) =>
-      addr.get_ipv6_byte(10) is 0xff && addr.get_ipv6_byte(11) is 0xff
+    Some((0, 5)) => addr[10] is 0xff && addr[11] is 0xff
     _ => false
   }
   let hex_format_end = if is_v4_mapped { 6 } else { 8 }
@@ -270,7 +269,7 @@ fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
       }
       _ => ()
     }
-    let value = (addr.get_ipv6_byte(i * 2) << 8) | addr.get_ipv6_byte(i * 2 + 1)
+    let value = (addr[i * 2].to_int() << 8) | addr[i * 2 + 1].to_int()
     logger.write_string(value.to_string(radix=16))
     if i < 7 {
       logger.write_string(":")
@@ -278,12 +277,12 @@ fn Addr::write_ipv6(addr : Addr, logger : &Logger) -> Unit {
   }
   if is_v4_mapped {
     logger
-    ..write_object(addr.get_ipv6_byte(12))
+    ..write_object(addr[12].to_int())
     ..write_string(".")
-    ..write_object(addr.get_ipv6_byte(13))
+    ..write_object(addr[13].to_int())
     ..write_string(".")
-    ..write_object(addr.get_ipv6_byte(14))
+    ..write_object(addr[14].to_int())
     ..write_string(".")
-    ..write_object(addr.get_ipv6_byte(15))
+    ..write_object(addr[15].to_int())
   }
 }

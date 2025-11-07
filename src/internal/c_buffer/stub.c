@@ -26,6 +26,10 @@ void moonbitlang_async_blit_from_c(char *src, char *dst, int offset, int len) {
   memcpy(dst + offset, src, len);
 }
 
+int moonbitlang_async_c_buffer_get(uint8_t *buf, int index) {
+  return buf[index];
+}
+
 int32_t moonbitlang_async_strlen(char *str) {
   return strlen(str);
 }

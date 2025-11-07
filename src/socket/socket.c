@@ -155,8 +155,13 @@ int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
   return sa->sa_family == AF_INET6;
 }
 
-int32_t moonbitlang_async_addr_get_ipv6_byte(struct sockaddr_in6 *addr, int32_t index) {
-  return addr->sin6_addr.s6_addr[index];
+uint8_t *moonbitlang_async_addr_get_ipv6_bytes(struct sockaddr_in6 *addr) {
+  return addr->sin6_addr.s6_addr;
+}
+
+int32_t moonbitlang_async_addr_is_ipv6_wildcard(struct sockaddr_in6 *addr) {
+  uint64_t *chunks = (uint64_t*)(addr->sin6_addr.s6_addr);
+  return chunks[0] == 0 && chunks[1] == 0;
 }
 
 int32_t moonbitlang_async_addrinfo_is_null(struct addrinfo *addrinfo) {

@@ -35,6 +35,11 @@ pub extern "C" fn Buffer::blit_to_bytes(
 ) = "moonbitlang_async_blit_from_c"
 
 ///|
+#borrow(buf)
+#alias("_[_]")
+pub extern "C" fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang_async_c_buffer_get"
+
+///|
 pub extern "C" fn Buffer::strlen(buf : Buffer) -> Int = "moonbitlang_async_strlen"
 
 ///|

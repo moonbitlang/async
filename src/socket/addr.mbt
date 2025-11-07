@@ -40,25 +40,18 @@ pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_i
 
 ///|
 #borrow(addr)
-extern "C" fn Addr::get_ipv6_byte(addr : Addr, index : Int) -> Int = "moonbitlang_async_addr_get_ipv6_byte"
+extern "C" fn Addr::get_ipv6_bytes(addr : Addr) -> @c_buffer.Buffer = "moonbitlang_async_addr_get_ipv6_bytes"
 
 ///|
-fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool {
-  for i in 0..<16 {
-    if addr.get_ipv6_byte(i) != 0 {
-      break false
-    }
-  } else {
-    true
-  }
-}
+#borrow(addr)
+extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6_wildcard"
 
 ///|
 pub impl Show for Addr with output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
     logger.write_char('[')
-    self.write_ipv6(logger)
+    write_ipv6_str(self.get_ipv6_bytes(), logger)
     logger..write_char(']')..write_char(':')..write_object(self.port())
   } else {
     // IPv4 address format
@@ -86,7 +79,6 @@ pub suberror InvalidAddr derive(Show)
 pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
   if src.has_prefix("[") {
     let (ip_bytes, port, _, _) = try_parse_ipv6(src)
-    let ip_bytes = ip_bytes.map(x => x.to_byte())
     Addr::new_ipv6(ip_bytes, port)
   } else {
     // IPv4 format: ip:port
