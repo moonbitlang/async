@@ -22,7 +22,7 @@ struct ServerConnection {
 ///|
 /// Handle WebSocket handshake on raw TCP connection - internal use
 /// This performs the full HTTP upgrade handshake
-async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
+async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
   // Read HTTP request
   let reader = @io.BufferedReader::new(conn)
 
@@ -94,7 +94,7 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection? {
     $|\r
     $|
   conn.write(@encoding/utf8.encode(response))
-  Some({ conn, closed: None })
+  { conn, closed: None }
 }
 
 ///|
@@ -286,65 +286,34 @@ pub async fn run_server(
   addr : @socket.Addr,
   _path : String, // Currently unused in this simplified implementation
   f : async (ServerConnection, @socket.Addr) -> Unit,
-  allow_failure? : Bool = true,
+  allow_failure? : Bool,
   max_connections? : Int,
 ) -> Unit {
   let server = @socket.TcpServer::new(addr)
-  match max_connections {
-    Some(max_conn) =>
-      server.run_forever(
-        async fn(tcp_conn, client_addr) {
-          // Try to perform WebSocket handshake
-          try {
-            let ws_conn = ServerConnection::handshake(tcp_conn)
-            match ws_conn {
-              Some(conn) => f(conn, client_addr)
-              None => tcp_conn.close()
-            }
-          } catch {
-            InvalidHandshake(_) => {
-              // Send proper HTTP error response before closing
-              let error_response = "HTTP/1.1 400 Bad Request\r\n" +
-                "Content-Length: 0\r\n" +
-                "\r\n"
-              tcp_conn.write(@encoding/utf8.encode(error_response))
-              tcp_conn.close()
-            }
-            err => {
-              tcp_conn.close()
-              raise err
-            }
-          }
-        },
-        allow_failure~,
-        max_connections=max_conn,
-      )
-    None =>
-      server.run_forever(
-        async fn(tcp_conn, client_addr) {
-          // Try to perform WebSocket handshake
-          try {
-            let ws_conn = ServerConnection::handshake(tcp_conn)
-            match ws_conn {
-              Some(conn) => f(conn, client_addr)
-              None => tcp_conn.close()
-            }
-          } catch {
-            InvalidHandshake(_) => {
-              // Send proper HTTP error response before closing
-              let error_response = "HTTP/1.1 400 Bad Request\r\n" +
-                "Content-Length: 0\r\n" +
-                "\r\n"
-              tcp_conn.write(@encoding/utf8.encode(error_response))
-              tcp_conn.close()
-            }
-            err => {
-              tcp_conn.close()
-              raise err
-            }
-          }
-        },
-        allow_failure~,
-      )
-  }
+  server.run_forever(
+    async fn(tcp_conn, client_addr) {
+      let ws_conn = ServerConnection::handshake(tcp_conn) catch {
+        // Per spec section 4.2.1 of RFC 6455, send 400 Bad Request on failure
+        InvalidHandshake(_) as e => {
+          // Send proper HTTP error response before closing
+          let error_response = "HTTP/1.1 400 Bad Request\r\n" +
+            "Content-Length: 0\r\n" +
+            "\r\n"
+          tcp_conn.write(@encoding/utf8.encode(error_response))
+          raise e
+        }
+        // Handle other unexpected errors
+        e => {
+          let error_response = "HTTP/1.1 500 Internal Server Error\r\n" +
+            "Content-Length: 0\r\n" +
+            "\r\n"
+          tcp_conn.write(@encoding/utf8.encode(error_response))
+          raise e
+        }
+      }
+      f(ws_conn, client_addr)
+    },
+    allow_failure?,
+    max_connections?,
+  )
 }
