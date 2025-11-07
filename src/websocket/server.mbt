@@ -289,7 +289,7 @@ pub async fn ServerConnection::send_text(
   self.semaphore.acquire()
   defer self.semaphore.release()
   let payload = @encoding/utf8.encode(text)
-  write_frame(self.conn, true, OpCode::Text, payload, false)
+  write_frame(self.conn, true, OpCode::Text, payload, [])
 }
 
 ///|
@@ -303,7 +303,7 @@ pub async fn ServerConnection::send_binary(
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
-  write_frame(self.conn, true, OpCode::Binary, data, false)
+  write_frame(self.conn, true, OpCode::Binary, data, [])
 }
 
 ///|
@@ -320,7 +320,7 @@ async fn ServerConnection::_ping(
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
-  write_frame(self.conn, true, OpCode::Ping, data, false)
+  write_frame(self.conn, true, OpCode::Ping, data, [])
 }
 
 ///|
@@ -336,7 +336,7 @@ async fn ServerConnection::pong(
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
-  write_frame(self.conn, true, OpCode::Pong, data, false)
+  write_frame(self.conn, true, OpCode::Pong, data, [])
 }
 
 ///|
@@ -368,7 +368,7 @@ pub async fn ServerConnection::send_close(
     true,
     OpCode::Close,
     payload.unsafe_reinterpret_as_bytes(),
-    false,
+    [],
   )
   self.closed = Some(code)
 }

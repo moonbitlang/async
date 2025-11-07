@@ -16,6 +16,7 @@
 /// WebSocket client connection
 struct Client {
   conn : @socket.Tcp
+  rand : @random.Rand
   mut closed : CloseCode?
 }
 
@@ -37,12 +38,22 @@ pub async fn Client::connect(
   port? : Int = 80,
   headers? : Map[String, String] = {},
 ) -> Client {
+  let seed = FixedArray::make(32, b'\x00')
+  if @tls.rand_bytes(seed, 32) != 1 {
+    fail("Failed to get random bytes for WebSocket client")
+  }
+  let rand = @random.Rand::chacha8(seed=seed.unsafe_reinterpret_as_bytes())
   // Connect TCP socket
   let addr = @socket.Addr::parse("\{host}:\{port}")
   let conn = @socket.Tcp::connect(addr)
 
   // Send WebSocket handshake request
-  let key = "dGhlIHNhbXBsZSBub25jZQ==" // In production, generate random key
+  let nonce = FixedArray::make(16, b'\x00')
+  nonce.unsafe_write_uint32_le(0, rand.uint())
+  nonce.unsafe_write_uint32_le(4, rand.uint())
+  nonce.unsafe_write_uint32_le(8, rand.uint())
+  nonce.unsafe_write_uint32_le(12, rand.uint())
+  let key = base64_encode(nonce.unsafe_reinterpret_as_bytes())
   let request = "GET \{path} HTTP/1.1\r\n"
   conn.write(request)
   conn.write("Host: \{host}\r\n")
@@ -79,7 +90,7 @@ pub async fn Client::connect(
       "Server response does not contain websocket upgrade confirmation",
     )
   }
-  { conn, closed: None }
+  { conn, closed: None, rand }
 }
 
 ///|
@@ -98,7 +109,13 @@ pub async fn Client::send_text(self : Client, text : String) -> Unit {
     raise ConnectionClosed(code)
   }
   let payload = @encoding/utf8.encode(text)
-  write_frame(self.conn, true, OpCode::Text, payload, true)
+  write_frame(
+    self.conn,
+    true,
+    OpCode::Text,
+    payload,
+    self.rand.int().to_le_bytes(),
+  )
 }
 
 ///|
@@ -107,7 +124,13 @@ pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
-  write_frame(self.conn, true, OpCode::Binary, data, true)
+  write_frame(
+    self.conn,
+    true,
+    OpCode::Binary,
+    data,
+    self.rand.int().to_le_bytes(),
+  )
 }
 
 ///|
@@ -119,7 +142,13 @@ async fn Client::_ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
-  write_frame(self.conn, true, OpCode::Ping, data, true)
+  write_frame(
+    self.conn,
+    true,
+    OpCode::Ping,
+    data,
+    self.rand.int().to_le_bytes(),
+  )
 }
 
 ///|
@@ -130,7 +159,13 @@ async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
-  write_frame(self.conn, true, OpCode::Pong, data, true)
+  write_frame(
+    self.conn,
+    true,
+    OpCode::Pong,
+    data,
+    self.rand.int().to_be_bytes(),
+  )
 }
 
 ///|
