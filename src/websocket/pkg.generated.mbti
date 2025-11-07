@@ -20,8 +20,6 @@ impl Show for WebSocketError
 type Client
 fn Client::close(Self) -> Unit
 async fn Client::connect(String, String, port? : Int, headers? : Map[String, String]) -> Self
-async fn Client::ping(Self, data? : Bytes) -> Unit
-async fn Client::pong(Self, data? : Bytes) -> Unit
 async fn Client::receive(Self) -> Message
 async fn Client::send_binary(Self, Bytes) -> Unit
 async fn Client::send_text(Self, String) -> Unit
@@ -31,6 +29,7 @@ pub(all) enum CloseCode {
   GoingAway
   ProtocolError
   UnsupportedData
+  Abnormal
   InvalidFramePayload
   PolicyViolation
   MessageTooBig
@@ -47,12 +46,10 @@ impl Show for Message
 
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit
-async fn ServerConnection::ping(Self, data? : Bytes) -> Unit
-async fn ServerConnection::pong(Self, data? : Bytes) -> Unit
 async fn ServerConnection::receive(Self) -> Message
-async fn ServerConnection::send_binary(Self, Bytes) -> Unit
-async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : String) -> Unit
-async fn ServerConnection::send_text(Self, String) -> Unit
+async fn ServerConnection::send_binary(Self, BytesView) -> Unit
+async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : BytesView) -> Unit
+async fn ServerConnection::send_text(Self, StringView) -> Unit
 
 // Type aliases
 
