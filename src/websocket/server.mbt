@@ -17,6 +17,8 @@
 struct ServerConnection {
   conn : @socket.Tcp
   mut closed : CloseCode?
+  out : @async.Queue[Result[Message, Error]]
+  semaphore : @semaphore.Semaphore
 }
 
 ///|
@@ -94,7 +96,176 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
     $|\r
     $|
   conn.write(@encoding/utf8.encode(response))
-  { conn, closed: None }
+  {
+    conn,
+    closed: None,
+    out: @aqueue.new(),
+    semaphore: @semaphore.Semaphore::new(1),
+  }
+}
+
+///|
+/// The main read loop for the WebSocket connection
+/// 
+/// This does not raise any errors. Errors are communicated via the out queue.
+async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
+  let frames : Array[Frame] = []
+  let mut first_opcode : OpCode? = None
+  while self.closed is None {
+    let frame = read_frame(self.conn) catch {
+      e => {
+        // On read error, close the connection and communicate the error
+        if self.closed is None {
+          self.closed = Some(Abnormal)
+        }
+        self.out.put(Err(e))
+        return
+      }
+    }
+
+    // Handle control frames immediately
+    match frame.opcode {
+      Close => {
+        // Parse close code and reason
+        // Ref: https://datatracker.ietf.org/doc/html/rfc6455#section-5.5.1
+        let mut close_code = Normal
+        if frame.payload.length() >= 2 {
+          let payload_arr = frame.payload.to_fixedarray()
+          let code_int = (payload_arr[0].to_int() << 8) |
+            payload_arr[1].to_int()
+          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
+        }
+        // If we didn't send close first, respond with close
+        if self.closed is None {
+          // Echo the close frame back and close
+          self.closed = Some(close_code)
+          self.send_close(code=close_code) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(close_code)))
+        }
+        return
+      }
+      Ping => {
+        // Auto-respond to ping with pong
+        self.pong(data=frame.payload) catch {
+          e => {
+            if self.closed is None {
+              self.closed = Some(Abnormal)
+            }
+            self.out.put(Err(e))
+            return
+          }
+        }
+        continue
+      }
+      Pong =>
+        // Ignore pong frames
+        // TODO : track pong responses for ping timeouts
+        continue
+      Text =>
+        if first_opcode is Some(_) {
+          // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+          // We don't have extensions, so fragments MUST NOT be interleaved
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(ProtocolError)))
+          return
+        } else if frame.fin {
+          // Single-frame text message
+          let text = @encoding/utf8.decode(frame.payload) catch {
+            _ => {
+              // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-8.1
+              // We MUST Fail the WebSocket Connection if the payload is not
+              // valid UTF-8
+              self.closed = Some(InvalidFramePayload)
+              self.send_close(code=InvalidFramePayload) catch {
+                _ => ()
+              }
+              self.out.put(Err(ConnectionClosed(InvalidFramePayload)))
+              return
+            }
+          }
+          let message = Message::Text(text)
+          // Handle the complete message
+          self.out.put(Ok(message))
+        } else {
+          first_opcode = Some(Text)
+          // Start of fragmented text message
+          frames.push(frame)
+        }
+      Binary =>
+        if first_opcode is Some(_) {
+          // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+          // We don't have extensions, so fragments MUST NOT be interleaved
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(ProtocolError)))
+          return
+        } else if frame.fin {
+          // Single-frame binary message
+          let message = Message::Binary(frame.payload)
+          // Handle the complete message
+          self.out.put(Ok(message))
+        } else {
+          first_opcode = Some(Binary)
+          // Start of fragmented binary message
+          frames.push(frame)
+        }
+      Continuation => {
+        if first_opcode is None {
+          // Continuation frame without a starting frame
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(ProtocolError)))
+        }
+        frames.push(frame)
+        if frame.fin {
+          // Final fragment received, assemble message
+          let total_size = frames.fold(init=0, fn(acc, f) {
+            acc + f.payload.length()
+          })
+          let data = FixedArray::make(total_size, b'\x00')
+          let mut offset = 0
+          for f in frames {
+            data.blit_from_bytes(offset, f.payload, 0, f.payload.length())
+            offset += f.payload.length()
+          }
+          let message_data = data.unsafe_reinterpret_as_bytes()
+          match first_opcode {
+            Some(Text) => {
+              let text = @encoding/utf8.decode(message_data) catch {
+                _ => {
+                  self.closed = Some(InvalidFramePayload)
+                  self.send_close(code=InvalidFramePayload) catch {
+                    _ => ()
+                  }
+                  self.out.put(Err(ConnectionClosed(InvalidFramePayload)))
+                  return
+                }
+              }
+              let message = Message::Text(text)
+              self.out.put(Ok(message))
+            }
+            Some(Binary) => {
+              let message = Message::Binary(message_data)
+              self.out.put(Ok(message))
+            }
+            _ => panic()
+          }
+          // Reset for next message
+          frames.clear()
+          first_opcode = None
+        }
+      }
+    }
+  }
 }
 
 ///|
@@ -115,6 +286,8 @@ pub async fn ServerConnection::send_text(
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
+  self.semaphore.acquire()
+  defer self.semaphore.release()
   let payload = @encoding/utf8.encode(text)
   write_frame(self.conn, true, OpCode::Text, payload, false)
 }
@@ -128,6 +301,8 @@ pub async fn ServerConnection::send_binary(
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
+  self.semaphore.acquire()
+  defer self.semaphore.release()
   write_frame(self.conn, true, OpCode::Binary, data, false)
 }
 
@@ -143,6 +318,8 @@ async fn ServerConnection::_ping(
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
+  self.semaphore.acquire()
+  defer self.semaphore.release()
   write_frame(self.conn, true, OpCode::Ping, data, false)
 }
 
@@ -157,6 +334,8 @@ async fn ServerConnection::pong(
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
+  self.semaphore.acquire()
+  defer self.semaphore.release()
   write_frame(self.conn, true, OpCode::Pong, data, false)
 }
 
@@ -182,6 +361,8 @@ pub async fn ServerConnection::send_close(
   if reason != "" {
     payload.blit_from_bytesview(2, reason)
   }
+  self.semaphore.acquire()
+  defer self.semaphore.release()
   write_frame(
     self.conn,
     true,
@@ -199,78 +380,7 @@ pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
-  let frames : Array[Frame] = []
-  let mut first_opcode : OpCode? = None
-  for {
-    let frame = read_frame(self.conn)
-
-    // Handle control frames immediately
-    match frame.opcode {
-      OpCode::Close => {
-        // Parse close code and reason
-        let mut close_code = Normal
-        if frame.payload.length() >= 2 {
-          let payload_arr = frame.payload.to_fixedarray()
-          let code_int = (payload_arr[0].to_int() << 8) |
-            payload_arr[1].to_int()
-          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
-          if frame.payload.length() > 2 {
-            // As per spec https://datatracker.ietf.org/doc/html/rfc6455#autoid-27
-            // The data is not guaranteed to be human readable
-            // So we do not decode it here
-            // And we are not using it further
-            let _reason_bytes = payload_arr.unsafe_reinterpret_as_bytes()[2:]
-
-          }
-        }
-        // If we didn't send close first, respond with close
-        if self.closed is None {
-          // Echo the close frame back and close
-          self.send_close(code=close_code)
-          self.closed = Some(close_code)
-        }
-        raise ConnectionClosed(close_code)
-      }
-      OpCode::Ping => {
-        // Auto-respond to ping with pong
-        self.pong(data=frame.payload)
-        continue
-      }
-      OpCode::Pong =>
-        // Ignore pong frames
-        continue
-      _ => ()
-    }
-
-    // Track the first opcode for message type
-    if first_opcode is None {
-      first_opcode = Some(frame.opcode)
-    }
-    frames.push(frame)
-
-    // If this is the final frame, assemble the message
-    if frame.fin {
-      break
-    }
-  }
-
-  // Assemble message from frames
-  let total_size = frames.fold(init=0, fn(acc, f) { acc + f.payload.length() })
-  let data = FixedArray::make(total_size, b'\x00')
-  let mut offset = 0
-  for frame in frames {
-    let payload_arr = frame.payload.to_fixedarray()
-    for i = 0; i < payload_arr.length(); i = i + 1 {
-      data[offset + i] = payload_arr[i]
-    }
-    offset += payload_arr.length()
-  }
-  let message_data = data.unsafe_reinterpret_as_bytes()
-  match first_opcode {
-    Some(OpCode::Text) => Text(@encoding/utf8.decode_lossy(message_data))
-    Some(OpCode::Binary) => Binary(message_data)
-    _ => Binary(message_data)
-  } // Default to binary
+  self.out.get().unwrap_or_error()
 }
 
 ///|
@@ -311,7 +421,10 @@ pub async fn run_server(
           raise e
         }
       }
-      f(ws_conn, client_addr)
+      @async.with_task_group(taskgroup => {
+        taskgroup.spawn_bg(() => f(ws_conn, client_addr))
+        taskgroup.spawn_bg(() => ws_conn.serve_read())
+      })
     },
     allow_failure?,
     max_connections?,
