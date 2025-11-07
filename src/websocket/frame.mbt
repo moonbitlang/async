@@ -67,7 +67,7 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   // Unmask payload if needed
   if mask is Some(mask_bytes) {
     let payload_arr = payload_bytes.to_fixedarray()
-    mask_payload(payload_arr, mask_bytes.to_fixedarray())
+    mask_payload(payload_arr, mask_bytes)
     { fin, opcode, payload: payload_arr.unsafe_reinterpret_as_bytes() }
   } else {
     { fin, opcode, payload: payload_bytes }
@@ -81,7 +81,7 @@ async fn[W : @io.Writer] write_frame(
   fin : Bool,
   opcode : OpCode,
   payload : BytesView,
-  masked : Bool,
+  mask : Bytes,
 ) -> Unit {
   let payload_len = payload.length().to_int64()
   let mut header_len = 2
@@ -94,11 +94,7 @@ async fn[W : @io.Writer] write_frame(
   }
 
   // Build header
-  let header = if masked {
-    FixedArray::make(header_len + 4, b'\x00')
-  } else {
-    FixedArray::make(header_len, b'\x00')
-  }
+  let header = FixedArray::make(header_len + mask.length(), b'\x00')
 
   // First byte: FIN + opcode
   header[0] = if fin {
@@ -108,7 +104,7 @@ async fn[W : @io.Writer] write_frame(
   }
 
   // Second byte: MASK + payload length
-  let mask_bit = if masked { 0x80 } else { 0 }
+  let mask_bit = if mask.length() > 0 { 0x80 } else { 0 }
   if payload_len < 126L {
     header[1] = (mask_bit | payload_len.to_int()).to_byte()
   } else if payload_len <= 65535L {
@@ -120,8 +116,7 @@ async fn[W : @io.Writer] write_frame(
   }
 
   // Add masking key and mask payload if needed
-  let final_payload = if masked {
-    let mask = generate_mask()
+  let final_payload = if mask.length() > 0 {
     for i = 0; i < 4; i = i + 1 {
       header[header_len + i] = mask[i]
     }

@@ -14,30 +14,10 @@
 
 ///|
 /// Apply XOR mask to payload data
-fn mask_payload(data : FixedArray[Byte], mask : FixedArray[Byte]) -> Unit {
+fn mask_payload(data : FixedArray[Byte], mask : Bytes) -> Unit {
   for i = 0; i < data.length(); i = i + 1 {
     data[i] = data[i] ^ mask[i % 4]
   }
-}
-
-///|
-/// Generate a random 4-byte masking key
-fn generate_mask() -> FixedArray[Byte] {
-  let mask = FixedArray::make(4, b'\x00')
-  // Use current time as seed for simple randomness
-  // In production, consider using a cryptographically secure random source
-  let t = @time.ms_since_epoch()
-
-  // Create more entropy by combining time with simple operations
-  let seed1 = t
-  let seed2 = t ^ (t >> 13)
-  let seed3 = seed2 ^ (seed2 << 7)
-  let seed4 = seed3 ^ (seed3 >> 17)
-  mask[0] = (seed1 & 0xFF).to_byte()
-  mask[1] = (seed2 & 0xFF).to_byte()
-  mask[2] = (seed3 & 0xFF).to_byte()
-  mask[3] = (seed4 & 0xFF).to_byte()
-  mask
 }
 
 ///|
@@ -76,11 +56,13 @@ fn base64_encode(data : Bytes) -> String {
 }
 
 ///|
+const MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+///|
 /// Generate WebSocket accept key from client key using SHA-1 and base64
 fn generate_accept_key(client_key : String) -> String {
   // WebSocket magic string as defined in RFC 6455
-  let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-  let combined = client_key + magic
+  let combined = client_key + MAGIC
   let combined_bytes = @encoding/utf8.encode(combined)
 
   // Use the crypto library for proper SHA-1 hashing
