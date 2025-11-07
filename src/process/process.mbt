@@ -306,8 +306,6 @@ pub async fn collect_output(
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group(fn(group) {
-    defer r_out.close()
-    defer r_err.close()
     let exit_code = group.spawn(() => run(
       cmd,
       args,
@@ -318,9 +316,15 @@ pub async fn collect_output(
       stderr=w_err,
       cwd?,
     ))
-    let stdout = r_out.read_all()
-    let stderr = r_err.read_all()
-    (exit_code.wait(), stdout, stderr)
+    let stdout = group.spawn(() => {
+        defer r_out.close()
+        r_out.read_all()
+      })
+    let stderr = group.spawn(() => {
+        defer r_err.close()
+        r_err.read_all()
+      })
+    (exit_code.wait(), stdout.wait(), stderr.wait())
   })
 }
 
