@@ -633,11 +633,16 @@ void free_fsync_job(void *obj) {}
 static
 void fsync_job_worker(struct job *job) {
   struct fsync_job *fsync_job = (struct fsync_job*)job;
+#ifdef __MACH__
+  // it seems that `fdatasync` is not available on some MacOS versions
+  job->ret = fsync(fsync_job->fd);
+#else
   if (fsync_job->only_data) {
     job->ret = fdatasync(fsync_job->fd);
   } else {
     job->ret = fsync(fsync_job->fd);
   }
+#endif
   if (job->ret < 0)
     job->err = errno;
 }
