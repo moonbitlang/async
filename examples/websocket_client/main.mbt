@@ -42,9 +42,7 @@ pub async fn connect_to_echo_server() -> Unit {
     // Receive echo response
     let response = client.receive()
     match response {
-      @websocket.Text(text) => {
-        println("Received: \{text}")
-      }
+      @websocket.Text(text) => println("Received: \{text}")
       @websocket.Binary(data) =>
         println("Received binary data (\{data.length()} bytes)")
     }
@@ -60,18 +58,10 @@ pub async fn connect_to_echo_server() -> Unit {
   client.send_binary(binary_data)
   let binary_response = client.receive()
   match binary_response {
-    @websocket.Text(text) => {
-      println("Received text response: \{text}")
-    }
+    @websocket.Text(text) => println("Received text response: \{text}")
     @websocket.Binary(data) =>
-      println(
-        "Received binary response (\{data.length()} bytes)",
-      )
+      println("Received binary response (\{data.length()} bytes)")
   }
-
-  // Test ping
-  println("Sending ping...")
-  client.ping()
 
   // Close the connection
   println("Closing connection...")

@@ -143,3 +143,9 @@ fn err_get_error() -> String {
   let len = err_get_error_ffi(buf)
   @bytes_util.ascii_to_string(buf[:len])
 }
+
+///|
+/// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
+/// Returns 1 on success, 0 on failure
+#borrow(buf)
+pub extern "C" fn rand_bytes(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"

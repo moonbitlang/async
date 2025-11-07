@@ -69,6 +69,7 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(int, SSL_CTX_set_default_verify_paths, (SSL_CTX *ctx))\
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
+  IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
 IMPORTED_OPEN_SSL_FUNCTIONS
@@ -249,4 +250,8 @@ int moonbitlang_async_tls_get_error(void *buf) {
   unsigned long code = ERR_get_error();
   ERR_error_string(code, buf);
   return strlen(buf);
+}
+
+int moonbitlang_async_tls_rand_bytes(unsigned char *buf, int num) {
+  return RAND_bytes(buf, num);
 }
