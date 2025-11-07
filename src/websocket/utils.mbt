@@ -24,7 +24,7 @@ fn mask_payload(data : FixedArray[Byte], mask : Bytes) -> Unit {
 /// Base64 encoding
 fn base64_encode(data : Bytes) -> String {
   let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  let data_arr = data.to_fixedarray()
+  let data_arr = data
   let mut result = ""
   for i = 0; i < data_arr.length(); i = i + 3 {
     let b1 = data_arr[i].to_int()
@@ -39,20 +39,36 @@ fn base64_encode(data : Bytes) -> String {
       0
     }
     let combined = (b1 << 16) | (b2 << 8) | b3
-    result = result + chars[(combined >> 18) & 0x3F].to_string()
-    result = result + chars[(combined >> 12) & 0x3F].to_string()
+    result = result +
+      chars[(combined >> 18) & 0x3F].unsafe_to_char().to_string()
+    result = result +
+      chars[(combined >> 12) & 0x3F].unsafe_to_char().to_string()
     if i + 1 < data_arr.length() {
-      result = result + chars[(combined >> 6) & 0x3F].to_string()
+      result = result +
+        chars[(combined >> 6) & 0x3F].unsafe_to_char().to_string()
     } else {
       result = result + "="
     }
     if i + 2 < data_arr.length() {
-      result = result + chars[combined & 0x3F].to_string()
+      result = result + chars[combined & 0x3F].unsafe_to_char().to_string()
     } else {
       result = result + "="
     }
   }
   result
+}
+
+///|
+test "base64 encode" {
+  inspect(base64_encode(b"light w"), content="bGlnaHQgdw==")
+  inspect(base64_encode(b"light wo"), content="bGlnaHQgd28=")
+  inspect(base64_encode(b"light wor"), content="bGlnaHQgd29y")
+  inspect(base64_encode(b"light work"), content="bGlnaHQgd29yaw==")
+  inspect(base64_encode(b"light work."), content="bGlnaHQgd29yay4=")
+  inspect(
+    base64_encode(b"a Ā 𐀀 文 🦄"),
+    content="YSDEgCDwkICAIOaWhyDwn6aE",
+  )
 }
 
 ///|

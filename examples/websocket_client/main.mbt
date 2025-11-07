@@ -17,8 +17,8 @@
 /// 
 /// This demonstrates how to connect to a WebSocket server,
 /// send messages, and receive responses.
-fn init {
-  println("WebSocket client example")
+async fn main {
+  connect_to_echo_server()
 }
 
 ///|
@@ -26,7 +26,7 @@ pub async fn connect_to_echo_server() -> Unit {
   println("Connecting to WebSocket echo server at localhost:8080")
 
   // Connect to the server
-  let client = @websocket.Client::connect("localhost", "/ws", port=8080)
+  let client = @websocket.Client::connect("0.0.0.0", "/", port=8080)
   println("Connected successfully!")
 
   // Send some test messages
@@ -65,6 +65,6 @@ pub async fn connect_to_echo_server() -> Unit {
 
   // Close the connection
   println("Closing connection...")
-  client.close()
+  client.send_close()
   println("Client example completed")
 }
