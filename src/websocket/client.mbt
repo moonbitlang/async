@@ -32,12 +32,14 @@ struct Client {
 /// ```moonbit no-check
 /// let ws = Client::connect("example.com", "/ws")
 /// ```
+/// 
 pub async fn Client::connect(
   host : String,
   path : String,
   port? : Int = 80,
   headers? : Map[String, String] = {},
 ) -> Client {
+  // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
   let seed = FixedArray::make(32, b'\x00')
   if @tls.rand_bytes(seed, 32) != 1 {
     fail("Failed to get random bytes for WebSocket client")
@@ -73,21 +75,61 @@ pub async fn Client::connect(
   conn.write("\r\n")
 
   // Read and validate handshake response
-  let response_line = conn.read_exactly(1024) // Read initial response
-  let response_str = @encoding/utf8.decode(response_line)
-  guard response_str.contains("101") &&
-    response_str.contains("Switching Protocols") else {
+  let reader = @io.BufferedReader::new(conn)
+  guard reader.read_line() is Some(response_line) else {
+    conn.close()
+    raise InvalidHandshake("Server closed connection during handshake")
+  }
+  guard response_line.contains("101") &&
+    response_line.contains("Switching Protocols") else {
     conn.close()
     raise InvalidHandshake(
-      "Server did not respond with 101 Switching Protocols",
+      "Server did not respond with 101 Switching Protocols: \{response_line}",
     )
   }
+  let headers : Map[String, String] = {}
+  while reader.read_line() is Some(line) {
+    if line.is_blank() {
+      break
+    }
+    let line = line[:-1] // Remove trailing \r
 
-  // Basic validation that the response looks like a proper WebSocket upgrade
-  guard response_str.contains("websocket") else {
-    conn.close()
+    // Parse header line
+    if line.contains(":") {
+      let parts = line.split(":").to_array()
+      if parts.length() >= 2 {
+        let key = parts[0].trim(chars=" \t").to_string().to_lower()
+        // Join remaining parts in case the value contains colons
+        let value_parts = parts[1:]
+        let value = if value_parts.length() == 1 {
+          value_parts[0].trim(chars=" \t").to_string()
+        } else {
+          value_parts.join(":").trim(chars=" \t").to_string()
+        }
+        // Handle multi-value headers by taking the first value
+        if not(headers.contains(key)) {
+          headers[key] = value
+        }
+      }
+    }
+  }
+
+  // Validate WebSocket handshake headers
+  guard headers.get("upgrade") is Some(upgrade) &&
+    upgrade.to_lower() == "websocket" else {
+    raise InvalidHandshake("Missing or invalid Upgrade header")
+  }
+  guard headers.get("connection") is Some(connection) &&
+    connection.to_lower().contains("upgrade") else {
+    raise InvalidHandshake("Missing or invalid Connection header")
+  }
+  guard headers.get("sec-websocket-accept") is Some(accept_key) else {
+    raise InvalidHandshake("Missing Sec-WebSocket-Accept header")
+  }
+  let expected_accept_key = generate_accept_key(key)
+  guard accept_key.trim(chars=" \t\r") == expected_accept_key else {
     raise InvalidHandshake(
-      "Server response does not contain websocket upgrade confirmation",
+      "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
     )
   }
   { conn, closed: None, rand }
@@ -100,6 +142,30 @@ pub fn Client::close(self : Client) -> Unit {
     self.conn.close()
     self.closed = Some(Normal)
   }
+}
+
+///|
+pub async fn Client::send_close(
+  self : Client,
+  code? : CloseCode = Normal,
+  reason? : BytesView = "",
+) -> Unit {
+  if self.closed is Some(_) {
+    return
+  }
+  let mut payload = FixedArray::make(0, b'\x00')
+  let code_int = code.to_int()
+  payload = FixedArray::make(2 + reason.length(), b'\x00')
+  payload.unsafe_write_uint16_be(0, code_int.to_uint16())
+  payload.blit_from_bytesview(2, reason)
+  write_frame(
+    self.conn,
+    true,
+    OpCode::Close,
+    payload.unsafe_reinterpret_as_bytes(),
+    self.rand.int().to_be_bytes(),
+  )
+  self.closed = Some(code)
 }
 
 ///|
@@ -190,15 +256,6 @@ pub async fn Client::receive(self : Client) -> Message {
           let code_int = (payload_arr[0].to_int() << 8) |
             payload_arr[1].to_int()
           close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
-          // Reason is parsed but not used in client close handling
-          // let mut reason = ""
-          // if frame.payload.length() > 2 {
-          //   let reason_bytes = FixedArray::make(frame.payload.length() - 2, b'\x00')
-          //   for i = 2; i < frame.payload.length(); i = i + 1 {
-          //     reason_bytes[i - 2] = payload_arr[i]
-          //   }
-          //   reason = @encoding/utf8.decode_lossy(reason_bytes.unsafe_reinterpret_as_bytes())
-          // }
         }
         self.closed = Some(close_code)
         raise ConnectionClosed(close_code)
