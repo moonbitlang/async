@@ -80,7 +80,7 @@ async fn[W : @io.Writer] write_frame(
   writer : W,
   fin : Bool,
   opcode : OpCode,
-  payload : Bytes,
+  payload : BytesView,
   masked : Bool,
 ) -> Unit {
   let payload_len = payload.length().to_int64()
@@ -127,7 +127,7 @@ async fn[W : @io.Writer] write_frame(
     }
     let payload_arr = payload.to_fixedarray()
     mask_payload(payload_arr, mask)
-    payload_arr.unsafe_reinterpret_as_bytes()
+    payload_arr.unsafe_reinterpret_as_bytes()[:]
   } else {
     payload
   }

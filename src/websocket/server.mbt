@@ -110,7 +110,7 @@ pub fn ServerConnection::close(self : ServerConnection) -> Unit {
 /// Send a text message
 pub async fn ServerConnection::send_text(
   self : ServerConnection,
-  text : String,
+  text : StringView,
 ) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
@@ -123,7 +123,7 @@ pub async fn ServerConnection::send_text(
 /// Send a binary message
 pub async fn ServerConnection::send_binary(
   self : ServerConnection,
-  data : Bytes,
+  data : BytesView,
 ) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
@@ -133,7 +133,10 @@ pub async fn ServerConnection::send_binary(
 
 ///|
 /// Send a ping frame
-pub async fn ServerConnection::ping(
+/// 
+/// TODO : it should be able to return a boolean 
+/// indicating if a pong was received within a timeout
+async fn ServerConnection::_ping(
   self : ServerConnection,
   data? : Bytes = Bytes::new(0),
 ) -> Unit {
@@ -145,7 +148,9 @@ pub async fn ServerConnection::ping(
 
 ///|
 /// Send a pong frame
-pub async fn ServerConnection::pong(
+/// 
+/// It is done automatically, so it is not exposed in the public API
+async fn ServerConnection::pong(
   self : ServerConnection,
   data? : Bytes = Bytes::new(0),
 ) -> Unit {

@@ -112,7 +112,10 @@ pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
 
 ///|
 /// Send a ping frame
-pub async fn Client::ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
+/// 
+/// TODO : it should be able to return a boolean 
+/// indicating if a pong was received within a timeout
+async fn Client::_ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
@@ -121,7 +124,9 @@ pub async fn Client::ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit 
 
 ///|
 /// Send a pong frame
-pub async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
+/// 
+/// This is done automatically, so it is not exposed in the public API
+async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
     raise ConnectionClosed(code)
   }
