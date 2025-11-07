@@ -14,7 +14,7 @@ jobs:
         os:
           - name: ubuntu-latest
             path: ubuntu_x86_64_moon_setup
-          - name: macos-latest
+          - name: macos-14
             path: mac_m1_moon_setup
 
     runs-on: ${{ matrix.os.name }}
