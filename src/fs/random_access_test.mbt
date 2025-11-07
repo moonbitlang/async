@@ -26,6 +26,7 @@ async test "write_at" {
     w.write_at("56", position=w.size() - 2)
     w.write_at("34", position=2)
     w.write("12") // still write from the start
+    w.sync(only_data=true)
   }
   // read content
   {
