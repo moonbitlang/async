@@ -15,7 +15,7 @@
 ///|
 async test "write large data" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
@@ -32,8 +32,8 @@ async test "write large data" {
 async test "write reader" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r1, w1) = @pipe.pipe()
-    let (r2, w2) = @pipe.pipe()
+    let (r1, w1) = @io.pipe()
+    let (r2, w2) = @io.pipe()
     root.spawn_bg(fn() {
       defer r2.close()
       defer w1.close()
@@ -109,7 +109,7 @@ async test "write cancel" {
 ///|
 async test "write_string" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()

@@ -64,7 +64,7 @@ This allows convenient conversion of received data to various formats.
 ///|
 async test "data as binary" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -80,7 +80,7 @@ async test "data as binary" {
 ///|
 async test "data as text" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -96,7 +96,7 @@ async test "data as text" {
 ///|
 async test "data as json" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -120,14 +120,14 @@ The `Reader` trait exposes three complementary levels of granularity:
 - `read_exactly` loops until it fills the requested number of bytes or raises `ReaderClosed`, which is helpful when parsing fixed-width frames.
 - `read_all` drains the stream into memory, returning a `&Data` handle for convenient conversion to text, JSON, or binary.
 
-Each example below shows how a reader pairs with `@pipe.pipe()` and includes inline comments that highlight the important steps.
+Each example below shows how a reader pairs with `@io.pipe()` and includes inline comments that highlight the important steps.
 
 ```moonbit
 ///|
 async test "read from reader" {
   @async.with_task_group(fn(root) {
     // Create connected endpoints. `r` is a Reader, `w` is a Writer.
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -149,7 +149,7 @@ async test "read from reader" {
 ///|
 async test "read_exactly - read exact number of bytes" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -157,15 +157,17 @@ async test "read_exactly - read exact number of bytes" {
       w.write(b"0123456789")
     })
     // Blocks until exactly 5 bytes are received or ReaderClosed is raised.
-    let data = r.read_exactly(5)
-    inspect(@encoding/utf8.decode(data), content="01234")
+    let data1 = r.read_exactly(5)
+    inspect(@encoding/utf8.decode(data1), content="01234")
+    let data2 = r.read_exactly(5)
+    inspect(@encoding/utf8.decode(data2), content="56789")
   })
 }
 
 ///|
 async test "read_all - read entire content" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -181,7 +183,7 @@ async test "read_all - read entire content" {
 ///|
 async test "read_all large data" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -207,7 +209,7 @@ The snippets below demonstrate each mode with progressive complexity.
 ///|
 async test "write to writer" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -225,7 +227,7 @@ async test "write to writer" {
 ///|
 async test "write_once - single write operation" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -242,7 +244,7 @@ async test "write_once - single write operation" {
 ///|
 async test "write large data" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
@@ -260,8 +262,8 @@ async test "write large data" {
 async test "write_reader - copy from reader to writer" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r1, w1) = @pipe.pipe()
-    let (r2, w2) = @pipe.pipe()
+    let (r1, w1) = @io.pipe()
+    let (r2, w2) = @io.pipe()
     root.spawn_bg(fn() {
       defer r2.close()
       defer w1.close()
@@ -307,7 +309,7 @@ async test "write_reader - copy from reader to writer" {
 ///|
 async test "write string" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -336,7 +338,7 @@ In the examples below, pay attention to how buffering reduces the number of sysc
 async test "BufferedReader::read" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       @async.sleep(20)
@@ -380,7 +382,7 @@ async test "BufferedReader::read" {
 async test "BufferedReader::read_exactly" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       @async.sleep(20)
@@ -422,7 +424,7 @@ async test "BufferedReader::op_get - access byte by index" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -470,7 +472,7 @@ async test "BufferedReader::op_as_view - slice data" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -520,7 +522,7 @@ async test "BufferedReader::op_as_view - slice data" {
 ///|
 async test "BufferedReader::drop - advance stream" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -539,7 +541,7 @@ async test "BufferedReader::find - search for substring" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -592,7 +594,7 @@ async test "BufferedReader::find - search for substring" {
 ///|
 async test "BufferedReader::find_opt - search for substring with explicit EOF handling" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       @async.sleep(20)
@@ -638,7 +640,7 @@ async test "BufferedReader::read_line - read line by line" {
 async test "BufferedWriter - basic buffering" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
@@ -678,7 +680,7 @@ async test "BufferedWriter - basic buffering" {
 ///|
 async test "BufferedWriter::new with custom size" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -696,7 +698,7 @@ async test "BufferedWriter::new with custom size" {
 ///|
 async test "BufferedWriter::flush - commit buffered data" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(fn() {
       defer w.close()
@@ -716,8 +718,8 @@ async test "BufferedWriter::flush - commit buffered data" {
 async test "BufferedWriter::write_reader - buffered copy" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r1, w1) = @pipe.pipe()
-    let (r2, w2) = @pipe.pipe()
+    let (r1, w1) = @io.pipe()
+    let (r2, w2) = @io.pipe()
     root.spawn_bg(fn() {
       defer r2.close()
       defer w1.close()
@@ -763,14 +765,14 @@ async test "BufferedWriter::write_reader - buffered copy" {
 
 ## Working with Task Groups and Pipes
 
-Most examples in this package lean on `@async.with_task_group` and `@pipe.pipe()` because they expose canonical `Reader` and `Writer` handles. The pattern scales to more complex topologies where multiple producers and consumers collaborate.
+Most examples in this package lean on `@async.with_task_group` and `@io.pipe()` because they expose canonical `Reader` and `Writer` handles. The pattern scales to more complex topologies where multiple producers and consumers collaborate.
 
 ```moonbit
 ///|
 async test "fan-out and fan-in" {
   @async.with_task_group(fn(root) {
     // Upstream producer pushes a header followed by the payload.
-    let (intermediate_reader, intermediate_writer) = @pipe.pipe()
+    let (intermediate_reader, intermediate_writer) = @io.pipe()
     root.spawn_bg(fn() {
       defer intermediate_writer.close()
       intermediate_writer.write(b"HDR")
@@ -781,7 +783,7 @@ async test "fan-out and fan-in" {
     let buffered = @io.BufferedReader::new(intermediate_reader)
 
     // A downstream consumer receives the header via its own pipe.
-    let (header_reader, header_writer) = @pipe.pipe()
+    let (header_reader, header_writer) = @io.pipe()
     root.spawn_bg(fn() {
       defer header_writer.close()
       let header = buffered.read_exactly(3)

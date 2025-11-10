@@ -15,7 +15,7 @@
 ///|
 async test "send_request basic" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let sender = Sender::new(w)
@@ -46,7 +46,7 @@ async test "send_request basic" {
 ///|
 async test "send_request stream" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let sender = Sender::new(w)
@@ -306,7 +306,7 @@ async test "send_request stream" {
 ///|
 async test "send_request stream2" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       let sender = Sender::new(w)
