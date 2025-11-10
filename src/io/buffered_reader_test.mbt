@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-async fn writer(log : StringBuilder, w : @pipe.PipeWrite) -> Unit {
+async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
   defer w.close()
   @async.sleep(20)
   log.write_string("writing 4 bytes of data\n")
@@ -30,7 +30,7 @@ async fn writer(log : StringBuilder, w : @pipe.PipeWrite) -> Unit {
 async test "BufferedReader::read" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(() => writer(log, w))
     defer r.close()
     let reader = @io.BufferedReader::new(r)
@@ -61,7 +61,7 @@ async test "BufferedReader::read" {
 async test "BufferedReader::read_exactly" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(() => writer(log, w))
     defer r.close()
     let reader = @io.BufferedReader::new(r)
@@ -91,7 +91,7 @@ async test "BufferedReader::op_get" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
       let reader = @io.BufferedReader::new(r)
@@ -127,7 +127,7 @@ async test "BufferedReader::op_as_view" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
       let reader = @io.BufferedReader::new(r)
@@ -167,7 +167,7 @@ async test "BufferedReader::find single byte" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -221,7 +221,7 @@ async test "BufferedReader::find bytes" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @pipe.pipe()
+      let (r, w) = @io.pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -272,7 +272,7 @@ async test "BufferedReader::find bytes" {
 ///|
 async test "BufferedReader::find_bytes splitted" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       w.write(b"abcd")
@@ -288,7 +288,7 @@ async test "BufferedReader::find_bytes splitted" {
 ///|
 async test "BufferedReader::find_opt" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       @async.sleep(20)
@@ -312,7 +312,7 @@ async test "BufferedReader::find_opt" {
 async test "lazy drop" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @io.pipe()
     root.spawn_bg(fn() {
       defer w.close()
       w.write("abcd")

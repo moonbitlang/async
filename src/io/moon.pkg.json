@@ -4,7 +4,6 @@
   ],
   "test-import": [
     "moonbitlang/async",
-    "moonbitlang/async/pipe",
     "moonbitlang/async/fs",
     "moonbitlang/async/internal/bytes_util"
   ]
