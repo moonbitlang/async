@@ -2,8 +2,12 @@
 package "moonbitlang/async/io"
 
 // Values
+fn pipe() -> (PipeRead, PipeWrite)
 
 // Errors
+pub suberror PipeClosed
+impl Show for PipeClosed
+
 pub(all) suberror ReaderClosed
 impl Show for ReaderClosed
 
@@ -27,6 +31,14 @@ impl[W : Writer] Writer for BufferedWriter[W]
 pub(all) enum Encoding {
   UTF8
 }
+
+type PipeRead
+fn PipeRead::close(Self) -> Unit
+impl Reader for PipeRead
+
+type PipeWrite
+fn PipeWrite::close(Self) -> Unit
+impl Writer for PipeWrite
 
 // Type aliases
 

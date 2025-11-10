@@ -1,6 +1,6 @@
 # I/O API (`@moonbitlang/async/io`)
 
-Asynchronous I/O primitives for MoonBit. This package provides fundamental abstractions for reading from and writing to various data sources, including buffering capabilities, backpressure-aware copies, and helpers that pair naturally with other MoonBit async packages such as `@async`, `@pipe`, and `@fs`.
+Asynchronous I/O abstraction for MoonBit. This package provides fundamental abstractions for reading from and writing to various data sources, including buffering capabilities, backpressure-aware copies, and helpers that pair naturally with other MoonBit async packages such as `@async`, `@socket`, and `@fs`.
 
 ## Table of Contents
 
@@ -26,7 +26,8 @@ The fastest way to experiment with `@moonbitlang/async/io` is to couple it with 
 async test "quick start pipeline" {
   @async.with_task_group(fn(root) {
     // Create a pair of connected endpoints that speak the Reader/Writer protocols.
-    let (reader, writer) = @pipe.pipe()
+    // Data written to the write end (`writer`) can be read from the read end (`reader`)
+    let (reader, writer) = @io.pipe()
 
     // Spawn a background writer that sends a UTF-8 string in three chunks.
     root.spawn_bg(fn() {
