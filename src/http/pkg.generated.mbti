@@ -9,9 +9,15 @@ import(
 // Values
 async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, &@io.Data)
 
+async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, Client)
+
 async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
 
+async fn post_stream(String, headers? : Map[String, String], port? : Int) -> Client
+
 async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
+
+async fn put_stream(String, headers? : Map[String, String], port? : Int) -> Client
 
 async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
 
