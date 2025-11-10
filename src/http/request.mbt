@@ -33,13 +33,10 @@ pub suberror URIParseError {
 } derive(Show)
 
 ///|
-async fn perform_request(
+fn resolve_url(
   uri : String,
-  meth : RequestMethod,
-  headers : Map[String, String],
-  body : &@io.Data,
   port? : Int,
-) -> (Response, &@io.Data) {
+) -> (Protocol, Int, String, String) raise {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -61,6 +58,18 @@ async fn perform_request(
     (uri.to_string(), "/")
   }
   let path = if path == "" { "/" } else { path }
+  (protocol, port, host, path)
+}
+
+///|
+async fn perform_request(
+  uri : String,
+  meth : RequestMethod,
+  headers : Map[String, String],
+  body : &@io.Data,
+  port? : Int,
+) -> (Response, &@io.Data) {
+  let (protocol, port, host, path) = resolve_url(uri, port?)
   let client = Client::connect(host, headers~, protocol~, port~)
   defer client.close()
   client..request(meth, path)..write(body)
@@ -106,4 +115,94 @@ pub async fn post(
   port? : Int,
 ) -> (Response, &@io.Data) {
   perform_request(uri, Post, headers, content, port?)
+}
+
+///|
+/// Similar to `@http.get`, but allow reading response body streamingly.
+/// A pair `(response, client)` will be returned,
+/// where `response` is the response header from the server,
+/// and `client` is the HTTP client that performs the request.
+/// `client` can be used to read the content of response body via `@io.Reader`,
+/// see `@http.Client` for more details.
+///
+/// Note that the returned client must be manually closed via `.close()`
+/// to close the underlying connection used for the request.
+pub async fn get_stream(
+  uri : String,
+  headers? : Map[String, String] = {},
+  port? : Int,
+  body? : &@io.Data = b"",
+) -> (Response, Client) {
+  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let client = Client::connect(host, headers~, protocol~, port~)
+  try {
+    client..request(Get, path)..write(body)
+    let response = client.end_request()
+    (response, client)
+  } catch {
+    err => {
+      client.close()
+      raise err
+    }
+  }
+}
+
+///|
+/// Similar to `@http.put`, but allow writing request body streamingly.
+/// The return value `client` is the HTTP client that performs the request,
+/// it can be used to write the content of request body via `@io.Writer`.
+/// Notice that writing to `@http.Client` is buffered,
+/// so if you need to send data to the server immediately, `.flush()` must be called.
+/// After writing all the content, `.end_request()` must be called
+/// to complete the request and obtain response from the server.
+/// After that, the response body from the server can be obtained 
+/// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+///
+/// Note that the returned `client` must be manually closed via `.close()`
+/// to close the underlying connection used for the request.
+pub async fn put_stream(
+  uri : String,
+  headers? : Map[String, String] = {},
+  port? : Int,
+) -> Client {
+  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let client = Client::connect(host, headers~, protocol~, port~)
+  try client.request(Put, path) catch {
+    err => {
+      client.close()
+      raise err
+    }
+  } noraise {
+    _ => client
+  }
+}
+
+///|
+/// Similar to `@http.post`, but allow writing request body streamingly.
+/// The return value `client` is the HTTP client that performs the request,
+/// it can be used to write the content of request body via `@io.Writer`.
+/// Notice that writing to `@http.Client` is buffered,
+/// so if you need to send data to the server immediately, `.flush()` must be called.
+/// After writing all the content, `.end_request()` must be called
+/// to complete the request and obtain response from the server.
+/// After that, the response body from the server can be obtained 
+/// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+///
+/// Note that the returned `client` must be manually closed via `.close()`
+/// to close the underlying connection used for the request.
+pub async fn post_stream(
+  uri : String,
+  headers? : Map[String, String] = {},
+  port? : Int,
+) -> Client {
+  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let client = Client::connect(host, headers~, protocol~, port~)
+  try client.request(Post, path) catch {
+    err => {
+      client.close()
+      raise err
+    }
+  } noraise {
+    _ => client
+  }
 }
