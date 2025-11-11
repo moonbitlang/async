@@ -12,6 +12,7 @@ pub(all) suberror ReaderClosed
 impl Show for ReaderClosed
 
 // Types and methods
+#deprecated
 type BufferedReader[R]
 async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit
 async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
@@ -40,6 +41,9 @@ type PipeWrite
 fn PipeWrite::close(Self) -> Unit
 impl Writer for PipeWrite
 
+type ReaderBuffer
+fn ReaderBuffer::new() -> Self
+
 // Type aliases
 
 // Traits
@@ -54,9 +58,13 @@ fn &Data::json(Self) -> Json raise
 fn &Data::text(Self) -> String raise
 
 pub(open) trait Reader {
-  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+  _get_internal_buffer(Self) -> ReaderBuffer
+  async _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
+  async drop(Self, Int) -> Int = _
   async read_exactly(Self, Int) -> Bytes = _
   async read_all(Self) -> &Data = _
+  async read_until(Self, StringView) -> String? = _
 }
 
 pub(open) trait Writer {

@@ -16,16 +16,19 @@
 using @fd_util {type Stat}
 
 ///|
-struct File(@event_loop.IOHandle)
+struct File {
+  io : @event_loop.IOHandle
+  read_buf : @io.ReaderBuffer
+}
 
 ///|
 pub fn File::fd(self : File) -> Int {
-  self.0.fd()
+  self.io.fd()
 }
 
 ///|
 pub fn File::close(self : File) -> Unit {
-  self.0.close()
+  self.io.close()
 }
 
 ///|
@@ -105,7 +108,13 @@ pub async fn open(
     Data => flags = flags | const_O_DSYNC
     Full => flags = flags | const_O_SYNC
   }
-  @event_loop.open(filename, flags~, mode=user_mode, context="@fs.open()")
+  let io = @event_loop.open(
+    filename,
+    flags~,
+    mode=user_mode,
+    context="@fs.open()",
+  )
+  { io, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
@@ -137,13 +146,13 @@ pub async fn create(
 ///
 /// - EOF is reached before reading all requested data
 /// - the file is a named pipe, and not enough data is available
-pub impl @io.Reader for File with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  self.0.read(buf, offset~, len=max_len, context="@fs.File::read()")
+pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
+  self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
+}
+
+///|
+pub impl @io.Reader for File with _get_internal_buffer(self) {
+  self.read_buf
 }
 
 ///|
@@ -165,7 +174,7 @@ pub async fn File::read_at(
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Int {
-  self.0.read_at(buf, offset~, len~, position~, context="@fs.File::read_at()")
+  self.io.read_at(buf, offset~, len~, position~, context="@fs.File::read_at()")
 }
 
 ///|
@@ -175,7 +184,7 @@ pub async fn File::read_exactly_at(
   position~ : Int64,
 ) -> Bytes {
   let buf = FixedArray::make(len, b'\x00')
-  let n = self.0.read_at(
+  let n = self.io.read_at(
     buf,
     offset=0,
     len~,
@@ -188,37 +197,9 @@ pub async fn File::read_exactly_at(
   buf.unsafe_reinterpret_as_bytes()
 }
 
-// used for obtaining the default implementation of `@io.Reader::read_all`
-
-///|
-priv struct DummyFile(File)
-
-///|
-impl @io.Reader for DummyFile with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  @io.Reader::read(self.0, buf, offset~, max_len~)
-}
-
-///|
-pub impl @io.Reader for File with read_all(self) {
-  match self.0.kind() {
-    Regular => {
-      let size = self.size().to_int()
-      let result = FixedArray::make(size, b'0')
-      guard self.read(result) == size
-      result.unsafe_reinterpret_as_bytes() as &@io.Data
-    }
-    _ => @io.Reader::read_all(DummyFile(self))
-  }
-}
-
 ///|
 pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
-  self.0.write(buf, offset~, len~, context="@fs.File::write()")
+  self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
 
 ///|
@@ -237,7 +218,7 @@ pub async fn File::write_at(
   buf : BytesView,
   position~ : Int64,
 ) -> Unit {
-  self.0.write_at(
+  self.io.write_at(
     buf.data(),
     offset=buf.start_offset(),
     len=buf.length(),
@@ -252,7 +233,7 @@ pub async fn File::write_at(
 /// some metadata such as timestamp may not be flushed.
 /// Buf file content and important metadata such as file size are always flushed.
 pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
-  self.0.fsync(only_data~, context="@fs.File::sync()")
+  self.io.fsync(only_data~, context="@fs.File::sync()")
 }
 
 ///|
@@ -283,7 +264,7 @@ fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
 /// will be returned.
 #deprecated("use `read_at` or `write_at` instead")
 pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
-  self.0.seek(offset, mode.to_int(), context="@fs.File::seek()")
+  self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
 }
 
 ///|
@@ -297,7 +278,7 @@ pub async fn File::curr_pos(self : File) -> Int64 {
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
-  self.0.fstat(context="@fs.File::size()").size()
+  self.io.fstat(context="@fs.File::size()").size()
 }
 
 ///|
@@ -316,7 +297,7 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 /// Caller should call `.close()` on the returned directory object instead
 /// (or, if `as_dir` fails, the input file is closed automatically).
 pub fn File::as_dir(self : File) -> Directory raise {
-  let fd = self.0.detach_from_event_loop()
+  let fd = self.io.detach_from_event_loop()
   let dir = as_dir_ffi(fd)
   if dir.is_null() {
     let context = "@fs.File::as_dir()"
@@ -328,7 +309,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
 
 ///|
 pub fn File::kind(self : File) -> FileKind {
-  FileKind::from_fd_util_file_kind(self.0.kind())
+  FileKind::from_fd_util_file_kind(self.io.kind())
 }
 
 ///|
@@ -336,7 +317,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::atime(self : File) -> (Int64, Int) {
-  self.0.fstat(context="@fs.File::atime()").atime()
+  self.io.fstat(context="@fs.File::atime()").atime()
 }
 
 ///|
@@ -344,7 +325,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::mtime(self : File) -> (Int64, Int) {
-  self.0.fstat(context="@fs.File::mtime()").mtime()
+  self.io.fstat(context="@fs.File::mtime()").mtime()
 }
 
 ///|
@@ -352,7 +333,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::ctime(self : File) -> (Int64, Int) {
-  self.0.fstat(context="@fs.File::ctime()").ctime()
+  self.io.fstat(context="@fs.File::ctime()").ctime()
 }
 
 ///|
@@ -367,7 +348,7 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    file.0.fsync(
+    file.io.fsync(
       only_data=false,
       context="@fs.File::read_file(sync_timestamp=true)",
     )

@@ -13,32 +13,6 @@
 // limitations under the License.
 
 ///|
-fn parse_int(src : BytesView, base~ : Int) -> Int? {
-  for i = 0, acc = 0; i < src.length(); {
-    match src[i] {
-      '0'..='9' as c => {
-        let digit = (c - '0').to_int()
-        guard digit < base else { return None }
-        continue i + 1, acc * base + digit
-      }
-      'a'..='z' as c => {
-        let digit = (c - 'a').to_int() + 10
-        guard digit < base else { return None }
-        continue i + 1, acc * base + digit
-      }
-      'A'..='Z' as c => {
-        let digit = (c - 'A').to_int() + 10
-        guard digit < base else { return None }
-        continue i + 1, acc * base + digit
-      }
-      _ => return None
-    }
-  } else {
-    Some(acc)
-  }
-}
-
-///|
 fn encode_int(value : Int, base~ : Int) -> Bytes {
   let len = for x = value, len = 1; x >= base; {
     continue x / base, len + 1

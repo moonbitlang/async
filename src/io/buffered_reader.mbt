@@ -13,27 +13,22 @@
 // limitations under the License.
 
 ///|
-/// A buffered wrapper around a normal reader.
-/// This reader will buffer already read content,
-/// and supports searching & arbitrary slicing of read content.
-struct BufferedReader[R] {
-  reader : R
+const SEGMENT_SIZE = 1024
+
+///|
+struct ReaderBuffer {
   mut buf : FixedArray[Byte]
   mut start : Int
   mut len : Int
 }
 
 ///|
-const SEGMENT_SIZE = 1024
-
-///|
-/// Create a new buffered reader that wrap around an existing reader.
-pub fn[R] BufferedReader::new(reader : R) -> BufferedReader[R] {
-  { reader, buf: FixedArray::make(SEGMENT_SIZE, 0), start: 0, len: 0 }
+pub fn ReaderBuffer::new() -> ReaderBuffer {
+  { buf: [], start: 0, len: 0 }
 }
 
 ///|
-fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
+fn ReaderBuffer::enlarge_to(self : Self, n : Int) -> Unit {
   let capacity = self.buf.length()
   if self.start + n <= capacity {
     return
@@ -52,6 +47,73 @@ fn[R] BufferedReader::enlarge_to(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
+async fn[R : Reader] ReaderBuffer::try_ensure(
+  self : Self,
+  len : Int,
+  reader~ : R,
+) -> Bool {
+  if self.len >= len {
+    return true
+  }
+  self.enlarge_to(len)
+  let capacity = self.buf.length()
+  while self.len < len {
+    let offset = self.start + self.len
+    let n = reader._direct_read(self.buf, offset~, max_len=capacity - offset)
+    if n == 0 {
+      return false
+    }
+    self.len += n
+  } else {
+    true
+  }
+}
+
+///|
+async fn[R : Reader] ReaderBuffer::find_opt(
+  self : Self,
+  target : Bytes,
+  reader~ : R,
+) -> Int? {
+  let target_len = target.length()
+  for searched = 0 {
+    guard self.try_ensure(searched + target_len, reader~) else { return None }
+    let len = self.len
+    let start = self.start + searched
+    let end = self.start + len
+    let region = self.buf.unsafe_reinterpret_as_bytes()[start:end]
+    if region.find(target) is Some(i) {
+      return Some(searched + i)
+    }
+    continue len - target_len + 1
+  }
+}
+
+///|
+fn ReaderBuffer::drop(self : Self, n : Int) -> Unit {
+  guard n <= self.len
+  self.len -= n
+  if self.len == 0 {
+    self.start = 0
+  } else {
+    self.start += n
+  }
+}
+
+///|
+/// A buffered wrapper around a normal reader.
+/// This reader will buffer already read content,
+/// and supports searching & arbitrary slicing of read content.
+#deprecated("readers are now always buffered")
+struct BufferedReader[R](R)
+
+///|
+/// Create a new buffered reader that wrap around an existing reader.
+pub fn[R] BufferedReader::new(reader : R) -> BufferedReader[R] {
+  reader
+}
+
+///|
 /// Make sure at least `len` bytes of data are buffered,
 /// read from the underlying reader if necessary.
 /// The actual amount of data fetched may be larger than `len`.
@@ -61,19 +123,7 @@ async fn[R : Reader] BufferedReader::try_ensure(
   self : Self[R],
   len : Int,
 ) -> Bool {
-  if self.len >= len {
-    return true
-  }
-  self.enlarge_to(len)
-  while self.len < len {
-    let n = self.reader.read(self.buf, offset=self.start + self.len)
-    if n == 0 {
-      return false
-    }
-    self.len += n
-  } else {
-    true
-  }
+  self._get_internal_buffer().try_ensure(len, reader=self.0)
 }
 
 ///|
@@ -93,37 +143,24 @@ async fn[R : Reader] BufferedReader::ensure(self : Self[R], len : Int) -> Unit {
 /// This operation will advance the reader stream,
 /// and will affect the semantic of all index based operations.
 pub async fn[R : Reader] BufferedReader::drop(self : Self[R], n : Int) -> Unit {
-  self.ensure(n)
-  self.len -= n
-  if self.len == 0 {
-    self.start = 0
-  } else {
-    self.start += n
-  }
+  ignore(Reader::drop(self, n))
 }
 
 ///|
-/// Copy some data into the given buffer from the reader.
-/// If there is no buffered data,
-/// `BufferedReader` will request more data from the inner reader.
-/// The number of read bytes will be returned, which is always positive,
-/// unless the stream already reaches its end,
-/// i.e. there are no buffered data and the inner reader has been closed.
-/// Copied data will be removed from the reader stream.
-pub impl[R : Reader] Reader for BufferedReader[R] with read(
+pub impl[R : Reader] Reader for BufferedReader[R] with _get_internal_buffer(
   self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
 ) {
-  if self.len > 0 {
-    let n = @cmp.minimum(max_len, self.len)
-    self.buf.blit_to(buf, src_offset=self.start, dst_offset=offset, len=n)
-    self.drop(n)
-    n
-  } else {
-    self.reader.read(buf, offset~, max_len~)
-  }
+  self.0._get_internal_buffer()
+}
+
+///|
+pub impl[R : Reader] Reader for BufferedReader[R] with _direct_read(
+  self,
+  dst,
+  offset~,
+  max_len~,
+) {
+  self.0._direct_read(dst, offset~, max_len~)
 }
 
 ///|
@@ -139,7 +176,8 @@ pub async fn[R : Reader] BufferedReader::op_get(
   index : Int,
 ) -> Byte {
   self.ensure(index + 1)
-  self.buf[self.start + index]
+  let buf = self.0._get_internal_buffer()
+  buf.buf[buf.start + index]
 }
 
 ///|
@@ -168,7 +206,8 @@ pub async fn[R : Reader] BufferedReader::op_as_view(
   }
   guard start < end
   self.ensure(end)
-  self.buf.unsafe_reinterpret_as_bytes()[self.start + start:self.start + end]
+  let buf = self.0._get_internal_buffer()
+  buf.buf.unsafe_reinterpret_as_bytes()[buf.start + start:buf.start + end]
 }
 
 ///|
@@ -187,18 +226,7 @@ pub async fn[R : Reader] BufferedReader::find_opt(
   self : Self[R],
   target : Bytes,
 ) -> Int? {
-  let target_len = target.length()
-  for searched = 0 {
-    guard self.try_ensure(searched + target_len) else { return None }
-    let len = self.len
-    let start = self.start + searched
-    let end = self.start + len
-    let region = self.buf.unsafe_reinterpret_as_bytes()[start:end]
-    if region.find(target) is Some(i) {
-      return Some(searched + i)
-    }
-    continue len - target_len + 1
-  }
+  self.0._get_internal_buffer().find_opt(target, reader=self.0)
 }
 
 ///|
@@ -231,13 +259,5 @@ pub async fn[R : Reader] BufferedReader::find(
 /// will be conusmed from the reader.
 /// The returned string is decoded with UTF8.
 pub async fn[R : Reader] BufferedReader::read_line(self : Self[R]) -> String? {
-  match self.find_opt("\n") {
-    None if self.len == 0 => None
-    None => Some(self.read_all().text())
-    Some(newline_index) => {
-      let line = @encoding/utf8.decode(self[:newline_index])
-      self.drop(newline_index + 1)
-      Some(line)
-    }
-  }
+  self.read_until("\n")
 }

@@ -70,13 +70,13 @@ pub fn Client::close(self : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  self.reader.read(buf, offset~, max_len~)
+pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
+  self.reader._direct_read(buf, offset~, max_len~)
+}
+
+///|
+pub impl @io.Reader for Client with _get_internal_buffer(self) {
+  self.reader.read_buf
 }
 
 ///|

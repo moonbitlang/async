@@ -76,19 +76,24 @@ async test "request streaming" {
       inspect(response.code, content="200")
       fetch_response(client)
     }
-    log.write_string("client sending POST request\n")
-    let client = @http.post_stream("http://localhost/post", port~)
-    defer client.close()
-    client.flush()
-    @async.sleep(100)
-    log.write_string("client: sending POST data part 1\n")
-    client..write("POST data part 1\n")..flush()
-    @async.sleep(100)
-    log.write_string("client: sending POST data part 2\n")
-    client.write("POST data part 2\n")
-    let response = client.end_request()
-    inspect(response.code, content="200")
-    fetch_response(client)
+    {
+      log.write_string("client sending POST request\n")
+      let client = @http.post_stream("http://localhost/post", port~)
+      defer client.close()
+      client.flush()
+      @async.sleep(100)
+      log.write_string("client: sending POST data part 1\n")
+      client..write("POST data part 1\n")..flush()
+      @async.sleep(100)
+      log.write_string("client: sending POST data part 2\n")
+      client.write("POST data part 2\n")
+      let response = client.end_request()
+      inspect(response.code, content="200")
+      fetch_response(client)
+    }
+    // give some time for the client to close,
+    // so that the port occupied by the server can be reused immediately.
+    @async.sleep(200)
   })
   inspect(
     log,

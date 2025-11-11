@@ -19,6 +19,7 @@ struct Tls {
   host : String?
   read_end : Endpoint
   write_end : Endpoint
+  read_buf : @io.ReaderBuffer
 }
 
 ///|
@@ -43,7 +44,7 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   let rbio = create_bio(read_end)
   let wbio = create_bio(write_end)
   let ssl = SSL::new(ctx, rbio, wbio)
-  { ssl, host, read_end, write_end }
+  { ssl, host, read_end, write_end, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
@@ -197,12 +198,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 }
 
 ///|
-pub impl @io.Reader for Tls with read(
-  self,
-  buf,
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) {
+pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
   while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       return ret
@@ -216,6 +212,11 @@ pub impl @io.Reader for Tls with read(
     // imposible
     0
   }
+}
+
+///|
+pub impl @io.Reader for Tls with _get_internal_buffer(self) {
+  self.read_buf
 }
 
 ///|

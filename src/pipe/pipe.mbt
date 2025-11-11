@@ -14,12 +14,14 @@
 
 ///|
 /// The read end of a pipe
-struct PipeRead(@event_loop.IOHandle)
+struct PipeRead {
+  io : @event_loop.IOHandle
+  read_buf : @io.ReaderBuffer
+}
 
 ///|
 pub fn PipeRead::fd(self : PipeRead) -> Int {
-  let PipeRead(io) = self
-  io.fd()
+  self.io.fd()
 }
 
 ///|
@@ -39,15 +41,19 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @fd_util.pipe("@pipe.pipe()")
   @fd_util.set_nonblocking(r, context="@pipe.pipe()")
   @fd_util.set_nonblocking(w, context="@pipe.pipe()")
-  (
-    PipeRead(@event_loop.IOHandle::from_fd(r, kind=Pipe)),
-    PipeWrite(@event_loop.IOHandle::from_fd(w, kind=Pipe)),
-  )
+  let r = {
+    io: @event_loop.IOHandle::from_fd(r, kind=Pipe),
+    read_buf: @io.ReaderBuffer::new(),
+  }
+  (r, PipeWrite(@event_loop.IOHandle::from_fd(w, kind=Pipe)))
 }
 
 ///|
 #deprecated("use `@stdio.stdin` instead")
-pub let stdin : PipeRead = @event_loop.stdin
+pub let stdin : PipeRead = {
+  io: @event_loop.stdin,
+  read_buf: @io.ReaderBuffer::new(),
+}
 
 ///|
 #deprecated("use `@stdio.stdout` instead")
@@ -59,8 +65,7 @@ pub let stderr : PipeWrite = @event_loop.stderr
 
 ///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
-  let PipeRead(io) = self
-  io.close()
+  self.io.close()
 }
 
 ///|
@@ -78,14 +83,13 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 /// At most one task can read from a pipe at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for PipeRead with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  let PipeRead(io) = self
-  io.read(buf, offset~, len=max_len, context="@pipe.PipeRead::read()")
+pub impl @io.Reader for PipeRead with _direct_read(self, buf, offset~, max_len~) {
+  self.io.read(buf, offset~, len=max_len, context="@pipe.PipeRead::read()")
+}
+
+///|
+pub impl @io.Reader for PipeRead with _get_internal_buffer(self) {
+  self.read_buf
 }
 
 ///|
