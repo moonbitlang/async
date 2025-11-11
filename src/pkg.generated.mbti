@@ -3,6 +3,7 @@ package "moonbitlang/async"
 
 import(
   "moonbitlang/async/aqueue"
+  "moonbitlang/async/cond_var"
   "moonbitlang/async/semaphore"
 )
 
@@ -56,6 +57,8 @@ fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_fail
 fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
 
 // Type aliases
+pub using @cond_var {type Cond as CondVar}
+
 pub using @aqueue {type Queue}
 
 pub using @semaphore {type Semaphore}
