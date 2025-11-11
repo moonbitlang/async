@@ -162,10 +162,10 @@ async test "`connect` accidental close" {
         client_write_to_server.close()
       }
       let client = try? @tls.Tls::client_from_pair(
-          client_read_from_server,
-          client_write_to_server,
-          verify=false,
-        )
+        client_read_from_server,
+        client_write_to_server,
+        verify=false,
+      )
       match client {
         Ok(client) => {
           client.close()
