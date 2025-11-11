@@ -70,27 +70,21 @@ async test "basic" {
       handle_response=tmp_file.write_reader(_),
     )
     tmp_file.close()
-    let (r, w) = @process.read_from_process()
-    defer r.close()
+    let (from_unzip, w) = @process.read_from_process()
+    defer from_unzip.close()
     root.spawn_bg(fn() {
       @process.run("unzip", ["-l", tmp_file_name], stdout=w) |> ignore
     })
-    let from_unzip = @io.BufferedReader::new(r)
     let zip_content = []
     for i = 0; ; i = i + 1 {
-      let eol = from_unzip.find("\n") catch {
-        @io.ReaderClosed => break
-        err => raise err
-      }
-      let line = from_unzip[:eol]
+      guard from_unzip.read_until("\n") is Some(line) else { break }
       guard line.rev_find(" ") is Some(i) else {
         fail("invalid output from `unzip`")
       }
-      let last_word = @encoding/utf8.decode(line[i + 1:])
+      let last_word = line[i + 1:]
       if last_word.has_prefix("examples/http_file_server") {
-        zip_content.push(last_word)
+        zip_content.push(last_word.to_string())
       }
-      from_unzip.drop(eol + 1)
     }
     zip_content.sort()
     for file in zip_content {

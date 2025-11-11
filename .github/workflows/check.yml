@@ -33,7 +33,9 @@ jobs:
           moonrun --version
 
       - name: moon check
-        run: moon check --deny-warn
+        run: |
+          moon check --deny-warn
+          moon check -C examples --deny-warn
 
       - name: moon test
         run: |
