@@ -23,14 +23,15 @@ priv enum BodyKind {
 /// A HTTP reader type that can parse and deliver HTTP request/response
 priv struct Reader {
   mut body : BodyKind
-  transport : @io.BufferedReader[&@io.Reader]
+  transport : &@io.Reader
+  read_buf : @io.ReaderBuffer
 }
 
 ///|
 /// Create a new HTTP reader wrapping around existing reader `transport`.
 /// The HTTP reader will read data from `transport`.
 fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
-  { body: Empty, transport: @io.BufferedReader::new(transport as &@io.Reader) }
+  { body: Empty, transport, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
@@ -46,12 +47,7 @@ pub suberror HttpProtocolError {
 /// All reader related API of `HttpReader` should be called
 /// after a successful call to `read_request` or `read_response`,
 /// otherwise reading always result in EOF.
-impl @io.Reader for Reader with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
+impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
@@ -62,14 +58,14 @@ impl @io.Reader for Reader with read(
       n
     }
     Chunked(0) => {
-      let len_end = self.transport.find("\r\n")
-      guard parse_int(self.transport[:len_end], base=16) is Some(next_chunk_len) else {
-        raise BadRequest
+      guard self.transport.read_until("\r\n") is Some(len_str) else {
+        raise @io.ReaderClosed
       }
-      self.transport.drop(len_end + 2)
+      let next_chunk_len = @strconv.parse_int(len_str, base=16) catch {
+        _ => raise BadRequest
+      }
       guard next_chunk_len > 0 else {
-        guard self.transport[:2] == "\r\n" else { raise BadRequest }
-        self.transport.drop(2)
+        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
         self.body = Empty
         return 0
       }
@@ -77,7 +73,7 @@ impl @io.Reader for Reader with read(
       let n = self.transport.read(buf, offset~, max_len~)
       let remaining = next_chunk_len - n
       if remaining == 0 {
-        self.transport.drop(2) // \r\n
+        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
       }
       self.body = Chunked(remaining)
       n
@@ -87,7 +83,7 @@ impl @io.Reader for Reader with read(
       let n = self.transport.read(buf, offset~, max_len~)
       let remaining = first_chunk_remaining - n
       if remaining == 0 {
-        self.transport.drop(2) // \r\n
+        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
       }
       self.body = Chunked(remaining)
       n
@@ -96,27 +92,30 @@ impl @io.Reader for Reader with read(
 }
 
 ///|
+impl @io.Reader for Reader with _get_internal_buffer(self) {
+  self.read_buf
+}
+
+///|
 async fn Reader::read_headers(self : Reader) -> Map[String, String] {
   let headers = {}
   for {
-    let line_end = self.transport.find(b"\r\n")
-    if line_end == 0 {
+    guard self.transport.read_until("\r\n") is Some(header_line) else {
+      raise @io.ReaderClosed
+    }
+    if header_line is "" {
       // empty line indicates end of header
-      self.transport.drop(line_end + 2)
       break
     }
-    let header_line = self.transport[:line_end]
-    guard header_line[:].find(":") is Some(colon_index) else {
-      raise BadRequest
-    }
-    let key = @encoding/utf8.decode(header_line[:colon_index]).to_lower()
+    guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
+    let key = header_line[:colon_index].to_lower().to_string()
     guard colon_index + 1 < header_line.length() else { raise BadRequest }
     let value_start = if header_line[colon_index + 1] == ' ' {
       colon_index + 2
     } else {
       colon_index + 1
     }
-    let value = @encoding/utf8.decode(header_line[value_start:])
+    let value = header_line[value_start:].to_string()
     match headers.get(key) {
       None => headers[key] = value
       Some(value0) => headers[key] = "\{value0},\{value}"
@@ -136,7 +135,6 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
       }
       _ => ()
     }
-    self.transport.drop(line_end + 2)
   }
   headers
 }
@@ -154,8 +152,9 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
 /// In the result of `read_request`, all header fields will be in lower case.
 async fn Reader::read_request(self : Reader) -> Request {
   guard self.body is Empty
-  let request_line_end = self.transport.find("\r\n")
-  let request_line = self.transport[:request_line_end]
+  guard self.transport.read_until("\r\n") is Some(request_line) else {
+    raise @io.ReaderClosed
+  }
   guard request_line.find(" ") is Some(meth_len) else { raise BadRequest }
   let meth = match request_line[:meth_len] {
     "GET" => Get
@@ -171,13 +170,11 @@ async fn Reader::read_request(self : Reader) -> Request {
   }
   let request_line = request_line[meth_len + 1:]
   guard request_line.find(" ") is Some(path_len) else { raise BadRequest }
-  let path = @encoding/utf8.decode(request_line[:path_len])
+  let path = request_line[:path_len].to_string()
   match request_line[path_len + 1:] {
     "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol =>
-      raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
+    protocol => raise HttpVersionNotSupported(protocol.to_string())
   }
-  self.transport.drop(request_line_end + 2)
   let headers = self.read_headers()
   { meth, path, headers }
 }
@@ -195,21 +192,20 @@ async fn Reader::read_request(self : Reader) -> Request {
 /// In the result of `read_response`, all header fields will be in lower case.
 async fn Reader::read_response(self : Reader) -> Response {
   guard self.body is Empty
-  let response_line_end = self.transport.find("\r\n")
-  let response_line = self.transport[:response_line_end]
+  guard self.transport.read_until("\r\n") is Some(response_line) else {
+    raise @io.ReaderClosed
+  }
   guard response_line.find(" ") is Some(protocol_len) else { raise BadRequest }
-  match self.transport[:protocol_len] {
+  match response_line[:protocol_len] {
     "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol =>
-      raise HttpVersionNotSupported(@bytes_util.ascii_to_string(protocol))
+    protocol => raise HttpVersionNotSupported(protocol.to_string())
   }
   let response_line = response_line[protocol_len + 1:]
   guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
-  guard parse_int(response_line[:code_len], base=10) is Some(code) else {
-    raise BadRequest
+  let code = @strconv.parse_int(response_line[:code_len], base=10) catch {
+    _ => raise BadRequest
   }
-  let reason = @encoding/utf8.decode(response_line[code_len + 1:])
-  self.transport.drop(response_line_end + 2)
+  let reason = response_line[code_len + 1:].to_string()
   let headers = self.read_headers()
   { code, reason, headers }
 }

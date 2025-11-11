@@ -13,6 +13,20 @@
 // limitations under the License.
 
 ///|
+async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
+  defer w.close()
+  @async.sleep(20)
+  log.write_string("writing 4 bytes of data\n")
+  w.write(b"abcd")
+  @async.sleep(20)
+  log.write_string("writing 4 bytes of data\n")
+  w.write(b"efgh")
+  @async.sleep(20)
+  log.write_string("writing 4 bytes of data\n")
+  w.write(b"ijkl")
+}
+
+///|
 async test "read_all basic" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {

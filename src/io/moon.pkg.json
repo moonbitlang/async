@@ -2,6 +2,11 @@
   "import": [
     "moonbitlang/async/internal/coroutine"
   ],
+  "wbtest-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/fs",
+    "moonbitlang/async/internal/bytes_util"
+  ],
   "test-import": [
     "moonbitlang/async",
     "moonbitlang/async/fs",

@@ -193,6 +193,65 @@ async test "read_all large data" {
     inspect(r.read_all().binary().length(), content="4097")
   })
 }
+
+///|
+async test "drop - advance stream by discarding data" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      w.write(b"0123456789")
+    })
+    // Advance the window by five bytes; subsequent reads start after this point.
+    // The number of bytes actually dropped would be returned.
+    inspect(r.drop(5), content="5")
+    let data = r.read_exactly(5)
+    inspect(@encoding/utf8.decode(data), content="56789")
+  })
+}
+
+///|
+async test "read_until - read text from stream until a separator is found" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      w.write("abcd|")
+      w.write("defg")
+    })
+    // read until the separator "|" is met. The separator will be consumed as well
+    inspect(
+      r.read_until("|"),
+      content=(
+        #|Some("abcd")
+      ),
+    )
+    // .. or read until EOF is reached
+    inspect(
+      r.read_until("|"),
+      content=(
+        #|Some("defg")
+      ),
+    )
+    // `None` will be returned when no more data is available
+    inspect(r.read_until("|"), content="None")
+  })
+}
+
+///|
+async test "read_until - used to read file line by line" {
+  let file = @fs.open("LICENSE", mode=ReadOnly)
+  defer file.close()
+  let lines = []
+  while file.read_until("\n") is Some(line) {
+    // Push each decoded line into a growable array.
+    lines.push(line)
+  }
+  inspect(lines.length(), content="202")
+  assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
+}
 ```
 
 ### Writer Trait
@@ -322,314 +381,6 @@ async test "write string" {
 ```
 
 ## Buffered I/O
-
-### BufferedReader
-
-`BufferedReader` wraps any `Reader` to provide buffering.
-When data are received from the underlying transport of a buffered reader, these data are save in an internal buffer,
-and can be accessed repeated via `op_get`, `op_as_view` etc.
-Using the internal buffer, `BufferedReader` provides high-level utilities like `find` and `read_line`.
-Users can advance the stream via methods such as `read` and `drop`, discarding content that are no longer useful.
-
-In the examples below, pay attention to how buffering reduces the number of syscalls while still supporting random access patterns.
-
-```moonbit
-///|
-async test "BufferedReader::read" {
-  let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
-      defer w.close()
-      @async.sleep(20)
-      // Each write emits a 4-byte frame.
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"abcd")
-      @async.sleep(20)
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"efgh")
-      @async.sleep(20)
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"ijkl")
-    })
-    defer r.close()
-    let reader = @io.BufferedReader::new(r)
-    let buf = FixedArray::make(6, b'0')
-    while reader.read(buf) is n && n > 0 {
-      // Convert only the portion that was filled.
-      let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      let data = @encoding/utf8.decode(data)
-      log.write_string("received: \{data}\n")
-    }
-    log.write_string("buffered reader closed\n")
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|received: abcd
-      #|writing 4 bytes of data
-      #|received: efgh
-      #|writing 4 bytes of data
-      #|received: ijkl
-      #|buffered reader closed
-      #|
-    ),
-  )
-}
-
-///|
-async test "BufferedReader::read_exactly" {
-  let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
-      defer w.close()
-      @async.sleep(20)
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"abcd")
-      @async.sleep(20)
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"efgh")
-      @async.sleep(20)
-      log.write_string("writing 4 bytes of data\n")
-      w.write(b"ijkl")
-    })
-    defer r.close()
-    let reader = @io.BufferedReader::new(r)
-    for {
-      // `read_exactly` continues until six bytes are buffered or EOF triggers ReaderClosed.
-      let data = reader.read_exactly(6)
-      let data = @encoding/utf8.decode(data)
-      log.write_string("received: \{data}\n")
-    }
-  }) catch {
-    err => log.write_object(err)
-  }
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|received: abcdef
-      #|writing 4 bytes of data
-      #|received: ghijkl
-      #|ReaderClosed
-    ),
-  )
-}
-
-///|
-async test "BufferedReader::op_get - access byte by index" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
-      root.spawn_bg(fn() {
-        defer w.close()
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"abcd")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"efgh")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"ijkl")
-      })
-      defer r.close()
-      let reader = @io.BufferedReader::new(r)
-      // Random access does not consume data.
-      log.write_string("reader[5]: \{reader[5]}\n")
-      // should be idempotent
-      log.write_string("reader[5]: \{reader[5]}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      log.write_string("reader[5]: \{reader[5]}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      log.write_string("reader[5]: \{reader[5]}\n")
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|reader[5]: b'\x66'
-      #|reader[5]: b'\x66'
-      #|reader.drop(4)
-      #|writing 4 bytes of data
-      #|reader[5]: b'\x6A'
-      #|reader.drop(4)
-      #|Err(ReaderClosed)
-    ),
-  )
-}
-
-///|
-async test "BufferedReader::op_as_view - slice data" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
-      root.spawn_bg(fn() {
-        defer w.close()
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"abcd")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"efgh")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"ijkl")
-      })
-      defer r.close()
-      let reader = @io.BufferedReader::new(r)
-      let slice = @encoding/utf8.decode(reader[0:6])
-      log.write_string("reader[0:6]: \{slice}\n")
-      // should be idempotent
-      let slice = @encoding/utf8.decode(reader[0:6])
-      log.write_string("reader[0:6]: \{slice}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      // After dropping, index 0 maps to the next unread segment.
-      let slice = @encoding/utf8.decode(reader[0:6])
-      log.write_string("reader[0:6]: \{slice}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      let slice = @encoding/utf8.decode(reader[0:6])
-      log.write_string("reader[0:6]: \{slice}\n")
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|reader[0:6]: abcdef
-      #|reader[0:6]: abcdef
-      #|reader.drop(4)
-      #|writing 4 bytes of data
-      #|reader[0:6]: efghij
-      #|reader.drop(4)
-      #|Err(ReaderClosed)
-    ),
-  )
-}
-
-///|
-async test "BufferedReader::drop - advance stream" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(fn() {
-      defer w.close()
-      w.write(b"0123456789")
-    })
-    let reader = @io.BufferedReader::new(r)
-    // Advance the window by five bytes; subsequent reads start after this point.
-    reader.drop(5)
-    let data = reader.read_exactly(5)
-    inspect(@encoding/utf8.decode(data), content="56789")
-  })
-}
-
-///|
-async test "BufferedReader::find - search for substring" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
-      root.spawn_bg(fn() {
-        defer w.close()
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"abcd")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"efgh")
-        @async.sleep(20)
-        log.write_string("writing 4 bytes of data\n")
-        w.write(b"abcd")
-      })
-      defer r.close()
-      let reader = @io.BufferedReader::new(r)
-      let i = reader.find(b"a")
-      log.write_string("index of 'a': \{i}\n")
-      // should be idempotent
-      let i = reader.find(b"a")
-      log.write_string("index of 'a': \{i}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      // After consuming four bytes, the next 'a' occurs later in the buffer.
-      let i = reader.find(b"a")
-      log.write_string("index of 'a': \{i}\n")
-      log.write_string("reader.drop(4)\n")
-      reader.drop(4)
-      let i = reader.find(b"a")
-      log.write_string("index of 'a': \{i}\n")
-      let i = reader.find(b"x")
-      log.write_string("index of 'x': \{i}\n")
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|writing 4 bytes of data
-      #|index of 'a': 0
-      #|index of 'a': 0
-      #|reader.drop(4)
-      #|writing 4 bytes of data
-      #|writing 4 bytes of data
-      #|index of 'a': 4
-      #|reader.drop(4)
-      #|index of 'a': 0
-      #|Err(ReaderClosed)
-    ),
-  )
-}
-
-///|
-async test "BufferedReader::find_opt - search for substring with explicit EOF handling" {
-  @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
-      defer w.close()
-      @async.sleep(20)
-      w.write(b"abcd")
-      @async.sleep(20)
-      w.write(b"aBcd")
-      @async.sleep(20)
-      w.write(b"abcd")
-    })
-    defer r.close()
-    let reader = @io.BufferedReader::new(r)
-    // Returns `Some(index)` while the substring is present.
-    inspect(reader.find_opt(b"ab"), content="Some(0)")
-    reader.drop(4)
-    inspect(reader.find_opt(b"ab"), content="Some(4)")
-    reader.drop(8)
-    // Falls back to `None` once the stream is exhausted.
-    inspect(reader.find_opt(b"ab"), content="None")
-  })
-}
-
-///|
-async test "BufferedReader::read_line - read line by line" {
-  let file = @fs.open("LICENSE", mode=ReadOnly)
-  defer file.close()
-  let reader = @io.BufferedReader::new(file)
-  let lines = []
-  while reader.read_line() is Some(line) {
-    // Push each decoded line into a growable array.
-    lines.push(line)
-  }
-  inspect(lines.length(), content="202")
-  assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
-}
-```
 
 ### BufferedWriter
 
@@ -780,13 +531,12 @@ async test "fan-out and fan-in" {
       intermediate_writer.write(b"PAYLOAD")
     })
     defer intermediate_reader.close()
-    let buffered = @io.BufferedReader::new(intermediate_reader)
 
     // A downstream consumer receives the header via its own pipe.
     let (header_reader, header_writer) = @io.pipe()
     root.spawn_bg(fn() {
       defer header_writer.close()
-      let header = buffered.read_exactly(3)
+      let header = intermediate_reader.read_exactly(3)
       header_writer.write(header)
     })
     root.spawn_bg(fn() {
@@ -796,7 +546,7 @@ async test "fan-out and fan-in" {
 
     // The original buffered reader still holds the payload.
     @async.sleep(30)
-    let body = buffered.read_all().text()
+    let body = intermediate_reader.read_all().text()
     inspect(body, content="PAYLOAD")
   })
 }

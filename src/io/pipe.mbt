@@ -42,6 +42,7 @@ priv enum PipeWriter {
 priv struct Pipe {
   mut reader : PipeReader
   mut writer : PipeWriter
+  read_buf : ReaderBuffer
 }
 
 ///|
@@ -59,7 +60,7 @@ struct PipeWrite(Pipe)
 /// Data written to the write end can be obtained from the read end.
 /// Useful for testing and converting writer-based function to reader.
 pub fn pipe() -> (PipeRead, PipeWrite) {
-  let p = { reader: NoReader, writer: NoWriter }
+  let p = { reader: NoReader, writer: NoWriter, read_buf: ReaderBuffer::new() }
   (PipeRead(p), PipeWrite(p))
 }
 
@@ -90,18 +91,13 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 ///|
 /// Read data from a pipe. The data come from the write end of the pipe.
 /// Data transfer only happen when reader and writer are present at the same time.
-pub impl Reader for PipeRead with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
+pub impl Reader for PipeRead with _direct_read(self, dst, offset~, max_len~) {
   let PipeRead(self) = self
   guard self.reader is NoReader
   match self.writer {
     NoWriter => {
       let coro = @coroutine.current_coroutine()
-      let reader = HasReader(coro~, buf~, offset~, max_len~, result=0)
+      let reader = HasReader(coro~, buf=dst, offset~, max_len~, result=0)
       self.reader = reader
       defer (if self.reader is HasReader(_) { self.reader = NoReader })
       @coroutine.suspend()
@@ -111,13 +107,19 @@ pub impl Reader for PipeRead with read(
     WriteEndClosed => 0
     HasWriter(_) as writer => {
       let len = @cmp.minimum(max_len, writer.len)
-      buf.blit_from_bytes(offset, writer.buf, writer.offset, len)
+      dst.blit_from_bytes(offset, writer.buf, writer.offset, len)
       writer.result = len
       writer.coro.wake()
       @coroutine.pause()
       len
     }
   }
+}
+
+///|
+pub impl Reader for PipeRead with _get_internal_buffer(self) {
+  let PipeRead(self) = self
+  self.read_buf
 }
 
 ///|

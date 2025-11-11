@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
+async fn writer(log : StringBuilder, w : PipeWrite) -> Unit {
   defer w.close()
   @async.sleep(20)
   log.write_string("writing 4 bytes of data\n")
@@ -30,10 +30,10 @@ async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
 async test "BufferedReader::read" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
+    let (r, w) = pipe()
     root.spawn_bg(() => writer(log, w))
     defer r.close()
-    let reader = @io.BufferedReader::new(r)
+    let reader = BufferedReader::new(r)
     let buf = FixedArray::make(6, b'0')
     while reader.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
@@ -61,10 +61,10 @@ async test "BufferedReader::read" {
 async test "BufferedReader::read_exactly" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
+    let (r, w) = pipe()
     root.spawn_bg(() => writer(log, w))
     defer r.close()
-    let reader = @io.BufferedReader::new(r)
+    let reader = BufferedReader::new(r)
     for {
       let data = reader.read_exactly(6)
       let data = @encoding/utf8.decode(data)
@@ -91,10 +91,10 @@ async test "BufferedReader::op_get" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
+      let (r, w) = pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
-      let reader = @io.BufferedReader::new(r)
+      let reader = BufferedReader::new(r)
       log.write_string("reader[5]: \{reader[5]}\n")
       // should be idempotent
       log.write_string("reader[5]: \{reader[5]}\n")
@@ -127,10 +127,10 @@ async test "BufferedReader::op_as_view" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
+      let (r, w) = pipe()
       root.spawn_bg(() => writer(log, w))
       defer r.close()
-      let reader = @io.BufferedReader::new(r)
+      let reader = BufferedReader::new(r)
       let slice = @encoding/utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
       // should be idempotent
@@ -167,7 +167,7 @@ async test "BufferedReader::find single byte" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
+      let (r, w) = pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -181,7 +181,7 @@ async test "BufferedReader::find single byte" {
         w.write(b"abcd")
       })
       defer r.close()
-      let reader = @io.BufferedReader::new(r)
+      let reader = BufferedReader::new(r)
       let i = reader.find(b"a")
       log.write_string("index of 'a': \{i}\n")
       // should be idempotent
@@ -221,7 +221,7 @@ async test "BufferedReader::find bytes" {
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
-      let (r, w) = @io.pipe()
+      let (r, w) = pipe()
       root.spawn_bg(fn() {
         defer w.close()
         @async.sleep(20)
@@ -235,7 +235,7 @@ async test "BufferedReader::find bytes" {
         w.write(b"abcd")
       })
       defer r.close()
-      let reader = @io.BufferedReader::new(r)
+      let reader = BufferedReader::new(r)
       let i = reader.find(b"ab")
       log.write_string("index of \"ab\": \{i}\n")
       let i = reader.find(b"aB")
@@ -272,7 +272,7 @@ async test "BufferedReader::find bytes" {
 ///|
 async test "BufferedReader::find_bytes splitted" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
+    let (r, w) = pipe()
     root.spawn_bg(fn() {
       defer w.close()
       w.write(b"abcd")
@@ -280,7 +280,7 @@ async test "BufferedReader::find_bytes splitted" {
       w.write(b"efgh")
     })
     defer r.close()
-    let reader = @io.BufferedReader::new(r)
+    let reader = BufferedReader::new(r)
     inspect(reader.find_opt("cdef"), content="Some(2)")
   })
 }
@@ -288,7 +288,7 @@ async test "BufferedReader::find_bytes splitted" {
 ///|
 async test "BufferedReader::find_opt" {
   @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
+    let (r, w) = pipe()
     root.spawn_bg(fn() {
       defer w.close()
       @async.sleep(20)
@@ -299,7 +299,7 @@ async test "BufferedReader::find_opt" {
       w.write(b"abcd")
     })
     defer r.close()
-    let reader = @io.BufferedReader::new(r)
+    let reader = BufferedReader::new(r)
     inspect(reader.find_opt(b"ab"), content="Some(0)")
     reader.drop(4)
     inspect(reader.find_opt(b"ab"), content="Some(4)")
@@ -312,7 +312,7 @@ async test "BufferedReader::find_opt" {
 async test "lazy drop" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (r, w) = @io.pipe()
+    let (r, w) = pipe()
     root.spawn_bg(fn() {
       defer w.close()
       w.write("abcd")
@@ -320,7 +320,7 @@ async test "lazy drop" {
       w.write("efgh")
     })
     defer r.close()
-    let reader = @io.BufferedReader::new(r)
+    let reader = BufferedReader::new(r)
     let _ = reader.read_exactly(2)
     log.write_string(reader[:2] |> @bytes_util.ascii_to_string)
     let _ = reader.read_exactly(4)
@@ -333,7 +333,7 @@ async test "lazy drop" {
 async test "BufferedReader::read_line" {
   let file = @fs.open("LICENSE", mode=ReadOnly)
   defer file.close()
-  let reader = @io.BufferedReader::new(file)
+  let reader = BufferedReader::new(file)
   let lines = []
   while reader.read_line() is Some(line) {
     lines.push(line)

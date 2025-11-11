@@ -14,7 +14,10 @@
 
 ///|
 /// A Tcp connection
-struct Tcp(@event_loop.IOHandle)
+struct Tcp {
+  io : @event_loop.IOHandle
+  read_buf : @io.ReaderBuffer
+}
 
 ///|
 #deprecated("use `Tcp` instead")
@@ -22,8 +25,7 @@ pub typealias Tcp as TCP
 
 ///|
 pub fn Tcp::close(self : Tcp) -> Unit {
-  let Tcp(sock) = self
-  sock.close()
+  self.io.close()
 }
 
 ///|
@@ -142,7 +144,7 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   }
   @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
   @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
-  (conn, addr)
+  ({ io: conn, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
 ///|
@@ -161,9 +163,8 @@ pub fn Tcp::enable_keepalive(
   keep_alive_count? : Int = -1,
   keep_alive_interval? : Int = -1,
 ) -> Unit raise {
-  let Tcp(sock) = self
   let ret = enable_keepalive_ffi(
-    sock.fd(),
+    self.io.fd(),
     idle_before_keep_alive,
     keep_alive_count,
     keep_alive_interval,
@@ -193,7 +194,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       raise err
     }
   } noraise {
-    _ => Tcp(conn)
+    _ => { io: conn, read_buf: @io.ReaderBuffer::new() }
   }
 }
 
@@ -206,18 +207,16 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for Tcp with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  let Tcp(sock) = self
-  sock.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
+pub impl @io.Reader for Tcp with _direct_read(self, buf, offset~, max_len~) {
+  self.io.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
+}
+
+///|
+pub impl @io.Reader for Tcp with _get_internal_buffer(self) {
+  self.read_buf
 }
 
 ///|
 pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
-  let Tcp(sock) = self
-  sock.write(buf, offset~, len~, context="@socket.Tcp::write()")
+  self.io.write(buf, offset~, len~, context="@socket.Tcp::write()")
 }

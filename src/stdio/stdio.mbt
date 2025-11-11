@@ -16,21 +16,24 @@
 using @fd_util {type FileKind}
 
 ///|
-struct Input(@event_loop.IOHandle)
-
-///|
-pub fn Input::fd(self : Input) -> Int {
-  self.0.fd()
+struct Input {
+  io : @event_loop.IOHandle
+  read_buf : @io.ReaderBuffer
 }
 
 ///|
-pub impl @io.Reader for Input with read(
-  self,
-  buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
-) {
-  self.0.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+pub fn Input::fd(self : Input) -> Int {
+  self.io.fd()
+}
+
+///|
+pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
+  self.io.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+}
+
+///|
+pub impl @io.Reader for Input with _get_internal_buffer(self) {
+  self.read_buf
 }
 
 ///|
@@ -50,7 +53,10 @@ pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
 /// The standard input channel.
 /// Using this value will result in standard input being set to non-blocking mode.
 /// The standard input will be reset to its original state after the program exits.
-pub let stdin : Input = @event_loop.stdin
+pub let stdin : Input = {
+  io: @event_loop.stdin,
+  read_buf: @io.ReaderBuffer::new(),
+}
 
 ///|
 /// The standard output channel.

@@ -43,13 +43,18 @@ pub fn ServerConnection::close(self : ServerConnection) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with read(
+pub impl @io.Reader for ServerConnection with _direct_read(
   self,
   buf,
-  offset? = 0,
-  max_len? = buf.length() - offset,
+  offset~,
+  max_len~,
 ) {
-  self.reader.read(buf, offset~, max_len~)
+  self.reader._direct_read(buf, offset~, max_len~)
+}
+
+///|
+pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+  self.reader.read_buf
 }
 
 ///|
