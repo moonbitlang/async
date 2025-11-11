@@ -14,7 +14,10 @@
 
 ///|
 pub(open) trait Reader {
+  // API for internal implementation only, do not use
   _get_internal_buffer(Self) -> ReaderBuffer
+
+  // API for internal implementation only, do not use
   async _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
   async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
   async drop(Self, Int) -> Int = _
@@ -27,6 +30,12 @@ pub(open) trait Reader {
 pub(all) suberror ReaderClosed derive(Show)
 
 ///|
+/// `reader.read(dst, offset~, max_len~)` read at most `max_len` bytes from the reader,
+/// storing the result in `dst[offset:]`.
+/// The number of bytes actually read is returned.
+/// Note that the return value may be smaller than `max_len`
+/// if not enough data is *immediately* available.
+/// If EOF is reached and no more data is available, zero will be returned.
 impl Reader with read(self, dst, offset? = 0, max_len? = dst.length() - offset) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
@@ -40,6 +49,10 @@ impl Reader with read(self, dst, offset? = 0, max_len? = dst.length() - offset) 
 }
 
 ///|
+/// `reader.drop(len)` drops `len` number of bytes from the reader.
+/// The number of bytes actually dropped is returned.
+/// `drop` will wait until enough number of bytes is available,
+/// so the return value would be smaller than `len` only when EOF is reached.
 impl Reader with drop(self, len) {
   let buf = self._get_internal_buffer()
   if buf.len >= len {
@@ -63,6 +76,9 @@ impl Reader with drop(self, len) {
 }
 
 ///|
+/// `reader.read_exactly(len)` read exactly `len` number of bytes from the reader.
+/// It will wait until enough number of bytes is available.
+/// If EOF is reached before enough data is read, `ReaderClosed` is raised.
 impl Reader with read_exactly(self, len) {
   let buf = FixedArray::make(len, b'0')
   for received = 0; received < len; {
@@ -76,6 +92,9 @@ impl Reader with read_exactly(self, len) {
 }
 
 ///|
+/// Read all remaining content from the reader.
+/// The return value is a `&io.Data` object, which can be converted to different formats
+/// using `.binary()`, `.text()` or `.json()`.
 impl Reader with read_all(self) {
   let buffer_list = []
   let mut buffer = FixedArray::make(1024, b'0')
@@ -99,6 +118,10 @@ impl Reader with read_all(self) {
 }
 
 ///|
+/// `reader.read_until(sep)` read UTF-8 encoded text from the input stream
+/// until `sep` or EOF is reached.
+/// The segment of input from start of reader to start of `sep` or EOF is returned.
+/// `sep` will be conusmed from the input, but is not included in the return value.
 impl Reader with read_until(self, sep) {
   let sep = @encoding/utf8.encode(sep)
   let buf = self._get_internal_buffer()
