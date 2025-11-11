@@ -16,6 +16,8 @@
 const SEGMENT_SIZE = 1024
 
 ///|
+/// This type is for internal use only,
+/// end users should not use this type directly.
 struct ReaderBuffer {
   mut buf : FixedArray[Byte]
   mut start : Int
