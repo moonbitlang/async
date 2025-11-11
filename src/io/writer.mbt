@@ -45,16 +45,18 @@ impl Writer with write(self, data) {
 
 ///|
 impl Writer with write_reader(self, reader) {
-  let buf = FixedArray::make(1024, b'0')
-  while reader.read(buf, offset=0, max_len=1024) is n && n > 0 {
-    for offset = 0; offset < n; {
-      let progress = self.write_once(
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len=n - offset,
-      )
-      continue offset + progress
-    }
+  let buf = reader._get_internal_buffer()
+  if buf.len > 0 {
+    let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
+    self.write(buf_bytes[buf.start:buf.start + buf.len])
+    buf.start = 0
+    buf.len = 0
+  }
+  buf.enlarge_to(SEGMENT_SIZE)
+  let max_len = buf.buf.length()
+  while reader._direct_read(buf.buf, offset=0, max_len~) is n && n > 0 {
+    let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
+    self.write(buf_bytes[:n])
   }
 }
 
