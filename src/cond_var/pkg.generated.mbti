@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/cond_var"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Cond
+fn Cond::broadcast(Self) -> Unit
+fn Cond::new() -> Self
+fn Cond::signal(Self) -> Unit
+async fn Cond::wait(Self) -> Unit
+
+// Type aliases
+
+// Traits
+

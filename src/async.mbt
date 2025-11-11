@@ -116,6 +116,9 @@ pub using @aqueue {type Queue}
 pub using @semaphore {type Semaphore}
 
 ///|
+pub type CondVar = @cond_var.Cond
+
+///|
 /// `RetryMethod` describes different retry strategies used by various APIs:
 ///
 /// - `Immediate`: failed task will immediately be restarted.
