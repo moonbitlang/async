@@ -55,15 +55,15 @@ async test "spawn error1" {
   defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.sleep(1000)
-        buf.write_string("task 1 finished\n")
-      })
-      root.spawn_bg(fn() {
-        @async.sleep(200)
-        raise Err
-      })
+    root.spawn_bg(fn() {
+      @async.sleep(1000)
+      buf.write_string("task 1 finished\n")
     })
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      raise Err
+    })
+  })
   buf.write_string(result.to_string())
   inspect(buf.to_string(), content="Err(Err)")
 }
@@ -74,15 +74,15 @@ async test "spawn error2" {
   defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.sleep(200)
-        raise Err
-      })
-      root.spawn_bg(fn() {
-        @async.sleep(1000)
-        buf.write_string("task 1 finished\n")
-      })
+    root.spawn_bg(fn() {
+      @async.sleep(200)
+      raise Err
     })
+    root.spawn_bg(fn() {
+      @async.sleep(1000)
+      buf.write_string("task 1 finished\n")
+    })
+  })
   buf.write_string(result.to_string())
   inspect(buf.to_string(), content="Err(Err)")
 }

@@ -317,13 +317,13 @@ pub async fn collect_output(
       cwd?,
     ))
     let stdout = group.spawn(() => {
-        defer r_out.close()
-        r_out.read_all()
-      })
+      defer r_out.close()
+      r_out.read_all()
+    })
     let stderr = group.spawn(() => {
-        defer r_err.close()
-        r_err.read_all()
-      })
+      defer r_err.close()
+      r_err.read_all()
+    })
     (exit_code.wait(), stdout.wait(), stderr.wait())
   })
 }
