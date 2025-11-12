@@ -13,7 +13,7 @@ WARNING: this library is current experimental, API is subject to future change.
 ## Installation
 In your MoonBit project root, run:
 ```bash
-moon add moonbitlang/async@0.12.0
+moon add moonbitlang/async@0.13.0
 ```
 This library provides the following packages:
 
@@ -26,6 +26,7 @@ This library provides the following packages:
 - `moonbitlang/async/process`: spawning system process
 - `moonbitlang/async/aqueue`: asynchronous queue data structure for inter-task communication
 - `moonbitlang/async/semaphore`: semaphore for concurrency control
+- `moonbitlang/async/cond_var`: condition variable with broadcasting support
 - `moonbitlang/async/io`: generic IO abstraction & utilities, such as buffering
 - `moonbitlang/async/http`: HTTP support, including parser & sending request
 
