@@ -192,3 +192,8 @@ void* moonbitlang_async_addrinfo_to_addr(struct addrinfo *addrinfo, int port) {
       return NULL;
   }
 }
+
+int moonbitlang_async_getsockname(int sock, struct sockaddr *addr_out) {
+  socklen_t len = Moonbit_array_length(addr_out);
+  return getsockname(sock, addr_out, &len);
+}

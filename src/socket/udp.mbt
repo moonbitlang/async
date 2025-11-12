@@ -18,7 +18,10 @@
 /// UDP is a connectionless protocol, here "connected" means
 /// the client always send packet to and receive packet from
 /// the specified remote server.
-struct UdpClient(@event_loop.IOHandle)
+struct UdpClient {
+  io : @event_loop.IOHandle
+  family : AddrFamily
+}
 
 ///|
 /// Create a new UDP client connected to server at `addr`.
@@ -32,13 +35,18 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpClient(@event_loop.IOHandle::from_fd(sock, kind=Socket))
+  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|
 pub fn UdpClient::close(self : UdpClient) -> Unit {
-  let UdpClient(sock) = self
-  sock.close()
+  self.io.close()
+}
+
+///|
+/// Get the local address of a UDP client.
+pub fn UdpClient::addr(self : UdpClient) -> Addr {
+  getsockname(self.io.fd(), self.family)
 }
 
 ///|
@@ -63,6 +71,10 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 /// The address of IPv4 peers are represented via IPv4-mapped IPv6 address.
 ///
 /// If `addr` is not `[::]`, `dual_stack` is ignored.
+///
+/// If the port of `addr` is zero, the server will be bound to a random port,
+/// assigned by the operating system.
+/// The actual listen address can be retrieved via `.addr()`.
 pub fn UdpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
@@ -81,6 +93,12 @@ pub fn UdpServer::new(
     @os_error.check_errno(context)
   }
   { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
+}
+
+///|
+/// Get the listen address of a UDP server.
+pub fn UdpServer::addr(self : UdpServer) -> Addr {
+  getsockname(self.io.fd(), self.family)
 }
 
 ///|
@@ -103,8 +121,7 @@ pub async fn UdpClient::recv(
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> Int {
-  let UdpClient(sock) = self
-  sock.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
+  self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
 }
 
 ///|
@@ -153,8 +170,7 @@ pub async fn UdpClient::send(
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Unit {
-  let UdpClient(sock) = self
-  sock.write(buf, offset~, len~, context="@socket.UdpClient::send") |> ignore
+  self.io.write(buf, offset~, len~, context="@socket.UdpClient::send") |> ignore
 }
 
 ///|
