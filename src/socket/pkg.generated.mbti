@@ -38,6 +38,7 @@ impl Show for IpProtocolPreference
 
 #alias(TCP, deprecated)
 type Tcp
+fn Tcp::addr(Self) -> Addr
 fn Tcp::close(Self) -> Unit
 async fn Tcp::connect(Addr) -> Self
 async fn Tcp::connect_to_host(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
@@ -48,17 +49,20 @@ impl @io.Writer for Tcp
 #alias(TCPServer, deprecated)
 type TcpServer
 async fn TcpServer::accept(Self) -> (Tcp, Addr)
+fn TcpServer::addr(Self) -> Addr
 fn TcpServer::close(Self) -> Unit
 fn TcpServer::new(Addr, dual_stack? : Bool) -> Self raise
 async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type UdpClient
+fn UdpClient::addr(Self) -> Addr
 fn UdpClient::close(Self) -> Unit
 fn UdpClient::new(Addr) -> Self raise
 async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
 
 type UdpServer
+fn UdpServer::addr(Self) -> Addr
 fn UdpServer::close(Self) -> Unit
 fn UdpServer::new(Addr, dual_stack? : Bool) -> Self raise
 async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)

@@ -16,6 +16,7 @@
 /// A Tcp connection
 struct Tcp {
   io : @event_loop.IOHandle
+  family : AddrFamily
   read_buf : @io.ReaderBuffer
 }
 
@@ -49,6 +50,10 @@ pub typealias TcpServer as TCPServer
 /// The address of IPv4 clients are represented via IPv4-mapped IPv6 address.
 ///
 /// If `addr` is not `[::]`, `dual_stack` is ignored.
+///
+/// If the port of `addr` is zero, the server will be bound to a random port,
+/// assigned by the operating system.
+/// The actual listen address can be retrieved via `.addr()`.
 pub fn TcpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
@@ -71,6 +76,12 @@ pub fn TcpServer::new(
     @os_error.check_errno(context)
   }
   { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
+}
+
+///|
+/// Get the address the server is listening on
+pub fn TcpServer::addr(server : TcpServer) -> Addr {
+  getsockname(server.io.fd(), server.family)
 }
 
 ///|
@@ -137,7 +148,7 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   }
   @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
   @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
-  ({ io: conn, read_buf: @io.ReaderBuffer::new() }, addr)
+  ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
 ///|
@@ -184,8 +195,14 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       raise err
     }
   } noraise {
-    _ => { io: conn, read_buf: @io.ReaderBuffer::new() }
+    _ => { io: conn, family, read_buf: @io.ReaderBuffer::new() }
   }
+}
+
+///|
+/// Get the local address of a TCP connection.
+pub fn Tcp::addr(sock : Tcp) -> Addr {
+  getsockname(sock.io.fd(), sock.family)
 }
 
 ///|

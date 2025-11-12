@@ -64,3 +64,14 @@ extern "C" fn enable_keepalive_ffi(
   keep_count : Int,
   keep_intv : Int,
 ) -> Int = "moonbitlang_async_enable_keepalive"
+
+///|
+#borrow(addr_out)
+extern "C" fn getsockname_ffi(sock : Int, addr_out : Addr) -> Int = "moonbitlang_async_getsockname"
+
+///|
+fn getsockname(sock : Int, family : AddrFamily) -> Addr {
+  let addr = Addr::empty(family)
+  guard getsockname_ffi(sock, addr) == 0
+  addr
+}
