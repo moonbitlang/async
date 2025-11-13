@@ -369,6 +369,7 @@ pub async fn ServerConnection::send_close(
   let reason_data = @encoding/utf8.encode(reason)
   if reason_data.length() > 123 {
     // Close reason too long
+    // TODO: should we close the connection anyway?
     fail("Close reason too long")
   }
   let payload_size = 2 + reason_data.length()
