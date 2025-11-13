@@ -17,7 +17,7 @@
 struct Client {
   conn : @socket.Tcp
   rand : @random.Rand
-  mut closed : CloseCode?
+  mut closed : WebSocketError?
 }
 
 ///|
@@ -139,7 +139,7 @@ pub async fn Client::connect(
 pub fn Client::close(self : Client) -> Unit {
   if self.closed is None {
     self.conn.close()
-    self.closed = Some(Normal)
+    self.closed = Some(ConnectionClosed(Normal, None))
   }
 }
 
@@ -147,16 +147,21 @@ pub fn Client::close(self : Client) -> Unit {
 pub async fn Client::send_close(
   self : Client,
   code? : CloseCode = Normal,
-  reason? : BytesView = "",
+  reason? : String,
 ) -> Unit {
   if self.closed is Some(_) {
     return
   }
   let mut payload = FixedArray::make(0, b'\x00')
   let code_int = code.to_int()
-  payload = FixedArray::make(2 + reason.length(), b'\x00')
+  let reason_bytes = if reason is Some(r) {
+    @encoding/utf8.encode(r)
+  } else {
+    b""
+  }
+  payload = FixedArray::make(2 + reason_bytes.length(), b'\x00')
   payload.unsafe_write_uint16_be(0, code_int.to_uint16())
-  payload.blit_from_bytesview(2, reason)
+  payload.blit_from_bytesview(2, reason_bytes)
   write_frame(
     self.conn,
     true,
@@ -164,14 +169,14 @@ pub async fn Client::send_close(
     payload.unsafe_reinterpret_as_bytes(),
     self.rand.int().to_be_bytes(),
   )
-  self.closed = Some(code)
+  self.closed = Some(ConnectionClosed(code, reason))
 }
 
 ///|
 /// Send a text message
 pub async fn Client::send_text(self : Client, text : String) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   let payload = @encoding/utf8.encode(text)
   write_frame(
@@ -187,7 +192,7 @@ pub async fn Client::send_text(self : Client, text : String) -> Unit {
 /// Send a binary message
 pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   write_frame(
     self.conn,
@@ -205,7 +210,7 @@ pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
 /// indicating if a pong was received within a timeout
 async fn Client::_ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   write_frame(
     self.conn,
@@ -222,7 +227,7 @@ async fn Client::_ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
 /// This is done automatically, so it is not exposed in the public API
 async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   write_frame(
     self.conn,
@@ -238,7 +243,7 @@ async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
 /// Returns the complete message after assembling all frames
 pub async fn Client::receive(self : Client) -> Message {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   let frames : Array[Frame] = []
   let mut first_opcode : OpCode? = None
@@ -250,18 +255,20 @@ pub async fn Client::receive(self : Client) -> Message {
       OpCode::Close => {
         // Parse close code and reason
         let mut close_code = Normal
-        if frame.payload.length() >= 2 {
-          let payload_arr = frame.payload.to_fixedarray()
-          let code_int = (payload_arr[0].to_int() << 8) |
-            payload_arr[1].to_int()
-          close_code = CloseCode::from_int(code_int) catch {
-            FrameError =>
-              // Invalid close code, use ProtocolError
-              ProtocolError
-          }
+        let mut reason : String? = None
+        if frame.payload is [u16be(code), .. data] {
+          close_code = CloseCode::from_int(code.reinterpret_as_int())
+          reason = Some(
+            @encoding/utf8.decode(data) catch {
+              _ => {
+                close_code = ProtocolError
+                ""
+              }
+            },
+          )
         }
-        self.closed = Some(close_code)
-        raise ConnectionClosed(close_code)
+        self.closed = Some(ConnectionClosed(close_code, reason))
+        raise ConnectionClosed(close_code, reason)
       }
       OpCode::Ping => {
         // Auto-respond to ping with pong

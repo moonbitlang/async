@@ -32,14 +32,6 @@ test "CloseCode conversions" {
   assert_eq(CloseCode::from_int(1008), CloseCode::PolicyViolation)
   assert_eq(CloseCode::from_int(1009), CloseCode::MessageTooBig)
   assert_eq(CloseCode::from_int(1011), CloseCode::InternalError)
-
-  // Invalid codes
-  ignore(CloseCode::from_int(999)) catch {
-    FrameError => ()
-  }
-  ignore(CloseCode::from_int(9999)) catch {
-    FrameError => ()
-  }
 }
 
 ///|

@@ -74,7 +74,9 @@ pub(all) enum CloseCode {
   InvalidFramePayload // 1007
   PolicyViolation // 1008
   MessageTooBig // 1009
+  MissingExtension // 1010
   InternalError // 1011
+  Other(Int)
 } derive(Show, Eq)
 
 ///|
@@ -88,12 +90,14 @@ fn CloseCode::to_int(self : CloseCode) -> Int {
     InvalidFramePayload => 1007
     PolicyViolation => 1008
     MessageTooBig => 1009
+    MissingExtension => 1010
     InternalError => 1011
+    Other(i) => i
   }
 }
 
 ///|
-fn CloseCode::from_int(code : Int) -> CloseCode raise FrameError {
+fn CloseCode::from_int(code : Int) -> CloseCode {
   match code {
     1000 => Normal
     1001 => GoingAway
@@ -103,14 +107,15 @@ fn CloseCode::from_int(code : Int) -> CloseCode raise FrameError {
     1007 => InvalidFramePayload
     1008 => PolicyViolation
     1009 => MessageTooBig
+    1010 => MissingExtension
     1011 => InternalError
-    _ => raise FrameError
+    _ => Other(code)
   }
 }
 
 ///|
 pub suberror WebSocketError {
-  ConnectionClosed(CloseCode) // Connection was closed
+  ConnectionClosed(CloseCode, String?) // Connection was closed
   InvalidHandshake(String) // Handshake failed with specific reason
 } derive(Show)
 

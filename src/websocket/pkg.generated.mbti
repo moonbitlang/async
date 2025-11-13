@@ -10,9 +10,8 @@ async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr)
 
 // Errors
 pub suberror WebSocketError {
-  ConnectionClosed(CloseCode)
+  ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
-  FrameError(String)
 }
 impl Show for WebSocketError
 
@@ -22,6 +21,7 @@ fn Client::close(Self) -> Unit
 async fn Client::connect(String, String, port? : Int, headers? : Map[String, String]) -> Self
 async fn Client::receive(Self) -> Message
 async fn Client::send_binary(Self, Bytes) -> Unit
+async fn Client::send_close(Self, code? : CloseCode, reason? : String) -> Unit
 async fn Client::send_text(Self, String) -> Unit
 
 pub(all) enum CloseCode {
@@ -33,7 +33,9 @@ pub(all) enum CloseCode {
   InvalidFramePayload
   PolicyViolation
   MessageTooBig
+  MissingExtension
   InternalError
+  Other(Int)
 }
 impl Eq for CloseCode
 impl Show for CloseCode
@@ -48,7 +50,7 @@ type ServerConnection
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::receive(Self) -> Message
 async fn ServerConnection::send_binary(Self, BytesView) -> Unit
-async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : BytesView) -> Unit
+async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : String) -> Unit
 async fn ServerConnection::send_text(Self, StringView) -> Unit
 
 // Type aliases
