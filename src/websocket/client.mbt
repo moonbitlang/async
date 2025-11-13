@@ -254,7 +254,11 @@ pub async fn Client::receive(self : Client) -> Message {
           let payload_arr = frame.payload.to_fixedarray()
           let code_int = (payload_arr[0].to_int() << 8) |
             payload_arr[1].to_int()
-          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
+          close_code = CloseCode::from_int(code_int) catch {
+            FrameError =>
+              // Invalid close code, use ProtocolError
+              ProtocolError
+          }
         }
         self.closed = Some(close_code)
         raise ConnectionClosed(close_code)

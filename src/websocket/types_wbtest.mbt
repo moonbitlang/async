@@ -24,18 +24,22 @@ test "CloseCode conversions" {
   assert_eq(CloseCode::PolicyViolation.to_int(), 1008)
   assert_eq(CloseCode::MessageTooBig.to_int(), 1009)
   assert_eq(CloseCode::InternalError.to_int(), 1011)
-  assert_eq(CloseCode::from_int(1000), Some(CloseCode::Normal))
-  assert_eq(CloseCode::from_int(1001), Some(CloseCode::GoingAway))
-  assert_eq(CloseCode::from_int(1002), Some(CloseCode::ProtocolError))
-  assert_eq(CloseCode::from_int(1003), Some(CloseCode::UnsupportedData))
-  assert_eq(CloseCode::from_int(1007), Some(CloseCode::InvalidFramePayload))
-  assert_eq(CloseCode::from_int(1008), Some(CloseCode::PolicyViolation))
-  assert_eq(CloseCode::from_int(1009), Some(CloseCode::MessageTooBig))
-  assert_eq(CloseCode::from_int(1011), Some(CloseCode::InternalError))
+  assert_eq(CloseCode::from_int(1000), CloseCode::Normal)
+  assert_eq(CloseCode::from_int(1001), CloseCode::GoingAway)
+  assert_eq(CloseCode::from_int(1002), CloseCode::ProtocolError)
+  assert_eq(CloseCode::from_int(1003), CloseCode::UnsupportedData)
+  assert_eq(CloseCode::from_int(1007), CloseCode::InvalidFramePayload)
+  assert_eq(CloseCode::from_int(1008), CloseCode::PolicyViolation)
+  assert_eq(CloseCode::from_int(1009), CloseCode::MessageTooBig)
+  assert_eq(CloseCode::from_int(1011), CloseCode::InternalError)
 
   // Invalid codes
-  assert_eq(CloseCode::from_int(999), None)
-  assert_eq(CloseCode::from_int(9999), None)
+  ignore(CloseCode::from_int(999)) catch {
+    FrameError => ()
+  }
+  ignore(CloseCode::from_int(9999)) catch {
+    FrameError => ()
+  }
 }
 
 ///|

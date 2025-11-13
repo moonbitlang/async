@@ -36,7 +36,7 @@ fn OpCode::to_byte(self : OpCode) -> Byte {
 }
 
 ///|
-fn OpCode::from_byte(byte : Byte) -> OpCode raise {
+fn OpCode::from_byte(byte : Byte) -> OpCode raise FrameError {
   match byte {
     b'\x00' => Continuation
     b'\x01' => Text
@@ -44,7 +44,7 @@ fn OpCode::from_byte(byte : Byte) -> OpCode raise {
     b'\x08' => Close
     b'\x09' => Ping
     b'\x0A' => Pong
-    _ => raise FrameError("Invalid opcode byte: \{byte}")
+    _ => raise FrameError
   }
 }
 
@@ -93,18 +93,18 @@ fn CloseCode::to_int(self : CloseCode) -> Int {
 }
 
 ///|
-fn CloseCode::from_int(code : Int) -> CloseCode? {
+fn CloseCode::from_int(code : Int) -> CloseCode raise FrameError {
   match code {
-    1000 => Some(Normal)
-    1001 => Some(GoingAway)
-    1002 => Some(ProtocolError)
-    1003 => Some(UnsupportedData)
-    1006 => Some(Abnormal)
-    1007 => Some(InvalidFramePayload)
-    1008 => Some(PolicyViolation)
-    1009 => Some(MessageTooBig)
-    1011 => Some(InternalError)
-    _ => None
+    1000 => Normal
+    1001 => GoingAway
+    1002 => ProtocolError
+    1003 => UnsupportedData
+    1006 => Abnormal
+    1007 => InvalidFramePayload
+    1008 => PolicyViolation
+    1009 => MessageTooBig
+    1011 => InternalError
+    _ => raise FrameError
   }
 }
 
@@ -112,5 +112,7 @@ fn CloseCode::from_int(code : Int) -> CloseCode? {
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode) // Connection was closed
   InvalidHandshake(String) // Handshake failed with specific reason
-  FrameError(String) // Malformed frame with details
 } derive(Show)
+
+///|
+priv suberror FrameError
