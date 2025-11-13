@@ -115,7 +115,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
       FrameError => {
         // On frame error, close the connection and communicate the error
         if self.closed is None {
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -139,9 +138,8 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         // Parse close code and reason
         // Ref: https://datatracker.ietf.org/doc/html/rfc6455#section-5.5.1
         let mut close_code = Normal
-        if frame.payload is [h1, h2, ..] {
-          let code_int = (h1.to_int() << 8) | h2.to_int()
-          close_code = CloseCode::from_int(code_int) catch {
+        if frame.payload is [u16be(code), ..] {
+          close_code = CloseCode::from_int(code.reinterpret_as_int()) catch {
             FrameError =>
               // Invalid close code, use ProtocolError
               ProtocolError
@@ -150,7 +148,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         // If we didn't send close first, respond with close
         if self.closed is None {
           // Echo the close frame back and close
-          self.closed = Some(close_code)
           self.send_close(code=close_code) catch {
             _ => ()
           }
@@ -161,7 +158,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
       Ping => {
         if !frame.fin {
           // Control frames MUST NOT be fragmented
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -184,7 +180,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         // TODO : track pong responses for ping timeouts
         if !frame.fin {
           // Control frames MUST NOT be fragmented
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -195,7 +190,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         if first_opcode is Some(_) {
           // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
           // We don't have extensions, so fragments MUST NOT be interleaved
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -208,7 +202,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
               // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-8.1
               // We MUST Fail the WebSocket Connection if the payload is not
               // valid UTF-8
-              self.closed = Some(InvalidFramePayload)
               self.send_close(code=InvalidFramePayload) catch {
                 _ => ()
               }
@@ -228,7 +221,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         if first_opcode is Some(_) {
           // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
           // We don't have extensions, so fragments MUST NOT be interleaved
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -247,7 +239,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
       Continuation => {
         if first_opcode is None {
           // Continuation frame without a starting frame
-          self.closed = Some(ProtocolError)
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
@@ -271,7 +262,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
             Some(Text) => {
               let text = @encoding/utf8.decode(message_data) catch {
                 _ => {
-                  self.closed = Some(InvalidFramePayload)
                   self.send_close(code=InvalidFramePayload) catch {
                     _ => ()
                   }
@@ -378,7 +368,6 @@ pub async fn ServerConnection::send_close(
   if self.closed is Some(c) {
     raise ConnectionClosed(c)
   }
-  self.closed = Some(code)
   let payload_size = 2 + reason.length()
   let payload = FixedArray::make(payload_size, b'\x00')
 
@@ -400,6 +389,9 @@ pub async fn ServerConnection::send_close(
     payload.unsafe_reinterpret_as_bytes(),
     [],
   )
+  // Set closed status AFTER the frame has been written
+  // This ensures the frame is sent before any connection cleanup
+  self.closed = Some(code)
 }
 
 ///|
