@@ -58,7 +58,12 @@ pub async fn Client::connect(
   let key = base64_encode(nonce.unsafe_reinterpret_as_bytes())
   let request = "GET \{path} HTTP/1.1\r\n"
   conn.write(request)
-  conn.write("Host: \{host}\r\n")
+  let host_header = if port == 80 || port == 443 {
+    host
+  } else {
+    "\{host}:\{port}"
+  }
+  conn.write("Host: \{host_header}\r\n")
   conn.write("Upgrade: websocket\r\n")
   conn.write("Connection: Upgrade\r\n")
   conn.write("Sec-WebSocket-Key: \{key}\r\n")
@@ -149,17 +154,17 @@ pub async fn Client::send_close(
   code? : CloseCode = Normal,
   reason? : String,
 ) -> Unit {
-  if self.closed is Some(_) {
-    return
+  if self.closed is Some(e) {
+    raise e
   }
-  let mut payload = FixedArray::make(0, b'\x00')
   let code_int = code.to_int()
-  let reason_bytes = if reason is Some(r) {
-    @encoding/utf8.encode(r)
-  } else {
-    b""
+  let reason_bytes = @encoding/utf8.encode(reason.unwrap_or(""))
+  if reason_bytes.length() > 123 {
+    // Close reason too long
+    // TODO: should we close the connection anyway?
+    fail("Close reason too long")
   }
-  payload = FixedArray::make(2 + reason_bytes.length(), b'\x00')
+  let payload = FixedArray::make(2 + reason_bytes.length(), b'\x00')
   payload.unsafe_write_uint16_be(0, code_int.to_uint16())
   payload.blit_from_bytesview(2, reason_bytes)
   write_frame(
@@ -169,12 +174,16 @@ pub async fn Client::send_close(
     payload.unsafe_reinterpret_as_bytes(),
     self.rand.int().to_be_bytes(),
   )
+  // Wait until the server acknowledges the close
+  ignore(read_frame(self.conn)) catch {
+    _ => ()
+  }
   self.closed = Some(ConnectionClosed(code, reason))
 }
 
 ///|
 /// Send a text message
-pub async fn Client::send_text(self : Client, text : String) -> Unit {
+pub async fn Client::send_text(self : Client, text : StringView) -> Unit {
   if self.closed is Some(code) {
     raise code
   }
@@ -190,7 +199,7 @@ pub async fn Client::send_text(self : Client, text : String) -> Unit {
 
 ///|
 /// Send a binary message
-pub async fn Client::send_binary(self : Client, data : Bytes) -> Unit {
+pub async fn Client::send_binary(self : Client, data : BytesView) -> Unit {
   if self.closed is Some(code) {
     raise code
   }
@@ -247,67 +256,127 @@ pub async fn Client::receive(self : Client) -> Message {
   }
   let frames : Array[Frame] = []
   let mut first_opcode : OpCode? = None
-  for {
+  while self.closed is None {
     let frame = read_frame(self.conn)
 
     // Handle control frames immediately
     match frame.opcode {
-      OpCode::Close => {
+      Close => {
         // Parse close code and reason
+        // Ref: https://datatracker.ietf.org/doc/html/rfc6455#section-5.5.1
         let mut close_code = Normal
         let mut reason : String? = None
-        if frame.payload is [u16be(code), .. data] {
+        if frame.payload is [u16be(code), .. rest] {
           close_code = CloseCode::from_int(code.reinterpret_as_int())
-          reason = Some(
-            @encoding/utf8.decode(data) catch {
-              _ => {
-                close_code = ProtocolError
-                ""
-              }
-            },
-          )
+          reason = Some(@encoding/utf8.decode(rest)) catch {
+            _ => {
+              // Invalid reason, fail fast
+              close_code = ProtocolError
+              None
+            }
+          }
+        } else {
+          guard frame.payload is [] else {
+            // Invalid close payload
+            close_code = ProtocolError
+          }
         }
-        self.closed = Some(ConnectionClosed(close_code, reason))
-        raise ConnectionClosed(close_code, reason)
+        // If we didn't send close first, respond with close
+        if self.closed is None {
+          // Echo the close frame back and close
+          self.send_close(code=close_code, reason?) catch {
+            _ => ()
+          }
+        }
+        continue
       }
-      OpCode::Ping => {
+      Ping =>
         // Auto-respond to ping with pong
         self.pong(data=frame.payload)
-        continue
-      }
-      OpCode::Pong =>
+      Pong =>
         // Ignore pong frames
-        continue
-      _ => ()
-    }
-
-    // Track the first opcode for message type
-    if first_opcode is None {
-      first_opcode = Some(frame.opcode)
-    }
-    frames.push(frame)
-
-    // If this is the final frame, assemble the message
-    if frame.fin {
-      break
+        ()
+      Text =>
+        if first_opcode is Some(_) {
+          // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+          // We don't have extensions, so fragments MUST NOT be interleaved
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+        } else if frame.fin {
+          // Single-frame text message
+          return Message::Text(@encoding/utf8.decode(frame.payload)) catch {
+            _ => {
+              // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-8.1
+              // We MUST Fail the WebSocket Connection if the payload is not
+              // valid UTF-8
+              self.send_close(code=InvalidFramePayload) catch {
+                _ => ()
+              }
+              continue
+            }
+          }
+        } else {
+          first_opcode = Some(Text)
+          // Start of fragmented text message
+          frames.push(frame)
+        }
+      Binary =>
+        if first_opcode is Some(_) {
+          // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+          // We don't have extensions, so fragments MUST NOT be interleaved
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+        } else if frame.fin {
+          // Single-frame binary message
+          return Message::Binary(frame.payload)
+        } else {
+          first_opcode = Some(Binary)
+          frames.push(frame)
+        }
+      Continuation => {
+        if first_opcode is None {
+          // Continuation frame without a starting frame
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          continue
+        }
+        frames.push(frame)
+        if frame.fin {
+          // Final fragment received, assemble message
+          let total_size = frames.fold(init=0, fn(acc, f) {
+            acc + f.payload.length()
+          })
+          let data = FixedArray::make(total_size, b'\x00')
+          let mut offset = 0
+          for f in frames {
+            data.blit_from_bytes(offset, f.payload, 0, f.payload.length())
+            offset += f.payload.length()
+          }
+          let message_data = data.unsafe_reinterpret_as_bytes()
+          match first_opcode {
+            Some(Text) => {
+              let text = @encoding/utf8.decode(message_data) catch {
+                _ => {
+                  self.send_close(code=InvalidFramePayload) catch {
+                    _ => ()
+                  }
+                  continue
+                }
+              }
+              return Message::Text(text)
+            }
+            Some(Binary) => return Message::Binary(message_data)
+            _ => panic()
+          }
+          // Reset for next message
+          frames.clear()
+          first_opcode = None
+        }
+      }
     }
   }
-
-  // Assemble message from frames
-  let total_size = frames.fold(init=0, fn(acc, f) { acc + f.payload.length() })
-  let data = FixedArray::make(total_size, b'\x00')
-  let mut offset = 0
-  for frame in frames {
-    let payload_arr = frame.payload.to_fixedarray()
-    for i = 0; i < payload_arr.length(); i = i + 1 {
-      data[offset + i] = payload_arr[i]
-    }
-    offset += payload_arr.length()
-  }
-  let message_data = data.unsafe_reinterpret_as_bytes()
-  match first_opcode {
-    Some(OpCode::Text) => Text(@encoding/utf8.decode_lossy(message_data))
-    Some(OpCode::Binary) => Binary(message_data)
-    _ => Binary(message_data)
-  }
+  raise self.closed.unwrap()
 }
