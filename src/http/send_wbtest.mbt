@@ -343,3 +343,38 @@ async test "send_request stream2" {
     )
   })
 }
+
+///|
+async test "send invalid header" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(fn() {
+      defer w.close()
+      let sender = Sender::new(w, headers={
+        "Content-Length": "42",
+        "Content-Encoding": "chunked",
+      })
+      sender.send_request(Get, "/", extra_headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+        "Content-Length": "42",
+        "Content-Encoding": "chunked",
+      })
+      sender.end_body()
+    })
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|GET / HTTP/1.1\r
+        #|Host: x.y.org\r
+        #|User-Agent: MoonBit\r
+        #|Transfer-Encoding: chunked\r
+        #|\r
+        #|0\r
+        #|\r
+        #|
+      ),
+    )
+  })
+}
