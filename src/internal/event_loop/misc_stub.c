@@ -24,9 +24,12 @@ int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
   return connect(sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
 }
 
-int moonbitlang_async_accept(int sockfd, moonbit_bytes_t addr_buf) {
-  socklen_t socklen = sizeof(struct sockaddr_storage); // Use storage size for IPv4/IPv6
-  return accept(sockfd, (struct sockaddr*)addr_buf, &socklen);
+int moonbitlang_async_accept(int sockfd, struct sockaddr *addr) {
+  socklen_t socklen = 
+    addr->sa_family == AF_INET
+    ? sizeof(struct sockaddr_in)
+    : sizeof(struct sockaddr_in6);
+  return accept(sockfd, (struct sockaddr*)addr, &socklen);
 }
 
 int moonbitlang_async_getsockerr(int sockfd) {
@@ -50,9 +53,12 @@ int moonbitlang_async_recvfrom(
   char *buf,
   int offset,
   int len,
-  moonbit_bytes_t addr
+  struct sockaddr *addr
 ) {
-  socklen_t addr_size = sizeof(struct sockaddr_storage); // Use storage size for IPv4/IPv6
+  socklen_t addr_size =
+    addr->sa_family == AF_INET
+    ? sizeof(struct sockaddr_in)
+    : sizeof(struct sockaddr_in6);
   return recvfrom(sock, buf + offset, len, 0, (struct sockaddr*)addr, &addr_size);
 }
 
@@ -61,19 +67,12 @@ int moonbitlang_async_sendto(
   char *buf,
   int offset,
   int len,
-  moonbit_bytes_t addr
+  struct sockaddr *addr
 ) {
-  struct sockaddr *sa = (struct sockaddr*)addr;
-  socklen_t addr_len;
+  socklen_t addr_len =
+    addr->sa_family == AF_INET
+    ? sizeof(struct sockaddr_in)
+    : sizeof(struct sockaddr_in6);
   
-  // Use the address family to determine the actual length
-  if (sa->sa_family == AF_INET) {
-    addr_len = sizeof(struct sockaddr_in);
-  } else if (sa->sa_family == AF_INET6) {
-    addr_len = sizeof(struct sockaddr_in6);
-  } else {
-    addr_len = sizeof(struct sockaddr_storage);
-  }
-  
-  return sendto(sock, buf + offset, len, 0, sa, addr_len);
+  return sendto(sock, buf + offset, len, 0, addr, addr_len);
 }

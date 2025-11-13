@@ -13,6 +13,12 @@
 // limitations under the License.
 
 ///|
+priv enum AddrFamily {
+  IPv4 = 4
+  IPv6 = 6
+}
+
+///|
 /// IPv4 address + port number
 struct Addr(Bytes) derive(Eq, Compare, Hash)
 
@@ -20,7 +26,7 @@ struct Addr(Bytes) derive(Eq, Compare, Hash)
 pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
 
 ///|
-extern "C" fn Addr::empty() -> Addr = "moonbitlang_async_make_empty_addr"
+extern "C" fn Addr::empty(family : AddrFamily) -> Addr = "moonbitlang_async_make_empty_addr"
 
 ///|
 #borrow(ip)
@@ -37,6 +43,15 @@ pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_ge
 ///|
 #borrow(addr)
 pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
+
+///|
+fn Addr::family(self : Addr) -> AddrFamily {
+  if self.is_ipv6() {
+    IPv6
+  } else {
+    IPv4
+  }
+}
 
 ///|
 #borrow(addr)
