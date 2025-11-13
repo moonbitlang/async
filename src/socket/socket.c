@@ -25,12 +25,8 @@
 #include <string.h>
 #include <moonbit.h>
 
-int moonbitlang_async_make_tcp_socket() {
-  return socket(AF_INET, SOCK_STREAM, 0);
-}
-
-int moonbitlang_async_make_tcp_socket_ipv6() {
-  return socket(AF_INET6, SOCK_STREAM, 0);
+int moonbitlang_async_make_tcp_socket(int family) {
+  return socket(family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, 0);
 }
 
 int moonbitlang_async_disable_nagle(int sock) {
@@ -38,28 +34,16 @@ int moonbitlang_async_disable_nagle(int sock) {
   return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
 }
 
-int moonbitlang_async_make_udp_socket() {
-  return socket(AF_INET, SOCK_DGRAM, 0);
+int moonbitlang_async_make_udp_socket(int family) {
+  return socket(family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);
 }
 
-int moonbitlang_async_make_udp_socket_ipv6() {
-  return socket(AF_INET6, SOCK_DGRAM, 0);
-}
-
-int moonbitlang_async_bind(int sockfd, struct sockaddr_in *addr) {
-  return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in));
-}
-
-int moonbitlang_async_bind_ipv6(int sockfd, struct sockaddr_in6 *addr) {
-  return bind(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in6));
+int moonbitlang_async_bind(int sockfd, struct sockaddr *addr) {
+  return bind(sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
 }
 
 int moonbitlang_async_set_ipv6_only(int sockfd, int ipv6_only) {
   return setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof(int));
-}
-
-int moonbitlang_async_connect_ipv6(int sockfd, struct sockaddr_in6 *addr) {
-  return connect(sockfd, (struct sockaddr*)addr, sizeof(struct sockaddr_in6));
 }
 
 int moonbitlang_async_listen(int sockfd) {
@@ -119,13 +103,22 @@ void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
   return addr;
 }
 
-void *moonbitlang_async_make_empty_addr() {
-  // Create a sockaddr_storage structure large enough to hold both IPv4 and IPv6
-  struct sockaddr_storage *addr = (struct sockaddr_storage*)moonbit_make_bytes(
-    sizeof(struct sockaddr_storage),
-    0
-  );
-  return addr;
+void *moonbitlang_async_make_empty_addr(int family) {
+  if (family == 4) {
+    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
+      sizeof(struct sockaddr_in),
+      0
+    );
+    addr->sa_family = AF_INET;
+    return addr;
+  } else {
+    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
+      sizeof(struct sockaddr_in6),
+      0
+    );
+    addr->sa_family = AF_INET6;
+    return addr;
+  };
 }
 
 void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port) {

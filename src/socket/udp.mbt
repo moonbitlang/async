@@ -26,17 +26,9 @@ struct UdpClient(@event_loop.IOHandle)
 /// the specified remote server.
 pub fn UdpClient::new(server : Addr) -> UdpClient raise {
   let context = "@socket.UdpClient::new()"
-  let sock = if server.is_ipv6() {
-    make_udp_socket_ipv6(context)
-  } else {
-    make_udp_socket(context)
-  }
-  let connect_result = if server.is_ipv6() {
-    connect_ipv6_ffi(sock, server)
-  } else {
-    connect_ffi(sock, server)
-  }
-  if 0 != connect_result {
+  let family = server.family()
+  let sock = make_udp_socket(family, context~)
+  if 0 != connect_ffi(sock, server) {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
@@ -51,12 +43,14 @@ pub fn UdpClient::close(self : UdpClient) -> Unit {
 
 ///|
 /// A UDP server bound to a listen address and receive packets from clients.
-struct UdpServer(@event_loop.IOHandle)
+struct UdpServer {
+  io : @event_loop.IOHandle
+  family : AddrFamily
+}
 
 ///|
 pub fn UdpServer::close(self : UdpServer) -> Unit {
-  let UdpServer(sock) = self
-  sock.close()
+  self.io.close()
 }
 
 ///|
@@ -74,27 +68,19 @@ pub fn UdpServer::new(
   dual_stack? : Bool = true,
 ) -> UdpServer raise {
   let context = "@socket.UdpServer::new()"
-  let sock = if addr.is_ipv6() {
-    make_udp_socket_ipv6(context)
-  } else {
-    make_udp_socket(context)
-  }
+  let family = addr.family()
+  let sock = make_udp_socket(family, context~)
   if addr.is_ipv6() && addr.is_ipv6_wildcard() {
     if 0 != set_ipv6_only(sock, !dual_stack) {
       @fd_util.close(sock, context~)
       @os_error.check_errno(context)
     }
   }
-  let bind_result = if addr.is_ipv6() {
-    bind_ipv6_ffi(sock, addr)
-  } else {
-    bind_ffi(sock, addr)
-  }
-  if bind_result != 0 {
+  if bind_ffi(sock, addr) != 0 {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  UdpServer(@event_loop.IOHandle::from_fd(sock, kind=Socket))
+  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|
@@ -141,10 +127,9 @@ pub async fn UdpServer::recvfrom(
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> (Int, Addr) {
-  let UdpServer(sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
-  let addr = Addr::empty()
-  let n_read = sock.recvfrom(
+  let addr = Addr::empty(self.family)
+  let n_read = self.io.recvfrom(
     buf,
     offset~,
     len=max_len,
@@ -187,8 +172,7 @@ pub async fn UdpServer::sendto(
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Unit {
-  let UdpServer(sock) = self
-  sock.sendto(
+  self.io.sendto(
     buf,
     offset~,
     len~,

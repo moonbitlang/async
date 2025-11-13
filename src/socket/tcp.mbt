@@ -29,7 +29,10 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 }
 
 ///|
-struct TcpServer(@event_loop.IOHandle)
+struct TcpServer {
+  io : @event_loop.IOHandle
+  family : AddrFamily
+}
 
 ///|
 #deprecated("use `TcpServer` instead")
@@ -51,23 +54,15 @@ pub fn TcpServer::new(
   dual_stack? : Bool = true,
 ) -> TcpServer raise {
   let context = "@socket.TcpServer::new()"
-  let sock = if addr.is_ipv6() {
-    make_tcp_socket_ipv6(context)
-  } else {
-    make_tcp_socket(context)
-  }
+  let family = addr.family()
+  let sock = make_tcp_socket(family, context~)
   if addr.is_ipv6() && addr.is_ipv6_wildcard() {
     if 0 != set_ipv6_only(sock, !dual_stack) {
       @fd_util.close(sock, context~)
       @os_error.check_errno(context)
     }
   }
-  let bind_result = if addr.is_ipv6() {
-    bind_ipv6_ffi(sock, addr)
-  } else {
-    bind_ffi(sock, addr)
-  }
-  if bind_result != 0 {
+  if bind_ffi(sock, addr) != 0 {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
@@ -75,7 +70,7 @@ pub fn TcpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  TcpServer(@event_loop.IOHandle::from_fd(sock, kind=Socket))
+  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|
@@ -126,18 +121,16 @@ pub async fn TcpServer::run_forever(
 
 ///|
 pub fn TcpServer::close(self : TcpServer) -> Unit {
-  let TcpServer(sock) = self
-  sock.close()
+  self.io.close()
 }
 
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
-  let TcpServer(listen_sock) = self
   // Create a big enough Addr to hold both IPv4 and IPv6 address
-  let addr = Addr::empty()
-  let conn = listen_sock.accept(addr.0, context="@socket.TcpServer::accept")
+  let addr = Addr::empty(self.family)
+  let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept")
   if disable_nagle(conn.fd()) < 0 {
     @fd_util.close(conn.fd(), context="@socket.TcpServer::accept()")
     @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
@@ -178,11 +171,8 @@ pub fn Tcp::enable_keepalive(
 /// Make connection to a remote address using `connect(2)` system call.
 pub async fn Tcp::connect(addr : Addr) -> Tcp {
   let context = "@socket.Tcp::connect()"
-  let sock = if addr.is_ipv6() {
-    make_tcp_socket_ipv6(context)
-  } else {
-    make_tcp_socket(context)
-  }
+  let family = addr.family()
+  let sock = make_tcp_socket(family, context~)
   if disable_nagle(sock) < 0 {
     @fd_util.close(sock, context~)
     @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
