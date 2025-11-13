@@ -29,13 +29,20 @@ priv struct Sender {
 }
 
 ///|
+let forbidden_headers : Set[String] = Set::from_array([
+  "content-length", "content-encoding",
+])
+
+///|
 fn[W : @io.Writer] Sender::new(
   w : W,
   headers? : Map[String, String] = {},
 ) -> Sender {
   let header_text = @buffer.new()
   for k, v in headers {
-    header_text.write_string_utf8("\{k}: \{v}\r\n")
+    if !forbidden_headers.contains(k.to_lower()) {
+      header_text.write_string_utf8("\{k}: \{v}\r\n")
+    }
   }
   {
     writer: w,
@@ -149,6 +156,7 @@ async fn Sender::send_headers(
 ) -> Unit {
   for pair in headers.to_array() {
     let (k, v) = pair
+    guard !forbidden_headers.contains(k.to_lower()) else {  }
     self
     ..write_string(k, encoding=UTF8)
     ..write(": ")
