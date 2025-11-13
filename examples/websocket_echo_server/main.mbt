@@ -62,8 +62,10 @@ pub async fn start_echo_server() -> Unit {
           }
         }
       } catch {
-        @websocket.ConnectionClosed(e) =>
-          println("Client \{client_addr} disconnected with \{e}")
+        @websocket.ConnectionClosed(e, reason) =>
+          println(
+            "Client \{client_addr} disconnected with \{e}, reason: \{reason}",
+          )
         e => println("Error with client \{client_addr}: \{e}")
       }
     },

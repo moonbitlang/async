@@ -16,7 +16,7 @@
 /// WebSocket server connection
 struct ServerConnection {
   conn : @socket.Tcp
-  mut closed : CloseCode?
+  mut closed : WebSocketError?
   out : @async.Queue[Result[Message, Error]]
   semaphore : @semaphore.Semaphore
 }
@@ -114,18 +114,15 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
     let frame = read_frame(self.conn) catch {
       FrameError => {
         // On frame error, close the connection and communicate the error
-        if self.closed is None {
-          self.send_close(code=ProtocolError) catch {
-            _ => ()
-          }
+        self.send_close(code=ProtocolError) catch {
+          _ => ()
         }
-        self.out.put(Err(ConnectionClosed(ProtocolError)))
         return
       }
       e => {
-        // On read error, close the connection and communicate the error
+        // On read error, close the connection directly
         if self.closed is None {
-          self.closed = Some(Abnormal)
+          self.closed = Some(ConnectionClosed(Abnormal, None))
         }
         self.out.put(Err(e))
         return
@@ -138,20 +135,28 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         // Parse close code and reason
         // Ref: https://datatracker.ietf.org/doc/html/rfc6455#section-5.5.1
         let mut close_code = Normal
-        if frame.payload is [u16be(code), ..] {
-          close_code = CloseCode::from_int(code.reinterpret_as_int()) catch {
-            FrameError =>
-              // Invalid close code, use ProtocolError
-              ProtocolError
+        let mut reason = None
+        if frame.payload is [u16be(code), .. rest] {
+          close_code = CloseCode::from_int(code.reinterpret_as_int())
+          reason = Some(@encoding/utf8.decode(rest)) catch {
+            _ => {
+              // Invalid reason, fail fast
+              close_code = ProtocolError
+              return
+            }
+          }
+        } else {
+          guard frame.payload is [] else {
+            // Invalid close payload
+            close_code = ProtocolError
           }
         }
         // If we didn't send close first, respond with close
         if self.closed is None {
           // Echo the close frame back and close
-          self.send_close(code=close_code) catch {
+          self.send_close(code=close_code, reason?) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(close_code)))
         }
         return
       }
@@ -161,14 +166,13 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(ProtocolError)))
           return
         }
         // Auto-respond to ping with pong
         self.pong(data=frame.payload) catch {
           e => {
             if self.closed is None {
-              self.closed = Some(Abnormal)
+              self.closed = Some(ConnectionClosed(Abnormal, None))
             }
             self.out.put(Err(e))
             return
@@ -183,7 +187,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(ProtocolError)))
           return
         }
       Text =>
@@ -193,7 +196,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(ProtocolError)))
           return
         } else if frame.fin {
           // Single-frame text message
@@ -205,7 +207,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
               self.send_close(code=InvalidFramePayload) catch {
                 _ => ()
               }
-              self.out.put(Err(ConnectionClosed(InvalidFramePayload)))
               return
             }
           }
@@ -224,7 +225,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(ProtocolError)))
           return
         } else if frame.fin {
           // Single-frame binary message
@@ -242,7 +242,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
           self.send_close(code=ProtocolError) catch {
             _ => ()
           }
-          self.out.put(Err(ConnectionClosed(ProtocolError)))
           return
         }
         frames.push(frame)
@@ -265,7 +264,6 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
                   self.send_close(code=InvalidFramePayload) catch {
                     _ => ()
                   }
-                  self.out.put(Err(ConnectionClosed(InvalidFramePayload)))
                   return
                 }
               }
@@ -292,7 +290,7 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
 pub fn ServerConnection::close(self : ServerConnection) -> Unit {
   if self.closed is None {
     self.conn.close()
-    self.closed = Some(Normal)
+    self.closed = Some(ConnectionClosed(Normal, None))
   }
 }
 
@@ -303,7 +301,7 @@ pub async fn ServerConnection::send_text(
   text : StringView,
 ) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
@@ -318,7 +316,7 @@ pub async fn ServerConnection::send_binary(
   data : BytesView,
 ) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
@@ -335,7 +333,7 @@ async fn ServerConnection::_ping(
   data? : Bytes = Bytes::new(0),
 ) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
@@ -351,7 +349,7 @@ async fn ServerConnection::pong(
   data? : Bytes = Bytes::new(0),
 ) -> Unit {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
@@ -363,12 +361,17 @@ async fn ServerConnection::pong(
 pub async fn ServerConnection::send_close(
   self : ServerConnection,
   code? : CloseCode = Normal,
-  reason? : BytesView = "",
+  reason? : String = "",
 ) -> Unit {
-  if self.closed is Some(c) {
-    raise ConnectionClosed(c)
+  if self.closed is Some(code) {
+    raise code
   }
-  let payload_size = 2 + reason.length()
+  let reason_data = @encoding/utf8.encode(reason)
+  if reason_data.length() > 123 {
+    // Close reason too long
+    fail("Close reason too long")
+  }
+  let payload_size = 2 + reason_data.length()
   let payload = FixedArray::make(payload_size, b'\x00')
 
   // Encode close code
@@ -377,8 +380,8 @@ pub async fn ServerConnection::send_close(
   payload[1] = (code_int & 0xFF).to_byte()
 
   // Encode reason
-  if reason != "" {
-    payload.blit_from_bytesview(2, reason)
+  if reason_data != "" {
+    payload.blit_from_bytesview(2, reason_data)
   }
   self.semaphore.acquire()
   defer self.semaphore.release()
@@ -391,7 +394,8 @@ pub async fn ServerConnection::send_close(
   )
   // Set closed status AFTER the frame has been written
   // This ensures the frame is sent before any connection cleanup
-  self.closed = Some(code)
+  self.closed = Some(ConnectionClosed(code, Some(reason)))
+  self.out.put(Err(ConnectionClosed(code, Some(reason))))
 }
 
 ///|
@@ -399,7 +403,7 @@ pub async fn ServerConnection::send_close(
 /// Returns the complete message after assembling all frames
 pub async fn ServerConnection::receive(self : ServerConnection) -> Message {
   if self.closed is Some(code) {
-    raise ConnectionClosed(code)
+    raise code
   }
   self.out.get().unwrap_or_error()
 }
