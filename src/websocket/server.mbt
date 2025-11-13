@@ -26,11 +26,11 @@ struct ServerConnection {
 /// This performs the full HTTP upgrade handshake
 async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
   // Read HTTP request
-  let reader = @io.BufferedReader::new(conn)
+  let reader = conn
 
   // Read request line
-  let request_line = match reader.read_line() {
-    Some(line) => line[:-1] // Remove trailing \r
+  let request_line = match reader.read_until("\r\n") {
+    Some(line) => line // Remove trailing \r
     None => raise InvalidHandshake("Empty request")
   }
 
@@ -41,12 +41,11 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
 
   // Read and parse headers
   let headers : Map[String, String] = {}
-  while reader.read_line() is Some(line) {
+  while reader.read_until("\r\n") is Some(line) {
     // Empty line marks end of headers
     if line.is_blank() {
       break
     }
-    let line = line[:-1] // Remove trailing \r
 
     // Parse header line
     if line.contains(":") {
