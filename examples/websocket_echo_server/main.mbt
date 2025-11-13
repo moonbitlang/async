@@ -15,12 +15,12 @@
 ///|
 /// Simple WebSocket echo server example
 /// 
-/// This server accepts WebSocket connections on localhost:8080
+/// This server accepts WebSocket connections on localhost:9001
 /// and echoes back any messages it receives.
 ///
 /// You can test it with a JavaScript client in a web browser:
 /// ```javascript
-/// const ws = new WebSocket('ws://localhost:8080');
+/// const ws = new WebSocket('ws://localhost:9001');
 /// ws.onopen = function() {
 ///     console.log('Connected');
 ///     ws.send('Hello, WebSocket!');
@@ -35,12 +35,12 @@ async fn main {
 
 ///|
 /// Start the WebSocket echo server
-/// This function starts a server that listens on localhost:8080
+/// This function starts a server that listens on localhost:9001
 /// and echoes back any messages it receives from clients
 pub async fn start_echo_server() -> Unit {
-  println("Starting WebSocket echo server on localhost:8080")
+  println("Starting WebSocket echo server on localhost:9001")
   @websocket.run_server(
-    @socket.Addr::parse("127.0.0.1:8080"),
+    @socket.Addr::parse("0.0.0.0:9001"),
     "/ws",
     async fn(ws, client_addr) {
       println("New WebSocket connection from \{client_addr}")
@@ -52,8 +52,8 @@ pub async fn start_echo_server() -> Unit {
           let msg = ws.receive()
           match msg {
             @websocket.Text(text) => {
-              println("Received text: \{text}")
-              ws.send_text("Echo: " + text.to_string())
+              println("Received text \{text.char_length()} chars")
+              ws.send_text(text.to_string())
             }
             @websocket.Binary(data) => {
               println("Received binary data (\{data.length()} bytes)")
@@ -62,8 +62,8 @@ pub async fn start_echo_server() -> Unit {
           }
         }
       } catch {
-        @websocket.ConnectionClosed(_) =>
-          println("Client \{client_addr} disconnected")
+        @websocket.ConnectionClosed(e) =>
+          println("Client \{client_addr} disconnected with \{e}")
         e => println("Error with client \{client_addr}: \{e}")
       }
     },

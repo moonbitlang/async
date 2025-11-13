@@ -112,6 +112,17 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
   let mut first_opcode : OpCode? = None
   while self.closed is None {
     let frame = read_frame(self.conn) catch {
+      FrameError => {
+        // On frame error, close the connection and communicate the error
+        if self.closed is None {
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+        }
+        self.out.put(Err(ConnectionClosed(ProtocolError)))
+        return
+      }
       e => {
         // On read error, close the connection and communicate the error
         if self.closed is None {
@@ -128,11 +139,13 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         // Parse close code and reason
         // Ref: https://datatracker.ietf.org/doc/html/rfc6455#section-5.5.1
         let mut close_code = Normal
-        if frame.payload.length() >= 2 {
-          let payload_arr = frame.payload.to_fixedarray()
-          let code_int = (payload_arr[0].to_int() << 8) |
-            payload_arr[1].to_int()
-          close_code = CloseCode::from_int(code_int).unwrap_or(Normal)
+        if frame.payload is [h1, h2, ..] {
+          let code_int = (h1.to_int() << 8) | h2.to_int()
+          close_code = CloseCode::from_int(code_int) catch {
+            FrameError =>
+              // Invalid close code, use ProtocolError
+              ProtocolError
+          }
         }
         // If we didn't send close first, respond with close
         if self.closed is None {
@@ -146,6 +159,15 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
         return
       }
       Ping => {
+        if !frame.fin {
+          // Control frames MUST NOT be fragmented
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(ProtocolError)))
+          return
+        }
         // Auto-respond to ping with pong
         self.pong(data=frame.payload) catch {
           e => {
@@ -156,12 +178,19 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
             return
           }
         }
-        continue
       }
       Pong =>
         // Ignore pong frames
         // TODO : track pong responses for ping timeouts
-        continue
+        if !frame.fin {
+          // Control frames MUST NOT be fragmented
+          self.closed = Some(ProtocolError)
+          self.send_close(code=ProtocolError) catch {
+            _ => ()
+          }
+          self.out.put(Err(ConnectionClosed(ProtocolError)))
+          return
+        }
       Text =>
         if first_opcode is Some(_) {
           // Ref https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
@@ -223,6 +252,7 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
             _ => ()
           }
           self.out.put(Err(ConnectionClosed(ProtocolError)))
+          return
         }
         frames.push(frame)
         if frame.fin {
@@ -348,6 +378,7 @@ pub async fn ServerConnection::send_close(
   if self.closed is Some(c) {
     raise ConnectionClosed(c)
   }
+  self.closed = Some(code)
   let payload_size = 2 + reason.length()
   let payload = FixedArray::make(payload_size, b'\x00')
 
@@ -369,7 +400,6 @@ pub async fn ServerConnection::send_close(
     payload.unsafe_reinterpret_as_bytes(),
     [],
   )
-  self.closed = Some(code)
 }
 
 ///|

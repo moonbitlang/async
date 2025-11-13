@@ -25,33 +25,37 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   let masked = (byte1.to_int() & 0x80) != 0
   let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
 
+  // Validate payload length according to RFC 6455 Section 5.5
+  if opcode is (Close | Ping | Pong) {
+    if !fin {
+      raise FrameError
+    }
+    if payload_len > 125L {
+      raise FrameError
+    }
+  }
+
   // Validate payload length according to RFC 6455 Section 5.2
   if payload_len == 126L {
     let len_bytes = reader.read_exactly(2)
     guard len_bytes is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
-      raise FrameError(
-        "Invalid payload length: 126-byte length used for length < 126",
-      )
+      raise FrameError
     }
   } else if payload_len == 127L {
     let len_bytes = reader.read_exactly(8)
     guard len_bytes is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
     if payload_len < 65536L {
-      raise FrameError(
-        "Invalid payload length: 64-bit length used for length < 65536",
-      )
+      raise FrameError
     }
     if payload_len < 0L {
-      raise FrameError(
-        "Invalid payload length: MSB must be 0 for 64-bit length",
-      )
+      raise FrameError
     }
   }
   if payload_len > @int.max_value.to_int64() {
-    raise FrameError("Payload too large: \{payload_len} bytes")
+    raise FrameError
   }
 
   // Read masking key if present
