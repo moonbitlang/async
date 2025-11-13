@@ -13,58 +13,102 @@
 // limitations under the License.
 
 ///|
-/// WebSocket client example
+/// WebSocket client example - Autobahn Test Suite Client
 /// 
-/// This demonstrates how to connect to a WebSocket server,
-/// send messages, and receive responses.
+/// This implements the Autobahn test suite client logic:
+/// 1. Get case count
+/// 2. Run each test case (echo all messages)
+/// 3. Update reports
 async fn main {
-  connect_to_echo_server()
+  run_autobahn_tests()
 }
 
 ///|
-pub async fn connect_to_echo_server() -> Unit {
-  println("Connecting to WebSocket echo server at localhost:8080")
+/// Run Autobahn WebSocket test suite
+pub async fn run_autobahn_tests() -> Unit {
+  let host = @sys.get_env_vars()
+    .get("WS_TEST_HOST")
+    .unwrap_or("127.0.0.1".to_string())
+  let port = 9001
+  let agent = "moonbit-async-websocket"
 
-  // Connect to the server
-  let client = @websocket.Client::connect("0.0.0.0", "/", port=8080)
-  println("Connected successfully!")
+  // Step 1: Get case count
+  @stdio.stdout.write("Getting case count from \{host}:\{port}...\n")
+  let case_count = get_case_count(host, port)
+  @stdio.stdout.write("Ok, will run \{case_count} cases\n\n")
 
-  // Send some test messages
-  let test_messages = [
-    "Hello, WebSocket!", "This is a test message", "MoonBit WebSocket client works!",
-    "Final message",
-  ]
-  for message in test_messages {
-    // Send text message
-    println("Sending: \{message}")
-    client.send_text(message)
+  // Step 2: Run each test case
+  for case_id = 1; case_id <= case_count; case_id = case_id + 1 {
+    @stdio.stdout.write(
+      "Running test case \{case_id}/\{case_count} as user agent \{agent}\n",
+    )
+    run_test_case(host, port, case_id, agent)
+  }
 
-    // Receive echo response
-    let response = client.receive()
-    match response {
-      @websocket.Text(text) => println("Received: \{text}")
-      @websocket.Binary(data) =>
-        println("Received binary data (\{data.length()} bytes)")
+  // Step 3: Update reports
+  @stdio.stdout.write("\nUpdating reports...\n")
+  update_reports(host, port, agent)
+  @stdio.stdout.write("All tests completed!\n")
+}
+
+///|
+/// Get the total number of test cases
+async fn get_case_count(host : String, port : Int) -> Int {
+  let client = @websocket.Client::connect(host, "/getCaseCount", port~)
+  let message = client.receive()
+  client.close()
+  match message {
+    @websocket.Message::Text(text) => {
+      let count_str = text.to_string()
+      @strconv.parse_int(count_str)
+    }
+    _ => {
+      @stdio.stdout.write("Error: Expected text message with case count\n")
+      0
     }
   }
+}
 
-  // Small delay between messages
-  // Note: In a real implementation, you might want to add a sleep function
-  // For now, we'll just continue immediately
-
-  // Test binary message
-  println("Sending binary data...")
-  let binary_data = @encoding/utf8.encode("Binary test data")
-  client.send_binary(binary_data)
-  let binary_response = client.receive()
-  match binary_response {
-    @websocket.Text(text) => println("Received text response: \{text}")
-    @websocket.Binary(data) =>
-      println("Received binary response (\{data.length()} bytes)")
+///|
+/// Run a single test case - echo all messages back to server
+async fn run_test_case(
+  host : String,
+  port : Int,
+  case_id : Int,
+  agent : String,
+) -> Unit {
+  let path = "/runCase?case=\{case_id}&agent=\{agent}"
+  let client = @websocket.Client::connect(host, path, port~)
+  for {
+    let message = client.receive() catch {
+      @websocket.ConnectionClosed(_, _) =>
+        // Test case completed
+        break
+      err => {
+        @stdio.stdout.write("Error in case \{case_id}: \{err}\n")
+        break
+      }
+    }
+    // Echo the message back (core test logic)
+    match message {
+      @websocket.Message::Text(text) => client.send_text(text)
+      @websocket.Message::Binary(data) => client.send_binary(data)
+    }
   }
+  client.close()
+}
 
-  // Close the connection
-  println("Closing connection...")
-  client.send_close()
-  println("Client example completed")
+///|
+/// Update test reports on the server
+async fn update_reports(host : String, port : Int, agent : String) -> Unit {
+  let path = "/updateReports?agent=\{agent}"
+  let client = @websocket.Client::connect(host, path, port~)
+  // Wait for server to close the connection
+  ignore(
+    client.receive() catch {
+      @websocket.ConnectionClosed(_, _) => @websocket.Message::Text("")
+      _ => @websocket.Message::Text("")
+    },
+  )
+  client.close()
 }
