@@ -75,8 +75,8 @@ pub async fn Client::connect(
   conn.write("\r\n")
 
   // Read and validate handshake response
-  let reader = @io.BufferedReader::new(conn)
-  guard reader.read_line() is Some(response_line) else {
+  let reader = conn
+  guard reader.read_until("\r\n") is Some(response_line) else {
     conn.close()
     raise InvalidHandshake("Server closed connection during handshake")
   }
@@ -88,11 +88,10 @@ pub async fn Client::connect(
     )
   }
   let headers : Map[String, String] = {}
-  while reader.read_line() is Some(line) {
+  while reader.read_until("\r\n") is Some(line) {
     if line.is_blank() {
       break
     }
-    let line = line[:-1] // Remove trailing \r
 
     // Parse header line
     if line.contains(":") {
