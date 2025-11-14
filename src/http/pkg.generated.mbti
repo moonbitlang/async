@@ -19,7 +19,7 @@ async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> 
 
 async fn put_stream(String, headers? : Map[String, String], port? : Int) -> Client
 
-async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
+async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 // Errors
 pub suberror HttpProtocolError {

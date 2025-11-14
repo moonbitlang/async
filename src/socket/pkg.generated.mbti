@@ -51,7 +51,7 @@ type TcpServer
 async fn TcpServer::accept(Self) -> (Tcp, Addr)
 fn TcpServer::addr(Self) -> Addr
 fn TcpServer::close(Self) -> Unit
-fn TcpServer::new(Addr, dual_stack? : Bool) -> Self raise
+fn TcpServer::new(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> Self raise
 async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type UdpClient

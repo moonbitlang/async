@@ -54,9 +54,18 @@ pub typealias TcpServer as TCPServer
 /// If the port of `addr` is zero, the server will be bound to a random port,
 /// assigned by the operating system.
 /// The actual listen address can be retrieved via `.addr()`.
+///
+/// If `reuse_addr` is `true` (`false` by default),
+/// the `SO_REUSEADDR` option will be enabled on the server,
+/// allowing in currently-in-use socket address
+/// (as long as there is no one else currently listening on the same address).
+/// This is useful for avoiding "address already in use" error while testing.
+/// WARNING: enabling `reuse_addr` on production is unsafe,
+/// packets from the previous listener of the address may be accidentally received.
 pub fn TcpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
+  reuse_addr? : Bool = false,
 ) -> TcpServer raise {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
@@ -66,6 +75,9 @@ pub fn TcpServer::new(
       @fd_util.close(sock, context~)
       @os_error.check_errno(context)
     }
+  }
+  if reuse_addr {
+    guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
   }
   if bind_ffi(sock, addr) != 0 {
     @fd_util.close(sock, context~)

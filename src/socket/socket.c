@@ -34,6 +34,11 @@ int moonbitlang_async_disable_nagle(int sock) {
   return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
 }
 
+int moonbitlang_async_allow_reuse_addr(int sock) {
+  int reuse_addr = 1;
+  return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
+}
+
 int moonbitlang_async_make_udp_socket(int family) {
   return socket(family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);
 }
