@@ -22,6 +22,7 @@ pub(open) trait Reader {
   async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
   async drop(Self, Int) -> Int = _
   async read_exactly(Self, len : Int) -> Bytes = _
+  async read_some(Self, max_len? : Int) -> Bytes? = _
   async read_all(Self) -> &Data = _
   async read_until(Self, StringView) -> String? = _
 }
@@ -89,6 +90,47 @@ impl Reader with read_exactly(self, len) {
     continue received + new_received
   }
   buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// `reader.read_some(max_len?)` fetch and return a chunk of data from the reader.
+/// It will return as fast as possible when new data become available.
+/// If EOF is reached, `None` is returned.
+///
+/// If `max_len` is specified, the returned chunk will not be larger than `max_len`.
+/// Since `read_some` will return immediately when new data become available,
+/// the returned chunk may be smaller than `max_len`,
+/// even if there are still data available in the reader.
+impl Reader with read_some(self, max_len?) {
+  let buf = self._get_internal_buffer()
+  if buf.len > 0 {
+    let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
+    if max_len is Some(max_len) && max_len < buf.len {
+      let data = buf_bytes[buf.start:buf.start + max_len].to_bytes()
+      buf.start += max_len
+      buf.len -= max_len
+      return Some(data)
+    } else {
+      let data = buf_bytes[buf.start:buf.start + buf.len].to_bytes()
+      buf.start = 0
+      buf.len = 0
+      return Some(data)
+    }
+  }
+  buf.enlarge_to(if max_len is Some(max_len) { max_len } else { SEGMENT_SIZE })
+  let n = self._direct_read(buf.buf, offset=0, max_len=buf.buf.length())
+  if n == 0 {
+    return None
+  }
+  if max_len is Some(max_len) && max_len < n {
+    buf.start = max_len
+    buf.len = n - max_len
+    Some(buf.buf.unsafe_reinterpret_as_bytes()[:max_len].to_bytes())
+  } else {
+    buf.start = 0
+    buf.len = 0
+    Some(buf.buf.unsafe_reinterpret_as_bytes()[:n].to_bytes())
+  }
 }
 
 ///|

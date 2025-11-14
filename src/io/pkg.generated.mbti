@@ -63,6 +63,7 @@ pub(open) trait Reader {
   async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
   async drop(Self, Int) -> Int = _
   async read_exactly(Self, Int) -> Bytes = _
+  async read_some(Self, max_len? : Int) -> Bytes? = _
   async read_all(Self) -> &Data = _
   async read_until(Self, StringView) -> String? = _
 }
