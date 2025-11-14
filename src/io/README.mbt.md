@@ -118,7 +118,9 @@ The `Reader` trait exposes three complementary levels of granularity:
 
 - `read` performs a best-effort read into an existing buffer and is ideal for incremental protocols. A zero return value indicates EOF.
 - `read_exactly` loops until it fills the requested number of bytes or raises `ReaderClosed`, which is helpful when parsing fixed-width frames.
+- `read_some` read the next chunk of data once any new data is available
 - `read_all` drains the stream into memory, returning a `&Data` handle for convenient conversion to text, JSON, or binary.
+- `read_until` read UTF-8 encoded string from the input until a separator is reached
 
 Each example below shows how a reader pairs with `@io.pipe()` and includes inline comments that highlight the important steps.
 
@@ -161,6 +163,51 @@ async test "read_exactly - read exact number of bytes" {
     inspect(@encoding/utf8.decode(data1), content="01234")
     let data2 = r.read_exactly(5)
     inspect(@encoding/utf8.decode(data2), content="56789")
+  })
+}
+
+///|
+async test "read_some - read next chunk of data" {
+  @async.with_task_group(fn(root) {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg(fn() {
+      defer w.close()
+      // the writer supplieds data in two chunks
+      w.write("abcd")
+      @async.sleep(200)
+      w.write("efgh")
+      @async.sleep(200)
+      w.write("ijkl")
+    })
+    inspect(
+      r.read_some(),
+      content=(
+        #|Some(b"abcd")
+      ),
+    )
+    // `read_some` can optionally accept a length limit
+    inspect(
+      r.read_some(max_len=2),
+      content=(
+        #|Some(b"ef")
+      ),
+    )
+    // the amount of data returned may be smaller than `max_len`
+    inspect(
+      r.read_some(max_len=4),
+      content=(
+        #|Some(b"gh")
+      ),
+    )
+    inspect(
+      r.read_some(),
+      content=(
+        #|Some(b"ijkl")
+      ),
+    )
+    // on EOF, `None` is returned
+    inspect(r.read_some(), content="None")
   })
 }
 
