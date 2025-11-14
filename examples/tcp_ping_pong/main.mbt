@@ -27,10 +27,8 @@ async fn server(println : Printer) -> Unit {
     allow_failure=false,
     fn(conn, _) {
       println("received new connection")
-      let buf = FixedArray::make(1024, b'0')
-      while conn.read(buf) is n && n > 0 {
+      while conn.read_some() is Some(msg) {
         @async.sleep(10)
-        let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{@encoding/utf8.decode(msg)}")
         let reply = "pong"
         conn.write(reply)
@@ -63,10 +61,8 @@ async fn client(println : Printer, id : Int, msg : String) -> Unit {
   println("client \{id}: connection established")
   conn.write(msg)
   println("client \{id} sent: \{msg}")
-  let buf = FixedArray::make(1024, b'0')
-  if conn.read(buf) is n && n > 0 {
+  if conn.read_some() is Some(msg) {
     @async.sleep(10)
-    let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
     let msg = @encoding/utf8.decode(msg)
     println("client \{id} received: \{msg}")
   } else {

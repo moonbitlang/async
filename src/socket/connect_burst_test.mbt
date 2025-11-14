@@ -27,9 +27,7 @@ async fn server(addr : String) -> Int {
         num_connection += 1
         group.spawn_bg(fn() {
           defer conn.close()
-          let buf = FixedArray::make(1024, b'0')
-          while conn.read(buf) is n && n > 0 {
-            let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
+          while conn.read_some() is Some(msg) {
             if msg == b"exit" {
               @async.sleep(20)
               raise ServerTerminate
