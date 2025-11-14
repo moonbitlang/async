@@ -58,6 +58,9 @@ extern "C" fn connect_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_c
 extern "C" fn disable_nagle(sock : Int) -> Int = "moonbitlang_async_disable_nagle"
 
 ///|
+extern "C" fn allow_reuse_addr(sock : Int) -> Int = "moonbitlang_async_allow_reuse_addr"
+
+///|
 extern "C" fn enable_keepalive_ffi(
   sock : Int,
   keep_idle : Int,

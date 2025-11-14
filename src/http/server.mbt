@@ -146,17 +146,18 @@ pub async fn ServerConnection::send_response(
 /// at most `max_connections` clients are allowed in parallel.
 /// New clients will only get handled after a previous client terminates.
 ///
-/// The meaning of `dual_stack` is the same as `@socket.TcpServer::new`,
+/// The meaning of `dual_stack` and `reuse_addr` is the same as `@socket.TcpServer::new`,
 /// see its document for more details.
 pub async fn run_server(
   addr : @socket.Addr,
   f : async (ServerConnection, @socket.Addr) -> Unit,
   headers? : Map[String, String],
   dual_stack? : Bool,
+  reuse_addr? : Bool,
   allow_failure? : Bool,
   max_connections? : Int,
 ) -> Unit {
-  @socket.TcpServer::new(addr, dual_stack?).run_forever(
+  @socket.TcpServer::new(addr, dual_stack?, reuse_addr?).run_forever(
     allow_failure?,
     max_connections?,
     fn(conn, addr) {
