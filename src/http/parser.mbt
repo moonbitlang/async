@@ -217,8 +217,7 @@ async fn Reader::skip_body(self : Reader) -> Unit {
   if self.body is (Empty | Fixed(0)) {
     return
   }
-  let buf = FixedArray::make(1024, b'0')
-  while self.read(buf) is n && n > 0 {
+  while self.drop(1024) == 1024 {
 
   }
 }

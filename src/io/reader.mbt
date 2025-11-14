@@ -71,6 +71,7 @@ impl Reader with drop(self, len) {
       continue dropped + buf.len
     } else {
       buf.start = buf.len - (dropped - len)
+      buf.len = dropped - len
       len
     }
   }
