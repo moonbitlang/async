@@ -15,24 +15,21 @@
 ///|
 async fn test_server(port : Int, log : &Logger) -> Unit {
   let addr = @socket.Addr::parse("127.0.0.1:\{port}")
-  @http.run_server(addr, (conn, _) => {
-    let buf = FixedArray::make(1024, b'\x00')
-    for {
-      let request = conn.read_request()
-      log.write_string(
-        "server received request: \{request.meth} \{request.path}\n",
-      )
-      while conn.read(buf) is n && n > 0 {
-        let data = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:n])
-        log.write_string("server received: \{data}")
-      }
-      conn.send_response(200, "OK")
-      log.write_string("server: sending \{request.meth} response part 1\n")
-      conn..write("\{request.meth} response part 1\n")..flush()
-      @async.sleep(100)
-      log.write_string("server: sending \{request.meth} response part 2\n")
-      conn..write("\{request.meth} response part 2\n")..end_response()
+  @http.run_server(addr, (conn, _) => for {
+    let request = conn.read_request()
+    log.write_string(
+      "server received request: \{request.meth} \{request.path}\n",
+    )
+    while conn.read_some() is Some(data) {
+      let data = @encoding/utf8.decode(data)
+      log.write_string("server received: \{data}")
     }
+    conn.send_response(200, "OK")
+    log.write_string("server: sending \{request.meth} response part 1\n")
+    conn..write("\{request.meth} response part 1\n")..flush()
+    @async.sleep(100)
+    log.write_string("server: sending \{request.meth} response part 2\n")
+    conn..write("\{request.meth} response part 2\n")..end_response()
   })
 }
 
@@ -42,10 +39,9 @@ async test "request streaming" {
   let log = StringBuilder::new()
   @async.with_task_group(group => {
     group.spawn_bg(no_wait=true, () => test_server(port, log))
-    let buf = FixedArray::make(1024, b'\x00')
     async fn fetch_response(client : @http.Client) {
-      while client.read(buf) is n && n > 0 {
-        let data = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:n])
+      while client.read_some() is Some(data) {
+        let data = @encoding/utf8.decode(data)
         log.write_string("client received: \{data}")
       }
     }

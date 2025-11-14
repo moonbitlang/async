@@ -41,9 +41,7 @@ async test "write reader" {
     })
     root.spawn_bg(fn() {
       defer r1.close()
-      let buf = FixedArray::make(1024, b'0')
-      while r1.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[:n]
+      while r1.read_some() is Some(data) {
         let data = @encoding/utf8.decode(data)
         log.write_string("received \{data}\n")
       }

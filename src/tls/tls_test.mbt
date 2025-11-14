@@ -33,9 +33,7 @@ async test "one way" {
         certificate_type=PEM,
       )
       defer server.close()
-      let buf = FixedArray::make(1024, b'0')
-      while server.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+      while server.read_some() is Some(data) {
         let data = @encoding/utf8.decode(data)
         log.write_string("server received: \{data}\n")
       } else {
@@ -97,9 +95,7 @@ async test "echo" {
         certificate_type=PEM,
       )
       defer server.close()
-      let buf = FixedArray::make(1024, b'0')
-      while server.read(buf) is n && n > 0 {
-        let data = buf.unsafe_reinterpret_as_bytes()[0:n]
+      while server.read_some() is Some(data) {
         log.write_string("server received: \{@encoding/utf8.decode(data)}\n")
         server.write(data)
       } else {
@@ -151,8 +147,7 @@ async test "`connect` accidental close" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let buf = FixedArray::make(1024, b'\x00')
-      let _ = server_read_from_client.read(buf)
+      let _ = server_read_from_client.read_some()
 
     })
     // client
@@ -210,8 +205,7 @@ async test "`read` accidental close" {
         verify=false,
       )
       defer client.close()
-      let buf = FixedArray::make(1024, b'\x00')
-      inspect(try? client.read(buf), content="Err(ConnectionClosed)")
+      inspect(try? client.read_some(), content="Err(ConnectionClosed)")
     })
   })
 }

@@ -155,10 +155,8 @@ async test "read_request stream" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    let buf = FixedArray::make(1024, b'0')
-    while input.read(buf) is n && n > 0 {
-      let data = buf.unsafe_reinterpret_as_bytes()[:n]
-        |> @bytes_util.ascii_to_string
+    while input.read_some() is Some(data) {
+      let data = @encoding/utf8.decode(data)
       log.write_string("received \{data} from body\n")
     }
   })

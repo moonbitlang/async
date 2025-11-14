@@ -10,8 +10,5 @@
     "moonbitlang/async/io",
     "moonbitlang/async/os_error"
   ],
-  "test-import": [
-    "moonbitlang/async/internal/bytes_util"
-  ],
   "native-stub": [ "stub.c" ]
 }
