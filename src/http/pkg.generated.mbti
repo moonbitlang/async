@@ -7,17 +7,17 @@ import(
 )
 
 // Values
-async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, &@io.Data)
+async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Proxy) -> (Response, &@io.Data)
 
-async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, Client)
+async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Proxy) -> (Response, Client)
 
-async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
+async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Proxy) -> (Response, &@io.Data)
 
-async fn post_stream(String, headers? : Map[String, String], port? : Int) -> Client
+async fn post_stream(String, headers? : Map[String, String], port? : Int, proxy? : Proxy) -> Client
 
-async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
+async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Proxy) -> (Response, &@io.Data)
 
-async fn put_stream(String, headers? : Map[String, String], port? : Int) -> Client
+async fn put_stream(String, headers? : Map[String, String], port? : Int, proxy? : Proxy) -> Client
 
 async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
 
@@ -29,6 +29,12 @@ pub suberror HttpProtocolError {
 }
 impl Show for HttpProtocolError
 
+pub suberror ProxyConnectError {
+  ProxyConnectionFailed(String)
+  ProxyAuthenticationRequired
+}
+impl Show for ProxyConnectError
+
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
@@ -38,7 +44,7 @@ impl Show for URIParseError
 // Types and methods
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
+async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int, proxy? : Proxy) -> Self
 async fn Client::end_request(Self) -> Response
 async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
@@ -54,6 +60,12 @@ pub(all) enum Protocol {
   Https
 }
 fn Protocol::default_port(Self) -> Int
+
+type Proxy
+fn Proxy::all(String, port~ : Int) -> Self
+fn Proxy::custom(String, http_port~ : Int, String, https_port~ : Int) -> Self
+fn Proxy::http(String, port~ : Int) -> Self
+fn Proxy::https(String, port~ : Int) -> Self
 
 pub(all) struct Request {
   meth : RequestMethod

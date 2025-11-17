@@ -51,6 +51,29 @@ async test {
 }
 ```
 
+## Using HTTP Proxy
+
+The HTTP client supports routing requests through HTTP proxies using the CONNECT method.
+Both HTTP and HTTPS target servers are supported through the proxy.
+
+Create a proxy configuration:
+
+`let proxy = @http.Proxy::all("proxy.example.com", port=8080)` - for all protocols
+
+`let proxy = @http.Proxy::http("proxy.example.com", port=8080)` - HTTP only
+
+`let proxy = @http.Proxy::https("proxy.example.com", port=8080)` - HTTPS only
+
+`let proxy = @http.Proxy::custom("http-proxy.com", http_port=8080, "https-proxy.com", https_port=8443)` - different proxies
+
+Use it with simple HTTP requests:
+
+`let (response, body) = @http.get("http://www.example.org", proxy~)`
+
+Or with a persistent client connection:
+
+`let client = @http.Client::connect("www.example.org", protocol=@http.Http, proxy~)`
+
 ## Writing HTTP servers
 The `@http.ServerConnection` type provides abstraction for a connection in a HTTP server.
 It can be created via `@http.ServerConnection::new(tcp_connection)`.

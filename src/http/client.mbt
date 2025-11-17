@@ -33,16 +33,28 @@ struct Client {
 /// so `headers` should not be used by the caller later.
 /// The following headers is automatically set,
 /// and must not be specified in `headers`:
-/// 
+///
 /// - Host
 /// - Content-Length, Transfer-Encoding
+///
+/// If `proxy` is provided, the connection will be established through
+/// the specified HTTP proxy using the CONNECT method.
 pub async fn Client::connect(
   host : String,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
+  proxy? : Proxy,
 ) -> Client {
-  let conn = @socket.Tcp::connect_to_host(host, port~)
+  let conn = match proxy {
+    None => @socket.Tcp::connect_to_host(host, port~)
+    Some(proxy) =>
+      match proxy.should_use(protocol) {
+        Some((proxy_host, proxy_port)) =>
+          connect_through_proxy(proxy_host, proxy_port, host, port)
+        None => @socket.Tcp::connect_to_host(host, port~)
+      }
+  }
   let tls = match protocol {
     Http => None
     Https => Some(@tls.Tls::client(conn, host~))

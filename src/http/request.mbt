@@ -68,9 +68,10 @@ async fn perform_request(
   headers : Map[String, String],
   body : &@io.Data,
   port? : Int,
+  proxy? : Proxy,
 ) -> (Response, &@io.Data) {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   defer client.close()
   client..request(meth, path)..write(body)
   let response = client.end_request()
@@ -85,14 +86,17 @@ async fn perform_request(
 /// `port` is the port number to connect to.
 /// By default it is the standard port for the specified protocol.
 ///
+/// If `proxy` is provided, the request will be sent through the specified HTTP proxy.
+///
 /// See `Client::request` for more details.
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
   body? : &@io.Data = b"",
+  proxy? : Proxy,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Get, headers, body, port?)
+  perform_request(uri, Get, headers, body, port?, proxy?)
 }
 
 ///|
@@ -102,8 +106,9 @@ pub async fn put(
   content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Proxy,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Put, headers, content, port?)
+  perform_request(uri, Put, headers, content, port?, proxy?)
 }
 
 ///|
@@ -113,8 +118,9 @@ pub async fn post(
   content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Proxy,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Post, headers, content, port?)
+  perform_request(uri, Post, headers, content, port?, proxy?)
 }
 
 ///|
@@ -125,6 +131,8 @@ pub async fn post(
 /// `client` can be used to read the content of response body via `@io.Reader`,
 /// see `@http.Client` for more details.
 ///
+/// If `proxy` is provided, the request will be sent through the specified HTTP proxy.
+///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
 pub async fn get_stream(
@@ -132,9 +140,10 @@ pub async fn get_stream(
   headers? : Map[String, String] = {},
   port? : Int,
   body? : &@io.Data = b"",
+  proxy? : Proxy,
 ) -> (Response, Client) {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try {
     client..request(Get, path)..write(body)
     let response = client.end_request()
@@ -155,8 +164,10 @@ pub async fn get_stream(
 /// so if you need to send data to the server immediately, `.flush()` must be called.
 /// After writing all the content, `.end_request()` must be called
 /// to complete the request and obtain response from the server.
-/// After that, the response body from the server can be obtained 
+/// After that, the response body from the server can be obtained
 /// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+///
+/// If `proxy` is provided, the request will be sent through the specified HTTP proxy.
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
@@ -164,9 +175,10 @@ pub async fn put_stream(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Proxy,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Put, path) catch {
     err => {
       client.close()
@@ -185,8 +197,10 @@ pub async fn put_stream(
 /// so if you need to send data to the server immediately, `.flush()` must be called.
 /// After writing all the content, `.end_request()` must be called
 /// to complete the request and obtain response from the server.
-/// After that, the response body from the server can be obtained 
+/// After that, the response body from the server can be obtained
 /// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+///
+/// If `proxy` is provided, the request will be sent through the specified HTTP proxy.
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
@@ -194,9 +208,10 @@ pub async fn post_stream(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Proxy,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Post, path) catch {
     err => {
       client.close()
