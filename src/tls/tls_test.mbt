@@ -148,7 +148,7 @@ async test "`connect` accidental close" {
         server_write_to_client.close()
       }
       let _ = server_read_from_client.read_some()
-
+      @async.sleep(100)
     })
     // client
     root.spawn_bg(fn() {
