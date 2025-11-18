@@ -93,7 +93,7 @@ fn parse_compressed_ipv6_to_bytes(
   }
 
   // Calculate the number of groups of compression
-  let ipv4_group_count = if ipv4_bytes.is_empty() { 0 } else { 2 }
+  let ipv4_group_count = if ipv4_bytes is None { 0 } else { 2 }
   let total_explicit_groups = left_groups.length() +
     right_groups.length() +
     ipv4_group_count

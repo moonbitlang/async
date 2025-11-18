@@ -13,9 +13,6 @@
 // limitations under the License.
 
 ///|
-using @fd_util {type FileKind}
-
-///|
 struct Input {
   io : @event_loop.IOHandle
   read_buf : @io.ReaderBuffer

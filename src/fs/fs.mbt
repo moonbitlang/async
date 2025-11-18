@@ -13,9 +13,6 @@
 // limitations under the License.
 
 ///|
-using @fd_util {type Stat}
-
-///|
 struct File {
   io : @event_loop.IOHandle
   read_buf : @io.ReaderBuffer
@@ -262,14 +259,14 @@ fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
 /// The offset is interpreted using `mode`, see `SeekMode` for more detail.
 /// Current position in the file after seeking (relative to start of file)
 /// will be returned.
-#deprecated("use `read_at` or `write_at` instead")
+#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
 pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
   self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
 }
 
 ///|
 /// Get current position in the file. Can only be applied to a regular file.
-#deprecated("use `read_at` or `write_at` instead")
+#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
 pub async fn File::curr_pos(self : File) -> Int64 {
   self.seek(0, mode=Relative)
 }

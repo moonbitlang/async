@@ -14,6 +14,7 @@
 
 ///|
 /// A Tcp connection
+#alias(TCP, deprecated="use `Tcp` instead")
 struct Tcp {
   io : @event_loop.IOHandle
   family : AddrFamily
@@ -21,23 +22,16 @@ struct Tcp {
 }
 
 ///|
-#deprecated("use `Tcp` instead")
-pub typealias Tcp as TCP
-
-///|
 pub fn Tcp::close(self : Tcp) -> Unit {
   self.io.close()
 }
 
 ///|
+#alias(TCPServer, deprecated="use `TcpServer` instead")
 struct TcpServer {
   io : @event_loop.IOHandle
   family : AddrFamily
 }
-
-///|
-#deprecated("use `TcpServer` instead")
-pub typealias TcpServer as TCPServer
 
 ///|
 /// Create a TCP server that is bound to `addr`,

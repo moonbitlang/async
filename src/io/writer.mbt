@@ -22,7 +22,7 @@ pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
   async write(Self, &Data) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
-  #deprecated("use `write` instead")
+  #deprecated("use `write` instead", skip_current_package=true)
   async write_string(Self, StringView, encoding~ : Encoding) -> Unit = _
 }
 

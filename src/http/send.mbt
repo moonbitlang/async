@@ -157,11 +157,7 @@ async fn Sender::send_headers(
   for pair in headers.to_array() {
     let (k, v) = pair
     guard !forbidden_headers.contains(k.to_lower()) else {  }
-    self
-    ..write_string(k, encoding=UTF8)
-    ..write(": ")
-    ..write_string(v, encoding=UTF8)
-    ..write("\r\n")
+    self..write(k)..write(": ")..write(v)..write("\r\n")
   }
 }
 
@@ -184,7 +180,7 @@ async fn Sender::send_request(
     Trace => self.write("TRACE ")
     Patch => self.write("PATCH ")
   }
-  self..write_string(path, encoding=UTF8)..write(" HTTP/1.1\r\n")
+  self..write(path)..write(" HTTP/1.1\r\n")
   self.write(self.headers)
   self.send_headers(extra_headers)
   self.write("Transfer-Encoding: chunked\r\n\r\n")
@@ -203,7 +199,7 @@ async fn Sender::send_response(
   ..write("HTTP/1.1 ")
   ..write(encode_int(code, base=10))
   ..write(" ")
-  ..write_string(reason, encoding=UTF8)
+  ..write(reason)
   ..write("\r\n")
   self.write(self.headers)
   self.send_headers(extra_headers)
