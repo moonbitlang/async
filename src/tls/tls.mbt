@@ -14,6 +14,7 @@
 
 ///|
 /// A TLS-encrypted connection
+#alias(TLS, deprecated="use `Tls` instead")
 struct Tls {
   ssl : SSL
   host : String?
@@ -21,10 +22,6 @@ struct Tls {
   write_end : Endpoint
   read_buf : @io.ReaderBuffer
 }
-
-///|
-#deprecated("use `Tls` instead")
-pub typealias Tls as TLS
 
 ///|
 pub suberror OpenSSLError String derive(Show)

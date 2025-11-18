@@ -106,7 +106,7 @@ fn ReaderBuffer::drop(self : Self, n : Int) -> Unit {
 /// A buffered wrapper around a normal reader.
 /// This reader will buffer already read content,
 /// and supports searching & arbitrary slicing of read content.
-#deprecated("readers are now always buffered")
+#deprecated("readers are now always buffered", skip_current_package=true)
 struct BufferedReader[R](R)
 
 ///|
