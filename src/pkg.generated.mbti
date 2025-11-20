@@ -8,6 +8,8 @@ import(
 )
 
 // Values
+fn is_being_cancelled() -> Bool
+
 fn now() -> Int64
 
 async fn pause() -> Unit

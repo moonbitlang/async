@@ -39,6 +39,16 @@ pub using @event_loop {sleep}
 pub using @coroutine {pause}
 
 ///|
+/// Returns `true` if current task is being cancelled.
+/// In this case, all work should be stopped except cleanup jobs.
+/// Usually there is no need to check for cancellation manually,
+/// the cancellation error will automatically get things done.
+/// However, some patterns, such as writing catch all error handler
+/// inside loop body, may result in infinite loop on cancellation.
+/// In this case, `is_being_cancelled` can be used to avoid dead loop.
+pub using @coroutine {is_being_cancelled}
+
+///|
 pub suberror TimeoutError derive(Show)
 
 ///|
