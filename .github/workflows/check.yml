@@ -89,6 +89,31 @@ jobs:
           moon test -C examples --test-failure-json
           moon test -C stdio_test --test-failure-json
 
+  js-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon check
+        run: |
+          moon check --target js
+
+      - name: moon test
+        run: |
+          moon test --release --target js
+          moon test --target js
+
   moon-format:
     runs-on: ubuntu-latest
     timeout-minutes: 10
