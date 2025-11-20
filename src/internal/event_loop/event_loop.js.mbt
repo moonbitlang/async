@@ -13,27 +13,28 @@
 // limitations under the License.
 
 ///|
-/// This function is used for integration of `moonbitlang/async`
-/// into the MoonBit toolchain, do not call directly.
-#coverage.skip
-#cfg(target="native")
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  @event_loop.with_event_loop(() => main()) catch {
+#external
+priv type Timer
+
+///|
+extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
+  #| (duration, f) => setTimeout(f, duration)
+
+///|
+extern "js" fn Timer::cancel(self : Timer) =
+  #| (timer) => clearTimeout(timer)
+
+///|
+pub async fn sleep(duration : Int) -> Unit {
+  let coro = @coroutine.current_coroutine()
+  let timer = set_timeout(duration, fn() {
+    coro.wake()
+    @coroutine.reschedule()
+  })
+  @coroutine.suspend() catch {
     err => {
-      // TODO: output the error to stderr
-      println(err)
-      exit(1)
+      timer.cancel()
+      raise err
     }
   }
-}
-
-///|
-#cfg(target="native")
-extern "C" fn exit(code : Int) = "exit"
-
-///|
-#cfg(target="js")
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn(main)
-  @coroutine.reschedule()
 }

@@ -13,4 +13,16 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 pub extern "C" fn ms_since_epoch() -> Int64 = "moonbitlang_async_get_ms_since_epoch"
+
+///|
+#cfg(target="js")
+extern "js" fn js_now() -> Double =
+  #| () => (new Date()).getMilliSeconds()
+
+///|
+#cfg(target="js")
+pub fn ms_since_epoch() -> Int64 {
+  js_now().to_int64()
+}

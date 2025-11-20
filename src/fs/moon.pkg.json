@@ -10,5 +10,26 @@
   "test-import": [
     "moonbitlang/async/internal/bytes_util"
   ],
+  "targets": {
+    "access_test.mbt": [ "native" ],
+    "constants.mbt": [ "native" ],
+    "create_test.mbt": [ "native" ],
+    "dir.mbt": [ "native" ],
+    "dir_test.mbt": [ "native" ],
+    "eof_test.mbt": [ "native" ],
+    "fs.mbt": [ "native" ],
+    "mkdir_test.mbt": [ "native" ],
+    "pkg.generated.mbti": [ "native" ],
+    "random_access_test.mbt": [ "native" ],
+    "read_all_test.mbt": [ "native" ],
+    "README.mbt.md": [ "native" ],
+    "realpath_test.mbt": [ "native" ],
+    "seek_wbtest.mbt": [ "native" ],
+    "stat_test.mbt": [ "native" ],
+    "text_file_test.mbt": [ "native" ],
+    "timestamp_test.mbt": [ "native" ],
+    "utils.mbt": [ "native" ],
+    "walk_test.mbt": [ "native" ]
+  },
   "native-stub": [ "stub.c" ]
 }

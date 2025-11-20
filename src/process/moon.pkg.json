@@ -10,5 +10,15 @@
     "moonbitlang/async/io",
     "moonbitlang/async/os_error"
   ],
+  "targets": {
+    "process.mbt": [ "native" ],
+    "basic_test.mbt": [ "native" ],
+    "cancel_test.mbt": [ "native" ],
+    "cwd_test.mbt": [ "native" ],
+    "env_test.mbt": [ "native" ],
+    "helper_test.mbt": [ "native" ],
+    "redirect_test.mbt": [ "native" ],
+    "wait_test.mbt": [ "native" ]
+  },
   "native-stub": [ "stub.c" ]
 }

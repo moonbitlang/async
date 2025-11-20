@@ -6,6 +6,7 @@ Simple HTTP request can be made in just one line:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test {
   let (response, body) = @http.get("https://www.example.org")
   inspect(response.code, content="200")
@@ -41,6 +42,7 @@ A complete example:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test {
   let client = @http.Client::connect("www.example.org")
   defer client.close()
@@ -73,6 +75,7 @@ Here's an example server that returns 404 to every request:
 
 ```moonbit
 ///|
+#cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
   @http.run_server(listen_addr, fn(conn, _) {
     for {

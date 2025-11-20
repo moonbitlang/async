@@ -9,6 +9,18 @@
     "moonbitlang/async/fs",
     "moonbitlang/async/internal/bytes_util"
   ],
+  "targets": {
+    "client.mbt": [ "native" ],
+    "server.mbt": [ "native" ],
+    "utils.mbt": [ "native" ],
+    "send.mbt": [ "native" ],
+    "parser.mbt": [ "native" ],
+    "request.mbt": [ "native" ],
+    "send_wbtest.mbt": [ "native" ],
+    "parser_wbtest.mbt": [ "native" ],
+    "client_test.mbt": [ "native" ],
+    "request_test.mbt": [ "native" ]
+  },
   "test-import": [
     "moonbitlang/async"
   ]

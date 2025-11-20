@@ -15,5 +15,16 @@
     "moonbitlang/async/pipe",
     "moonbitlang/async/io"
   ],
+  "targets": {
+    "event_loop.mbt": [ "native" ],
+    "network.mbt": [ "native" ],
+    "fs.mbt": [ "native" ],
+    "stdio.mbt": [ "native" ],
+    "poll.mbt": [ "native" ],
+    "thread_pool.mbt": [ "native" ],
+    "timer.mbt": [ "native" ],
+    "event_loop.js.mbt": [ "js" ],
+    "worker_wbtest.mbt": [ "native" ]
+  },
   "native-stub": [ "poll.c", "thread_pool.c", "misc_stub.c" ]
 }

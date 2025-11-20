@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 test "missing_close" {
   let log = StringBuilder::new()
   @event_loop.with_event_loop(fn() {

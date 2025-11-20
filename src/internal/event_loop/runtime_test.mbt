@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 test "readdir clear errno" {
   @event_loop.with_event_loop(fn() {
     // do something to set a non-zero errno
@@ -24,6 +25,6 @@ test "readdir clear errno" {
     let dir = @fs.opendir("src/internal/event_loop")
     defer dir.close()
     let list = dir.read_all()
-    inspect(list.length(), content="16")
+    inspect(list.length(), content="17")
   })
 }
