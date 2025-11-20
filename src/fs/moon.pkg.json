@@ -7,9 +7,6 @@
     "moonbitlang/async",
     "moonbitlang/async/semaphore"
   ],
-  "test-import": [
-    "moonbitlang/async/internal/bytes_util"
-  ],
   "targets": {
     "access_test.mbt": [ "native" ],
     "constants.mbt": [ "native" ],

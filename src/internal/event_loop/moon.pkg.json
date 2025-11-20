@@ -23,8 +23,7 @@
     "poll.mbt": [ "native" ],
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native" ],
-    "event_loop.js.mbt": [ "js" ],
-    "worker_wbtest.mbt": [ "native" ]
+    "event_loop.js.mbt": [ "js" ]
   },
   "native-stub": [ "poll.c", "thread_pool.c", "misc_stub.c" ]
 }

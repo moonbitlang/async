@@ -13,11 +13,19 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
 
 ///|
+#cfg(target="native")
 async fn perform_sleep_job(t : Int) -> Unit {
   perform_job_in_worker(Job::sleep(t), context="") |> ignore
+}
+
+///|
+#cfg(target="js")
+async fn perform_sleep_job(t : Int) -> Unit {
+  @async.protect_from_cancel(() => sleep(t))
 }
 
 ///|

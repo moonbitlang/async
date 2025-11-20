@@ -13,23 +13,10 @@
 // limitations under the License.
 
 ///|
-async test "read EOF" {
-  let buf = FixedArray::make(16, b'0')
-  let path = "target/read_eof_test"
-  {
-    let w = @fs.create(path, permission=0o644, sync=Full)
-    defer w.close()
-    w.write(b"abcd")
-  }
-  let n = {
-    let r = @fs.open(path, mode=ReadOnly)
-    defer r.close()
-    r.read(buf)
-  }
-  @fs.remove(path)
-  assert_eq(n, 4)
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[0:n]),
-    content="abcd",
-  )
+/// This package currently does not support JavaScript backend
+#cfg(target="js")
+pub let unimplemented : Unit = {
+  ignore(@io.pipe)
+  ignore(@event_loop.sleep)
+  ignore(@fd_util.unimplemented)
 }
