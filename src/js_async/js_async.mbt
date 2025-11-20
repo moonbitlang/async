@@ -28,6 +28,14 @@ fn[X] JsValue::make(v : X) -> JsValue = "%identity"
 fn[X] JsValue::cast(v : JsValue) -> X = "%identity"
 
 ///|
+extern "js" fn JsValue::abort_error() -> JsValue =
+  #| () => {
+  #|   const err = new Error()
+  #|   err.name = 'AbortError'
+  #|   return err
+  #| }
+
+///|
 extern "js" fn JsValue::to_string(v : JsValue) -> String =
   #| (v) => v.toString()
 
@@ -69,12 +77,25 @@ pub extern "js" fn AbortController::abort(self : Self) =
   #| (controller) => controller.abort()
 
 ///|
+extern "js" fn AbortSignal::on_abort(
+  signal : AbortSignal,
+  f : () -> Unit,
+) -> Unit =
+  #| (signal, f) => signal.addEventListener('abort', f, { once: true })
+
+///|
 extern "js" fn JsValue::then(
   promise : JsValue,
   resolve : (JsValue) -> Unit,
   reject : (JsValue) -> Unit,
 ) =
   #| (p, resolve, reject) => p.then(resolve, reject)
+
+///|
+extern "js" fn JsValue::new_promise(
+  f : ((JsValue) -> Unit, (JsValue) -> Unit) -> Unit,
+) -> JsValue =
+  #| (f) => new Promise(f)
 
 ///|
 /// Wait for a JavaScript promise to resolve and return the fulfilled value,
@@ -153,4 +174,36 @@ pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
   let controller = AbortController::new()
   let promise = f(controller.signal())
   promise.wait(abort_controller=controller)
+}
+
+///|
+/// Convert a MoonBit async function into a JavaScript promise.
+/// `Promise::from_async(f)` returns a promise that:
+///
+/// - resolve to the result of `f` when `f` return
+/// - reject with the error that `f` raise if `f` fail
+///
+/// If `abort_signal` is present,
+/// `f` will be automatically cancelled when the signal is activated,
+/// and the returned promise will reject with JavaScript `AbortError`.
+///
+/// The async function `f` will be run in a global context,
+/// so there is no structured concurrency support for `Promise::from_async`,
+/// and this function should only be used for exporting MoonBit code to JavaScript.
+pub fn[X] Promise::from_async(
+  f : async () -> X,
+  abort_signal? : AbortSignal,
+) -> Promise[X] {
+  JsValue::new_promise((resolve, reject) => {
+    let coro = @coroutine.spawn(() => try f() catch {
+      @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
+        reject(JsValue::abort_error())
+      err => reject(JsValue::make(err.to_string()))
+    } noraise {
+      ret => resolve(JsValue::make(ret))
+    })
+    if abort_signal is Some(signal) {
+      signal.on_abort(() => coro.cancel())
+    }
+  }).cast()
 }
