@@ -273,3 +273,19 @@ async test "immediately cancelled" {
     ),
   )
 }
+
+///|
+async test "immediate failure" {
+  rate_limit.acquire()
+  defer rate_limit.release()
+  let result = try? @async.with_task_group(group => {
+    group.spawn_bg(() => raise Failure("failure"))
+    group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
+  })
+  inspect(
+    result,
+    content=(
+      #|Err(Failure("failure"))
+    ),
+  )
+}

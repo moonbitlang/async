@@ -60,6 +60,7 @@ fn[X] TaskGroup::spawn_coroutine(
   async fn worker() {
     let coro = @coroutine.current_coroutine()
     defer {
+      self.children.remove(coro)
       if not(no_wait) {
         self.waiting -= 1
         if self.waiting == 0 && self.state is Running {
@@ -73,10 +74,8 @@ fn[X] TaskGroup::spawn_coroutine(
         self.parent.wake()
       }
     }
-    try {
-      defer self.children.remove(coro)
-      f()
-    } catch {
+    guard self.state is Running else {  }
+    f() catch {
       err if allow_failure => raise err
       err => {
         if self.state is Running {
