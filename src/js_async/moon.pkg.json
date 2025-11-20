@@ -5,9 +5,9 @@
   "test-import": [
     "moonbitlang/async"
   ],
-  "warn-list": "-29",
   "targets": {
     "js_async.mbt": [ "js" ],
+    "unimplemented.mbt": [ "native" ],
     "js_async_test.mbt": [ "js" ]
   }
 }
