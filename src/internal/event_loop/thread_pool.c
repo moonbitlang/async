@@ -120,13 +120,14 @@ void *worker_loop(void *data) {
 #endif
 
   while (job) {
+    int job_id = job->job_id;
     job->ret = 0;
     job->err = 0;
 
     job->worker(job);
 
     self->waiting = 1;
-    write(pool.notify_send, &(job->job_id), sizeof(int));
+    write(pool.notify_send, &job_id, sizeof(int));
 
 #ifdef WAKEUP_METHOD_SIGNAL
     sigwait(&pool.wakeup_signal, &sig);
