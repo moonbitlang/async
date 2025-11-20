@@ -30,11 +30,12 @@ async test "walk sequential" {
 async test "walk parallel" {
   @async.sleep(300)
   let log = StringBuilder::new()
+  let mut i = 0
   @fs.walk("test_directory", max_concurrency=2, fn(path, _) {
+    i = i + 1
     log.write_string("handling \{path}\n")
-    @async.sleep(300)
+    @async.sleep(if i == 1 { 200 } else { 300 })
     log.write_string("finished handling \{path}\n")
-    @async.sleep(100)
   })
   inspect(
     log.to_string(),
@@ -42,8 +43,8 @@ async test "walk parallel" {
       #|handling test_directory
       #|handling test_directory/inner1
       #|finished handling test_directory
-      #|finished handling test_directory/inner1
       #|handling test_directory/inner1/inner2
+      #|finished handling test_directory/inner1
       #|finished handling test_directory/inner1/inner2
       #|
     ),
