@@ -556,46 +556,6 @@ async test "BufferedWriter::write_reader - buffered copy" {
 }
 ```
 
-## Working with Task Groups and Pipes
-
-Most examples in this package lean on `@async.with_task_group` and `@io.pipe()` because they expose canonical `Reader` and `Writer` handles. The pattern scales to more complex topologies where multiple producers and consumers collaborate.
-
-```moonbit
-///|
-async test "fan-out and fan-in" {
-  @async.with_task_group(fn(root) {
-    // Upstream producer pushes a header followed by the payload.
-    let (intermediate_reader, intermediate_writer) = @io.pipe()
-    root.spawn_bg(fn() {
-      defer intermediate_writer.close()
-      intermediate_writer.write(b"HDR")
-      @async.sleep(10)
-      intermediate_writer.write(b"PAYLOAD")
-    })
-    defer intermediate_reader.close()
-
-    // A downstream consumer receives the header via its own pipe.
-    let (header_reader, header_writer) = @io.pipe()
-    root.spawn_bg(fn() {
-      defer header_writer.close()
-      let header = intermediate_reader.read_exactly(3)
-      header_writer.write(header)
-    })
-    root.spawn_bg(fn() {
-      defer header_reader.close()
-      inspect(header_reader.read_all().text(), content="HDR")
-    })
-
-    // The original buffered reader still holds the payload.
-    @async.sleep(30)
-    let body = intermediate_reader.read_all().text()
-    inspect(body, content="PAYLOAD")
-  })
-}
-```
-
-This example underscores how buffering plus task groups let you route data between multiple coroutines without copying or losing track of backpressure.
-
 ## Flow Control & Buffering Strategies
 
 Efficient asynchronous I/O is mostly about balancing throughput and memory usage. Some guiding principles:
