@@ -6,5 +6,9 @@
     "moonbitlang/async",
     "moonbitlang/async/fs"
   ],
+  "targets": {
+    "error.mbt": [ "native" ],
+    "os_error_test.mbt": [ "native" ]
+  },
   "native-stub": [ "stub.c" ]
 }

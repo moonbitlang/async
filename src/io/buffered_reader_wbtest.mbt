@@ -330,6 +330,7 @@ async test "lazy drop" {
 }
 
 ///|
+#cfg(target="native")
 async test "BufferedReader::read_line" {
   let file = @fs.open("LICENSE", mode=ReadOnly)
   defer file.close()

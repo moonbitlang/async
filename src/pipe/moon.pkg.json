@@ -6,5 +6,10 @@
   ],
   "test-import": [
     "moonbitlang/async"
-  ]
+  ],
+  "targets": {
+    "ffi.mbt": [ "native" ],
+    "pipe.mbt": [ "native" ],
+    "read_exactly_test.mbt": [ "native" ]
+  }
 }

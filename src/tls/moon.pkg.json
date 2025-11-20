@@ -9,5 +9,13 @@
     "moonbitlang/async",
     "moonbitlang/async/socket"
   ],
+  "targets": {
+    "bio.mbt": [ "native" ],
+    "ffi.mbt": [ "native" ],
+    "loader.mbt": [ "native" ],
+    "tls.mbt": [ "native" ],
+    "tls_test.mbt": [ "native" ],
+    "shutdown_test.mbt": [ "native" ]
+  },
   "native-stub": [ "stub.c" ]
 }

@@ -11,5 +11,20 @@
   "test-import": [
     "moonbitlang/async/aqueue"
   ],
+  "targets": {
+    "addr.mbt": [ "native" ],
+    "addr_utils.mbt": [ "native" ],
+    "happy_eyeball.mbt": [ "native" ],
+    "tcp.mbt": [ "native" ],
+    "udp.mbt": [ "native" ],
+    "ffi.mbt": [ "native" ],
+    "addr_test.mbt": [ "native" ],
+    "connect_burst_test.mbt": [ "native" ],
+    "dual_stack_test.mbt": [ "native" ],
+    "read_exactly_test.mbt": [ "native" ],
+    "resolve_host_test.mbt": [ "native" ],
+    "getsockname_test.mbt": [ "native" ],
+    "reuse_addr_test.mbt": [ "native" ]
+  },
   "native-stub": [ "socket.c" ]
 }

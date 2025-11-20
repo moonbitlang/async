@@ -10,6 +10,7 @@ Execute commands and collect their output:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "simple command execution" {
   let (exit_code, output) = @process.collect_stdout("echo", ["Hello, World!"])
   inspect(exit_code, content="0")
@@ -18,6 +19,7 @@ async test "simple command execution" {
 }
 
 ///|
+#cfg(target="native")
 async test "command with exit code" {
   let exit_code = @process.run("sh", ["-c", "exit 42"])
   inspect(exit_code, content="42")
@@ -32,6 +34,7 @@ Capture stdout from a process:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "collect stdout" {
   let (code, output) = @process.collect_stdout("printf", ["test output"])
   inspect(code, content="0")
@@ -39,6 +42,7 @@ async test "collect stdout" {
 }
 
 ///|
+#cfg(target="native")
 async test "collect stdout with args" {
   let (code, output) = @process.collect_stdout("sh", [
     "-c", "echo 'line 1'; echo 'line 2'",
@@ -56,6 +60,7 @@ Capture stderr from a process:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "collect stderr" {
   let (code, output) = @process.collect_stderr("sh", [
     "-c", "printf 'error message' >&2",
@@ -71,6 +76,7 @@ Capture both output streams separately:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "collect both streams" {
   let (code, stdout, stderr) = @process.collect_output("sh", [
     "-c", "printf 'out msg'; printf 'err msg' >&2",
@@ -87,6 +93,7 @@ Merge stdout and stderr into a single stream:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "collect merged output" {
   let (code, output) = @process.collect_output_merged("sh", [
     "-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'",
@@ -104,6 +111,7 @@ Create a pipe to read from a process:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "read from process with pipe" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @process.read_from_process()
@@ -124,6 +132,7 @@ Create a pipe to write to a process:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "write to process with pipe" {
   @async.with_task_group(fn(root) {
     let (cat_read, we_write) = @process.write_to_process()
@@ -153,6 +162,7 @@ Use a file as process input:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "redirect input from file" {
   @async.with_task_group(fn(root) {
     let input_file = "target/process_test_input.txt"
@@ -175,6 +185,7 @@ Write process output to a file:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "redirect output to file" {
   @async.with_task_group(fn(root) {
     let output_file = "target/process_test_output.txt"
@@ -197,6 +208,7 @@ Copy file content using process redirection:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "file to file redirection" {
   @async.with_task_group(fn(root) {
     let input_file = "target/process_redirect_in.txt"
@@ -223,6 +235,7 @@ Pass custom environment variables to processes:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "set environment variable" {
   let (code, output) = @process.collect_stdout("sh", ["-c", "echo $MY_VAR"], extra_env={
     "MY_VAR": "my_value",
@@ -232,6 +245,7 @@ async test "set environment variable" {
 }
 
 ///|
+#cfg(target="native")
 async test "multiple environment variables" {
   let (code, output) = @process.collect_stdout(
     "sh",
@@ -249,6 +263,7 @@ Run process without inheriting parent environment:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "isolated environment" {
   let (code, output) = @process.collect_stdout(
     "env",
@@ -272,6 +287,7 @@ Execute processes in a specific directory:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "set working directory" {
   let (code, output) = @process.collect_stdout("pwd", [], cwd="src")
   inspect(code, content="0")
@@ -281,6 +297,7 @@ async test "set working directory" {
 }
 
 ///|
+#cfg(target="native")
 async test "relative path in cwd" {
   let (code, output) = @process.collect_stdout("ls", [], cwd="src")
   inspect(code, content="0")
@@ -299,12 +316,14 @@ Spawn processes asynchronously and wait for completion:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "spawn and wait" {
   let exit_code = @process.run("sleep", ["0.1"])
   inspect(exit_code, content="0")
 }
 
 ///|
+#cfg(target="native")
 async test "wait for specific exit code" {
   let exit_code = @process.run("sh", ["-c", "exit 5"])
   inspect(exit_code, content="5")
@@ -317,6 +336,7 @@ Start a process without blocking:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "spawn orphan and wait later" {
   let pid = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
 
@@ -337,6 +357,7 @@ Combine stdout and stderr into one stream:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "merge stdout and stderr" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @process.read_from_process()
@@ -363,6 +384,7 @@ Run multiple processes writing to the same pipe:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "multiple processes to one pipe" {
   @async.with_task_group(fn(root) {
     let (reader, writer) = @pipe.pipe()
@@ -421,6 +443,7 @@ Process operations handle errors through exit codes:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "handle process errors" {
   // Non-existent command fails
   let result = try? @process.run("nonexistent_command", [])
@@ -428,6 +451,7 @@ async test "handle process errors" {
 }
 
 ///|
+#cfg(target="native")
 async test "exit code indicates failure" {
   let exit_code = @process.run("sh", ["-c", "exit 1"])
   let is_failure = exit_code != 0

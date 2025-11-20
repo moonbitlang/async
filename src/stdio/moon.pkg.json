@@ -2,5 +2,8 @@
   "import": [
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/io"
-  ]
+  ],
+  "targets": {
+    "stdio.mbt": [ "native" ]
+  }
 }

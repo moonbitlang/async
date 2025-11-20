@@ -1,4 +1,8 @@
 {
   "import": [ "moonbitlang/async/os_error" ],
+  "targets": {
+    "fd_util.mbt": [ "native" ],
+    "stat.mbt": [ "native" ]
+  },
   "native-stub": [ "stub.c" ]
 }

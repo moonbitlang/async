@@ -29,6 +29,7 @@ The `open` function provides flexible file opening with various modes and option
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "open file for reading" {
   let test_file = "target/test_open_read.txt"
   @fs.write_file(test_file, b"Hello, MoonBit!", create=0o644)
@@ -40,6 +41,7 @@ async test "open file for reading" {
 }
 
 ///|
+#cfg(target="native")
 async test "open file for writing" {
   let test_file = "target/test_open_write.txt"
   let file = @fs.open(test_file, mode=WriteOnly, create=0o644, truncate=true)
@@ -49,6 +51,7 @@ async test "open file for writing" {
 }
 
 ///|
+#cfg(target="native")
 async test "open with append mode" {
   let test_file = "target/test_append.txt"
   // Create initial file
@@ -68,6 +71,7 @@ The `create` function is a convenience wrapper for creating new files:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "create new file" {
   let test_file = "target/test_create.txt"
   let file = @fs.create(test_file, permission=0o644)
@@ -85,6 +89,7 @@ Read entire files or read data in chunks:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "read_file - read entire file" {
   let test_file = "target/test_read_file.txt"
   @fs.write_file(test_file, b"Hello, MoonBit!", create=0o644)
@@ -94,6 +99,7 @@ async test "read_file - read entire file" {
 }
 
 ///|
+#cfg(target="native")
 async test "read in chunks using File" {
   let test_file = "target/test_chunk_read.txt"
   @fs.write_file(test_file, b"0123456789", create=0o644)
@@ -110,6 +116,7 @@ async test "read in chunks using File" {
 }
 
 ///|
+#cfg(target="native")
 async test "read_all from file" {
   let test_file = "target/test_read_all.txt"
   @fs.write_file(test_file, b"Complete content", create=0o644)
@@ -121,6 +128,7 @@ async test "read_all from file" {
 }
 
 ///|
+#cfg(target="native")
 async test "read_exactly specific bytes" {
   let test_file = "target/test_read_exact.txt"
   @fs.write_file(test_file, b"1234567890", create=0o644)
@@ -138,6 +146,7 @@ Write data to files using various methods:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "write_file - write entire file" {
   let test_file = "target/test_write.txt"
   @fs.write_file(test_file, b"File content", create=0o644)
@@ -147,6 +156,7 @@ async test "write_file - write entire file" {
 }
 
 ///|
+#cfg(target="native")
 async test "write with sync modes" {
   let test_file = "target/test_sync.txt"
   // Write with data sync
@@ -157,6 +167,7 @@ async test "write with sync modes" {
 }
 
 ///|
+#cfg(target="native")
 async test "write using File methods" {
   let test_file = "target/test_file_write.txt"
   let file = @fs.create(test_file, permission=0o644)
@@ -169,6 +180,7 @@ async test "write using File methods" {
 }
 
 ///|
+#cfg(target="native")
 async test "write_once for single write operation" {
   let test_file = "target/test_write_once.txt"
   let file = @fs.create(test_file, permission=0o644)
@@ -186,6 +198,7 @@ Read and write file from specified position:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "read at specific position" {
   let test_file = "target/read_at_test.txt"
   @fs.write_file(test_file, b"0123456789", create=0o644)
@@ -206,6 +219,7 @@ async test "read at specific position" {
 }
 
 ///|
+#cfg(target="native")
 async test "write at specific position" {
   let test_file = "target/write_at_test.txt"
   {
@@ -221,6 +235,7 @@ async test "write at specific position" {
 }
 
 ///|
+#cfg(target="native")
 async test "size - get file size" {
   let test_file = "target/test_size.txt"
   @fs.write_file(test_file, b"Hello", create=0o644)
@@ -244,6 +259,7 @@ Some important notes when using `read_at` and `write_at`:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "mkdir - create directory" {
   let dir_path = "target/test_mkdir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -253,6 +269,7 @@ async test "mkdir - create directory" {
 }
 
 ///|
+#cfg(target="native")
 async test "mkdir - create with custom permissions" {
   let dir_path = "target/test_mkdir_perm"
   @fs.mkdir(dir_path, permission=0o700)
@@ -266,6 +283,7 @@ async test "mkdir - create with custom permissions" {
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "readdir - read directory entries" {
   let dir_path = "target/test_readdir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -283,6 +301,7 @@ async test "readdir - read directory entries" {
 }
 
 ///|
+#cfg(target="native")
 async test "readdir with sorting" {
   let dir_path = "target/test_readdir_sort"
   @fs.mkdir(dir_path, permission=0o755)
@@ -300,6 +319,7 @@ async test "readdir with sorting" {
 }
 
 ///|
+#cfg(target="native")
 async test "opendir and Directory::read_all" {
   let dir_path = "target/test_opendir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -317,6 +337,7 @@ async test "opendir and Directory::read_all" {
 }
 
 ///|
+#cfg(target="native")
 async test "as_dir - convert existing opened file to directory" {
   let dir_path = "target/test_as_dir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -337,6 +358,7 @@ Recursively traverse directory hierarchies:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "walk directory tree" {
   let base = "target/test_walk"
   @fs.mkdir(base, permission=0o755)
@@ -355,6 +377,7 @@ async test "walk directory tree" {
 }
 
 ///|
+#cfg(target="native")
 async test "walk with max_concurrency" {
   let base = "target/test_walk_concurrency"
   @fs.mkdir(base, permission=0o755)
@@ -377,6 +400,7 @@ async test "walk with max_concurrency" {
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "rmdir - remove empty directory" {
   let dir_path = "target/test_rmdir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -386,6 +410,7 @@ async test "rmdir - remove empty directory" {
 }
 
 ///|
+#cfg(target="native")
 async test "rmdir recursive - remove directory tree" {
   let base = "target/test_rmdir_recursive"
   @fs.mkdir(base, permission=0o755)
@@ -406,6 +431,7 @@ Determine the type of file system entries:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "kind - regular file" {
   let test_file = "target/test_kind_file.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -415,6 +441,7 @@ async test "kind - regular file" {
 }
 
 ///|
+#cfg(target="native")
 async test "kind - directory" {
   let dir_path = "target/test_kind_dir"
   @fs.mkdir(dir_path, permission=0o755)
@@ -424,6 +451,7 @@ async test "kind - directory" {
 }
 
 ///|
+#cfg(target="native")
 async test "File::kind method" {
   let test_file = "target/test_file_kind.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -441,6 +469,7 @@ Access file timestamps (atime, mtime, ctime):
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "atime - access time" {
   let test_file = "target/test_atime.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -451,6 +480,7 @@ async test "atime - access time" {
 }
 
 ///|
+#cfg(target="native")
 async test "mtime - modification time" {
   let test_file = "target/test_mtime.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -461,6 +491,7 @@ async test "mtime - modification time" {
 }
 
 ///|
+#cfg(target="native")
 async test "ctime - status change time" {
   let test_file = "target/test_ctime.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -471,6 +502,7 @@ async test "ctime - status change time" {
 }
 
 ///|
+#cfg(target="native")
 async test "File timestamp methods" {
   let test_file = "target/test_file_times.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -492,6 +524,7 @@ Check file access permissions:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "exists - check file existence" {
   let test_file = "target/test_exists.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -501,12 +534,14 @@ async test "exists - check file existence" {
 }
 
 ///|
+#cfg(target="native")
 async test "exists - non-existent file" {
   let exists = @fs.exists("nonexistent_file_xyz.txt")
   inspect(exists, content="false")
 }
 
 ///|
+#cfg(target="native")
 async test "can_read - check read permission" {
   let test_file = "target/test_can_read.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -516,6 +551,7 @@ async test "can_read - check read permission" {
 }
 
 ///|
+#cfg(target="native")
 async test "can_write - check write permission" {
   let test_file = "target/test_can_write.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -525,6 +561,7 @@ async test "can_write - check write permission" {
 }
 
 ///|
+#cfg(target="native")
 async test "can_execute - check execute permission" {
   let test_file = "target/test_can_execute.txt"
   @fs.write_file(test_file, b"test", create=0o755)
@@ -538,6 +575,7 @@ async test "can_execute - check execute permission" {
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "realpath - resolve absolute path" {
   let test_dir = "target/test_realpath"
   @fs.mkdir(test_dir, permission=0o755)
@@ -552,6 +590,7 @@ async test "realpath - resolve absolute path" {
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "remove - delete file" {
   let test_file = "target/test_remove.txt"
   @fs.write_file(test_file, b"test", create=0o644)
@@ -639,6 +678,7 @@ All async file operations can raise errors. Use proper error handling:
 
 ```moonbit
 ///|
+#cfg(target="native")
 async test "error handling example" {
   let result = try? @fs.read_file("nonexistent.txt")
   inspect(result is Err(_), content="true")
