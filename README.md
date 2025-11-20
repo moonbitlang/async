@@ -52,7 +52,16 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] MacOS support (`kqueue`)
 - [ ] Windows support
 - [ ] WASM backend
-- [ ] Javascript backend
+- [X] Javascript backend
+    - [X] integration with JavaScript promise
+    - [X] all IO-independent API, including:
+        - `moonbitlang/async`
+        - `moonbitlang/async/io`
+        - `moonbitlang/async/aqueue`
+        - `moonbitlang/async/semaphore`
+        - `moonbitlang/async/cond_var`
+    - [ ] implement `@http` API in JavaScript using fetch API
+    - [ ] implement other IO primitives in JavaScript using Node.js
 
 
 ## Structured concurrency and error propagation
