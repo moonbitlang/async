@@ -28,3 +28,12 @@ test "readdir clear errno" {
     inspect(list.length(), content="17")
   })
 }
+
+///|
+#cfg(target="js")
+let _ignore_unused_import : Unit = {
+  ignore(@io.pipe)
+  ignore(@async.sleep)
+  ignore(@fs.unimplemented)
+  ignore(@pipe.unimplemented)
+}

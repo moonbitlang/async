@@ -13,23 +13,8 @@
 // limitations under the License.
 
 ///|
-async test "read EOF" {
-  let buf = FixedArray::make(16, b'0')
-  let path = "target/read_eof_test"
-  {
-    let w = @fs.create(path, permission=0o644, sync=Full)
-    defer w.close()
-    w.write(b"abcd")
-  }
-  let n = {
-    let r = @fs.open(path, mode=ReadOnly)
-    defer r.close()
-    r.read(buf)
-  }
-  @fs.remove(path)
-  assert_eq(n, 4)
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[0:n]),
-    content="abcd",
-  )
+#cfg(target="js")
+let _ignore_unused_import : Unit = {
+  ignore(@async.sleep)
+  ignore(@socket.unimplemented)
 }

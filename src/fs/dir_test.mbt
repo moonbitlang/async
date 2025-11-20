@@ -24,8 +24,8 @@ async test "read_all" {
     "fs.mbt", "stub.c", "dir.mbt", "README.md", "utils.mbt", "dir_test.mbt", "eof_test.mbt",
     "README.mbt.md", "constants.mbt", "moon.pkg.json", "stat_test.mbt", "walk_test.mbt",
     "mkdir_test.mbt", "access_test.mbt", "create_test.mbt", "seek_wbtest.mbt", "read_all_test.mbt",
-    "realpath_test.mbt", "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt",
-    "random_access_test.mbt",
+    "realpath_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "text_file_test.mbt",
+    "timestamp_test.mbt", "random_access_test.mbt",
   ])
 }
 
@@ -56,7 +56,7 @@ async test "as_dir" {
     "constants.mbt: Regular", "moon.pkg.json: Regular", "stat_test.mbt: Regular",
     "walk_test.mbt: Regular", "mkdir_test.mbt: Regular", "access_test.mbt: Regular",
     "create_test.mbt: Regular", "seek_wbtest.mbt: Regular", "read_all_test.mbt: Regular",
-    "realpath_test.mbt: Regular", "pkg.generated.mbti: Regular", "text_file_test.mbt: Regular",
-    "timestamp_test.mbt: Regular", "random_access_test.mbt: Regular",
+    "realpath_test.mbt: Regular", "unimplemented.mbt: Regular", "pkg.generated.mbti: Regular",
+    "text_file_test.mbt: Regular", "timestamp_test.mbt: Regular", "random_access_test.mbt: Regular",
   ])
 }

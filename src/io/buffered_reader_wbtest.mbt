@@ -342,3 +342,7 @@ async test "BufferedReader::read_line" {
   inspect(lines.length(), content="202")
   assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
 }
+
+///|
+#cfg(target="js")
+let _ignore_unused_import : Unit = ignore(@fs.unimplemented)

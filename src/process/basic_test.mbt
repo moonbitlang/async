@@ -36,7 +36,7 @@ async test "basic_ls" {
     @json.inspect(files, content=[
       "stub.c", "README.md", "process.mbt", "cwd_test.mbt", "env_test.mbt", "README.mbt.md",
       "moon.pkg.json", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
-      "redirect_test.mbt", "pkg.generated.mbti",
+      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti",
     ])
   })
 }
