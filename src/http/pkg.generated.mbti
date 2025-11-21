@@ -41,6 +41,7 @@ type Client
 fn Client::close(Self) -> Unit
 async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
 async fn Client::end_request(Self) -> Response
+async fn Client::entre_passthrough_mode(Self) -> Unit
 async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
 async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
@@ -92,6 +93,7 @@ async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnection
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
+async fn ServerConnection::entre_passthrough_mode(Self) -> Unit
 async fn ServerConnection::flush(Self) -> Unit
 fn ServerConnection::new(@socket.Tcp, headers? : Map[String, String]) -> Self
 async fn ServerConnection::read_request(Self) -> Request

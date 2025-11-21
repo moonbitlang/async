@@ -30,6 +30,13 @@ pub fn ReaderBuffer::new() -> ReaderBuffer {
 }
 
 ///|
+pub fn ReaderBuffer::clear(buf : ReaderBuffer) -> Unit {
+  buf.buf = []
+  buf.start = 0
+  buf.len = 0
+}
+
+///|
 fn ReaderBuffer::enlarge_to(self : Self, n : Int) -> Unit {
   let capacity = self.buf.length()
   if self.start + n <= capacity {

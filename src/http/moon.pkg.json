@@ -19,7 +19,8 @@
     "send_wbtest.mbt": [ "native" ],
     "parser_wbtest.mbt": [ "native" ],
     "client_test.mbt": [ "native" ],
-    "request_test.mbt": [ "native" ]
+    "request_test.mbt": [ "native" ],
+    "proxy_test.mbt": [ "native" ]
   },
   "test-import": [
     "moonbitlang/async"

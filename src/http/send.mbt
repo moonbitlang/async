@@ -16,6 +16,7 @@
 priv enum SenderMode {
   SendingHeader
   SendingBody
+  PassThrough
 }
 
 ///|
@@ -23,7 +24,7 @@ priv enum SenderMode {
 priv struct Sender {
   writer : &@io.Writer
   mut mode : SenderMode
-  send_buf : FixedArray[Byte]
+  mut send_buf : FixedArray[Byte]
   mut send_len : Int
   headers : Bytes
 }
@@ -97,6 +98,7 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
       self.send_len = curr_len + 2
       len
     }
+    PassThrough => self.writer.write_once(buf, offset~, len~)
   }
 }
 
@@ -133,6 +135,7 @@ impl @io.Writer for Sender with write_reader(self, reader) {
         )
       }
     }
+    PassThrough => self.writer.write_reader(reader)
   }
 }
 
@@ -205,4 +208,11 @@ async fn Sender::send_response(
   self.send_headers(extra_headers)
   self.write("Transfer-Encoding: chunked\r\n\r\n")
   self.mode = SendingBody
+}
+
+///|
+fn Sender::enter_passthrough_mode(self : Sender) -> Unit {
+  self.send_buf = []
+  self.send_len = 0
+  self.mode = PassThrough
 }
