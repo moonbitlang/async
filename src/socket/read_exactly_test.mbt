@@ -14,7 +14,6 @@
 
 ///|
 async test "read_exactly" {
-  let port = 4203
   let buf = StringBuilder::new()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
@@ -22,10 +21,9 @@ async test "read_exactly" {
 
   @async.with_task_group(fn(root) {
     // server
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
     root.spawn_bg(fn() {
-      let server = @socket.TcpServer::new(
-        @socket.Addr::parse("127.0.0.1:\{port}"),
-      )
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -44,7 +42,7 @@ async test "read_exactly" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")
@@ -68,7 +66,6 @@ async test "read_exactly" {
 
 ///|
 async test "read_exactly failure" {
-  let port = 4204
   let buf = StringBuilder::new()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
@@ -76,10 +73,9 @@ async test "read_exactly failure" {
 
   @async.with_task_group(fn(root) {
     // server
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
     root.spawn_bg(fn() {
-      let server = @socket.TcpServer::new(
-        @socket.Addr::parse("127.0.0.1:\{port}"),
-      )
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -98,7 +94,7 @@ async test "read_exactly failure" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")

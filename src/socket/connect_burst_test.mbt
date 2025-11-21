@@ -16,37 +16,26 @@
 suberror ServerTerminate
 
 ///|
-async fn server(addr : String) -> Int {
-  let server = @socket.TcpServer::new(@socket.Addr::parse(addr))
-  defer server.close()
+async fn server_main(server : @socket.TcpServer) -> Int {
   let mut num_connection = 0
-  try
-    @async.with_task_group(fn(group) {
-      for {
-        let (conn, _) = server.accept()
-        num_connection += 1
-        group.spawn_bg(fn() {
-          defer conn.close()
-          while conn.read_some() is Some(msg) {
-            if msg == b"exit" {
-              @async.sleep(20)
-              raise ServerTerminate
-            }
-          }
-        })
+  server.run_forever(allow_failure=false, (conn, _) => {
+    num_connection += 1
+    while conn.read_some() is Some(msg) {
+      if msg == b"exit" {
+        @async.sleep(20)
+        raise ServerTerminate
       }
-    })
-  catch {
-    ServerTerminate => num_connection
+    }
+  }) catch {
+    ServerTerminate => return num_connection
     err => raise err
-  } noraise {
-    (_ : Unit) => panic()
   }
+  panic()
 }
 
 ///|
-async fn client(msg : Bytes, addr : String) -> Unit {
-  let conn = @socket.Tcp::connect(@socket.Addr::parse(addr))
+async fn client(msg : Bytes, addr : @socket.Addr) -> Unit {
+  let conn = @socket.Tcp::connect(addr)
   defer conn.close()
   conn.write(msg)
 }
@@ -54,16 +43,17 @@ async fn client(msg : Bytes, addr : String) -> Unit {
 ///|
 async test "connection burst" {
   let mut result = 0
-  let port = 4206
   @async.with_task_group(fn(root) {
-    root.spawn_bg(() => result = server("0.0.0.0:\{port}"))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    root.spawn_bg(() => result = server_main(server))
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for _ in 0..<6 {
-          ctx.spawn_bg(() => client(b"ping", "127.0.0.1:\{port}"))
+          ctx.spawn_bg(() => client(b"ping", addr))
         }
       })
-      root.spawn_bg(() => client(b"exit", "127.0.0.1:\{port}"))
+      root.spawn_bg(() => client(b"exit", addr))
     })
   })
   inspect(result, content="7")
@@ -72,16 +62,20 @@ async test "connection burst" {
 ///|
 async test "connection burst with ipv6" {
   let mut result = 0
-  let port = 4207
   @async.with_task_group(fn(root) {
-    root.spawn_bg(() => result = server("[::]:\{port}"))
+    let server = @socket.TcpServer::new(
+      @socket.Addr::parse("[::]:0"),
+      dual_stack=false,
+    )
+    let addr = server.addr()
+    root.spawn_bg(() => result = server_main(server))
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for _ in 0..<6 {
-          ctx.spawn_bg(() => client(b"ping", "[::1]:\{port}"))
+          ctx.spawn_bg(() => client(b"ping", addr))
         }
       })
-      root.spawn_bg(() => client(b"exit", "[::1]:\{port}"))
+      root.spawn_bg(() => client(b"exit", addr))
     })
   })
   inspect(result, content="7")

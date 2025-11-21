@@ -16,33 +16,27 @@
 suberror ServerTerminate derive(Show)
 
 ///|
-let port = 4201
-
-///|
 pub(all) struct Printer((String) -> Unit)
 
 ///|
-async fn server(println : Printer) -> Unit {
-  @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}")).run_forever(
-    allow_failure=false,
-    fn(conn, _) {
-      println("received new connection")
-      while conn.read_some() is Some(msg) {
-        @async.sleep(10)
-        println("server received: \{@encoding/utf8.decode(msg)}")
-        let reply = "pong"
-        conn.write(reply)
-        println("server sent: \{reply}")
-        if msg == b"exit" {
-          println("server initiate terminate")
-          @async.sleep(20)
-          raise ServerTerminate
-        }
-      } else {
-        println("server: connection closed by peer")
+async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
+  server.run_forever(allow_failure=false, fn(conn, _) {
+    println("received new connection")
+    while conn.read_some() is Some(msg) {
+      @async.sleep(10)
+      println("server received: \{@encoding/utf8.decode(msg)}")
+      let reply = "pong"
+      conn.write(reply)
+      println("server sent: \{reply}")
+      if msg == b"exit" {
+        println("server initiate terminate")
+        @async.sleep(20)
+        raise ServerTerminate
       }
-    },
-  ) catch {
+    } else {
+      println("server: connection closed by peer")
+    }
+  }) catch {
     err => {
       println("server terminate: \{err}")
       raise err
@@ -51,8 +45,13 @@ async fn server(println : Printer) -> Unit {
 }
 
 ///|
-async fn client(println : Printer, id : Int, msg : String) -> Unit {
-  let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+async fn client(
+  addr : @socket.Addr,
+  println : Printer,
+  id : Int,
+  msg : String,
+) -> Unit {
+  let conn = @socket.Tcp::connect(addr)
   defer conn.close()
   // The sleep here is used to make test result stable and portable,
   // because this message is in race condition
@@ -73,16 +72,18 @@ async fn client(println : Printer, id : Int, msg : String) -> Unit {
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
   @async.with_task_group(fn(root) {
-    root.spawn_bg(() => server(println))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let addr = server.addr()
+    root.spawn_bg(() => server_main(server, println))
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
-          ctx.spawn_bg(() => client(println, i, msg))
+          ctx.spawn_bg(() => client(addr, println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn_bg(() => client(println, 6, "exit"))
+      root.spawn_bg(() => client(addr, println, 6, "exit"))
     })
   }) catch {
     ServerTerminate => ()
