@@ -87,13 +87,13 @@ pub impl @io.Reader for Client with _get_internal_buffer(self) {
 /// Writing to `@http.Client` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  guard self.sender.mode is SendingBody
+  guard not(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
 pub impl @io.Writer for Client with write_reader(self, reader) {
-  guard self.sender.mode is SendingBody
+  guard not(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 
@@ -187,4 +187,23 @@ pub async fn Client::post(
   extra_headers? : Map[String, String] = {},
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
+}
+
+///|
+/// Let the client enter "pass through" mode,
+/// where the client serve as a TCP tunnel (maybe TLS encrypted) directly.
+/// This is useful for the special `CONNECT` HTTP request and HTTP protocol upgrade.
+///
+/// In passthrough mode,
+/// Read/write the client becomes direct read/write on the underlying connection,
+/// and all API except `@io.Reader` and `@io.Writer` must not be used anymore.
+///
+/// When entering pass through mode,
+/// the client must be in a clean state
+/// (i.e. not in the middle of sending a request).
+/// Unread data from the body of the last response will be discarded.
+pub async fn Client::entre_passthrough_mode(self : Client) -> Unit {
+  guard self.sender.mode is SendingHeader
+  self.reader.enter_passthrough_mode()
+  self.sender.enter_passthrough_mode()
 }

@@ -91,13 +91,13 @@ pub impl @io.Writer for ServerConnection with write_once(
   offset~,
   len~,
 ) {
-  guard self.sender.mode is SendingBody
+  guard not(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
 pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
-  guard self.sender.mode is SendingBody
+  guard not(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 
@@ -255,4 +255,23 @@ pub async fn Server::run_forever(
       }
     }
   })
+}
+
+///|
+/// Let the server enter "pass through" mode,
+/// where the server serve as a TCP tunnel (maybe TLS encrypted) directly.
+/// This is useful for handling the special `CONNECT` HTTP request and HTTP protcol upgrade.
+///
+/// In passthrough mode,
+/// Read/write the server becomes direct read/write on the underlying connection,
+/// and all API except `@io.Reader` and `@io.Writer` must not be used anymore.
+///
+/// When entering pass through mode,
+/// the server must be in a clean state
+/// (i.e. not in the middle of sending a response).
+/// Unread data from the body of the last request will be discarded.
+pub async fn ServerConnection::entre_passthrough_mode(self : Self) -> Unit {
+  guard self.sender.mode is SendingHeader
+  self.reader.enter_passthrough_mode()
+  self.sender.enter_passthrough_mode()
 }

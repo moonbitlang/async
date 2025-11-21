@@ -17,6 +17,7 @@ priv enum BodyKind {
   Empty
   Fixed(Int)
   Chunked(Int)
+  PassThrough
 }
 
 ///|
@@ -88,12 +89,17 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       self.body = Chunked(remaining)
       n
     }
+    PassThrough => self.transport._direct_read(buf, offset~, max_len~)
   }
 }
 
 ///|
 impl @io.Reader for Reader with _get_internal_buffer(self) {
-  self.read_buf
+  if self.body is PassThrough {
+    self.transport._get_internal_buffer()
+  } else {
+    self.read_buf
+  }
 }
 
 ///|
@@ -220,4 +226,11 @@ async fn Reader::skip_body(self : Reader) -> Unit {
   while self.drop(1024) == 1024 {
 
   }
+}
+
+///|
+async fn Reader::enter_passthrough_mode(self : Reader) -> Unit {
+  self.skip_body()
+  self.read_buf.clear()
+  self.body = PassThrough
 }
