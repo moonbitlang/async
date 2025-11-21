@@ -148,6 +148,7 @@ pub async fn ServerConnection::send_response(
 ///
 /// The meaning of `dual_stack` and `reuse_addr` is the same as `@socket.TcpServer::new`,
 /// see its document for more details.
+#deprecated("use `@http.Server::run_forever()` instead")
 pub async fn run_server(
   addr : @socket.Addr,
   f : async (ServerConnection, @socket.Addr) -> Unit,
@@ -165,4 +166,93 @@ pub async fn run_server(
       f(conn, addr)
     },
   )
+}
+
+///|
+/// A HTTP server
+struct Server {
+  server : @socket.TcpServer
+  headers : Map[String, String]
+}
+
+///|
+/// Create a new HTTP server listening on `addr`.
+///
+/// The meaning of `dual_stack` and `reuse_addr` is the same as
+/// `@socket.TcpServer::new()`, see there for more details.
+///
+/// `headers` can be used to specify common headers
+/// shared by all responses sent by this server.
+pub fn Server::new(
+  addr : @socket.Addr,
+  dual_stack? : Bool,
+  reuse_addr? : Bool,
+  headers? : Map[String, String] = {},
+) -> Server raise {
+  { server: @socket.TcpServer::new(addr, dual_stack?, reuse_addr?), headers }
+}
+
+///|
+pub fn Server::close(self : Server) -> Unit {
+  self.server.close()
+}
+
+///|
+/// Get the listen address of the server
+pub fn Server::addr(self : Server) -> @socket.Addr {
+  self.server.addr()
+}
+
+///|
+/// Accept a new connection from a HTTP server.
+/// Return the new HTTP connection and the address of peer.
+pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
+  let (conn, addr) = self.server.accept()
+  (ServerConnection::new(conn, headers=self.headers), addr)
+}
+
+///|
+/// Start the main loop of a HTTP server,
+/// the server will keep listening for new connections
+/// and new requests from existing connections.
+/// Requests are handled by the callback function `f`.
+///
+/// The callback function `f` accepts three arguments:
+/// - the request to process
+/// - a `&@io.Reader` that can be used to read request body
+/// - a `@http.ServerConnection` that can be used to send response.
+///     The procedure to send a response is:
+///     1. initiate a response and send response header via `.send_response()`
+///     2. send response body by using the `@http.ServerConnection` as `@io.Writer`
+///     3. (optional) complete the response via `.end_response()`.
+///         If `.end_response()` is not called, it will be called automatically
+///         after `f` returns.
+///
+/// If `allow_failure` is `true` (`true` by default),
+/// error raised by `f` will not crash the whole server.
+/// In this case, `run_forever` will only terminate when cancelled externally.
+/// Note that if `f` fails, the connection used by `f` will still get aborted.
+///
+/// If `max_connections` is present,
+/// at most `max_connections` clients are allowed in parallel.
+/// New clients will only get handled after a previous client terminates.
+///
+/// `run_forever` will close the server and each connection automatically.
+/// So `f` or the caller must not manually close the connections/server.
+pub async fn Server::run_forever(
+  self : Server,
+  f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  allow_failure? : Bool,
+  max_connections? : Int,
+) -> Unit {
+  self.server.run_forever(allow_failure?, max_connections?, (conn, _) => {
+    let conn = ServerConnection::new(conn, headers=self.headers)
+    for {
+      let request = conn.read_request()
+      f(request, conn, conn)
+      if conn.sender.mode is SendingBody {
+        conn.end_response()
+      }
+    }
+  })
 }

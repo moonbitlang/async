@@ -13,14 +13,12 @@
 // limitations under the License.
 
 ///|
-async fn test_server(port : Int, log : &Logger) -> Unit {
-  let addr = @socket.Addr::parse("127.0.0.1:\{port}")
-  @http.run_server(addr, (conn, _) => for {
-    let request = conn.read_request()
+async fn test_server(server : @http.Server, log : &Logger) -> Unit {
+  server.run_forever((request, body, conn) => {
     log.write_string(
       "server received request: \{request.meth} \{request.path}\n",
     )
-    while conn.read_some() is Some(data) {
+    while body.read_some() is Some(data) {
       let data = @encoding/utf8.decode(data)
       log.write_string("server received: \{data}")
     }
@@ -29,16 +27,17 @@ async fn test_server(port : Int, log : &Logger) -> Unit {
     conn..write("\{request.meth} response part 1\n")..flush()
     @async.sleep(100)
     log.write_string("server: sending \{request.meth} response part 2\n")
-    conn..write("\{request.meth} response part 2\n")..end_response()
+    conn..write("\{request.meth} response part 2\n")
   })
 }
 
 ///|
 async test "request streaming" {
-  let port = 4213
   let log = StringBuilder::new()
   @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => test_server(port, log))
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr().port()
+    group.spawn_bg(no_wait=true, () => test_server(server, log))
     async fn fetch_response(client : @http.Client) {
       while client.read_some() is Some(data) {
         let data = @encoding/utf8.decode(data)

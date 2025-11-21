@@ -19,6 +19,7 @@ async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> 
 
 async fn put_stream(String, headers? : Map[String, String], port? : Int) -> Client
 
+#deprecated
 async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 // Errors
@@ -80,6 +81,13 @@ pub(all) struct Response {
   reason : String
   headers : Map[String, String]
 }
+
+type Server
+async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)
+fn Server::addr(Self) -> @socket.Addr
+fn Server::close(Self) -> Unit
+fn Server::new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String]) -> Self raise
+async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit

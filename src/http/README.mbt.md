@@ -54,38 +54,30 @@ async test {
 ```
 
 ## Writing HTTP servers
-The `@http.ServerConnection` type provides abstraction for a connection in a HTTP server.
-It can be created via `@http.ServerConnection::new(tcp_connection)`.
-The workflow of processing a request via `@http.ServerConnection` is:
+The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.
+A HTTP server should first get created via `@http.Server::new(..)`,
+after that, `server.run_forever(f)` automatically start and run the server.
+The callback function `f` is used to handle HTTP requests.
+It receives three parameters:
 
-1. use `server.read_request()` to wait for incoming request
-  and obtain the header of the request
-1. read the request body by usign `@http.ServerConnection` as a `@io.Reader`.
-  or use `server.read_all()` to obtain the whole request body.
-  Yon can also ignore the body via `server.skip_request_body()`
-1. use `server.send_response` to initiate a response and send the response header
-1. send response body by using `@http.ServerConnection` as a `@io.Writer`
-1. call `server.end_response()` to complete the response
+- the request to process
+- a `&@io.Reader` that can be used to read request body
+- a `@http.ServerConnection` that can be used to send response.
+    The procedure to send a response is:
+    1. initiate a response and send response header via `.send_response()`
+    2. send response body by using the `@http.ServerConnection` as `@io.Writer`
+    3. (optional) complete the response via `.end_response()`.
+        If `.end_response()` is not called, it will be called automatically
+        after `f` returns.
 
-The `@http` package also provides a helper `@http.run_server`
-for setting up and running a HTTP server directly.
-It accepts a callback function for handling connection,
-the callback will receive a `@http.ServerConnection` and the address of client.
 Here's an example server that returns 404 to every request:
 
 ```moonbit
 ///|
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
-  @http.run_server(listen_addr, fn(conn, _) {
-    for {
-      let request = conn.read_request()
-      conn.skip_request_body()
-      conn
-      ..send_response(404, "NotFound")
-      ..write("`\{request.path}` not found")
-      ..end_response()
-    }
-  })
+  @http.Server::new(listen_addr).run_forever((request, _body, conn) => conn
+    ..send_response(404, "NotFound")
+    ..write("`\{request.path}` not found"))
 }
 ```
