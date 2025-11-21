@@ -21,15 +21,13 @@ fn output_response(response : @http.Response, logger : &Logger) -> Unit {
 }
 
 ///|
-let port = 4207
-
-///|
 async fn client(
+  addr : @socket.Addr,
   path : String,
   logger : &Logger,
   handle_response? : async (@http.Client) -> Unit,
 ) -> Unit {
-  let conn = @http.Client::connect("localhost", protocol=Http, port~)
+  let conn = @http.Client::connect("localhost", protocol=Http, port=addr.port())
   defer conn.close()
   let response = conn.get(path)
   output_response(response, logger)
@@ -47,24 +45,27 @@ async test "basic" {
 
   let client_log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    root.spawn_bg(no_wait=true, () => @http_file_server.server(
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    root.spawn_bg(no_wait=true, () => @http_file_server.server_main(
+      server,
       path=".",
-      port~,
       log~,
     ))
     @async.sleep(50)
     client_log.write_string("client: GET /examples/http_file_server\n")
-    client("/examples/http_file_server", client_log)
+    client(addr, "/examples/http_file_server", client_log)
     client_log.write_string("\n\n")
     client_log.write_string(
       "client: GET /examples/http_file_server/moon.pkg.json\n",
     )
-    client("/examples/http_file_server/moon.pkg.json", client_log)
+    client(addr, "/examples/http_file_server/moon.pkg.json", client_log)
     client_log.write_string("\n\n")
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))
     client(
+      addr,
       "/examples/http_file_server?download_zip",
       client_log,
       handle_response=tmp_file.write_reader(_),

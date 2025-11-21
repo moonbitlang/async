@@ -98,42 +98,37 @@ async fn serve_404(conn : @http.ServerConnection) -> Unit {
 }
 
 ///|
-pub async fn server(
+pub async fn server_main(
+  server : @http.Server,
   path~ : String,
-  port~ : Int,
   log? : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
-  @http.run_server(@socket.Addr::parse("0.0.0.0:\{port}"), fn(conn, addr) {
-    log("received new connection from \{addr}")
-    defer log("closing connection from \{addr}")
-    for {
-      let request = conn.read_request()
-      let (path, download_zip) = match request.path {
-        [.. path, .. "?download_zip"] => (path.to_string(), true)
-        path => (path, false)
+  server.run_forever((request, _body, conn) => {
+    let (path, download_zip) = match request.path {
+      [.. path, .. "?download_zip"] => (path.to_string(), true)
+      path => (path, false)
+    }
+    log("serving \{path}")
+    guard request.meth is Get else { return }
+    let file = @fs.open(base_path + path, mode=ReadOnly) catch {
+      _ => {
+        serve_404(conn)
+        return
       }
-      log("serving \{path}")
-      guard request.meth is Get else { return }
-      let file = @fs.open(base_path + path, mode=ReadOnly) catch {
-        _ => {
-          serve_404(conn)
-          continue
-        }
-      }
-      if file.kind() is Directory {
-        if download_zip {
-          file.close()
-          serve_zip(conn, base_path + path)
-        } else {
-          let dir = file.as_dir()
-          defer dir.close()
-          serve_directory(conn, dir, path~)
-        }
+    }
+    if file.kind() is Directory {
+      if download_zip {
+        file.close()
+        serve_zip(conn, base_path + path)
       } else {
-        defer file.close()
-        serve_file(conn, file, path~)
+        let dir = file.as_dir()
+        defer dir.close()
+        serve_directory(conn, dir, path~)
       }
+    } else {
+      defer file.close()
+      serve_file(conn, file, path~)
     }
   })
 }
@@ -144,7 +139,8 @@ async fn main {
     [] | [_] => "."
     [_, path, ..] => path
   }
-  server(path~, port=8000) catch {
+  let server = @http.Server::new(@socket.Addr::parse("0.0.0.0:8000"))
+  server_main(server, path~) catch {
     err => println("server terminate due to \{err}")
   }
 }
