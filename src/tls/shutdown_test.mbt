@@ -14,13 +14,11 @@
 
 ///|
 async test "peer close connection" {
-  let port = 4208
   @async.with_task_group(fn(root) {
     // server
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
     root.spawn_bg(fn() {
-      let server = @socket.TcpServer::new(
-        @socket.Addr::parse("127.0.0.1:\{port}"),
-      )
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -38,7 +36,7 @@ async test "peer close connection" {
     })
     // client
     root.spawn_bg(fn() {
-      let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       let client = @tls.Tls::client(conn, verify=false)
       defer client.close()

@@ -23,20 +23,17 @@ let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
 ///|
 async test "Only_V4 server" {
   let log = StringBuilder::new()
-  let port = 4209
   @async.with_task_group(fn(root) {
+    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:\{port}")).run_forever(fn(
-          conn,
-          addr,
-        ) {
-          let addr_str = addr.to_string()
-          guard addr_str.rev_find(":") is Some(ip_end)
-          let ip = addr_str[:ip_end]
-          let msg = conn.read_all().text()
-          log.write_string("server received \{repr(msg)} from \{ip}\n")
-        },
-      )
+      server.run_forever((conn, addr) => {
+        let addr_str = addr.to_string()
+        guard addr_str.rev_find(":") is Some(ip_end)
+        let ip = addr_str[:ip_end]
+        let msg = conn.read_all().text()
+        log.write_string("server received \{repr(msg)} from \{ip}\n")
+      })
     })
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
@@ -70,13 +67,14 @@ async test "Only_V4 server" {
 ///|
 async test "Only_V6 server" {
   let log = StringBuilder::new()
-  let port = 4210
   @async.with_task_group(fn(root) {
+    let server = @socket.TcpServer::new(
+      @socket.Addr::parse("[::]:0"),
+      dual_stack=false,
+    )
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      @socket.TcpServer::new(
-        @socket.Addr::parse("[::]:\{port}"),
-        dual_stack=false,
-      ).run_forever(fn(conn, addr) {
+      server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
@@ -116,13 +114,11 @@ async test "Only_V6 server" {
 ///|
 async test "dual stack server" {
   let log = StringBuilder::new()
-  let port = 4211
   @async.with_task_group(fn(root) {
+    let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:0"))
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      @socket.TcpServer::new(@socket.Addr::parse("[::]:\{port}")).run_forever(fn(
-        conn,
-        addr,
-      ) {
+      server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
@@ -163,12 +159,10 @@ async test "dual stack server" {
 ///|
 async test "Only_V4 UDP server" {
   let log = StringBuilder::new()
-  let port = 4209
   @async.with_task_group(fn(root) {
+    let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.UdpServer::new(
-        @socket.Addr::parse("0.0.0.0:\{port}"),
-      )
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
@@ -212,13 +206,13 @@ async test "Only_V4 UDP server" {
 ///|
 async test "Only_V6 UDP server" {
   let log = StringBuilder::new()
-  let port = 4210
   @async.with_task_group(fn(root) {
+    let server = @socket.UdpServer::new(
+      @socket.Addr::parse("[::]:0"),
+      dual_stack=false,
+    )
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.UdpServer::new(
-        @socket.Addr::parse("[::]:\{port}"),
-        dual_stack=false,
-      )
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
@@ -262,10 +256,10 @@ async test "Only_V6 UDP server" {
 ///|
 async test "dual stack UDP server" {
   let log = StringBuilder::new()
-  let port = 4211
   @async.with_task_group(fn(root) {
+    let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:0"))
+    let port = server.addr().port()
     root.spawn_bg(no_wait=true, fn() {
-      let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:\{port}"))
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {

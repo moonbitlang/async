@@ -16,26 +16,20 @@
 suberror ServerTerminate derive(Show)
 
 ///|
-let port = 4201
-
-///|
 pub(all) struct Printer((String) -> Unit)
 
 ///|
-async fn server(println : Printer) -> Unit {
+async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
   @async.with_task_group(fn(group) {
-    let server_sock = @socket.UdpServer::new(
-      @socket.Addr::parse("0.0.0.0:\{port}"),
-    )
-    defer server_sock.close()
+    defer server.close()
     let buf = FixedArray::make(1024, b'0')
-    while server_sock.recvfrom(buf) is (n, addr) && n > 0 {
+    while server.recvfrom(buf) is (n, addr) && n > 0 {
       group.spawn_bg(fn() {
         @async.sleep(10)
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{@encoding/utf8.decode(msg)}")
         let reply = "pong"
-        server_sock.sendto(@encoding/utf8.encode(reply), addr)
+        server.sendto(@encoding/utf8.encode(reply), addr)
         println("server sent: \{reply}")
         if msg == b"exit" {
           println("server initiate terminate")
@@ -54,8 +48,13 @@ async fn server(println : Printer) -> Unit {
 }
 
 ///|
-async fn client(println : Printer, id : Int, msg : String) -> Unit {
-  let conn = @socket.UdpClient::new(@socket.Addr::parse("127.0.0.1:\{port}"))
+async fn client(
+  addr : @socket.Addr,
+  println : Printer,
+  id : Int,
+  msg : String,
+) -> Unit {
+  let conn = @socket.UdpClient::new(addr)
   defer conn.close()
   conn.send(@encoding/utf8.encode(msg))
   println("client \{id} sent: \{msg}")
@@ -72,16 +71,18 @@ async fn client(println : Printer, id : Int, msg : String) -> Unit {
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
   @async.with_task_group(fn(root) {
-    root.spawn_bg(() => server(println))
+    let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let addr = server.addr()
+    root.spawn_bg(() => server_main(server, println))
     root.spawn_bg(fn() {
       @async.with_task_group(fn(ctx) {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
-          ctx.spawn_bg(() => client(println, i, msg))
+          ctx.spawn_bg(() => client(addr, println, i, msg))
           @async.sleep(100)
         }
       })
-      root.spawn_bg(() => client(println, 6, "exit"))
+      root.spawn_bg(() => client(addr, println, 6, "exit"))
     })
   }) catch {
     ServerTerminate => ()
