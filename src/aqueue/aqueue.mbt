@@ -22,30 +22,132 @@ priv struct Reader[X] {
 }
 
 ///|
+priv struct Writer[X] {
+  value : X
+  mut coro : @coroutine.Coroutine?
+}
+
+///|
+/// Options for different behavior of `put` in async queue.
+/// - `Unbounded`: the queue has unbounded size, so `put` always succeed and never blocks.
+///   However, if the reader of the queue hangs silently,
+///   elements will accumulate infinitely in the queue, causing memory leak
+/// - `Blocking(n)`: the queue can contain at most `n` elements,
+///   if the queue is full, `put` will block until some value is consumed.
+///   If multiple blocked writers coexist, they will be accepted in a FIFO manner
+/// - `DiscardOldest(n)`: the queue can contain at most `n` elements,
+///   if the queue is full, the oldest elements will be discarded,
+///   so `put` always succeed and never block
+/// - `DiscardLatest(n)`: the queue can contain at most `n` elements,
+///   if the queue is full, the newest elements, i.e. the argument of `put`,
+///   will be silently discarded.
+pub(all) enum Kind {
+  Unbounded
+  Blocking(Int)
+  DiscardOldest(Int)
+  DiscardLatest(Int)
+}
+
+///|
 /// An asynchronous queue, where reader can wait for data to arrive
 /// in a non-blocking manner.
-/// The internal buffer size of this queue is unlimited,
-/// and writing to the queue will never block.
 struct Queue[X] {
+  kind : Kind
   readers : @deque.Deque[Reader[X]]
+  writers : @deque.Deque[Writer[X]]
   /// invariant: if `buffer` is non-empty, `readers` must be empty
   buffer : @deque.Deque[X]
 }
 
 ///|
 /// Create an empty queue.
+/// The behavior of `put` is determined by the `kind` argument,
+/// see the type `@aqueue.Kind` for more details.
 #as_free_fn
-pub fn[X] Queue::new() -> Queue[X] {
-  { readers: @deque.new(), buffer: @deque.new() }
+#callsite(migration(kind, fill=true, msg="specify the kind of queue explicitly via `kind=...`"))
+pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
+  { kind, writers: @deque.new(), readers: @deque.new(), buffer: @deque.new() }
 }
 
 ///|
-/// Put a new element into a queue. This function never blocks.
-/// If the queue is currently empty and there are readers blocked on this thread,
-/// one reader will be woken to process the data.
-pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
+/// Put a new element into a queue.
+///
+/// - if there are readers blocked on this thread,
+///   the first reader will be woken to process the data
+/// - if there are no readers currently blocking,
+///   but the queue still have enough spare space,
+///   the new element will be placed in the queue,
+///   and `put` will return immediately without suspension
+/// - if the queue is already full, the behavior is determined by
+///   the `kind` argument provided on queue creation:
+///     - `Unbounded`: the queue has unbounded size, so can never be full
+///     - `DiscardOldest`: the oldest element in the queue is discarded
+///     - `DiscardLatest`: the argument of `put` is silently discarded,
+///       and `put` will have not effect
+///   
+/// Although `put` is an async function,
+/// if will not suspend unless the queue is `Blocking` and already full.
+/// So for `Unbounded`/`DiscardOldest`/`DiscardLatest`,
+/// it is safe to assume that `put` is actually synchronous.
+/// For context where async function is not allowed, use `try_put` instead.
+///
+/// `put` itself never fails. But for `Blocking` queues,
+/// `put` may be cancelled before it succeed,
+/// in this case `put` will fail with a cancellation error.
+/// It is guaranteed that the element will be added to the queue
+/// *if and only if* `put` return normally.
+pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
+  if !self.try_put(data) {
+    match self.kind {
+      Unbounded => panic()
+      Blocking(_) => {
+        let writer = Writer::{
+          value: data,
+          coro: Some(@coroutine.current_coroutine()),
+        }
+        self.writers.push_back(writer)
+        @coroutine.suspend() catch {
+          _ if writer.coro is None => ()
+          err => {
+            writer.coro = None
+            raise err
+          }
+        }
+      }
+      DiscardOldest(_) => {
+        let _ = self.buffer.pop_front()
+        self.buffer.push_back(data)
+      }
+      DiscardLatest(_) => ()
+    }
+  }
+}
+
+///|
+/// Try to put a new element into an async queue.
+/// If the queue still have enough room, the element will be added to the queue,
+/// and `true` will be returned.
+/// If the queue is already full,
+/// the element will not be added and `false` will be returned.
+/// Note that even for `DiscardOldest` or `DiscardLatest` queues,
+/// where `put` never blocks, `try_put` will still return `false` if the queue is full,
+/// instead of discarding the oldest/newest element.
+pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool {
   loop self.readers.pop_front() {
-    None => self.buffer.push_back(data)
+    None =>
+      match self.kind {
+        Unbounded => {
+          self.buffer.push_back(data)
+          true
+        }
+        Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>
+          if self.buffer.length() < n {
+            self.buffer.push_back(data)
+            true
+          } else {
+            false
+          }
+      }
     Some({ coro: None, .. }) => continue self.readers.pop_front()
     Some({ coro: Some(coro), .. } as reader) => {
       // after waking the reader, it may not start execution immediately.
@@ -55,6 +157,7 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
       // to avoid some edge cases.
       reader.value = Some(data)
       coro.wake()
+      true
     }
   }
 }
@@ -69,10 +172,13 @@ pub fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
 /// However, since `get` is a blocking point, the task running `get` may be cancelled,
 /// in this case, an cancellation will be raised from `get`.
 pub async fn[X] Queue::get(self : Queue[X]) -> X {
-  if self.buffer.pop_front() is Some(data) {
+  if self.try_get() is Some(data) {
     return data
   }
-  let reader = { value: None, coro: Some(@coroutine.current_coroutine()) }
+  let reader = Reader::{
+    value: None,
+    coro: Some(@coroutine.current_coroutine()),
+  }
   self.readers.push_back(reader)
   @coroutine.suspend() catch {
     _ if reader.value is Some(value) =>
@@ -101,5 +207,17 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
 /// Try to fetch an element from the queue without blocking.
 /// If no element is in the queue at the moment, `None` is returned.
 pub fn[X] Queue::try_get(self : Queue[X]) -> X? {
-  self.buffer.pop_front()
+  let result = self.buffer.pop_front()
+  if result is Some(_) {
+    loop self.writers.pop_front() {
+      None => ()
+      Some({ coro: None, .. }) => continue self.writers.pop_front()
+      Some({ coro: Some(coro), value } as writer) => {
+        self.buffer.push_back(value)
+        coro.wake()
+        writer.coro = None
+      }
+    }
+  }
+  result
 }

@@ -6,12 +6,21 @@ package "moonbitlang/async/aqueue"
 // Errors
 
 // Types and methods
+pub(all) enum Kind {
+  Unbounded
+  Blocking(Int)
+  DiscardOldest(Int)
+  DiscardLatest(Int)
+}
+
 type Queue[X]
 async fn[X] Queue::get(Self[X]) -> X
 #as_free_fn
-fn[X] Queue::new() -> Self[X]
-fn[X] Queue::put(Self[X], X) -> Unit
+#label_migration(kind, fill=true, msg="specify the kind of queue explicitly via `kind=...`")
+fn[X] Queue::new(kind? : Kind) -> Self[X]
+async fn[X] Queue::put(Self[X], X) -> Unit
 fn[X] Queue::try_get(Self[X]) -> X?
+fn[X] Queue::try_put(Self[X], X) -> Bool
 
 // Type aliases
 
