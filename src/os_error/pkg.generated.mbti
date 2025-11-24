@@ -18,6 +18,7 @@ fn OSError::is_EINTR(Self) -> Bool
 fn OSError::is_ENOENT(Self) -> Bool
 fn OSError::is_nonblocking_io_error(Self) -> Bool
 impl Show for OSError
+impl ToJson for OSError
 
 // Types and methods
 

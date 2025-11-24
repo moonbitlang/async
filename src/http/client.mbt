@@ -29,7 +29,7 @@ struct Client {
 
 ///|
 /// Error raised when the proxy responded with a non-2XX response code
-pub suberror ProxyError Response derive(Show)
+pub suberror ProxyError Response derive(Show, ToJson)
 
 ///|
 /// Create a new HTTP client by connecting to a remote host.

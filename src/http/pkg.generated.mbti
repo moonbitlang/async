@@ -29,15 +29,18 @@ pub suberror HttpProtocolError {
   NotImplemented
 }
 impl Show for HttpProtocolError
+impl ToJson for HttpProtocolError
 
 pub suberror ProxyError Response
 impl Show for ProxyError
+impl ToJson for ProxyError
 
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 }
 impl Show for URIParseError
+impl ToJson for URIParseError
 
 // Types and methods
 type Client
@@ -59,6 +62,11 @@ pub(all) enum Protocol {
   Https
 }
 fn Protocol::default_port(Self) -> Int
+impl Compare for Protocol
+impl Eq for Protocol
+impl Hash for Protocol
+impl Show for Protocol
+impl ToJson for Protocol
 
 pub(all) struct Request {
   meth : RequestMethod
@@ -66,6 +74,7 @@ pub(all) struct Request {
   headers : Map[String, String]
 }
 impl Show for Request
+impl ToJson for Request
 
 pub(all) enum RequestMethod {
   Get
@@ -78,8 +87,11 @@ pub(all) enum RequestMethod {
   Trace
   Patch
 }
+impl Compare for RequestMethod
 impl Eq for RequestMethod
+impl Hash for RequestMethod
 impl Show for RequestMethod
+impl ToJson for RequestMethod
 
 pub(all) struct Response {
   code : Int
@@ -87,6 +99,7 @@ pub(all) struct Response {
   headers : Map[String, String]
 }
 impl Show for Response
+impl ToJson for Response
 
 type Server
 async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)

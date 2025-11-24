@@ -23,18 +23,18 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-} derive(Show, Eq)
+} derive(Show, Eq, Compare, Hash, ToJson)
 
 ///|
 pub(all) struct Request {
   meth : RequestMethod
   path : String
   headers : Map[String, String]
-} derive(Show)
+} derive(Show, ToJson)
 
 ///|
 pub(all) struct Response {
   code : Int
   reason : String
   headers : Map[String, String]
-} derive(Show)
+} derive(Show, ToJson)

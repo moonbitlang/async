@@ -49,7 +49,7 @@ pub using @coroutine {pause}
 pub using @coroutine {is_being_cancelled}
 
 ///|
-pub suberror TimeoutError derive(Show)
+pub suberror TimeoutError derive(Show, ToJson)
 
 ///|
 /// `with_timeout(timeout, f)` run the async function `f`.

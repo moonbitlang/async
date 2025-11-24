@@ -41,7 +41,7 @@ extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_err
 ///|
 pub(all) suberror OSError {
   OSError(Int, context~ : String)
-}
+} derive(ToJson)
 
 ///|
 pub impl Show for OSError with output(self, logger) -> Unit {

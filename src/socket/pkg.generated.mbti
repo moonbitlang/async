@@ -10,9 +10,11 @@ import(
 // Errors
 pub suberror InvalidAddr
 impl Show for InvalidAddr
+impl ToJson for InvalidAddr
 
 pub suberror ResolveHostnameError String
 impl Show for ResolveHostnameError
+impl ToJson for ResolveHostnameError
 
 // Types and methods
 type Addr

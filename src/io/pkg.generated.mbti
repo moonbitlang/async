@@ -7,9 +7,11 @@ fn pipe() -> (PipeRead, PipeWrite)
 // Errors
 pub suberror PipeClosed
 impl Show for PipeClosed
+impl ToJson for PipeClosed
 
 pub(all) suberror ReaderClosed
 impl Show for ReaderClosed
+impl ToJson for ReaderClosed
 
 // Types and methods
 #deprecated

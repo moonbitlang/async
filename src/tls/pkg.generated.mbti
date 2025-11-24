@@ -10,9 +10,11 @@ import(
 // Errors
 pub suberror ConnectionClosed
 impl Show for ConnectionClosed
+impl ToJson for ConnectionClosed
 
 pub suberror OpenSSLError String
 impl Show for OpenSSLError
+impl ToJson for OpenSSLError
 
 // Types and methods
 #alias(TLS, deprecated)

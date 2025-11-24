@@ -24,10 +24,10 @@ struct Tls {
 }
 
 ///|
-pub suberror OpenSSLError String derive(Show)
+pub suberror OpenSSLError String derive(Show, ToJson)
 
 ///|
-pub suberror ConnectionClosed derive(Show)
+pub suberror ConnectionClosed derive(Show, ToJson)
 
 ///|
 fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(

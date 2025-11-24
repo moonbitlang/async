@@ -40,7 +40,7 @@ pub suberror HttpProtocolError {
   BadRequest
   HttpVersionNotSupported(String)
   NotImplemented
-} derive(Show)
+} derive(Show, ToJson)
 
 ///|
 /// Read from the body of the HTTP request/response
