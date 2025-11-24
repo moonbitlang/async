@@ -22,8 +22,7 @@ Sometimes, the simple one-time `@http.get` etc. is insufficient,
 for example you need to reuse the same connection for multiple requests,
 or the request/response body is very large and need to be processed lazily.
 In this case, you can use the `@http.Client` type.
-`@http.Client` can be created via `@http.Client::connect(hostname)`,
-by default `https` is used, this can be overriden using the `protocol` parameter.
+`@http.Client` can be created via `@http.Client::new(uri)`.
 
 The workflow of performing a request with `@http.Client` is:
 
@@ -44,7 +43,7 @@ A complete example:
 ///|
 #cfg(target="native")
 async test {
-  let client = @http.Client::connect("www.example.org")
+  let client = @http.Client::new("https://www.example.org")
   defer client.close()
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")

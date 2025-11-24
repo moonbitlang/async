@@ -33,11 +33,7 @@ async test "passthrough mode" {
         log.push("server received: \{packet}")
       }
     })
-    let client = @http.Client::connect(
-      "localhost",
-      protocol=Http,
-      port=server_addr.port(),
-    )
+    let client = @http.Client::new("http://localhost:\{server_addr.port()}")
     defer client.close()
     let response = client..request(Connect, "/path").end_request()
     inspect(response.code, content="200")
@@ -100,7 +96,7 @@ async test "proxied https request" {
     ))
     let (_, result) = @http.get(
       "https://raw.githubusercontent.com/moonbitlang/async/refs/heads/main/LICENSE",
-      proxy=@http.Client::connect("localhost", protocol=Http, port~),
+      proxy=@http.Client::new("http://localhost:\{port}"),
     )
     inspect(
       result.text(),
@@ -327,7 +323,7 @@ async test "proxied http request" {
     ))
     let (_, result) = @http.get(
       "http://www.example.org",
-      proxy=@http.Client::connect("localhost", protocol=Http, port~),
+      proxy=@http.Client::new("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
@@ -359,16 +355,12 @@ async test "proxied misc request" {
       }
     }))
     async fn proxy() {
-      @http.Client::connect(
-        "localhost",
-        protocol=Http,
-        port=proxy_server_addr.port(),
-      )
+      @http.Client::new("http://localhost:\{proxy_server_addr.port()}")
     }
 
-    let _ = @http.get("http://localhost", proxy=proxy(), port~)
-    let _ = @http.put("http://localhost", "abcd", proxy=proxy(), port~)
-    let _ = @http.post("http://localhost", "efgh", proxy=proxy(), port~)
+    let _ = @http.get("http://localhost:\{port}", proxy=proxy())
+    let _ = @http.put("http://localhost:\{port}", "abcd", proxy=proxy())
+    let _ = @http.post("http://localhost:\{port}", "efgh", proxy=proxy())
 
   })
   for i in 0..<log.length() {
@@ -393,7 +385,7 @@ async test "proxy error" {
     try
       @http.get(
         "https://www.example.org",
-        proxy=@http.Client::connect("localhost", protocol=Http, port~),
+        proxy=@http.Client::new("http://localhost:\{port}"),
       )
     catch {
       err =>

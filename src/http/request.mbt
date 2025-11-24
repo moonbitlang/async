@@ -43,19 +43,23 @@ fn resolve_url(
     "https" => Https
     protocol => raise UnsupportedProtocol(protocol.to_string())
   }
-  let port = match port {
-    Some(port) => port
-    None =>
-      match protocol {
-        Http => 80
-        Https => 443
-      }
-  }
   let uri = uri[protocol_len + 3:]
   let (host, path) = if uri.find("/") is Some(i) {
     (uri[:i].to_string(), uri[i:].to_string())
   } else {
     (uri.to_string(), "/")
+  }
+  let (host, port) = match port {
+    Some(port) => (host, port)
+    None =>
+      if host lexmatch? (host, ":" ("[0-9]+" as port_str)) {
+        let port = @strconv.parse_int(port_str) catch {
+          _ => raise InvalidFormat
+        }
+        (host.to_string(), port)
+      } else {
+        (host, protocol.default_port())
+      }
   }
   let path = if path == "" { "/" } else { path }
   (protocol, port, host, path)
@@ -83,13 +87,11 @@ async fn perform_request(
 /// Supported protocols are `http://` and `https://`.
 /// The HTTP response message and the whole response body will be returned.
 ///
-/// `port` is the port number to connect to.
-/// By default it is the standard port for the specified protocol.
-///
 /// `proxy`, if present, specifies the proxy to use for this request.
 /// See `@http.Client::new` for more details.
 ///
 /// See `Client::request` for more details.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
@@ -102,6 +104,7 @@ pub async fn get(
 
 ///|
 /// Similar to `get`, but performs a `PUT` request instead.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn put(
   uri : String,
   content : &@io.Data,
@@ -114,6 +117,7 @@ pub async fn put(
 
 ///|
 /// Similar to `get`, but performs a `POST` request instead.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn post(
   uri : String,
   content : &@io.Data,
@@ -134,6 +138,7 @@ pub async fn post(
 ///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn get_stream(
   uri : String,
   headers? : Map[String, String] = {},
@@ -168,6 +173,7 @@ pub async fn get_stream(
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn put_stream(
   uri : String,
   headers? : Map[String, String] = {},
@@ -199,6 +205,7 @@ pub async fn put_stream(
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
+#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn post_stream(
   uri : String,
   headers? : Map[String, String] = {},
