@@ -48,8 +48,7 @@ async test "request streaming" {
     {
       log.write_string("client sending GET request\n")
       let (response, client) = @http.get_stream(
-        "http://localhost/get",
-        port~,
+        "http://localhost:\{port}/get",
         body="GET data\n",
       )
       defer client.close()
@@ -58,7 +57,7 @@ async test "request streaming" {
     }
     {
       log.write_string("client sending PUT request\n")
-      let client = @http.put_stream("http://localhost/put", port~)
+      let client = @http.put_stream("http://localhost:\{port}/put")
       defer client.close()
       client.flush()
       @async.sleep(100)
@@ -73,7 +72,7 @@ async test "request streaming" {
     }
     {
       log.write_string("client sending POST request\n")
-      let client = @http.post_stream("http://localhost/post", port~)
+      let client = @http.post_stream("http://localhost:\{port}/post")
       defer client.close()
       client.flush()
       @async.sleep(100)

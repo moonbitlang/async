@@ -27,7 +27,7 @@ async fn client(
   logger : &Logger,
   handle_response? : async (@http.Client) -> Unit,
 ) -> Unit {
-  let conn = @http.Client::connect("localhost", protocol=Http, port=addr.port())
+  let conn = @http.Client::new("http://localhost:\{addr.port()}")
   defer conn.close()
   let response = conn.get(path)
   output_response(response, logger)

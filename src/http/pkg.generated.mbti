@@ -7,16 +7,22 @@ import(
 )
 
 // Values
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
 
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, Client)
 
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
 
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn post_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
 
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
 
+#label_migration(port, fill=false, msg="specify the port in URI instead")
 async fn put_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
 
 #deprecated
@@ -45,11 +51,13 @@ impl ToJson for URIParseError
 // Types and methods
 type Client
 fn Client::close(Self) -> Unit
+#deprecated
 async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int, proxy? : Self) -> Self
 async fn Client::end_request(Self) -> Response
 async fn Client::entre_passthrough_mode(Self) -> Unit
 async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
+async fn Client::new(String, headers? : Map[String, String], proxy? : Self) -> Self
 async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
