@@ -66,6 +66,13 @@ struct Queue[X] {
 #as_free_fn
 #callsite(migration(kind, fill=true, msg="specify the kind of queue explicitly via `kind=...`"))
 pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
+  match kind {
+    Unbounded => ()
+    Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>
+      if n <= 0 {
+        abort("queue size must be positive")
+      }
+  }
   { kind, writers: @deque.new(), readers: @deque.new(), buffer: @deque.new() }
 }
 
