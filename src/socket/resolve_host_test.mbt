@@ -24,12 +24,12 @@ async test "resolve mooncakes.io" {
 async test "resolve cancel" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let channel = @async.Queue::new()
+    let lock = @async.Semaphore::new(1, initial_value=1)
     let task = root.spawn(allow_failure=true, fn() {
-      channel.put(())
+      lock.release()
       log.write_object(@socket.Addr::resolve("does.not.exist", port=443))
     })
-    channel.get() // make sure the task already started
+    lock.acquire() // make sure the task already started
     task.cancel()
     log.write_string("host resolution cancelled\n")
   })
