@@ -49,6 +49,18 @@ pub using @coroutine {pause}
 pub using @coroutine {is_being_cancelled}
 
 ///|
+/// `is_cancellation_error(err)` return `true`
+/// if `err` is the special error used to represent cancellation internally.
+///
+/// Note that `is_cancellation_error` may not be accurate:
+/// async code may fail and raise other error during cancellation handling,
+/// in this case the error may be replaced by something else.
+/// For accurate detection of cancellation, use `is_being_cancelled` instead.
+pub fn is_cancellation_error(error : Error) -> Bool {
+  error is @coroutine.Cancelled
+}
+
+///|
 pub suberror TimeoutError derive(Show, ToJson)
 
 ///|

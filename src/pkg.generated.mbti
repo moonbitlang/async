@@ -10,6 +10,8 @@ import(
 // Values
 fn is_being_cancelled() -> Bool
 
+fn is_cancellation_error(Error) -> Bool
+
 fn now() -> Int64
 
 async fn pause() -> Unit
