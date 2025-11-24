@@ -7,17 +7,17 @@ import(
 )
 
 // Values
-async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, &@io.Data)
+async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
 
-async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data) -> (Response, Client)
+async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, Client)
 
-async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
+async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
 
-async fn post_stream(String, headers? : Map[String, String], port? : Int) -> Client
+async fn post_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
 
-async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int) -> (Response, &@io.Data)
+async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
 
-async fn put_stream(String, headers? : Map[String, String], port? : Int) -> Client
+async fn put_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
 
 #deprecated
 async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
@@ -30,6 +30,9 @@ pub suberror HttpProtocolError {
 }
 impl Show for HttpProtocolError
 
+pub suberror ProxyError Response
+impl Show for ProxyError
+
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
@@ -39,7 +42,7 @@ impl Show for URIParseError
 // Types and methods
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int) -> Self
+async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int, proxy? : Self) -> Self
 async fn Client::end_request(Self) -> Response
 async fn Client::entre_passthrough_mode(Self) -> Unit
 async fn Client::flush(Self) -> Unit
@@ -62,6 +65,7 @@ pub(all) struct Request {
   path : String
   headers : Map[String, String]
 }
+impl Show for Request
 
 pub(all) enum RequestMethod {
   Get
@@ -82,6 +86,7 @@ pub(all) struct Response {
   reason : String
   headers : Map[String, String]
 }
+impl Show for Response
 
 type Server
 async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)

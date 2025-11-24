@@ -30,11 +30,11 @@ pub(all) struct Request {
   meth : RequestMethod
   path : String
   headers : Map[String, String]
-}
+} derive(Show)
 
 ///|
 pub(all) struct Response {
   code : Int
   reason : String
   headers : Map[String, String]
-}
+} derive(Show)

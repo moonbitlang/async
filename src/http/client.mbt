@@ -13,13 +13,23 @@
 // limitations under the License.
 
 ///|
+priv enum ClientTransport {
+  Plain(@socket.Tcp)
+  Proxy(Client)
+}
+
+///|
 /// Simple HTTP client which connect to a remote host via TCP
 struct Client {
   reader : Reader
-  conn : @socket.Tcp
+  transport : ClientTransport
   tls : @tls.Tls?
   sender : Sender
 }
+
+///|
+/// Error raised when the proxy responded with a non-2XX response code
+pub suberror ProxyError Response derive(Show)
 
 ///|
 /// Create a new HTTP client by connecting to a remote host.
@@ -36,27 +46,72 @@ struct Client {
 /// 
 /// - Host
 /// - Content-Length, Transfer-Encoding
+///
+/// If `proxy` is present, it should be another HTTP client in a clean state.
+/// The new client will send a `CONNECT` request via the proxy client
+/// and try to establish a tunnel via the proxy client.
+/// All subsequent requests made by the new client will go through the proxy tunnel.
+/// The ownership of the proxy client is transferred to the new client,
+/// so it must not be used nor closed anymore by the caller.
+/// Using another HTTP client as proxy allows advanced features such as
+/// proxy authentication and https `CONNECT` proxy.
 pub async fn Client::connect(
   host : String,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
+  proxy? : Client,
 ) -> Client {
-  let conn = @socket.Tcp::connect_to_host(host, port~)
-  let tls = match protocol {
-    Http => None
-    Https => Some(@tls.Tls::client(conn, host~))
-  }
-  let reader = match tls {
-    None => Reader::new(conn)
-    Some(tls) => Reader::new(tls)
+  let transport = if proxy is Some(proxy) {
+    let path = "\{host}:\{port}"
+    try {
+      let response = proxy..request(Connect, path).end_request()
+      guard response.code is (200..<300) else { raise ProxyError(response) }
+      proxy..skip_response_body()..entre_passthrough_mode()
+    } catch {
+      err => {
+        proxy.close()
+        raise err
+      }
+    }
+    Proxy(proxy)
+  } else {
+    Plain(@socket.Tcp::connect_to_host(host, port~))
   }
   headers["Host"] = host
-  let sender = match tls {
-    None => Sender::new(conn, headers~)
-    Some(tls) => Sender::new(tls, headers~)
+  let (tls, reader, sender) = match (protocol, transport) {
+    (Http, Plain(conn)) =>
+      (None, Reader::new(conn), Sender::new(conn, headers~))
+    (Https, Plain(conn)) => {
+      let tls = @tls.Tls::client(conn, host~) catch {
+        err => {
+          transport.close()
+          raise err
+        }
+      }
+      (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
+    }
+    (Http, Proxy(proxy)) =>
+      (None, Reader::new(proxy), Sender::new(proxy, headers~))
+    (Https, Proxy(proxy)) => {
+      let tls = @tls.Tls::client(proxy, host~) catch {
+        err => {
+          transport.close()
+          raise err
+        }
+      }
+      (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
+    }
   }
-  { conn, tls, reader, sender }
+  { transport, tls, reader, sender }
+}
+
+///|
+fn ClientTransport::close(self : ClientTransport) -> Unit {
+  match self {
+    Plain(conn) => conn.close()
+    Proxy(proxy) => proxy.close()
+  }
 }
 
 ///|
@@ -66,7 +121,7 @@ pub fn Client::close(self : Client) -> Unit {
   if self.tls is Some(tls) {
     tls.close()
   }
-  self.conn.close()
+  self.transport.close()
 }
 
 ///|

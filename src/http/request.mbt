@@ -68,9 +68,10 @@ async fn perform_request(
   headers : Map[String, String],
   body : &@io.Data,
   port? : Int,
+  proxy? : Client,
 ) -> (Response, &@io.Data) {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   defer client.close()
   client..request(meth, path)..write(body)
   let response = client.end_request()
@@ -85,14 +86,18 @@ async fn perform_request(
 /// `port` is the port number to connect to.
 /// By default it is the standard port for the specified protocol.
 ///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+///
 /// See `Client::request` for more details.
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
   body? : &@io.Data = b"",
+  proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Get, headers, body, port?)
+  perform_request(uri, Get, headers, body, port?, proxy?)
 }
 
 ///|
@@ -102,8 +107,9 @@ pub async fn put(
   content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Put, headers, content, port?)
+  perform_request(uri, Put, headers, content, port?, proxy?)
 }
 
 ///|
@@ -113,8 +119,9 @@ pub async fn post(
   content : &@io.Data,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Post, headers, content, port?)
+  perform_request(uri, Post, headers, content, port?, proxy?)
 }
 
 ///|
@@ -132,9 +139,10 @@ pub async fn get_stream(
   headers? : Map[String, String] = {},
   port? : Int,
   body? : &@io.Data = b"",
+  proxy? : Client,
 ) -> (Response, Client) {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try {
     client..request(Get, path)..write(body)
     let response = client.end_request()
@@ -164,9 +172,10 @@ pub async fn put_stream(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Client,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Put, path) catch {
     err => {
       client.close()
@@ -194,9 +203,10 @@ pub async fn post_stream(
   uri : String,
   headers? : Map[String, String] = {},
   port? : Int,
+  proxy? : Client,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri, port?)
-  let client = Client::connect(host, headers~, protocol~, port~)
+  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Post, path) catch {
     err => {
       client.close()
