@@ -56,6 +56,7 @@ fn resolve_url(
         let port = @strconv.parse_int(port_str) catch {
           _ => raise InvalidFormat
         }
+        guard port is (1..<65536) else { raise InvalidFormat }
         (host.to_string(), port)
       } else {
         (host, protocol.default_port())
