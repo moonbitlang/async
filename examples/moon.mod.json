@@ -1,5 +1,5 @@
 {
-  "name": "moonbitlang/async/examples",
+  "name": "moonbitlang/async_examples",
   "version": "0.3.0",
   "deps": {
     "moonbitlang/async": {

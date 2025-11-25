@@ -1,5 +1,5 @@
 {
-  "name": "moonbitlang/async/stdio_test",
+  "name": "moonbitlang/async_stdio_test",
   "version": "0.0.1",
   "deps": {
     "moonbitlang/async": {
