@@ -43,6 +43,12 @@ pub fn ServerConnection::close(self : ServerConnection) -> Unit {
 }
 
 ///|
+/// Get the address of client from a HTTP server connection
+pub fn ServerConnection::client_addr(self : ServerConnection) -> @socket.Addr {
+  self.conn.addr()
+}
+
+///|
 pub impl @io.Reader for ServerConnection with _direct_read(
   self,
   buf,

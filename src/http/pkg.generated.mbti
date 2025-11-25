@@ -117,6 +117,7 @@ fn Server::new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : 
 async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type ServerConnection
+fn ServerConnection::client_addr(Self) -> @socket.Addr
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
 async fn ServerConnection::entre_passthrough_mode(Self) -> Unit
