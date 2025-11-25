@@ -67,7 +67,7 @@ It receives three parameters:
     2. send response body by using the `@http.ServerConnection` as `@io.Writer`
     3. (optional) complete the response via `.end_response()`.
         If `.end_response()` is not called, it will be called automatically
-        after `f` returns.
+        after `f` returns normally.
 
 Here's an example server that returns 404 to every request:
 
