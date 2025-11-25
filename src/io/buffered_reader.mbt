@@ -18,6 +18,7 @@ const SEGMENT_SIZE = 1024
 ///|
 /// This type is for internal use only,
 /// end users should not use this type directly.
+#internal(internal, "this type is for internal use only")
 struct ReaderBuffer {
   mut buf : FixedArray[Byte]
   mut start : Int
@@ -25,11 +26,13 @@ struct ReaderBuffer {
 }
 
 ///|
+#internal(internal, "this function is for internal use only")
 pub fn ReaderBuffer::new() -> ReaderBuffer {
   { buf: [], start: 0, len: 0 }
 }
 
 ///|
+#internal(internal, "this function is for internal use only")
 pub fn ReaderBuffer::clear(buf : ReaderBuffer) -> Unit {
   buf.buf = []
   buf.start = 0
