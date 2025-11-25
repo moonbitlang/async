@@ -130,7 +130,7 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
       "content-length" => {
         guard not(self.body is Fixed(_)) else { raise BadRequest }
         let len = @strconv.parse_int(value, base=10)
-        if self.body is Empty {
+        if self.body is Empty && len > 0 {
           self.body = Fixed(len)
         }
       }
@@ -220,7 +220,7 @@ async fn Reader::read_response(self : Reader) -> Response {
 /// Discard the body of current HTTP request/response,
 /// so that the next request/response can be processed.
 async fn Reader::skip_body(self : Reader) -> Unit {
-  if self.body is (Empty | Fixed(0)) {
+  if self.body is Empty {
     return
   }
   while self.drop(1024) == 1024 {
