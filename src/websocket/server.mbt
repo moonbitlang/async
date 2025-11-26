@@ -98,7 +98,7 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
   {
     conn,
     closed: None,
-    out: @aqueue.new(),
+    out: @aqueue.new(kind=Unbounded),
     semaphore: @semaphore.Semaphore::new(1),
   }
 }
@@ -107,7 +107,7 @@ async fn ServerConnection::handshake(conn : @socket.Tcp) -> ServerConnection {
 /// The main read loop for the WebSocket connection
 /// 
 /// This does not raise any errors. Errors are communicated via the out queue.
-async fn ServerConnection::serve_read(self : ServerConnection) -> Unit noraise {
+async fn ServerConnection::serve_read(self : ServerConnection) -> Unit {
   let frames : Array[Frame] = []
   let mut first_opcode : OpCode? = None
   while self.closed is None {

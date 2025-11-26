@@ -172,7 +172,7 @@ pub async fn Client::send_close(
     true,
     OpCode::Close,
     payload.unsafe_reinterpret_as_bytes(),
-    self.rand.int().to_be_bytes(),
+    @buffer.new()..write_int_le(self.rand.int()).to_bytes(),
   )
   // Wait until the server acknowledges the close
   ignore(read_frame(self.conn)) catch {
@@ -193,7 +193,7 @@ pub async fn Client::send_text(self : Client, text : StringView) -> Unit {
     true,
     OpCode::Text,
     payload,
-    self.rand.int().to_le_bytes(),
+    @buffer.new()..write_int_le(self.rand.int()).to_bytes(),
   )
 }
 
@@ -208,7 +208,7 @@ pub async fn Client::send_binary(self : Client, data : BytesView) -> Unit {
     true,
     OpCode::Binary,
     data,
-    self.rand.int().to_le_bytes(),
+    @buffer.new()..write_int_le(self.rand.int()).to_bytes(),
   )
 }
 
@@ -226,7 +226,7 @@ async fn Client::_ping(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
     true,
     OpCode::Ping,
     data,
-    self.rand.int().to_le_bytes(),
+    @buffer.new()..write_int_le(self.rand.int()).to_bytes(),
   )
 }
 
@@ -243,7 +243,7 @@ async fn Client::pong(self : Client, data? : Bytes = Bytes::new(0)) -> Unit {
     true,
     OpCode::Pong,
     data,
-    self.rand.int().to_be_bytes(),
+    @buffer.new()..write_int_le(self.rand.int()).to_bytes(),
   )
 }
 
