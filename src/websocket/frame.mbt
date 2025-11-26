@@ -20,10 +20,18 @@ async fn[R : @io.Reader] read_frame(reader : R) -> Frame {
   let byte0 = header[0]
   let byte1 = header[1]
   let fin = (byte0.to_int() & 0x80) != 0
+  let rsv1 = (byte0.to_int() & 0x40) != 0
+  let rsv2 = (byte0.to_int() & 0x20) != 0
+  let rsv3 = (byte0.to_int() & 0x10) != 0
   let opcode_byte = byte0 & b'\x0F'
   let opcode = OpCode::from_byte(opcode_byte)
   let masked = (byte1.to_int() & 0x80) != 0
   let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
+
+  // No extensions supported, rejecting frames with RSV bits set
+  if rsv1 || rsv2 || rsv3 {
+    raise FrameError
+  }
 
   // Validate payload length according to RFC 6455 Section 5.5
   if opcode is (Close | Ping | Pong) {

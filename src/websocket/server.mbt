@@ -145,6 +145,12 @@ async fn ServerConnection::serve_read(self : ServerConnection) -> Unit {
               return
             }
           }
+          // 0-999 not used
+          // 1000-2999 reserved for protocol
+          if (close_code is Other(i) && i < 3000) || close_code is Abnormal {
+            // Invalid close code
+            close_code = ProtocolError
+          }
         } else {
           guard frame.payload is [] else {
             // Invalid close payload
