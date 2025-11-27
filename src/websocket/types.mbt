@@ -117,6 +117,7 @@ fn CloseCode::from_int(code : Int) -> CloseCode {
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?) // Connection was closed
   InvalidHandshake(String) // Handshake failed with specific reason
+  ProtocolError
 } derive(Show)
 
 ///|

@@ -15,29 +15,31 @@
 ///|
 /// WebSocket client connection
 struct Client {
-  conn : @socket.Tcp
+  conn : @http.Client
   rand : @random.Rand
   mut closed : WebSocketError?
 }
 
 ///|
-/// Connect to a WebSocket server
+/// Create a WebSocket client from an existing HTTP client.
+/// The HTTP client must be in a clean state (i.e. not in the middle of a request).
+/// A WebSocket handshake will be sent to `path` via the HTTP client.
+/// If the handshake succeeds, a WebSocket tunnel will be established and returned.
 ///
-/// `host` - The hostname or IP address to connect to
-/// `path` - The path to request (e.g., "/ws")
-/// `port` - The port number (default: 80 for ws://, 443 for wss://)
-/// `headers` - Additional HTTP headers to send during handshake
+/// The ownership of the HTTP client will be transferred to this function.
+/// So caller must not use the client anymore, nor close it.
 ///
-/// Example:
-/// ```moonbit no-check
-/// let ws = Client::connect("example.com", "/ws")
-/// ```
-/// 
-pub async fn Client::connect(
-  host : String,
+/// Extra headers during the WebSocket handshake can be specified via `extra_headers`.
+/// Some headers are reserved for the WebSocket protocol
+/// and must NOT be set in `extra_headers`:
+///
+/// - those headers set by `@http.Client`, see `@http.Client::new`
+/// - `Connection`, `Upgrade`
+/// - `Sec-WebSocket-Key`, `Sec-WebSocket,Version`
+pub async fn Client::from_http(
+  conn : @http.Client,
   path : String,
-  port? : Int = 80,
-  headers? : Map[String, String] = {},
+  extra_headers? : Map[String, String] = {},
 ) -> Client {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
   let seed = FixedArray::make(32, b'\x00')
@@ -45,9 +47,6 @@ pub async fn Client::connect(
     fail("Failed to get random bytes for WebSocket client")
   }
   let rand = @random.Rand::chacha8(seed=seed.unsafe_reinterpret_as_bytes())
-  // Connect TCP socket
-  let addr = @socket.Addr::parse("\{host}:\{port}")
-  let conn = @socket.Tcp::connect(addr)
 
   // Send WebSocket handshake request
   let nonce = FixedArray::make(16, b'\x00')
@@ -56,87 +55,89 @@ pub async fn Client::connect(
   nonce.unsafe_write_uint32_le(8, rand.uint())
   nonce.unsafe_write_uint32_le(12, rand.uint())
   let key = base64_encode(nonce.unsafe_reinterpret_as_bytes())
-  let request = "GET \{path} HTTP/1.1\r\n"
-  conn.write(request)
-  let host_header = if port == 80 || port == 443 {
-    host
+  extra_headers["Connection"] = "Upgrade"
+  extra_headers["Upgrade"] = "websocket"
+  extra_headers["Sec-WebSocket-Key"] = key
+  extra_headers["Sec-WebSocket-Version"] = "13"
+  try {
+    let response = conn..request(Get, path, extra_headers~).end_request()
+    guard response.code is 101 else {
+      raise InvalidHandshake(
+        "Server did not respond with 101 Switching Protocols: \{response.code} \{response.reason}",
+      )
+    }
+
+    // Validate WebSocket handshake headers
+    guard response.headers.get("upgrade") is Some(upgrade) &&
+      upgrade.to_lower() == "websocket" else {
+      raise InvalidHandshake("Missing or invalid Upgrade header")
+    }
+    guard response.headers.get("connection") is Some(connection) &&
+      connection.to_lower().contains("upgrade") else {
+      raise InvalidHandshake("Missing or invalid Connection header")
+    }
+    guard response.headers.get("sec-websocket-accept") is Some(accept_key) else {
+      raise InvalidHandshake("Missing Sec-WebSocket-Accept header")
+    }
+    let expected_accept_key = generate_accept_key(key)
+    guard accept_key == expected_accept_key else {
+      raise InvalidHandshake(
+        "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
+      )
+    }
+    conn.enter_passthrough_mode()
+    { conn, closed: None, rand }
+  } catch {
+    err => {
+      conn.close()
+      raise err
+    }
+  }
+}
+
+///|
+/// Connect to a WebSocket server via the given URL.
+/// The protocol of the URL must be either `ws` (for unencrypted WebSocket connection)
+/// or `wss` (for TLS encrypted WebSocket connection).
+///
+/// Extra headers during the WebSocket handshake can be specified via `extra_headers`.
+/// Some headers are reserved for the WebSocket protocol
+/// and must NOT be set in `extra_headers`:
+///
+/// - those headers set by `@http.Client`, see `@http.Client::new`
+/// - `Connection`, `Upgrade`
+/// - `Sec-WebSocket-Key`, `Sec-WebSocket,Version`
+///
+/// If `proxy` is present, the websocket client will tunnel traffic through the proxy.
+/// See `@http.Client::new` for more details.
+///
+/// Example:
+/// ```moonbit no-check
+/// let ws = Client::connect("ws://example.com/endpoint")
+/// ```
+/// 
+pub async fn Client::connect(
+  url : String,
+  headers? : Map[String, String] = {},
+  proxy? : @http.Client,
+) -> Client {
+  guard url.find("://") is Some(protocol_len) else {
+    abort("`@websocket.Client::connect()`: invalid URL: missing protocol")
+  }
+  let http_protocol = match url[:protocol_len] {
+    "ws" => "http"
+    "wss" => "https"
+    protocol =>
+      abort("`@websocket.Client::connect()`: invalid protocol \{protocol}")
+  }
+  let (host, path) = if url.find("/") is Some(i) {
+    (url[:i].to_string(), url[i:].to_string())
   } else {
-    "\{host}:\{port}"
+    (url.to_string(), "/")
   }
-  conn.write("Host: \{host_header}\r\n")
-  conn.write("Upgrade: websocket\r\n")
-  conn.write("Connection: Upgrade\r\n")
-  conn.write("Sec-WebSocket-Key: \{key}\r\n")
-  conn.write("Sec-WebSocket-Version: 13\r\n")
-
-  // Write additional headers
-  let mut extra_headers = ""
-  headers.each(fn(header_name, header_value) {
-    extra_headers = extra_headers + "\{header_name}: \{header_value}\r\n"
-  })
-  if extra_headers != "" {
-    conn.write(extra_headers)
-  }
-  conn.write("\r\n")
-
-  // Read and validate handshake response
-  let reader = conn
-  guard reader.read_until("\r\n") is Some(response_line) else {
-    conn.close()
-    raise InvalidHandshake("Server closed connection during handshake")
-  }
-  guard response_line.contains("101") &&
-    response_line.contains("Switching Protocols") else {
-    conn.close()
-    raise InvalidHandshake(
-      "Server did not respond with 101 Switching Protocols: \{response_line}",
-    )
-  }
-  let headers : Map[String, String] = {}
-  while reader.read_until("\r\n") is Some(line) {
-    if line.is_blank() {
-      break
-    }
-
-    // Parse header line
-    if line.contains(":") {
-      let parts = line.split(":").to_array()
-      if parts.length() >= 2 {
-        let key = parts[0].trim(chars=" \t").to_string().to_lower()
-        // Join remaining parts in case the value contains colons
-        let value_parts = parts[1:]
-        let value = if value_parts.length() == 1 {
-          value_parts[0].trim(chars=" \t").to_string()
-        } else {
-          value_parts.join(":").trim(chars=" \t").to_string()
-        }
-        // Handle multi-value headers by taking the first value
-        if not(headers.contains(key)) {
-          headers[key] = value
-        }
-      }
-    }
-  }
-
-  // Validate WebSocket handshake headers
-  guard headers.get("upgrade") is Some(upgrade) &&
-    upgrade.to_lower() == "websocket" else {
-    raise InvalidHandshake("Missing or invalid Upgrade header")
-  }
-  guard headers.get("connection") is Some(connection) &&
-    connection.to_lower().contains("upgrade") else {
-    raise InvalidHandshake("Missing or invalid Connection header")
-  }
-  guard headers.get("sec-websocket-accept") is Some(accept_key) else {
-    raise InvalidHandshake("Missing Sec-WebSocket-Accept header")
-  }
-  let expected_accept_key = generate_accept_key(key)
-  guard accept_key.trim(chars=" \t\r") == expected_accept_key else {
-    raise InvalidHandshake(
-      "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
-    )
-  }
-  { conn, closed: None, rand }
+  let path = if path == "" { "/" } else { path }
+  let conn = @http.Client::new("\{http_protocol}://\{host}", proxy?)
+  Client::from_http(conn, path, extra_headers=headers)
 }
 
 ///|
