@@ -4,5 +4,9 @@
     "moonbitlang/async/tls",
     "moonbitlang/async/http",
     "moonbitlang/async/semaphore"
+  ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/socket"
   ]
 }

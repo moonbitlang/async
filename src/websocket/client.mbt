@@ -130,6 +130,7 @@ pub async fn Client::connect(
     protocol =>
       abort("`@websocket.Client::connect()`: invalid protocol \{protocol}")
   }
+  let url = url[protocol_len + 3:]
   let (host, path) = if url.find("/") is Some(i) {
     (url[:i].to_string(), url[i:].to_string())
   } else {

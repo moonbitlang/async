@@ -72,6 +72,7 @@ pub async fn ServerConnection::from_http(
       "Sec-WebSocket-Accept": accept_key,
     })
     ..end_response()
+    ..enter_passthrough_mode()
     { conn, closed: None, semaphore: @semaphore.Semaphore::new(1) }
   } catch {
     err => {
