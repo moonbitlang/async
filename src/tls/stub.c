@@ -70,6 +70,7 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
+  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
 IMPORTED_OPEN_SSL_FUNCTIONS
@@ -254,4 +255,12 @@ int moonbitlang_async_tls_get_error(void *buf) {
 
 int moonbitlang_async_tls_rand_bytes(unsigned char *buf, int num) {
   return RAND_bytes(buf, num);
+}
+
+void moonbitlang_async_tls_SHA1(
+  moonbit_bytes_t src,
+  int32_t len,
+  moonbit_bytes_t dst
+) {
+  SHA1(src, len, dst);
 }
