@@ -68,7 +68,7 @@ pub async fn Client::connect(
     try {
       let response = proxy..request(Connect, path).end_request()
       guard response.code is (200..<300) else { raise ProxyError(response) }
-      proxy..skip_response_body()..entre_passthrough_mode()
+      proxy..skip_response_body()..enter_passthrough_mode()
     } catch {
       err => {
         proxy.close()
@@ -293,7 +293,7 @@ pub async fn Client::post(
 /// the client must be in a clean state
 /// (i.e. not in the middle of sending a request).
 /// Unread data from the body of the last response will be discarded.
-pub async fn Client::entre_passthrough_mode(self : Client) -> Unit {
+pub async fn Client::enter_passthrough_mode(self : Client) -> Unit {
   guard self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()

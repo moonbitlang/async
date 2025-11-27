@@ -27,7 +27,7 @@ async test "passthrough mode" {
       inspect(request.meth, content="Connect")
       inspect(request.path, content="/path")
       conn..send_response(200, "OK")..end_response()
-      conn.entre_passthrough_mode()
+      conn.enter_passthrough_mode()
       while conn.read_some() is Some(packet) {
         let packet = @encoding/utf8.decode(packet)
         log.push("server received: \{packet}")
@@ -37,7 +37,7 @@ async test "passthrough mode" {
     defer client.close()
     let response = client..request(Connect, "/path").end_request()
     inspect(response.code, content="200")
-    client.entre_passthrough_mode()
+    client.enter_passthrough_mode()
     for packet in ["abcd", "efgh", "ijkl"] {
       log.push("client sending: \{packet}")
       client.write(packet)
@@ -78,7 +78,7 @@ async fn handle_connect(
   defer client.close()
   log.push("proxy server: connected to \{request.path} successfully")
   conn..send_response(200, "OK")..end_response()
-  conn.entre_passthrough_mode()
+  conn.enter_passthrough_mode()
   @async.with_task_group(group => {
     group.spawn_bg(() => conn.write_reader(client))
     group.spawn_bg(() => client.write_reader(conn))

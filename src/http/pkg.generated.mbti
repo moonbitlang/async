@@ -54,7 +54,7 @@ fn Client::close(Self) -> Unit
 #deprecated
 async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int, proxy? : Self) -> Self
 async fn Client::end_request(Self) -> Response
-async fn Client::entre_passthrough_mode(Self) -> Unit
+async fn Client::enter_passthrough_mode(Self) -> Unit
 async fn Client::flush(Self) -> Unit
 async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
 async fn Client::new(String, headers? : Map[String, String], proxy? : Self) -> Self
@@ -120,7 +120,7 @@ type ServerConnection
 fn ServerConnection::client_addr(Self) -> @socket.Addr
 fn ServerConnection::close(Self) -> Unit
 async fn ServerConnection::end_response(Self) -> Unit
-async fn ServerConnection::entre_passthrough_mode(Self) -> Unit
+async fn ServerConnection::enter_passthrough_mode(Self) -> Unit
 async fn ServerConnection::flush(Self) -> Unit
 fn ServerConnection::new(@socket.Tcp, headers? : Map[String, String]) -> Self
 async fn ServerConnection::read_request(Self) -> Request

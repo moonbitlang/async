@@ -276,7 +276,7 @@ pub async fn Server::run_forever(
 /// the server must be in a clean state
 /// (i.e. not in the middle of sending a response).
 /// Unread data from the body of the last request will be discarded.
-pub async fn ServerConnection::entre_passthrough_mode(self : Self) -> Unit {
+pub async fn ServerConnection::enter_passthrough_mode(self : Self) -> Unit {
   guard self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
