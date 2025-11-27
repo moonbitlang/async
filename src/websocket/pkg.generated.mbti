@@ -2,27 +2,28 @@
 package "moonbitlang/async/websocket"
 
 import(
-  "moonbitlang/async/socket"
+  "moonbitlang/async/http"
 )
 
 // Values
-async fn run_server(@socket.Addr, String, async (ServerConnection, @socket.Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 // Errors
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
+  ProtocolError
 }
 impl Show for WebSocketError
 
 // Types and methods
 type Client
 fn Client::close(Self) -> Unit
-async fn Client::connect(String, String, port? : Int, headers? : Map[String, String]) -> Self
+async fn Client::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
+async fn Client::from_http(@http.Client, String, extra_headers? : Map[String, String]) -> Self
 async fn Client::receive(Self) -> Message
-async fn Client::send_binary(Self, Bytes) -> Unit
+async fn Client::send_binary(Self, BytesView) -> Unit
 async fn Client::send_close(Self, code? : CloseCode, reason? : String) -> Unit
-async fn Client::send_text(Self, String) -> Unit
+async fn Client::send_text(Self, StringView) -> Unit
 
 pub(all) enum CloseCode {
   Normal
@@ -48,6 +49,7 @@ impl Show for Message
 
 type ServerConnection
 fn ServerConnection::close(Self) -> Unit
+async fn ServerConnection::from_http(@http.Request, @http.ServerConnection) -> Self
 async fn ServerConnection::receive(Self) -> Message
 async fn ServerConnection::send_binary(Self, BytesView) -> Unit
 async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : String) -> Unit

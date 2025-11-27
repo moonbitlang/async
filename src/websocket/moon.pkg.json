@@ -1,11 +1,9 @@
 {
   "import": [
     "moonbitlang/async/io",
-    "moonbitlang/async/socket",
     "moonbitlang/async/tls",
+    "moonbitlang/async/http",
     "moonbitlang/x/crypto",
-    "moonbitlang/async",
-    "moonbitlang/async/aqueue",
     "moonbitlang/async/semaphore"
   ]
 }

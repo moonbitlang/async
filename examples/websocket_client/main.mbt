@@ -54,7 +54,7 @@ pub async fn run_autobahn_tests() -> Unit {
 ///|
 /// Get the total number of test cases
 async fn get_case_count(host : String, port : Int) -> Int {
-  let client = @websocket.Client::connect(host, "/getCaseCount", port~)
+  let client = @websocket.Client::connect("ws://\{host}:\{port}/getCaseCount")
   let message = client.receive()
   client.close()
   match message {
@@ -77,8 +77,9 @@ async fn run_test_case(
   case_id : Int,
   agent : String,
 ) -> Unit {
-  let path = "/runCase?case=\{case_id}&agent=\{agent}"
-  let client = @websocket.Client::connect(host, path, port~)
+  let client = @websocket.Client::connect(
+    "ws://\{host}:\{port}/runCase?case=\{case_id}&agent=\{agent}",
+  )
   for {
     let message = client.receive() catch {
       @websocket.ConnectionClosed(_, _) =>
@@ -101,8 +102,9 @@ async fn run_test_case(
 ///|
 /// Update test reports on the server
 async fn update_reports(host : String, port : Int, agent : String) -> Unit {
-  let path = "/updateReports?agent=\{agent}"
-  let client = @websocket.Client::connect(host, path, port~)
+  let client = @websocket.Client::connect(
+    "ws://\{host}:\{port}/updateReports?agent=\{agent}",
+  )
   // Wait for server to close the connection
   ignore(
     client.receive() catch {
