@@ -8,6 +8,8 @@ import(
 // Values
 fn rand_bytes(FixedArray[Byte], Int) -> Int
 
+fn sha1(Bytes) -> Bytes
+
 // Errors
 pub suberror ConnectionClosed
 impl Show for ConnectionClosed
