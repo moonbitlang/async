@@ -3,7 +3,6 @@
     "moonbitlang/async/io",
     "moonbitlang/async/tls",
     "moonbitlang/async/http",
-    "moonbitlang/x/crypto",
     "moonbitlang/async/semaphore"
   ]
 }
