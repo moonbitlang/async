@@ -69,6 +69,15 @@ struct Conn {
   // In this case, we use `mask_offset` to store current offset in the mask.
   mut mask_offset : Int
 
+  // when receiving a text message,
+  // we perform rolling UTF8 validation to confront to the protocol spec.
+  // Sometimes maybe only a part of a complete UTF8 char have been received.
+  // In this case, we use `utf8_remaining` to store
+  // the remaining number of bytes expected in the current UTF8 character,
+  // so that we can continue UTF8 validation when more data arrives.
+  // `-1` indicates that current message is a binary message.
+  mut utf8_remaining : Int
+
   // =================
   // state for writing
   // =================
@@ -144,6 +153,7 @@ fn Conn::new(
     curr_message: None,
     read_mask: None,
     mask_offset: 0,
+    utf8_remaining: -1,
     write_lock: @semaphore.Semaphore::new(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
@@ -424,6 +434,7 @@ pub async fn Conn::recv(self : Conn) -> Message {
         self.read_opcode = Some(Text)
       }
       self.curr_frame_remaining = payload_len
+      self.utf8_remaining = 0
       Text
     }
     { opcode: Binary, fin, payload_len } => {
@@ -431,6 +442,7 @@ pub async fn Conn::recv(self : Conn) -> Message {
         self.read_opcode = Some(Binary)
       }
       self.curr_frame_remaining = payload_len
+      self.utf8_remaining = -1
       Binary
     }
   }
@@ -469,33 +481,60 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
     }
 
     // receive the continuation frames of a fragmented message
-    let frame = conn.recv_frame_header()
-    match frame.opcode {
-      Continuation => {
-        if frame.fin {
-          // inidicate there is no more frame for this message
-          conn.read_opcode = None
+    try {
+      let frame = conn.recv_frame_header()
+      match frame.opcode {
+        Continuation => {
+          if frame.fin {
+            // inidicate there is no more frame for this message
+            conn.read_opcode = None
+          }
+          // continue with the next frame
+          conn.curr_frame_remaining = frame.payload_len
         }
-        // continue with the next frame
-        conn.curr_frame_remaining = frame.payload_len
+        Text | Binary =>
+          // receiving a new message in the middle of
+          // a fragmented message is not supported
+          conn.protocol_error()
+        Ping => conn.handle_ping(frame)
+        Pong => conn.handle_pong(frame)
+        Close => conn.handle_close(frame)
       }
-      Text | Binary =>
-        // receiving a new message in the middle of
-        // a fragmented message is not supported
-        conn.protocol_error()
-      Ping => conn.handle_ping(frame)
-      Pong => conn.handle_pong(frame)
-      Close => conn.handle_close(frame)
+    } catch {
+      err => {
+        self.state = Error(err)
+        raise err
+      }
     }
   }
 
   // we have a non-empty frame pending, read from that frame
   let max_len = @cmp.minimum(conn.curr_frame_remaining, max_len.to_int64()).to_int()
-  let n = conn.transport.read(buf, offset~, max_len~)
+  let n = conn.transport.read(buf, offset~, max_len~) catch {
+    err => {
+      self.state = Error(err)
+      raise err
+    }
+  }
   conn.curr_frame_remaining -= n.to_int64()
   if conn.read_mask is Some(mask) {
     mask_payload(buf, mask, offset~, len=n, mask_offset=conn.mask_offset)
     conn.mask_offset = (conn.mask_offset + n) % 4
+  }
+  if conn.utf8_remaining >= 0 {
+    conn.utf8_remaining = verify_utf8(
+      buf.unsafe_reinterpret_as_bytes()[offset:offset + n],
+      remaining=conn.utf8_remaining,
+    ) catch {
+      err => {
+        if conn.closed is None {
+          conn.closed = Some(ProtocolError)
+          conn.send_close_unchecked(InvalidFramePayload)
+        }
+        self.state = Error(err)
+        raise err
+      }
+    }
   }
   n
 }

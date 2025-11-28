@@ -93,3 +93,26 @@ fn generate_accept_key(client_key : String) -> String {
   // Use our base64 encoding function for now
   base64_encode(hash)
 }
+
+///|
+fn verify_utf8(data : BytesView, remaining~ : Int) -> Int raise {
+  for i = 0, remaining = remaining; i < data.length(); {
+    match (remaining, data.unsafe_get(i)) {
+      (0, 0..<0x80) => continue i + 1, 0
+      (0, 0xc0..<0xe0) => continue i + 1, 1
+      (0, 0xe0..<0xf0) => continue i + 1, 2
+      (0, 0xf0) => continue i + 1, 3
+      (0, _) => {
+        ignore(@encoding/utf8.decode(data[i:i + 1]))
+        panic()
+      }
+      (remaining, 0x80..<0xc0) => continue i + 1, remaining - 1
+      (_, byte) => {
+        ignore(@encoding/utf8.decode([0xc0, byte]))
+        panic()
+      }
+    }
+  } else {
+    remaining
+  }
+}
