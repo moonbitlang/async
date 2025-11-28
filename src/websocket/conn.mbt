@@ -238,12 +238,12 @@ async fn Conn::flush_frame_unprotected(
   let masked : Byte = if self.write_mask is None { 0 } else { 0x80 }
   self.write_buf[frame_start] = fin | op_code.to_byte()
   self.write_buf[frame_start + 1] = masked |
-    @cmp.minimum(self.write_len, 125).to_byte()
+    @cmp.minimum(self.write_len, 126).to_byte()
 
   // actually send the frame
-  self.write_len = 0
   let data = self.write_buf.unsafe_reinterpret_as_bytes()[frame_start:frame_end]
   self.transport.write(data)
+  self.write_len = 0
 }
 
 ///|
@@ -609,7 +609,7 @@ pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
     self.flush()
   }
   let write_buf_offset = self.payload_start + self.write_len
-  let len = @cmp.minimum(len, self.write_buf.length() - offset)
+  let len = @cmp.minimum(len, self.write_buf.length() - write_buf_offset)
   self.write_buf.blit_from_bytes(write_buf_offset, buf, offset, len)
   self.write_len += len
   len
