@@ -90,3 +90,87 @@ async test "single frame multiple read" {
     client.send_close()
   })
 }
+
+///|
+async test "ignored message" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      let request = conn.read_request() catch {
+        err => {
+          conn.close()
+          raise err
+        }
+      }
+      let ws = @websocket.from_http_server(request, conn)
+      defer ws.close()
+      let msg1 = ws.recv()
+      inspect(msg1.kind, content="Text")
+      // body of `msg1` is ignored. `recv` will silently skip it.
+      let msg2 = ws.recv()
+      // trying to read from `msg1` here should result in panic
+      inspect(msg2.kind, content="Text")
+      inspect(msg2.read_all().text(), content="1234")
+    })
+    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    defer client.close()
+    client.send_text("abcd")
+    @async.sleep(200)
+    client.send_text("1234")
+    client.send_close()
+  })
+}
+
+///|
+async test "fragmented message" {
+  let log = []
+  @async.with_task_group(group => {
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      let request = conn.read_request() catch {
+        err => {
+          conn.close()
+          raise err
+        }
+      }
+      let ws = @websocket.from_http_server(request, conn)
+      defer ws.close()
+      for {
+        let msg = ws.recv() catch {
+          @websocket.ConnectionClosed(_) => break
+          err => raise err
+        }
+        log.push("server received new message: \{msg.kind}")
+        while msg.read_some() is Some(chunk) {
+          let chunk = @encoding/utf8.decode(chunk)
+          log.push("server received: \{chunk}")
+        }
+      }
+    })
+    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    defer client.close()
+    client..start_message(Text)..write("ab")
+    @async.sleep(100)
+    // due to buffering, this message will not be sent directly
+    client..write("cd")..end_message()
+
+    // manual flushing
+    client..start_message(Text)..write("12")..flush()
+    @async.sleep(100)
+    // due to buffering, this message will not be sent directly
+    client..write("34")..end_message()
+
+    // close the channel
+    client.send_close()
+  })
+  @json.inspect(log, content=[
+    "server received new message: Text", "server received: abcd", "server received new message: Text",
+    "server received: 12", "server received: 34",
+  ])
+}
