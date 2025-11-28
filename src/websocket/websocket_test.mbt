@@ -125,7 +125,7 @@ async test "ignored message" {
 }
 
 ///|
-async test "fragmented message" {
+async test "write buffering" {
   let log = []
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
@@ -160,18 +160,11 @@ async test "fragmented message" {
     // due to buffering, this message will not be sent directly
     client..write("cd")..end_message()
 
-    // manual flushing
-    client..start_message(Text)..write("12")..flush()
-    @async.sleep(100)
-    // due to buffering, this message will not be sent directly
-    client..write("34")..end_message()
-
     // close the channel
     client.send_close()
   })
   @json.inspect(log, content=[
-    "server received new message: Text", "server received: abcd", "server received new message: Text",
-    "server received: 12", "server received: 34",
+    "server received new message: Text", "server received: abcd",
   ])
 }
 

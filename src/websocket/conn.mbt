@@ -548,7 +548,9 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
 /// `end_message` must be explicitly called to terminate the message.
 ///
 /// Writing message content is buffered.
-/// To ensure immediate delivery of data, call `flush` manually.
+/// To ensure immediate delivery of data,
+/// split them into multiple messages,
+/// and use `end_message` to ensure data is actually sent to the server.
 ///
 /// `start_message` must NOT be called before the last message ends.
 pub async fn Conn::start_message(self : Conn, kind : MessageKind) -> Unit {
@@ -586,7 +588,7 @@ pub async fn Conn::end_message(self : Conn) -> Unit {
 ///|
 /// Flush buffered content in current message,
 /// ensure that all currently written content are immediately delivered to the peer.
-pub async fn Conn::flush(self : Conn) -> Unit {
+async fn Conn::flush(self : Conn) -> Unit {
   guard self.write_len > 0 else {  }
   guard self.write_opcode is Some(opcode) else {
     abort("writing to WebSocket outside a message")
