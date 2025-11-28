@@ -38,7 +38,6 @@ fn Conn::close(Self) -> Unit
 #as_free_fn
 async fn Conn::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
 async fn Conn::end_message(Self) -> Unit
-async fn Conn::flush(Self) -> Unit
 #as_free_fn
 async fn Conn::from_http_client(@http.Client, String, extra_headers? : Map[String, String]) -> Self
 #as_free_fn
