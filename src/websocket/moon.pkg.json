@@ -17,6 +17,8 @@
     "types.mbt": [ "native" ],
     "types_wbtest.mbt": [ "native" ],
     "utils.mbt": [ "native" ],
-    "websocket_test.mbt": [ "native" ]
+    "websocket_test.mbt": [ "native" ],
+    "utf8_validation_wbtest.mbt": [ "native" ],
+    "utf8_validation_test.mbt": [ "native" ]
   }
 }
