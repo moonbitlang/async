@@ -36,15 +36,15 @@ fn OpCode::to_byte(self : OpCode) -> Byte {
 }
 
 ///|
-fn OpCode::from_byte(byte : Byte) -> OpCode raise FrameError {
+fn OpCode::from_byte(byte : Byte) -> OpCode? {
   match byte {
-    b'\x00' => Continuation
-    b'\x01' => Text
-    b'\x02' => Binary
-    b'\x08' => Close
-    b'\x09' => Ping
-    b'\x0A' => Pong
-    _ => raise FrameError
+    b'\x00' => Some(Continuation)
+    b'\x01' => Some(Text)
+    b'\x02' => Some(Binary)
+    b'\x08' => Some(Close)
+    b'\x09' => Some(Ping)
+    b'\x0A' => Some(Pong)
+    _ => None
   }
 }
 
@@ -119,6 +119,3 @@ pub suberror WebSocketError {
   InvalidHandshake(String) // Handshake failed with specific reason
   ProtocolError
 } derive(Show)
-
-///|
-priv suberror FrameError

@@ -297,7 +297,9 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   let rsv2 = (byte0.to_int() & 0x20) != 0
   let rsv3 = (byte0.to_int() & 0x10) != 0
   let opcode_byte = byte0 & b'\x0F'
-  let opcode = OpCode::from_byte(opcode_byte)
+  guard OpCode::from_byte(opcode_byte) is Some(opcode) else {
+    self.protocol_error()
+  }
   let masked = (byte1.to_int() & 0x80) != 0
   let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
 
