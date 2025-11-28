@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="js")
 fn init {
   ignore(@async.sleep)
   ignore(@socket.unimplemented)
