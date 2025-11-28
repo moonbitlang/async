@@ -144,7 +144,7 @@ jobs:
 
       - name: moon install
         run: |
-          moon install
+          moon install -C examples
 
       - name: format diff
         run: |
