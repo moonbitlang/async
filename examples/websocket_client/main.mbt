@@ -54,15 +54,15 @@ pub async fn run_autobahn_tests() -> Unit {
 ///|
 /// Get the total number of test cases
 async fn get_case_count(host : String, port : Int) -> Int {
-  let client = @websocket.Client::connect("ws://\{host}:\{port}/getCaseCount")
-  let message = client.receive()
-  client.close()
-  match message {
-    @websocket.Message::Text(text) => {
-      let count_str = text.to_string()
+  let client = @websocket.connect("ws://\{host}:\{port}/getCaseCount")
+  defer client.close()
+  let message = client.recv()
+  match message.kind {
+    Text => {
+      let count_str = message.read_all().text()
       @strconv.parse_int(count_str)
     }
-    _ => {
+    Binary => {
       @stdio.stdout.write("Error: Expected text message with case count\n")
       0
     }
@@ -77,11 +77,11 @@ async fn run_test_case(
   case_id : Int,
   agent : String,
 ) -> Unit {
-  let client = @websocket.Client::connect(
+  let client = @websocket.connect(
     "ws://\{host}:\{port}/runCase?case=\{case_id}&agent=\{agent}",
   )
   for {
-    let message = client.receive() catch {
+    let message = client.recv() catch {
       @websocket.ConnectionClosed(_, _) =>
         // Test case completed
         break
@@ -91,10 +91,7 @@ async fn run_test_case(
       }
     }
     // Echo the message back (core test logic)
-    match message {
-      @websocket.Message::Text(text) => client.send_text(text)
-      @websocket.Message::Binary(data) => client.send_binary(data)
-    }
+    client..start_message(message.kind)..write_reader(message)..end_message()
   }
   client.close()
 }
@@ -102,15 +99,15 @@ async fn run_test_case(
 ///|
 /// Update test reports on the server
 async fn update_reports(host : String, port : Int, agent : String) -> Unit {
-  let client = @websocket.Client::connect(
+  let client = @websocket.connect(
     "ws://\{host}:\{port}/updateReports?agent=\{agent}",
   )
+  defer client.close()
   // Wait for server to close the connection
-  ignore(
-    client.receive() catch {
-      @websocket.ConnectionClosed(_, _) => @websocket.Message::Text("")
-      _ => @websocket.Message::Text("")
-    },
-  )
-  client.close()
+  try client.recv() catch {
+    @websocket.ConnectionClosed(_, _) => ()
+    err => raise err
+  } noraise {
+    _ => ()
+  }
 }

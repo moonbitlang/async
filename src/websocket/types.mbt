@@ -50,17 +50,17 @@ fn OpCode::from_byte(byte : Byte) -> OpCode raise FrameError {
 
 ///|
 /// WebSocket frame - internal implementation detail
-priv struct Frame {
+priv struct FrameHeader {
   fin : Bool
   opcode : OpCode
-  payload : Bytes
+  payload_len : Int64
 }
 
 ///|
 /// WebSocket message
-pub(all) enum Message {
-  Binary(BytesView)
-  Text(StringView)
+pub(all) enum MessageKind {
+  Binary
+  Text
 } derive(Show)
 
 ///|
@@ -76,11 +76,11 @@ pub(all) enum CloseCode {
   MessageTooBig // 1009
   MissingExtension // 1010
   InternalError // 1011
-  Other(Int)
+  Other(UInt16)
 } derive(Show, Eq)
 
 ///|
-fn CloseCode::to_int(self : CloseCode) -> Int {
+fn CloseCode::to_uint16(self : CloseCode) -> UInt16 {
   match self {
     Normal => 1000
     GoingAway => 1001
@@ -97,7 +97,7 @@ fn CloseCode::to_int(self : CloseCode) -> Int {
 }
 
 ///|
-fn CloseCode::from_int(code : Int) -> CloseCode {
+fn CloseCode::from_uint(code : UInt) -> CloseCode {
   match code {
     1000 => Normal
     1001 => GoingAway
@@ -109,7 +109,7 @@ fn CloseCode::from_int(code : Int) -> CloseCode {
     1009 => MessageTooBig
     1010 => MissingExtension
     1011 => InternalError
-    _ => Other(code)
+    _ => Other(code.to_uint16())
   }
 }
 
