@@ -37,6 +37,7 @@ async test "UTF8 validation" {
             err if @async.is_being_cancelled() => raise err
             err => {
               log.push("server failed with \{err} at byte \{i}")
+              @async.sleep(100)
               break
             }
           }
@@ -79,6 +80,6 @@ async test "UTF8 validation" {
     "server failed with moonbitlang/core/encoding/utf8.Malformed.Malformed at byte 3",
     "client: [b'\\xF0', b'\\x80', b'\\x80', b'\\x79'] => Err(ConnectionClosed(InvalidFramePayload, None))",
     "server failed with moonbitlang/core/encoding/utf8.Malformed.Malformed at byte 1",
-    "client: [b'\\xF0', b'\\x79', b'\\x80', b'\\x80'] => Err(OSError(\"@socket.Tcp::write(): Connection reset by peer\"))",
+    "client: [b'\\xF0', b'\\x79', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, None))",
   ])
 }
