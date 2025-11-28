@@ -14,9 +14,14 @@
 
 ///|
 /// Apply XOR mask to payload data
-fn mask_payload(data : FixedArray[Byte], mask : Bytes) -> Unit {
-  for i = 0; i < data.length(); i = i + 1 {
-    data[i] = data[i] ^ mask[i % 4]
+fn mask_payload(
+  data : FixedArray[Byte],
+  mask : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Unit {
+  for i = 0; i < len; i = i + 1 {
+    data[offset + i] = data[offset + i] ^ mask[i % 4]
   }
 }
 

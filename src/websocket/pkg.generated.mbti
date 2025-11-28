@@ -3,6 +3,7 @@ package "moonbitlang/async/websocket"
 
 import(
   "moonbitlang/async/http"
+  "moonbitlang/async/io"
 )
 
 // Values
@@ -16,15 +17,6 @@ pub suberror WebSocketError {
 impl Show for WebSocketError
 
 // Types and methods
-type Client
-fn Client::close(Self) -> Unit
-async fn Client::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
-async fn Client::from_http(@http.Client, String, extra_headers? : Map[String, String]) -> Self
-async fn Client::receive(Self) -> Message
-async fn Client::send_binary(Self, BytesView) -> Unit
-async fn Client::send_close(Self, code? : CloseCode, reason? : String) -> Unit
-async fn Client::send_text(Self, StringView) -> Unit
-
 pub(all) enum CloseCode {
   Normal
   GoingAway
@@ -36,24 +28,39 @@ pub(all) enum CloseCode {
   MessageTooBig
   MissingExtension
   InternalError
-  Other(Int)
+  Other(UInt16)
 }
 impl Eq for CloseCode
 impl Show for CloseCode
 
-pub(all) enum Message {
-  Binary(BytesView)
-  Text(StringView)
-}
-impl Show for Message
+type Conn
+fn Conn::close(Self) -> Unit
+#as_free_fn
+async fn Conn::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
+async fn Conn::end_message(Self) -> Unit
+async fn Conn::flush(Self) -> Unit
+#as_free_fn
+async fn Conn::from_http_client(@http.Client, String, extra_headers? : Map[String, String]) -> Self
+#as_free_fn
+async fn Conn::from_http_server(@http.Request, @http.ServerConnection) -> Self
+async fn Conn::recv(Self) -> Message
+async fn Conn::send_binary(Self, BytesView) -> Unit
+async fn Conn::send_close(Self, code? : CloseCode, reason? : String) -> Unit
+async fn Conn::send_text(Self, StringView) -> Unit
+async fn Conn::start_message(Self, MessageKind) -> Unit
+impl @io.Writer for Conn
 
-type ServerConnection
-fn ServerConnection::close(Self) -> Unit
-async fn ServerConnection::from_http(@http.Request, @http.ServerConnection) -> Self
-async fn ServerConnection::receive(Self) -> Message
-async fn ServerConnection::send_binary(Self, BytesView) -> Unit
-async fn ServerConnection::send_close(Self, code? : CloseCode, reason? : String) -> Unit
-async fn ServerConnection::send_text(Self, StringView) -> Unit
+pub struct Message {
+  kind : MessageKind
+  // private fields
+}
+impl @io.Reader for Message
+
+pub(all) enum MessageKind {
+  Binary
+  Text
+}
+impl Show for MessageKind
 
 // Type aliases
 

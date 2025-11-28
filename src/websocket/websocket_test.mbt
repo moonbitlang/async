@@ -26,53 +26,34 @@ async test "websocket basic" {
           raise err
         }
       }
-      let ws = @websocket.ServerConnection::from_http(request, conn)
+      let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
-      let msg = ws.receive()
-      inspect(
-        msg,
-        content=(
-          #|Binary(b"abcd")
-        ),
-      )
-      match msg {
-        Binary(bin) => ws.send_binary(bin)
-        Text(txt) => ws.send_text(txt)
+      let msg = ws.recv()
+      let msg_content = msg.read_all().text()
+      inspect(msg.kind, content="Binary")
+      inspect(msg_content, content="abcd")
+      ws..start_message(msg.kind)..write(msg_content)..end_message()
+      let msg = ws.recv()
+      let msg_content = msg.read_all().text()
+      inspect(msg.kind, content="Text")
+      inspect(msg_content, content="abcd")
+      ws..start_message(msg.kind)..write(msg_content)..end_message()
+      try ws.recv() catch {
+        err => inspect(err, content="ConnectionClosed(Normal, None)")
+      } noraise {
+        _ => raise Failure("expected error, but nothing happens")
       }
-      let msg = ws.receive()
-      inspect(
-        msg,
-        content=(
-          #|Text("abcd")
-        ),
-      )
-      match msg {
-        Binary(bin) => ws.send_binary(bin)
-        Text(txt) => ws.send_text(txt)
-      }
-      inspect(
-        try? ws.receive(),
-        content=(
-          #|Err(ConnectionClosed(Normal, Some("")))
-        ),
-      )
     })
-    let client = @websocket.Client::connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client.send_binary("abcd")
-    inspect(
-      client.receive(),
-      content=(
-        #|Binary(b"abcd")
-      ),
-    )
+    let msg = client.recv()
+    inspect(msg.kind, content="Binary")
+    inspect(msg.read_all().text(), content="abcd")
     client.send_text("abcd")
-    inspect(
-      client.receive(),
-      content=(
-        #|Text("abcd")
-      ),
-    )
+    let msg = client.recv()
+    inspect(msg.kind, content="Text")
+    inspect(msg.read_all().text(), content="abcd")
     client.send_close()
   })
 }

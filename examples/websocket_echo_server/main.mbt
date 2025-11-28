@@ -46,18 +46,21 @@ pub async fn start_echo_server() -> Unit {
     println("New WebSocket connection from \{client_addr}")
     group.spawn_bg(allow_failure=true, () => {
       let request = conn.read_request()
-      let ws = @websocket.ServerConnection::from_http(request, conn)
+      let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       try {
         for {
-          match ws.receive() {
-            Text(text) => {
+          let msg = ws.recv()
+          match msg.kind {
+            Text => {
+              let text = msg.read_all().text()
               println("Received text \{text.char_length()} chars")
-              ws.send_text(text.to_string())
+              ws.send_text(text)
             }
-            Binary(data) => {
+            Binary => {
+              let data = msg.read_all().binary()
               println("Received binary data (\{data.length()} bytes)")
-              ws.send_binary(data.to_bytes())
+              ws.send_binary(data)
             }
           }
         }
