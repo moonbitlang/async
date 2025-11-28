@@ -8,5 +8,15 @@
   "test-import": [
     "moonbitlang/async",
     "moonbitlang/async/socket"
-  ]
+  ],
+  "targets": {
+    "client.mbt": [ "native" ],
+    "conn.mbt": [ "native" ],
+    "pkg.generated.mbti": [ "native" ],
+    "server.mbt": [ "native" ],
+    "types.mbt": [ "native" ],
+    "types_wbtest.mbt": [ "native" ],
+    "utils.mbt": [ "native" ],
+    "websocket_test.mbt": [ "native" ]
+  }
 }
