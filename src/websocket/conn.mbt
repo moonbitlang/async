@@ -44,6 +44,7 @@ struct Conn {
   read_buf : @io.ReaderBuffer
   mut read_opcode : OpCode?
   mut read_mask : Bytes?
+  mut mask_offset : Int
   mut curr_frame_remaining : Int64
   mut curr_message : Message?
 
@@ -85,6 +86,7 @@ fn Conn::new(
     read_buf: @io.ReaderBuffer::new(),
     read_opcode: None,
     read_mask: None,
+    mask_offset: 0,
     curr_frame_remaining: 0,
     curr_message: None,
     write_lock: @semaphore.Semaphore::new(1),
@@ -266,6 +268,7 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
     }
   }
   self.read_mask = if masked {
+    self.mask_offset = 0
     Some(self.transport.read_exactly(4))
   } else {
     None
@@ -439,7 +442,8 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
   let n = conn.transport.read(buf, offset~, max_len~)
   conn.curr_frame_remaining -= n.to_int64()
   if conn.read_mask is Some(mask) {
-    mask_payload(buf, mask, offset~, len=n)
+    mask_payload(buf, mask, offset~, len=n, mask_offset=conn.mask_offset)
+    conn.mask_offset = (conn.mask_offset + n) % 4
   }
   n
 }
