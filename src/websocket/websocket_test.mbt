@@ -57,3 +57,36 @@ async test "websocket basic" {
     client.send_close()
   })
 }
+
+///|
+async test "single frame multiple read" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      let request = conn.read_request() catch {
+        err => {
+          conn.close()
+          raise err
+        }
+      }
+      let ws = @websocket.from_http_server(request, conn)
+      defer ws.close()
+      let msg = ws.recv()
+      inspect(msg.kind, content="Text")
+      @json.inspect(msg.read_all().text(), content="abc")
+      let msg = ws.recv()
+      inspect(msg.kind, content="Text")
+      @json.inspect(msg.read_exactly(2), content="ab")
+      @json.inspect(msg.read_exactly(2), content="cd")
+    })
+    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    defer client.close()
+    client.send_text("abc")
+    @async.sleep(200)
+    client.send_text("abcd")
+    client.send_close()
+  })
+}
