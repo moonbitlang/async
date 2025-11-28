@@ -21,6 +21,7 @@ struct Tls {
   read_end : Endpoint
   write_end : Endpoint
   read_buf : @io.ReaderBuffer
+  mut closed : Bool
 }
 
 ///|
@@ -41,7 +42,14 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   let rbio = create_bio(read_end)
   let wbio = create_bio(write_end)
   let ssl = SSL::new(ctx, rbio, wbio)
-  { ssl, host, read_end, write_end, read_buf: @io.ReaderBuffer::new() }
+  {
+    ssl,
+    host,
+    read_end,
+    write_end,
+    read_buf: @io.ReaderBuffer::new(),
+    closed: false,
+  }
 }
 
 ///|
@@ -236,6 +244,8 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
 /// Note that this function will not perform the TLS shutdown process,
 /// for graceful shutdown of a TLS connection, see `TLS::shutdown`.
 pub fn Tls::close(self : Tls) -> Unit {
+  guard !self.closed else {  }
+  self.closed = true
   self.read_end.close()
   self.write_end.close()
   self.ssl.free()

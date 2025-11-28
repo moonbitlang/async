@@ -153,6 +153,8 @@ fn ClientTransport::close(self : ClientTransport) -> Unit {
 ///|
 /// Close a HTTP client and release underlying resource.
 /// In particular close the underlying TCP connection.
+/// This function is idempotent: it is safe to call `.close()` multiple times,
+/// only the first `.close()` call takes effect.
 pub fn Client::close(self : Client) -> Unit {
   if self.tls is Some(tls) {
     tls.close()

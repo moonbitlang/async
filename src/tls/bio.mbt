@@ -213,11 +213,13 @@ fn Endpoint::close(ep : Endpoint) -> Unit {
   if not(ep.state is Error(_)) {
     ep.state = Closed
   }
-  ep.worker.unwrap().cancel()
+  guard ep.worker is Some(worker) else {  }
+  worker.cancel()
   ep.worker = None
   for waiter in ep.waiters {
     waiter.wake()
   }
+  ep.waiters.clear()
 }
 
 ///|
