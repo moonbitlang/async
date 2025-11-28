@@ -289,10 +289,9 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 /// If the file is not a directory, an error will be raised.
 ///
 /// The ownership of the file will be transferred to `as_dir`.
-/// So the caller MUST NOT use or close the file after calling `as_dir`,
-/// even if `as_dir` fails.
-/// Caller should call `.close()` on the returned directory object instead
-/// (or, if `as_dir` fails, the input file is closed automatically).
+/// The input file will be automatically closed when the
+/// result directory object is closed.
+/// If `as_dir` fails, the input file will be closed automatically.
 pub fn File::as_dir(self : File) -> Directory raise {
   let fd = self.io.detach_from_event_loop()
   let dir = as_dir_ffi(fd)

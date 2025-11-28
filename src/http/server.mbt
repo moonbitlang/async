@@ -18,6 +18,7 @@ struct ServerConnection {
   reader : Reader
   conn : @socket.Tcp
   sender : Sender
+  mut closed : Bool
 }
 
 ///|
@@ -33,13 +34,23 @@ pub fn ServerConnection::new(
   conn : @socket.Tcp,
   headers? : Map[String, String] = {},
 ) -> ServerConnection {
-  { reader: Reader::new(conn), conn, sender: Sender::new(conn, headers~) }
+  {
+    reader: Reader::new(conn),
+    conn,
+    sender: Sender::new(conn, headers~),
+    closed: false,
+  }
 }
 
 ///|
 /// Close the connection, the underlying TCP connection will be closed as well.
+/// This function is idempotent: it is safe to call `.close()` multiple times,
+/// only the first `.close()` call takes effect.
 pub fn ServerConnection::close(self : ServerConnection) -> Unit {
-  self.conn.close()
+  if !self.closed {
+    self.closed = true
+    self.conn.close()
+  }
 }
 
 ///|
@@ -243,8 +254,11 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 /// at most `max_connections` clients are allowed in parallel.
 /// New clients will only get handled after a previous client terminates.
 ///
-/// `run_forever` will close the server and each connection automatically.
-/// So `f` or the caller must not manually close the connections/server.
+/// If `f` fails without closing the connection, 
+/// `run_forever` will close each connection automatically.
+/// If `f` manually closes the connection,
+/// the connection will be dropped after `f` returns.
+/// On error or cancellation, the server will be closed automatically.
 pub async fn Server::run_forever(
   self : Server,
   f : async (Request, &@io.Reader, ServerConnection) -> Unit,
@@ -253,10 +267,13 @@ pub async fn Server::run_forever(
 ) -> Unit {
   self.server.run_forever(allow_failure?, max_connections?, (conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)
+    defer conn.close()
     for {
       let request = conn.read_request()
       f(request, conn, conn)
-      if conn.sender.mode is SendingBody {
+      if conn.closed {
+        break
+      } else if conn.sender.mode is SendingBody {
         conn.end_response()
       }
     }
