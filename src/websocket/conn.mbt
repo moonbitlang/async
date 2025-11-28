@@ -40,21 +40,76 @@ struct Conn {
   mut closed : WebSocketError?
   transport : &Transport
 
+  // =================
   // state for reading
+  // =================
   read_buf : @io.ReaderBuffer
+
+  // if `read_opcode` is `Some(opcode)`,
+  // we are in the middle of a fragmented message,
+  // and the last frame (i.e. the frame with `FIN = true`) has not been received yet.
+  // if `read_opcode` is `None`,
+  // the last frame of current message has been received,
+  // but the last frame itself may not be completely consumed yet.
   mut read_opcode : OpCode?
-  mut read_mask : Bytes?
-  mut mask_offset : Int
+
+  // the number of remaining bytes in the frame being processed.
   mut curr_frame_remaining : Int64
+
+  // the message currently being received.
+  // If `recv` is called while `curr_message` is present,
+  // the current message must be discarded.
   mut curr_message : Message?
 
+  // the mask of the frame being processed, if any
+  mut read_mask : Bytes?
+
+  // when perform masking on the receiving side,
+  // user may request data in a non 4-byte aligned manner.
+  // In this case, we use `mask_offset` to store current offset in the mask.
+  mut mask_offset : Int
+
+  // =================
   // state for writing
+  // =================
+
+  // In general, we require only one writer at any time in `moonbitlang/async`,
+  // violating this principle is undefined behavior.
+  // However, for WebSocket, the reader may trigger writing as well by:
+  //
+  // 1. closing the tunnel
+  // 2. respond to a received `PING` message
+  //
+  // And we do allow reader & writer to run in parallel for the same tunnel.
+  // So we need a lock to avoid race condition in writing.
+  //
+  // All modification to existing content of `write_buf`
+  // and direct writing to `transport` must be protected by this lock.
   write_lock : @semaphore.Semaphore
+
+  // If present, `write_mask` is a random generator used to generate frame masks.
+  // If absent, frames will be unmasked.
   write_mask : @random.Rand?
+
+  // We reserve some fixed space at the start of `write_buf` for header,
+  // `payload_start` is the start offset of message payload in the buffer.
   payload_start : Int
+
+  // The kind of the message currently being sent.
+  // If the value is `None`, we are not in the middle of a message.
   mut write_opcode : OpCode?
+
+  // Whether we are currently sending the first frame of current message.
+  // If `false`, new frames should have op code `CONTINUATION`.
   mut is_first_frame : Bool
+
+  // Buffer holding message content to write.
+  // We perform auto fragmentation for WebSocket message:
+  // as soon as `write_buf` is full,
+  // we split the message and send a frame immediately.
   write_buf : FixedArray[Byte]
+
+  // the length of *payload* currently buffered in `write_buf`
   mut write_len : Int
 }
 
@@ -85,10 +140,10 @@ fn Conn::new(
     transport,
     read_buf: @io.ReaderBuffer::new(),
     read_opcode: None,
-    read_mask: None,
-    mask_offset: 0,
     curr_frame_remaining: 0,
     curr_message: None,
+    read_mask: None,
+    mask_offset: 0,
     write_lock: @semaphore.Semaphore::new(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
@@ -342,9 +397,6 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
 
 ///|
 pub async fn Conn::recv(self : Conn) -> Message {
-  guard self.read_opcode is None && self.curr_frame_remaining == 0 else {
-    abort("calling `recv_message` in the middle of another message")
-  }
   if self.curr_message is Some(msg) {
     while msg.drop(1024) == 1024 {
       ()
