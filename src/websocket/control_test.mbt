@@ -98,3 +98,44 @@ async test "ping auto-reply race-with-write" {
     inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="1234")
   })
 }
+
+///|
+async test "close test" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr().port()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      let request = conn.read_request()
+      let ws = @websocket.from_http_server(request, conn)
+      defer ws.close()
+      @async.with_task_group(group => {
+        // currently, auto-reply is only triggered when the user is actually reading.
+        group.spawn_bg(() => inspect(
+          try? ws.recv().read_all().text(),
+          content=(
+            #|Err(ConnectionClosed(Normal, Some("abcd")))
+          ),
+        ))
+        ws.start_message(Text)
+        ws.write("1234")
+        @async.sleep(400)
+        ws.end_message()
+      })
+    })
+    let http_client = @http.Client::new("http://localhost:\{port}")
+    let ws_client = @websocket.from_http_client(http_client, "/")
+    defer ws_client.close()
+    @async.sleep(200)
+    // the "1234" message from the server is already buffered at this stage.
+    // However, the close message will interrupt it.
+    ws_client.send_close(code=Normal, reason="abcd")
+    // The `close` reply should come first
+    @json.inspect(http_client.read_exactly(2).to_array(), content=[0x88, 6])
+    guard http_client.read_exactly(2) is [u16be(code)]
+    inspect(code, content="1000")
+    inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
+  })
+}

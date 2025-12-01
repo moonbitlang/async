@@ -394,20 +394,27 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     ()
   }
   let len = frame.payload_len.to_int()
-  let payload = FixedArray::make(len, b'\x00')
+  let payload_start = if self.write_mask is Some(_) { 2 + MASK_SIZE } else { 2 }
+  let reply = FixedArray::make(payload_start + len, b'\x00')
+  reply[0] = 0x88
+  reply[1] = if self.write_mask is Some(_) {
+    0x80 | len.to_byte()
+  } else {
+    len.to_byte()
+  }
   for received = 0; received < len; {
     let n = self.transport.read(
-      payload,
-      offset=received,
+      reply,
+      offset=payload_start + received,
       max_len=len - received,
     )
     guard n > 0 else { self.protocol_error() }
     continue received + n
   }
   if self.read_mask is Some(mask) {
-    mask_payload(payload, mask, offset=0, len~)
+    mask_payload(reply, mask, offset=payload_start, len~)
   }
-  let payload = payload.unsafe_reinterpret_as_bytes()
+  let payload = reply.unsafe_reinterpret_as_bytes()[payload_start:]
   let (close_code, reason) = if payload is [u16be(code), .. reason] {
     let reason = @encoding/utf8.decode(reason) catch {
       _ => self.protocol_error()
@@ -419,7 +426,14 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     (CloseCode::Normal, None)
   }
   self.closed = Some(ConnectionClosed(close_code, reason))
-  self.send_close_unchecked(close_code, reason?)
+  if self.write_mask is Some(rand) {
+    reply.unsafe_write_uint32_be(2, rand.uint())
+    let mask = reply.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
+    mask_payload(reply, mask, offset=payload_start, len~)
+  }
+  self.write_lock.acquire()
+  defer self.write_lock.release()
+  self.transport.write(reply.unsafe_reinterpret_as_bytes())
 }
 
 ///|
@@ -627,6 +641,8 @@ pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
   if self.payload_start + self.write_len >= self.write_buf.length() {
     self.flush()
   }
+  self.write_lock.acquire()
+  defer self.write_lock.release()
   let write_buf_offset = self.payload_start + self.write_len
   let len = @cmp.minimum(len, self.write_buf.length() - write_buf_offset)
   self.write_buf.blit_from_bytes(write_buf_offset, buf, offset, len)
