@@ -33,9 +33,7 @@ async test "send_request basic" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
-        #|Transfer-Encoding: chunked\r
-        #|\r
-        #|0\r
+        #|Content-Length: 0\r
         #|\r
         #|
       ),
@@ -369,9 +367,7 @@ async test "send invalid header" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
-        #|Transfer-Encoding: chunked\r
-        #|\r
-        #|0\r
+        #|Content-Length: 0\r
         #|\r
         #|
       ),

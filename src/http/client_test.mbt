@@ -59,7 +59,6 @@ async test "request streaming" {
       log.write_string("client sending PUT request\n")
       let client = @http.put_stream("http://localhost:\{port}/put")
       defer client.close()
-      client.flush()
       @async.sleep(100)
       log.write_string("client: sending PUT data part 1\n")
       client..write("PUT data part 1\n")..flush()
@@ -74,7 +73,6 @@ async test "request streaming" {
       log.write_string("client sending POST request\n")
       let client = @http.post_stream("http://localhost:\{port}/post")
       defer client.close()
-      client.flush()
       @async.sleep(100)
       log.write_string("client: sending POST data part 1\n")
       client..write("POST data part 1\n")..flush()
@@ -100,8 +98,8 @@ async test "request streaming" {
       #|server: sending Get response part 2
       #|client received: Get response part 2
       #|client sending PUT request
-      #|server received request: Put /put
       #|client: sending PUT data part 1
+      #|server received request: Put /put
       #|server received: PUT data part 1
       #|client: sending PUT data part 2
       #|server received: PUT data part 2
@@ -110,8 +108,8 @@ async test "request streaming" {
       #|server: sending Put response part 2
       #|client received: Put response part 2
       #|client sending POST request
-      #|server received request: Post /post
       #|client: sending POST data part 1
+      #|server received request: Post /post
       #|server received: POST data part 1
       #|client: sending POST data part 2
       #|server received: POST data part 2
