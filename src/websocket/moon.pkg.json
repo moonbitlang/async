@@ -7,7 +7,8 @@
   ],
   "test-import": [
     "moonbitlang/async",
-    "moonbitlang/async/socket"
+    "moonbitlang/async/socket",
+    "moonbitlang/async/process"
   ],
   "targets": {
     "client.mbt": [ "native" ],

@@ -1,4 +1,4 @@
-const socket = new WebSocket("ws://localhost:9001");
+const socket = new WebSocket(process.argv[2]);
 socket.addEventListener("open", (event) => {
     console.log("Connection opened");
     socket.send("Hello, Server!");
@@ -11,5 +11,5 @@ socket.addEventListener("close", (event) => {
     console.log("Connection closed");
 });
 socket.addEventListener("error", (event) => {
-    console.error("WebSocket error: ", event);
+    console.log("WebSocket error: ", event);
 });
