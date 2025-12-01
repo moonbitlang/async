@@ -169,6 +169,8 @@ fn Conn::new(
 }
 
 ///|
+/// Close a WebSocket connection.
+/// The underlying HTTP connection will be closed as well.
 pub fn Conn::close(self : Conn) -> Unit {
   if self.curr_message is Some(message) {
     message.state = Error(ConnectionClosed(Normal, None))

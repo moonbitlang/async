@@ -40,37 +40,33 @@ async fn main {
 pub async fn start_echo_server() -> Unit {
   println("Starting WebSocket echo server on localhost:9001")
   let server = @http.Server::new(@socket.Addr::parse("0.0.0.0:9001"))
-  defer server.close()
-  @async.with_task_group(group => for {
-    let (conn, client_addr) = server.accept()
+  server.run_forever((request, _, conn) => {
+    let client_addr = conn.client_addr()
     println("New WebSocket connection from \{client_addr}")
-    group.spawn_bg(allow_failure=true, () => {
-      let request = conn.read_request()
-      let ws = @websocket.from_http_server(request, conn)
-      defer ws.close()
-      try {
-        for {
-          let msg = ws.recv()
-          match msg.kind {
-            Text => {
-              let text = msg.read_all().text()
-              println("Received text \{text.char_length()} chars")
-              ws.send_text(text)
-            }
-            Binary => {
-              let data = msg.read_all().binary()
-              println("Received binary data (\{data.length()} bytes)")
-              ws.send_binary(data)
-            }
+    let ws = @websocket.from_http_server(request, conn)
+    defer ws.close()
+    try {
+      for {
+        let msg = ws.recv()
+        match msg.kind {
+          Text => {
+            let text = msg.read_all().text()
+            println("Received text \{text.char_length()} chars")
+            ws.send_text(text)
+          }
+          Binary => {
+            let data = msg.read_all().binary()
+            println("Received binary data (\{data.length()} bytes)")
+            ws.send_binary(data)
           }
         }
-      } catch {
-        @websocket.ConnectionClosed(e, reason) =>
-          println(
-            "Client \{client_addr} disconnected with \{e}, reason: \{reason}",
-          )
-        e => println("Error with client \{client_addr}: \{e}")
       }
-    })
+    } catch {
+      @websocket.ConnectionClosed(e, reason) =>
+        println(
+          "Client \{client_addr} disconnected with \{e}, reason: \{reason}",
+        )
+      e => println("Error with client \{client_addr}: \{e}")
+    }
   })
 }

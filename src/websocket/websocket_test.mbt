@@ -20,12 +20,8 @@ async test "websocket basic" {
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
-      let request = conn.read_request() catch {
-        err => {
-          conn.close()
-          raise err
-        }
-      }
+      defer conn.close()
+      let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       let msg = ws.recv()
@@ -66,12 +62,8 @@ async test "single frame multiple read" {
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
-      let request = conn.read_request() catch {
-        err => {
-          conn.close()
-          raise err
-        }
-      }
+      defer conn.close()
+      let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       let msg = ws.recv()
@@ -99,12 +91,8 @@ async test "ignored message" {
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
-      let request = conn.read_request() catch {
-        err => {
-          conn.close()
-          raise err
-        }
-      }
+      defer conn.close()
+      let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       let msg1 = ws.recv()
@@ -133,12 +121,8 @@ async test "write buffering" {
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
-      let request = conn.read_request() catch {
-        err => {
-          conn.close()
-          raise err
-        }
-      }
+      defer conn.close()
+      let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       for {
@@ -176,12 +160,8 @@ async test "large message" {
     let server_checksum = group.spawn(() => {
       defer server.close()
       let (conn, _) = server.accept()
-      let request = conn.read_request() catch {
-        err => {
-          conn.close()
-          raise err
-        }
-      }
+      defer conn.close()
+      let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       let msg = ws.recv()
