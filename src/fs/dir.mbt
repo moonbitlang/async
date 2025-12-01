@@ -156,7 +156,7 @@ pub async fn walk(
         defer sem.release()
         let files = readdir(path)
         for file in files {
-          let file_path = if path.length() > 0 && path[path.length() - 1] is '/' {
+          let file_path = if path is [.., '/'] {
             path + file
           } else {
             "\{path}/\{file}"
