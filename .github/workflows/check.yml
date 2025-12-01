@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
 
       - name: install
         run: |
@@ -31,6 +34,10 @@ jobs:
         run: |
           moon version --all
           moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
 
       - name: moon check
         run: |
@@ -60,6 +67,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
 
       - name: install
         run: |
@@ -74,6 +84,10 @@ jobs:
         run: |
           moon version --all
           moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
 
       - name: moon check
         run: |
@@ -130,6 +144,14 @@ jobs:
           moon version --all
           moonrun --version
 
+      - name: moon update
+        run: |
+          moon update
+
+      - name: moon install
+        run: |
+          moon install -C examples
+
       - name: format diff
         run: |
           moon fmt
@@ -153,6 +175,10 @@ jobs:
           moon version --all
           moonrun --version
 
+      - name: moon update
+        run: |
+          moon update
+
       - name: moon info
         run: |
           moon info
@@ -163,6 +189,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
 
       - name: install
         run: |
@@ -173,6 +202,10 @@ jobs:
         run: |
           moon version --all
           moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
 
       - name: disable mimalloc
         run: |
@@ -200,11 +233,18 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
 
       - name: install
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon update
+        run: |
+          moon update
 
       - name: moon test
         run: moon test --enable-coverage

@@ -143,3 +143,22 @@ fn err_get_error() -> String {
   let len = err_get_error_ffi(buf)
   @bytes_util.ascii_to_string(buf[:len])
 }
+
+///|
+/// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
+/// Returns 1 on success, 0 on failure
+#borrow(buf)
+#internal(internal, "for internal use only")
+pub extern "C" fn rand_bytes(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+
+///|
+#borrow(src, dst)
+extern "C" fn sha1_ffi(src : Bytes, len : Int, dst : FixedArray[Byte]) = "moonbitlang_async_tls_SHA1"
+
+///|
+#internal(internal, "for internal use only")
+pub fn sha1(src : Bytes) -> Bytes {
+  let result = FixedArray::make(20, b'\x00')
+  sha1_ffi(src, src.length(), result)
+  result.unsafe_reinterpret_as_bytes()
+}

@@ -1,0 +1,67 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/websocket"
+
+import(
+  "moonbitlang/async/http"
+  "moonbitlang/async/io"
+)
+
+// Values
+
+// Errors
+pub suberror WebSocketError {
+  ConnectionClosed(CloseCode, String?)
+  InvalidHandshake(String)
+  ProtocolError
+}
+impl Show for WebSocketError
+
+// Types and methods
+pub(all) enum CloseCode {
+  Normal
+  GoingAway
+  ProtocolError
+  UnsupportedData
+  Abnormal
+  InvalidFramePayload
+  PolicyViolation
+  MessageTooBig
+  MissingExtension
+  InternalError
+  Other(UInt16)
+}
+impl Eq for CloseCode
+impl Show for CloseCode
+
+type Conn
+fn Conn::close(Self) -> Unit
+#as_free_fn
+async fn Conn::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
+async fn Conn::end_message(Self) -> Unit
+#as_free_fn
+async fn Conn::from_http_client(@http.Client, String, extra_headers? : Map[String, String]) -> Self
+#as_free_fn
+async fn Conn::from_http_server(@http.Request, @http.ServerConnection) -> Self
+async fn Conn::recv(Self) -> Message
+async fn Conn::send_binary(Self, BytesView) -> Unit
+async fn Conn::send_close(Self, code? : CloseCode, reason? : String) -> Unit
+async fn Conn::send_text(Self, StringView) -> Unit
+async fn Conn::start_message(Self, MessageKind) -> Unit
+impl @io.Writer for Conn
+
+pub struct Message {
+  kind : MessageKind
+  // private fields
+}
+impl @io.Reader for Message
+
+pub(all) enum MessageKind {
+  Binary
+  Text
+}
+impl Show for MessageKind
+
+// Type aliases
+
+// Traits
+
