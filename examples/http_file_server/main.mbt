@@ -31,7 +31,7 @@ async fn serve_directory(
     conn.write("<a href=\"\{parent}\">..</a><br/><br/>\n")
   }
   for file in files {
-    let sep = if path[path.length() - 1] != '/' { "/" } else { "" }
+    let sep = if path is [.., '/'] { "" } else { "/" }
     conn.write("<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n")
   }
   conn..write("</div></body></html>")..end_response()

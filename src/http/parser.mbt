@@ -116,7 +116,7 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
     guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
     let key = header_line[:colon_index].to_lower().to_string()
     guard colon_index + 1 < header_line.length() else { raise BadRequest }
-    let value_start = if header_line[colon_index + 1] == ' ' {
+    let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
       colon_index + 2
     } else {
       colon_index + 1

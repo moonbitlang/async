@@ -27,9 +27,16 @@ fn mask_payload(
 }
 
 ///|
+let base64_chars : ReadOnlyArray[Char] = [
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+  'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
+]
+
+///|
 /// Base64 encoding
 fn base64_encode(data : Bytes) -> String {
-  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
   let data_arr = data
   let mut result = ""
   for i = 0; i < data_arr.length(); i = i + 3 {
@@ -45,18 +52,15 @@ fn base64_encode(data : Bytes) -> String {
       0
     }
     let combined = (b1 << 16) | (b2 << 8) | b3
-    result = result +
-      chars[(combined >> 18) & 0x3F].unsafe_to_char().to_string()
-    result = result +
-      chars[(combined >> 12) & 0x3F].unsafe_to_char().to_string()
+    result = result + base64_chars[(combined >> 18) & 0x3F].to_string()
+    result = result + base64_chars[(combined >> 12) & 0x3F].to_string()
     if i + 1 < data_arr.length() {
-      result = result +
-        chars[(combined >> 6) & 0x3F].unsafe_to_char().to_string()
+      result = result + base64_chars[(combined >> 6) & 0x3F].to_string()
     } else {
       result = result + "="
     }
     if i + 2 < data_arr.length() {
-      result = result + chars[combined & 0x3F].unsafe_to_char().to_string()
+      result = result + base64_chars[combined & 0x3F].to_string()
     } else {
       result = result + "="
     }

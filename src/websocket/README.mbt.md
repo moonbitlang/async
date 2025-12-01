@@ -119,17 +119,18 @@ A single message received from a WebSocket tunnel.
 WebSocket close code.
 
 ```moonbit no-check
+///|
 pub(all) enum CloseCode {
-  Normal              // 1000
-  GoingAway           // 1001
-  ProtocolError       // 1002
-  UnsupportedData     // 1003
-  Abnormal            // 1006
+  Normal // 1000
+  GoingAway // 1001
+  ProtocolError // 1002
+  UnsupportedData // 1003
+  Abnormal // 1006
   InvalidFramePayload // 1007
-  PolicyViolation     // 1008
-  MessageTooBig       // 1009
-  MissingExtension    // 1010
-  InternalError       // 1011
+  PolicyViolation // 1008
+  MessageTooBig // 1009
+  MissingExtension // 1010
+  InternalError // 1011
   Other(UInt16)
 } derive(Show, Eq)
 ```
@@ -138,11 +139,12 @@ pub(all) enum CloseCode {
 
 #### `WebSocketError`
 ```moonbit no-check
+///|
 suberror WebSocketError {
   // Connection was closed with specific code.
   // with an optional message for close reason.
-  ConnectionClosed(CloseCode, String?) 
+  ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String) // Handshake failed with detailed reason
-  ProtocolError            // Malformed frame
+  ProtocolError // Malformed frame
 } derive(Show)
 ```
