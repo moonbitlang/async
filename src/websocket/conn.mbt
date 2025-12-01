@@ -350,21 +350,34 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
 async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
   // the protocol requires `payload_len <= 125`
   let len = frame.payload_len.to_int()
-  self.write_lock.acquire()
-  defer self.write_lock.release()
-  while self.write_len < len {
+  let payload_start = if self.write_mask is Some(_) { 2 + MASK_SIZE } else { 2 }
+  let pong_message = FixedArray::make(payload_start + len, b'\x00')
+  pong_message[0] = 0x8a
+  pong_message[1] = if self.write_mask is Some(_) {
+    0x80 | len.to_byte()
+  } else {
+    len.to_byte()
+  }
+  for received = 0; received < len; {
     let n = self.transport.read(
-      self.write_buf,
-      offset=self.payload_start + self.write_len,
-      max_len=len - self.write_len,
+      pong_message,
+      offset=payload_start + received,
+      max_len=len - received,
     )
     guard n > 0 else { self.protocol_error() }
-    self.write_len += n
+    continue received + n
   }
   if self.read_mask is Some(mask) {
-    mask_payload(self.write_buf, mask, offset=self.payload_start, len~)
+    mask_payload(pong_message, mask, offset=payload_start, len~)
   }
-  self.flush_frame_unprotected(Pong, fin=true)
+  if self.write_mask is Some(rand) {
+    pong_message.unsafe_write_uint32_be(2, rand.uint())
+    let mask = pong_message.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
+    mask_payload(pong_message, mask, offset=payload_start, len~)
+  }
+  self.write_lock.acquire()
+  defer self.write_lock.release()
+  self.transport.write(pong_message.unsafe_reinterpret_as_bytes())
 }
 
 ///|

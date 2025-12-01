@@ -16,7 +16,7 @@
 /// Apply XOR mask to payload data
 fn mask_payload(
   data : FixedArray[Byte],
-  mask : Bytes,
+  mask : BytesView,
   offset~ : Int,
   len~ : Int,
   mask_offset? : Int = 0,
