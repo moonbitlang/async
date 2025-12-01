@@ -15,6 +15,7 @@
 ///|
 priv enum SenderMode {
   SendingHeader
+  WaitingBody
   SendingBody
   PassThrough
 }
@@ -65,6 +66,12 @@ async fn Sender::flush(self : Sender) -> Unit {
 }
 
 ///|
+const NON_EMPTY_MESSAGE_HEADER_END : Bytes = "Transfer-Encoding: chunked\r\n\r\n"
+
+///|
+const EMPTY_MESSAGE_HEADER_END : Bytes = "Content-Length: 0\r\n\r\n"
+
+///|
 impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
   match self.mode {
     SendingHeader => {
@@ -75,6 +82,21 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
       self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
       self.send_len += len
       len
+    }
+    WaitingBody => {
+      if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
+        self.send_buf.length() {
+        self.flush()
+      }
+      self.send_buf.blit_from_bytes(
+        self.send_len,
+        NON_EMPTY_MESSAGE_HEADER_END,
+        0,
+        NON_EMPTY_MESSAGE_HEADER_END.length(),
+      )
+      self.send_len += NON_EMPTY_MESSAGE_HEADER_END.length()
+      self.mode = SendingBody
+      self.write_once(buf, offset~, len~)
     }
     SendingBody => {
       // Reserve enough space for chunk length and '\r\n' in the buffer,
@@ -115,6 +137,21 @@ impl @io.Writer for Sender with write_reader(self, reader) {
           break
         }
       }
+    WaitingBody => {
+      if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
+        self.send_buf.length() {
+        self.flush()
+      }
+      self.send_buf.blit_from_bytes(
+        self.send_len,
+        NON_EMPTY_MESSAGE_HEADER_END,
+        0,
+        NON_EMPTY_MESSAGE_HEADER_END.length(),
+      )
+      self.send_len += NON_EMPTY_MESSAGE_HEADER_END.length()
+      self.mode = SendingBody
+      self.write_reader(reader)
+    }
     SendingBody => {
       self.flush()
       self.send_buf[3] = '\r'
@@ -141,13 +178,33 @@ impl @io.Writer for Sender with write_reader(self, reader) {
 
 ///|
 async fn Sender::end_body(self : Sender) -> Unit {
-  if self.send_len + 5 > self.send_buf.length() {
-    self.flush()
-    self.writer.write("0\r\n\r\n")
-  } else {
-    self.send_buf.blit_from_bytes(self.send_len, "0\r\n\r\n", 0, 5)
-    self.send_len += 5
-    self.flush()
+  match self.mode {
+    SendingHeader | PassThrough =>
+      abort("`end_body()` called outside a HTTP message")
+    WaitingBody =>
+      if self.send_len + EMPTY_MESSAGE_HEADER_END.length() >
+        self.send_buf.length() {
+        self.flush()
+        self.writer.write(EMPTY_MESSAGE_HEADER_END)
+      } else {
+        self.send_buf.blit_from_bytes(
+          self.send_len,
+          EMPTY_MESSAGE_HEADER_END,
+          0,
+          EMPTY_MESSAGE_HEADER_END.length(),
+        )
+        self.send_len += EMPTY_MESSAGE_HEADER_END.length()
+        self.flush()
+      }
+    SendingBody =>
+      if self.send_len + 5 > self.send_buf.length() {
+        self.flush()
+        self.writer.write("0\r\n\r\n")
+      } else {
+        self.send_buf.blit_from_bytes(self.send_len, "0\r\n\r\n", 0, 5)
+        self.send_len += 5
+        self.flush()
+      }
   }
   self.mode = SendingHeader
 }
@@ -186,8 +243,7 @@ async fn Sender::send_request(
   self..write(path)..write(" HTTP/1.1\r\n")
   self.write(self.headers)
   self.send_headers(extra_headers)
-  self.write("Transfer-Encoding: chunked\r\n\r\n")
-  self.mode = SendingBody
+  self.mode = WaitingBody
 }
 
 ///|
