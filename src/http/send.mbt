@@ -262,8 +262,7 @@ async fn Sender::send_response(
   ..write("\r\n")
   self.write(self.headers)
   self.send_headers(extra_headers)
-  self.write("Transfer-Encoding: chunked\r\n\r\n")
-  self.mode = SendingBody
+  self.mode = WaitingBody
 }
 
 ///|

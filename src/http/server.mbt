@@ -273,7 +273,7 @@ pub async fn Server::run_forever(
       f(request, conn, conn)
       if conn.closed {
         break
-      } else if conn.sender.mode is SendingBody {
+      } else if conn.sender.mode is (WaitingBody | SendingBody) {
         conn.end_response()
       }
     }

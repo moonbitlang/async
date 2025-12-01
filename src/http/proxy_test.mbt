@@ -392,7 +392,8 @@ async test "proxy error" {
         inspect(
           err,
           content=(
-            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"transfer-encoding": "chunked"}})
+            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"content-length": "0"}})
+
           ),
         )
     } noraise {
