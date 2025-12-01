@@ -83,3 +83,39 @@ async test "UTF8 validation" {
     "client: [b'\\xF0', b'\\x79', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, None))",
   ])
 }
+
+///|
+async test "UTF8 validation large message" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr().port()
+    group.spawn_bg(no_wait=true, () => server.run_forever((req, _, conn) => {
+      let ws = @websocket.from_http_server(req, conn)
+      defer ws.close()
+      let msg = ws.recv()
+      inspect(msg.kind, content="Text")
+      ws..start_message(Text)..write_reader(msg)..end_message()
+    }))
+    let client = @websocket.connect("ws://localhost:\{port}")
+    defer client.close()
+    @async.with_task_group(group => {
+      let chunk_text = String::make(1024, '☺')
+      let chunk_bin = @encoding/utf8.encode(chunk_text)
+      group.spawn_bg(() => {
+        client.start_message(Text)
+        client.write("a")
+        for n = 0; n < 10240; n = n + chunk_bin.length() {
+          client.write(chunk_bin)
+        }
+        client.end_message()
+      })
+      let reply = client.recv()
+      inspect(@encoding/utf8.decode(reply.read_exactly(1)), content="a")
+      for n = 0; n < 10240; n = n + chunk_bin.length() {
+        let reply_chunk = reply.read_exactly(chunk_bin.length())
+        assert_eq(@encoding/utf8.decode(reply_chunk), chunk_text)
+      }
+      inspect(reply.read_some(), content="None")
+    })
+  })
+}

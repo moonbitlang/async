@@ -8,7 +8,8 @@
   "test-import": [
     "moonbitlang/async",
     "moonbitlang/async/socket",
-    "moonbitlang/async/process"
+    "moonbitlang/async/process",
+    "moonbitlang/async/aqueue"
   ],
   "targets": {
     "client.mbt": [ "native" ],
