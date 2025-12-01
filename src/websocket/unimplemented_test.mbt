@@ -16,5 +16,7 @@
 #cfg(target="js")
 fn init {
   ignore(@async.sleep)
+  ignore(@aqueue.Unbounded)
   ignore(@socket.unimplemented)
+  ignore(@process.unimplemented)
 }
