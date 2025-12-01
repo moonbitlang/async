@@ -393,7 +393,6 @@ async test "proxy error" {
           err,
           content=(
             #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"content-length": "0"}})
-
           ),
         )
     } noraise {
