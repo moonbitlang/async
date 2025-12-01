@@ -23,6 +23,7 @@
     "utf8_validation_wbtest.mbt": [ "native" ],
     "utf8_validation_test.mbt": [ "native" ],
     "external_client_test.mbt": [ "native" ],
-    "bad_client_test.mbt": [ "native" ]
+    "bad_client_test.mbt": [ "native" ],
+    "control_test.mbt": [ "native" ]
   }
 }
