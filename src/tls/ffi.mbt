@@ -148,6 +148,7 @@ fn err_get_error() -> String {
 /// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
 /// Returns 1 on success, 0 on failure
 #borrow(buf)
+#internal(internal, "for internal use only")
 pub extern "C" fn rand_bytes(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
 
 ///|
