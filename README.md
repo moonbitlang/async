@@ -28,7 +28,13 @@ This library provides the following packages:
 - `moonbitlang/async/semaphore`: semaphore for concurrency control
 - `moonbitlang/async/cond_var`: condition variable with broadcasting support
 - `moonbitlang/async/io`: generic IO abstraction & utilities, such as buffering
-- `moonbitlang/async/http`: HTTP support, including parser & sending request
+- `moonbitlang/async/http`: HTTP client and server support. Features:
+    - HTTPS client support
+    - `CONNECT` based HTTP/HTTPS proxy support
+- `moonbitlang/async/websocket`: WebSocket client and server support. Features:
+    - TLS encrypted WebSocket (`wss://`) support
+    - `CONNECT` based HTTP/HTTPS proxy support
+    - native integration with `moonbitlang/async/http`
 
 To use these packages, add them to the `import` field of `moon.pkg.json`.
 
