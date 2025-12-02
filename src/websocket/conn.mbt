@@ -276,12 +276,17 @@ async fn Conn::send_close_unchecked(
 }
 
 ///|
-async fn[X] Conn::protocol_error(self : Conn) -> X {
+async fn[X] Conn::protocol_error(
+  self : Conn,
+  reason : String,
+  code? : CloseCode = ProtocolError,
+) -> X {
+  let err : WebSocketError = ProtocolError(reason)
   if self.closed is None {
-    self.closed = Some(ProtocolError)
-    self.send_close_unchecked(ProtocolError)
+    self.closed = Some(err)
+    self.send_close_unchecked(code, reason~)
   }
-  raise WebSocketError::ProtocolError
+  raise err
 }
 
 ///|
@@ -302,19 +307,22 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
       u7be(payload_len),
     ]
   guard OpCode::from_byte(opcode.to_byte()) is Some(opcode) else {
-    self.protocol_error()
+    self.protocol_error("Invalid OP code \{opcode}")
   }
   let mut payload_len = payload_len.to_int64()
 
   // No extensions supported, rejecting frames with RSV bits set
   if rsv1 != 0 || rsv2 != 0 || rsv3 != 0 {
-    self.protocol_error()
+    self.protocol_error("Reserved bits are not zero", code=MissingExtension)
   }
 
   // Validate payload length according to RFC 6455 Section 5.5
   if opcode is (Close | Ping | Pong) {
-    if fin == 0 || payload_len > 125L {
-      self.protocol_error()
+    if fin == 0 {
+      self.protocol_error("Control frames must not be fragmented")
+    }
+    if payload_len > 125L {
+      self.protocol_error("Control frame too long", code=MessageTooBig)
     }
   }
 
@@ -323,16 +331,16 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
     guard self.transport.read_exactly(2) is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
-      self.protocol_error()
+      self.protocol_error("Invalid payload length format")
     }
   } else if payload_len == 127L {
     guard self.transport.read_exactly(8) is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
     if payload_len < 0L {
-      self.protocol_error()
+      self.protocol_error("Invalid payload length format")
     }
     if payload_len < 65536L {
-      self.protocol_error()
+      self.protocol_error("Invalid payload length format")
     }
   }
   self.read_mask = if masked != 0 {
@@ -363,7 +371,7 @@ async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
       offset=payload_start + received,
       max_len=len - received,
     )
-    guard n > 0 else { self.protocol_error() }
+    guard n > 0 else { self.protocol_error("Unexpected EOF") }
     continue received + n
   }
   if self.read_mask is Some(mask) {
@@ -383,7 +391,9 @@ async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
 async fn Conn::handle_pong(self : Conn, frame : FrameHeader) -> Unit {
   // the protocol requires `payload_len <= 125`
   let len = frame.payload_len.to_int()
-  guard self.transport.drop(len) == len else { self.protocol_error() }
+  guard self.transport.drop(len) == len else {
+    self.protocol_error("Unexpected EOF")
+  }
 }
 
 ///|
@@ -407,7 +417,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
       offset=payload_start + received,
       max_len=len - received,
     )
-    guard n > 0 else { self.protocol_error() }
+    guard n > 0 else { self.protocol_error("Unexpected EOF") }
     continue received + n
   }
   if self.read_mask is Some(mask) {
@@ -416,7 +426,11 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
   let payload = reply.unsafe_reinterpret_as_bytes()[payload_start:]
   let (close_code, reason) = if payload is [u16be(code), .. reason] {
     let reason = @encoding/utf8.decode(reason) catch {
-      _ => self.protocol_error()
+      _ =>
+        self.protocol_error(
+          "Invalid UTF8 in close reason",
+          code=InvalidFramePayload,
+        )
     }
     let reason = if reason.length() is 0 { None } else { Some(reason) }
     (CloseCode::from_uint(code), reason)
@@ -458,7 +472,8 @@ pub async fn Conn::recv(self : Conn) -> Message {
       self.handle_pong(frame)
       continue self.recv_frame_header()
     }
-    { opcode: Continuation, .. } => self.protocol_error()
+    { opcode: Continuation, .. } =>
+      self.protocol_error("Unexpected continuation frame")
     { opcode: Text, fin, payload_len } => {
       if !fin {
         self.read_opcode = Some(Text)
@@ -525,7 +540,7 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
         Text | Binary =>
           // receiving a new message in the middle of
           // a fragmented message is not supported
-          conn.protocol_error()
+          conn.protocol_error("New message within a fragmented message")
         Ping => conn.handle_ping(frame)
         Pong => conn.handle_pong(frame)
         Close => conn.handle_close(frame)
@@ -556,14 +571,11 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
       buf.unsafe_reinterpret_as_bytes()[offset:offset + n],
       remaining=conn.utf8_remaining,
     ) catch {
-      err => {
-        if conn.closed is None {
-          conn.closed = Some(ProtocolError)
-          conn.send_close_unchecked(InvalidFramePayload)
-        }
-        self.state = Error(err)
-        raise err
-      }
+      _ =>
+        conn.protocol_error(
+          "Text message is not valid UTF8",
+          code=InvalidFramePayload,
+        )
     }
   }
   n
