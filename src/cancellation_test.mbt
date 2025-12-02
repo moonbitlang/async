@@ -14,8 +14,6 @@
 
 ///|
 async test "manual cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
     let task = root.spawn(allow_failure=true, fn() {
@@ -50,8 +48,6 @@ suberror Err derive(Show)
 
 ///|
 async test "error propagation" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -87,8 +83,6 @@ async test "error propagation" {
 
 ///|
 async test "multiple scope" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -154,8 +148,6 @@ async test "multiple scope" {
 
 ///|
 async test "recursive cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -195,8 +187,6 @@ async test "recursive cancel" {
 
 ///|
 async test "spawn directly error" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -223,8 +213,6 @@ async test "spawn directly error" {
 
 ///|
 async test "error in cancellation" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -250,8 +238,6 @@ async test "error in cancellation" {
 
 ///|
 async test "immediately cancelled" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(allow_failure=true, fn() {
@@ -276,8 +262,6 @@ async test "immediately cancelled" {
 
 ///|
 async test "immediate failure" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let result = try? @async.with_task_group(group => {
     group.spawn_bg(() => raise Failure("failure"))
     group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
