@@ -6,43 +6,43 @@ import(
 )
 
 // Values
-async fn access(StringView, amode~ : Int, context~ : String) -> Int
+pub async fn access(StringView, amode~ : Int, context~ : String) -> Int
 
-async fn chmod(StringView, Int, context~ : String) -> Unit
+pub async fn chmod(StringView, Int, context~ : String) -> Unit
 
-async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
+pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
-async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
+pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IOHandle
+pub async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IOHandle
 
-async fn opendir(StringView, context~ : String) -> Directory
+pub async fn opendir(StringView, context~ : String) -> Directory
 
-async fn readdir(Directory, context~ : String) -> DirectoryEntry
+pub async fn readdir(Directory, context~ : String) -> DirectoryEntry
 
-async fn realpath(StringView, context~ : String) -> Bytes
+pub async fn realpath(StringView, context~ : String) -> Bytes
 
-async fn remove(StringView, context~ : String) -> Unit
+pub async fn remove(StringView, context~ : String) -> Unit
 
-async fn rmdir(StringView, context~ : String) -> Unit
+pub async fn rmdir(StringView, context~ : String) -> Unit
 
-async fn sleep(Int) -> Unit
+pub async fn sleep(Int) -> Unit
 
-async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
+pub async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
 
-async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.Stat
+pub async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.Stat
 
-let stderr : IOHandle
+pub let stderr : IOHandle
 
-let stdin : IOHandle
+pub let stdin : IOHandle
 
-let stdout : IOHandle
+pub let stdout : IOHandle
 
-async fn symlink(StringView, StringView, context~ : String) -> Unit
+pub async fn symlink(StringView, StringView, context~ : String) -> Unit
 
-async fn wait_pid(Int) -> Unit
+pub async fn wait_pid(Int) -> Unit
 
-fn with_event_loop(async () -> Unit) -> Unit raise
+pub fn with_event_loop(async () -> Unit) -> Unit raise
 
 // Errors
 
@@ -57,23 +57,23 @@ pub type Directory
 pub type DirectoryEntry
 
 type IOHandle
-async fn IOHandle::accept(Self, Bytes, context~ : String) -> Self
-fn IOHandle::close(Self) -> Unit
-async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
-fn IOHandle::detach_from_event_loop(Self) -> Int
-fn IOHandle::fd(Self) -> Int
-fn IOHandle::from_existing_fd(Int) -> Self
-fn IOHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
-async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
-async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
-fn IOHandle::kind(Self) -> @fd_util.FileKind
-async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
-async fn IOHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
-async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
-async fn IOHandle::seek(Self, Int64, Int, context~ : String) -> Int64
-async fn IOHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
-async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
-async fn IOHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+pub async fn IOHandle::accept(Self, Bytes, context~ : String) -> Self
+pub fn IOHandle::close(Self) -> Unit
+pub async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
+pub fn IOHandle::detach_from_event_loop(Self) -> Int
+pub fn IOHandle::fd(Self) -> Int
+pub fn IOHandle::from_existing_fd(Int) -> Self
+pub fn IOHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
+pub async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
+pub async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
+pub fn IOHandle::kind(Self) -> @fd_util.FileKind
+pub async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
+pub async fn IOHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
+pub async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IOHandle::seek(Self, Int64, Int, context~ : String) -> Int64
+pub async fn IOHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
+pub async fn IOHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 
 // Type aliases
 

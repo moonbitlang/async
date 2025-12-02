@@ -6,22 +6,22 @@ import(
 )
 
 // Values
-let stderr : Output
+pub let stderr : Output
 
-let stdin : Input
+pub let stdin : Input
 
-let stdout : Output
+pub let stdout : Output
 
 // Errors
 
 // Types and methods
 type Input
-fn Input::fd(Self) -> Int
-impl @io.Reader for Input
+pub fn Input::fd(Self) -> Int
+pub impl @io.Reader for Input
 
 type Output
-fn Output::fd(Self) -> Int
-impl @io.Writer for Output
+pub fn Output::fd(Self) -> Int
+pub impl @io.Writer for Output
 
 // Type aliases
 

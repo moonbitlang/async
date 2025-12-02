@@ -7,10 +7,10 @@ package "moonbitlang/async/cond_var"
 
 // Types and methods
 type Cond
-fn Cond::broadcast(Self) -> Unit
-fn Cond::new() -> Self
-fn Cond::signal(Self) -> Unit
-async fn Cond::wait(Self) -> Unit
+pub fn Cond::broadcast(Self) -> Unit
+pub fn Cond::new() -> Self
+pub fn Cond::signal(Self) -> Unit
+pub async fn Cond::wait(Self) -> Unit
 
 // Type aliases
 

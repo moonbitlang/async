@@ -2,37 +2,37 @@
 package "moonbitlang/async/internal/coroutine"
 
 // Values
-fn current_coroutine() -> Coroutine
+pub fn current_coroutine() -> Coroutine
 
-fn has_immediately_ready_task() -> Bool
+pub fn has_immediately_ready_task() -> Bool
 
-fn is_being_cancelled() -> Bool
+pub fn is_being_cancelled() -> Bool
 
-fn no_more_work() -> Bool
+pub fn no_more_work() -> Bool
 
-async fn pause() -> Unit
+pub async fn pause() -> Unit
 
-async fn protect_from_cancel(async () -> Unit) -> Unit
+pub async fn protect_from_cancel(async () -> Unit) -> Unit
 
-fn reschedule() -> Unit
+pub fn reschedule() -> Unit
 
-fn spawn(async () -> Unit) -> Coroutine
+pub fn spawn(async () -> Unit) -> Coroutine
 
-async fn suspend() -> Unit
+pub async fn suspend() -> Unit
 
 // Errors
 pub(all) suberror Cancelled
-impl Show for Cancelled
+pub impl Show for Cancelled
 
 // Types and methods
 type Coroutine
-fn Coroutine::cancel(Self) -> Unit
-fn Coroutine::check_error(Self) -> Unit raise
-fn Coroutine::unwrap(Self) -> Unit raise
-async fn Coroutine::wait(Self) -> Unit
-fn Coroutine::wake(Self) -> Unit
-impl Eq for Coroutine
-impl Hash for Coroutine
+pub fn Coroutine::cancel(Self) -> Unit
+pub fn Coroutine::check_error(Self) -> Unit raise
+pub fn Coroutine::unwrap(Self) -> Unit raise
+pub async fn Coroutine::wait(Self) -> Unit
+pub fn Coroutine::wake(Self) -> Unit
+pub impl Eq for Coroutine
+pub impl Hash for Coroutine
 
 // Type aliases
 

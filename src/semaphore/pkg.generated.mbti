@@ -7,10 +7,10 @@ package "moonbitlang/async/semaphore"
 
 // Types and methods
 type Semaphore
-async fn Semaphore::acquire(Self) -> Unit
-fn Semaphore::new(Int, initial_value? : Int) -> Self
-fn Semaphore::release(Self) -> Unit
-fn Semaphore::try_acquire(Self) -> Bool
+pub async fn Semaphore::acquire(Self) -> Unit
+pub fn Semaphore::new(Int, initial_value? : Int) -> Self
+pub fn Semaphore::release(Self) -> Unit
+pub fn Semaphore::try_acquire(Self) -> Bool
 
 // Type aliases
 

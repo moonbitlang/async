@@ -2,19 +2,19 @@
 package "moonbitlang/async/internal/fd_util"
 
 // Values
-fn close(Int, context~ : String) -> Unit raise
+pub fn close(Int, context~ : String) -> Unit raise
 
-fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
+pub fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
 
-fn fstat_sync(Int, context~ : String) -> Stat raise
+pub fn fstat_sync(Int, context~ : String) -> Stat raise
 
-fn pipe(String) -> (Int, Int) raise
+pub fn pipe(String) -> (Int, Int) raise
 
-fn set_blocking(Int, context~ : String) -> Unit raise
+pub fn set_blocking(Int, context~ : String) -> Unit raise
 
-fn set_cloexec(Int, context~ : String) -> Unit raise
+pub fn set_cloexec(Int, context~ : String) -> Unit raise
 
-fn set_nonblocking(Int, context~ : String) -> Unit raise
+pub fn set_nonblocking(Int, context~ : String) -> Unit raise
 
 // Errors
 
@@ -29,17 +29,17 @@ pub(all) enum FileKind {
   BlockDevice
   CharDevice
 }
-fn FileKind::can_poll(Self) -> Bool
-impl Eq for FileKind
-impl Show for FileKind
+pub fn FileKind::can_poll(Self) -> Bool
+pub impl Eq for FileKind
+pub impl Show for FileKind
 
 type Stat
-fn Stat::atime(Self) -> (Int64, Int)
-fn Stat::ctime(Self) -> (Int64, Int)
-fn Stat::kind(Self) -> FileKind
-fn Stat::mtime(Self) -> (Int64, Int)
-fn Stat::new() -> Self
-fn Stat::size(Self) -> Int64
+pub fn Stat::atime(Self) -> (Int64, Int)
+pub fn Stat::ctime(Self) -> (Int64, Int)
+pub fn Stat::kind(Self) -> FileKind
+pub fn Stat::mtime(Self) -> (Int64, Int)
+pub fn Stat::new() -> Self
+pub fn Stat::size(Self) -> Int64
 
 // Type aliases
 

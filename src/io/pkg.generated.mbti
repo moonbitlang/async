@@ -2,63 +2,63 @@
 package "moonbitlang/async/io"
 
 // Values
-fn pipe() -> (PipeRead, PipeWrite)
+pub fn pipe() -> (PipeRead, PipeWrite)
 
 // Errors
 pub suberror PipeClosed
-impl Show for PipeClosed
-impl ToJson for PipeClosed
+pub impl Show for PipeClosed
+pub impl ToJson for PipeClosed
 
 pub(all) suberror ReaderClosed
-impl Show for ReaderClosed
-impl ToJson for ReaderClosed
+pub impl Show for ReaderClosed
+pub impl ToJson for ReaderClosed
 
 // Types and methods
 #deprecated
 type BufferedReader[R]
-async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit
-async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
-async fn[R : Reader] BufferedReader::find_opt(Self[R], Bytes) -> Int?
-fn[R] BufferedReader::new(R) -> Self[R]
-async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> BytesView
-async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
-async fn[R : Reader] BufferedReader::read_line(Self[R]) -> String?
-impl[R : Reader] Reader for BufferedReader[R]
+pub async fn[R : Reader] BufferedReader::drop(Self[R], Int) -> Unit
+pub async fn[R : Reader] BufferedReader::find(Self[R], Bytes) -> Int
+pub async fn[R : Reader] BufferedReader::find_opt(Self[R], Bytes) -> Int?
+pub fn[R] BufferedReader::new(R) -> Self[R]
+pub async fn[R : Reader] BufferedReader::op_as_view(Self[R], start? : Int, end~ : Int) -> BytesView
+pub async fn[R : Reader] BufferedReader::op_get(Self[R], Int) -> Byte
+pub async fn[R : Reader] BufferedReader::read_line(Self[R]) -> String?
+pub impl[R : Reader] Reader for BufferedReader[R]
 
 type BufferedWriter[W]
-fn[W] BufferedWriter::capacity(Self[W]) -> Int
-async fn[W : Writer] BufferedWriter::flush(Self[W]) -> Unit
-fn[W] BufferedWriter::new(W, size? : Int) -> Self[W]
-impl[W : Writer] Writer for BufferedWriter[W]
+pub fn[W] BufferedWriter::capacity(Self[W]) -> Int
+pub async fn[W : Writer] BufferedWriter::flush(Self[W]) -> Unit
+pub fn[W] BufferedWriter::new(W, size? : Int) -> Self[W]
+pub impl[W : Writer] Writer for BufferedWriter[W]
 
 pub(all) enum Encoding {
   UTF8
 }
 
 type PipeRead
-fn PipeRead::close(Self) -> Unit
-impl Reader for PipeRead
+pub fn PipeRead::close(Self) -> Unit
+pub impl Reader for PipeRead
 
 type PipeWrite
-fn PipeWrite::close(Self) -> Unit
-impl Writer for PipeWrite
+pub fn PipeWrite::close(Self) -> Unit
+pub impl Writer for PipeWrite
 
 type ReaderBuffer
-fn ReaderBuffer::clear(Self) -> Unit
-fn ReaderBuffer::new() -> Self
+pub fn ReaderBuffer::clear(Self) -> Unit
+pub fn ReaderBuffer::new() -> Self
 
 // Type aliases
 
 // Traits
 trait Data
-impl Data for String
-impl Data for Bytes
-impl Data for Json
-impl Data for BytesView
-impl Data for StringView
-fn &Data::binary(Self) -> Bytes
-fn &Data::json(Self) -> Json raise
-fn &Data::text(Self) -> String raise
+pub impl Data for String
+pub impl Data for Bytes
+pub impl Data for Json
+pub impl Data for BytesView
+pub impl Data for StringView
+pub fn &Data::binary(Self) -> Bytes
+pub fn &Data::json(Self) -> Json raise
+pub fn &Data::text(Self) -> String raise
 
 pub(open) trait Reader {
   _get_internal_buffer(Self) -> ReaderBuffer
