@@ -8,27 +8,27 @@ import(
 )
 
 // Values
-async fn collect_output(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data, &@io.Data)
+pub async fn collect_output(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data, &@io.Data)
 
-async fn collect_output_merged(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_output_merged(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data)
 
-async fn collect_stderr(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_stderr(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
 
-async fn collect_stdout(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_stdout(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
 
-fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise
+pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise
 
-async fn redirect_from_file(String) -> &ProcessInput
+pub async fn redirect_from_file(String) -> &ProcessInput
 
-async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
+pub async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
 
-async fn run(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
+pub async fn run(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
 
-async fn spawn_orphan(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
+pub async fn spawn_orphan(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
 
-async fn wait_pid(Int) -> Int
+pub async fn wait_pid(Int) -> Int
 
-fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
+pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 
 // Errors
 
@@ -38,10 +38,10 @@ fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 
 // Traits
 trait ProcessInput
-impl ProcessInput for @pipe.PipeRead
-impl ProcessInput for @stdio.Input
+pub impl ProcessInput for @pipe.PipeRead
+pub impl ProcessInput for @stdio.Input
 
 trait ProcessOutput
-impl ProcessOutput for @pipe.PipeWrite
-impl ProcessOutput for @stdio.Output
+pub impl ProcessOutput for @pipe.PipeWrite
+pub impl ProcessOutput for @stdio.Output
 

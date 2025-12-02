@@ -2,23 +2,23 @@
 package "moonbitlang/async/os_error"
 
 // Values
-fn check_errno(String) -> Unit raise OSError
+pub fn check_errno(String) -> Unit raise OSError
 
-fn get_errno() -> Int
+pub fn get_errno() -> Int
 
-fn is_nonblocking_io_error() -> Bool
+pub fn is_nonblocking_io_error() -> Bool
 
 // Errors
 pub(all) suberror OSError {
   OSError(Int, context~ : String)
 }
-fn OSError::is_EACCES(Self) -> Bool
-fn OSError::is_EEXIST(Self) -> Bool
-fn OSError::is_EINTR(Self) -> Bool
-fn OSError::is_ENOENT(Self) -> Bool
-fn OSError::is_nonblocking_io_error(Self) -> Bool
-impl Show for OSError
-impl ToJson for OSError
+pub fn OSError::is_EACCES(Self) -> Bool
+pub fn OSError::is_EEXIST(Self) -> Bool
+pub fn OSError::is_EINTR(Self) -> Bool
+pub fn OSError::is_ENOENT(Self) -> Bool
+pub fn OSError::is_nonblocking_io_error(Self) -> Bool
+pub impl Show for OSError
+pub impl ToJson for OSError
 
 // Types and methods
 

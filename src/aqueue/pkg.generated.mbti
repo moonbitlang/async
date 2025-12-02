@@ -14,13 +14,13 @@ pub(all) enum Kind {
 }
 
 type Queue[X]
-async fn[X] Queue::get(Self[X]) -> X
+pub async fn[X] Queue::get(Self[X]) -> X
 #as_free_fn
 #label_migration(kind, fill=true, msg="specify the kind of queue explicitly via `kind=...`")
-fn[X] Queue::new(kind? : Kind) -> Self[X]
-async fn[X] Queue::put(Self[X], X) -> Unit
-fn[X] Queue::try_get(Self[X]) -> X?
-fn[X] Queue::try_put(Self[X], X) -> Bool
+pub fn[X] Queue::new(kind? : Kind) -> Self[X]
+pub async fn[X] Queue::put(Self[X], X) -> Unit
+pub fn[X] Queue::try_get(Self[X]) -> X?
+pub fn[X] Queue::try_put(Self[X], X) -> Bool
 
 // Type aliases
 

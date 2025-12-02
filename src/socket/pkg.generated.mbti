@@ -9,25 +9,25 @@ import(
 
 // Errors
 pub suberror InvalidAddr
-impl Show for InvalidAddr
-impl ToJson for InvalidAddr
+pub impl Show for InvalidAddr
+pub impl ToJson for InvalidAddr
 
 pub suberror ResolveHostnameError String
-impl Show for ResolveHostnameError
-impl ToJson for ResolveHostnameError
+pub impl Show for ResolveHostnameError
+pub impl ToJson for ResolveHostnameError
 
 // Types and methods
 type Addr
-fn Addr::ip(Self) -> UInt
-fn Addr::is_ipv6(Self) -> Bool
-fn Addr::new(UInt, Int) -> Self
-fn Addr::parse(String) -> Self raise InvalidAddr
-fn Addr::port(Self) -> Int
-async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
-impl Compare for Addr
-impl Eq for Addr
-impl Hash for Addr
-impl Show for Addr
+pub fn Addr::ip(Self) -> UInt
+pub fn Addr::is_ipv6(Self) -> Bool
+pub fn Addr::new(UInt, Int) -> Self
+pub fn Addr::parse(String) -> Self raise InvalidAddr
+pub fn Addr::port(Self) -> Int
+pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
+pub impl Compare for Addr
+pub impl Eq for Addr
+pub impl Hash for Addr
+pub impl Show for Addr
 
 pub(all) enum IpProtocolPreference {
   OnlyV4
@@ -36,39 +36,39 @@ pub(all) enum IpProtocolPreference {
   FavorV6
   NoPreference
 }
-impl Show for IpProtocolPreference
+pub impl Show for IpProtocolPreference
 
 #alias(TCP, deprecated)
 type Tcp
-fn Tcp::addr(Self) -> Addr
-fn Tcp::close(Self) -> Unit
-async fn Tcp::connect(Addr) -> Self
-async fn Tcp::connect_to_host(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
-fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-impl @io.Reader for Tcp
-impl @io.Writer for Tcp
+pub fn Tcp::addr(Self) -> Addr
+pub fn Tcp::close(Self) -> Unit
+pub async fn Tcp::connect(Addr) -> Self
+pub async fn Tcp::connect_to_host(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
+pub fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
+pub impl @io.Reader for Tcp
+pub impl @io.Writer for Tcp
 
 #alias(TCPServer, deprecated)
 type TcpServer
-async fn TcpServer::accept(Self) -> (Tcp, Addr)
-fn TcpServer::addr(Self) -> Addr
-fn TcpServer::close(Self) -> Unit
-fn TcpServer::new(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> Self raise
-async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
+pub async fn TcpServer::accept(Self) -> (Tcp, Addr)
+pub fn TcpServer::addr(Self) -> Addr
+pub fn TcpServer::close(Self) -> Unit
+pub fn TcpServer::new(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> Self raise
+pub async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type UdpClient
-fn UdpClient::addr(Self) -> Addr
-fn UdpClient::close(Self) -> Unit
-fn UdpClient::new(Addr) -> Self raise
-async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
+pub fn UdpClient::addr(Self) -> Addr
+pub fn UdpClient::close(Self) -> Unit
+pub fn UdpClient::new(Addr) -> Self raise
+pub async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
 
 type UdpServer
-fn UdpServer::addr(Self) -> Addr
-fn UdpServer::close(Self) -> Unit
-fn UdpServer::new(Addr, dual_stack? : Bool) -> Self raise
-async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
-async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
+pub fn UdpServer::addr(Self) -> Addr
+pub fn UdpServer::close(Self) -> Unit
+pub fn UdpServer::new(Addr, dual_stack? : Bool) -> Self raise
+pub async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
+pub async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 
 // Type aliases
 

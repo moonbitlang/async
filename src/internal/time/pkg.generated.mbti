@@ -2,7 +2,7 @@
 package "moonbitlang/async/internal/time"
 
 // Values
-fn ms_since_epoch() -> Int64
+pub fn ms_since_epoch() -> Int64
 
 // Errors
 

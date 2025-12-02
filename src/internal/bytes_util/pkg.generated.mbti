@@ -2,7 +2,7 @@
 package "moonbitlang/async/internal/bytes_util"
 
 // Values
-fn ascii_to_string(BytesView) -> String
+pub fn ascii_to_string(BytesView) -> String
 
 // Errors
 
