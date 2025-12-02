@@ -15,7 +15,7 @@
 ///|
 priv struct EventLoop {
   poll : Instance
-  fds : Map[Int, IOHandle]
+  fds : Map[Int, IoHandle]
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
@@ -27,7 +27,7 @@ priv struct EventLoop {
 }
 
 ///|
-struct IOHandle {
+struct IoHandle {
   mut fd : Int
   kind : @fd_util.FileKind
   mut events : Int
@@ -224,7 +224,7 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
-pub fn IOHandle::from_fd(fd : Int, kind~ : @fd_util.FileKind) -> IOHandle {
+pub fn IoHandle::from_fd(fd : Int, kind~ : @fd_util.FileKind) -> IoHandle {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   let handle = { fd, kind, read: None, write: None, events: NoEvent }
@@ -233,24 +233,24 @@ pub fn IOHandle::from_fd(fd : Int, kind~ : @fd_util.FileKind) -> IOHandle {
 }
 
 ///|
-pub fn IOHandle::from_existing_fd(fd : Int) -> IOHandle {
+pub fn IoHandle::from_existing_fd(fd : Int) -> IoHandle {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is Some(io)
   io
 }
 
 ///|
-pub fn IOHandle::fd(handle : IOHandle) -> Int {
+pub fn IoHandle::fd(handle : IoHandle) -> Int {
   handle.fd
 }
 
 ///|
-pub fn IOHandle::kind(handle : IOHandle) -> @fd_util.FileKind {
+pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
   handle.kind
 }
 
 ///|
-fn IOHandle::prepare_read(handle : IOHandle) -> Unit raise {
+fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { abort("file descriptor already closed") }
   if (handle.events & ReadEvent) == 0 {
@@ -265,7 +265,7 @@ fn IOHandle::prepare_read(handle : IOHandle) -> Unit raise {
 }
 
 ///|
-async fn IOHandle::wait_read(handle : IOHandle) -> Unit {
+async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
   guard handle.fd >= 0 else { abort("file descriptor already closed") }
   guard handle.read is None
@@ -277,7 +277,7 @@ async fn IOHandle::wait_read(handle : IOHandle) -> Unit {
 }
 
 ///|
-fn IOHandle::prepare_write(handle : IOHandle) -> Unit raise {
+fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { abort("file descriptor already closed") }
   if (handle.events & WriteEvent) == 0 {
@@ -292,7 +292,7 @@ fn IOHandle::prepare_write(handle : IOHandle) -> Unit raise {
 }
 
 ///|
-async fn IOHandle::wait_write(handle : IOHandle) -> Unit {
+async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
   guard (handle.events & WriteEvent) != 0
   guard handle.fd >= 0 else { abort("file descriptor already closed") }
   guard handle.write is None
@@ -308,7 +308,7 @@ async fn IOHandle::wait_write(handle : IOHandle) -> Unit {
 /// Detach a file descriptor from the event loop,
 /// but does not close the file descriptor itself.
 /// The underlying file descriptor is returned.
-pub fn IOHandle::detach_from_event_loop(handle : IOHandle) -> Int {
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Int {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { -1 }
   evloop.fds.remove(handle.fd)
@@ -325,7 +325,7 @@ pub fn IOHandle::detach_from_event_loop(handle : IOHandle) -> Int {
 ///|
 /// Close a file descriptor and detach it from the event loop.
 /// This function is idempotent: it is safe to call `.close()` multiple times.
-pub fn IOHandle::close(handle : IOHandle) -> Unit {
+pub fn IoHandle::close(handle : IoHandle) -> Unit {
   let fd = handle.detach_from_event_loop()
   if fd >= 0 {
     @fd_util.close(fd, context="") catch {
@@ -377,8 +377,8 @@ extern "C" fn read_ffi(
 ) -> Int = "moonbitlang_async_read"
 
 ///|
-pub async fn IOHandle::read(
-  handle : IOHandle,
+pub async fn IoHandle::read(
+  handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -408,8 +408,8 @@ pub async fn IOHandle::read(
 }
 
 ///|
-pub async fn IOHandle::read_at(
-  handle : IOHandle,
+pub async fn IoHandle::read_at(
+  handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -431,8 +431,8 @@ extern "C" fn write_ffi(
 ) -> Int = "moonbitlang_async_write"
 
 ///|
-pub async fn IOHandle::write(
-  handle : IOHandle,
+pub async fn IoHandle::write(
+  handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
@@ -462,8 +462,8 @@ pub async fn IOHandle::write(
 }
 
 ///|
-pub async fn IOHandle::write_at(
-  handle : IOHandle,
+pub async fn IoHandle::write_at(
+  handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,

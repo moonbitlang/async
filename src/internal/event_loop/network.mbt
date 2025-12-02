@@ -23,8 +23,8 @@ extern "C" fn recvfrom_ffi(
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
-pub async fn IOHandle::recvfrom(
-  handle : IOHandle,
+pub async fn IoHandle::recvfrom(
+  handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -60,8 +60,8 @@ extern "C" fn sendto_ffi(
 ) -> Int = "moonbitlang_async_sendto"
 
 ///|
-pub async fn IOHandle::sendto(
-  handle : IOHandle,
+pub async fn IoHandle::sendto(
+  handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
@@ -94,8 +94,8 @@ extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_
 extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
-pub async fn IOHandle::connect(
-  handle : IOHandle,
+pub async fn IoHandle::connect(
+  handle : IoHandle,
   addr : Bytes,
   context~ : String,
 ) -> Unit {
@@ -121,11 +121,11 @@ pub async fn IOHandle::connect(
 extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
 
 ///|
-pub async fn IOHandle::accept(
-  handle : IOHandle,
+pub async fn IoHandle::accept(
+  handle : IoHandle,
   addr : Bytes,
   context~ : String,
-) -> IOHandle {
+) -> IoHandle {
   handle.prepare_read()
   let conn = accept_ffi(handle.fd, addr)
   let conn = if conn >= 0 {
@@ -139,7 +139,7 @@ pub async fn IOHandle::accept(
   if conn < 0 {
     @os_error.check_errno(context)
   }
-  IOHandle::from_fd(conn, kind=Socket)
+  IoHandle::from_fd(conn, kind=Socket)
 }
 
 ///|

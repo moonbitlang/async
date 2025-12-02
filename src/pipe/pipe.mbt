@@ -15,7 +15,7 @@
 ///|
 /// The read end of a pipe
 struct PipeRead {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   read_buf : @io.ReaderBuffer
 }
 
@@ -26,7 +26,7 @@ pub fn PipeRead::fd(self : PipeRead) -> Int {
 
 ///|
 /// The write end of a pipe
-struct PipeWrite(@event_loop.IOHandle)
+struct PipeWrite(@event_loop.IoHandle)
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> Int {
@@ -42,10 +42,10 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
   @fd_util.set_nonblocking(r, context="@pipe.pipe()")
   @fd_util.set_nonblocking(w, context="@pipe.pipe()")
   let r = {
-    io: @event_loop.IOHandle::from_fd(r, kind=Pipe),
+    io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
     read_buf: @io.ReaderBuffer::new(),
   }
-  (r, PipeWrite(@event_loop.IOHandle::from_fd(w, kind=Pipe)))
+  (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
 }
 
 ///|

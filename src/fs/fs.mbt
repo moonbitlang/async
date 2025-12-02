@@ -14,7 +14,7 @@
 
 ///|
 struct File {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   read_buf : @io.ReaderBuffer
 }
 

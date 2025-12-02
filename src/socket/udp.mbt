@@ -19,7 +19,7 @@
 /// the client always send packet to and receive packet from
 /// the specified remote server.
 struct UdpClient {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   family : AddrFamily
 }
 
@@ -35,7 +35,7 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|
@@ -52,7 +52,7 @@ pub fn UdpClient::addr(self : UdpClient) -> Addr {
 ///|
 /// A UDP server bound to a listen address and receive packets from clients.
 struct UdpServer {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   family : AddrFamily
 }
 
@@ -92,7 +92,7 @@ pub fn UdpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|

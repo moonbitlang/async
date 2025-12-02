@@ -17,7 +17,7 @@ fn setup_stdio(
   fd : Int,
   context~ : String,
   restore_context~ : String,
-) -> IOHandle {
+) -> IoHandle {
   let kind = @fd_util.fstat_sync(fd, context~).kind() catch {
     err => abort("\{context}: \{err}")
   }
@@ -46,21 +46,21 @@ fn setup_stdio(
 }
 
 ///|
-pub let stdin : IOHandle = setup_stdio(
+pub let stdin : IoHandle = setup_stdio(
   0,
   context="initialize `stdin`",
   restore_context="restore `stdin`",
 )
 
 ///|
-pub let stdout : IOHandle = setup_stdio(
+pub let stdout : IoHandle = setup_stdio(
   1,
   context="initialize `stdout`",
   restore_context="restore `stdout`",
 )
 
 ///|
-pub let stderr : IOHandle = setup_stdio(
+pub let stderr : IoHandle = setup_stdio(
   2,
   context="initialize `stderr`",
   restore_context="restore `stderr`",

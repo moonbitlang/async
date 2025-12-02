@@ -16,7 +16,7 @@
 /// A Tcp connection
 #alias(TCP, deprecated="use `Tcp` instead")
 struct Tcp {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   family : AddrFamily
   read_buf : @io.ReaderBuffer
 }
@@ -29,7 +29,7 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 ///|
 #alias(TCPServer, deprecated="use `TcpServer` instead")
 struct TcpServer {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   family : AddrFamily
 }
 
@@ -81,7 +81,7 @@ pub fn TcpServer::new(
     @fd_util.close(sock, context~)
     @os_error.check_errno(context)
   }
-  { io: @event_loop.IOHandle::from_fd(sock, kind=Socket), family }
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }
 
 ///|
@@ -194,7 +194,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
     @fd_util.close(sock, context~)
     @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
-  let conn = @event_loop.IOHandle::from_fd(sock, kind=Socket)
+  let conn = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try conn.connect(addr.0, context~) catch {
     err => {
       conn.close()

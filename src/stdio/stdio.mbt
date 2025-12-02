@@ -14,7 +14,7 @@
 
 ///|
 struct Input {
-  io : @event_loop.IOHandle
+  io : @event_loop.IoHandle
   read_buf : @io.ReaderBuffer
 }
 
@@ -34,7 +34,7 @@ pub impl @io.Reader for Input with _get_internal_buffer(self) {
 }
 
 ///|
-struct Output(@event_loop.IOHandle)
+struct Output(@event_loop.IoHandle)
 
 ///|
 pub fn Output::fd(self : Output) -> Int {

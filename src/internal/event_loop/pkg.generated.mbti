@@ -14,7 +14,7 @@ pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, Stri
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-pub async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IOHandle
+pub async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
 pub async fn opendir(StringView, context~ : String) -> Directory
 
@@ -32,11 +32,11 @@ pub async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ 
 
 pub async fn stat(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.Stat
 
-pub let stderr : IOHandle
+pub let stderr : IoHandle
 
-pub let stdin : IOHandle
+pub let stdin : IoHandle
 
-pub let stdout : IOHandle
+pub let stdout : IoHandle
 
 pub async fn symlink(StringView, StringView, context~ : String) -> Unit
 
@@ -56,24 +56,24 @@ pub type Directory
 #external
 pub type DirectoryEntry
 
-type IOHandle
-pub async fn IOHandle::accept(Self, Bytes, context~ : String) -> Self
-pub fn IOHandle::close(Self) -> Unit
-pub async fn IOHandle::connect(Self, Bytes, context~ : String) -> Unit
-pub fn IOHandle::detach_from_event_loop(Self) -> Int
-pub fn IOHandle::fd(Self) -> Int
-pub fn IOHandle::from_existing_fd(Int) -> Self
-pub fn IOHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
-pub async fn IOHandle::fstat(Self, context~ : String) -> @fd_util.Stat
-pub async fn IOHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
-pub fn IOHandle::kind(Self) -> @fd_util.FileKind
-pub async fn IOHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
-pub async fn IOHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
-pub async fn IOHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
-pub async fn IOHandle::seek(Self, Int64, Int, context~ : String) -> Int64
-pub async fn IOHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
-pub async fn IOHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
-pub async fn IOHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+type IoHandle
+pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self
+pub fn IoHandle::close(Self) -> Unit
+pub async fn IoHandle::connect(Self, Bytes, context~ : String) -> Unit
+pub fn IoHandle::detach_from_event_loop(Self) -> Int
+pub fn IoHandle::fd(Self) -> Int
+pub fn IoHandle::from_existing_fd(Int) -> Self
+pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
+pub async fn IoHandle::fstat(Self, context~ : String) -> @fd_util.Stat
+pub async fn IoHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
+pub fn IoHandle::kind(Self) -> @fd_util.FileKind
+pub async fn IoHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
+pub async fn IoHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
+pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IoHandle::seek(Self, Int64, Int, context~ : String) -> Int64
+pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
+pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 
 // Type aliases
 

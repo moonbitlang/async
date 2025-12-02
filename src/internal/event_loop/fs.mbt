@@ -26,7 +26,7 @@ pub async fn open(
   flags~ : Int,
   mode~ : Int,
   context~ : String,
-) -> IOHandle {
+) -> IoHandle {
   let path_bytes = @encoding/utf8.encode(path)
   let stat = @fd_util.Stat::new()
   let job = Job::open(path_bytes, flags, mode, stat)
@@ -35,7 +35,7 @@ pub async fn open(
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    fd => IOHandle::from_fd(fd, kind=stat.kind())
+    fd => IoHandle::from_fd(fd, kind=stat.kind())
   }
 }
 
@@ -59,8 +59,8 @@ pub async fn stat(
 }
 
 ///|
-pub async fn IOHandle::fstat(
-  handle : IOHandle,
+pub async fn IoHandle::fstat(
+  handle : IoHandle,
   context~ : String,
 ) -> @fd_util.Stat {
   let stat = @fd_util.Stat::new()
@@ -70,8 +70,8 @@ pub async fn IOHandle::fstat(
 }
 
 ///|
-pub async fn IOHandle::seek(
-  handle : IOHandle,
+pub async fn IoHandle::seek(
+  handle : IoHandle,
   offset : Int64,
   whence : Int,
   context~ : String,
@@ -104,8 +104,8 @@ pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
 }
 
 ///|
-pub async fn IOHandle::fsync(
-  handle : IOHandle,
+pub async fn IoHandle::fsync(
+  handle : IoHandle,
   only_data~ : Bool,
   context~ : String,
 ) -> Unit {
