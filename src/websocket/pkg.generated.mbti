@@ -12,7 +12,7 @@ import(
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
-  ProtocolError
+  ProtocolError(String)
 }
 pub impl Show for WebSocketError
 

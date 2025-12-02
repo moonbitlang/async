@@ -51,71 +51,148 @@ async test "bad client" {
     // non-zero reserved bits
     inspect(
       test_bad_frame([0xc1, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MissingExtension, Some("Reserved bits are not zero")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Reserved bits are not zero"))
+      ),
+    )
     inspect(
       test_bad_frame([0xa1, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MissingExtension, Some("Reserved bits are not zero")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Reserved bits are not zero"))
+      ),
+    )
     inspect(
       test_bad_frame([0x91, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MissingExtension, Some("Reserved bits are not zero")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Reserved bits are not zero"))
+      ),
+    )
 
     // invalid OP code
     inspect(
       test_bad_frame([0x8b, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Invalid OP code 11")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Invalid OP code 11"))
+      ),
+    )
     inspect(
       test_bad_frame([0x8f, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Invalid OP code 15")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Invalid OP code 15"))
+      ),
+    )
 
     // invalid fragmentation
 
     // CONTINUATION frame outside a message
     inspect(
       test_bad_frame([0x80, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Unexpected continuation frame")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Unexpected continuation frame"))
+      ),
+    )
 
     // new message inside a fragmented one
     inspect(
       test_bad_frames([[0x01, 0x00], [0x81, 0x00]]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("New message within a fragmented message")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("New message within a fragmented message"))
+      ),
+    )
 
     // new fragmented message inside another fragmented one
     inspect(
       test_bad_frames([[0x01, 0x00], [0x01, 0x00]]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("New message within a fragmented message")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("New message within a fragmented message"))
+      ),
+    )
 
     // non-FIN control packets
     inspect(
       test_bad_frame([0x08, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Control frames must not be fragmented")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frames must not be fragmented"))
+      ),
+    )
     inspect(
       test_bad_frame([0x09, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Control frames must not be fragmented")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frames must not be fragmented"))
+      ),
+    )
     inspect(
       test_bad_frame([0x0a, 0x00]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Control frames must not be fragmented")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frames must not be fragmented"))
+      ),
+    )
     fn u16_to_bytes(len : UInt16) -> Bytes {
       let result = FixedArray::make(2, b'\x00')
       result.unsafe_write_uint16_be(0, len)
@@ -125,28 +202,53 @@ async test "bad client" {
     // too-long control packets
     inspect(
       test_bad_frame([0x88, 126, ..u16_to_bytes(128)]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MessageTooBig, Some("Control frame too long")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frame too long"))
+      ),
+    )
     inspect(
       test_bad_frame([0x89, 126, ..u16_to_bytes(128)]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MessageTooBig, Some("Control frame too long")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frame too long"))
+      ),
+    )
     inspect(
       test_bad_frame([0x8a, 126, ..u16_to_bytes(128)]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(MessageTooBig, Some("Control frame too long")))
+      ),
     )
-    inspect(server_result_queue.get(), content="Err(ProtocolError)")
+    inspect(
+      server_result_queue.get(),
+      content=(
+        #|Err(ProtocolError("Control frame too long"))
+      ),
+    )
 
     // invalid frame length
     inspect(
       test_bad_frame([0x81, 126, ..u16_to_bytes(125)]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Invalid payload length format")))
+      ),
     )
     inspect(
       test_bad_frame([0x81, 127, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-      content="Err(ConnectionClosed(ProtocolError, None))",
+      content=(
+        #|Err(ConnectionClosed(ProtocolError, Some("Invalid payload length format")))
+      ),
     )
   })
 }
