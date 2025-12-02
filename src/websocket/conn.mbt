@@ -291,58 +291,57 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   }
 
   // Read first two bytes
-  let header = self.transport.read_exactly(2)
-  let byte0 = header[0]
-  let byte1 = header[1]
-  let fin = (byte0.to_int() & 0x80) != 0
-  let rsv1 = (byte0.to_int() & 0x40) != 0
-  let rsv2 = (byte0.to_int() & 0x20) != 0
-  let rsv3 = (byte0.to_int() & 0x10) != 0
-  let opcode_byte = byte0 & b'\x0F'
-  guard OpCode::from_byte(opcode_byte) is Some(opcode) else {
+  guard self.transport.read_exactly(2)
+    is [
+      u1be(fin),
+      u1be(rsv1),
+      u1be(rsv2),
+      u1be(rsv3),
+      u4be(opcode),
+      u1be(masked),
+      u7be(payload_len),
+    ]
+  guard OpCode::from_byte(opcode.to_byte()) is Some(opcode) else {
     self.protocol_error()
   }
-  let masked = (byte1.to_int() & 0x80) != 0
-  let mut payload_len = (byte1.to_int() & 0x7F).to_int64()
+  let mut payload_len = payload_len.to_int64()
 
   // No extensions supported, rejecting frames with RSV bits set
-  if rsv1 || rsv2 || rsv3 {
+  if rsv1 != 0 || rsv2 != 0 || rsv3 != 0 {
     self.protocol_error()
   }
 
   // Validate payload length according to RFC 6455 Section 5.5
   if opcode is (Close | Ping | Pong) {
-    if !fin || payload_len > 125L {
+    if fin == 0 || payload_len > 125L {
       self.protocol_error()
     }
   }
 
   // Validate payload length according to RFC 6455 Section 5.2
   if payload_len == 126L {
-    let len_bytes = self.transport.read_exactly(2)
-    guard len_bytes is [u16be(len)]
+    guard self.transport.read_exactly(2) is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
       self.protocol_error()
     }
   } else if payload_len == 127L {
-    let len_bytes = self.transport.read_exactly(8)
-    guard len_bytes is [u64be(len)]
+    guard self.transport.read_exactly(8) is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
-    if payload_len < 65536L {
-      self.protocol_error()
-    }
     if payload_len < 0L {
       self.protocol_error()
     }
+    if payload_len < 65536L {
+      self.protocol_error()
+    }
   }
-  self.read_mask = if masked {
+  self.read_mask = if masked != 0 {
     self.mask_offset = 0
     Some(self.transport.read_exactly(4))
   } else {
     None
   }
-  { opcode, fin, payload_len }
+  { opcode, fin: fin != 0, payload_len }
 }
 
 ///|
