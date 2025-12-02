@@ -37,35 +37,26 @@ let base64_chars : ReadOnlyArray[Char] = [
 ///|
 /// Base64 encoding
 fn base64_encode(data : Bytes) -> String {
-  let data_arr = data
-  let mut result = ""
-  for i = 0; i < data_arr.length(); i = i + 3 {
-    let b1 = data_arr[i].to_int()
-    let b2 = if i + 1 < data_arr.length() {
-      data_arr[i + 1].to_int()
-    } else {
-      0
-    }
-    let b3 = if i + 2 < data_arr.length() {
-      data_arr[i + 2].to_int()
-    } else {
-      0
-    }
+  let result = StringBuilder::new()
+  for i = 0; i < data.length(); i = i + 3 {
+    let b1 = data[i].to_int()
+    let b2 = if i + 1 < data.length() { data[i + 1].to_int() } else { 0 }
+    let b3 = if i + 2 < data.length() { data[i + 2].to_int() } else { 0 }
     let combined = (b1 << 16) | (b2 << 8) | b3
-    result = result + base64_chars[(combined >> 18) & 0x3F].to_string()
-    result = result + base64_chars[(combined >> 12) & 0x3F].to_string()
-    if i + 1 < data_arr.length() {
-      result = result + base64_chars[(combined >> 6) & 0x3F].to_string()
+    result.write_char(base64_chars[(combined >> 18) & 0x3F])
+    result.write_char(base64_chars[(combined >> 12) & 0x3F])
+    if i + 1 < data.length() {
+      result.write_char(base64_chars[(combined >> 6) & 0x3F])
     } else {
-      result = result + "="
+      result.write_char('=')
     }
-    if i + 2 < data_arr.length() {
-      result = result + base64_chars[combined & 0x3F].to_string()
+    if i + 2 < data.length() {
+      result.write_char(base64_chars[combined & 0x3F])
     } else {
-      result = result + "="
+      result.write_char('=')
     }
   }
-  result
+  result.to_string()
 }
 
 ///|
