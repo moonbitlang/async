@@ -14,8 +14,6 @@
 
 ///|
 async test "return_immediately basic" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -34,8 +32,6 @@ async test "return_immediately basic" {
 
 ///|
 async test "return_immediately nested" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -60,8 +56,6 @@ async test "return_immediately nested" {
 
 ///|
 async test "return_immediately error on cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {

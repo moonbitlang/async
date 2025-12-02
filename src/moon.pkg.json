@@ -6,5 +6,6 @@
     "moonbitlang/async/aqueue",
     "moonbitlang/async/semaphore",
     "moonbitlang/async/cond_var"
-  ]
+  ],
+  "max-concurrent-tests": 15
 }

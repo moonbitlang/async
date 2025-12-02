@@ -14,8 +14,6 @@
 
 ///|
 async test "wait basic" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   buf.write_object(
     try? @async.with_task_group(fn(root) {
@@ -47,8 +45,6 @@ async test "wait basic" {
 
 ///|
 async test "wait cancelled" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let buf = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(fn() {
@@ -79,8 +75,6 @@ async test "wait cancelled" {
 
 ///|
 async test "try_wait" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let task = root.spawn(no_wait=true, fn() {

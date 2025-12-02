@@ -14,8 +14,6 @@
 
 ///|
 async test "with_timeout normal exit" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -43,8 +41,6 @@ async test "with_timeout normal exit" {
 
 ///|
 async test "with_timeout failure" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -74,8 +70,6 @@ async test "with_timeout failure" {
 
 ///|
 async test "with_timeout timeout" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -111,8 +105,6 @@ async test "with_timeout timeout" {
 
 ///|
 async test "with_timeout nested1" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -156,8 +148,6 @@ async test "with_timeout nested1" {
 
 ///|
 async test "with_timeout nested2" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -200,8 +190,6 @@ async test "with_timeout nested2" {
 
 ///|
 async test "with_timeout error_on_cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -232,8 +220,6 @@ async test "with_timeout error_on_cancel" {
 
 ///|
 async test "with_timeout error-on-timeout" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -265,8 +251,6 @@ async test "with_timeout error-on-timeout" {
 
 ///|
 async test "with_timeout_opt normal exit" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -297,8 +281,6 @@ async test "with_timeout_opt normal exit" {
 
 ///|
 async test "with_timeout_opt failure" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -328,8 +310,6 @@ async test "with_timeout_opt failure" {
 
 ///|
 async test "with_timeout_opt timeout" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {

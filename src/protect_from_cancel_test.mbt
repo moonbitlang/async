@@ -14,8 +14,6 @@
 
 ///|
 async test "protect_from_cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -63,8 +61,6 @@ async test "protect_from_cancel" {
 
 ///|
 async test "protect_from_cancel wait" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -107,8 +103,6 @@ async test "protect_from_cancel wait" {
 
 ///|
 async test "protect_from_cancel with_timeout" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -140,8 +134,6 @@ async test "protect_from_cancel with_timeout" {
 
 ///|
 async test "protect_from_cancel fail" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -173,8 +165,6 @@ async test "protect_from_cancel fail" {
 
 ///|
 async test "protect_from_cancel nested1" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -208,8 +198,6 @@ async test "protect_from_cancel nested1" {
 
 ///|
 async test "protect_from_cancel nested2" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -249,8 +237,6 @@ async test "protect_from_cancel nested2" {
 
 ///|
 async test "protect_from_cancel in cancellation handler" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   log.write_object(
     try? @async.with_task_group(fn(root) {
@@ -283,8 +269,6 @@ async test "protect_from_cancel in cancellation handler" {
 
 ///|
 async test "cancel while scheduled" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -328,8 +312,6 @@ async test "cancel while scheduled" {
 
 ///|
 async test "error in async cancel" {
-  rate_limit.acquire()
-  defer rate_limit.release()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
