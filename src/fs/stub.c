@@ -23,19 +23,11 @@
 #include <sys/stat.h>
 #include <moonbit.h>
 
-int moonbitlang_async_dir_is_null(DIR *dir) {
-  return dir == 0;
-}
-
 moonbit_bytes_t moonbitlang_async_dirent_name(struct dirent *dirent) {
   int len = strlen(dirent->d_name);
   moonbit_bytes_t result = moonbit_make_bytes(len, 0);
   memcpy(result, dirent->d_name, len);
   return result;
-}
-
-int moonbitlang_async_dirent_is_null(struct dirent *dirent) {
-  return dirent == 0;
 }
 
 int moonbitlang_async_get_R_OK() {
@@ -84,4 +76,8 @@ int moonbitlang_async_get_O_TRUNC() {
 
 int moonbitlang_async_get_O_CREAT() {
   return O_CREAT;
+}
+
+int moonbitlang_async_chmod(char *path, int32_t mode) {
+  return chmod(path, mode);
 }

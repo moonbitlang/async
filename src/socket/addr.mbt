@@ -104,10 +104,8 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-using @event_loop {type AddrInfo}
-
-///|
-extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
+#external
+priv type AddrInfo
 
 ///|
 /// Convert AddrInfo to Addr(support both IPv4 and IPv6)
@@ -118,6 +116,51 @@ extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_a
 
 ///|
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
+
+///|
+extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
+
+///|
+extern "C" fn get_EAI_SYSTEM() -> Int = "moonbitlang_async_get_EAI_SYSTEM"
+
+///|
+#borrow(host, out)
+extern "C" fn getaddrinfo_ffi(host : Bytes, out : Ref[AddrInfo]) -> Int = "moonbitlang_async_getaddrinfo"
+
+///|
+async fn getaddrinfo(host : StringView, context~ : String) -> AddrInfo {
+  struct Job {
+    host : Bytes
+    out : Ref[AddrInfo]
+    mut err : Int
+    mut sys_err : Int
+  }
+  let host_bytes = @encoding/utf8.encode(host)
+  let job : Job = {
+    host: host_bytes,
+    out: @ref.new(@c_buffer.null_ptr()),
+    err: 0,
+    sys_err: 0,
+  }
+  @event_loop.perform_job_in_worker(job, allow_cancel=true, job => {
+    job.err = getaddrinfo_ffi(job.host, job.out)
+    if job.err == get_EAI_SYSTEM() {
+      job.sys_err = @os_error.get_errno()
+    }
+  })
+  if job.sys_err != 0 {
+    raise @os_error.OSError(job.sys_err, context~)
+  }
+  if job.err != 0 {
+    let c_str = gai_strerror(job.err)
+    let len = c_str.strlen()
+    let bytes = FixedArray::make(len, b'\x00')
+    c_str.blit_to_bytes(dst=bytes, offset=0, len~)
+    let msg = @encoding/utf8.decode(bytes.unsafe_reinterpret_as_bytes())
+    raise ResolveHostnameError(msg)
+  }
+  job.out.val
+}
 
 ///|
 /// Error message from failure in resolving a network hostname.
@@ -147,10 +190,7 @@ pub async fn Addr::resolve(
 ) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
   let context = "@socket.Addr::resolve()"
-  let ai_root = match @event_loop.getaddrinfo(host, context~) {
-    Ok(ai_root) => ai_root
-    Err(msg) => raise ResolveHostnameError(msg)
-  }
+  let ai_root = getaddrinfo(host, context~)
   defer ai_root.free()
   let first_addr = ai_root.to_addr(port)
 
@@ -160,7 +200,7 @@ pub async fn Addr::resolve(
       if not(first_addr.is_ipv6()) {
         return first_addr
       }
-      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+      for ai = ai_root.next(); not(@c_buffer.ptr_is_null(ai)); ai = ai.next() {
         let addr = ai.to_addr(port)
         if not(addr.is_ipv6()) {
           return addr
@@ -176,7 +216,7 @@ pub async fn Addr::resolve(
       if first_addr.is_ipv6() {
         return first_addr
       }
-      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+      for ai = ai_root.next(); not(@c_buffer.ptr_is_null(ai)); ai = ai.next() {
         let addr = ai.to_addr(port)
         if addr.is_ipv6() {
           return addr

@@ -4,6 +4,10 @@ package "moonbitlang/async/internal/c_buffer"
 // Values
 pub let null : Buffer
 
+pub fn[X] null_ptr() -> X
+
+pub fn[X] ptr_is_null(X) -> Bool
+
 // Errors
 
 // Types and methods
@@ -14,6 +18,7 @@ pub fn Buffer::blit_to_bytes(Self, dst~ : FixedArray[Byte], offset~ : Int, len~ 
 pub fn Buffer::free(Self) -> Unit
 #alias("_[_]")
 pub fn Buffer::get(Self, Int) -> Byte
+pub fn Buffer::is_null(Self) -> Bool
 pub fn Buffer::strlen(Self) -> Int
 
 // Type aliases

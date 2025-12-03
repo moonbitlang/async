@@ -48,6 +48,14 @@ int moonbitlang_async_write(int fd, char *buf, int offset, int len) {
   return write(fd, buf + offset, len);
 }
 
+int moonbitlang_async_pread(int fd, char *buf, int offset, int len, int64_t pos) {
+  return pread(fd, buf + offset, len, pos);
+}
+
+int moonbitlang_async_pwrite(int fd, char *buf, int offset, int len, int64_t pos) {
+  return pwrite(fd, buf + offset, len, pos);
+}
+
 int moonbitlang_async_recvfrom(
   int sock,
   char *buf,

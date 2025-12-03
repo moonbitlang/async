@@ -49,4 +49,25 @@ extern "C" fn Buffer::null() -> Buffer = "moonbitlang_async_null_pointer"
 pub let null : Buffer = Buffer::null()
 
 ///|
+#borrow(buf)
+pub extern "C" fn Buffer::is_null(buf : Buffer) -> Bool = "moonbitlang_async_is_null"
+
+///|
 pub extern "C" fn Buffer::free(buf : Buffer) = "free"
+
+///|
+fn[X, Y] unsafe_cast(x : X) -> Y = "%identity"
+
+///|
+/// Get a null C pointer.
+/// WARNING: the result type MUST be a foreign pointer type declared with `#external`
+pub fn[X] null_ptr() -> X {
+  unsafe_cast(null)
+}
+
+///|
+/// Check if a C pointer is null.
+/// WARNING: the parameter MUST be a foreign pointer type declared with `#external`
+pub fn[X] ptr_is_null(ptr : X) -> Bool {
+  Buffer::is_null(unsafe_cast(ptr))
+}
