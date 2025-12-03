@@ -21,6 +21,10 @@ int moonbitlang_async_get_errno() {
   return errno;
 }
 
+void moonbitlang_async_clear_errno() {
+  errno = 0;
+}
+
 int moonbitlang_async_is_nonblocking_io_error(int err) {
   return err == EAGAIN || err == EINPROGRESS || err == EWOULDBLOCK;
 }

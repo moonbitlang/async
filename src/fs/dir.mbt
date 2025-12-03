@@ -44,7 +44,12 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
 
 ///|
 /// A directory in file system
-struct Directory(@event_loop.Directory)
+#external
+type Directory
+
+///|
+#external
+priv type DirectoryEntry
 
 ///|
 extern "C" fn Directory::close_ffi(self : Directory) -> Int = "closedir"
@@ -55,28 +60,67 @@ pub fn Directory::close(self : Directory) -> Unit {
 }
 
 ///|
-/// Open the directory at `path`. `path` is encoded UTF8.
-/// If `path` is not a directory, an error will be raised
-pub async fn opendir(path : StringView) -> Directory {
-  @event_loop.opendir(path, context="@fs.opendir()")
+#borrow(path)
+extern "C" fn opendir_ffi(path : Bytes) -> Directory = "opendir"
+
+///|
+async fn opendir_aux(path : StringView, context~ : String) -> Directory {
+  struct Job {
+    path : Bytes
+    mut result : Directory
+    mut err : Int
+  }
+  let path_bytes = @encoding/utf8.encode(path)
+  let job : Job = { path: path_bytes, result: @c_buffer.null_ptr(), err: 0 }
+  @event_loop.perform_job_in_worker(job, job => {
+    job.result = opendir_ffi(job.path)
+    job.err = @os_error.get_errno()
+  }) catch {
+    err => {
+      if !@c_buffer.ptr_is_null(job.result) {
+        ignore(job.result.close_ffi())
+      }
+      raise err
+    }
+  }
+  if @c_buffer.ptr_is_null(job.result) {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
+  }
+  job.result
 }
 
 ///|
-using @event_loop {type DirectoryEntry}
+/// Open the directory at `path`. `path` is encoded UTF8.
+/// If `path` is not a directory, an error will be raised
+pub async fn opendir(path : StringView) -> Directory {
+  opendir_aux(path, context="@fs.opendir()")
+}
 
 ///|
 extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> Bytes = "moonbitlang_async_dirent_name"
 
 ///|
-extern "C" fn DirectoryEntry::is_null(ent : DirectoryEntry) -> Bool = "moonbitlang_async_dirent_is_null"
+extern "C" fn readdir_ffi(dir : Directory) -> DirectoryEntry = "readdir"
 
 ///|
 async fn Directory::read_next(dir : Directory) -> String? {
-  let dir_ent = @event_loop.readdir(dir.0, context="@fs.readdir()")
-  if dir_ent.is_null() {
+  struct Job {
+    dir : Directory
+    mut result : DirectoryEntry
+    mut err : Int
+  }
+  let job : Job = { dir, result: @c_buffer.null_ptr(), err: 0 }
+  @event_loop.perform_job_in_worker(job, job => {
+    @os_error.clear_errno()
+    job.result = readdir_ffi(job.dir)
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="@fs.readdir()")
+  } else if @c_buffer.ptr_is_null(job.result) {
     None
   } else {
-    Some(@encoding/utf8.decode(dir_ent.name()))
+    Some(@encoding/utf8.decode(job.result.name()))
   }
 }
 
@@ -119,7 +163,7 @@ pub async fn readdir(
   include_special? : Bool = false,
   sort? : Bool = false,
 ) -> Array[String] {
-  let dir : Directory = @event_loop.opendir(path, context="@fs.readdir()")
+  let dir : Directory = opendir_aux(path, context="@fs.readdir()")
   defer dir.close()
   let list = dir.read_all(include_hidden~, include_special~)
   if sort {

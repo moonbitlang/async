@@ -16,6 +16,9 @@
 pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
 
 ///|
+pub extern "C" fn clear_errno() = "moonbitlang_async_clear_errno"
+
+///|
 extern "C" fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbitlang_async_is_nonblocking_io_error"
 
 ///|

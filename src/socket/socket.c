@@ -198,6 +198,21 @@ void* moonbitlang_async_addrinfo_to_addr(struct addrinfo *addrinfo, int port) {
   }
 }
 
+int32_t moonbitlang_async_getaddrinfo(char *hostname, struct addrinfo **out) {
+  struct addrinfo hint = {
+    AI_ADDRCONFIG, // ai_flags
+    AF_UNSPEC, // ai_family, support both IPv4 and IPv6
+    0, // ai_socktype
+    0, // ai_protocol
+    0, 0, 0, 0
+  };
+  return getaddrinfo(hostname, 0, &hint, out);
+}
+
+int32_t moonbitlang_async_get_EAI_SYSTEM() {
+  return EAI_SYSTEM;
+}
+
 int moonbitlang_async_getsockname(int sock, struct sockaddr *addr_out) {
   socklen_t len = Moonbit_array_length(addr_out);
   return getsockname(sock, addr_out, &len);

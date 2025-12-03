@@ -19,11 +19,19 @@ priv struct EventLoop {
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
-  job_queue : @deque.Deque[Job]
+  mut job_id : Int
+  job_queue : @deque.Deque[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
+}
+
+///|
+priv struct QueuedJob {
+  id : Int
+  data : JobData
+  worker : JobWorkerFunc
 }
 
 ///|
@@ -82,6 +90,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     pids: {},
     notify_recv,
     max_worker_count: 1024,
+    job_id: 0,
     job_queue: @deque.new(),
     idle_workers: @deque.new(),
     running_workers: {},
@@ -142,8 +151,8 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         match self.job_queue.pop_front() {
           None => self.idle_workers.push_back(worker)
           Some(job) => {
-            self.running_workers[job.id()] = worker
-            wake_worker(worker, job)
+            self.running_workers[job.id] = worker
+            wake_worker(worker, job.id, job.data, job.worker)
           }
         }
         if self.jobs.get(job_id) is Some(coro) {
@@ -335,35 +344,49 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 }
 
 ///|
-async fn perform_job_in_worker(
-  job : Job,
-  context~ : String,
+fn[X, Y] unsafe_cast(x : X) -> Y = "%identity"
+
+///|
+/// Run an arbitrary, blocking or time-consuming job in a worker thread,
+/// so that it won't block the main thread.
+/// This function is VERY DANGEROUS and must be USED WITH CARE:
+///
+/// - the job payload type `X` must be a boxed MoonBit object type
+/// - the job worker function MUST NOT:
+///     * call other regular MoonBit function or closure
+///     * call C stub function with `#owned` function
+pub async fn[X] perform_job_in_worker(
+  job_data : X,
+  job_worker : FuncRef[(X) -> Unit],
   allow_cancel? : Bool = false,
-) -> Int {
+) -> Unit {
   guard curr_loop.val is Some(evloop)
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let job_data : JobData = unsafe_cast(job_data)
+  let job_worker : JobWorkerFunc = unsafe_cast(job_worker)
   match evloop.idle_workers.pop_front() {
     None if evloop.running_workers.length() > evloop.max_worker_count =>
-      evloop.job_queue.push_back(job)
+      evloop.job_queue.push_back({
+        id: job_id,
+        data: job_data,
+        worker: job_worker,
+      })
     None => {
-      let worker = spawn_worker(job)
-      evloop.running_workers[job.id()] = worker
+      let worker = spawn_worker(job_id, job_data, job_worker)
+      evloop.running_workers[job_id] = worker
     }
     Some(worker) => {
-      evloop.running_workers[job.id()] = worker
-      wake_worker(worker, job)
+      evloop.running_workers[job_id] = worker
+      wake_worker(worker, job_id, job_data, job_worker)
     }
   }
-  evloop.jobs[job.id()] = @coroutine.current_coroutine()
-  defer evloop.jobs.remove(job.id())
+  evloop.jobs[job_id] = @coroutine.current_coroutine()
+  defer evloop.jobs.remove(job_id)
   if allow_cancel {
     @coroutine.suspend()
   } else {
     @coroutine.protect_from_cancel(@coroutine.suspend)
-  }
-  if job.err() > 0 {
-    raise @os_error.OSError(job.err(), context~)
-  } else {
-    job.ret()
   }
 }
 
@@ -375,6 +398,24 @@ extern "C" fn read_ffi(
   offset~ : Int,
   len~ : Int,
 ) -> Int = "moonbitlang_async_read"
+
+///|
+priv struct ReadJob {
+  fd : Int
+  buf : FixedArray[Byte]
+  offset : Int
+  len : Int
+  mut ret : Int
+  mut err : Int
+}
+
+///|
+let read_job_worker : FuncRef[(ReadJob) -> Unit] = job => {
+  job.ret = read_ffi(job.fd, job.buf, offset=job.offset, len=job.len)
+  if job.ret < 0 {
+    job.err = @os_error.get_errno()
+  }
+}
 
 ///|
 pub async fn IoHandle::read(
@@ -402,8 +443,47 @@ pub async fn IoHandle::read(
     }
     ret
   } else {
-    let job = Job::read(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~)
+    let job : ReadJob = { fd: handle.fd, buf, offset, len, ret: 0, err: 0 }
+    perform_job_in_worker(job, read_job_worker)
+    if job.ret < 0 {
+      raise @os_error.OSError(job.err, context~)
+    }
+    job.ret
+  }
+}
+
+///|
+#borrow(buf)
+extern "C" fn pread_ffi(
+  fd : Int,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+) -> Int = "moonbitlang_async_pread"
+
+///|
+priv struct ReadAtJob {
+  fd : Int
+  buf : FixedArray[Byte]
+  offset : Int
+  len : Int
+  position : Int64
+  mut ret : Int
+  mut err : Int
+}
+
+///|
+let read_at_job_worker : FuncRef[(ReadAtJob) -> Unit] = job => {
+  job.ret = pread_ffi(
+    job.fd,
+    job.buf,
+    offset=job.offset,
+    len=job.len,
+    position=job.position,
+  )
+  if job.ret < 0 {
+    job.err = @os_error.get_errno()
   }
 }
 
@@ -417,8 +497,20 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   guard !handle.kind.can_poll()
-  let job = Job::read(handle.fd, buf, offset, len, position~)
-  perform_job_in_worker(job, context~)
+  let job : ReadAtJob = {
+    fd: handle.fd,
+    buf,
+    offset,
+    len,
+    position,
+    ret: 0,
+    err: 0,
+  }
+  perform_job_in_worker(job, read_at_job_worker)
+  if job.ret < 0 {
+    raise @os_error.OSError(job.err, context~)
+  }
+  job.ret
 }
 
 ///|
@@ -429,6 +521,24 @@ extern "C" fn write_ffi(
   offset~ : Int,
   len~ : Int,
 ) -> Int = "moonbitlang_async_write"
+
+///|
+priv struct WriteJob {
+  fd : Int
+  buf : Bytes
+  offset : Int
+  len : Int
+  mut ret : Int
+  mut err : Int
+}
+
+///|
+let write_job_worker : FuncRef[(WriteJob) -> Unit] = job => {
+  job.ret = write_ffi(job.fd, job.buf, offset=job.offset, len=job.len)
+  if job.ret < 0 {
+    job.err = @os_error.get_errno()
+  }
+}
 
 ///|
 pub async fn IoHandle::write(
@@ -456,8 +566,47 @@ pub async fn IoHandle::write(
     }
     ret
   } else {
-    let job = Job::write(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~)
+    let job : WriteJob = { fd: handle.fd, buf, offset, len, ret: 0, err: 0 }
+    perform_job_in_worker(job, write_job_worker)
+    if job.ret < 0 {
+      raise @os_error.OSError(job.err, context~)
+    }
+    job.ret
+  }
+}
+
+///|
+#borrow(buf)
+extern "C" fn pwrite_ffi(
+  fd : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+) -> Int = "moonbitlang_async_pwrite"
+
+///|
+priv struct WriteAtJob {
+  fd : Int
+  buf : Bytes
+  offset : Int
+  len : Int
+  position : Int64
+  mut ret : Int
+  mut err : Int
+}
+
+///|
+let write_at_job_worker : FuncRef[(WriteAtJob) -> Unit] = job => {
+  job.ret = pwrite_ffi(
+    job.fd,
+    job.buf,
+    offset=job.offset,
+    len=job.len,
+    position=job.position,
+  )
+  if job.ret < 0 {
+    job.err = @os_error.get_errno()
   }
 }
 
@@ -471,8 +620,60 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   guard !handle.kind.can_poll()
-  let job = Job::write(handle.fd, buf, offset, len, position~)
-  perform_job_in_worker(job, context~) |> ignore
+  let job : WriteAtJob = {
+    fd: handle.fd,
+    buf,
+    offset,
+    len,
+    position,
+    ret: 0,
+    err: 0,
+  }
+  perform_job_in_worker(job, write_at_job_worker)
+  if job.ret < 0 {
+    raise @os_error.OSError(job.err, context~)
+  }
+}
+
+///|
+#borrow(path, args, env, cwd)
+extern "C" fn spawn_ffi(
+  path : Bytes,
+  args : FixedArray[Bytes?],
+  env~ : FixedArray[Bytes?],
+  stdin~ : Int,
+  stdout~ : Int,
+  stderr~ : Int,
+  cwd~ : Bytes?,
+) -> Int = "moonbitlang_async_spawn_process"
+
+///|
+priv struct SpawnJob {
+  path : Bytes
+  args : FixedArray[Bytes?]
+  env : FixedArray[Bytes?]
+  stdin : Int
+  stdout : Int
+  stderr : Int
+  cwd : Bytes?
+  mut pid : Int
+  mut err : Int
+}
+
+///|
+let spawn_job_worker : FuncRef[(SpawnJob) -> Unit] = job => {
+  job.pid = spawn_ffi(
+    job.path,
+    job.args,
+    env=job.env,
+    stdin=job.stdin,
+    stdout=job.stdout,
+    stderr=job.stderr,
+    cwd=job.cwd,
+  )
+  if job.pid < 0 {
+    job.err = @os_error.get_errno()
+  }
 }
 
 ///|
@@ -486,10 +687,22 @@ pub async fn spawn(
   cwd~ : Bytes?,
   context~ : String,
 ) -> Int {
-  perform_job_in_worker(
-    Job::spawn(path, args, env, stdin, stdout, stderr, cwd),
-    context~,
-  )
+  let job : SpawnJob = {
+    path,
+    args,
+    env,
+    stdin,
+    stdout,
+    stderr,
+    cwd,
+    pid: 0,
+    err: 0,
+  }
+  perform_job_in_worker(job, spawn_job_worker)
+  if job.pid < 0 {
+    raise @os_error.OSError(job.err, context~)
+  }
+  job.pid
 }
 
 ///|

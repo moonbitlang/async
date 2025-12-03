@@ -13,12 +13,22 @@
 // limitations under the License.
 
 ///|
-#external
-pub type Directory
+#borrow(path)
+extern "C" fn open_ffi(path : Bytes, flags : Int, mode : Int) -> Int = "open"
 
 ///|
-#external
-pub type DirectoryEntry
+#borrow(stat)
+extern "C" fn fstat_sync_ffi(fd : Int, stat : @fd_util.Stat) -> Int = "fstat"
+
+///|
+priv struct OpenJob {
+  path : Bytes
+  flags : Int
+  mode : Int
+  stat : @fd_util.Stat
+  mut ret : Int
+  mut err : Int
+}
 
 ///|
 pub async fn open(
@@ -29,14 +39,37 @@ pub async fn open(
 ) -> IoHandle {
   let path_bytes = @encoding/utf8.encode(path)
   let stat = @fd_util.Stat::new()
-  let job = Job::open(path_bytes, flags, mode, stat)
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    fd => IoHandle::from_fd(fd, kind=stat.kind())
+  let job : OpenJob = { path: path_bytes, flags, mode, stat, ret: 0, err: 0 }
+  perform_job_in_worker(job, job => {
+    job.ret = open_ffi(job.path, job.flags, job.mode)
+    if job.ret < 0 {
+      job.err = @os_error.get_errno()
+      return
+    }
+    if fstat_sync_ffi(job.ret, job.stat) < 0 {
+      job.err = @os_error.get_errno()
+      return
+    }
+  })
+  if job.ret < 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
+  IoHandle::from_fd(job.ret, kind=job.stat.kind())
+}
+
+///|
+#borrow(path, stat)
+extern "C" fn stat_ffi(path : Bytes, stat : @fd_util.Stat) -> Int = "stat"
+
+///|
+#borrow(path, stat)
+extern "C" fn lstat_ffi(path : Bytes, stat : @fd_util.Stat) -> Int = "lstat"
+
+///|
+priv struct StatJob {
+  path : Bytes
+  stat : @fd_util.Stat
+  mut err : Int
 }
 
 ///|
@@ -47,15 +80,27 @@ pub async fn stat(
 ) -> @fd_util.Stat {
   let path_bytes = @encoding/utf8.encode(path)
   let stat = @fd_util.Stat::new()
-  let job = Job::stat(path_bytes, stat, follow_symlink~)
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => ()
+  let job : StatJob = { path: path_bytes, stat, err: 0 }
+  if follow_symlink {
+    perform_job_in_worker(job, job => if stat_ffi(job.path, job.stat) < 0 {
+      job.err = @os_error.get_errno()
+    })
+  } else {
+    perform_job_in_worker(job, job => if lstat_ffi(job.path, job.stat) < 0 {
+      job.err = @os_error.get_errno()
+    })
+  }
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
   stat
+}
+
+///|
+priv struct FstatJob {
+  fd : Int
+  stat : @fd_util.Stat
+  mut err : Int
 }
 
 ///|
@@ -64,44 +109,44 @@ pub async fn IoHandle::fstat(
   context~ : String,
 ) -> @fd_util.Stat {
   let stat = @fd_util.Stat::new()
-  let job = Job::fstat(handle.fd, stat)
-  let _ = perform_job_in_worker(job, context~)
+  let job : FstatJob = { fd: handle.fd, stat, err: 0 }
+  perform_job_in_worker(job, job => if fstat_sync_ffi(job.fd, job.stat) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context~)
+  }
   stat
 }
 
 ///|
-pub async fn IoHandle::seek(
-  handle : IoHandle,
-  offset : Int64,
-  whence : Int,
-  context~ : String,
-) -> Int64 {
-  let job = Job::seek(handle.fd, offset, whence)
-  let _ = perform_job_in_worker(job, context~)
-  job.get_seek_result()
+#borrow(path)
+extern "C" fn access_ffi(path : Bytes, amode : Int) -> Int = "access"
+
+///|
+priv struct AccessJob {
+  path : Bytes
+  amode : Int
+  mut err : Int
 }
 
 ///|
-pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
+pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Unit {
   let path_bytes = @encoding/utf8.encode(path)
-  perform_job_in_worker(Job::access(path_bytes, amode), context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
+  let job : AccessJob = { path: path_bytes, amode, err: 0 }
+  perform_job_in_worker(job, job => if access_ffi(job.path, job.amode) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
 }
 
 ///|
-pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
-  let path_bytes = @encoding/utf8.encode(path)
-  try perform_job_in_worker(Job::chmod(path_bytes, mode), context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => ()
-  }
-}
+extern "C" fn fsync_ffi(fd : Int) -> Int = "fsync"
+
+///|
+extern "C" fn fdatasync_ffi(fd : Int) -> Int = "fdatasync"
 
 ///|
 pub async fn IoHandle::fsync(
@@ -109,20 +154,48 @@ pub async fn IoHandle::fsync(
   only_data~ : Bool,
   context~ : String,
 ) -> Unit {
-  perform_job_in_worker(Job::fsync(handle.fd, only_data), context~) |> ignore
+  struct FsyncJob {
+    fd : Int
+    mut err : Int
+  }
+  let job : FsyncJob = { fd: handle.fd, err: 0 }
+  if only_data {
+    perform_job_in_worker(job, job => if fdatasync_ffi(job.fd) < 0 {
+      job.err = @os_error.get_errno()
+    })
+  } else {
+    perform_job_in_worker(job, job => if fsync_ffi(job.fd) < 0 {
+      job.err = @os_error.get_errno()
+    })
+  }
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context~)
+  }
 }
 
 ///|
+#borrow(path)
+extern "C" fn remove_ffi(path : Bytes) -> Int = "remove"
+
+///|
 pub async fn remove(path : StringView, context~ : String) -> Unit {
+  struct RemoveJob {
+    path : Bytes
+    mut err : Int
+  }
   let path_bytes = @encoding/utf8.encode(path)
-  try perform_job_in_worker(Job::remove(path_bytes), context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => ()
+  let job : RemoveJob = { path: path_bytes, err: 0 }
+  perform_job_in_worker(job, job => if remove_ffi(job.path) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
 }
+
+///|
+#borrow(target, path)
+extern "C" fn symlink_ffi(target : Bytes, path : Bytes) -> Int = "symlink"
 
 ///|
 pub async fn symlink(
@@ -130,78 +203,91 @@ pub async fn symlink(
   path : StringView,
   context~ : String,
 ) -> Unit {
+  struct Job {
+    target : Bytes
+    path : Bytes
+    mut err : Int
+  }
   let target_bytes = @encoding/utf8.encode(target)
   let path_bytes = @encoding/utf8.encode(path)
-  try
-    perform_job_in_worker(Job::symlink(target_bytes, path_bytes), context~)
-  catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(
-        errno,
-        context="\{context}: \{repr(target)} => \{repr(path)}",
-      )
-    err => raise err
-  } noraise {
-    _ => ()
+  let job : Job = { target: target_bytes, path: path_bytes, err: 0 }
+  perform_job_in_worker(job, job => if symlink_ffi(job.target, job.path) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(
+      job.err,
+      context="\{context}: \{repr(target)} => \{repr(path)}",
+    )
   }
 }
+
+///|
+#borrow(path)
+extern "C" fn mkdir_ffi(path : Bytes, mode : Int) -> Int = "mkdir"
 
 ///|
 pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
+  struct Job {
+    path : Bytes
+    mode : Int
+    mut err : Int
+  }
   let path_bytes = @encoding/utf8.encode(path)
-  try perform_job_in_worker(Job::mkdir(path_bytes, mode), context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => ()
+  let job : Job = { path: path_bytes, mode, err: 0 }
+  perform_job_in_worker(job, job => if mkdir_ffi(job.path, job.mode) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
 }
+
+///|
+#borrow(path)
+extern "C" fn rmdir_ffi(path : Bytes) -> Int = "rmdir"
 
 ///|
 pub async fn rmdir(path : StringView, context~ : String) -> Unit {
+  struct Job {
+    path : Bytes
+    mut err : Int
+  }
   let path_bytes = @encoding/utf8.encode(path)
-  try perform_job_in_worker(Job::rmdir(path_bytes), context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => ()
+  let job : Job = { path: path_bytes, err: 0 }
+  perform_job_in_worker(job, job => if rmdir_ffi(job.path) < 0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
   }
 }
 
 ///|
-pub async fn opendir(path : StringView, context~ : String) -> Directory {
-  let path_bytes = @encoding/utf8.encode(path)
-  let job = Job::opendir(path_bytes)
-  let _ = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  }
-  job.get_opendir_result()
-}
-
-///|
-pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
-  let job = Job::readdir(dir)
-  let _ = perform_job_in_worker(job, context~)
-  job.get_readdir_result()
-}
+#borrow(path, out)
+extern "C" fn realpath_ffi(path : Bytes, out : Bytes?) -> @c_buffer.Buffer = "realpath"
 
 ///|
 pub async fn realpath(path : StringView, context~ : String) -> Bytes {
-  let path_bytes = @encoding/utf8.encode(path)
-  let job = Job::realpath(path_bytes)
-  let _ = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
+  struct Job {
+    path : Bytes
+    mut result : @c_buffer.Buffer
+    mut err : Int
   }
-  let c_path = job.get_realpath_result()
-  defer c_path.free()
-  let len = c_path.strlen()
+  let path_bytes = @encoding/utf8.encode(path)
+  let job : Job = { path: path_bytes, result: @c_buffer.null, err: 0 }
+  perform_job_in_worker(job, job => {
+    job.result = realpath_ffi(job.path, None)
+    if job.result.is_null() {
+      job.err = @os_error.get_errno()
+    }
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="\{context}: \{repr(path)}")
+  }
+  defer job.result.free()
+  let len = job.result.strlen()
   let result = FixedArray::make(len, b'\x00')
-  c_path.blit_to_bytes(dst=result, offset=0, len~)
+  job.result.blit_to_bytes(dst=result, offset=0, len~)
   result.unsafe_reinterpret_as_bytes()
 }

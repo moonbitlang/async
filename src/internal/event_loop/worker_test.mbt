@@ -14,12 +14,16 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
+extern "C" fn blocking_sleep(time : Int) = "moonbitlang_async_blocking_sleep"
 
 ///|
 #cfg(target="native")
 async fn perform_sleep_job(t : Int) -> Unit {
-  perform_job_in_worker(Job::sleep(t), context="") |> ignore
+  struct Job {
+    time : Int
+  }
+  let job : Job = { time: t }
+  @event_loop.perform_job_in_worker(job, job => blocking_sleep(job.time))
 }
 
 ///|

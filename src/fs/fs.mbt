@@ -240,38 +240,6 @@ pub async fn remove(path : StringView) -> Unit {
 }
 
 ///|
-/// Determine how an offset is interpreted when seeking in a file:
-/// - `FromStart`: absolute offset from the start of the file
-/// - `FromEnd`: offset is relative to end of file
-/// - `Relative`: offset is relative to current position in the file
-pub(all) enum SeekMode {
-  FromStart = 0
-  FromEnd
-  Relative
-}
-
-///|
-fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
-
-///|
-/// Change current position in file for reading and writing.
-/// Can only be applied to a regular file, otherwise `seek` will fail.
-/// The offset is interpreted using `mode`, see `SeekMode` for more detail.
-/// Current position in the file after seeking (relative to start of file)
-/// will be returned.
-#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
-pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
-  self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
-}
-
-///|
-/// Get current position in the file. Can only be applied to a regular file.
-#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
-pub async fn File::curr_pos(self : File) -> Int64 {
-  self.seek(0, mode=Relative)
-}
-
-///|
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
@@ -280,9 +248,6 @@ pub async fn File::size(self : File) -> Int64 {
 
 ///|
 extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
-
-///|
-extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
 
 ///|
 /// Convert a file to directory.
@@ -295,7 +260,7 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 pub fn File::as_dir(self : File) -> Directory raise {
   let fd = self.io.detach_from_event_loop()
   let dir = as_dir_ffi(fd)
-  if dir.is_null() {
+  if @c_buffer.ptr_is_null(dir) {
     let context = "@fs.File::as_dir()"
     @fd_util.close(fd, context~)
     @os_error.check_errno(context)
@@ -407,6 +372,10 @@ pub async fn symlink(target~ : StringView, path : StringView) -> Unit {
 }
 
 ///|
+#borrow(path)
+extern "C" fn chmod_ffi(path : Bytes, mode : Int) -> Int = "moonbitlang_async_chmod"
+
+///|
 /// Change the permission of a file.
 /// Permission is represented as an integer in UNIX permission style.
 /// For example, `0o640` means:
@@ -414,5 +383,18 @@ pub async fn symlink(target~ : StringView, path : StringView) -> Unit {
 /// - users in the owner group of the file can read the file (`4`)
 /// - other users can do nothing to the file
 pub async fn chmod(path : StringView, mode : Int) -> Unit {
-  @event_loop.chmod(path, mode, context="@fs.chmod()")
+  struct Job {
+    path : Bytes
+    mode : Int
+    mut err : Int
+  }
+  let path_bytes = @encoding/utf8.encode(path)
+  let job : Job = { path: path_bytes, mode, err: 0 }
+  @event_loop.perform_job_in_worker(job, job => if chmod_ffi(job.path, job.mode) <
+    0 {
+    job.err = @os_error.get_errno()
+  })
+  if job.err != 0 {
+    raise @os_error.OSError(job.err, context="@fs.chmod(\{repr(path)})")
+  }
 }

@@ -4,6 +4,8 @@ package "moonbitlang/async/os_error"
 // Values
 pub fn check_errno(String) -> Unit raise OSError
 
+pub fn clear_errno() -> Unit
+
 pub fn get_errno() -> Int
 
 pub fn is_nonblocking_io_error() -> Bool

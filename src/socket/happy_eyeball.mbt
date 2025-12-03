@@ -32,16 +32,13 @@ pub async fn Tcp::connect_to_host(
   protocol? : IpProtocolPreference = NoPreference,
 ) -> Tcp {
   let context = "@socket.Tcp::connect_to_host()"
-  let ai = match @event_loop.getaddrinfo(host, context~) {
-    Ok(ai) => ai
-    Err(msg) => raise ResolveHostnameError(msg)
-  }
+  let ai = getaddrinfo(host, context~)
   defer ai.free()
   let mut result = None
   let mut conn_err = None
   async fn connect_with_protocol(protocol : IpProtocolPreference) {
     @async.with_task_group(fn(group) {
-      for ai = ai; not(ai.is_null()); ai = ai.next() {
+      for ai = ai; not(@c_buffer.ptr_is_null(ai)); ai = ai.next() {
         let addr = ai.to_addr(port)
         match (protocol, addr.is_ipv6()) {
           (OnlyV4 | FavorV4, true) => continue
