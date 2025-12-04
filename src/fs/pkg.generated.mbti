@@ -66,15 +66,11 @@ pub fn File::as_dir(Self) -> Directory raise
 pub async fn File::atime(Self) -> (Int64, Int)
 pub fn File::close(Self) -> Unit
 pub async fn File::ctime(Self) -> (Int64, Int)
-#deprecated
-pub async fn File::curr_pos(Self) -> Int64
 pub fn File::fd(Self) -> Int
 pub fn File::kind(Self) -> FileKind
 pub async fn File::mtime(Self) -> (Int64, Int)
 pub async fn File::read_at(Self, FixedArray[Byte], position~ : Int64, offset? : Int, len? : Int) -> Int
 pub async fn File::read_exactly_at(Self, Int, position~ : Int64) -> Bytes
-#deprecated
-pub async fn File::seek(Self, Int64, mode~ : SeekMode) -> Int64
 pub async fn File::size(Self) -> Int64
 pub async fn File::sync(Self, only_data? : Bool) -> Unit
 pub async fn File::write_at(Self, BytesView, position~ : Int64) -> Unit
@@ -98,12 +94,6 @@ pub(all) enum Mode {
   ReadOnly
   WriteOnly
   ReadWrite
-}
-
-pub(all) enum SeekMode {
-  FromStart
-  FromEnd
-  Relative
 }
 
 pub(all) enum SyncMode {

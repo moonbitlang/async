@@ -21,7 +21,6 @@
     "read_all_test.mbt": [ "native" ],
     "README.mbt.md": [ "native" ],
     "realpath_test.mbt": [ "native" ],
-    "seek_wbtest.mbt": [ "native" ],
     "stat_test.mbt": [ "native" ],
     "text_file_test.mbt": [ "native" ],
     "timestamp_test.mbt": [ "native" ],

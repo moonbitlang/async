@@ -240,38 +240,6 @@ pub async fn remove(path : StringView) -> Unit {
 }
 
 ///|
-/// Determine how an offset is interpreted when seeking in a file:
-/// - `FromStart`: absolute offset from the start of the file
-/// - `FromEnd`: offset is relative to end of file
-/// - `Relative`: offset is relative to current position in the file
-pub(all) enum SeekMode {
-  FromStart = 0
-  FromEnd
-  Relative
-}
-
-///|
-fn SeekMode::to_int(self : SeekMode) -> Int = "%identity"
-
-///|
-/// Change current position in file for reading and writing.
-/// Can only be applied to a regular file, otherwise `seek` will fail.
-/// The offset is interpreted using `mode`, see `SeekMode` for more detail.
-/// Current position in the file after seeking (relative to start of file)
-/// will be returned.
-#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
-pub async fn File::seek(self : File, offset : Int64, mode~ : SeekMode) -> Int64 {
-  self.io.seek(offset, mode.to_int(), context="@fs.File::seek()")
-}
-
-///|
-/// Get current position in the file. Can only be applied to a regular file.
-#deprecated("use `read_at` or `write_at` instead", skip_current_package=true)
-pub async fn File::curr_pos(self : File) -> Int64 {
-  self.seek(0, mode=Relative)
-}
-
-///|
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
