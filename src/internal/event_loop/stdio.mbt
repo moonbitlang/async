@@ -18,7 +18,7 @@ fn setup_stdio(
   context~ : String,
   restore_context~ : String,
 ) -> IoHandle {
-  let kind = @fd_util.fstat_sync(fd, context~).kind() catch {
+  let kind = @fd_util.get_fd_kind_sync(fd, context~) catch {
     err => abort("\{context}: \{err}")
   }
   let handle = { fd, kind, events: NoEvent, read: None, write: None }

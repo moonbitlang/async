@@ -275,7 +275,7 @@ pub async fn File::curr_pos(self : File) -> Int64 {
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
-  self.io.fstat(context="@fs.File::size()").size()
+  @event_loop.file_size(self.io.fd(), context="@fs.File::size()")
 }
 
 ///|
@@ -313,7 +313,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::atime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::atime()").atime()
+  @event_loop.file_time(self.io.fd(), context="@fs.File::atime()").atime()
 }
 
 ///|
@@ -321,7 +321,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::mtime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::mtime()").mtime()
+  @event_loop.file_time(self.io.fd(), context="@fs.File::mtime()").mtime()
 }
 
 ///|
@@ -329,7 +329,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::ctime(self : File) -> (Int64, Int) {
-  self.io.fstat(context="@fs.File::ctime()").ctime()
+  @event_loop.file_time(self.io.fd(), context="@fs.File::ctime()").ctime()
 }
 
 ///|

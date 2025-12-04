@@ -6,7 +6,7 @@ pub fn close(Int, context~ : String) -> Unit raise
 
 pub fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
 
-pub fn fstat_sync(Int, context~ : String) -> Stat raise
+pub fn get_fd_kind_sync(Int, context~ : String) -> FileKind raise
 
 pub fn pipe(String) -> (Int, Int) raise
 
@@ -30,16 +30,15 @@ pub(all) enum FileKind {
   CharDevice
 }
 pub fn FileKind::can_poll(Self) -> Bool
+pub fn FileKind::from_sys_kind(Int) -> Self
 pub impl Eq for FileKind
 pub impl Show for FileKind
 
-type Stat
-pub fn Stat::atime(Self) -> (Int64, Int)
-pub fn Stat::ctime(Self) -> (Int64, Int)
-pub fn Stat::kind(Self) -> FileKind
-pub fn Stat::mtime(Self) -> (Int64, Int)
-pub fn Stat::new() -> Self
-pub fn Stat::size(Self) -> Int64
+type FileTime
+pub fn FileTime::atime(Self) -> (Int64, Int)
+pub fn FileTime::ctime(Self) -> (Int64, Int)
+pub fn FileTime::mtime(Self) -> (Int64, Int)
+pub fn FileTime::new() -> Self
 
 // Type aliases
 
