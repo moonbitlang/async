@@ -13,27 +13,16 @@
 // limitations under the License.
 
 ///|
-struct Stat(FixedArray[Byte])
+#borrow(out)
+extern "C" fn get_fd_kind_sync_ffi(fd : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_fd_kind_sync"
 
 ///|
-extern "C" fn sizeof_stat() -> Int = "moonbitlang_async_sizeof_stat"
-
-///|
-pub fn Stat::new() -> Stat {
-  FixedArray::make(sizeof_stat(), b'\x00')
-}
-
-///|
-#borrow(stat)
-extern "C" fn fstat_sync_ffi(fd : Int, stat : Stat) -> Int = "fstat"
-
-///|
-pub fn fstat_sync(fd : Int, context~ : String) -> Stat raise {
-  let stat = Stat::new()
-  if fstat_sync_ffi(fd, stat) < 0 {
+pub fn get_fd_kind_sync(fd : Int, context~ : String) -> FileKind raise {
+  let out = @ref.new(0)
+  if get_fd_kind_sync_ffi(fd, out) < 0 {
     @os_error.check_errno(context)
   }
-  stat
+  FileKind::from_sys_kind(out.val)
 }
 
 ///|
@@ -57,57 +46,54 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 }
 
 ///|
-#borrow(stat)
-pub extern "C" fn Stat::kind(stat : Stat) -> FileKind = "moonbitlang_async_file_kind_from_stat"
+pub extern "C" fn FileKind::from_sys_kind(sys_kind : Int) -> FileKind = "moonbitlang_async_file_kind_from_sys_kind"
 
 ///|
-#borrow(stat)
-pub extern "C" fn Stat::size(stat : Stat) -> Int64 = "moonbitlang_async_file_size_from_stat"
+struct FileTime(FixedArray[Byte])
 
 ///|
-#borrow(stat, sec_out, nsec_out)
-extern "C" fn Stat::atime_ffi(
-  stat : Stat,
-  sec_out : Ref[Int64],
-  nsec_out : Ref[Int],
-) = "moonbitlang_async_atime_from_stat"
+extern "C" fn FileTime::size() -> Int = "moonbitlang_async_sizeof_file_time"
 
 ///|
-pub fn Stat::atime(stat : Stat) -> (Int64, Int) {
-  let sec = @ref.new(0L)
-  let nsec = @ref.new(0)
-  stat.atime_ffi(sec, nsec)
-  (sec.val, nsec.val)
+pub fn FileTime::new() -> FileTime {
+  FixedArray::make(FileTime::size(), b'\x00')
 }
 
 ///|
-#borrow(stat, sec_out, nsec_out)
-extern "C" fn Stat::mtime_ffi(
-  stat : Stat,
-  sec_out : Ref[Int64],
-  nsec_out : Ref[Int],
-) = "moonbitlang_async_mtime_from_stat"
+#borrow(self)
+extern "C" fn FileTime::atime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_async_get_atime_sec"
 
 ///|
-pub fn Stat::mtime(stat : Stat) -> (Int64, Int) {
-  let sec = @ref.new(0L)
-  let nsec = @ref.new(0)
-  stat.mtime_ffi(sec, nsec)
-  (sec.val, nsec.val)
+#borrow(self)
+extern "C" fn FileTime::atime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_atime_nsec"
+
+///|
+pub fn FileTime::atime(self : FileTime) -> (Int64, Int) {
+  (self.atime_sec_ffi(), self.atime_nsec_ffi())
 }
 
 ///|
-#borrow(stat, sec_out, nsec_out)
-extern "C" fn Stat::ctime_ffi(
-  stat : Stat,
-  sec_out : Ref[Int64],
-  nsec_out : Ref[Int],
-) = "moonbitlang_async_ctime_from_stat"
+#borrow(self)
+extern "C" fn FileTime::mtime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_async_get_mtime_sec"
 
 ///|
-pub fn Stat::ctime(stat : Stat) -> (Int64, Int) {
-  let sec = @ref.new(0L)
-  let nsec = @ref.new(0)
-  stat.ctime_ffi(sec, nsec)
-  (sec.val, nsec.val)
+#borrow(self)
+extern "C" fn FileTime::mtime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_mtime_nsec"
+
+///|
+pub fn FileTime::mtime(self : FileTime) -> (Int64, Int) {
+  (self.mtime_sec_ffi(), self.mtime_nsec_ffi())
+}
+
+///|
+#borrow(self)
+extern "C" fn FileTime::ctime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_async_get_ctime_sec"
+
+///|
+#borrow(self)
+extern "C" fn FileTime::ctime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_ctime_nsec"
+
+///|
+pub fn FileTime::ctime(self : FileTime) -> (Int64, Int) {
+  (self.ctime_sec_ffi(), self.ctime_nsec_ffi())
 }

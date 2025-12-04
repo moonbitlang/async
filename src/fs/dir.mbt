@@ -31,8 +31,12 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
     let base = path.to_string()
     for file in readdir(base) {
       let child_path = base + "/" + file
-      let stat = @event_loop.stat(child_path, follow_symlink=false, context~)
-      if stat.kind() is Directory {
+      let kind = @event_loop.file_kind_by_path(
+        child_path,
+        follow_symlink=false,
+        context~,
+      )
+      if kind is Directory {
         rmdir(child_path, recursive=true)
       } else {
         @event_loop.remove(child_path, context~)

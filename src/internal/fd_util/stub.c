@@ -75,12 +75,12 @@ int moonbitlang_async_pipe(int *fds) {
   return 0;
 }
 
-int32_t moonbitlang_async_sizeof_stat() {
+int32_t moonbitlang_async_sizeof_file_time() {
   return sizeof(struct stat);
 }
 
-int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
-  switch (stat->st_mode & S_IFMT) {
+int32_t moonbitlang_async_file_kind_from_sys_kind(int32_t sys_kind) {
+  switch (sys_kind & S_IFMT) {
   case S_IFREG:  return 1;
   case S_IFDIR:  return 2;
   case S_IFLNK:  return 3;
@@ -92,8 +92,13 @@ int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat) {
   }
 }
 
-int64_t moonbitlang_async_file_size_from_stat(struct stat *stat) {
-  return stat->st_size;
+int32_t moonbitlang_async_get_fd_kind_sync(int fd, int32_t *out) {
+  struct stat stat;
+  if (fstat(fd, &stat) < 0) {
+    return -1;
+  }
+  *out = stat.st_mode;
+  return 0;
 }
 
 #ifdef __MACH__
@@ -102,29 +107,26 @@ int64_t moonbitlang_async_file_size_from_stat(struct stat *stat) {
 #define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##tim
 #endif
 
-void moonbitlang_async_atime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, a).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, a).tv_nsec;
+int64_t moonbitlang_async_get_atime_sec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, a).tv_sec;
 }
 
-void moonbitlang_async_mtime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, m).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, m).tv_nsec;
+int32_t moonbitlang_async_get_atime_nsec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, a).tv_nsec;
 }
 
-void moonbitlang_async_ctime_from_stat(
-  struct stat *stat,
-  int64_t *sec_out,
-  int32_t *nsec_out
-) {
-  *sec_out = GET_STAT_TIMESTAMP(stat, c).tv_sec;
-  *nsec_out = GET_STAT_TIMESTAMP(stat, c).tv_nsec;
+int64_t moonbitlang_async_get_mtime_sec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, m).tv_sec;
+}
+
+int32_t moonbitlang_async_get_mtime_nsec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, m).tv_nsec;
+}
+
+int64_t moonbitlang_async_get_ctime_sec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, c).tv_sec;
+}
+
+int32_t moonbitlang_async_get_ctime_nsec(struct stat *stat) {
+  return GET_STAT_TIMESTAMP(stat, c).tv_nsec;
 }

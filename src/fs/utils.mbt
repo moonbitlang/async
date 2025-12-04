@@ -17,7 +17,7 @@
 /// If `path` is a symbolic link and `follow_symlink` is `true` (`true` by default),
 /// the kind of the target of the link will be returned.
 pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind {
-  @event_loop.stat(path, follow_symlink~, context="@fs.kind()").kind()
+  @event_loop.file_kind_by_path(path, follow_symlink~, context="@fs.kind()")
   |> FileKind::from_fd_util_file_kind
 }
 
@@ -32,7 +32,7 @@ pub async fn atime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.stat(path, follow_symlink~, context="@fs.atime()").atime()
+  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.atime()").atime()
 }
 
 ///|
@@ -46,7 +46,7 @@ pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.stat(path, follow_symlink~, context="@fs.mtime()").mtime()
+  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.mtime()").mtime()
 }
 
 ///|
@@ -60,7 +60,7 @@ pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.stat(path, follow_symlink~, context="@fs.ctime()").ctime()
+  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.ctime()").ctime()
 }
 
 ///|

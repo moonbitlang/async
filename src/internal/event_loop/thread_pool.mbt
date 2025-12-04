@@ -71,25 +71,38 @@ extern "C" fn Job::write(
 ) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
-#owned(filename, stat)
-extern "C" fn Job::open(
-  filename : Bytes,
-  flags : Int,
-  mode : Int,
-  stat : @fd_util.Stat,
-) -> Job = "moonbitlang_async_make_open_job"
+#owned(filename)
+extern "C" fn Job::open(filename : Bytes, flags : Int, mode : Int) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
-#owned(path, out)
-extern "C" fn Job::stat(
+#borrow(job)
+extern "C" fn Job::get_open_job_kind(job : Job) -> Int = "moonbitlang_async_get_open_job_kind"
+
+///|
+#owned(path)
+extern "C" fn Job::file_kind_by_path(
   path : Bytes,
-  out : @fd_util.Stat,
   follow_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_stat_job"
+) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
+
+///|
+extern "C" fn Job::file_size(fd : Int) -> Job = "moonbitlang_async_make_file_size_job"
+
+///|
+#borrow(job)
+extern "C" fn Job::get_file_size_result(job : Job) -> Int64 = "moonbitlang_async_get_file_size_result"
 
 ///|
 #owned(out)
-extern "C" fn Job::fstat(fd : Int, out : @fd_util.Stat) -> Job = "moonbitlang_async_make_fstat_job"
+extern "C" fn Job::file_time(fd : Int, out : @fd_util.FileTime) -> Job = "moonbitlang_async_make_file_time_job"
+
+///|
+#owned(path, out)
+extern "C" fn Job::file_time_by_path(
+  path : Bytes,
+  out : @fd_util.FileTime,
+  follow_symlink~ : Bool,
+) -> Job = "moonbitlang_async_make_file_time_by_path_job"
 
 ///|
 extern "C" fn Job::seek(fd : Int, offset : Int64, whence : Int) -> Job = "moonbitlang_async_make_seek_job"

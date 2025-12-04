@@ -28,26 +28,60 @@ pub async fn open(
   context~ : String,
 ) -> IoHandle {
   let path_bytes = @encoding/utf8.encode(path)
-  let stat = @fd_util.Stat::new()
-  let job = Job::open(path_bytes, flags, mode, stat)
+  let job = Job::open(path_bytes, flags, mode)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    fd => IoHandle::from_fd(fd, kind=stat.kind())
+    fd => {
+      let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
+      IoHandle::from_fd(fd, kind~)
+    }
   }
 }
 
 ///|
-pub async fn stat(
+pub async fn file_kind_by_path(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
-) -> @fd_util.Stat {
+) -> @fd_util.FileKind {
   let path_bytes = @encoding/utf8.encode(path)
-  let stat = @fd_util.Stat::new()
-  let job = Job::stat(path_bytes, stat, follow_symlink~)
+  let job = Job::file_kind_by_path(path_bytes, follow_symlink~)
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    sys_kind => @fd_util.FileKind::from_sys_kind(sys_kind)
+  }
+}
+
+///|
+pub async fn file_size(fd : Int, context~ : String) -> Int64 {
+  let job = Job::file_size(fd)
+  let _ = perform_job_in_worker(job, context~)
+  job.get_file_size_result()
+}
+
+///|
+pub async fn file_time(fd : Int, context~ : String) -> @fd_util.FileTime {
+  let result = @fd_util.FileTime::new()
+  let job = Job::file_time(fd, result)
+  let _ = perform_job_in_worker(job, context~)
+  result
+}
+
+///|
+pub async fn file_time_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> @fd_util.FileTime {
+  let path_bytes = @encoding/utf8.encode(path)
+  let result = @fd_util.FileTime::new()
+  let job = Job::file_time_by_path(path_bytes, result, follow_symlink~)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
@@ -55,18 +89,7 @@ pub async fn stat(
   } noraise {
     _ => ()
   }
-  stat
-}
-
-///|
-pub async fn IoHandle::fstat(
-  handle : IoHandle,
-  context~ : String,
-) -> @fd_util.Stat {
-  let stat = @fd_util.Stat::new()
-  let job = Job::fstat(handle.fd, stat)
-  let _ = perform_job_in_worker(job, context~)
-  stat
+  result
 }
 
 ///|

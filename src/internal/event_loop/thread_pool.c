@@ -408,14 +408,13 @@ struct open_job {
   char *filename;
   int flags;
   int mode;
-  void *stat_out;
+  mode_t kind;
 };
 
 static
 void free_open_job(void *obj) {
   struct open_job *job = (struct open_job*)obj;
   moonbit_decref(job->filename);
-  moonbit_decref(job->stat_out);
 }
 
 static
@@ -430,28 +429,135 @@ void open_job_worker(struct job *job) {
     job->err = errno;
     return;
   }
-  if (fstat(job->ret, open_job->stat_out) < 0) {
+  struct stat stat;
+  if (fstat(job->ret, &stat) < 0) {
     job->err = errno;
+    return;
   }
+  open_job->kind = stat.st_mode;
 }
 
 struct open_job *moonbitlang_async_make_open_job(
   char *filename,
   int flags,
-  int mode,
-  int *stat_out
+  int mode
 ) {
   struct open_job *job = MAKE_JOB(open);
   job->filename = filename;
   job->flags = flags;
   job->mode = mode;
-  job->stat_out = stat_out;
   return job;
 }
 
-// ===== stat job, get info of file path =====
+int32_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
+  return job->kind;
+}
 
-struct stat_job {
+// ===== file kind by path job, get kind of path on file system =====
+
+struct file_kind_by_path_job {
+  struct job job;
+  char *path;
+  int follow_symlink;
+};
+
+static
+void free_file_kind_by_path_job(void *obj) {
+  struct file_kind_by_path_job *job = (struct file_kind_by_path_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void file_kind_by_path_job_worker(struct job *job) {
+  struct file_kind_by_path_job *file_kind_by_path_job = (struct file_kind_by_path_job*)job;
+  struct stat stat_obj;
+  if (file_kind_by_path_job->follow_symlink) {
+    job->ret = stat(file_kind_by_path_job->path, &stat_obj);
+  } else {
+    job->ret = lstat(file_kind_by_path_job->path, &stat_obj);
+  }
+  if (job->ret < 0) {
+    job->err = errno;
+  } else {
+    job->ret = stat_obj.st_mode;
+  }
+}
+
+struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
+  char *path,
+  int follow_symlink
+) {
+  struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path);
+  job->path = path;
+  job->follow_symlink = follow_symlink;
+  return job;
+}
+
+// ===== file size job, get size of opened file =====
+
+struct file_size_job {
+  struct job job;
+  int fd;
+  int64_t result;
+};
+
+static
+void free_file_size_job(void *obj) {}
+
+static
+void file_size_job_worker(struct job *job) {
+  struct file_size_job *file_size_job = (struct file_size_job*)job;
+  struct stat stat;
+  job->ret = fstat(file_size_job->fd, &stat);
+  if (job->ret < 0) {
+    job->err = errno;
+  } else {
+    file_size_job->result = stat.st_size;
+  }
+}
+
+struct file_size_job *moonbitlang_async_make_file_size_job(int fd) {
+  struct file_size_job *job = MAKE_JOB(file_size);
+  job->fd = fd;
+  return job;
+}
+
+int64_t moonbitlang_async_get_file_size_result(struct file_size_job *job) {
+  return job->result;
+}
+
+// ===== file time job, get timestamp of opened file =====
+
+struct file_time_job {
+  struct job job;
+  int fd;
+  void *out;
+};
+
+static
+void free_file_time_job(void *obj) {
+  struct file_time_job *job = (struct file_time_job*)obj;
+  moonbit_decref(job->out);
+}
+
+static
+void file_time_job_worker(struct job *job) {
+  struct file_time_job *file_time_job = (struct file_time_job*)job;
+  job->ret = fstat(file_time_job->fd, file_time_job->out);
+  if (job->ret < 0)
+    job->err = errno;
+}
+
+struct file_time_job *moonbitlang_async_make_file_time_job(int fd, void *out) {
+  struct file_time_job *job = MAKE_JOB(file_time);
+  job->fd = fd;
+  job->out = out;
+  return job;
+}
+
+// ===== file time by path job, get timestamp of path on file system =====
+
+struct file_time_by_path_job {
   struct job job;
   char *path;
   void *out;
@@ -459,62 +565,33 @@ struct stat_job {
 };
 
 static
-void free_stat_job(void *obj) {
-  struct stat_job *job = (struct stat_job*)obj;
+void free_file_time_by_path_job(void *obj) {
+  struct file_time_by_path_job *job = (struct file_time_by_path_job*)obj;
   moonbit_decref(job->path);
   moonbit_decref(job->out);
 }
 
 static
-void stat_job_worker(struct job *job) {
-  struct stat_job *stat_job = (struct stat_job*)job;
-  if (stat_job->follow_symlink) {
-    job->ret = stat(stat_job->path, stat_job->out);
+void file_time_by_path_job_worker(struct job *job) {
+  struct file_time_by_path_job *file_time_by_path_job = (struct file_time_by_path_job*)job;
+  if (file_time_by_path_job->follow_symlink) {
+    job->ret = stat(file_time_by_path_job->path, file_time_by_path_job->out);
   } else {
-    job->ret = lstat(stat_job->path, stat_job->out);
+    job->ret = lstat(file_time_by_path_job->path, file_time_by_path_job->out);
   }
   if (job->ret < 0)
     job->err = errno;
 }
 
-struct stat_job *moonbitlang_async_make_stat_job(
+struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
   char *path,
   void *out,
   int follow_symlink
 ) {
-  struct stat_job *job = MAKE_JOB(stat);
+  struct file_time_by_path_job *job = MAKE_JOB(file_time_by_path);
   job->path = path;
   job->out = out;
   job->follow_symlink = follow_symlink;
-  return job;
-}
-
-// ===== fstat job, get info of file descriptor =====
-
-struct fstat_job {
-  struct job job;
-  int fd;
-  void *out;
-};
-
-static
-void free_fstat_job(void *obj) {
-  struct fstat_job *job = (struct fstat_job*)obj;
-  moonbit_decref(job->out);
-}
-
-static
-void fstat_job_worker(struct job *job) {
-  struct fstat_job *fstat_job = (struct fstat_job*)job;
-  job->ret = fstat(fstat_job->fd, fstat_job->out);
-  if (job->ret < 0)
-    job->err = errno;
-}
-
-struct fstat_job *moonbitlang_async_make_fstat_job(int fd, void *out) {
-  struct fstat_job *job = MAKE_JOB(fstat);
-  job->fd = fd;
-  job->out = out;
   return job;
 }
 
