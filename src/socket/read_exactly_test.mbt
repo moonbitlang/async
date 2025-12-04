@@ -36,9 +36,6 @@ async test "read_exactly" {
       let msg3 = conn.read_exactly(4) |> @encoding/utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
-      // let the client close first to avoid socket entering `TIME_WAIT` state,
-      // occupying the address.
-      @async.sleep(20)
     })
     // client
     root.spawn_bg(fn() {
@@ -46,7 +43,7 @@ async test "read_exactly" {
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")
-      @async.sleep(30)
+      @async.sleep(100)
       conn.write("ghijkl")
       log("second message sent")
     })
