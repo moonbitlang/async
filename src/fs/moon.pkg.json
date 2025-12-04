@@ -14,7 +14,7 @@
     "dir.mbt": [ "native" ],
     "dir_test.mbt": [ "native" ],
     "eof_test.mbt": [ "native" ],
-    "fs.mbt": [ "native" ],
+    "file.mbt": [ "native" ],
     "mkdir_test.mbt": [ "native" ],
     "pkg.generated.mbti": [ "native" ],
     "random_access_test.mbt": [ "native" ],
