@@ -19,7 +19,8 @@ priv struct EventLoop {
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : Int
   max_worker_count : Int
-  job_queue : @deque.Deque[Job]
+  mut job_id : Int
+  job_queue : @deque.Deque[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
@@ -33,6 +34,12 @@ struct IoHandle {
   mut events : Int
   mut read : @coroutine.Coroutine?
   mut write : @coroutine.Coroutine?
+}
+
+///|
+priv struct QueuedJob {
+  job_id : Int
+  job : Job
 }
 
 ///|
@@ -82,6 +89,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     pids: {},
     notify_recv,
     max_worker_count: 1024,
+    job_id: 0,
     job_queue: @deque.new(),
     idle_workers: @deque.new(),
     running_workers: {},
@@ -142,8 +150,8 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         match self.job_queue.pop_front() {
           None => self.idle_workers.push_back(worker)
           Some(job) => {
-            self.running_workers[job.id()] = worker
-            wake_worker(worker, job)
+            self.running_workers[job.job_id] = worker
+            wake_worker(worker, job.job_id, job.job)
           }
         }
         if self.jobs.get(job_id) is Some(coro) {
@@ -341,20 +349,22 @@ async fn perform_job_in_worker(
   allow_cancel? : Bool = false,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
+  let job_id = evloop.job_id
+  evloop.job_id += 1
   match evloop.idle_workers.pop_front() {
     None if evloop.running_workers.length() > evloop.max_worker_count =>
-      evloop.job_queue.push_back(job)
+      evloop.job_queue.push_back({ job_id, job })
     None => {
-      let worker = spawn_worker(job)
-      evloop.running_workers[job.id()] = worker
+      let worker = spawn_worker(job_id, job)
+      evloop.running_workers[job_id] = worker
     }
     Some(worker) => {
-      evloop.running_workers[job.id()] = worker
-      wake_worker(worker, job)
+      evloop.running_workers[job_id] = worker
+      wake_worker(worker, job_id, job)
     }
   }
-  evloop.jobs[job.id()] = @coroutine.current_coroutine()
-  defer evloop.jobs.remove(job.id())
+  evloop.jobs[job_id] = @coroutine.current_coroutine()
+  defer evloop.jobs.remove(job_id)
   if allow_cancel {
     @coroutine.suspend()
   } else {

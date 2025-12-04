@@ -23,22 +23,18 @@ extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
 #owned(init_job)
-extern "C" fn spawn_worker(init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
+extern "C" fn spawn_worker(init_job_id : Int, init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
 #borrow(worker)
 #owned(job)
-extern "C" fn wake_worker(worker : Worker, job : Job) = "moonbitlang_async_wake_worker"
+extern "C" fn wake_worker(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
 extern "C" fn fetch_completion_ffi(notify_recv : Int) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
 priv type Job
-
-///|
-#borrow(self)
-extern "C" fn Job::id(self : Job) -> Int = "moonbitlang_async_job_get_id"
 
 ///|
 #borrow(self)

@@ -49,10 +49,6 @@
 #endif
 
 struct job {
-  // an unique identifier for the job,
-  // used to find the waiter of a job
-  int32_t job_id;
-
   // the return value of the job.
   // should be set by the worker and read by waiter.
   // for result that cannot fit in an integer,
@@ -68,10 +64,6 @@ struct job {
   // extra payload can be placed after the header fields in `struct job`
   void (*worker)(struct job*);
 };
-
-int32_t moonbitlang_async_job_get_id(struct job *job) {
-  return job->job_id;
-}
 
 int64_t moonbitlang_async_job_get_ret(struct job *job) {
   return job->ret;
@@ -94,12 +86,20 @@ struct {
   sigset_t wakeup_signal;
   sigset_t old_sigmask;
 #endif
-  int32_t job_id;
 } pool;
 
+
+// The type for a worker thread
 struct worker {
   pthread_t id;
+
+  // an unique identifier for current job,
+  // used to find the waiter of a job
+  int32_t job_id;
+
+  // the job currently being processed
   struct job *job;
+
   int waiting;
 #ifdef WAKEUP_METHOD_COND_VAR
   pthread_mutex_t mutex;
@@ -112,6 +112,7 @@ void *worker_loop(void *data) {
   int sig;
   struct worker *self = (struct worker*)data;
 
+  int job_id = self->job_id;
   struct job *job = self->job;
 
 #ifdef WAKEUP_METHOD_COND_VAR
@@ -120,7 +121,6 @@ void *worker_loop(void *data) {
 #endif
 
   while (job) {
-    int job_id = job->job_id;
     job->ret = 0;
     job->err = 0;
 
@@ -145,13 +145,19 @@ void *worker_loop(void *data) {
     }
     pthread_mutex_unlock(&(self->mutex));
 #endif
+    job_id = self->job_id;
     job = self->job;
   }
   return 0;
 }
 
-void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
+void moonbitlang_async_wake_worker(
+  struct worker *worker,
+  int32_t job_id,
+  struct job *job
+) {
   moonbit_decref(worker->job);
+  worker->job_id = job_id;
   worker->job = job;
 #ifdef WAKEUP_METHOD_SIGNAL
   pthread_kill(worker->id, SIGUSR1);
@@ -166,8 +172,6 @@ void moonbitlang_async_wake_worker(struct worker *worker, struct job *job) {
 void moonbitlang_async_init_thread_pool(int notify_send) {
   if (pool.initialized)
     abort();
-
-  pool.job_id = 0;
 
 #ifdef WAKEUP_METHOD_SIGNAL
   sigemptyset(&pool.wakeup_signal);
@@ -195,14 +199,12 @@ void moonbitlang_async_destroy_thread_pool() {
 #ifdef WAKEUP_METHOD_SIGNAL
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
 #endif
-
-  pool.job_id = 0;
 }
 
 void free_worker(void *target) {
   struct worker *worker = (struct worker*)target;
   // terminate the worker
-  moonbitlang_async_wake_worker(worker, 0);
+  moonbitlang_async_wake_worker(worker, 0, 0);
   pthread_join(worker->id, 0);
 #ifdef WAKEUP_METHOD_COND_VAR
   pthread_mutex_destroy(&(worker->mutex));
@@ -210,7 +212,10 @@ void free_worker(void *target) {
 #endif
 }
 
-struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
+struct worker *moonbitlang_async_spawn_worker(
+  int32_t init_job_id,
+  struct job *init_job
+) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 512);
@@ -219,6 +224,7 @@ struct worker *moonbitlang_async_spawn_worker(struct job *init_job) {
     &free_worker,
     sizeof(struct worker)
   );
+  worker->job_id = init_job_id;
   worker->job = init_job;
   worker->waiting = 0;
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
@@ -249,7 +255,6 @@ struct job *make_job(
     free_job,
     size
   );
-  job->job_id = pool.job_id++;
   job->ret = 0;
   job->err = 0;
   job->worker = worker;
