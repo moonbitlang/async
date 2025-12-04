@@ -595,50 +595,6 @@ struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
   return job;
 }
 
-// ===== seek job, move cursor within opened file =====
-
-struct seek_job {
-  struct job job;
-  int fd;
-  int64_t offset;
-  int whence;
-  int64_t result;
-};
-
-static
-void free_seek_job(void *obj) {}
-
-static
-void seek_job_worker(struct job *job) {
-  static int whence_list[] = { SEEK_SET, SEEK_END, SEEK_CUR };
-
-  struct seek_job *seek_job = (struct seek_job*)job;
-  seek_job->result = lseek(
-    seek_job->fd,
-    seek_job->offset,
-    whence_list[seek_job->whence]
-  );
-  if (seek_job->result < 0) {
-    job->err = errno;
-  }
-}
-
-struct seek_job *moonbitlang_async_make_seek_job(
-  int fd,
-  int64_t offset,
-  int whence
-) {
-  struct seek_job *job = MAKE_JOB(seek);
-  job->fd = fd;
-  job->offset = offset;
-  job->whence = whence;
-  return job;
-}
-
-int64_t moonbitlang_async_get_seek_result(struct seek_job *job) {
-  return job->result;
-}
-
 // ===== access job, test permission of file path =====
 
 struct access_job {

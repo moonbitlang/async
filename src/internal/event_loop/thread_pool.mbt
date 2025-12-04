@@ -105,13 +105,6 @@ extern "C" fn Job::file_time_by_path(
 ) -> Job = "moonbitlang_async_make_file_time_by_path_job"
 
 ///|
-extern "C" fn Job::seek(fd : Int, offset : Int64, whence : Int) -> Job = "moonbitlang_async_make_seek_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_seek_result(job : Job) -> Int64 = "moonbitlang_async_get_seek_result"
-
-///|
 #owned(path)
 extern "C" fn Job::access(path : Bytes, amode : Int) -> Job = "moonbitlang_async_make_access_job"
 

@@ -93,18 +93,6 @@ pub async fn file_time_by_path(
 }
 
 ///|
-pub async fn IoHandle::seek(
-  handle : IoHandle,
-  offset : Int64,
-  whence : Int,
-  context~ : String,
-) -> Int64 {
-  let job = Job::seek(handle.fd, offset, whence)
-  let _ = perform_job_in_worker(job, context~)
-  job.get_seek_result()
-}
-
-///|
 pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
   let path_bytes = @encoding/utf8.encode(path)
   perform_job_in_worker(Job::access(path_bytes, amode), context~) catch {
