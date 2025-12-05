@@ -39,6 +39,17 @@ pub fn is_nonblocking_io_error() -> Bool {
 extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_errno_to_string"
 
 ///|
+extern "C" fn free_errno_str(str : @c_buffer.Buffer) = "moonbitlang_async_free_errno_str"
+
+///|
+#internal(internal, "for internal use only")
+pub fn errno_to_string(errno : Int) -> String {
+  let c_str = strerror(errno)
+  defer free_errno_str(c_str)
+  @os_string.decode(c_str).trim_end(chars="\r\n").to_string()
+}
+
+///|
 pub(all) suberror OSError {
   OSError(Int, context~ : String)
 } derive(ToJson)
@@ -46,11 +57,9 @@ pub(all) suberror OSError {
 ///|
 pub impl Show for OSError with output(self, logger) -> Unit {
   let OSError(errno, context~) = self
-  let c_str = strerror(errno)
-  let errno_desc = @os_string.decode(c_str)
   logger
   ..write_string("OSError(")
-  ..write_object("\{context}: \{errno_desc}")
+  ..write_object("\{context}: \{errno_to_string(errno)}")
   ..write_string(")")
 }
 
