@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -76,3 +77,4 @@ int moonbitlang_async_sendto(
   
   return sendto(sock, buf + offset, len, 0, addr, addr_len);
 }
+#endif

@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
+#include <stdint.h>
+#include <moonbit.h>
+
+#ifdef _WIN32
+
+#include <windows.h>
+
+#else
 
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,9 +38,19 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/stat.h>
-#include <moonbit.h>
 
-#ifdef __MACH__
+typedef int HANDLE;
+
+#endif
+
+
+#ifdef _WIN32
+// Windows, use native event system to wake up worker thread
+#define WAKEUP_METHOD_EVENT
+
+#elif defined(__MACH__)
+// MacOS, there are some bug with thread-directed signal and `sigwait`,
+// so use condition variable to wake up worker threads
 #include <sys/event.h>
 #define WAKEUP_METHOD_COND_VAR
 
@@ -45,7 +62,9 @@
 #endif
 
 #else
+// Other UNIX-like systems, use signal and `sigwait` to wake up worker threads
 #define WAKEUP_METHOD_SIGNAL
+
 #endif
 
 struct job {
@@ -65,10 +84,12 @@ struct job {
   void (*worker)(struct job*);
 };
 
+MOONBIT_FFI_EXPORT
 int64_t moonbitlang_async_job_get_ret(struct job *job) {
   return job->ret;
 }
 
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_job_get_err(struct job *job) {
   return job->err;
 }
@@ -80,7 +101,7 @@ int32_t moonbitlang_async_job_get_err(struct job *job) {
 struct {
   int initialized;
 
-  int notify_send;
+  HANDLE notify_send;
 
 #ifdef WAKEUP_METHOD_SIGNAL
   sigset_t wakeup_signal;
@@ -91,7 +112,11 @@ struct {
 
 // The type for a worker thread
 struct worker {
+#ifdef _WIN32
+  HANDLE id;
+#else
   pthread_t id;
+#endif
 
   // an unique identifier for current job,
   // used to find the waiter of a job
@@ -101,21 +126,32 @@ struct worker {
   struct job *job;
 
   int waiting;
-#ifdef WAKEUP_METHOD_COND_VAR
+
+#ifdef WAKEUP_METHOD_EVENT
+  HANDLE event;
+#elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_t mutex;
   pthread_cond_t cond;
 #endif
 };
 
+#ifdef _WIN32
+typedef DWORD thread_worker_result_t;
+#else
+typedef void* thread_worker_result_t;
+#endif
+
 static
-void *worker_loop(void *data) {
+thread_worker_result_t worker_loop(void *data) {
   int sig;
   struct worker *self = (struct worker*)data;
 
   int job_id = self->job_id;
   struct job *job = self->job;
 
-#ifdef WAKEUP_METHOD_COND_VAR
+#ifdef WAKEUP_METHOD_EVENT
+  self->event = CreateEventA(NULL, FALSE, FALSE, NULL);
+#elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_init(&(self->mutex), 0);
   pthread_cond_init(&(self->cond), 0);
 #endif
@@ -127,9 +163,16 @@ void *worker_loop(void *data) {
     job->worker(job);
 
     self->waiting = 1;
-    write(pool.notify_send, &job_id, sizeof(int));
 
-#ifdef WAKEUP_METHOD_SIGNAL
+#ifdef _WIN32
+    PostQueuedCompletionStatus(pool.notify_send, job_id, 0, 0);
+#else
+    write(pool.notify_send, &job_id, sizeof(int));
+#endif
+
+#ifdef WAKEUP_METHOD_EVENT
+    WaitForSingleObject(self->event, INFINITE);
+#elif defined(WAKEUP_METHOD_SIGNAL)
     sigwait(&pool.wakeup_signal, &sig);
 #elif defined(WAKEUP_METHOD_COND_VAR)
     pthread_mutex_lock(&(self->mutex));
@@ -151,6 +194,7 @@ void *worker_loop(void *data) {
   return 0;
 }
 
+MOONBIT_FFI_EXPORT
 void moonbitlang_async_wake_worker(
   struct worker *worker,
   int32_t job_id,
@@ -159,7 +203,9 @@ void moonbitlang_async_wake_worker(
   moonbit_decref(worker->job);
   worker->job_id = job_id;
   worker->job = job;
-#ifdef WAKEUP_METHOD_SIGNAL
+#ifdef WAKEUP_METHOD_EVENT
+  SetEvent(worker->event);
+#elif defined(WAKEUP_METHOD_SIGNAL)
   pthread_kill(worker->id, SIGUSR1);
 #elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_lock(&(worker->mutex));
@@ -169,7 +215,8 @@ void moonbitlang_async_wake_worker(
 #endif
 }
 
-void moonbitlang_async_init_thread_pool(int notify_send) {
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
   if (pool.initialized)
     abort();
 
@@ -179,17 +226,20 @@ void moonbitlang_async_init_thread_pool(int notify_send) {
   pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
 #endif
 
+#ifndef _WIN32
   sigset_t signals_to_block;
   sigemptyset(&signals_to_block);
   sigaddset(&signals_to_block, SIGCHLD);
   pthread_sigmask(SIG_BLOCK, &signals_to_block, 0);
 
   signal(SIGPIPE, SIG_IGN);
+#endif
 
   pool.notify_send = notify_send;
   pool.initialized = 1;
 }
 
+MOONBIT_FFI_EXPORT
 void moonbitlang_async_destroy_thread_pool() {
   if (!pool.initialized)
     abort();
@@ -201,25 +251,31 @@ void moonbitlang_async_destroy_thread_pool() {
 #endif
 }
 
+static
 void free_worker(void *target) {
   struct worker *worker = (struct worker*)target;
   // terminate the worker
   moonbitlang_async_wake_worker(worker, 0, 0);
+
+#ifdef _WIN32
+  WaitForSingleObject(worker->id, INFINITE);
+#else
   pthread_join(worker->id, 0);
-#ifdef WAKEUP_METHOD_COND_VAR
+#endif
+
+#ifdef WAKEUP_METHOD_EVENT
+  CloseHandle(worker->event);
+#elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_destroy(&(worker->mutex));
   pthread_cond_destroy(&(worker->cond));
 #endif
 }
 
+MOONBIT_FFI_EXPORT
 struct worker *moonbitlang_async_spawn_worker(
   int32_t init_job_id,
   struct job *init_job
 ) {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setstacksize(&attr, 512);
-
   struct worker *worker = (struct worker*)moonbit_make_external_object(
     &free_worker,
     sizeof(struct worker)
@@ -227,11 +283,29 @@ struct worker *moonbitlang_async_spawn_worker(
   worker->job_id = init_job_id;
   worker->job = init_job;
   worker->waiting = 0;
+
+#ifdef _WIN32
+  worker->id = CreateThread(
+    NULL,
+    512,
+    &worker_loop,
+    worker,
+    0,
+    0
+  );
+#else
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, 512);
+
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
+#endif
+
   return worker;
 }
 
+#ifndef _WIN32
 int32_t moonbitlang_async_fetch_completion(int notify_recv) {
   int job_id;
   int32_t ret = read(notify_recv, &job_id, sizeof(int));
@@ -240,6 +314,7 @@ int32_t moonbitlang_async_fetch_completion(int notify_recv) {
 
   return job_id;
 }
+#endif
 
 // =========================================================
 // ===================== concrete jobs =====================
@@ -271,7 +346,7 @@ struct job *make_job(
 
 struct sleep_job {
   struct job job;
-  struct timespec duration;
+  int duration;
 };
 
 static
@@ -279,7 +354,12 @@ void free_sleep_job(void *job) {}
 
 static
 void sleep_job_worker(struct job *job) {
-  struct timespec duration = ((struct sleep_job*)job)->duration;
+#ifdef _WIN32
+  Sleep(((struct sleep_job*)job)->duration);
+#else
+  int32_t ms = ((struct sleep_job*)job)->duration;
+  struct timespec duration = { ms / 1000, (ms % 1000) * 1000000 };
+
 #ifdef __MACH__
   // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
   // causing corrupted test result.
@@ -293,15 +373,18 @@ void sleep_job_worker(struct job *job) {
 #else
   nanosleep(&duration, 0);
 #endif
+
+#endif
 }
 
+MOONBIT_FFI_EXPORT
 struct sleep_job *moonbitlang_async_make_sleep_job(int ms) {
   struct sleep_job *job = MAKE_JOB(sleep);
-  job->duration.tv_sec = ms / 1000;
-  job->duration.tv_nsec = (ms % 1000) * 1000000;
+  job->duration = ms;
   return job;
 }
 
+#ifndef _WIN32
 // ===== read job, for reading non-pollable stuff =====
 
 struct read_job {
@@ -405,14 +488,20 @@ struct write_job *moonbitlang_async_make_write_job(
   job->position = position;
   return job;
 }
+#endif
 
 // ===== open job =====
 
 struct open_job {
   struct job job;
   char *filename;
-  int flags;
+  int access;
+  int create;
+  int append;
+  int truncate;
+  int sync;
   int mode;
+  HANDLE result;
   int64_t kind;
 };
 
@@ -424,24 +513,91 @@ void free_open_job(void *obj) {
 
 static
 void open_job_worker(struct job *job) {
+#ifdef _WIN32
+  static int access_flags[] = { GENERIC_READ, GENERIC_WRITE, GENERIC_READ | GENERIC_WRITE };
+#else
+  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
+  static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
+#endif
+
   struct open_job *open_job = (struct open_job*)job;
-  job->ret = open(
+
+#ifdef _WIN32
+  DWORD create_flags =
+    open_job->create
+    ? (open_job->truncate ? CREATE_ALWAYS : OPEN_ALWAYS)
+    : (open_job->truncate ? TRUNCATE_EXISTING : OPEN_EXISTING);
+
+  open_job->result = CreateFileW(
+    (LPCWSTR)open_job->filename,
+    access_flags[open_job->access], // desired access
+    0, // shared mode
+    NULL, // security attributes
+    create_flags, // creation
+    // flags and attributes
+    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+    NULL // template file
+  );
+
+  // get the kind of the file
+  if (open_job->result == NULL) {
+    job->err = GetLastError();
+    return;
+  }
+  SetLastError(0);
+  DWORD kind = GetFileType(open_job->result);
+  if (kind != FILE_TYPE_UNKNOWN) {
+    open_job->kind = kind;
+    return;
+  }
+
+  job->err = GetLastError();
+  if (job->err)
+    return;
+
+
+  FILE_BASIC_INFO info;
+  if (
+    !GetFileInformationByHandleEx(
+      open_job->result,
+      FileBasicInfo,
+      &info,
+      sizeof(FILE_BASIC_INFO)
+    )
+  ) {
+    job->ret = -1;
+    job->err = GetLastError();
+  }
+
+  open_job->kind = (((int64_t)info.FileAttributes) << 32) | (int64_t)kind;
+
+#else
+
+  int flags = access_flags[open_job->access] | sync_flags[open_job->sync];
+  if (open_job->create) flags |= O_CREAT;
+  if (open_job->append) flags |= O_APPEND;
+  if (open_job->truncate) flags |= O_TRUNC;
+
+  open_job->result = open(
     open_job->filename,
     open_job->flags | O_CLOEXEC,
     open_job->mode
   );
-  if (job->ret < 0) {
+  if (open_job->result < 0) {
     job->err = errno;
     return;
   }
   struct stat stat;
-  if (fstat(job->ret, &stat) < 0) {
+  if (fstat(open_job->result, &stat) < 0) {
     job->err = errno;
     return;
   }
   open_job->kind = stat.st_mode;
+
+#endif
 }
 
+MOONBIT_FFI_EXPORT
 struct open_job *moonbitlang_async_make_open_job(
   char *filename,
   int access,
@@ -451,23 +607,29 @@ struct open_job *moonbitlang_async_make_open_job(
   int sync,
   int mode
 ) {
-  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
-  static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
 
   struct open_job *job = MAKE_JOB(open);
   job->filename = filename;
-  job->flags = access_flags[access] | sync_flags[sync];
-  if (create) job->flags |= O_CREAT;
-  if (append) job->flags |= O_APPEND;
-  if (truncate) job->flags |= O_TRUNC;
+  job->access = access;
+  job->create = create;
+  job->append = append;
+  job->truncate = truncate;
+  job->sync = sync;
   job->mode = mode;
   return job;
 }
 
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_get_open_job_result(struct open_job *job) {
+  return job->result;
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
   return job->kind;
 }
 
+#ifndef _WIN32
 // ===== file kind by path job, get kind of path on file system =====
 
 struct file_kind_by_path_job {
@@ -513,11 +675,12 @@ int64_t moonbitlang_async_get_file_kind_by_path_result(struct file_kind_by_path_
   return job->result;
 }
 
+#endif
 // ===== file size job, get size of opened file =====
 
 struct file_size_job {
   struct job job;
-  int fd;
+  HANDLE fd;
   int64_t result;
 };
 
@@ -527,6 +690,14 @@ void free_file_size_job(void *obj) {}
 static
 void file_size_job_worker(struct job *job) {
   struct file_size_job *file_size_job = (struct file_size_job*)job;
+#ifdef _WIN32
+  LARGE_INTEGER size;
+  if (!GetFileSizeEx(file_size_job->fd, &size)) {
+    job->err = GetLastError();
+    return;
+  }
+  file_size_job->result = size.QuadPart;
+#else
   struct stat stat;
   job->ret = fstat(file_size_job->fd, &stat);
   if (job->ret < 0) {
@@ -534,9 +705,10 @@ void file_size_job_worker(struct job *job) {
   } else {
     file_size_job->result = stat.st_size;
   }
+#endif
 }
 
-struct file_size_job *moonbitlang_async_make_file_size_job(int fd) {
+struct file_size_job *moonbitlang_async_make_file_size_job(HANDLE fd) {
   struct file_size_job *job = MAKE_JOB(file_size);
   job->fd = fd;
   return job;
@@ -546,6 +718,7 @@ int64_t moonbitlang_async_get_file_size_result(struct file_size_job *job) {
   return job->result;
 }
 
+#ifndef _WIN32
 // ===== file time job, get timestamp of opened file =====
 
 struct file_time_job {
@@ -1077,3 +1250,4 @@ struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
 struct addrinfo *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job) {
   return job->result;
 }
+#endif

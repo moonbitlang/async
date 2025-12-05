@@ -31,6 +31,7 @@ extern "C" fn spawn_worker(init_job_id : Int, init_job : Job) -> Worker = "moonb
 extern "C" fn wake_worker(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn fetch_completion_ffi(notify_recv : @fd_util.Fd) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
@@ -80,6 +81,10 @@ extern "C" fn Job::open(
   // permission for file when new file is created
   mode~ : Int,
 ) -> Job = "moonbitlang_async_make_open_job"
+
+///|
+#borrow(job)
+extern "C" fn Job::get_open_job_result(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_open_job_result"
 
 ///|
 #borrow(job)

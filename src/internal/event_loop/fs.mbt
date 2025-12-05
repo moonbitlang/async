@@ -45,7 +45,8 @@ pub async fn open(
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    fd => {
+    _ => {
+      let fd = job.get_open_job_result()
       let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
       IoHandle::from_fd(fd, kind~)
     }
@@ -70,14 +71,17 @@ pub async fn file_kind_by_path(
 }
 
 ///|
-pub async fn file_size(fd : Int, context~ : String) -> Int64 {
+pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
   let job = Job::file_size(fd)
   let _ = perform_job_in_worker(job, context~)
   job.get_file_size_result()
 }
 
 ///|
-pub async fn file_time(fd : Int, context~ : String) -> @fd_util.FileTime {
+pub async fn file_time(
+  fd : @fd_util.Fd,
+  context~ : String,
+) -> @fd_util.FileTime {
   let result = @fd_util.FileTime::new()
   let job = Job::file_time(fd, result)
   let _ = perform_job_in_worker(job, context~)

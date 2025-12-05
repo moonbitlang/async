@@ -127,5 +127,17 @@ extern "C" fn get_invalid_handle() -> Fd = "moonbitlang_async_get_invalid_handle
 pub let invalid_fd : Fd = get_invalid_handle()
 
 ///|
+#cfg(platform="windows")
+pub fn fd_is_valid(fd : Fd) -> Bool {
+  fd != invalid_fd
+}
+
+///|
 #cfg(not(platform="windows"))
 pub let invalid_fd : Fd = -1
+
+///|
+#cfg(not(platform="windows"))
+pub fn fd_is_valid(fd : Fd) -> Bool {
+  fd >= 0
+}

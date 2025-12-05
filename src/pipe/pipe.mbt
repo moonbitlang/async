@@ -20,7 +20,7 @@ struct PipeRead {
 }
 
 ///|
-pub fn PipeRead::fd(self : PipeRead) -> Int {
+pub fn PipeRead::fd(self : PipeRead) -> @fd_util.Fd {
   self.io.fd()
 }
 
@@ -29,7 +29,7 @@ pub fn PipeRead::fd(self : PipeRead) -> Int {
 struct PipeWrite(@event_loop.IoHandle)
 
 ///|
-pub fn PipeWrite::fd(self : PipeWrite) -> Int {
+pub fn PipeWrite::fd(self : PipeWrite) -> @fd_util.Fd {
   let PipeWrite(io) = self
   io.fd()
 }
@@ -37,6 +37,7 @@ pub fn PipeWrite::fd(self : PipeWrite) -> Int {
 ///|
 /// Create a pipe using `pipe(2)` system call.
 /// Return the read end and write end of the pipe.
+#cfg(not(platform="windows"))
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @fd_util.pipe("@pipe.pipe()")
   @fd_util.set_nonblocking(r, context="@pipe.pipe()")

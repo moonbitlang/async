@@ -16,15 +16,19 @@
 priv struct Instance(@fd_util.Fd)
 
 ///|
+#cfg(not(platform="windows"))
 const NoEvent = 0
 
 ///|
+#cfg(not(platform="windows"))
 const ReadEvent = 1
 
 ///|
+#cfg(not(platform="windows"))
 const WriteEvent = 2
 
 ///|
+#cfg(not(platform="windows"))
 const ProcessEvent = 4
 
 ///|
@@ -34,6 +38,7 @@ extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
 extern "C" fn Instance::destroy(self : Instance) = "moonbitlang_async_poll_destroy"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn Instance::register_ffi(
   self : Instance,
   fd : @fd_util.Fd,
@@ -43,6 +48,7 @@ extern "C" fn Instance::register_ffi(
 ) -> Int = "moonbitlang_async_poll_register"
 
 ///|
+#cfg(not(platform="windows"))
 fn Instance::register(
   self : Instance,
   fd : @fd_util.Fd,
@@ -56,15 +62,30 @@ fn Instance::register(
 }
 
 ///|
+#cfg(platform="windows")
+extern "C" fn Instance::register_ffi(self : Instance, fd : @fd_util.Fd) -> Int = "moonbitlang_async_poll_register"
+
+///|
+#cfg(platform="windows")
+fn Instance::register(self : Instance, fd : @fd_util.Fd) -> Unit raise {
+  if self.register_ffi(fd) < 0 {
+    @os_error.check_errno("poll_register")
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
 extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
 
 ///|
+#cfg(not(platform="windows"))
 priv enum RegisterPidResult {
   Running(Int)
   Stopped
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn Instance::register_pid(
   self : Instance,
   pid : Int,
@@ -81,6 +102,7 @@ fn Instance::register_pid(
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn Instance::remove_ffi(
   self : Instance,
   fd : @fd_util.Fd,
@@ -88,6 +110,7 @@ extern "C" fn Instance::remove_ffi(
 ) -> Int = "moonbitlang_async_poll_remove"
 
 ///|
+#cfg(not(platform="windows"))
 fn Instance::remove(
   self : Instance,
   fd : @fd_util.Fd,
@@ -99,12 +122,14 @@ fn Instance::remove(
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn Instance::remove_pid_ffi(
   self : Instance,
   pid_handle : Int,
 ) -> Int = "moonbitlang_async_poll_remove_pid"
 
 ///|
+#cfg(not(platform="windows"))
 fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit {
   if 0 != self.remove_pid_ffi(pid_handle) {
     @os_error.check_errno("poll_remove_pid") catch {
@@ -124,7 +149,24 @@ extern "C" fn get_event(index : Int) -> Event = "moonbitlang_async_event_list_ge
 extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
+
+///|
+#cfg(platform="windows")
+priv struct IoResult(FixedArray[Byte])
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::new() -> IoResult = "moonbitlang_async_make_io_result"
+
+///|
+#cfg(platform="windows")
+extern "C" fn Event::io_result(self : Event) -> IoResult = "moonbitlang_async_event_get_io_result"
+
+///|
+#cfg(platform="windows")
+extern "C" fn Event::bytes_transferred(self : Event) -> Int = "moonbitlang_async_event_get_bytes_transferred"
 
 ///|
 extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"

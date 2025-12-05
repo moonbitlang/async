@@ -13,11 +13,13 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 priv struct EventLoop {
   poll : Instance
   fds : Map[@fd_util.Fd, IoHandle]
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : @fd_util.Fd
+  notify_send : @fd_util.Fd
   max_worker_count : Int
   mut job_id : Int
   job_queue : @deque.Deque[QueuedJob]
@@ -28,6 +30,20 @@ priv struct EventLoop {
 }
 
 ///|
+#cfg(platform="windows")
+priv struct EventLoop {
+  poll : Instance
+  fds : Map[@fd_util.Fd, IoHandle]
+  max_worker_count : Int
+  job_queue : @deque.Deque[QueuedJob]
+  idle_workers : @deque.Deque[Worker]
+  running_workers : Map[Int, Worker]
+  jobs : Map[Int, @coroutine.Coroutine]
+  timers : @sorted_set.SortedSet[Timer]
+}
+
+///|
+#cfg(not(platform="windows"))
 struct IoHandle {
   mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
@@ -40,6 +56,17 @@ struct IoHandle {
 priv struct QueuedJob {
   job_id : Int
   job : Job
+}
+
+///|
+#cfg(platform="windows")
+struct IoHandle {
+  mut fd : @fd_util.Fd
+  kind : @fd_util.FileKind
+  mut read_result : IoResult?
+  mut read : @coroutine.Coroutine?
+  mut write_result : IoResult?
+  mut write : @coroutine.Coroutine?
 }
 
 ///|
@@ -60,12 +87,14 @@ fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit {
 }
 
 ///|
-pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
-  guard curr_loop.val is None
+#cfg(not(platform="windows"))
+fn EventLoop::new() -> EventLoop raise {
+  let poll = Instance::new()
   let (notify_recv, notify_send) = @fd_util.pipe("initialze runtime")
   try {
     @fd_util.set_nonblocking(notify_recv, context="initialize runtime")
     @fd_util.set_blocking(notify_send, context="initialize runtime")
+    poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent)
   } catch {
     err => {
       @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
@@ -73,21 +102,13 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
       raise err
     }
   }
-  defer {
-    @fd_util.close(notify_recv, context="initialize runtime") catch {
-      _ => ()
-    }
-    @fd_util.close(notify_send, context="initialize runtime") catch {
-      _ => ()
-    }
-  }
   init_thread_pool_ffi(notify_send)
-  defer destroy_thread_pool()
-  let evloop = {
-    poll: Instance::new(),
+  {
+    poll,
     fds: {},
     pids: {},
     notify_recv,
+    notify_send,
     max_worker_count: 1024,
     job_id: 0,
     job_queue: @deque.new(),
@@ -96,18 +117,61 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     jobs: {},
     timers: @sorted_set.new(),
   }
-  defer evloop.poll.destroy()
-  evloop.poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent)
-  |> ignore
-  defer (evloop.poll.remove(notify_recv, events=ReadEvent) catch { _ => () })
+}
+
+///|
+#cfg(platform="windows")
+fn EventLoop::new() -> EventLoop {
+  let poll = Instance::new()
+  init_thread_pool_ffi(poll.0)
+  {
+    poll,
+    fds: {},
+    max_worker_count: 1024,
+    job_queue: @deque.new(),
+    idle_workers: @deque.new(),
+    running_workers: {},
+    jobs: {},
+    timers: @sorted_set.new(),
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn EventLoop::destroy(evloop : EventLoop) -> Unit {
+  @fd_util.close(evloop.notify_recv, kind=Pipe, context="initialize runtime") catch {
+    _ => ()
+  }
+  @fd_util.close(evloop.notify_send, kind=Pipe, context="initialize runtime") catch {
+    _ => ()
+  }
+  evloop.poll.remove(evloop.notify_recv, events=ReadEvent) catch {
+    _ => ()
+  }
+  evloop.poll.destroy()
+  destroy_thread_pool()
+}
+
+///|
+#cfg(platform="windows")
+fn EventLoop::destroy(evloop : EventLoop) -> Unit {
+  evloop.poll.destroy()
+  destroy_thread_pool()
+}
+
+///|
+pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
+  guard curr_loop.val is None
+  let evloop = EventLoop::new()
+  defer evloop.destroy()
   curr_loop.val = Some(evloop)
+  defer {
+    curr_loop.val = None
+  }
   for hook in hooks {
     if hook.init is Some(init) {
       init()
     }
-  }
-  defer {
-    curr_loop.val = None
   }
   let main = @coroutine.spawn(f)
   evloop.run_forever()
@@ -115,7 +179,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
 }
 
 ///|
-fn EventLoop::poll(self : Self) -> Unit raise {
+fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if self.timers.iter().head() is Some(timer) {
@@ -135,6 +199,29 @@ fn EventLoop::poll(self : Self) -> Unit raise {
       break
     }
   }
+  n
+}
+
+///|
+fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
+  guard self.running_workers.get(job_id) is Some(worker)
+  self.running_workers.remove(job_id)
+  match self.job_queue.pop_front() {
+    None => self.idle_workers.push_back(worker)
+    Some(job) => {
+      self.running_workers[job.job_id] = worker
+      wake_worker(worker, job.job_id, job.job)
+    }
+  }
+  if self.jobs.get(job_id) is Some(coro) {
+    coro.wake()
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn EventLoop::poll(self : Self) -> Unit raise {
+  let n = self.wait_for_event()
   for i in 0..<n {
     let event = get_event(i)
     let events = event.events()
@@ -145,18 +232,7 @@ fn EventLoop::poll(self : Self) -> Unit raise {
       }
     } else if fd == self.notify_recv {
       while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
-        guard self.running_workers.get(job_id) is Some(worker)
-        self.running_workers.remove(job_id)
-        match self.job_queue.pop_front() {
-          None => self.idle_workers.push_back(worker)
-          Some(job) => {
-            self.running_workers[job.job_id] = worker
-            wake_worker(worker, job.job_id, job.job)
-          }
-        }
-        if self.jobs.get(job_id) is Some(coro) {
-          coro.wake()
-        }
+        self.handle_completed_job(job_id)
       } else {
         if not(@os_error.is_nonblocking_io_error()) {
           @os_error.check_errno("runtime internal: failed to get completed job")
@@ -174,6 +250,26 @@ fn EventLoop::poll(self : Self) -> Unit raise {
 }
 
 ///|
+#cfg(platform="windows")
+fn EventLoop::poll(self : Self) -> Unit raise {
+  let n = self.wait_for_event()
+  for i in 0..<n {
+    let event = get_event(i)
+    let fd = event.fd()
+    if @fd_util.fd_is_valid(fd) {
+      // completed IO operation on a file descriptor
+      ...
+    } else {
+      // custom completion packet from thread pool.
+      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
+      let job_id = event.bytes_transferred()
+      self.handle_completed_job(job_id)
+    }
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
 fn EventLoop::cleanup(self : Self) -> Unit raise {
   for hook in hooks {
     if hook.exit is Some(exit) {
@@ -211,6 +307,29 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 }
 
 ///|
+#cfg(platform="windows")
+fn EventLoop::cleanup(self : Self) -> Unit raise {
+  for hook in hooks {
+    if hook.exit is Some(exit) {
+      exit()
+    }
+  }
+  for fd, handle in self.fds {
+    if handle.read is Some(coro) {
+      coro.cancel()
+    }
+    if handle.write is Some(coro) {
+      coro.cancel()
+    }
+    @fd_util.close(
+      fd,
+      kind=handle.kind,
+      context="runtime internal: close leaking fd",
+    )
+  }
+}
+
+///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   let poll_coro = @coroutine.spawn(fn() {
     while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
@@ -236,13 +355,35 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
-) -> IoHandle {
+) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   let handle = { fd, kind, read: None, write: None, events: NoEvent }
+  evloop.fds[fd] = handle
+  handle
+}
+
+///|
+#cfg(platform="windows")
+pub fn IoHandle::from_fd(
+  fd : @fd_util.Fd,
+  kind~ : @fd_util.FileKind,
+) -> IoHandle raise {
+  guard curr_loop.val is Some(evloop)
+  guard evloop.fds.get(fd) is None
+  evloop.poll.register(fd)
+  let handle = {
+    fd,
+    kind,
+    read_result: None,
+    read: None,
+    write_result: None,
+    write: None,
+  }
   evloop.fds[fd] = handle
   handle
 }
@@ -265,9 +406,12 @@ pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  guard handle.fd >= 0 else { abort("file descriptor already closed") }
+  guard @fd_util.fd_is_valid(handle.fd) else {
+    abort("file descriptor already closed")
+  }
   if (handle.events & ReadEvent) == 0 {
     evloop.poll.register(
       handle.fd,
@@ -280,9 +424,23 @@ fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
 }
 
 ///|
+#cfg(not(platform="windows"))
+fn IoHandle::can_wait_read(handle : IoHandle) -> Bool {
+  (handle.events & ReadEvent) != 0
+}
+
+///|
+#cfg(platform="windows")
+fn IoHandle::can_wait_read(handle : IoHandle) -> Bool {
+  handle.read_result is Some(_)
+}
+
+///|
 async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
-  guard (handle.events & ReadEvent) != 0
-  guard handle.fd >= 0 else { abort("file descriptor already closed") }
+  guard handle.can_wait_read()
+  guard @fd_util.fd_is_valid(handle.fd) else {
+    abort("file descriptor already closed")
+  }
   guard handle.read is None
   handle.read = Some(@coroutine.current_coroutine())
   defer {
@@ -292,9 +450,12 @@ async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
-  guard handle.fd >= 0 else { abort("file descriptor already closed") }
+  guard @fd_util.fd_is_valid(handle.fd) else {
+    abort("file descriptor already closed")
+  }
   if (handle.events & WriteEvent) == 0 {
     evloop.poll.register(
       handle.fd,
@@ -307,9 +468,23 @@ fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
 }
 
 ///|
+#cfg(not(platform="windows"))
+fn IoHandle::can_wait_write(handle : IoHandle) -> Bool {
+  (handle.events & ReadEvent) != 0
+}
+
+///|
+#cfg(platform="windows")
+fn IoHandle::can_wait_write(handle : IoHandle) -> Bool {
+  handle.write_result is Some(_)
+}
+
+///|
 async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
-  guard (handle.events & WriteEvent) != 0
-  guard handle.fd >= 0 else { abort("file descriptor already closed") }
+  guard handle.can_wait_write()
+  guard @fd_util.fd_is_valid(handle.fd) else {
+    abort("file descriptor already closed")
+  }
   guard handle.write is None
   let coro = @coroutine.current_coroutine()
   handle.write = Some(coro)
@@ -323,9 +498,10 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 /// Detach a file descriptor from the event loop,
 /// but does not close the file descriptor itself.
 /// The underlying file descriptor is returned.
+#cfg(not(platform="windows"))
 pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
   guard curr_loop.val is Some(evloop)
-  guard handle.fd >= 0 else { -1 }
+  guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
   evloop.fds.remove(handle.fd)
   if not(handle.events is NoEvent) {
     evloop.poll.remove(handle.fd, events=handle.events) catch {
@@ -333,7 +509,18 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
     }
   }
   let fd = handle.fd
-  handle.fd = -1
+  handle.fd = @fd_util.invalid_fd
+  fd
+}
+
+///|
+#cfg(platform="windows")
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
+  guard curr_loop.val is Some(evloop)
+  guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
+  evloop.fds.remove(handle.fd)
+  let fd = handle.fd
+  handle.fd = @fd_util.invalid_fd
   fd
 }
 
@@ -342,7 +529,7 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
 /// This function is idempotent: it is safe to call `.close()` multiple times.
 pub fn IoHandle::close(handle : IoHandle) -> Unit {
   let fd = handle.detach_from_event_loop()
-  if fd >= 0 {
+  if @fd_util.fd_is_valid(fd) {
     @fd_util.close(fd, kind=handle.kind, context="") catch {
       _ => ()
     }
@@ -385,6 +572,7 @@ async fn perform_job_in_worker(
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn read_ffi(
   fd : @fd_util.Fd,
@@ -394,6 +582,7 @@ extern "C" fn read_ffi(
 ) -> Int = "moonbitlang_async_read"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::read(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -425,6 +614,22 @@ pub async fn IoHandle::read(
 }
 
 ///|
+#cfg(platform="windows")
+pub async fn IoHandle::read(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  if handle.kind is Socket {
+    ...
+  } else {
+    ...
+  }
+}
+
+///|
 pub async fn IoHandle::read_at(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -439,6 +644,7 @@ pub async fn IoHandle::read_at(
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn write_ffi(
   fd : @fd_util.Fd,
@@ -448,6 +654,7 @@ extern "C" fn write_ffi(
 ) -> Int = "moonbitlang_async_write"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::write(
   handle : IoHandle,
   buf : Bytes,
@@ -479,6 +686,22 @@ pub async fn IoHandle::write(
 }
 
 ///|
+#cfg(platform="windows")
+pub async fn IoHandle::write(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  if handle.kind is Socket {
+    ...
+  } else {
+    ...
+  }
+}
+
+///|
 pub async fn IoHandle::write_at(
   handle : IoHandle,
   buf : Bytes,
@@ -493,6 +716,7 @@ pub async fn IoHandle::write_at(
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
@@ -510,6 +734,7 @@ pub async fn spawn(
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn wait_pid(pid : Int) -> Unit {
   guard curr_loop.val is Some(evloop)
   let alt_id = match evloop.poll.register_pid(pid) {

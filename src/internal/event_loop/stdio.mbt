@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 fn setup_stdio(
   fd : Int,
   context~ : String,
@@ -46,6 +47,7 @@ fn setup_stdio(
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub let stdin : IoHandle = setup_stdio(
   0,
   context="initialize `stdin`",
@@ -53,6 +55,7 @@ pub let stdin : IoHandle = setup_stdio(
 )
 
 ///|
+#cfg(not(platform="windows"))
 pub let stdout : IoHandle = setup_stdio(
   1,
   context="initialize `stdout`",
@@ -60,6 +63,7 @@ pub let stdout : IoHandle = setup_stdio(
 )
 
 ///|
+#cfg(not(platform="windows"))
 pub let stderr : IoHandle = setup_stdio(
   2,
   context="initialize `stderr`",

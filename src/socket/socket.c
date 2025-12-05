@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+
 #include <stdint.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -202,3 +204,5 @@ int moonbitlang_async_getsockname(int sock, struct sockaddr *addr_out) {
   socklen_t len = Moonbit_array_length(addr_out);
   return getsockname(sock, addr_out, &len);
 }
+
+#endif

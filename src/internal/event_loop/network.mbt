@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf, addr)
 extern "C" fn recvfrom_ffi(
   fd : @fd_util.Fd,
@@ -23,6 +24,7 @@ extern "C" fn recvfrom_ffi(
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -50,6 +52,7 @@ pub async fn IoHandle::recvfrom(
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf, addr)
 extern "C" fn sendto_ffi(
   fd : @fd_util.Fd,
@@ -60,6 +63,7 @@ extern "C" fn sendto_ffi(
 ) -> Int = "moonbitlang_async_sendto"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
@@ -87,13 +91,16 @@ pub async fn IoHandle::sendto(
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(addr)
 extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::connect(
   handle : IoHandle,
   addr : Bytes,
@@ -117,10 +124,12 @@ pub async fn IoHandle::connect(
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(addr_buf)
 extern "C" fn accept_ffi(sock : @fd_util.Fd, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn IoHandle::accept(
   handle : IoHandle,
   addr : Bytes,
@@ -147,9 +156,11 @@ pub async fn IoHandle::accept(
 pub type AddrInfo
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn getaddrinfo(
   host : StringView,
   context~ : String,

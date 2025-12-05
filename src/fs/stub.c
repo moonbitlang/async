@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -42,3 +44,5 @@ int moonbitlang_async_get_X_OK() {
 int moonbitlang_async_get_F_OK() {
   return F_OK;
 }
+
+#endif

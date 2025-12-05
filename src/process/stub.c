@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <string.h>
@@ -54,3 +56,5 @@ int moonbitlang_async_get_process_result(pid_t pid, int *out) {
 void moonbitlang_async_terminate_process(pid_t pid) {
   kill(pid, SIGTERM);
 }
+
+#endif
