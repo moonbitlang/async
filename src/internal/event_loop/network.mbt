@@ -15,7 +15,7 @@
 ///|
 #borrow(buf, addr)
 extern "C" fn recvfrom_ffi(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -52,7 +52,7 @@ pub async fn IoHandle::recvfrom(
 ///|
 #borrow(buf, addr)
 extern "C" fn sendto_ffi(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
@@ -88,10 +88,10 @@ pub async fn IoHandle::sendto(
 
 ///|
 #borrow(addr)
-extern "C" fn connect_ffi(sock : Int, addr : Bytes) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
 
 ///|
-extern "C" fn get_socket_err(sock : Int) -> Int = "moonbitlang_async_getsockerr"
+extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
 pub async fn IoHandle::connect(
@@ -118,7 +118,7 @@ pub async fn IoHandle::connect(
 
 ///|
 #borrow(addr_buf)
-extern "C" fn accept_ffi(sock : Int, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
+extern "C" fn accept_ffi(sock : @fd_util.Fd, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
 
 ///|
 pub async fn IoHandle::accept(

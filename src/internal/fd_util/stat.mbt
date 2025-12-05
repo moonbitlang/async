@@ -14,11 +14,11 @@
 
 ///|
 #borrow(out)
-extern "C" fn get_fd_kind_sync_ffi(fd : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_fd_kind_sync"
+extern "C" fn get_fd_kind_sync_ffi(fd : Fd, out : Ref[Int64]) -> Int = "moonbitlang_async_get_fd_kind_sync"
 
 ///|
-pub fn get_fd_kind_sync(fd : Int, context~ : String) -> FileKind raise {
-  let out = @ref.new(0)
+pub fn get_fd_kind_sync(fd : Fd, context~ : String) -> FileKind raise {
+  let out = @ref.new(0L)
   if get_fd_kind_sync_ffi(fd, out) < 0 {
     @os_error.check_errno(context)
   }
@@ -46,7 +46,7 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 }
 
 ///|
-pub extern "C" fn FileKind::from_sys_kind(sys_kind : Int) -> FileKind = "moonbitlang_async_file_kind_from_sys_kind"
+pub extern "C" fn FileKind::from_sys_kind(sys_kind : Int64) -> FileKind = "moonbitlang_async_file_kind_from_sys_kind"
 
 ///|
 struct FileTime(FixedArray[Byte])

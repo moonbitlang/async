@@ -16,7 +16,7 @@
 priv type Worker
 
 ///|
-extern "C" fn init_thread_pool_ffi(notify_send : Int) = "moonbitlang_async_init_thread_pool"
+extern "C" fn init_thread_pool_ffi(notify_send : @fd_util.Fd) = "moonbitlang_async_init_thread_pool"
 
 ///|
 extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
@@ -31,7 +31,7 @@ extern "C" fn spawn_worker(init_job_id : Int, init_job : Job) -> Worker = "moonb
 extern "C" fn wake_worker(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
-extern "C" fn fetch_completion_ffi(notify_recv : Int) -> Int = "moonbitlang_async_fetch_completion"
+extern "C" fn fetch_completion_ffi(notify_recv : @fd_util.Fd) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
 priv type Job
@@ -47,7 +47,7 @@ extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 ///|
 #owned(buf)
 extern "C" fn Job::read(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset : Int,
   len : Int,
@@ -58,7 +58,7 @@ extern "C" fn Job::read(
 ///|
 #owned(buf)
 extern "C" fn Job::write(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : Bytes,
   offset : Int,
   len : Int,
@@ -83,7 +83,7 @@ extern "C" fn Job::open(
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_kind(job : Job) -> Int = "moonbitlang_async_get_open_job_kind"
+extern "C" fn Job::get_open_job_kind(job : Job) -> Int64 = "moonbitlang_async_get_open_job_kind"
 
 ///|
 #owned(path)
@@ -93,7 +93,11 @@ extern "C" fn Job::file_kind_by_path(
 ) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
 
 ///|
-extern "C" fn Job::file_size(fd : Int) -> Job = "moonbitlang_async_make_file_size_job"
+#borrow(job)
+extern "C" fn Job::get_file_kind_by_path_result(job : Job) -> Int64 = "moonbitlang_async_get_file_kind_by_path_result"
+
+///|
+extern "C" fn Job::file_size(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_file_size_job"
 
 ///|
 #borrow(job)
@@ -101,7 +105,7 @@ extern "C" fn Job::get_file_size_result(job : Job) -> Int64 = "moonbitlang_async
 
 ///|
 #owned(out)
-extern "C" fn Job::file_time(fd : Int, out : @fd_util.FileTime) -> Job = "moonbitlang_async_make_file_time_job"
+extern "C" fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job = "moonbitlang_async_make_file_time_job"
 
 ///|
 #owned(path, out)
@@ -120,7 +124,7 @@ extern "C" fn Job::access(path : @os_string.OsString, amode : Int) -> Job = "moo
 extern "C" fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job = "moonbitlang_async_make_chmod_job"
 
 ///|
-extern "C" fn Job::fsync(fd : Int, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
+extern "C" fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
 
 ///|
 #owned(path)
@@ -170,9 +174,9 @@ extern "C" fn Job::spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
   env : FixedArray[@os_string.OsString?],
-  stdin : Int,
-  stdout : Int,
-  stderr : Int,
+  stdin : @fd_util.Fd,
+  stdout : @fd_util.Fd,
+  stderr : @fd_util.Fd,
   cwd : @os_string.OsString?,
 ) -> Job = "moonbitlang_async_make_spawn_job"
 

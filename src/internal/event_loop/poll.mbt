@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct Instance(Int)
+priv struct Instance(@fd_util.Fd)
 
 ///|
 const NoEvent = 0
@@ -36,7 +36,7 @@ extern "C" fn Instance::destroy(self : Instance) = "moonbitlang_async_poll_destr
 ///|
 extern "C" fn Instance::register_ffi(
   self : Instance,
-  fd : Int,
+  fd : @fd_util.Fd,
   prev_events~ : Int,
   new_events~ : Int,
   oneshot~ : Bool,
@@ -45,7 +45,7 @@ extern "C" fn Instance::register_ffi(
 ///|
 fn Instance::register(
   self : Instance,
-  fd : Int,
+  fd : @fd_util.Fd,
   prev_events~ : Int,
   new_events~ : Int,
   oneshot? : Bool = false,
@@ -83,12 +83,16 @@ fn Instance::register_pid(
 ///|
 extern "C" fn Instance::remove_ffi(
   self : Instance,
-  fd : Int,
+  fd : @fd_util.Fd,
   events~ : Int,
 ) -> Int = "moonbitlang_async_poll_remove"
 
 ///|
-fn Instance::remove(self : Instance, fd : Int, events~ : Int) -> Unit raise {
+fn Instance::remove(
+  self : Instance,
+  fd : @fd_util.Fd,
+  events~ : Int,
+) -> Unit raise {
   if 0 != self.remove_ffi(fd, events~) {
     @os_error.check_errno("poll_remove")
   }
@@ -117,7 +121,7 @@ priv type Event
 extern "C" fn get_event(index : Int) -> Event = "moonbitlang_async_event_list_get"
 
 ///|
-extern "C" fn Event::fd(self : Event) -> Int = "moonbitlang_async_event_get_fd"
+extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
 
 ///|
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"

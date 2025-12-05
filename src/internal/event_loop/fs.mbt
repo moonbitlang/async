@@ -65,7 +65,7 @@ pub async fn file_kind_by_path(
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    sys_kind => @fd_util.FileKind::from_sys_kind(sys_kind)
+    _ => @fd_util.FileKind::from_sys_kind(job.get_file_kind_by_path_result())
   }
 }
 

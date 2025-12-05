@@ -413,7 +413,7 @@ struct open_job {
   char *filename;
   int flags;
   int mode;
-  mode_t kind;
+  int64_t kind;
 };
 
 static
@@ -474,6 +474,7 @@ struct file_kind_by_path_job {
   struct job job;
   char *path;
   int follow_symlink;
+  int64_t result;
 };
 
 static
@@ -494,7 +495,7 @@ void file_kind_by_path_job_worker(struct job *job) {
   if (job->ret < 0) {
     job->err = errno;
   } else {
-    job->ret = stat_obj.st_mode;
+    job->result = stat_obj.st_mode;
   }
 }
 
@@ -506,6 +507,10 @@ struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
   job->path = path;
   job->follow_symlink = follow_symlink;
   return job;
+}
+
+int64_t moonbitlang_async_get_file_kind_by_path_result(struct file_kind_by_path_job *job) {
+  return job->result;
 }
 
 // ===== file size job, get size of opened file =====

@@ -13,10 +13,20 @@
 // limitations under the License.
 
 ///|
-extern "C" fn fd_is_nonblocking_ffi(fd : Int) -> Int = "moonbitlang_async_fd_is_nonblocking"
+#cfg(platform="windows")
+pub type Fd = UInt64
 
 ///|
-pub fn fd_is_nonblocking(fd : Int, context~ : String) -> Bool raise {
+#cfg(not(platform="windows"))
+pub type Fd = Int
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn fd_is_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang_async_fd_is_nonblocking"
+
+///|
+#cfg(not(platform="windows"))
+pub fn fd_is_nonblocking(fd : Fd, context~ : String) -> Bool raise {
   let ret = fd_is_nonblocking_ffi(fd)
   if ret < 0 {
     @os_error.check_errno(context)
@@ -25,41 +35,49 @@ pub fn fd_is_nonblocking(fd : Int, context~ : String) -> Bool raise {
 }
 
 ///|
-extern "C" fn set_blocking_ffi(fd : Int) -> Int = "moonbitlang_async_set_blocking"
+#cfg(not(platform="windows"))
+extern "C" fn set_blocking_ffi(fd : Fd) -> Int = "moonbitlang_async_set_blocking"
 
 ///|
-pub fn set_blocking(fd : Int, context~ : String) -> Unit raise {
+#cfg(not(platform="windows"))
+pub fn set_blocking(fd : Fd, context~ : String) -> Unit raise {
   if set_blocking_ffi(fd) < 0 {
     @os_error.check_errno(context)
   }
 }
 
 ///|
-extern "C" fn set_nonblocking_ffi(fd : Int) -> Int = "moonbitlang_async_set_nonblocking"
+#cfg(not(platform="windows"))
+extern "C" fn set_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang_async_set_nonblocking"
 
 ///|
-pub fn set_nonblocking(fd : Int, context~ : String) -> Unit raise {
+#cfg(not(platform="windows"))
+pub fn set_nonblocking(fd : Fd, context~ : String) -> Unit raise {
   if set_nonblocking_ffi(fd) < 0 {
     @os_error.check_errno(context)
   }
 }
 
 ///|
-extern "C" fn set_cloexec_ffi(fd : Int) -> Int = "moonbitlang_async_set_cloexec"
+#cfg(not(platform="windows"))
+extern "C" fn set_cloexec_ffi(fd : Fd) -> Int = "moonbitlang_async_set_cloexec"
 
 ///|
-pub fn set_cloexec(fd : Int, context~ : String) -> Unit raise {
+#cfg(not(platform="windows"))
+pub fn set_cloexec(fd : Fd, context~ : String) -> Unit raise {
   if set_cloexec_ffi(fd) < 0 {
     @os_error.check_errno(context)
   }
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(fds)
-extern "C" fn pipe_ffi(fds : FixedArray[Int]) -> Int = "moonbitlang_async_pipe"
+extern "C" fn pipe_ffi(fds : FixedArray[Fd]) -> Int = "moonbitlang_async_pipe"
 
 ///|
-pub fn pipe(context : String) -> (Int, Int) raise {
+#cfg(not(platform="windows"))
+pub fn pipe(context : String) -> (Fd, Fd) raise {
   let fds : FixedArray[Int] = [0, 0]
   if 0 != pipe_ffi(fds) {
     @os_error.check_errno(context)
@@ -71,11 +89,37 @@ pub fn pipe(context : String) -> (Int, Int) raise {
 }
 
 ///|
-extern "C" fn close_ffi(fd : Int) -> Int = "close"
+#cfg(not(platform="windows"))
+extern "C" fn close_ffi(fd : Fd) -> Int = "close"
 
 ///|
-pub fn close(fd : Int, context~ : String) -> Unit raise {
+#cfg(not(platform="windows"))
+pub fn close(fd : Fd, context~ : String) -> Unit raise {
   if close_ffi(fd) < 0 {
     @os_error.check_errno(context)
   }
 }
+
+///|
+#cfg(platform="windows")
+extern "C" fn close_ffi(fd : Fd) -> Int = "CloseHandle"
+
+///|
+#cfg(platform="windows")
+pub fn close(fd : Fd, context~ : String) -> Unit raise {
+  if close_ffi(fd) == 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+#cfg(platform="windows")
+extern "C" fn get_invalid_handle() -> Fd = "moonbitlang_async_get_invalid_handle"
+
+///|
+#cfg(platform="windows")
+pub let invalid_fd : Fd = get_invalid_handle()
+
+///|
+#cfg(not(platform="windows"))
+pub let invalid_fd : Fd = -1

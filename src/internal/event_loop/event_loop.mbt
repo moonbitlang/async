@@ -15,9 +15,9 @@
 ///|
 priv struct EventLoop {
   poll : Instance
-  fds : Map[Int, IoHandle]
+  fds : Map[@fd_util.Fd, IoHandle]
   pids : Map[Int, @coroutine.Coroutine]
-  notify_recv : Int
+  notify_recv : @fd_util.Fd
   max_worker_count : Int
   mut job_id : Int
   job_queue : @deque.Deque[QueuedJob]
@@ -29,7 +29,7 @@ priv struct EventLoop {
 
 ///|
 struct IoHandle {
-  mut fd : Int
+  mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
   mut events : Int
   mut read : @coroutine.Coroutine?
@@ -232,7 +232,10 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
-pub fn IoHandle::from_fd(fd : Int, kind~ : @fd_util.FileKind) -> IoHandle {
+pub fn IoHandle::from_fd(
+  fd : @fd_util.Fd,
+  kind~ : @fd_util.FileKind,
+) -> IoHandle {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   let handle = { fd, kind, read: None, write: None, events: NoEvent }
@@ -241,14 +244,14 @@ pub fn IoHandle::from_fd(fd : Int, kind~ : @fd_util.FileKind) -> IoHandle {
 }
 
 ///|
-pub fn IoHandle::from_existing_fd(fd : Int) -> IoHandle {
+pub fn IoHandle::from_existing_fd(fd : @fd_util.Fd) -> IoHandle {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is Some(io)
   io
 }
 
 ///|
-pub fn IoHandle::fd(handle : IoHandle) -> Int {
+pub fn IoHandle::fd(handle : IoHandle) -> @fd_util.Fd {
   handle.fd
 }
 
@@ -316,7 +319,7 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 /// Detach a file descriptor from the event loop,
 /// but does not close the file descriptor itself.
 /// The underlying file descriptor is returned.
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Int {
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
   guard curr_loop.val is Some(evloop)
   guard handle.fd >= 0 else { -1 }
   evloop.fds.remove(handle.fd)
@@ -380,7 +383,7 @@ async fn perform_job_in_worker(
 ///|
 #borrow(buf)
 extern "C" fn read_ffi(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
@@ -434,7 +437,7 @@ pub async fn IoHandle::read_at(
 ///|
 #borrow(buf)
 extern "C" fn write_ffi(
-  fd : Int,
+  fd : @fd_util.Fd,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
@@ -490,9 +493,9 @@ pub async fn spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
   env~ : FixedArray[@os_string.OsString?],
-  stdin~ : Int,
-  stdout~ : Int,
-  stderr~ : Int,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Int {

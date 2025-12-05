@@ -19,7 +19,7 @@ struct File {
 }
 
 ///|
-pub fn File::fd(self : File) -> Int {
+pub fn File::fd(self : File) -> @fd_util.Fd {
   self.io.fd()
 }
 
@@ -242,7 +242,7 @@ pub async fn File::size(self : File) -> Int64 {
 }
 
 ///|
-extern "C" fn as_dir_ffi(fd : Int) -> Directory = "fdopendir"
+extern "C" fn as_dir_ffi(fd : @fd_util.Fd) -> Directory = "fdopendir"
 
 ///|
 extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
