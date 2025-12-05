@@ -13,27 +13,9 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
-test "readdir clear errno" {
-  @event_loop.with_event_loop(fn() {
-    // do something to set a non-zero errno
-    try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
-      _ => ()
-    } noraise {
-      _ => ()
-    }
-    let dir = @fs.opendir("src/internal/event_loop")
-    defer dir.close()
-    let list = dir.read_all()
-    inspect(list.length(), content="17")
-  })
-}
-
-///|
 #cfg(target="js")
 let _ignore_unused_import : Unit = {
   ignore(@io.pipe)
   ignore(@async.sleep)
-  ignore(@fs.unimplemented)
   ignore(@pipe.unimplemented)
 }

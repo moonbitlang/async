@@ -60,3 +60,19 @@ async test "as_dir" {
     "timestamp_test.mbt: Regular", "random_access_test.mbt: Regular",
   ])
 }
+
+///|
+test "readdir clear errno" {
+  @event_loop.with_event_loop(fn() {
+    // do something to set a non-zero errno
+    try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
+      _ => ()
+    } noraise {
+      _ => ()
+    }
+    let dir = @fs.opendir("src/internal/event_loop")
+    defer dir.close()
+    let list = dir.read_all()
+    inspect(list.length(), content="17")
+  })
+}

@@ -10,7 +10,6 @@
     "moonbitlang/async"
   ],
   "test-import": [
-    "moonbitlang/async/fs",
     "moonbitlang/async",
     "moonbitlang/async/pipe",
     "moonbitlang/async/io"
