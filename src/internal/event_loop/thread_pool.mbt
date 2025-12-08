@@ -74,8 +74,15 @@ extern "C" fn Job::write(
 #owned(filename)
 extern "C" fn Job::open(
   filename : @os_string.OsString,
-  flags : Int,
-  mode : Int,
+  // 0 => read only, 1 => write only, 2 => read write
+  access : Int,
+  create~ : Bool,
+  append~ : Bool,
+  truncate~ : Bool,
+  // 0 => no sync, 1 => data sync, 2 => full sync
+  sync~ : Int,
+  // permission for file when new file is created
+  mode~ : Int,
 ) -> Job = "moonbitlang_async_make_open_job"
 
 ///|

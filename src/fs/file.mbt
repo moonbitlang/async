@@ -82,32 +82,27 @@ pub async fn open(
   create? : Int,
   truncate? : Bool = false,
 ) -> File {
-  let mut flags = match mode {
-    ReadOnly => const_O_RDONLY
-    WriteOnly => const_O_WRONLY
-    ReadWrite => const_O_RDWR
+  let access = match mode {
+    ReadOnly => 0
+    WriteOnly => 1
+    ReadWrite => 2
   }
-  let user_mode = match create {
-    None => 0
-    Some(mode) => {
-      flags = flags | const_O_CREAT
-      mode
-    }
+  let (create, user_mode) = match create {
+    None => (false, 0)
+    Some(mode) => (true, mode)
   }
-  if append {
-    flags = flags | const_O_APPEND
-  }
-  if truncate {
-    flags = flags | const_O_TRUNC
-  }
-  match sync {
-    NoSync => ()
-    Data => flags = flags | const_O_DSYNC
-    Full => flags = flags | const_O_SYNC
+  let sync = match sync {
+    NoSync => 0
+    Data => 1
+    Full => 2
   }
   let io = @event_loop.open(
     filename,
-    flags~,
+    access,
+    create~,
+    append~,
+    truncate~,
+    sync~,
     mode=user_mode,
     context="@fs.open()",
   )

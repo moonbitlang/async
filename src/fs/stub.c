@@ -50,35 +50,3 @@ int moonbitlang_async_get_X_OK() {
 int moonbitlang_async_get_F_OK() {
   return F_OK;
 }
-
-int moonbitlang_async_get_O_RDONLY() {
-  return O_RDONLY;
-}
-
-int moonbitlang_async_get_O_WRONLY() {
-  return O_WRONLY;
-}
-
-int moonbitlang_async_get_O_RDWR() {
-  return O_RDWR;
-}
-
-int moonbitlang_async_get_O_SYNC() {
-  return O_SYNC;
-}
-
-int moonbitlang_async_get_O_DSYNC() {
-  return O_DSYNC;
-}
-
-int moonbitlang_async_get_O_APPEND() {
-  return O_APPEND;
-}
-
-int moonbitlang_async_get_O_TRUNC() {
-  return O_TRUNC;
-}
-
-int moonbitlang_async_get_O_CREAT() {
-  return O_CREAT;
-}
