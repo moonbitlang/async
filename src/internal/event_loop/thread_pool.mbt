@@ -72,7 +72,11 @@ extern "C" fn Job::write(
 
 ///|
 #owned(filename)
-extern "C" fn Job::open(filename : Bytes, flags : Int, mode : Int) -> Job = "moonbitlang_async_make_open_job"
+extern "C" fn Job::open(
+  filename : @os_string.OsString,
+  flags : Int,
+  mode : Int,
+) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
 #borrow(job)
@@ -81,7 +85,7 @@ extern "C" fn Job::get_open_job_kind(job : Job) -> Int = "moonbitlang_async_get_
 ///|
 #owned(path)
 extern "C" fn Job::file_kind_by_path(
-  path : Bytes,
+  path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
 
@@ -99,41 +103,44 @@ extern "C" fn Job::file_time(fd : Int, out : @fd_util.FileTime) -> Job = "moonbi
 ///|
 #owned(path, out)
 extern "C" fn Job::file_time_by_path(
-  path : Bytes,
+  path : @os_string.OsString,
   out : @fd_util.FileTime,
   follow_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_file_time_by_path_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::access(path : Bytes, amode : Int) -> Job = "moonbitlang_async_make_access_job"
+extern "C" fn Job::access(path : @os_string.OsString, amode : Int) -> Job = "moonbitlang_async_make_access_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::chmod(path : Bytes, mode : Int) -> Job = "moonbitlang_async_make_chmod_job"
+extern "C" fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job = "moonbitlang_async_make_chmod_job"
 
 ///|
 extern "C" fn Job::fsync(fd : Int, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::remove(path : Bytes) -> Job = "moonbitlang_async_make_remove_job"
+extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|
 #owned(target, path)
-extern "C" fn Job::symlink(target : Bytes, path : Bytes) -> Job = "moonbitlang_async_make_symlink_job"
+extern "C" fn Job::symlink(
+  target : @os_string.OsString,
+  path : @os_string.OsString,
+) -> Job = "moonbitlang_async_make_symlink_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::mkdir(path : Bytes, mode : Int) -> Job = "moonbitlang_async_make_mkdir_job"
+extern "C" fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job = "moonbitlang_async_make_mkdir_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::rmdir(path : Bytes) -> Job = "moonbitlang_async_make_rmdir_job"
+extern "C" fn Job::rmdir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_rmdir_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::opendir(path : Bytes) -> Job = "moonbitlang_async_make_opendir_job"
+extern "C" fn Job::opendir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_opendir_job"
 
 ///|
 #borrow(job)
@@ -148,7 +155,7 @@ extern "C" fn Job::get_readdir_result(job : Job) -> DirectoryEntry = "moonbitlan
 
 ///|
 #owned(path)
-extern "C" fn Job::realpath(path : Bytes) -> Job = "moonbitlang_async_make_realpath_job"
+extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_async_make_realpath_job"
 
 ///|
 #borrow(job)
@@ -157,18 +164,18 @@ extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbit
 ///|
 #owned(path, args, env, cwd)
 extern "C" fn Job::spawn(
-  path : Bytes,
-  args : FixedArray[Bytes?],
-  env : FixedArray[Bytes?],
+  path : @os_string.OsString,
+  args : FixedArray[@os_string.OsString?],
+  env : FixedArray[@os_string.OsString?],
   stdin : Int,
   stdout : Int,
   stderr : Int,
-  cwd : Bytes?,
+  cwd : @os_string.OsString?,
 ) -> Job = "moonbitlang_async_make_spawn_job"
 
 ///|
 #owned(host)
-extern "C" fn Job::getaddrinfo(host : Bytes) -> Job = "moonbitlang_async_make_getaddrinfo_job"
+extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbitlang_async_make_getaddrinfo_job"
 
 ///|
 #borrow(job)

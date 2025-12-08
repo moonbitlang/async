@@ -15,15 +15,4 @@
 ///|
 /// This package currently does not support JavaScript backend
 #cfg(target="js")
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@async.sleep)
-  ignore(@event_loop.sleep)
-  ignore(@coroutine.spawn)
-  ignore(@fs.unimplemented)
-  ignore(@pipe.unimplemented)
-  ignore(@stdio.unimplemented)
-  ignore(@os_error.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-}
+pub let unimplemented : Unit = ignore(@c_buffer.unimplemented)

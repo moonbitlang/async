@@ -3,6 +3,7 @@ package "moonbitlang/async/internal/event_loop"
 
 import(
   "moonbitlang/async/internal/fd_util"
+  "moonbitlang/async/internal/os_string"
 )
 
 // Values
@@ -36,7 +37,7 @@ pub async fn rmdir(StringView, context~ : String) -> Unit
 
 pub async fn sleep(Int) -> Unit
 
-pub async fn spawn(Bytes, FixedArray[Bytes?], env~ : FixedArray[Bytes?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : Bytes?, context~ : String) -> Int
+pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Int
 
 pub let stderr : IoHandle
 

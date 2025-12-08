@@ -47,12 +47,7 @@ pub(all) suberror OSError {
 pub impl Show for OSError with output(self, logger) -> Unit {
   let OSError(errno, context~) = self
   let c_str = strerror(errno)
-  let len = c_str.strlen()
-  let data = FixedArray::make(len, (0 : Byte))
-  c_str.blit_to_bytes(dst=data, offset=0, len~)
-  let errno_desc = @encoding/utf8.decode_lossy(
-    data.unsafe_reinterpret_as_bytes(),
-  )
+  let errno_desc = @os_string.decode(c_str)
   logger
   ..write_string("OSError(")
   ..write_object("\{context}: \{errno_desc}")
