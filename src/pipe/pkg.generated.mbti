@@ -8,15 +8,6 @@ import(
 // Values
 pub fn pipe() -> (PipeRead, PipeWrite) raise
 
-#deprecated
-pub let stderr : PipeWrite
-
-#deprecated
-pub let stdin : PipeRead
-
-#deprecated
-pub let stdout : PipeWrite
-
 // Errors
 
 // Types and methods

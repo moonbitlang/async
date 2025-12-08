@@ -49,21 +49,6 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
 }
 
 ///|
-#deprecated("use `@stdio.stdin` instead")
-pub let stdin : PipeRead = {
-  io: @event_loop.stdin,
-  read_buf: @io.ReaderBuffer::new(),
-}
-
-///|
-#deprecated("use `@stdio.stdout` instead")
-pub let stdout : PipeWrite = @event_loop.stdout
-
-///|
-#deprecated("use `@stdio.stderr` instead")
-pub let stderr : PipeWrite = @event_loop.stderr
-
-///|
 pub fn PipeRead::close(self : PipeRead) -> Unit {
   self.io.close()
 }
