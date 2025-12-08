@@ -1,0 +1,6 @@
+{
+  "import": [ "moonbitlang/async/internal/c_buffer" ],
+  "targets": {
+    "os_string.mbt": [ "native" ]
+  }
+}

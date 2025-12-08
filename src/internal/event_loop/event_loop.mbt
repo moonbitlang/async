@@ -477,13 +477,13 @@ pub async fn IoHandle::write_at(
 
 ///|
 pub async fn spawn(
-  path : Bytes,
-  args : FixedArray[Bytes?],
-  env~ : FixedArray[Bytes?],
+  path : @os_string.OsString,
+  args : FixedArray[@os_string.OsString?],
+  env~ : FixedArray[@os_string.OsString?],
   stdin~ : Int,
   stdout~ : Int,
   stderr~ : Int,
-  cwd~ : Bytes?,
+  cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Int {
   perform_job_in_worker(

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 ///|
-extern "C" fn get_curr_env() -> FixedArray[Bytes?] = "moonbitlang_async_get_curr_env"
+extern "C" fn get_curr_env() -> FixedArray[@os_string.OsString?] = "moonbitlang_async_get_curr_env"
 
 ///|
-let curr_env : FixedArray[Bytes?] = get_curr_env()
+let curr_env : FixedArray[@os_string.OsString?] = get_curr_env()
 
 ///|
 extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
@@ -37,15 +37,15 @@ async fn spawn(
   cwd~ : String?,
   context~ : String,
 ) -> Int {
-  let cmd = @encoding/utf8.encode(cmd)
+  let cmd = @os_string.encode(cmd)
   let argv = FixedArray::make(args.length() + 2, None)
   let cwd = match cwd {
     None => None
-    Some(cwd) => Some(@encoding/utf8.encode(cwd))
+    Some(cwd) => Some(@os_string.encode(cwd))
   }
   argv[0] = Some(cmd)
   for i in 0..<args.length() {
-    argv[i + 1] = Some(@encoding/utf8.encode(args[i]))
+    argv[i + 1] = Some(@os_string.encode(args[i]))
   }
   defer {
     if stdin is Some(p) {
@@ -88,7 +88,7 @@ async fn spawn(
       let envp = FixedArray::make(n + curr_env.length(), None)
       let mut i = 0
       for k, v in extra_env {
-        envp[i] = Some(@encoding/utf8.encode("\{k}=\{v}"))
+        envp[i] = Some(@os_string.encode("\{k}=\{v}"))
         i = i + 1
       }
       curr_env.blit_to(envp, src_offset=0, dst_offset=i, len=curr_env.length())

@@ -27,11 +27,8 @@ int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
 }
 
-moonbit_bytes_t moonbitlang_async_dirent_name(struct dirent *dirent) {
-  int len = strlen(dirent->d_name);
-  moonbit_bytes_t result = moonbit_make_bytes(len, 0);
-  memcpy(result, dirent->d_name, len);
-  return result;
+char *moonbitlang_async_dirent_name(struct dirent *dirent) {
+  return dirent->d_name;
 }
 
 int moonbitlang_async_dirent_is_null(struct dirent *dirent) {

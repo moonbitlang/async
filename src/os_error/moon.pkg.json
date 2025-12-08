@@ -1,6 +1,7 @@
 {
   "import": [
-    "moonbitlang/async/internal/c_buffer"
+    "moonbitlang/async/internal/c_buffer",
+    "moonbitlang/async/internal/os_string"
   ],
   "test-import": [
     "moonbitlang/async",

@@ -154,7 +154,7 @@ pub async fn getaddrinfo(
   host : StringView,
   context~ : String,
 ) -> Result[AddrInfo, String] {
-  let host_bytes = @encoding/utf8.encode(host)
+  let host_bytes = @os_string.encode(host)
   let job = Job::getaddrinfo(host_bytes)
   let ret = perform_job_in_worker(job, allow_cancel=true, context~) catch {
     @os_error.OSError(errno, context~) =>
