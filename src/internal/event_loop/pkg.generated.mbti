@@ -23,7 +23,7 @@ pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, Stri
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-pub async fn open(StringView, flags~ : Int, mode~ : Int, context~ : String) -> IoHandle
+pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
 pub async fn opendir(StringView, context~ : String) -> Directory
 

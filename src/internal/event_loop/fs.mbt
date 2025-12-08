@@ -23,12 +23,27 @@ pub type DirectoryEntry
 ///|
 pub async fn open(
   path : StringView,
-  flags~ : Int,
+  // 0 => read only, 1 => write only, 2 => read write
+  access : Int,
+  create~ : Bool,
+  append~ : Bool,
+  truncate~ : Bool,
+  // 0 => no sync, 1 => data sync, 2 => full sync
+  sync~ : Int,
+  // permission for file when new file is created
   mode~ : Int,
   context~ : String,
 ) -> IoHandle {
   let path_bytes = @os_string.encode(path)
-  let job = Job::open(path_bytes, flags, mode)
+  let job = Job::open(
+    path_bytes,
+    access,
+    create~,
+    append~,
+    truncate~,
+    sync~,
+    mode~,
+  )
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")

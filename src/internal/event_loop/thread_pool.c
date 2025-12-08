@@ -439,12 +439,22 @@ void open_job_worker(struct job *job) {
 
 struct open_job *moonbitlang_async_make_open_job(
   char *filename,
-  int flags,
+  int access,
+  int create,
+  int append,
+  int truncate,
+  int sync,
   int mode
 ) {
+  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
+  static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
+
   struct open_job *job = MAKE_JOB(open);
   job->filename = filename;
-  job->flags = flags;
+  job->flags = access_flags[access] | sync_flags[sync];
+  if (create) job->flags |= O_CREAT;
+  if (append) job->flags |= O_APPEND;
+  if (truncate) job->flags |= O_TRUNC;
   job->mode = mode;
   return job;
 }
