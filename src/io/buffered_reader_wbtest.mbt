@@ -345,4 +345,6 @@ async test "BufferedReader::read_line" {
 
 ///|
 #cfg(target="js")
-let _ignore_unused_import : Unit = ignore(@fs.unimplemented)
+fn _ignore_unused_import() -> Unit {
+  ignore(@fs.unimplemented)
+}

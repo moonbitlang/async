@@ -14,7 +14,7 @@
 
 ///|
 #cfg(target="js")
-let _ignore_unused_import : Unit = {
+fn _ignore_unused_import() -> Unit {
   ignore(@async.sleep)
   ignore(@fs.unimplemented)
   ignore(@bytes_util.ascii_to_string)
