@@ -115,11 +115,9 @@ async test "basic" {
       #|{
       #|  "import": [
       #|    "moonbitlang/async",
-      #|    "moonbitlang/async/io",
       #|    "moonbitlang/async/socket",
       #|    "moonbitlang/async/fs",
       #|    "moonbitlang/async/http",
-      #|    "moonbitlang/async/pipe",
       #|    "moonbitlang/async/process"
       #|  ],
       #|  "is-main": true

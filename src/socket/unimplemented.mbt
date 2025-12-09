@@ -19,7 +19,6 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@event_loop.sleep)
   ignore(@async.sleep)
-  ignore(@semaphore.Semaphore::acquire)
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@c_buffer.unimplemented)

@@ -6,8 +6,7 @@
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/internal/c_buffer",
     "moonbitlang/async/internal/os_string",
-    "moonbitlang/async",
-    "moonbitlang/async/semaphore"
+    "moonbitlang/async"
   ],
   "targets": {
     "access_test.mbt": [ "native" ],

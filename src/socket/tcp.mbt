@@ -115,7 +115,7 @@ pub async fn TcpServer::run_forever(
   defer self.close()
   let conn_limit = match max_connections {
     None => None
-    Some(n) => Some(@semaphore.Semaphore::new(n))
+    Some(n) => Some(@async.Semaphore::new(n))
   }
   @async.with_task_group(fn(group) {
     for {
