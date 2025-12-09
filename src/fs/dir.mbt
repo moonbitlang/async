@@ -152,7 +152,7 @@ pub async fn walk(
   allow_failure? : Bool = false,
 ) -> Unit {
   guard max_concurrency > 0
-  let sem = @semaphore.Semaphore::new(max_concurrency)
+  let sem = @async.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
     async fn handle_path(path : String) {
       group.spawn_bg(allow_failure~, fn() {
