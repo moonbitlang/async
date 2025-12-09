@@ -247,7 +247,9 @@ jobs:
           moon update
 
       - name: moon test
-        run: moon test --enable-coverage
+        run: |
+          moon test --enable-coverage
+          moon test --enable-coverage --target js
 
       - name: coverage report
         run: |
