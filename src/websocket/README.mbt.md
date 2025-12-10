@@ -106,6 +106,10 @@ the following API can be used to do things with the tunnel:
 - `close()`: dispose a WebSocket tunnel, release related resource.
      The underlying HTTP connection will be closed as well.
 - `impl @io.Writer for Conn`: write content to the message currently being sent, created via `.start_message()`
+- `ping()`: actively send a WebSocket PING message and wait for corresponding PONG reply.
+    `.ping()` can be called inside another message being sent.
+    However, `.ping()` must be called when there is another task receiving message from the tunnel in parallel,
+    otherwise the PONG reply can not be fetched, and `.ping()` will hang forever.
 
 ### `Message`
 A single message received from a WebSocket tunnel.
