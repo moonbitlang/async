@@ -42,6 +42,7 @@ pub async fn Conn::end_message(Self) -> Unit
 pub async fn Conn::from_http_client(@http.Client, String, extra_headers? : Map[String, String]) -> Self
 #as_free_fn
 pub async fn Conn::from_http_server(@http.Request, @http.ServerConnection) -> Self
+pub async fn Conn::ping(Self, msg? : BytesView) -> Unit
 pub async fn Conn::recv(Self) -> Message
 pub async fn Conn::send_binary(Self, BytesView) -> Unit
 pub async fn Conn::send_close(Self, code? : CloseCode, reason? : String) -> Unit

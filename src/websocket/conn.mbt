@@ -120,6 +120,13 @@ struct Conn {
 
   // the length of *payload* currently buffered in `write_buf`
   mut write_len : Int
+
+  // The set of PING requests that are sent but not yet acknowledged.
+  // According to the WebSocket protocol,
+  // PING should be replied with a PONG with exactly the same payload,
+  // so here we use the payload of PING frames to identify
+  // different PING requests.
+  pings : Map[Bytes, @coroutine.Coroutine]
 }
 
 ///|
@@ -165,6 +172,7 @@ fn Conn::new(
     is_first_frame: true,
     write_buf: FixedArray::make(max_frame_size, 0),
     write_len: 0,
+    pings: {},
   }
 }
 
@@ -391,8 +399,18 @@ async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
 async fn Conn::handle_pong(self : Conn, frame : FrameHeader) -> Unit {
   // the protocol requires `payload_len <= 125`
   let len = frame.payload_len.to_int()
-  guard self.transport.drop(len) == len else {
-    self.protocol_error("Unexpected EOF")
+  let msg = FixedArray::make(len, b'\x00')
+  for received = 0; received < len; {
+    let n = self.transport.read(msg, offset=received, max_len=len - received)
+    guard n > 0 else { self.protocol_error("Unexpected EOF") }
+    continue received + n
+  }
+  if self.read_mask is Some(mask) {
+    mask_payload(msg, mask, offset=0, len~)
+  }
+  let msg = msg.unsafe_reinterpret_as_bytes()
+  if self.pings.get(msg) is Some(coro) {
+    coro.wake()
   }
 }
 
@@ -673,4 +691,55 @@ pub async fn Conn::send_text(self : Conn, text : StringView) -> Unit {
 /// To send large message lazily, see `start_message`.
 pub async fn Conn::send_binary(self : Conn, data : BytesView) -> Unit {
   self..start_message(Binary)..write(data)..end_message()
+}
+
+///|
+/// Send a PING frame to the peer, and wait for PONG reply.
+/// If `msg` is provided, its content will become the body of the PING message.
+/// Otherwise, `ping()` automatically generate random bytes as message body.
+///
+/// The PONG reply may not come immediately.
+/// In particular, it may arrive after several other messages already on the wire.
+/// To avoid data loss and race condition,
+/// `.ping()` itself will not wait for the PONG reply directly.
+/// User must receive data from the same WebSocket connection somewhere else,
+/// in order to get the PONG reply of a PING request.
+/// Calling `.ping()` without another task running `.recv()` on parallel
+/// WILL RESULT IN DEAD LOCK.
+///
+/// If a PING request with the same message body is still waiting for reply,
+/// `.ping()` will fail immediately with error.
+pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
+  let msg = match msg {
+    Some(msg) => msg
+    None => @tls.rand_bytes(64)
+  }
+  let len = msg.length()
+  guard len <= 125
+  let payload_start = if self.write_mask is Some(_) { 2 + MASK_SIZE } else { 2 }
+  let frame = FixedArray::make(payload_start + len, b'\x00')
+  frame[0] = 0x89
+  frame[1] = if self.write_mask is Some(_) {
+    0x80 | len.to_byte()
+  } else {
+    len.to_byte()
+  }
+  frame.blit_from_bytesview(payload_start, msg)
+  if self.write_mask is Some(rand) {
+    frame.unsafe_write_uint32_be(2, rand.uint())
+    let mask = frame.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
+    mask_payload(frame, mask, offset=payload_start, len~)
+  }
+  {
+    self.write_lock.acquire()
+    defer self.write_lock.release()
+    self.transport.write(frame.unsafe_reinterpret_as_bytes())
+  }
+  let msg = msg.to_bytes()
+  guard !self.pings.contains(msg) else {
+    raise Failure("A PING request with the same payload is already pending")
+  }
+  self.pings[msg] = @coroutine.current_coroutine()
+  defer self.pings.remove(msg)
+  @coroutine.suspend()
 }

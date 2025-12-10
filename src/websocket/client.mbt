@@ -35,11 +35,8 @@ pub async fn Conn::from_http_client(
   extra_headers? : Map[String, String] = {},
 ) -> Conn {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
-  let seed = FixedArray::make(32, b'\x00')
-  if @tls.rand_bytes(seed, 32) != 1 {
-    fail("Failed to get random bytes for WebSocket client")
-  }
-  let rand = @random.Rand::chacha8(seed=seed.unsafe_reinterpret_as_bytes())
+  let seed = @tls.rand_bytes(32)
+  let rand = @random.Rand::chacha8(seed~)
 
   // Send WebSocket handshake request
   let nonce = FixedArray::make(16, b'\x00')
