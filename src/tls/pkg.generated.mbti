@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-pub fn rand_bytes(FixedArray[Byte], Int) -> Int
+pub fn rand_bytes(Int) -> Bytes raise
 
 pub fn sha1(Bytes) -> Bytes
 

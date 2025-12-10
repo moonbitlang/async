@@ -145,11 +145,20 @@ fn err_get_error() -> String {
 }
 
 ///|
+#borrow(buf)
+extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+
+///|
 /// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
 /// Returns 1 on success, 0 on failure
-#borrow(buf)
 #internal(internal, "for internal use only")
-pub extern "C" fn rand_bytes(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+pub fn rand_bytes(num : Int) -> Bytes raise {
+  let result = FixedArray::make(num, b'\x00')
+  if rand_bytes_ffi(result, num) != 1 {
+    raise Failure(err_get_error())
+  }
+  result.unsafe_reinterpret_as_bytes()
+}
 
 ///|
 #borrow(src, dst)
