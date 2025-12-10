@@ -238,14 +238,13 @@ pub fn[X] TaskGroup::return_immediately(
   }
   if self.state is Running {
     self.state = Done
-    let curr_coro = @coroutine.current_coroutine()
     for child in self.children {
-      if child != curr_coro {
-        child.cancel()
-      }
+      child.cancel()
     }
   }
-  raise @coroutine.Cancelled
+  if @coroutine.is_being_cancelled() {
+    raise @coroutine.Cancelled
+  }
 }
 
 ///|
