@@ -119,7 +119,7 @@ jobs:
 
       - name: moon check
         run: |
-          moon check --target js
+          moon check --target js --deny-warn
 
       - name: moon test
         run: |
