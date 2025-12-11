@@ -19,7 +19,7 @@ pub extern "C" fn ms_since_epoch() -> Int64 = "moonbitlang_async_get_ms_since_ep
 ///|
 #cfg(target="js")
 extern "js" fn js_now() -> Double =
-  #| () => (new Date()).getMilliSeconds()
+  #| () => (new Date()).getMilliseconds()
 
 ///|
 #cfg(target="js")
