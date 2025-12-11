@@ -13,13 +13,20 @@
 // limitations under the License.
 
 ///|
-async test {
-  inspect(
-    @process.run("moon", ["build", "-C", "examples", "--debug"]),
-    content="0",
-  )
-  let cat = "./examples/target/native/debug/build/cat/cat.exe"
-  // test 2: redirect from/to file
+let cat : @async.Lazy[String] = @async.lazy_init(() => {
+  // Note: the `cat` example program lies in another MoonBit module.
+  // Currently, dependencies of a module is built locally in that module,
+  // so there will be no build lock conflict between this test and the `cat` program.
+  let exit_code = @process.run("moon", ["build", "-C", "examples", "--debug"])
+  guard exit_code is 0 else {
+    fail("failed to build `cat` program: \{exit_code}")
+  }
+  "./examples/target/native/debug/build/cat/cat.exe"
+})
+
+///|
+async test "redirect_file" {
+  let cat = cat.wait()
   let out_file = "target/stdio_file_test"
   let code = @process.run(
     cat,
@@ -32,8 +39,12 @@ async test {
     @fs.read_file(out_file).text(),
     @fs.read_file("moon.mod.json").text(),
   )
-  // test 2: pipe
+}
+
+///|
+async test "redirect pipe" {
   @async.with_task_group(fn(root) {
+    let cat = cat.wait()
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     root.spawn_bg(fn() {
@@ -46,16 +57,33 @@ async test {
       @async.sleep(50)
       we_write.write(b"defg\n")
     })
-    root.spawn_bg(fn() {
-      defer we_read.close()
-      inspect(
-        we_read.read_all().text(),
-        content=(
-          #|abcd
-          #|defg
-          #|
-        ),
-      )
-    })
+    defer we_read.close()
+    inspect(
+      we_read.read_all().text(),
+      content=(
+        #|abcd
+        #|defg
+        #|
+      ),
+    )
   })
+}
+
+///|
+async test "recover state" {
+  assert_false(@fd_util.fd_is_nonblocking(1, context=""))
+  assert_false(@fd_util.fd_is_nonblocking(2, context=""))
+  let cat = cat.wait()
+  @async.with_task_group(group => {
+    let (cat_read, we_write) = @process.write_to_process()
+    group.spawn_bg(() => {
+      let code = @process.run(cat, [], stdin=cat_read)
+      inspect(code, content="0")
+    })
+    @async.sleep(100)
+    we_write.close()
+  })
+  @async.sleep(100)
+  assert_false(@fd_util.fd_is_nonblocking(1, context=""))
+  assert_false(@fd_util.fd_is_nonblocking(2, context=""))
 }
