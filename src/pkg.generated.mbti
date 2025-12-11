@@ -12,6 +12,8 @@ pub fn is_being_cancelled() -> Bool
 
 pub fn is_cancellation_error(Error) -> Bool
 
+pub fn[X] lazy_init(async () -> X) -> Lazy[X]
+
 pub fn now() -> Int64
 
 pub async fn pause() -> Unit
@@ -43,6 +45,9 @@ pub impl Show for TimeoutError
 pub impl ToJson for TimeoutError
 
 // Types and methods
+type Lazy[X]
+pub async fn[X] Lazy::wait(Self[X]) -> X
+
 pub(all) enum RetryMethod {
   Immediate
   FixedDelay(Int)
