@@ -3,7 +3,14 @@
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/io"
   ],
+  "test-import": [
+    "moonbitlang/async",
+    "moonbitlang/async/fs",
+    "moonbitlang/async/process",
+    "moonbitlang/async/internal/fd_util"
+  ],
   "targets": {
-    "stdio.mbt": [ "native" ]
+    "stdio.mbt": [ "native" ],
+    "stdio_test.mbt": [ "native" ]
   }
 }
