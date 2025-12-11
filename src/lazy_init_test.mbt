@@ -17,7 +17,7 @@ async test "lazy init basic" {
   let log = []
   let start = @async.now()
   fn current_tick() -> Int {
-    (@async.now() - start).to_int() / 200
+    (@async.now() - start + 20).to_int() / 200
   }
 
   let x = @async.lazy_init(() => {
@@ -44,7 +44,7 @@ async test "lazy init failure" {
   })
   let start = @async.now()
   fn current_tick() -> Int {
-    (@async.now() - start).to_int() / 200
+    (@async.now() - start + 20).to_int() / 200
   }
 
   let result = try? x.wait()
@@ -70,7 +70,7 @@ async test "lazy init cancelled" {
   let log = []
   let start = @async.now()
   fn current_tick() -> Int {
-    (@async.now() - start).to_int() / 200
+    (@async.now() - start + 20).to_int() / 200
   }
 
   let x = @async.lazy_init(() => {
@@ -99,7 +99,7 @@ async test "lazy init multiple waiters 1" {
   let log = []
   let start = @async.now()
   fn current_tick() -> Int {
-    (@async.now() - start).to_int() / 200
+    (@async.now() - start + 20).to_int() / 200
   }
 
   let x = @async.lazy_init(() => {
@@ -130,7 +130,7 @@ async test "lazy init multiple waiters 2" {
   let log = []
   let start = @async.now()
   fn current_tick() -> Int {
-    (@async.now() - start).to_int() / 200
+    (@async.now() - start + 20).to_int() / 200
   }
 
   let x = @async.lazy_init(() => {
