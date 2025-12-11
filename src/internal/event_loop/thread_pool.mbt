@@ -154,7 +154,7 @@ extern "C" fn Job::readdir(dir : Directory) -> Job = "moonbitlang_async_make_rea
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_readdir_result(job : Job) -> DirectoryEntry = "moonbitlang_async_get_readdir_result"
+extern "C" fn Job::get_readdir_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_readdir_result"
 
 ///|
 #owned(path)

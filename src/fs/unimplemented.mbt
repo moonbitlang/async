@@ -21,6 +21,5 @@ pub let unimplemented : Unit = {
   ignore(@event_loop.sleep)
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
-  ignore(@c_buffer.unimplemented)
   ignore(@os_string.unimplemented)
 }

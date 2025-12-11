@@ -37,3 +37,7 @@ int32_t moonbitlang_async_strlen(char *str) {
 char *moonbitlang_async_null_pointer() {
   return 0;
 }
+
+int32_t moonbitlang_async_pointer_is_null(void *ptr) {
+  return ptr == 0;
+}

@@ -2,6 +2,7 @@
 package "moonbitlang/async/internal/event_loop"
 
 import(
+  "moonbitlang/async/internal/c_buffer"
   "moonbitlang/async/internal/fd_util"
   "moonbitlang/async/internal/os_string"
 )
@@ -27,7 +28,7 @@ pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : B
 
 pub async fn opendir(StringView, context~ : String) -> Directory
 
-pub async fn readdir(Directory, context~ : String) -> DirectoryEntry
+pub async fn readdir(Directory, context~ : String) -> @c_buffer.Buffer
 
 pub async fn realpath(StringView, context~ : String) -> Bytes
 
@@ -59,9 +60,6 @@ pub type AddrInfo
 
 #external
 pub type Directory
-
-#external
-pub type DirectoryEntry
 
 type IoHandle
 pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self

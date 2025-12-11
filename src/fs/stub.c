@@ -27,14 +27,6 @@ int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
 }
 
-char *moonbitlang_async_dirent_name(struct dirent *dirent) {
-  return dirent->d_name;
-}
-
-int moonbitlang_async_dirent_is_null(struct dirent *dirent) {
-  return dirent == 0;
-}
-
 int moonbitlang_async_get_R_OK() {
   return R_OK;
 }

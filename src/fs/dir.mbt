@@ -66,21 +66,12 @@ pub async fn opendir(path : StringView) -> Directory {
 }
 
 ///|
-using @event_loop {type DirectoryEntry}
-
-///|
-extern "C" fn DirectoryEntry::name(ent : DirectoryEntry) -> @c_buffer.Buffer = "moonbitlang_async_dirent_name"
-
-///|
-extern "C" fn DirectoryEntry::is_null(ent : DirectoryEntry) -> Bool = "moonbitlang_async_dirent_is_null"
-
-///|
 async fn Directory::read_next(dir : Directory) -> String? {
-  let dir_ent = @event_loop.readdir(dir.0, context="@fs.readdir()")
-  if dir_ent.is_null() {
+  let name = @event_loop.readdir(dir.0, context="@fs.readdir()")
+  if name.is_null() {
     None
   } else {
-    Some(@os_string.decode(dir_ent.name()))
+    Some(@os_string.decode(name))
   }
 }
 
