@@ -4,7 +4,6 @@
     "moonbitlang/async/io",
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/internal/fd_util",
-    "moonbitlang/async/internal/c_buffer",
     "moonbitlang/async/internal/os_string",
     "moonbitlang/async"
   ],

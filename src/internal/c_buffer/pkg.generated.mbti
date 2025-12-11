@@ -14,6 +14,7 @@ pub fn Buffer::blit_to_bytes(Self, dst~ : FixedArray[Byte], offset~ : Int, len~ 
 pub fn Buffer::free(Self) -> Unit
 #alias("_[_]")
 pub fn Buffer::get(Self, Int) -> Byte
+pub fn Buffer::is_null(Self) -> Bool
 pub fn Buffer::strlen(Self) -> Int
 
 // Type aliases

@@ -17,10 +17,6 @@
 pub type Directory
 
 ///|
-#external
-pub type DirectoryEntry
-
-///|
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -209,7 +205,7 @@ pub async fn opendir(path : StringView, context~ : String) -> Directory {
 }
 
 ///|
-pub async fn readdir(dir : Directory, context~ : String) -> DirectoryEntry {
+pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
   let job = Job::readdir(dir)
   let _ = perform_job_in_worker(job, context~)
   job.get_readdir_result()

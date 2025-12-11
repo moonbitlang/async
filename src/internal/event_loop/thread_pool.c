@@ -890,8 +890,8 @@ struct readdir_job *moonbitlang_async_make_readdir_job(DIR *dir) {
   return job;
 }
 
-struct dirent *moonbitlang_async_get_readdir_result(struct readdir_job *job) {
-  return job->result;
+char *moonbitlang_async_get_readdir_result(struct readdir_job *job) {
+  return job->result ? job->result->d_name : 0;
 }
 
 // ===== realpath job, get canonical representation of a path =====
