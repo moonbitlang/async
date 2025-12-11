@@ -37,7 +37,7 @@ fn setup_stdio(
     let _ = handle.detach_from_event_loop()
     handle.events = NoEvent
     if need_unblock {
-      @fd_util.set_nonblocking(fd, context=restore_context)
+      @fd_util.set_blocking(fd, context=restore_context)
     }
   }
 
