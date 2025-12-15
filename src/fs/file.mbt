@@ -260,7 +260,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
   let dir = as_dir_ffi(fd)
   if dir.is_null() {
     let context = "@fs.File::as_dir()"
-    @fd_util.close(fd, context~)
+    @fd_util.close(fd, kind=self.io.kind(), context~)
     @os_error.check_errno(context)
   }
   dir

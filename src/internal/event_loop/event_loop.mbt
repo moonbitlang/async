@@ -68,8 +68,8 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     @fd_util.set_blocking(notify_send, context="initialize runtime")
   } catch {
     err => {
-      @fd_util.close(notify_recv, context="initialize runtime")
-      @fd_util.close(notify_send, context="initialize runtime")
+      @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
+      @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")
       raise err
     }
   }
@@ -193,7 +193,11 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
       // so we must not remove it from the poller here
       self.poll.remove(fd, events=handle.events)
     }
-    @fd_util.close(fd, context="runtime internal: close leaking fd")
+    @fd_util.close(
+      fd,
+      kind=handle.kind,
+      context="runtime internal: close leaking fd",
+    )
   }
   self.fds.clear()
   for _, coro in self.jobs {
@@ -339,7 +343,7 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
 pub fn IoHandle::close(handle : IoHandle) -> Unit {
   let fd = handle.detach_from_event_loop()
   if fd >= 0 {
-    @fd_util.close(fd, context="") catch {
+    @fd_util.close(fd, kind=handle.kind, context="") catch {
       _ => ()
     }
   }

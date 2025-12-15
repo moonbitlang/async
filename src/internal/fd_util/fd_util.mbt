@@ -94,7 +94,8 @@ extern "C" fn close_ffi(fd : Fd) -> Int = "close"
 
 ///|
 #cfg(not(platform="windows"))
-pub fn close(fd : Fd, context~ : String) -> Unit raise {
+pub fn close(fd : Fd, kind~ : FileKind, context~ : String) -> Unit raise {
+  ignore(kind)
   if close_ffi(fd) < 0 {
     @os_error.check_errno(context)
   }
@@ -106,8 +107,13 @@ extern "C" fn close_ffi(fd : Fd) -> Int = "CloseHandle"
 
 ///|
 #cfg(platform="windows")
-pub fn close(fd : Fd, context~ : String) -> Unit raise {
-  if close_ffi(fd) == 0 {
+extern "C" fn closesocket_ffi(fd : Fd) -> Int = "moonbitlang_async_closesocket"
+
+///|
+#cfg(platform="windows")
+pub fn close(fd : Fd, kind~ : FileKind, context~ : String) -> Unit raise {
+  let ret = if kind is Socket { closesocket_ffi(fd) } else { close_ffi(fd) }
+  if ret == 0 {
     @os_error.check_errno(context)
   }
 }

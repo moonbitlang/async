@@ -19,6 +19,7 @@
 
 #ifdef _WIN32
 
+#include <winsock2.h>
 #include <windows.h>
 
 #else
@@ -46,6 +47,13 @@ HANDLE moonbitlang_async_get_invalid_handle() {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_fd_is_valid(int fd) {
   return fd < 0;
+}
+#endif
+
+#ifdef _WIN32
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_closesocket(HANDLE handle) {
+  return 0 == closesocket((SOCKET)handle);
 }
 #endif
 
