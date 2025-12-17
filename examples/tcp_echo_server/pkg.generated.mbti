@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/examples/cat"
+package "moonbitlang/async_examples/tcp_echo_server"
 
 // Values
 
