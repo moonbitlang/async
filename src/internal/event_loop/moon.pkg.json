@@ -29,6 +29,7 @@
     "poll.c",
     "iocp.c",
     "thread_pool.c",
-    "misc_stub.c"
+    "misc_stub.c",
+    "io_windows.c"
   ]
 }

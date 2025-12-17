@@ -14,72 +14,21 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
 #include <moonbit.h>
-
-#ifdef _WIN32
-
-#include <windows.h>
-
-#else
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
-#endif
-
-#ifdef _WIN32
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_read(
-  HANDLE file,
-  char *buf,
-  int offset,
-  int len,
-  LPOVERLAPPED result
-) {
-  DWORD n_read = 0;
-  if (ReadFile(file, buf + offset, len, &n_read, result)) {
-    return n_read;
-  } else if (GetLastError() == ERROR_HANDLE_EOF) {
-    return 0;
-  } else {
-    return -1;
-  }
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_write(
-  HANDLE file,
-  char *buf,
-  int offset,
-  int len,
-  LPOVERLAPPED result
-) {
-  DWORD n_read = 0;
-  if (WriteFile(file, buf + offset, len, &n_read, result)) {
-    return n_read;
-  } else {
-    return -1;
-  }
-}
-
-#else
-
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_read(int fd, char *buf, int offset, int len) {
   return read(fd, buf + offset, len);
 }
 
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_write(int fd, char *buf, int offset, int len) {
   return write(fd, buf + offset, len);
 }
 
-#endif
-
-#ifndef _WIN32
 int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
   return connect(sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
 }
@@ -128,4 +77,5 @@ int moonbitlang_async_sendto(
   
   return sendto(sock, buf + offset, len, 0, addr, addr_len);
 }
-#endif
+
+#endif // #ifndef _WIN32

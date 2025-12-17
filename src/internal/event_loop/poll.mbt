@@ -159,7 +159,46 @@ priv type IoResult
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::new(job_id : Int, offset : Int64) -> IoResult = "moonbitlang_async_make_io_result"
+#owned(buf)
+extern "C" fn IoResult::for_file(
+  job_id : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+) -> IoResult = "moonbitlang_async_make_file_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(buf)
+extern "C" fn IoResult::for_socket(
+  job_id : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+) -> IoResult = "moonbitlang_async_make_socket_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(buf, addr)
+extern "C" fn IoResult::for_socket_with_addr(
+  job_id : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+  addr~ : Bytes,
+) -> IoResult = "moonbitlang_async_make_socket_with_addr_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(addr)
+extern "C" fn IoResult::for_connect(job_id : Int, addr : Bytes) -> IoResult = "moonbitlang_async_make_connect_io_result"
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::for_accept(job_id : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
 
 ///|
 #cfg(platform="windows")
@@ -168,6 +207,25 @@ extern "C" fn IoResult::free(self : IoResult) = "moonbitlang_async_free_io_resul
 ///|
 #cfg(platform="windows")
 extern "C" fn IoResult::job_id(self : IoResult) -> Int = "moonbitlang_async_io_result_get_job_id"
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::cancel_ffi(
+  self : IoResult,
+  handle : @fd_util.Fd,
+) -> Int = "moonbitlang_async_cancel_io_result"
+
+///|
+#cfg(platform="windows")
+fn IoResult::cancel(
+  self : IoResult,
+  handle : @fd_util.Fd,
+  context~ : String,
+) -> Unit raise {
+  if 0 == self.cancel_ffi(handle) {
+    @os_error.check_errno(context)
+  }
+}
 
 ///|
 #cfg(platform="windows")

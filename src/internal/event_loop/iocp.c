@@ -31,6 +31,8 @@ void moonbitlang_async_poll_destroy(HANDLE iocp) {
 
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_poll_register(HANDLE iocp, HANDLE fd) {
+  if (!SetFileCompletionNotificationModes(fd, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
+    return -1;
   return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 0;
 }
 
@@ -66,39 +68,6 @@ HANDLE moonbitlang_async_event_get_fd(OVERLAPPED_ENTRY *entry) {
 }
 
 MOONBIT_FFI_EXPORT
-LPOVERLAPPED moonbitlang_async_make_io_result(int32_t job_id, int64_t offset) {
-  LPOVERLAPPED result = (LPOVERLAPPED)malloc(sizeof(OVERLAPPED) + sizeof(job_id));
-  memset(result, 0, sizeof(OVERLAPPED));
-  result->Offset = offset & 0xffffffff;
-  result->OffsetHigh = offset >> 32;
-  *(int32_t*)(result + 1) = job_id;
-  return (LPOVERLAPPED)result;
-}
-
-MOONBIT_FFI_EXPORT
-void moonbitlang_async_free_io_result(LPOVERLAPPED obj) {
-  free(obj);
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_io_result_get_job_id(LPOVERLAPPED overlapped) {
-  return *(int32_t*)(overlapped + 1);
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_io_result_get_status(
-  LPOVERLAPPED overlapped,
-  HANDLE file
-) {
-  DWORD bytes_transferred;
-  if (GetOverlappedResult(file, overlapped, &bytes_transferred, FALSE)) {
-    return bytes_transferred;
-  } else {
-    return -1;
-  }
-}
-
-MOONBIT_FFI_EXPORT
 LPOVERLAPPED moonbitlang_async_event_get_io_result(OVERLAPPED_ENTRY *entry) {
   LPOVERLAPPED result = entry->lpOverlapped;
   return result;
@@ -107,6 +76,11 @@ LPOVERLAPPED moonbitlang_async_event_get_io_result(OVERLAPPED_ENTRY *entry) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_event_get_bytes_transferred(OVERLAPPED_ENTRY *entry) {
   return entry->dwNumberOfBytesTransferred;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handle) {
+  return CancelIoEx(handle, overlapped);
 }
 
 #endif

@@ -37,7 +37,7 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
     }
   } catch {
     err => {
-      @fd_util.close(sock, context~)
+      @fd_util.close(sock, kind=Socket, context~)
       raise err
     }
   }
@@ -99,7 +99,7 @@ pub fn UdpServer::new(
     }
   } catch {
     err => {
-      @fd_util.close(sock, context~)
+      @fd_util.close(sock, kind=Socket, context~)
       raise err
     }
   }

@@ -64,7 +64,7 @@ async test "connection burst with ipv6" {
   let mut result = 0
   @async.with_task_group(fn(root) {
     let server = @socket.TcpServer::new(
-      @socket.Addr::parse("[::]:0"),
+      @socket.Addr::parse("[::1]:0"),
       dual_stack=false,
     )
     let addr = server.addr()

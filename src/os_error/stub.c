@@ -79,6 +79,15 @@ int moonbitlang_async_is_EACCES(int err) {
 }
 
 MOONBIT_FFI_EXPORT
+int moonbitlang_async_is_ECONNREFUSED(int err) {
+#ifdef _WIN32
+  return err == ERROR_CONNECTION_REFUSED;
+#else
+  return err == ECONNREFUSED;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 int moonbitlang_async_is_ERROR_HANDLE_EOF(int err) {
 #ifdef _WIN32
   return err == ERROR_HANDLE_EOF;

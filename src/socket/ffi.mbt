@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
-extern "C" fn make_tcp_socket_ffi(family : AddrFamily) -> Int = "moonbitlang_async_make_tcp_socket"
+extern "C" fn make_tcp_socket_ffi(family : AddrFamily) -> @fd_util.Fd = "moonbitlang_async_make_tcp_socket"
 
 ///|
-fn make_tcp_socket(family : AddrFamily, context~ : String) -> Int raise {
+#cfg(not(platform="windows"))
+fn make_tcp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
   let sock = make_tcp_socket_ffi(family)
   if sock < 0 {
     @os_error.check_errno(context)
@@ -27,10 +28,21 @@ fn make_tcp_socket(family : AddrFamily, context~ : String) -> Int raise {
 }
 
 ///|
-extern "C" fn make_udp_socket_ffi(family : AddrFamily) -> Int = "moonbitlang_async_make_udp_socket"
+#cfg(platform="windows")
+fn make_tcp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
+  let sock = make_tcp_socket_ffi(family)
+  if !@fd_util.fd_is_valid(sock) {
+    @os_error.check_errno(context)
+  }
+  sock
+}
 
 ///|
-fn make_udp_socket(family : AddrFamily, context~ : String) -> Int raise {
+extern "C" fn make_udp_socket_ffi(family : AddrFamily) -> @fd_util.Fd = "moonbitlang_async_make_udp_socket"
+
+///|
+#cfg(not(platform="windows"))
+fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
   let sock = make_udp_socket_ffi(family)
   if sock < 0 {
     @os_error.check_errno(context)
@@ -41,28 +53,38 @@ fn make_udp_socket(family : AddrFamily, context~ : String) -> Int raise {
 }
 
 ///|
+#cfg(platform="windows")
+fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
+  let sock = make_udp_socket_ffi(family)
+  if !@fd_util.fd_is_valid(sock) {
+    @os_error.check_errno(context)
+  }
+  sock
+}
+
+///|
 #borrow(addr)
-extern "C" fn bind_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_bind"
+extern "C" fn bind_ffi(sock : @fd_util.Fd, addr : Addr) -> Int = "moonbitlang_async_bind"
 
 ///|
-extern "C" fn set_ipv6_only(sock : Int, dual_stack : Bool) -> Int = "moonbitlang_async_set_ipv6_only"
+extern "C" fn set_ipv6_only(sock : @fd_util.Fd, dual_stack : Bool) -> Int = "moonbitlang_async_set_ipv6_only"
 
 ///|
-extern "C" fn listen_ffi(sock : Int) -> Int = "moonbitlang_async_listen"
+extern "C" fn listen_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang_async_listen"
 
 ///|
 #borrow(addr)
-extern "C" fn connect_ffi(sock : Int, addr : Addr) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Addr) -> Int = "moonbitlang_async_udp_client_connect"
 
 ///|
-extern "C" fn disable_nagle(sock : Int) -> Int = "moonbitlang_async_disable_nagle"
+extern "C" fn disable_nagle(sock : @fd_util.Fd) -> Int = "moonbitlang_async_disable_nagle"
 
 ///|
-extern "C" fn allow_reuse_addr(sock : Int) -> Int = "moonbitlang_async_allow_reuse_addr"
+extern "C" fn allow_reuse_addr(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_addr"
 
 ///|
 extern "C" fn enable_keepalive_ffi(
-  sock : Int,
+  sock : @fd_util.Fd,
   keep_idle : Int,
   keep_count : Int,
   keep_intv : Int,
@@ -70,11 +92,30 @@ extern "C" fn enable_keepalive_ffi(
 
 ///|
 #borrow(addr_out)
-extern "C" fn getsockname_ffi(sock : Int, addr_out : Addr) -> Int = "moonbitlang_async_getsockname"
+extern "C" fn getsockname_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getsockname"
 
 ///|
-fn getsockname(sock : Int, family : AddrFamily) -> Addr {
+fn getsockname(sock : @fd_util.Fd, family : AddrFamily) -> Addr {
   let addr = Addr::empty(family)
   guard getsockname_ffi(sock, addr) == 0
+  addr
+}
+
+///|
+#cfg(platform="windows")
+#borrow(addr_out)
+extern "C" fn getpeername_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getpeername"
+
+///|
+#cfg(platform="windows")
+fn getpeername(
+  sock : @fd_util.Fd,
+  family : AddrFamily,
+  context~ : String,
+) -> Addr raise {
+  let addr = Addr::empty(family)
+  if getpeername_ffi(sock, addr) != 0 {
+    @os_error.check_errno(context)
+  }
   addr
 }

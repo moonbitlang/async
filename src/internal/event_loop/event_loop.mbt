@@ -122,9 +122,12 @@ fn EventLoop::new() -> EventLoop raise {
 
 ///|
 #cfg(platform="windows")
-fn EventLoop::new() -> EventLoop {
+fn EventLoop::new() -> EventLoop raise {
   let poll = Instance::new()
   init_thread_pool_ffi(poll.0)
+  if init_WSA_ffi() != 0 {
+    @os_error.check_errno("initialize WSA")
+  }
   {
     poll,
     fds: {},
@@ -159,6 +162,7 @@ fn EventLoop::destroy(evloop : EventLoop) -> Unit {
 fn EventLoop::destroy(evloop : EventLoop) -> Unit {
   evloop.poll.destroy()
   destroy_thread_pool()
+  ignore(cleanup_WSA_ffi())
 }
 
 ///|
@@ -520,17 +524,38 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 }
 
 ///|
+priv enum CancellationMode {
+  NoCancel
+  Ignore
+  CancelAndWait(() -> Unit raise)
+}
+
+///|
+// mute unused warning
+let _unused : Unit = ignore(CancelAndWait(() => true))
+
+///|
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
-  allow_cancel~ : Bool,
+  cancel~ : CancellationMode,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
-  if allow_cancel {
-    @coroutine.suspend()
-  } else {
-    @coroutine.protect_from_cancel(@coroutine.suspend)
+  match cancel {
+    NoCancel => @coroutine.protect_from_cancel(@coroutine.suspend)
+    Ignore => @coroutine.suspend()
+    CancelAndWait(cancel_func) =>
+      @coroutine.suspend() catch {
+        err => {
+          let result = try? cancel_func()
+          @coroutine.protect_from_cancel(() => {
+            @coroutine.suspend()
+            result.unwrap_or_error()
+            raise err
+          })
+        }
+      }
   }
 }
 
@@ -555,12 +580,28 @@ async fn perform_job_in_worker(
       wake_worker(worker, job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, allow_cancel~)
+  let cancel = if allow_cancel { Ignore } else { NoCancel }
+  evloop.wait_for_job(job_id, cancel~)
   if job.err() > 0 {
     raise @os_error.OSError(job.err(), context~)
   } else {
     job.ret()
   }
+}
+
+///|
+#cfg(platform="windows")
+async fn EventLoop::wait_for_io_result(
+  evloop : EventLoop,
+  job_id : Int,
+  io_result : IoResult,
+  handle : @fd_util.Fd,
+  context~ : String,
+) -> Unit {
+  evloop.wait_for_job(
+    job_id,
+    cancel=CancelAndWait(() => io_result.cancel(handle, context~)),
+  )
 }
 
 ///|
@@ -622,14 +663,36 @@ pub async fn IoHandle::read_at(
 
 ///|
 #cfg(platform="windows")
-#borrow(buf)
-extern "C" fn read_ffi(
-  fd : @fd_util.Fd,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  result~ : IoResult,
-) -> Int = "moonbitlang_async_read"
+extern "C" fn read_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read"
+
+///|
+#cfg(platform="windows")
+async fn IoHandle::generic_read(
+  handle : IoHandle,
+  job_id : Int,
+  result : IoResult,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  let n = read_ffi(handle.fd, result)
+  if n >= 0 {
+    // It is important to note that the logic here is correct
+    // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
+    // via `SetFileCompletionNotificationModes`.
+    // Otherwise, even if the read operation itself indicates immediate success,
+    // we still need to wait for the completion packet to obtain correct result.
+    n
+  } else if @os_error.is_nonblocking_io_error() {
+    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    result.status(handle.fd, context~) catch {
+      @os_error.OSError(_) as err if err.is_ERROR_HANDLE_EOF() => 0
+      err => raise err
+    }
+  } else {
+    @os_error.check_errno(context)
+    panic()
+  }
+}
 
 ///|
 #cfg(platform="windows")
@@ -641,36 +704,43 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
-  if handle.kind is Socket {
-    ...
-  } else {
-    guard !handle.reading
-    handle.reading = true
-    defer {
-      handle.reading = false
-    }
-    let job_id = evloop.job_id
-    evloop.job_id += 1
-    let position = if handle.kind is Regular { handle.read_offset } else { 0 }
-    let result = IoResult::new(job_id, position)
-    defer result.free()
-    let n = read_ffi(handle.fd, buf, offset~, len~, result~)
-    let n = if n >= 0 {
-      n
-    } else if @os_error.is_nonblocking_io_error() {
-      // TODO: cancellation
-      evloop.wait_for_job(job_id, allow_cancel=false)
-      result.status(handle.fd, context~) catch {
-        @os_error.OSError(_) as err if err.is_ERROR_HANDLE_EOF() => 0
-        err => raise err
-      }
-    } else {
-      @os_error.check_errno(context)
-      panic()
-    }
-    handle.read_offset += n.to_int64()
-    n
+  guard !handle.reading
+  handle.reading = true
+  defer {
+    handle.reading = false
   }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = match handle.kind {
+    Regular =>
+      IoResult::for_file(
+        job_id,
+        buf.unsafe_reinterpret_as_bytes(),
+        offset~,
+        len~,
+        position=handle.read_offset,
+      )
+    Socket =>
+      IoResult::for_socket(
+        job_id,
+        buf.unsafe_reinterpret_as_bytes(),
+        offset~,
+        len~,
+        flags=0,
+      )
+    _ =>
+      IoResult::for_file(
+        job_id,
+        buf.unsafe_reinterpret_as_bytes(),
+        offset~,
+        len~,
+        position=0,
+      )
+  }
+  defer result.free()
+  let n = handle.generic_read(job_id, result, context~)
+  handle.read_offset += n.to_int64()
+  n
 }
 
 ///|
@@ -687,22 +757,15 @@ pub async fn IoHandle::read_at(
   guard handle.kind is Regular
   let job_id = evloop.job_id
   evloop.job_id += 1
-  let result = IoResult::new(job_id, position)
+  let result = IoResult::for_file(
+    job_id,
+    buf.unsafe_reinterpret_as_bytes(),
+    offset~,
+    len~,
+    position~,
+  )
   defer result.free()
-  let n = read_ffi(handle.fd, buf, offset~, len~, result~)
-  if n >= 0 {
-    n
-  } else if @os_error.is_nonblocking_io_error() {
-    // TODO: cancellation
-    evloop.wait_for_job(job_id, allow_cancel=false)
-    result.status(handle.fd, context~) catch {
-      @os_error.OSError(_) as err if err.is_ERROR_HANDLE_EOF() => 0
-      err => raise err
-    }
-  } else {
-    @os_error.check_errno(context)
-    panic()
-  }
+  handle.generic_read(job_id, result, context~)
 }
 
 ///|
@@ -764,14 +827,33 @@ pub async fn IoHandle::write_at(
 
 ///|
 #cfg(platform="windows")
-#borrow(buf)
-extern "C" fn write_ffi(
-  fd : @fd_util.Fd,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  result~ : IoResult,
-) -> Int = "moonbitlang_async_write"
+extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_write"
+
+///|
+#cfg(platform="windows")
+async fn IoHandle::generic_write(
+  handle : IoHandle,
+  job_id : Int,
+  result : IoResult,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  let n = write_ffi(handle.fd, result)
+  if n >= 0 {
+    // It is important to note that the logic here is correct
+    // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
+    // via `SetFileCompletionNotificationModes`.
+    // Otherwise, even if the write operation itself indicates immediate success,
+    // we still need to wait for the completion packet to obtain correct result.
+    n
+  } else if @os_error.is_nonblocking_io_error() {
+    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    result.status(handle.fd, context~)
+  } else {
+    @os_error.check_errno(context)
+    panic()
+  }
+}
 
 ///|
 #cfg(platform="windows")
@@ -783,33 +865,29 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
-  if handle.kind is Socket {
-    ...
-  } else {
-    guard !handle.writing
-    handle.writing = true
-    defer {
-      handle.writing = false
-    }
-    let job_id = evloop.job_id
-    evloop.job_id += 1
-    let position = if handle.kind is Regular { handle.write_offset } else { 0 }
-    let result = IoResult::new(job_id, position)
-    defer result.free()
-    let n = write_ffi(handle.fd, buf, offset~, len~, result~)
-    let n = if n >= 0 {
-      n
-    } else if @os_error.is_nonblocking_io_error() {
-      // TODO: cancellation
-      evloop.wait_for_job(job_id, allow_cancel=false)
-      result.status(handle.fd, context~)
-    } else {
-      @os_error.check_errno(context)
-      panic()
-    }
-    handle.write_offset += n.to_int64()
-    n
+  guard !handle.writing
+  handle.writing = true
+  defer {
+    handle.writing = false
   }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = match handle.kind {
+    Regular =>
+      IoResult::for_file(
+        job_id,
+        buf,
+        offset~,
+        len~,
+        position=handle.write_offset,
+      )
+    Socket => IoResult::for_socket(job_id, buf, offset~, len~, flags=0)
+    _ => IoResult::for_file(job_id, buf, offset~, len~, position=0)
+  }
+  defer result.free()
+  let n = handle.generic_write(job_id, result, context~)
+  handle.write_offset += n.to_int64()
+  n
 }
 
 ///|
@@ -826,18 +904,9 @@ pub async fn IoHandle::write_at(
   guard handle.kind is Regular
   let job_id = evloop.job_id
   evloop.job_id += 1
-  let result = IoResult::new(job_id, position)
+  let result = IoResult::for_file(job_id, buf, offset~, len~, position~)
   defer result.free()
-  let n = write_ffi(handle.fd, buf, offset~, len~, result~)
-  if n >= 0 {
-    ()
-  } else if @os_error.is_nonblocking_io_error() {
-    // TODO: cancellation
-    evloop.wait_for_job(job_id, allow_cancel=false)
-    ignore(result.status(handle.fd, context~))
-  } else {
-    @os_error.check_errno(context)
-  }
+  ignore(handle.generic_write(job_id, result, context~))
 }
 
 ///|

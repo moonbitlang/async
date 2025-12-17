@@ -19,6 +19,7 @@
 
 #ifdef _WIN32
 
+#include <winsock2.h>
 #include <windows.h>
 
 #else
@@ -1455,12 +1456,20 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   return job;
 }
 
+#endif
+
 // ===== getaddrinfo job, resolve host name via `getaddrinfo` =====
+
+#ifdef _WIN32
+typedef ADDRINFOW addrinfo_t;
+#else
+typedef struct addrinfo addrinfo_t;
+#endif
 
 struct getaddrinfo_job {
   struct job job;
   char *hostname;
-  struct addrinfo *result;
+  addrinfo_t *result;
 };
 
 static
@@ -1472,13 +1481,39 @@ void free_getaddrinfo_job(void *obj) {
 static
 void getaddrinfo_job_worker(struct job *job) {
   struct getaddrinfo_job *getaddrinfo_job = (struct getaddrinfo_job*)job;
-  struct addrinfo hint = {
+
+  addrinfo_t hint = {
     AI_ADDRCONFIG, // ai_flags
     AF_UNSPEC, // ai_family, support both IPv4 and IPv6
     0, // ai_socktype
     0, // ai_protocol
     0, 0, 0, 0
   };
+
+#ifdef _WIN32
+  int err = GetAddrInfoW(
+    (LPCWSTR)getaddrinfo_job->hostname,
+    0,
+    &hint,
+    &(getaddrinfo_job->result)
+  );
+  // https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#return-value
+  switch (err) {
+    case WSATRY_AGAIN:
+    case WSANO_RECOVERY:
+    case WSAEAFNOSUPPORT:
+    case WSAHOST_NOT_FOUND:
+    case WSATYPE_NOT_FOUND:
+    case WSAESOCKTNOSUPPORT:
+      job->ret = err;
+      break;
+    default:
+      job->err = err;
+      break;
+  }
+
+#else
+
   job->ret = getaddrinfo(
     getaddrinfo_job->hostname, 
     0,
@@ -1487,6 +1522,8 @@ void getaddrinfo_job_worker(struct job *job) {
   );
   if (job->ret == EAI_SYSTEM)
     job->err = errno;
+
+#endif
 }
 
 struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
@@ -1495,7 +1532,6 @@ struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
   return job;
 }
 
-struct addrinfo *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job) {
+addrinfo_t *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job) {
   return job->result;
 }
-#endif

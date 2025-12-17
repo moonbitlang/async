@@ -13,6 +13,14 @@
 // limitations under the License.
 
 ///|
+#cfg(platform="windows")
+extern "C" fn init_WSA_ffi() -> Int = "moonbitlang_async_init_WSA"
+
+///|
+#cfg(platform="windows")
+extern "C" fn cleanup_WSA_ffi() -> Int = "WSACleanup"
+
+///|
 #cfg(not(platform="windows"))
 #borrow(buf, addr)
 extern "C" fn recvfrom_ffi(
@@ -49,6 +57,36 @@ pub async fn IoHandle::recvfrom(
     @os_error.check_errno(context)
   }
   ret
+}
+
+///|
+#cfg(platform="windows")
+pub async fn IoHandle::recvfrom(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  guard !handle.reading
+  handle.reading = true
+  defer {
+    handle.reading = false
+  }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = IoResult::for_socket_with_addr(
+    job_id,
+    buf.unsafe_reinterpret_as_bytes(),
+    offset~,
+    len~,
+    flags=0,
+    addr~,
+  )
+  defer result.free()
+  handle.generic_read(job_id, result, context~)
 }
 
 ///|
@@ -91,6 +129,36 @@ pub async fn IoHandle::sendto(
 }
 
 ///|
+#cfg(platform="windows")
+pub async fn IoHandle::sendto(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  guard !handle.writing
+  handle.writing = true
+  defer {
+    handle.writing = false
+  }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = IoResult::for_socket_with_addr(
+    job_id,
+    buf,
+    offset~,
+    len~,
+    flags=0,
+    addr~,
+  )
+  defer result.free()
+  handle.generic_write(job_id, result, context~)
+}
+
+///|
 #cfg(not(platform="windows"))
 #borrow(addr)
 extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
@@ -124,6 +192,43 @@ pub async fn IoHandle::connect(
 }
 
 ///|
+#cfg(platform="windows")
+extern "C" fn connect_ffi(sock : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_connect"
+
+///|
+#cfg(platform="windows")
+extern "C" fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang_async_setup_connected_socket"
+
+///|
+#cfg(platform="windows")
+pub async fn IoHandle::connect(
+  handle : IoHandle,
+  addr : Bytes,
+  context~ : String,
+) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  guard !handle.writing
+  handle.writing = true
+  defer {
+    handle.writing = false
+  }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = IoResult::for_connect(job_id, addr)
+  defer result.free()
+  if 0 == connect_ffi(handle.fd, result) {
+    if !@os_error.is_nonblocking_io_error() {
+      @os_error.check_errno(context)
+    }
+    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    ignore(result.status(handle.fd, context~))
+  }
+  if setup_connected_socket_ffi(handle.fd) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
 #cfg(not(platform="windows"))
 #borrow(addr_buf)
 extern "C" fn accept_ffi(sock : @fd_util.Fd, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
@@ -152,6 +257,51 @@ pub async fn IoHandle::accept(
 }
 
 ///|
+#cfg(platform="windows")
+extern "C" fn accept_ffi(
+  server_sock : @fd_util.Fd,
+  conn_sock : @fd_util.Fd,
+  result : IoResult,
+) -> Int = "moonbitlang_async_accept"
+
+///|
+#cfg(platform="windows")
+extern "C" fn setup_accepted_socket_ffi(
+  listen_sock : @fd_util.Fd,
+  accept_sock : @fd_util.Fd,
+) -> Int = "moonbitlang_async_setup_accepted_socket"
+
+///|
+#cfg(platform="windows")
+pub async fn IoHandle::accept(
+  handle : IoHandle,
+  conn_sock : @fd_util.Fd,
+  context~ : String,
+) -> IoHandle {
+  guard curr_loop.val is Some(evloop)
+  guard !handle.reading
+  handle.reading = true
+  defer {
+    handle.reading = false
+  }
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = IoResult::for_accept(job_id)
+  defer result.free()
+  if 0 == accept_ffi(handle.fd, conn_sock, result) {
+    if !@os_error.is_nonblocking_io_error() {
+      @os_error.check_errno(context)
+    }
+    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    ignore(result.status(handle.fd, context~))
+  }
+  if setup_accepted_socket_ffi(handle.fd, conn_sock) < 0 {
+    @os_error.check_errno(context)
+  }
+  IoHandle::from_fd(conn_sock, kind=Socket)
+}
+
+///|
 #external
 pub type AddrInfo
 
@@ -161,6 +311,17 @@ extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
 #cfg(not(platform="windows"))
+fn gai_error_to_string(code : Int) -> String {
+  @os_string.decode(gai_strerror(code))
+}
+
+///|
+#cfg(platform="windows")
+fn gai_error_to_string(code : Int) -> String {
+  @os_error.errno_to_string(code)
+}
+
+///|
 pub async fn getaddrinfo(
   host : StringView,
   context~ : String,
@@ -173,11 +334,7 @@ pub async fn getaddrinfo(
     err => raise err
   }
   if ret != 0 {
-    let c_str = gai_strerror(ret)
-    let len = c_str.strlen()
-    let bytes = FixedArray::make(len, b'\x00')
-    c_str.blit_to_bytes(dst=bytes, offset=0, len~)
-    bytes.unsafe_reinterpret_as_bytes() |> @encoding/utf8.decode |> Err
+    Err(gai_error_to_string(ret))
   } else {
     Ok(job.get_getaddrinfo_result())
   }
