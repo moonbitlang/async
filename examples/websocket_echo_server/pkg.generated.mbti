@@ -1,7 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/examples/tcp_echo_server"
+package "moonbitlang/async_examples/websocket_echo_server"
 
 // Values
+pub async fn start_echo_server() -> Unit
 
 // Errors
 

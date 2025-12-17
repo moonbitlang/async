@@ -1,7 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/examples/udp_echo_server"
+package "moonbitlang/async_examples/websocket_client"
 
 // Values
+pub async fn run_autobahn_tests() -> Unit
 
 // Errors
 
