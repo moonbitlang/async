@@ -31,9 +31,15 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
   let context = "@socket.UdpClient::new()"
   let family = server.family()
   let sock = make_udp_socket(family, context~)
-  if 0 != connect_ffi(sock, server) {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
+  try {
+    if 0 != connect_ffi(sock, server) {
+      @os_error.check_errno(context)
+    }
+  } catch {
+    err => {
+      @fd_util.close(sock, context~)
+      raise err
+    }
   }
   { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }
@@ -82,15 +88,20 @@ pub fn UdpServer::new(
   let context = "@socket.UdpServer::new()"
   let family = addr.family()
   let sock = make_udp_socket(family, context~)
-  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-    if 0 != set_ipv6_only(sock, !dual_stack) {
-      @fd_util.close(sock, context~)
+  try {
+    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+      if 0 != set_ipv6_only(sock, !dual_stack) {
+        @os_error.check_errno(context)
+      }
+    }
+    if bind_ffi(sock, addr) != 0 {
       @os_error.check_errno(context)
     }
-  }
-  if bind_ffi(sock, addr) != 0 {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
+  } catch {
+    err => {
+      @fd_util.close(sock, context~)
+      raise err
+    }
   }
   { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }

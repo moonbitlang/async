@@ -64,22 +64,26 @@ pub fn TcpServer::new(
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
-  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-    if 0 != set_ipv6_only(sock, !dual_stack) {
-      @fd_util.close(sock, context~)
+  try {
+    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+      if 0 != set_ipv6_only(sock, !dual_stack) {
+        @os_error.check_errno(context)
+      }
+    }
+    if reuse_addr {
+      guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
+    }
+    if bind_ffi(sock, addr) != 0 {
       @os_error.check_errno(context)
     }
-  }
-  if reuse_addr {
-    guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
-  }
-  if bind_ffi(sock, addr) != 0 {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
-  }
-  if 0 != listen_ffi(sock) {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno(context)
+    if 0 != listen_ffi(sock) {
+      @os_error.check_errno(context)
+    }
+  } catch {
+    err => {
+      @fd_util.close(sock, context~)
+      raise err
+    }
   }
   { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
 }
@@ -148,12 +152,18 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.family)
   let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept")
-  if disable_nagle(conn.fd()) < 0 {
-    @fd_util.close(conn.fd(), context="@socket.TcpServer::accept()")
-    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
+  try {
+    if disable_nagle(conn.fd()) < 0 {
+      @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
+    }
+    @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
+    @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
+  } catch {
+    err => {
+      conn.close()
+      raise err
+    }
   }
-  @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
-  @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
   ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
@@ -190,19 +200,19 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
   let context = "@socket.Tcp::connect()"
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
-  if disable_nagle(sock) < 0 {
-    @fd_util.close(sock, context~)
-    @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
-  }
   let conn = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try conn.connect(addr.0, context~) catch {
+  try {
+    if disable_nagle(sock) < 0 {
+      @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
+    }
+    conn.connect(addr.0, context~)
+  } catch {
     err => {
       conn.close()
       raise err
     }
-  } noraise {
-    _ => { io: conn, family, read_buf: @io.ReaderBuffer::new() }
   }
+  { io: conn, family, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
