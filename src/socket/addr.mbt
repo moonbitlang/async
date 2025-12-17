@@ -20,6 +20,7 @@ priv enum AddrFamily {
 
 ///|
 /// IPv4 address + port number
+#warnings("-unused_constructor")
 struct Addr(Bytes) derive(Eq, Compare, Hash)
 
 ///|
