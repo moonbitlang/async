@@ -390,12 +390,11 @@ struct sleep_job *moonbitlang_async_make_sleep_job(int ms) {
   return job;
 }
 
-#ifndef _WIN32
 // ===== read job, for reading non-pollable stuff =====
 
 struct read_job {
   struct job job;
-  int fd;
+  HANDLE fd;
   char *buf;
   int offset;
   int len;
@@ -411,6 +410,21 @@ void free_read_job(void *obj) {
 static
 void read_job_worker(struct job *job) {
   struct read_job *read_job = (struct read_job*)job;
+
+#ifdef _WIN32
+
+   BOOL result = ReadFile(
+     read_job->fd,
+     read_job->buf + read_job->offset,
+     read_job->len,
+     &(job->ret),
+     NULL
+   );
+   if (!result)
+     job->err = GetLastError();
+
+#else
+
   if (read_job->position < 0) {
     job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
   } else {
@@ -423,10 +437,12 @@ void read_job_worker(struct job *job) {
   }
   if (job->ret < 0)
     job->err = errno;
+
+#endif
 }
 
 struct read_job *moonbitlang_async_make_read_job(
-  int fd,
+  HANDLE fd,
   char *buf,
   int offset,
   int len,
@@ -445,7 +461,7 @@ struct read_job *moonbitlang_async_make_read_job(
 
 struct write_job {
   struct job job;
-  int fd;
+  HANDLE fd;
   char *buf;
   int offset;
   int len;
@@ -461,6 +477,21 @@ void free_write_job(void *obj) {
 static
 void write_job_worker(struct job *job) {
   struct write_job *write_job = (struct write_job*)job;
+
+#ifdef _WIN32
+
+   BOOL result = WriteFile(
+     write_job->fd,
+     write_job->buf + write_job->offset,
+     write_job->len,
+     &(job->ret),
+     NULL
+   );
+   if (!result)
+     job->err = GetLastError();
+
+#else
+
   if (write_job->position < 0) {
     job->ret = write(
       write_job->fd,
@@ -477,10 +508,12 @@ void write_job_worker(struct job *job) {
   }
   if (job->ret < 0)
     job->err = errno;
+
+#endif
 }
 
 struct write_job *moonbitlang_async_make_write_job(
-  int fd,
+  HANDLE fd,
   char *buf,
   int offset,
   int len,
@@ -494,7 +527,6 @@ struct write_job *moonbitlang_async_make_write_job(
   job->position = position;
   return job;
 }
-#endif
 
 // ===== open job =====
 

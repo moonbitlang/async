@@ -64,6 +64,7 @@ priv struct QueuedJob {
 struct IoHandle {
   mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
+  is_async : Bool
   mut reading : Bool
   mut read_offset : Int64
   mut writing : Bool
@@ -381,13 +382,17 @@ pub fn IoHandle::from_fd(
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
+  is_async? : Bool = true,
 ) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
-  evloop.poll.register(fd)
+  if is_async {
+    evloop.poll.register(fd)
+  }
   let handle = {
     fd,
     kind,
+    is_async,
     reading: false,
     read_offset: 0,
     writing: false,
@@ -667,6 +672,10 @@ extern "C" fn read_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlan
 
 ///|
 #cfg(platform="windows")
+extern "C" fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang_async_errno_is_read_EOF"
+
+///|
+#cfg(platform="windows")
 async fn IoHandle::generic_read(
   handle : IoHandle,
   job_id : Int,
@@ -685,9 +694,11 @@ async fn IoHandle::generic_read(
   } else if @os_error.is_nonblocking_io_error() {
     evloop.wait_for_io_result(job_id, result, handle.fd, context~)
     result.status(handle.fd, context~) catch {
-      @os_error.OSError(_) as err if err.is_ERROR_HANDLE_EOF() => 0
+      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
     }
+  } else if errno_is_read_eof(@os_error.get_errno()) {
+    0
   } else {
     @os_error.check_errno(context)
     panic()
@@ -703,12 +714,20 @@ pub async fn IoHandle::read(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard !handle.reading
   handle.reading = true
   defer {
     handle.reading = false
   }
+  if !handle.is_async {
+    let job = Job::read(handle.fd, buf, offset, len, position=-1)
+    let n = perform_job_in_worker(job, context~) catch {
+      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+      err => raise err
+    }
+    return n
+  }
+  guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {
@@ -864,12 +883,16 @@ pub async fn IoHandle::write(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard !handle.writing
   handle.writing = true
   defer {
     handle.writing = false
   }
+  if !handle.is_async {
+    let job = Job::write(handle.fd, buf, offset, len, position=-1)
+    return perform_job_in_worker(job, context~)
+  }
+  guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {

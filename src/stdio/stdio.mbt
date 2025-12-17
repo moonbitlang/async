@@ -19,7 +19,7 @@ struct Input {
 }
 
 ///|
-pub fn Input::fd(self : Input) -> Int {
+pub fn Input::fd(self : Input) -> @fd_util.Fd {
   self.io.fd()
 }
 
@@ -37,7 +37,7 @@ pub impl @io.Reader for Input with _get_internal_buffer(self) {
 struct Output(@event_loop.IoHandle)
 
 ///|
-pub fn Output::fd(self : Output) -> Int {
+pub fn Output::fd(self : Output) -> @fd_util.Fd {
   self.0.fd()
 }
 

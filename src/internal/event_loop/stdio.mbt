@@ -47,7 +47,54 @@ fn setup_stdio(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(platform="windows")
+extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "GetStdHandle"
+
+///|
+#cfg(platform="windows")
+fn setup_stdio(
+  id : Int,
+  context~ : String,
+  restore_context~ : String,
+) -> IoHandle {
+  // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
+  let fd = get_std_handle(-10 - id)
+  if !@fd_util.fd_is_valid(fd) {
+    let errno = @os_error.get_errno()
+    abort("\{context}: \{@os_error.errno_to_string(errno)}")
+  }
+  let kind = @fd_util.get_fd_kind_sync(fd, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      abort("\{context}: \{@os_error.errno_to_string(errno)}")
+    err => abort("\{context}: \{err}")
+  }
+  let handle = {
+    fd,
+    kind,
+    is_async: false,
+    reading: false,
+    read_offset: 0,
+    writing: false,
+    write_offset: 0,
+  }
+
+  // register stdio on event loop creation.
+  // This allows multiple event loop inside a single program.
+  register_hook(
+    init=() => {
+      guard curr_loop.val is Some(evloop)
+      guard evloop.fds.get(fd) is None
+      evloop.fds[fd] = handle
+    },
+    exit=() => {
+      ignore(restore_context)
+      ignore(handle.detach_from_event_loop())
+    },
+  )
+  handle
+}
+
+///|
 pub let stdin : IoHandle = setup_stdio(
   0,
   context="initialize `stdin`",
@@ -55,7 +102,6 @@ pub let stdin : IoHandle = setup_stdio(
 )
 
 ///|
-#cfg(not(platform="windows"))
 pub let stdout : IoHandle = setup_stdio(
   1,
   context="initialize `stdout`",
@@ -63,7 +109,6 @@ pub let stdout : IoHandle = setup_stdio(
 )
 
 ///|
-#cfg(not(platform="windows"))
 pub let stderr : IoHandle = setup_stdio(
   2,
   context="initialize `stderr`",
