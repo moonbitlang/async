@@ -108,7 +108,6 @@ async fn main {
       continue rest
     }
   }
-
   if inputs.is_empty() {
     inputs.push("-")
   }
