@@ -105,7 +105,7 @@ async test "basic" {
       #|<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>
       #|<a href="/examples/http_file_server/moon.pkg.json">moon.pkg.json</a><br/>
       #|<a href="/examples/http_file_server/server_test.mbt">server_test.mbt</a><br/>
-      #|<a href="/examples/http_file_server/http_file_server.mbti">http_file_server.mbti</a><br/>
+      #|<a href="/examples/http_file_server/pkg.generated.mbti">pkg.generated.mbti</a><br/>
       #|</div></body></html>
       #|
       #|client: GET /examples/http_file_server/moon.pkg.json
@@ -132,8 +132,9 @@ async test "basic" {
       #|examples/http_file_server/main.mbt
       #|examples/http_file_server/moon.pkg.json
       #|examples/http_file_server/server_test.mbt
-      #|examples/http_file_server/http_file_server.mbti
+      #|examples/http_file_server/pkg.generated.mbti
       #|
+
     ),
   )
 }
