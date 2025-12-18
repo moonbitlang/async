@@ -2,11 +2,14 @@
   "import": [
     "moonbitlang/async/internal/event_loop",
     "moonbitlang/async/internal/fd_util",
+    "moonbitlang/async/internal/os_string",
+    "moonbitlang/async/os_error",
     "moonbitlang/async/io"
   ],
   "test-import": [
     "moonbitlang/async"
   ],
+  "native-stub": [ "windows.c" ],
   "targets": {
     "ffi.mbt": [ "native" ],
     "pipe.mbt": [ "native" ],
