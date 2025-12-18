@@ -134,7 +134,6 @@ async test "basic" {
       #|examples/http_file_server/server_test.mbt
       #|examples/http_file_server/pkg.generated.mbti
       #|
-
     ),
   )
 }
