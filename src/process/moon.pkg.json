@@ -4,12 +4,14 @@
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
     "moonbitlang/async/internal/os_string",
-    "moonbitlang/async/fs",
     "moonbitlang/async/pipe",
     "moonbitlang/async/stdio",
     "moonbitlang/async",
     "moonbitlang/async/io",
     "moonbitlang/async/os_error"
+  ],
+  "test-import": [
+    "moonbitlang/async/fs"
   ],
   "targets": {
     "process.mbt": [ "native" ],
@@ -21,5 +23,5 @@
     "redirect_test.mbt": [ "native" ],
     "wait_test.mbt": [ "native" ]
   },
-  "native-stub": [ "stub.c" ]
+  "native-stub": [ "stub.c", "windows.c" ]
 }

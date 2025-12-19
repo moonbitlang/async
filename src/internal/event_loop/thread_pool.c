@@ -539,6 +539,7 @@ struct open_job {
   int truncate;
   int sync;
   int mode;
+  int is_async;
   HANDLE result;
   int64_t kind;
 };
@@ -589,6 +590,10 @@ void open_job_worker(struct job *job) {
     ? (open_job->truncate ? CREATE_ALWAYS : OPEN_ALWAYS)
     : (open_job->truncate ? TRUNCATE_EXISTING : OPEN_EXISTING);
 
+  DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
+  if (open_job->is_async)
+    flags |= FILE_FLAG_OVERLAPPED;
+
   DWORD access_flag = access_flags[open_job->access];
   if (open_job->append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
@@ -599,8 +604,7 @@ void open_job_worker(struct job *job) {
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
     NULL, // security attributes
     create_flags, // creation
-    // flags and attributes
-    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_BACKUP_SEMANTICS,
+    flags, // flags and attributes
     NULL // template file
   );
 
@@ -649,7 +653,8 @@ struct open_job *moonbitlang_async_make_open_job(
   int append,
   int truncate,
   int sync,
-  int mode
+  int mode,
+  int is_async
 ) {
 
   struct open_job *job = MAKE_JOB(open);
@@ -660,6 +665,7 @@ struct open_job *moonbitlang_async_make_open_job(
   job->truncate = truncate;
   job->sync = sync;
   job->mode = mode;
+  job->is_async = is_async;
   return job;
 }
 
@@ -1386,8 +1392,169 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
   return job->result;
 }
 
-#ifndef _WIN32
 // ===== spawn job, spawn foreign process =====
+#ifdef _WIN32
+
+struct spawn_job {
+  struct job job;
+  LPWSTR command_line;
+  void *environment;
+  HANDLE stdio[3];
+  LPWSTR cwd;
+};
+
+static
+void free_spawn_job(void *obj) {
+  struct spawn_job *job = (struct spawn_job*)obj;
+  moonbit_decref(job->command_line);
+  if (job->environment)
+    moonbit_decref(job->environment);
+  if (job->cwd)
+    moonbit_decref(job->cwd);
+}
+
+static
+void spawn_job_worker(struct job *job) {
+  static DWORD std_handle_values[] = {
+    STD_INPUT_HANDLE,
+    STD_OUTPUT_HANDLE,
+    STD_ERROR_HANDLE
+  };
+
+  struct spawn_job *spawn_job = (struct spawn_job *)job;
+
+  for (int i = 0; i < 3; ++i) {
+    if (spawn_job->stdio[i] == INVALID_HANDLE_VALUE)
+      spawn_job->stdio[i] = GetStdHandle(std_handle_values[i]);
+
+    if (spawn_job->stdio[i] == INVALID_HANDLE_VALUE) {
+      job->err = GetLastError();
+      return;
+    }
+
+    if (
+      !SetHandleInformation(
+        spawn_job->stdio[i],
+        HANDLE_FLAG_INHERIT,
+        HANDLE_FLAG_INHERIT
+      )
+    ) {
+      job->err = GetLastError();
+      return;
+    }
+  }
+
+  STARTUPINFOW startup_info = {
+    sizeof(STARTUPINFOW), // size of structure
+    NULL, // reserved
+    NULL, // desktop,
+    NULL, // console title
+    0, 0, 0, 0, // x, y, w, h of new window
+    0, 0, 0, // width, height and fill character of new console window
+    STARTF_USESTDHANDLES, // flags
+    0, // wShowWindow
+    0, NULL, // reserved
+    spawn_job->stdio[0], // stdin
+    spawn_job->stdio[1], // stdout
+    spawn_job->stdio[2] // stderr
+  };
+
+  PROCESS_INFORMATION process_info;
+  BOOL result = CreateProcessW(
+    NULL,
+    spawn_job->command_line,
+    NULL, // security attributes for process
+    NULL, // security attributes for main thread
+    TRUE, // do not inherit handle;
+    CREATE_NEW_PROCESS_GROUP // so that we can gracefully terminate this process
+                             // via sending Ctrl+Break console event
+    | CREATE_UNICODE_ENVIRONMENT,
+    spawn_job->environment,
+    spawn_job->cwd,
+    &startup_info,
+    &process_info
+  );
+
+  if (!result) {
+    job->err = GetLastError();
+    return;
+  }
+
+  // Since process waiting is not performance-critical,
+  // here we discard the handles returned by `CreateProcessW`,
+  // and use `OpenProcess` to obtain another handle later when needed,
+  // so that the API style is closer to UNIX-like systems.
+  CloseHandle(process_info.hThread);
+  CloseHandle(process_info.hProcess);
+
+  job->ret = process_info.dwProcessId;
+}
+
+struct spawn_job *moonbitlang_async_make_spawn_job(
+  LPWSTR command_line,
+  void *environment,
+  HANDLE stdin_handle,
+  HANDLE stdout_handle,
+  HANDLE stderr_handle,
+  LPWSTR cwd
+) {
+  struct spawn_job *job = MAKE_JOB(spawn);
+  job->command_line = command_line;
+  job->environment = environment;
+  job->stdio[0] = stdin_handle;
+  job->stdio[1] = stdout_handle;
+  job->stdio[2] = stderr_handle;
+  job->cwd = cwd;
+  return job;
+}
+
+// For windows, waiting for process is done via one dedicated thread per process,
+// As a future optimization, we may wait for multiple processes in a single thread.
+// But that would make cancellation a lot trickier.
+
+struct wait_for_process_job {
+  struct job job;
+  DWORD pid;
+  HANDLE cancel;
+};
+
+static
+void free_wait_for_process_job(void *obj) {
+  struct wait_for_process_job *job = (struct wait_for_process_job*)obj;
+  CloseHandle(job->cancel);
+};
+
+static
+void wait_for_process_job_worker(struct job *job) {
+  struct wait_for_process_job *wait_for_process_job = (struct wait_for_process_job*)job;
+
+  HANDLE handles[2] = { INVALID_HANDLE_VALUE, wait_for_process_job->cancel };
+
+  handles[0] = OpenProcess(SYNCHRONIZE, FALSE, wait_for_process_job->pid);
+  if (handles[0] == INVALID_HANDLE_VALUE) {
+    job->err = GetLastError();
+    return;
+  }
+
+  DWORD result = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+  if (result == WAIT_FAILED)
+    job->err = GetLastError();
+}
+
+struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
+  DWORD pid
+) {
+  struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
+  job->pid = pid;
+  job->cancel = CreateEventA(NULL, FALSE, FALSE, NULL);
+  return job;
+}
+
+void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *job) {
+  SetEvent(job->cancel);
+}
+
+#else
 
 struct spawn_job {
   struct job job;

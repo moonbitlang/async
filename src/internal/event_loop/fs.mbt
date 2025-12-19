@@ -17,6 +17,44 @@
 pub type Directory
 
 ///|
+pub async fn open_detached(
+  path : StringView,
+  // 0 => read only, 1 => write only, 2 => read write
+  access : Int,
+  create~ : Bool,
+  append~ : Bool,
+  truncate~ : Bool,
+  // 0 => no sync, 1 => data sync, 2 => full sync
+  sync~ : Int,
+  // permission for file when new file is created
+  mode~ : Int,
+  is_async~ : Bool,
+  context~ : String,
+) -> (@fd_util.Fd, @fd_util.FileKind) {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::open(
+    path_bytes,
+    access,
+    create~,
+    append~,
+    truncate~,
+    sync~,
+    mode~,
+    is_async~,
+  )
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => {
+      let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
+      (job.get_open_job_result(), kind)
+    }
+  }
+}
+
+///|
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -30,27 +68,18 @@ pub async fn open(
   mode~ : Int,
   context~ : String,
 ) -> IoHandle {
-  let path_bytes = @os_string.encode(path)
-  let job = Job::open(
-    path_bytes,
+  let (fd, kind) = open_detached(
+    path,
     access,
     create~,
     append~,
     truncate~,
     sync~,
     mode~,
+    is_async=true,
+    context~,
   )
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    _ => {
-      let fd = job.get_open_job_result()
-      let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
-      IoHandle::from_fd(fd, kind~)
-    }
-  }
+  IoHandle::from_fd(fd, kind~)
 }
 
 ///|

@@ -265,6 +265,7 @@ fn EventLoop::poll(self : Self) -> Unit raise {
     let fd = event.fd()
     if @fd_util.fd_is_valid(fd) {
       // completed IO operation on a file descriptor
+      guard self.fds.get(fd) is Some(_) else {  }
       let result = event.io_result()
       let job_id = result.job_id()
       if self.jobs.get(job_id) is Some(coro) {
@@ -568,7 +569,7 @@ async fn EventLoop::wait_for_job(
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  allow_cancel? : Bool = false,
+  cancel? : CancellationMode = NoCancel,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
@@ -585,7 +586,6 @@ async fn perform_job_in_worker(
       wake_worker(worker, job_id, job)
     }
   }
-  let cancel = if allow_cancel { Ignore } else { NoCancel }
   evloop.wait_for_job(job_id, cancel~)
   if job.err() > 0 {
     raise @os_error.OSError(job.err(), context~)
@@ -951,9 +951,27 @@ pub async fn spawn(
 }
 
 ///|
+#cfg(platform="windows")
+pub async fn spawn(
+  command_line : @os_string.OsString,
+  env~ : @os_string.OsString?,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString?,
+  context~ : String,
+) -> Int {
+  perform_job_in_worker(
+    Job::spawn(command_line, env, stdin, stdout, stderr, cwd),
+    context~,
+  )
+}
+
+///|
 #cfg(not(platform="windows"))
-pub async fn wait_pid(pid : Int) -> Unit {
+pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
   guard curr_loop.val is Some(evloop)
+  ignore(context)
   let alt_id = match evloop.poll.register_pid(pid) {
     Running(id) => id
     Stopped => return
@@ -965,4 +983,16 @@ pub async fn wait_pid(pid : Int) -> Unit {
     evloop.poll.remove_pid(alt_id)
   }
   @coroutine.suspend()
+}
+
+///|
+#cfg(platform="windows")
+pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
+  let job = Job::wait_for_process(pid)
+  perform_job_in_worker(
+    job,
+    context~,
+    cancel=CancelAndWait(() => job.cancel_process_waiter()),
+  )
+  |> ignore
 }

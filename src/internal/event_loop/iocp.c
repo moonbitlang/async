@@ -80,7 +80,10 @@ int32_t moonbitlang_async_event_get_bytes_transferred(OVERLAPPED_ENTRY *entry) {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handle) {
-  return CancelIoEx(handle, overlapped);
+  int32_t result = CancelIoEx(handle, overlapped);
+  if (!result && GetLastError() != ERROR_NOT_FOUND)
+    return FALSE;
+  return TRUE;
 }
 
 #endif

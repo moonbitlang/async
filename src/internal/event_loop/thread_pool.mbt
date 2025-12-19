@@ -80,6 +80,7 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
+  is_async~ : Bool,
 ) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
@@ -180,6 +181,7 @@ extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbit
 extern "C" fn Job::get_realpath_result(job : Job) -> String = "moonbitlang_async_get_realpath_result"
 
 ///|
+#cfg(not(platform="windows"))
 #owned(path, args, env, cwd)
 extern "C" fn Job::spawn(
   path : @os_string.OsString,
@@ -190,6 +192,27 @@ extern "C" fn Job::spawn(
   stderr : @fd_util.Fd,
   cwd : @os_string.OsString?,
 ) -> Job = "moonbitlang_async_make_spawn_job"
+
+///|
+#cfg(platform="windows")
+#owned(command_line, env, cwd)
+extern "C" fn Job::spawn(
+  command_line : @os_string.OsString,
+  env : @os_string.OsString?,
+  stdin : @fd_util.Fd,
+  stdout : @fd_util.Fd,
+  stderr : @fd_util.Fd,
+  cwd : @os_string.OsString?,
+) -> Job = "moonbitlang_async_make_spawn_job"
+
+///|
+#cfg(platform="windows")
+extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
+
+///|
+#cfg(platform="windows")
+#borrow(job)
+extern "C" fn Job::cancel_process_waiter(job : Job) = "moonbitlang_async_cancel_wait_for_process_job"
 
 ///|
 #owned(host)

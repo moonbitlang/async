@@ -19,29 +19,25 @@ async test "set_env" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run("sh", ["-c", "echo $MAGIC_VAR"], stdout=w, extra_env={
+      let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
+      @process.run(shell, ["-c", "\{write_stdout} \{env_var}"], stdout=w, extra_env={
         "MAGIC_VAR": "MAGIC_VALUE",
       })
       |> ignore
     })
-    inspect(
-      r.read_all().text(),
-      content=(
-        #|MAGIC_VALUE
-        #|
-      ),
-    )
+    inspect(r.read_all().text(), content="MAGIC_VALUE")
   })
 }
 
 ///|
 async test "set_env no inherit" {
+  let test_prog = dump_env_prog.wait()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
       @process.run(
-        "env",
+        test_prog,
         [],
         stdout=w,
         extra_env={
@@ -55,7 +51,7 @@ async test "set_env no inherit" {
       |> ignore
     })
     inspect(
-      r.read_all().text(),
+      r.read_all().text().replace_all(old="\r\n", new="\n"),
       content=(
         #|MAGIC_VAR_1=MAGIC_VALUE_1
         #|MAGIC_VAR_2=MAGIC_VALUE_2

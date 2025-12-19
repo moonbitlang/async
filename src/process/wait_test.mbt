@@ -16,6 +16,7 @@
 ///|
 async test "basic wait" {
   let log = StringBuilder::new()
+  let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
       for i in 0..<3 {
@@ -24,7 +25,7 @@ async test "basic wait" {
       }
     })
     @async.sleep(10)
-    let result = @process.run("sh", ["-c", "sleep 1"])
+    let result = @process.run(test_prog, ["1000"])
     log.write_string("process completed with \{result}\n")
   })
   inspect(
@@ -41,12 +42,13 @@ async test "basic wait" {
 
 ///|
 async test "wait exitcode" {
-  inspect(@process.run("sh", ["-c", "exit 42"]), content="42")
+  inspect(@process.run(shell, ["-c", "exit 42"]), content="42")
 }
 
 ///|
 async test "wait_pid" {
   let log = StringBuilder::new()
+  let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(group) {
     group.spawn_bg(fn() {
       for _ in 0..<2 {
@@ -54,7 +56,7 @@ async test "wait_pid" {
         log.write_string("tick\n")
       }
     })
-    let pid = @process.spawn_orphan("sh", ["-c", "sleep 1; exit 42"])
+    let pid = @process.spawn_orphan(test_prog, ["1000", "-exit-code", "42"])
     log.write_string("process terminated with \{@process.wait_pid(pid)}\n")
   })
   inspect(

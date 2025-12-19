@@ -1,0 +1,4 @@
+{
+  "import": [ "moonbitlang/async", "moonbitlang/async/stdio" ],
+  "is-main": true
+}

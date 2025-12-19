@@ -1,0 +1,5 @@
+{
+  "import": [ "moonbitlang/async" ],
+  "native-stub": [ "stub.c" ],
+  "is-main": true
+}

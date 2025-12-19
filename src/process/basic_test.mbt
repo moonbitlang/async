@@ -19,13 +19,16 @@ async test "basic_ls" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      @process.run("ls", ["src/process"], stdout=w, extra_env={ "LC_ALL": "C" })
+      @process.run(shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
+        "LC_ALL": "C",
+      })
       |> ignore
     })
     let files = r
       .read_all()
       .text()
       .trim(char_set="\n\r ")
+      .replace_all(old="\r\n", new="\n")
       .split("\n")
       .to_array()
       |> then(x => {
@@ -34,37 +37,32 @@ async test "basic_ls" {
       })
     // files.sort()
     @json.inspect(files, content=[
-      "stub.c", "README.md", "process.mbt", "cwd_test.mbt", "env_test.mbt", "README.mbt.md",
-      "moon.pkg.json", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
-      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti",
+      "stub.c", "README.md", "windows.c", "process.mbt", "cwd_test.mbt", "env_test.mbt",
+      "README.mbt.md", "moon.pkg.json", "test_programs", "wait_test.mbt", "basic_test.mbt",
+      "cancel_test.mbt", "helper_test.mbt", "redirect_test.mbt", "unimplemented.mbt",
+      "pkg.generated.mbti", "commands_for_test.mbt", "windows_escape_wbtest.mbt",
     ])
   })
 }
 
 ///|
 async test "basic_cat" {
+  let cat = cat.wait()
   @async.with_task_group(fn(root) {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     root.spawn_bg(fn() {
-      @process.run("cat", ["-"], stdin=cat_read, stdout=cat_write) |> ignore
+      @process.run(cat, [], stdin=cat_read, stdout=cat_write) |> ignore
     })
     root.spawn_bg(fn() {
       defer we_write.close()
-      we_write.write(b"abcd\n")
+      we_write.write(b"abcd")
       @async.sleep(50)
-      we_write.write(b"defg\n")
+      we_write.write(b"efgh")
     })
     root.spawn_bg(fn() {
       defer we_read.close()
-      inspect(
-        we_read.read_all().text(),
-        content=(
-          #|abcd
-          #|defg
-          #|
-        ),
-      )
+      inspect(we_read.read_all().text(), content="abcdefgh")
     })
   })
 }
