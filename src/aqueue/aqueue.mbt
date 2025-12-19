@@ -57,6 +57,8 @@ struct Queue[X] {
   writers : @deque.Deque[Writer[X]]
   /// invariant: if `buffer` is non-empty, `readers` must be empty
   buffer : @deque.Deque[X]
+  /// `Some(err)` if the queue is already closed
+  mut closed : Error?
 }
 
 ///|
@@ -73,7 +75,13 @@ pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
         abort("queue size must be positive")
       }
   }
-  { kind, writers: @deque.new(), readers: @deque.new(), buffer: @deque.new() }
+  {
+    kind,
+    writers: @deque.new(),
+    readers: @deque.new(),
+    buffer: @deque.new(),
+    closed: None,
+  }
 }
 
 ///|
@@ -103,7 +111,14 @@ pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
 /// in this case `put` will fail with a cancellation error.
 /// It is guaranteed that the element will be added to the queue
 /// *if and only if* `put` return normally.
+///
+/// If the queue is already closed, `put` will fail immediately.
+/// If the queue is a blocking queue, and is closed while `put` is blocking,
+/// `put` will also fail immediately.
 pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
+  if self.closed is Some(err) {
+    raise err
+  }
   if !self.try_put(data) {
     match self.kind {
       Unbounded => panic()
@@ -119,6 +134,9 @@ pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
             writer.coro = None
             raise err
           }
+        }
+        if self.closed is Some(err) {
+          raise err
         }
       }
       DiscardOldest(_) => {
@@ -139,7 +157,12 @@ pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
 /// Note that even for `DiscardOldest` or `DiscardLatest` queues,
 /// where `put` never blocks, `try_put` will still return `false` if the queue is full,
 /// instead of discarding the oldest/newest element.
-pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool {
+///
+/// If the queue is already closed, `try_put` will fail with error immediately.
+pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool raise {
+  if self.closed is Some(err) {
+    raise err
+  }
   loop self.readers.pop_front() {
     None =>
       match self.kind {
@@ -178,6 +201,10 @@ pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool {
 /// `get` itself never fail, and will wait indefinitely.
 /// However, since `get` is a blocking point, the task running `get` may be cancelled,
 /// in this case, an cancellation will be raised from `get`.
+///
+/// If the queue is already closed and there is no buffered elements,
+/// `get` will fail immediately.
+/// If the queue is closed while `get` is waiting, `get` will also fail immediately.
 pub async fn[X] Queue::get(self : Queue[X]) -> X {
   if self.try_get() is Some(data) {
     return data
@@ -207,13 +234,19 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
       raise err
     }
   }
+  if self.closed is Some(err) {
+    raise err
+  }
   reader.value.unwrap()
 }
 
 ///|
 /// Try to fetch an element from the queue without blocking.
 /// If no element is in the queue at the moment, `None` is returned.
-pub fn[X] Queue::try_get(self : Queue[X]) -> X? {
+///
+/// If the queue is already closed and there is no buffered elements,
+/// `try_get` will fail immediately.
+pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
   let result = self.buffer.pop_front()
   if result is Some(_) {
     loop self.writers.pop_front() {
@@ -225,6 +258,47 @@ pub fn[X] Queue::try_get(self : Queue[X]) -> X? {
         writer.coro = None
       }
     }
+  } else if self.closed is Some(err) {
+    raise err
   }
   result
+}
+
+///|
+pub suberror QueueAlreadyClosed derive(Show, ToJson)
+
+///|
+/// Close an async queue. After the queue is closed:
+///
+/// - blocking `put` and `get` operations will fail immediately.
+/// - subsequent `put` and `try_put` operations also fail immediately
+/// - if `clear = false` (`false` by default),
+///   sbusequent `get` and `try_get` operations can still retrieve
+///   buffered elements in the queue before `close`.
+///   After the queue becomes empty,
+///   subsequent `get` and `try_get` operations also fail immediately
+/// - if `clear = true`, buffered elements in the queue will be cleared
+///
+/// By default, writing to or reading from a closed queue
+/// will receive the `QueueAlreadyClosed` error.
+/// But this error can be customized via the `error` parameter.
+pub fn[X] Queue::close(
+  self : Queue[X],
+  error? : Error = QueueAlreadyClosed,
+  clear? : Bool = false,
+) -> Unit {
+  self.closed = Some(error)
+  for writer in self.writers {
+    if writer.coro is Some(coro) {
+      coro.wake()
+    }
+  }
+  for reader in self.readers {
+    if reader.coro is Some(coro) {
+      coro.wake()
+    }
+  }
+  if clear {
+    self.buffer.clear()
+  }
 }
