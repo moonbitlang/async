@@ -8,5 +8,5 @@
   "description": "Asynchronous programming library for MoonBit",
   "source": "src",
   "preferred-target": "native",
-  "exclude": ["examples", "stdio_test", "test_directory", "test_keys"]
+  "exclude": ["examples", "test_directory", "test_keys"]
 }
