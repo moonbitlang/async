@@ -46,6 +46,7 @@ extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
 extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
+#cfg(not(platform="windows"))
 #owned(buf)
 extern "C" fn Job::read(
   fd : @fd_util.Fd,
@@ -57,6 +58,7 @@ extern "C" fn Job::read(
 ) -> Job = "moonbitlang_async_make_read_job"
 
 ///|
+#cfg(not(platform="windows"))
 #owned(buf)
 extern "C" fn Job::write(
   fd : @fd_util.Fd,
@@ -170,8 +172,14 @@ extern "C" fn Job::get_readdir_result(job : Job) -> @c_buffer.Buffer = "moonbitl
 extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_async_make_realpath_job"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(job)
 extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
+
+///|
+#cfg(platform="windows")
+#borrow(job)
+extern "C" fn Job::get_realpath_result(job : Job) -> String = "moonbitlang_async_get_realpath_result"
 
 ///|
 #owned(path, args, env, cwd)

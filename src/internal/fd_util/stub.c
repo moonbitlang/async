@@ -140,10 +140,16 @@ MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_file_kind_from_sys_kind(int64_t sys_kind) {
 #ifdef _WIN32
   switch (sys_kind & 0xffffffff) {
-  case FILE_TYPE_DISK:    return 1;
+  case FILE_TYPE_DISK: {
+    DWORD attrs = sys_kind >> 32;
+    if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+      return 2;
+    if (attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+      return 3;
+    return 1;
+  }
   case FILE_TYPE_PIPE:    return 5;
   case FILE_TYPE_CHAR:    return 7;
-  case FILE_TYPE_UNKNOWN: return ((sys_kind >> 32) & FILE_ATTRIBUTE_DIRECTORY) ? 2 : 0; 
   default:                return 0;
   }
 #else

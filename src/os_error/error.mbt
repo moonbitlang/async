@@ -31,6 +31,9 @@ extern "C" fn errno_is_EEXIST(errno : Int) -> Bool = "moonbitlang_async_is_EEXIS
 extern "C" fn errno_is_EACCES(errno : Int) -> Bool = "moonbitlang_async_is_EACCES"
 
 ///|
+extern "C" fn errno_is_ERROR_HANDLE_EOF(errno : Int) -> Bool = "moonbitlang_async_is_ERROR_HANDLE_EOF"
+
+///|
 pub fn is_nonblocking_io_error() -> Bool {
   errno_is_nonblocking_io_error(get_errno())
 }
@@ -94,6 +97,15 @@ pub fn OSError::is_EEXIST(err : OSError) -> Bool {
 pub fn OSError::is_EACCES(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno_is_EACCES(errno)
+}
+
+///|
+/// Detect whether the error is the `ERROR_HANDLE_EOF`
+/// (Windows specific error for reading reaches EOF).
+#internal(internal, "for internal use only")
+pub fn OSError::is_ERROR_HANDLE_EOF(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_ERROR_HANDLE_EOF(errno)
 }
 
 ///|

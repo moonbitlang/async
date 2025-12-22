@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 async test "stat" {
   let link_path = "target/fs_stat_test"
   @fs.symlink(link_path, target="../LICENSE")

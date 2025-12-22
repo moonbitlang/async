@@ -20,6 +20,7 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "timestamp for path" {
   let path = "/tmp/timestamp_test"
   @async.with_task_group(fn(group) {
@@ -52,6 +53,26 @@ async test "timestamp for path" {
 }
 
 ///|
+// `atime` is not reliable on Windows.
+#cfg(platform="windows")
+async test "mtime for path" {
+  let path = "target/timestamp_test"
+  @async.with_task_group(fn(group) {
+    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    group.add_defer(() => @fs.remove(path))
+    let mtime_1 = @fs.mtime(path)
+    let ctime_1 = @fs.ctime(path)
+    @async.sleep(600)
+    @fs.write_file(path, "1234", sync=Full)
+    let mtime_2 = @fs.mtime(path)
+    let ctime_2 = @fs.ctime(path)
+    assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
+    assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
+  })
+}
+
+///|
+#cfg(not(platform="windows"))
 async test "timestamp for opened file" {
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group(fn(group) {
@@ -83,5 +104,26 @@ async test "timestamp for opened file" {
     let ctime_4 = @fs.ctime(path)
     assert_eq(mtime_4, mtime_3)
     assert_true(diff_timestamp(ctime_4, ctime_3) > 500_000_000)
+  })
+}
+
+///|
+// `atime` is not reliable on Windows.
+#cfg(platform="windows")
+async test "mtime for opened file" {
+  let path = "target/opened_file_timestamp_test"
+  @async.with_task_group(fn(group) {
+    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    group.add_defer(() => @fs.remove(path))
+    let file = @fs.open(path, mode=ReadWrite, sync=Full)
+    defer file.close()
+    let mtime_1 = file.mtime()
+    let ctime_1 = file.mtime()
+    @async.sleep(600)
+    file.write_at("1234", position=0)
+    let mtime_2 = file.mtime()
+    let ctime_2 = file.mtime()
+    assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
+    assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
   })
 }

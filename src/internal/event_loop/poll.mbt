@@ -154,11 +154,41 @@ extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_
 
 ///|
 #cfg(platform="windows")
-priv struct IoResult(FixedArray[Byte])
+#external
+priv type IoResult
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::new() -> IoResult = "moonbitlang_async_make_io_result"
+extern "C" fn IoResult::new(job_id : Int, offset : Int64) -> IoResult = "moonbitlang_async_make_io_result"
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::free(self : IoResult) = "moonbitlang_async_free_io_result"
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::job_id(self : IoResult) -> Int = "moonbitlang_async_io_result_get_job_id"
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::status_ffi(
+  result : IoResult,
+  handle : @fd_util.Fd,
+) -> Int = "moonbitlang_async_io_result_get_status"
+
+///|
+#cfg(platform="windows")
+fn IoResult::status(
+  result : IoResult,
+  handle : @fd_util.Fd,
+  context~ : String,
+) -> Int raise {
+  let n = result.status_ffi(handle)
+  if n < 0 {
+    @os_error.check_errno(context)
+  }
+  n
+}
 
 ///|
 #cfg(platform="windows")

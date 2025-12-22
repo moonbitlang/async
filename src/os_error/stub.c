@@ -79,6 +79,15 @@ int moonbitlang_async_is_EACCES(int err) {
 }
 
 MOONBIT_FFI_EXPORT
+int moonbitlang_async_is_ERROR_HANDLE_EOF(int err) {
+#ifdef _WIN32
+  return err == ERROR_HANDLE_EOF;
+#else
+  return 0;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 char *moonbitlang_async_errno_to_string(int err) {
 #ifdef _WIN32
   LPWSTR result = 0;

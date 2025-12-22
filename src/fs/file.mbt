@@ -242,9 +242,11 @@ pub async fn File::size(self : File) -> Int64 {
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn as_dir_ffi(fd : @fd_util.Fd) -> Directory = "fdopendir"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
 
 ///|
@@ -255,6 +257,7 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 /// The input file will be automatically closed when the
 /// result directory object is closed.
 /// If `as_dir` fails, the input file will be closed automatically.
+#cfg(not(platform="windows"))
 pub fn File::as_dir(self : File) -> Directory raise {
   let fd = self.io.detach_from_event_loop()
   let dir = as_dir_ffi(fd)
@@ -265,6 +268,11 @@ pub fn File::as_dir(self : File) -> Directory raise {
   }
   dir
 }
+
+///|
+// mute unused warning
+#cfg(platform="windows")
+let _unused : Unit = ignore(@os_error.check_errno)
 
 ///|
 pub fn File::kind(self : File) -> FileKind {

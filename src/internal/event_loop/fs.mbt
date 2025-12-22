@@ -197,8 +197,24 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
+#cfg(platform="windows")
+fn prepare_opendir_path(path : StringView) -> StringView {
+  if path is [.., '/' | '\\'] {
+    path + "*"
+  } else {
+    path + "\\*"
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn prepare_opendir_path(path : StringView) -> StringView {
+  path
+}
+
+///|
 pub async fn opendir(path : StringView, context~ : String) -> Directory {
-  let path_bytes = @os_string.encode(path)
+  let path_bytes = @os_string.encode(prepare_opendir_path(path))
   let job = Job::opendir(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
@@ -209,6 +225,14 @@ pub async fn opendir(path : StringView, context~ : String) -> Directory {
 }
 
 ///|
+#cfg(not(platform="windows"))
+pub extern "C" fn Directory::close(self : Directory) -> Int = "closedir"
+
+///|
+#cfg(platform="windows")
+pub extern "C" fn Directory::close(self : Directory) -> Int = "moonbitlang_async_closedir"
+
+///|
 pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
   let job = Job::readdir(dir)
   let _ = perform_job_in_worker(job, context~)
@@ -216,7 +240,8 @@ pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
 }
 
 ///|
-pub async fn realpath(path : StringView, context~ : String) -> Bytes {
+#cfg(not(platform="windows"))
+pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
   let job = Job::realpath(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
@@ -226,8 +251,18 @@ pub async fn realpath(path : StringView, context~ : String) -> Bytes {
   }
   let c_path = job.get_realpath_result()
   defer c_path.free()
-  let len = c_path.strlen()
-  let result = FixedArray::make(len, b'\x00')
-  c_path.blit_to_bytes(dst=result, offset=0, len~)
-  result.unsafe_reinterpret_as_bytes()
+  @os_string.decode(c_path)
+}
+
+///|
+#cfg(platform="windows")
+pub async fn realpath(path : StringView, context~ : String) -> String {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::realpath(path_bytes)
+  let _ = perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  }
+  job.get_realpath_result()
 }

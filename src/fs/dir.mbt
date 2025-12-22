@@ -51,11 +51,8 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
 struct Directory(@event_loop.Directory)
 
 ///|
-extern "C" fn Directory::close_ffi(self : Directory) -> Int = "closedir"
-
-///|
 pub fn Directory::close(self : Directory) -> Unit {
-  guard self.close_ffi() == 0
+  guard self.0.close() == 0
 }
 
 ///|
