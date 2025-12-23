@@ -30,7 +30,7 @@ async test "peer close connection" {
         certificate_type=PEM,
       )
       defer server.close()
-      @async.sleep(50)
+      inspect(server.read_all().text(), content="abcd")
       // close the underlying connection directly
     })
     // client
@@ -39,7 +39,8 @@ async test "peer close connection" {
       defer conn.close()
       let client = @tls.Tls::client(conn, verify=false)
       defer client.close()
-      inspect(client.read_all().text(), content="")
+      client.write("abcd")
+      @async.sleep(100)
       // the server already closed the connection
       client.shutdown()
     })

@@ -38,8 +38,6 @@ async test "one way" {
         log.write_string("server received: \{data}\n")
       } else {
         server.shutdown()
-        // give some time for the client to received shutdown notification
-        @async.sleep(50)
       }
     })
     // client
@@ -60,7 +58,7 @@ async test "one way" {
       @async.sleep(50)
       client.write(b"ijkl")
       client.shutdown()
-      @async.sleep(50)
+      inspect(client.read_all().text(), content="")
     })
   })
   inspect(
@@ -100,8 +98,6 @@ async test "echo" {
         server.write(data)
       } else {
         server.shutdown()
-        // give some time for the client to received shutdown notification
-        @async.sleep(50)
       }
     })
     // client
@@ -122,7 +118,7 @@ async test "echo" {
         @async.sleep(50)
       }
       client.shutdown()
-      @async.sleep(50)
+      inspect(client.read_all().text(), content="")
     })
   })
   inspect(
