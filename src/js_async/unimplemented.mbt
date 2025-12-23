@@ -82,6 +82,7 @@ pub fn AbortController::abort(self : Self) -> Unit {
 ///
 /// If `abort_controller` is absent, `wait` is non-cancellable.
 #internal(unimplemented, "unimplemented in native backend")
+#warnings("-unused_async")
 pub async fn[X] Promise::wait(
   promise : Promise[X],
   abort_controller? : AbortController,
@@ -104,6 +105,7 @@ pub async fn[X] Promise::wait(
 /// (i.e. the promised returned by `f` should properly handle the passed-in abort signal).
 /// For non-cancellable JavaScript code, use `Promise::wait()` directly.
 #internal(unimplemented, "unimplemented in native backend")
+#warnings("-unused_async")
 pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
   ignore(f)
   abort("unimplemented in native backend")
@@ -124,6 +126,7 @@ pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
 /// so there is no structured concurrency support for `Promise::from_async`,
 /// and this function should only be used for exporting MoonBit code to JavaScript.
 #internal(unimplemented, "unimplemented in native backend")
+#warnings("-unused_async")
 pub fn[X] Promise::from_async(
   f : async () -> X,
   abort_signal? : AbortSignal,

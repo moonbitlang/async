@@ -145,7 +145,7 @@ pub async fn walk(
   guard max_concurrency > 0
   let sem = @async.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
-    async fn handle_path(path : String) {
+    fn handle_path(path : String) {
       group.spawn_bg(allow_failure~, fn() {
         sem.acquire()
         defer sem.release()
