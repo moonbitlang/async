@@ -128,6 +128,27 @@ int32_t moonbitlang_async_sizeof_file_time() {
   return sizeof(file_time_t);
 }
 
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_file_kind_is_async(int64_t kind) {
+#ifdef _WIN32
+  // https://learn.microsoft.com/en-us/previous-versions/troubleshoot/windows/win32/asynchronous-disk-io-synchronous
+  return 0 == ((kind >> 32) & (FILE_ATTRIBUTE_COMPRESSED | FILE_ATTRIBUTE_ENCRYPTED));
+#else
+  switch (kind & S_IFMT) {
+  case S_IFSOCK:
+  case S_IFIFO:
+  case S_IFCHR:
+    return 1;
+  case S_IFREG:
+  case S_IFDIR:
+  case S_IFLNK:
+  case S_IFBLK:
+  default:
+    return 0;
+  }
+#endif
+}
+
 // For Windows, determining the kind of file requires two syscalls:
 // directories can only be detected via file attributes,
 // while pipes can only be detected via `GetFileType`.

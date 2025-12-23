@@ -30,7 +30,7 @@ pub async fn open_detached(
   mode~ : Int,
   is_async~ : Bool,
   context~ : String,
-) -> (@fd_util.Fd, @fd_util.FileKind) {
+) -> (@fd_util.Fd, Int64) {
   let path_bytes = @os_string.encode(path)
   let job = Job::open(
     path_bytes,
@@ -47,10 +47,7 @@ pub async fn open_detached(
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    _ => {
-      let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
-      (job.get_open_job_result(), kind)
-    }
+    _ => (job.get_open_job_result(), job.get_open_job_kind())
   }
 }
 
@@ -79,7 +76,9 @@ pub async fn open(
     is_async=true,
     context~,
   )
-  IoHandle::from_fd(fd, kind~)
+  let is_async = @fd_util.FileKind::is_async(kind)
+  let kind = @fd_util.FileKind::from_sys_kind(kind)
+  IoHandle::from_fd(fd, kind~, is_async~)
 }
 
 ///|

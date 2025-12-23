@@ -370,9 +370,11 @@ pub async fn sleep(duration : Int) -> Unit {
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
-) -> IoHandle raise {
+  is_async? : Bool = true,
+) -> IoHandle {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
+  ignore(is_async)
   let handle = { fd, kind, read: None, write: None, events: NoEvent }
   evloop.fds[fd] = handle
   handle
