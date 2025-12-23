@@ -1,6 +1,7 @@
 {
   "import": [
-    "moonbitlang/async/internal/coroutine"
+    "moonbitlang/async/internal/coroutine",
+    "moonbitlang/async/internal/io_buffer"
   ],
   "wbtest-import": [
     "moonbitlang/async",

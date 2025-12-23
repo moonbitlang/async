@@ -229,8 +229,11 @@ async fn Reader::skip_body(self : Reader) -> Unit {
 }
 
 ///|
+fn @io.ReaderBuffer::get_repr(self : Self) -> @io_buffer.Buffer = "%identity"
+
+///|
 async fn Reader::enter_passthrough_mode(self : Reader) -> Unit {
   self.skip_body()
-  self.read_buf.clear()
+  self.read_buf.get_repr().clear()
   self.body = PassThrough
 }

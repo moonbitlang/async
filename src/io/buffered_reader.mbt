@@ -13,49 +13,15 @@
 // limitations under the License.
 
 ///|
-const SEGMENT_SIZE = 1024
-
-///|
 /// This type is for internal use only,
 /// end users should not use this type directly.
 #internal(internal, "this type is for internal use only")
-struct ReaderBuffer {
-  mut buf : FixedArray[Byte]
-  mut start : Int
-  mut len : Int
-}
+struct ReaderBuffer(@io_buffer.Buffer)
 
 ///|
 #internal(internal, "this function is for internal use only")
 pub fn ReaderBuffer::new() -> ReaderBuffer {
-  { buf: [], start: 0, len: 0 }
-}
-
-///|
-#internal(internal, "this function is for internal use only")
-pub fn ReaderBuffer::clear(buf : ReaderBuffer) -> Unit {
-  buf.buf = []
-  buf.start = 0
-  buf.len = 0
-}
-
-///|
-fn ReaderBuffer::enlarge_to(self : Self, n : Int) -> Unit {
-  let capacity = self.buf.length()
-  if self.start + n <= capacity {
-    return
-  }
-  if n <= capacity {
-    self.buf.blit_to(self.buf, src_offset=self.start, len=self.len)
-    self.start = 0
-    return
-  }
-  let padding = n % SEGMENT_SIZE
-  let target_len = if padding == 0 { n } else { n - padding + SEGMENT_SIZE }
-  let new_buf = FixedArray::make(target_len, b'0')
-  self.buf.blit_to(new_buf, src_offset=self.start, dst_offset=0, len=self.len)
-  self.buf = new_buf
-  self.start = 0
+  @io_buffer.new(0)
 }
 
 ///|
@@ -67,7 +33,7 @@ async fn[R : Reader] ReaderBuffer::try_ensure(
   if self.len >= len {
     return true
   }
-  self.enlarge_to(len)
+  self.0.enlarge_to(len)
   let capacity = self.buf.length()
   while self.len < len {
     let offset = self.start + self.len
@@ -98,17 +64,6 @@ async fn[R : Reader] ReaderBuffer::find_opt(
       return Some(searched + i)
     }
     continue len - target_len + 1
-  }
-}
-
-///|
-fn ReaderBuffer::drop(self : Self, n : Int) -> Unit {
-  guard n <= self.len
-  self.len -= n
-  if self.len == 0 {
-    self.start = 0
-  } else {
-    self.start += n
   }
 }
 

@@ -44,7 +44,6 @@ pub fn PipeWrite::close(Self) -> Unit
 pub impl Writer for PipeWrite
 
 type ReaderBuffer
-pub fn ReaderBuffer::clear(Self) -> Unit
 pub fn ReaderBuffer::new() -> Self
 
 // Type aliases
