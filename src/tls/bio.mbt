@@ -14,208 +14,92 @@
 
 ///|
 priv enum EndpointState {
-  Idle
-  Blocked
-  Error(Error)
+  Normal
   Closed
+  Error(Error)
 }
+
+///|
+let id : Ref[Int] = @ref.new(0)
 
 ///|
 priv struct Endpoint {
-  data : FixedArray[Byte]
+  id : Int
   mut state : EndpointState
-  mut start : Int
-  mut end : Int
-  mut len : Int
-  mut worker : @coroutine.Coroutine?
-  waiters : Set[@coroutine.Coroutine]
+  reader : &@io.Reader
+  read_lock : @semaphore.Semaphore
+  write_buf : @io_buffer.Buffer
+  writer : &@io.Writer
+  write_lock : @semaphore.Semaphore
 }
 
 ///|
-const BUFFER_SIZE = 1500
+const BUFFER_SIZE = 4096
 
 ///|
-fn Endpoint::read_size(ep : Endpoint) -> Int {
-  @cmp.minimum(ep.len, ep.data.length() - ep.start)
-}
+fn @io.ReaderBuffer::repr(buf : Self) -> @io_buffer.Buffer = "%identity"
 
 ///|
-fn Endpoint::advance_read(ep : Endpoint, len : Int) -> Unit {
-  ep.start = (ep.start + len) % ep.data.length()
-  ep.len -= len
-}
-
-///|
-fn Endpoint::write_size(ep : Endpoint) -> Int {
-  ep.data.length() - @cmp.maximum(ep.end, ep.len)
-}
-
-///|
-fn Endpoint::advance_write(ep : Endpoint, len : Int) -> Unit {
-  ep.end = (ep.end + len) % ep.data.length()
-  ep.len += len
-}
-
-///|
-fn[R : @io.Reader] Endpoint::new_read(r : R) -> Endpoint noraise {
-  let ep = {
-    data: FixedArray::make(BUFFER_SIZE, 0),
-    state: Idle,
-    start: 0,
-    end: 0,
-    len: 0,
-    worker: None,
-    waiters: Set::new(),
+fn Endpoint::new(reader : &@io.Reader, writer : &@io.Writer) -> Endpoint {
+  reader._get_internal_buffer().repr().enlarge_to(BUFFER_SIZE)
+  id.val += 1
+  {
+    id: id.val,
+    state: Normal,
+    reader,
+    read_lock: @semaphore.Semaphore::new(1),
+    write_buf: @io_buffer.new(BUFFER_SIZE),
+    writer,
+    write_lock: @semaphore.Semaphore::new(1),
   }
-  let coro = @coroutine.spawn(fn() {
-    try {
-      @coroutine.pause()
-      for {
-        let remaining = ep.write_size()
-        let remaining = if remaining == 0 {
-          ep.state = Blocked
-          @coroutine.suspend()
-          ep.write_size()
-        } else {
-          remaining
-        }
-        guard remaining > 0
-        let n = r.read(ep.data, offset=ep.end, max_len=remaining)
-        ep.advance_write(n)
-        for waiter in ep.waiters {
-          waiter.wake()
-        }
-        if n == 0 {
-          ep.state = Closed
-          return
-        }
-      }
-    } catch {
-      err => {
-        ep.state = Error(err)
-        raise err
-      }
-    }
-  })
-  ep.worker = Some(coro)
-  ep
 }
 
 ///|
-fn[W : @io.Writer] Endpoint::new_write(w : W) -> Endpoint noraise {
-  let ep = {
-    data: FixedArray::make(BUFFER_SIZE, 0),
-    state: Idle,
-    start: 0,
-    end: 0,
-    len: 0,
-    worker: None,
-    waiters: Set::new(),
-  }
-  let coro = @coroutine.spawn(fn() {
-    try {
-      @coroutine.pause()
-      for {
-        let pending = ep.read_size()
-        let pending = if pending == 0 {
-          ep.state = Blocked
-          defer {
-            ep.state = Idle
-          }
-          @coroutine.suspend()
-          ep.read_size()
-        } else {
-          pending
-        }
-        guard pending > 0
-        let n = w.write_once(
-          ep.data.unsafe_reinterpret_as_bytes(),
-          offset=ep.start,
-          len=pending,
-        )
-        ep.advance_read(n)
-        for waiter in ep.waiters {
-          waiter.wake()
-        }
-      }
-    } catch {
-      err => {
-        ep.state = Error(err)
-        raise err
-      }
-    }
-  })
-  ep.worker = Some(coro)
-  ep
-}
-
-///|
-fn Endpoint::try_read(ep : Endpoint, dst : @c_buffer.Buffer, len : Int) -> Int {
-  guard ep.state is (Idle | Blocked) else { return -1 }
-  let pending = ep.read_size()
-  if pending == 0 {
-    return -1
-  }
-  let actual_len = @cmp.minimum(len, pending)
-  dst.blit_from_bytes(
-    src=ep.data.unsafe_reinterpret_as_bytes(),
-    offset=ep.start,
-    len=actual_len,
-  )
-  ep.advance_read(actual_len)
-  if ep.state is Blocked {
-    ep.worker.unwrap().wake()
-    ep.state = Idle
-  }
-  actual_len
-}
-
-///|
-fn Endpoint::try_write(ep : Endpoint, src : @c_buffer.Buffer, len : Int) -> Int {
-  guard ep.state is (Idle | Blocked) else { return -1 }
-  let remaining = ep.write_size()
-  if remaining == 0 {
-    return -1
-  }
-  let len = @cmp.minimum(remaining, len)
-  src.blit_to_bytes(dst=ep.data, offset=ep.end, len~)
-  ep.advance_write(len)
-  if ep.state is Blocked {
-    ep.worker.unwrap().wake()
-    ep.state = Idle
-  }
-  len
-}
-
-///|
-async fn Endpoint::wait(ep : Endpoint) -> Unit {
-  match ep.state {
+async fn Endpoint::read_more(self : Endpoint) -> Unit {
+  self.read_lock.acquire()
+  defer self.read_lock.release()
+  match self.state {
+    Normal => ()
+    Closed => raise ConnectionClosed
     Error(err) => raise err
-    Closed => return
-    Idle | Blocked => ()
   }
-  let coro = @coroutine.current_coroutine()
-  ep.waiters.add(coro)
-  defer ep.waiters.remove(coro)
-  @coroutine.suspend()
-  match ep.state {
-    Error(err) => raise err
-    Closed | Idle | Blocked => ()
+  let read_buf = self.reader._get_internal_buffer().repr()
+  let end = read_buf.start + read_buf.len
+  let max_len = @cmp.minimum(BUFFER_SIZE, read_buf.buf.length() - end)
+  let n = self.reader._direct_read(read_buf.buf, offset=end, max_len~) catch {
+    err => {
+      self.state = Error(err)
+      raise err
+    }
+  }
+  if n is 0 {
+    self.state = Closed
+  } else {
+    read_buf.len += n
   }
 }
 
 ///|
-fn Endpoint::close(ep : Endpoint) -> Unit {
-  if not(ep.state is Error(_)) {
-    ep.state = Closed
+async fn Endpoint::flush_write(self : Endpoint) -> Unit {
+  self.write_lock.acquire()
+  defer self.write_lock.release()
+  guard self.write_buf.len > 0 else {  }
+  match self.state {
+    Normal => ()
+    Closed => raise ConnectionClosed
+    Error(err) => raise err
   }
-  guard ep.worker is Some(worker) else {  }
-  worker.cancel()
-  ep.worker = None
-  for waiter in ep.waiters {
-    waiter.wake()
+  let n = self.writer.write_once(
+    self.write_buf.buf.unsafe_reinterpret_as_bytes(),
+    offset=self.write_buf.start,
+    len=self.write_buf.len,
+  ) catch {
+    err => {
+      self.state = Error(err)
+      raise err
+    }
   }
-  ep.waiters.clear()
+  self.write_buf.drop(n)
 }
 
 ///|
@@ -244,19 +128,38 @@ const BIO_FLAGS_SHOULD_RETRY = 0x08
 ///|
 fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
-  let ret = ep.try_read(dst, len)
-  if ret < 0 && ep.state is (Idle | Blocked) {
-    bio.set_flags(BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY)
+  match ep.state {
+    Normal => ()
+    Closed => return 0
+    Error(_) => return -1
   }
-  ret
+  let read_buf = ep.reader._get_internal_buffer().repr()
+  guard read_buf.len > 0 else {
+    bio.set_flags(BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY)
+    -1
+  }
+  let len = @cmp.minimum(read_buf.len, len)
+  dst.blit_from_bytes(
+    src=read_buf.buf.unsafe_reinterpret_as_bytes(),
+    offset=read_buf.start,
+    len~,
+  )
+  read_buf.drop(len)
+  len
 }
 
 ///|
 fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
-  let ret = ep.try_write(src, len)
-  if ret < 0 && ep.state is (Idle | Blocked) {
+  guard ep.state is Normal else { -1 }
+  let end = ep.write_buf.start + ep.write_buf.len
+  let remaining = ep.write_buf.buf.length() - end
+  guard remaining > 0 else {
     bio.set_flags(BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY)
+    -1
   }
-  ret
+  let len = @cmp.minimum(len, remaining)
+  src.blit_to_bytes(dst=ep.write_buf.buf, offset=end, len~)
+  ep.write_buf.len += len
+  len
 }

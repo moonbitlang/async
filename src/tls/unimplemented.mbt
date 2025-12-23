@@ -19,5 +19,6 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@bytes_util.ascii_to_string)
   ignore(@c_buffer.unimplemented)
-  ignore(@coroutine.spawn)
+  ignore(@io_buffer.new)
+  ignore(@semaphore.Semaphore::acquire)
 }

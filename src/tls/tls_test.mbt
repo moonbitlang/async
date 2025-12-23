@@ -16,8 +16,8 @@
 async test "one way" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (client_read_from_server, server_write_to_client) = @io.pipe()
-    let (server_read_from_client, client_write_to_server) = @io.pipe()
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
     root.spawn_bg(fn() {
       defer {
@@ -78,8 +78,8 @@ async test "one way" {
 async test "echo" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let (client_read_from_server, server_write_to_client) = @io.pipe()
-    let (server_read_from_client, client_write_to_server) = @io.pipe()
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
     root.spawn_bg(fn() {
       defer {
@@ -139,8 +139,8 @@ async test "echo" {
 ///|
 async test "`connect` accidental close" {
   @async.with_task_group(fn(root) {
-    let (client_read_from_server, server_write_to_client) = @io.pipe()
-    let (server_read_from_client, client_write_to_server) = @io.pipe()
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
     root.spawn_bg(fn() {
       defer {
@@ -173,10 +173,10 @@ async test "`connect` accidental close" {
 }
 
 ///|
-async test "`read` accidental close" {
+async test "`read` already closed" {
   @async.with_task_group(fn(root) {
-    let (client_read_from_server, server_write_to_client) = @io.pipe()
-    let (server_read_from_client, client_write_to_server) = @io.pipe()
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
     root.spawn_bg(fn() {
       defer {
@@ -205,7 +205,7 @@ async test "`read` accidental close" {
         verify=false,
       )
       defer client.close()
-      inspect(try? client.read_some(), content="Err(ConnectionClosed)")
+      inspect(try? client.read_some(), content="Ok(None)")
     })
   })
 }

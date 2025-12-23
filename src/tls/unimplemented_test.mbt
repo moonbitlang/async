@@ -17,4 +17,5 @@
 let _ignore_unused_import : Unit = {
   ignore(@async.sleep)
   ignore(@socket.unimplemented)
+  ignore(@pipe.unimplemented)
 }
