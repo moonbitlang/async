@@ -18,8 +18,7 @@
 struct Tls {
   ssl : SSL
   host : String?
-  read_end : Endpoint
-  write_end : Endpoint
+  bio : Endpoint
   read_buf : @io.ReaderBuffer
   mut closed : Bool
 }
@@ -37,30 +36,21 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   w : W,
   host~ : String?,
 ) -> Tls {
-  let read_end = Endpoint::new_read(r)
-  let write_end = Endpoint::new_write(w)
-  let rbio = create_bio(read_end)
-  let wbio = create_bio(write_end)
+  let bio = Endpoint::new(r, w)
+  let rbio = create_bio(bio)
+  let wbio = create_bio(bio)
   let ssl = SSL::new(ctx, rbio, wbio)
-  {
-    ssl,
-    host,
-    read_end,
-    write_end,
-    read_buf: @io.ReaderBuffer::new(),
-    closed: false,
-  }
+  { ssl, host, bio, read_buf: @io.ReaderBuffer::new(), closed: false }
 }
 
 ///|
 async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
   match err {
-    SSL_ERROR_WANT_READ if self.read_end.state is Closed =>
-      raise ConnectionClosed
-    SSL_ERROR_WANT_READ => self.read_end.wait()
-    SSL_ERROR_WANT_WRITE if self.write_end.state is Closed =>
-      raise ConnectionClosed
-    SSL_ERROR_WANT_WRITE => self.write_end.wait()
+    SSL_ERROR_WANT_READ => {
+      self.bio.flush_write()
+      self.bio.read_more()
+    }
+    SSL_ERROR_WANT_WRITE => self.bio.flush_write()
     SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise OpenSSLError(err_get_error())
     SSL_ERROR_ZERO_RETURN => raise ConnectionClosed
     err => abort("unexpected error code \{err} from OpenSSL")
@@ -111,6 +101,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       }
     }
   }
+  self.bio.flush_write()
   self
 }
 
@@ -172,6 +163,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
       }
     }
   }
+  self.bio.flush_write()
   self
 }
 
@@ -204,19 +196,21 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 
 ///|
 pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
-  while self.ssl.read(buf, offset, max_len) is ret {
+  let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
-      return ret
+      break ret
     }
     let err = self.ssl.get_error(ret)
-    if err is SSL_ERROR_ZERO_RETURN {
-      return 0
+    if err is SSL_ERROR_ZERO_RETURN || self.bio.state is Closed {
+      break 0
     }
     self.handle_error(err)
   } else {
     // imposible
     0
   }
+  self.bio.flush_write()
+  n
 }
 
 ///|
@@ -226,15 +220,17 @@ pub impl @io.Reader for Tls with _get_internal_buffer(self) {
 
 ///|
 pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
-  while self.ssl.write(buf, offset, len) is ret {
+  let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
-      return ret
+      break ret
     }
     self.handle_error(self.ssl.get_error(ret))
   } else {
     // imposible
     0
   }
+  self.bio.flush_write()
+  n
 }
 
 ///|
@@ -246,8 +242,9 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
 pub fn Tls::close(self : Tls) -> Unit {
   guard !self.closed else {  }
   self.closed = true
-  self.read_end.close()
-  self.write_end.close()
+  if self.bio.state is Normal {
+    self.bio.state = Closed
+  }
   self.ssl.free()
   // We must make sure the host string lives longer than `self.ssl`
   ignore(self.host)
@@ -270,6 +267,11 @@ pub fn Tls::close(self : Tls) -> Unit {
 /// So it is highly recommended to add a timeout when calling this function,
 /// to prevent the program from haning indefinitely.
 pub async fn Tls::shutdown(self : Tls) -> Unit {
+  match self.bio.state {
+    Normal => ()
+    Closed => return
+    Error(err) => raise err
+  }
   while self.ssl.shutdown() is ret && ret <= 0 {
     let err = if ret == 0 {
       SSL_ERROR_WANT_READ
@@ -277,9 +279,11 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
       self.ssl.get_error(ret)
     }
     match err {
-      SSL_ERROR_WANT_READ if self.read_end.state is Closed => break
-      SSL_ERROR_WANT_WRITE if self.write_end.state is Closed => break
+      SSL_ERROR_WANT_READ | SSL_ERROR_WANT_WRITE if self.bio.state is Closed =>
+        break
       _ => self.handle_error(err)
     }
+  } else {
+    self.bio.flush_write()
   }
 }
