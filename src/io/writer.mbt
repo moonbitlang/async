@@ -52,7 +52,7 @@ impl Writer with write_reader(self, reader) {
     buf.start = 0
     buf.len = 0
   }
-  buf.enlarge_to(SEGMENT_SIZE)
+  buf.0.enlarge_to(1)
   let max_len = buf.buf.length()
   while reader._direct_read(buf.buf, offset=0, max_len~) is n && n > 0 {
     let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()

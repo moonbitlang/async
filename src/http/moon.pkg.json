@@ -2,7 +2,8 @@
   "import": [
     "moonbitlang/async/io",
     "moonbitlang/async/socket",
-    "moonbitlang/async/tls"
+    "moonbitlang/async/tls",
+    "moonbitlang/async/internal/io_buffer"
   ],
   "wbtest-import": [
     "moonbitlang/async",

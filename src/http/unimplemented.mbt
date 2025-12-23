@@ -19,4 +19,5 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@socket.unimplemented)
   ignore(@tls.unimplemented)
+  ignore(@io_buffer.new)
 }
