@@ -113,7 +113,9 @@ int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
 }
 
 void *moonbitlang_async_tls_bio_get_endpoint(BIO * bio) {
-  return BIO_get_data(bio);
+  void *data = BIO_get_data(bio);
+  moonbit_incref(data);
+  return data;
 }
 
 void moonbitlang_async_tls_bio_set_flags(BIO * bio, int flags) {

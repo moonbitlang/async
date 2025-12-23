@@ -35,10 +35,6 @@ priv struct Endpoint {
 const BUFFER_SIZE = 1500
 
 ///|
-#borrow(ep)
-fn Endpoint::incref(ep : Endpoint) = "$moonbit.incref"
-
-///|
 fn Endpoint::read_size(ep : Endpoint) -> Int {
   @cmp.minimum(ep.len, ep.data.length() - ep.start)
 }
@@ -248,7 +244,6 @@ const BIO_FLAGS_SHOULD_RETRY = 0x08
 ///|
 fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
-  ep.incref()
   let ret = ep.try_read(dst, len)
   if ret < 0 && ep.state is (Idle | Blocked) {
     bio.set_flags(BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY)
@@ -259,7 +254,6 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
 ///|
 fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
-  ep.incref()
   let ret = ep.try_write(src, len)
   if ret < 0 && ep.state is (Idle | Blocked) {
     bio.set_flags(BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY)
