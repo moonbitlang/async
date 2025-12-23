@@ -611,7 +611,7 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
 /// and use `end_message` to ensure data is actually sent to the server.
 ///
 /// `start_message` must NOT be called before the last message ends.
-pub async fn Conn::start_message(self : Conn, kind : MessageKind) -> Unit {
+pub fn Conn::start_message(self : Conn, kind : MessageKind) -> Unit {
   guard self.write_opcode is None else {
     abort("cannot start a new message before the last message end")
   }
