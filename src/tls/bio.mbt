@@ -20,11 +20,7 @@ priv enum EndpointState {
 }
 
 ///|
-let id : Ref[Int] = @ref.new(0)
-
-///|
 priv struct Endpoint {
-  id : Int
   mut state : EndpointState
   reader : &@io.Reader
   read_lock : @semaphore.Semaphore
@@ -42,9 +38,7 @@ fn @io.ReaderBuffer::repr(buf : Self) -> @io_buffer.Buffer = "%identity"
 ///|
 fn Endpoint::new(reader : &@io.Reader, writer : &@io.Writer) -> Endpoint {
   reader._get_internal_buffer().repr().enlarge_to(BUFFER_SIZE)
-  id.val += 1
   {
-    id: id.val,
     state: Normal,
     reader,
     read_lock: @semaphore.Semaphore::new(1),
