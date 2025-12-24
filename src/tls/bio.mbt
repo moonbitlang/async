@@ -58,6 +58,7 @@ async fn Endpoint::read_more(self : Endpoint) -> Unit {
     Error(err) => raise err
   }
   let read_buf = self.reader._get_internal_buffer().repr()
+  read_buf.enlarge_to(read_buf.len + 1)
   let end = read_buf.start + read_buf.len
   let max_len = @cmp.minimum(BUFFER_SIZE, read_buf.buf.length() - end)
   let n = self.reader._direct_read(read_buf.buf, offset=end, max_len~) catch {
@@ -74,7 +75,7 @@ async fn Endpoint::read_more(self : Endpoint) -> Unit {
 }
 
 ///|
-async fn Endpoint::flush_write(self : Endpoint) -> Unit {
+async fn Endpoint::flush_write(self : Endpoint, flush_all~ : Bool) -> Unit {
   self.write_lock.acquire()
   defer self.write_lock.release()
   guard self.write_buf.len > 0 else {  }
@@ -83,43 +84,60 @@ async fn Endpoint::flush_write(self : Endpoint) -> Unit {
     Closed => raise ConnectionClosed
     Error(err) => raise err
   }
-  let n = self.writer.write_once(
-    self.write_buf.buf.unsafe_reinterpret_as_bytes(),
-    offset=self.write_buf.start,
-    len=self.write_buf.len,
-  ) catch {
-    err => {
-      self.state = Error(err)
-      raise err
+  if flush_all {
+    let start = self.write_buf.start
+    let end = self.write_buf.start + self.write_buf.len
+    let data = self.write_buf.buf.unsafe_reinterpret_as_bytes()[start:end]
+    self.writer.write(data)
+    self.write_buf.start = 0
+    self.write_buf.len = 0
+  } else {
+    let n = self.writer.write_once(
+      self.write_buf.buf.unsafe_reinterpret_as_bytes(),
+      offset=self.write_buf.start,
+      len=self.write_buf.len,
+    ) catch {
+      err => {
+        self.state = Error(err)
+        raise err
+      }
     }
+    self.write_buf.drop(n)
   }
-  self.write_buf.drop(n)
 }
 
 ///|
+#cfg(not(platform="windows"))
 #external
 priv type BIO
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn BIO::get_endpoint(bio : BIO) -> Endpoint = "moonbitlang_async_tls_bio_get_endpoint"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn BIO::set_flags(bio : BIO, flags : Int) = "moonbitlang_async_tls_bio_set_flags"
 
 ///|
+#cfg(not(platform="windows"))
 #owned(data)
 extern "C" fn create_bio(data : Endpoint) -> BIO = "moonbitlang_async_tls_create_bio"
 
 ///|
+#cfg(not(platform="windows"))
 const BIO_FLAGS_READ = 0x01
 
 ///|
+#cfg(not(platform="windows"))
 const BIO_FLAGS_WRITE = 0x02
 
 ///|
+#cfg(not(platform="windows"))
 const BIO_FLAGS_SHOULD_RETRY = 0x08
 
 ///|
+#cfg(not(platform="windows"))
 fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
   match ep.state {
@@ -143,6 +161,7 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
   let ep = bio.get_endpoint()
   guard ep.state is Normal else { -1 }
