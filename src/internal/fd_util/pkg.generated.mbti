@@ -2,7 +2,7 @@
 package "moonbitlang/async/internal/fd_util"
 
 // Values
-pub fn close(Int, context~ : String) -> Unit raise
+pub fn close(Int, kind~ : FileKind, context~ : String) -> Unit raise
 
 pub fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
 
@@ -35,6 +35,7 @@ pub(all) enum FileKind {
 }
 pub fn FileKind::can_poll(Self) -> Bool
 pub fn FileKind::from_sys_kind(Int64) -> Self
+pub fn FileKind::is_async(Int64) -> Bool
 pub impl Eq for FileKind
 pub impl Show for FileKind
 
