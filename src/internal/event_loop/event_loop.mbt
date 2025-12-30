@@ -535,7 +535,7 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 priv enum CancellationMode {
   NoCancel
   Ignore
-  CancelAndWait(() -> Unit raise)
+  CancelAndWait(() -> Bool raise)
 }
 
 ///|
@@ -555,14 +555,17 @@ async fn EventLoop::wait_for_job(
     Ignore => @coroutine.suspend()
     CancelAndWait(cancel_func) =>
       @coroutine.suspend() catch {
-        err => {
-          let result = try? cancel_func()
-          @coroutine.protect_from_cancel(() => {
-            @coroutine.suspend()
-            result.unwrap_or_error()
-            raise err
-          })
-        }
+        _ =>
+          try cancel_func() catch {
+            err =>
+              @coroutine.protect_from_cancel(() => {
+                @coroutine.suspend()
+                raise err
+              })
+          } noraise {
+            false => ()
+            true => @coroutine.protect_from_cancel(@coroutine.suspend)
+          }
       }
   }
 }
@@ -994,7 +997,10 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
   perform_job_in_worker(
     job,
     context~,
-    cancel=CancelAndWait(() => job.cancel_process_waiter()),
+    cancel=CancelAndWait(() => {
+      job.cancel_process_waiter()
+      true
+    }),
   )
   |> ignore
 }

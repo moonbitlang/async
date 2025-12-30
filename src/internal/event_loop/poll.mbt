@@ -221,10 +221,12 @@ fn IoResult::cancel(
   self : IoResult,
   handle : @fd_util.Fd,
   context~ : String,
-) -> Unit raise {
-  if 0 == self.cancel_ffi(handle) {
+) -> Bool raise {
+  let ret = self.cancel_ffi(handle)
+  if ret < 0 {
     @os_error.check_errno(context)
   }
+  ret == 1
 }
 
 ///|
@@ -236,6 +238,10 @@ extern "C" fn IoResult::status_ffi(
 
 ///|
 #cfg(platform="windows")
+extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
+
+///|
+#cfg(platform="windows")
 fn IoResult::status(
   result : IoResult,
   handle : @fd_util.Fd,
@@ -243,7 +249,11 @@ fn IoResult::status(
 ) -> Int raise {
   let n = result.status_ffi(handle)
   if n < 0 {
-    @os_error.check_errno(context)
+    if errno_is_cancelled(@os_error.get_errno()) {
+      raise @coroutine.Cancelled
+    } else {
+      @os_error.check_errno(context)
+    }
   }
   n
 }
