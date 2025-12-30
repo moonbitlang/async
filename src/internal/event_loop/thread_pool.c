@@ -19,8 +19,21 @@
 
 #ifdef _WIN32
 
+#ifndef NTDDI_VERSION
+#define NTDDI_VERSION 0x06010000
+#endif
+
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
+
+#ifndef UNICODE
+#define UNICODE
+#endif
+
 #include <winsock2.h>
 #include <windows.h>
+#include <ws2tcpip.h>
 
 #else
 
@@ -413,14 +426,17 @@ void read_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
+   DWORD bytes_transferred;
    BOOL result = ReadFile(
      read_job->fd,
      read_job->buf + read_job->offset,
      read_job->len,
-     &(job->ret),
+     &bytes_transferred,
      NULL
    );
-   if (!result)
+   if (result)
+     job->ret = bytes_transferred;
+   else
      job->err = GetLastError();
 
 #else
@@ -480,14 +496,17 @@ void write_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
+   DWORD bytes_transferred;
    BOOL result = WriteFile(
      write_job->fd,
      write_job->buf + write_job->offset,
      write_job->len,
-     &(job->ret),
+     &bytes_transferred,
      NULL
    );
-   if (!result)
+   if (result)
+     job->ret = bytes_transferred;
+   else
      job->err = GetLastError();
 
 #else

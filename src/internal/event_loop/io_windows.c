@@ -337,7 +337,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
 
 void *get_WSA_extension(HANDLE handle, GUID *guid) {
   void *result;
-  int pointer_size;
+  DWORD pointer_size;
   if (
     0 != WSAIoctl(
       (SOCKET)handle,
