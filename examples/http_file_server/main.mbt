@@ -62,9 +62,18 @@ async fn serve_file(
 }
 
 ///|
+#cfg(platform="windows")
+let is_windows : Bool = true
+
+///|
+#cfg(not(platform="windows"))
+let is_windows : Bool = false
+
+///|
 async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   let full_path = @fs.realpath(path)
-  let base_name = if full_path.rev_find("/") is Some(i) {
+  let path_sep = if is_windows { "\\" } else { "/" }
+  let base_name = if full_path.rev_find(path_sep) is Some(i) {
     full_path[i + 1:].to_string()
   } else {
     path
@@ -73,8 +82,17 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
     let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
     group.spawn_bg(fn() {
-      @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_us)
-      |> ignore
+      if is_windows {
+        @process.run(
+          "tar",
+          ["-c", "-z", "-f", "-", path],
+          stdout=zip_write_to_us,
+        )
+        |> ignore
+      } else {
+        @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_us)
+        |> ignore
+      }
     })
     conn
     ..send_response(200, "OK", extra_headers={
@@ -122,7 +140,8 @@ pub async fn server_main(
         file.close()
         serve_zip(conn, base_path + path)
       } else {
-        let dir = file.as_dir()
+        file.close()
+        let dir = @fs.opendir(base_path + path)
         defer dir.close()
         serve_directory(conn, dir, path~)
       }

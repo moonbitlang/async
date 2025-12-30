@@ -38,6 +38,14 @@ async fn client(
 }
 
 ///|
+#cfg(platform="windows")
+let is_windows : Bool = true
+
+///|
+#cfg(not(platform="windows"))
+let is_windows : Bool = false
+
+///|
 async test "basic" {
   fn log(_) -> Unit {
 
@@ -74,17 +82,31 @@ async test "basic" {
     let (from_unzip, w) = @process.read_from_process()
     defer from_unzip.close()
     root.spawn_bg(fn() {
-      @process.run("unzip", ["-l", tmp_file_name], stdout=w) |> ignore
+      if is_windows {
+        @process.run("tar", ["-t", "-f", tmp_file_name], stdout=w) |> ignore
+      } else {
+        @process.run("unzip", ["-l", tmp_file_name], stdout=w) |> ignore
+      }
     })
     let zip_content = []
     for i = 0; ; i = i + 1 {
-      guard from_unzip.read_until("\n") is Some(line) else { break }
-      guard line.rev_find(" ") is Some(i) else {
-        fail("invalid output from `unzip`")
-      }
-      let last_word = line[i + 1:]
-      if last_word.has_prefix("examples/http_file_server") {
-        zip_content.push(last_word.to_string())
+      if is_windows {
+        guard from_unzip.read_until("\r\n") is Some(line) else { break }
+        let name = if line is [.. "./", .. name] {
+          name.to_string()
+        } else {
+          line
+        }
+        zip_content.push(name)
+      } else {
+        guard from_unzip.read_until("\n") is Some(line) else { break }
+        guard line.rev_find(" ") is Some(i) else {
+          fail("invalid output from `unzip`")
+        }
+        let last_word = line[i + 1:]
+        if last_word.has_prefix("examples/http_file_server") {
+          zip_content.push(last_word.to_string())
+        }
       }
     }
     zip_content.sort()
