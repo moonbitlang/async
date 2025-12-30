@@ -169,7 +169,7 @@ pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 pub impl @io.Reader for Client with _get_internal_buffer(self) {
-  self.reader.read_buf
+  self.reader._get_internal_buffer()
 }
 
 ///|

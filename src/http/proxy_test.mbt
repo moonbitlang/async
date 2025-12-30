@@ -51,6 +51,30 @@ async test "passthrough mode" {
 }
 
 ///|
+async test "passthrough mode remaining data" {
+  @async.with_task_group(group => {
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server_addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      let conn = @http.ServerConnection::new(conn)
+      defer conn.close()
+      let request = conn.read_request()
+      inspect(request.meth, content="Get")
+      inspect(request.path, content="/")
+      conn.enter_passthrough_mode()
+      inspect(conn.read_all().text(), content="remaining data")
+    })
+    let client = @socket.Tcp::connect(
+      @socket.Addr::parse("127.0.0.1:\{server_addr.port()}"),
+    )
+    defer client.close()
+    client.write("GET / HTTP/1.1\r\n\r\nremaining data")
+  })
+}
+
+///|
 async fn handle_connect(
   log : Array[String],
   request : @http.Request,
