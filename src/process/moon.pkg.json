@@ -21,7 +21,8 @@
     "env_test.mbt": [ "native" ],
     "helper_test.mbt": [ "native" ],
     "redirect_test.mbt": [ "native" ],
-    "wait_test.mbt": [ "native" ]
+    "wait_test.mbt": [ "native" ],
+    "commands_for_test.mbt": [ "native" ]
   },
   "native-stub": [ "stub.c", "windows.c" ]
 }

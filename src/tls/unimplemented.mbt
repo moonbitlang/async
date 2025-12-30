@@ -21,4 +21,6 @@ pub let unimplemented : Unit = {
   ignore(@c_buffer.unimplemented)
   ignore(@io_buffer.new)
   ignore(@semaphore.Semaphore::acquire)
+  ignore(@os_string.unimplemented)
+  ignore(@os_error.unimplemented)
 }

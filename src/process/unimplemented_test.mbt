@@ -13,12 +13,5 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
 #cfg(target="js")
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@event_loop.sleep)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@os_error.unimplemented)
-}
+let _unimplemented : Unit = ignore(@fs.unimplemented)
