@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <windows.h>
+#include <bcrypt.h>
 
 // https://learn.microsoft.com/en-us/windows/win32/api/schannel/ns-schannel-sch_credentials
 #include <SubAuth.h>
@@ -31,6 +32,7 @@
 
 #pragma comment (lib, "secur32.lib")
 #pragma comment (lib, "Crypt32.lib")
+#pragma comment (lib, "Bcrypt.lib")
 
 struct Context {
   enum {
@@ -487,6 +489,46 @@ int32_t moonbitlang_async_schannel_shutdown(struct Context *ctx) {
   buf_desc.pBuffers = &buf;
 
   return ApplyControlToken(&ctx->context, &buf_desc);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_tls_rand_bytes(void *buf, int32_t num) {
+  return BCryptGenRandom(NULL, buf, num, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_tls_SHA1(void *data, int32_t num, void *out) {
+  BCRYPT_ALG_HANDLE algorithm;
+  BCRYPT_HASH_HANDLE hasher;
+  NTSTATUS status;
+
+  status = BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA1_ALGORITHM, NULL, 0);
+  if (status != STATUS_SUCCESS)
+    goto exit;
+
+  status = BCryptCreateHash(algorithm, &hasher, NULL, 0, NULL, 0, 0);
+  if (status != STATUS_SUCCESS)
+    goto exit_with_algorithm;
+
+  status = BCryptHashData(hasher, data, num, 0);
+  if (status != STATUS_SUCCESS)
+    goto exit_with_hasher;
+
+  status = BCryptFinishHash(hasher, out, 20, 0);
+
+exit_with_hasher:
+  BCryptDestroyHash(hasher);
+
+exit_with_algorithm:
+  BCryptCloseAlgorithmProvider(algorithm, 0);
+
+exit:
+  if (status != STATUS_SUCCESS) {
+    SetLastError(status);
+    return 0;
+  } else {
+    return 1;
+  }
 }
 
 #endif

@@ -77,7 +77,8 @@ const MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 ///|
 /// Generate WebSocket accept key from client key using SHA-1 and base64
-fn generate_accept_key(client_key : String) -> String {
+#warnings("-unused_error_type")
+fn generate_accept_key(client_key : String) -> String raise {
   // WebSocket magic string as defined in RFC 6455
   let combined = client_key + MAGIC
   let combined_bytes = @encoding/utf8.encode(combined)

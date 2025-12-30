@@ -400,6 +400,38 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 }
 
 ///|
+#cfg(platform="windows")
+#borrow(buf)
+extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+
+///|
+#cfg(platform="windows")
+#internal(internal, "for internal use only")
+pub fn rand_bytes(num : Int) -> Bytes raise {
+  let result = FixedArray::make(num, b'\x00')
+  if rand_bytes_ffi(result, num) == 0 {
+    @os_error.check_errno("@tls.rand_bytes()")
+  }
+  result.unsafe_reinterpret_as_bytes()
+}
+
+///|
+#cfg(platform="windows")
+#borrow(data, out)
+extern "C" fn sha1_ffi(data : Bytes, len : Int, out : FixedArray[Byte]) -> Int = "moonbitlang_async_tls_SHA1"
+
+///|
+#cfg(platform="windows")
+#internal(internal, "for internal use only")
+pub fn sha1(src : Bytes) -> Bytes raise {
+  let result = FixedArray::make(20, b'\x00')
+  if sha1_ffi(src, src.length(), result) == 0 {
+    @os_error.check_errno("@tls.sha1()")
+  }
+  result.unsafe_reinterpret_as_bytes()
+}
+
+///|
 // mute unused warning
 #cfg(platform="windows")
 let _unused : Unit = {
