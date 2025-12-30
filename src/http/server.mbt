@@ -71,7 +71,7 @@ pub impl @io.Reader for ServerConnection with _direct_read(
 
 ///|
 pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
-  self.reader.read_buf
+  self.reader._get_internal_buffer()
 }
 
 ///|
