@@ -21,6 +21,7 @@ struct Tls {
   host : String?
   bio : Endpoint
   read_buf : @io.ReaderBuffer
+  mut shutdown : Bool
   mut closed : Bool
 }
 
@@ -42,7 +43,14 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   let rbio = create_bio(bio)
   let wbio = create_bio(bio)
   let ssl = SSL::new(ctx, rbio, wbio)
-  { ssl, host, bio, read_buf: @io.ReaderBuffer::new(), closed: false }
+  {
+    ssl,
+    host,
+    bio,
+    read_buf: @io.ReaderBuffer::new(),
+    shutdown: false,
+    closed: false,
+  }
 }
 
 ///|
@@ -211,7 +219,17 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
       break ret
     }
     let err = self.ssl.get_error(ret)
-    if err is SSL_ERROR_ZERO_RETURN || self.bio.state is Closed {
+    if err is SSL_ERROR_ZERO_RETURN {
+      // the peer initiates closure
+      self.shutdown()
+      break 0
+    }
+    if self.bio.state is Closed &&
+      self.bio.reader._get_internal_buffer().repr().len is 0 {
+      // Not all TLS client/servers close the connection properly.
+      // Some peers just close the underlying TCP connection
+      // without performing a TLS closure.
+      // So we treat this case as normal here.
       break 0
     }
     self.handle_error(err)
@@ -268,35 +286,31 @@ pub fn Tls::close(self : Tls) -> Unit {
 /// This function MUST be called before `close`,
 /// and MUST NOT be called if the TLS connection fail with other error.
 ///
+/// `shutdown` is used to initiate the closure of a TLS connection.
+/// So there is no need to call `shutdown` if you receive EOF from the peer.
+///
+/// When calling `shutdown`,
+/// there may still be pending data sent by the peer on the wire.
+/// So to close a TLS connection cleanly,
+/// make sure you read from the connection until EOF after calling `shutdown`.
+///
 /// Note that the main purpose of TLS shutdown is to ensure integrity
 /// before closing the underlying transport.
 /// So if your application protocol has its own way of ensuring integrity
 /// (e.g. `Content-Length` in HTTP/1.1),
 /// it is not necessary to call `shutdown`.
-///
-/// Shutting down a TLS connection involves communicating with remote peer,
-/// which may die unexpectedly or become irresponsive.
-/// Furthermore, some servers may not response correctly to TLS shutdown.
-/// So it is highly recommended to add a timeout when calling this function,
-/// to prevent the program from haning indefinitely.
 #cfg(not(platform="windows"))
 pub async fn Tls::shutdown(self : Tls) -> Unit {
+  guard !self.shutdown else {  }
+  self.shutdown = true
   match self.bio.state {
     Normal => ()
-    Closed => return
+    Closed => raise ConnectionClosed
     Error(err) => raise err
   }
-  while self.ssl.shutdown() is ret && ret <= 0 {
-    let err = if ret == 0 {
-      SSL_ERROR_WANT_READ
-    } else {
-      self.ssl.get_error(ret)
-    }
-    match err {
-      SSL_ERROR_WANT_READ | SSL_ERROR_WANT_WRITE if self.bio.state is Closed =>
-        break
-      _ => self.handle_error(err)
-    }
+  while self.ssl.shutdown() is ret && ret < 0 {
+    let err = self.ssl.get_error(ret)
+    self.handle_error(err)
   } else {
     self.bio.flush_write(flush_all=true)
   }
