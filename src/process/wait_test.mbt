@@ -19,20 +19,19 @@ async test "basic wait" {
   let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
-      for i in 0..<3 {
-        @async.sleep(500)
-        log.write_string("\{(i + 1) * 500}ms tick\n")
+      for i in 0..<2 {
+        @async.sleep(750)
+        log.write_string("\{(i + 1) * 750}ms tick\n")
       }
     })
     @async.sleep(10)
-    let result = @process.run(test_prog, ["1000"])
+    let result = @process.run(test_prog, ["750"])
     log.write_string("process completed with \{result}\n")
   })
   inspect(
     log.to_string(),
     content=(
-      #|500ms tick
-      #|1000ms tick
+      #|750ms tick
       #|process completed with 0
       #|1500ms tick
       #|
