@@ -13,7 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
 async test "peer close connection" {
   @async.with_task_group(fn(root) {
     // server
@@ -25,23 +24,24 @@ async test "peer close connection" {
       defer conn.close()
       let server = test_server(conn, conn)
       defer server.close()
+      server.write("1234")
       inspect(server.read_all().text(), content="abcd")
-      // close the underlying connection directly
     })
     // client
-    root.spawn_bg(fn() {
-      let conn = @socket.Tcp::connect(addr)
-      defer conn.close()
-      let client = @tls.Tls::client(conn, verify=false)
-      defer client.close()
-      client.write("abcd")
-      @async.sleep(100)
-      // the server already closed the connection
-      client.shutdown()
-    })
+    let conn = @socket.Tcp::connect(addr)
+    defer conn.close()
+    let client = @tls.Tls::client(conn, verify=false)
+    defer client.close()
+    // It is necessary to perform a `read` first here.
+    // OpenSSL and Windows schannel will send a TLS v1.3 session ticket
+    // immediately after handshake.
+    //
+    // If we close the connection without reading any data (i.e. a one-way connection),
+    // the underlying TCP connection will be reset,
+    // due to pending data in the recv buffer.
+    // Read something before closing the connection solves the problem.
+    inspect(@encoding/utf8.decode(client.read_exactly(4)), content="1234")
+    client.write("abcd")
+    // close the underlying connection directly
   })
 }
-
-///|
-#cfg(platform="windows")
-let _unused : Unit = ignore(@socket.Addr::parse)
