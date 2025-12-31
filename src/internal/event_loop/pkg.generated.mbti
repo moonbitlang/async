@@ -26,11 +26,13 @@ pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
+pub async fn open_detached(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, is_async~ : Bool, context~ : String) -> (Int, Int64)
+
 pub async fn opendir(StringView, context~ : String) -> Directory
 
 pub async fn readdir(Directory, context~ : String) -> @c_buffer.Buffer
 
-pub async fn realpath(StringView, context~ : String) -> Bytes
+pub async fn realpath(StringView, context~ : String) -> String
 
 pub async fn remove(StringView, context~ : String) -> Unit
 
@@ -48,7 +50,7 @@ pub let stdout : IoHandle
 
 pub async fn symlink(StringView, StringView, context~ : String) -> Unit
 
-pub async fn wait_pid(Int) -> Unit
+pub async fn wait_pid(Int, context~ : String) -> Unit
 
 pub fn with_event_loop(async () -> Unit) -> Unit raise
 
@@ -60,6 +62,7 @@ pub type AddrInfo
 
 #external
 pub type Directory
+pub fn Directory::close(Self) -> Int
 
 type IoHandle
 pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self
@@ -68,7 +71,7 @@ pub async fn IoHandle::connect(Self, Bytes, context~ : String) -> Unit
 pub fn IoHandle::detach_from_event_loop(Self) -> Int
 pub fn IoHandle::fd(Self) -> Int
 pub fn IoHandle::from_existing_fd(Int) -> Self
-pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind) -> Self
+pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind, is_async? : Bool) -> Self
 pub async fn IoHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
 pub fn IoHandle::kind(Self) -> @fd_util.FileKind
 pub async fn IoHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int

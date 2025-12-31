@@ -72,7 +72,7 @@ async fn client(
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
   @async.with_task_group(fn(root) {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(() => server_main(server, println))
     root.spawn_bg(fn() {

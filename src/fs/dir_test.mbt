@@ -30,6 +30,7 @@ async test "read_all" {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "as_dir" {
   let dir_file = @fs.open("src/fs", mode=ReadOnly)
   guard dir_file.kind() is Directory
@@ -70,9 +71,9 @@ test "readdir clear errno" {
     } noraise {
       _ => ()
     }
-    let dir = @fs.opendir("src/internal/event_loop")
+    let dir = @fs.opendir("src/fs")
     defer dir.close()
     let list = dir.read_all()
-    inspect(list.length(), content="17")
+    inspect(list.length(), content="22")
   })
 }

@@ -31,13 +31,13 @@ async test "merge multiple" {
     defer w.close()
     @async.with_task_group(fn(group) {
       group.spawn_bg(fn() {
-        @process.run("sh", ["-c", "echo abcd"], stdout=w, extra_env={
+        @process.run(shell, ["-c", "echo abcd"], stdout=w, extra_env={
           "LANG": "en_US.UTF-8",
         })
         |> ignore
       })
       group.spawn_bg(fn() {
-        @process.run("sh", ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
+        @process.run(shell, ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
           "LANG": "en_US.UTF-8",
         })
         |> ignore
@@ -48,6 +48,7 @@ async test "merge multiple" {
 
 ///|
 async test "redirect to file" {
+  let cat = cat.wait()
   @async.with_task_group(fn(root) {
     let input_file = "target/process_redirect_test_in.txt"
     let output_file = "target/process_redirect_test_out.txt"
@@ -55,7 +56,7 @@ async test "redirect to file" {
     root.add_defer(() => @fs.remove(output_file))
     @fs.write_file(input_file, "abcd", create=0o644)
     let _ = @process.run(
-      "cat",
+      cat,
       [],
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file, create=0o644),
@@ -69,17 +70,13 @@ async test "merge stdout and stderr" {
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     defer r.close()
-    root.spawn_bg(fn() {
-      @process.run("sh", ["-c", "echo abcd; echo efgh >&2"], stdout=w, stderr=w)
-      |> ignore
-    })
-    inspect(
-      r.read_all().text(),
-      content=(
-        #|abcd
-        #|efgh
-        #|
-      ),
-    )
+    root.spawn_bg(() => @process.run(
+        shell,
+        ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],
+        stdout=w,
+        stderr=w,
+      )
+      |> ignore)
+    inspect(r.read_all().text(), content="abcdefgh")
   })
 }

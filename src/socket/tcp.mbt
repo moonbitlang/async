@@ -81,7 +81,7 @@ pub fn TcpServer::new(
     }
   } catch {
     err => {
-      @fd_util.close(sock, context~)
+      @fd_util.close(sock, kind=Socket, context~)
       raise err
     }
   }
@@ -148,6 +148,7 @@ pub fn TcpServer::close(self : TcpServer) -> Unit {
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
+#cfg(not(platform="windows"))
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.family)
@@ -164,6 +165,22 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
       raise err
     }
   }
+  ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+#cfg(platform="windows")
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  let context = "@socket.TcpServer::accept()"
+  let conn_sock = make_tcp_socket(self.family, context~)
+  let conn = self.io.accept(conn_sock, context~)
+  if disable_nagle(conn_sock) < 0 {
+    @fd_util.close(conn_sock, kind=Socket, context~)
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
+  }
+  let addr = getpeername(conn_sock, self.family, context~)
   ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 

@@ -13,19 +13,24 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 #external
 priv type SSL_CTX
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL_CTX::is_null(self : SSL_CTX) -> Bool = "moonbitlang_async_tls_ssl_ctx_is_null"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL_CTX::client() -> SSL_CTX = "moonbitlang_async_tls_client_ctx"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL_CTX::server() -> SSL_CTX = "moonbitlang_async_tls_server_ctx"
 
 ///|
+#cfg(not(platform="windows"))
 let client_ctx : SSL_CTX = {
   load_openssl()
   let ctx = SSL_CTX::client()
@@ -36,6 +41,7 @@ let client_ctx : SSL_CTX = {
 }
 
 ///|
+#cfg(not(platform="windows"))
 let server_ctx : SSL_CTX = {
   load_openssl()
   let ctx = SSL_CTX::server()
@@ -46,27 +52,34 @@ let server_ctx : SSL_CTX = {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #external
 priv type SSL
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::new(ctx : SSL_CTX, rbio : BIO, wbio : BIO) -> SSL = "moonbitlang_async_tls_ssl_new"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::connect(self : SSL) -> Int = "moonbitlang_async_tls_ssl_connect"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(host)
 extern "C" fn SSL::set_host(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_host"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(host)
 extern "C" fn SSL::set_sni(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_sni"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::set_verify(self : SSL, verify : Bool) = "moonbitlang_async_tls_ssl_set_verify"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept"
 
 ///|
@@ -76,6 +89,7 @@ pub(all) enum X509FileType {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(file)
 extern "C" fn SSL::use_certificate_file(
   self : SSL,
@@ -84,6 +98,7 @@ extern "C" fn SSL::use_certificate_file(
 ) -> Int = "moonbitlang_async_tls_ssl_use_certificate_file"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(file)
 extern "C" fn SSL::use_private_key_file(
   self : SSL,
@@ -92,6 +107,7 @@ extern "C" fn SSL::use_private_key_file(
 ) -> Int = "moonbitlang_async_tls_ssl_use_private_key_file"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn SSL::read(
   self : SSL,
@@ -101,6 +117,7 @@ extern "C" fn SSL::read(
 ) -> Int = "moonbitlang_async_tls_ssl_read"
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn SSL::write(
   self : SSL,
@@ -110,34 +127,44 @@ extern "C" fn SSL::write(
 ) -> Int = "moonbitlang_async_tls_ssl_write"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::shutdown(self : SSL) -> Int = "moonbitlang_async_tls_ssl_shutdown"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::free(self : SSL) = "moonbitlang_async_tls_ssl_free"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn SSL::get_error(self : SSL, ret : Int) -> Int = "moonbitlang_async_tls_ssl_get_error"
 
 ///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_SSL = 1
 
 ///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_WANT_READ = 2
 
 ///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_WANT_WRITE = 3
 
 ///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_SYSCALL = 5
 
 ///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_ZERO_RETURN = 6
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn err_get_error_ffi(buf : Bytes) -> Int = "moonbitlang_async_tls_get_error"
 
 ///|
+#cfg(not(platform="windows"))
 fn err_get_error() -> String {
   let buf = Bytes::make(256, 0)
   let len = err_get_error_ffi(buf)
@@ -145,12 +172,14 @@ fn err_get_error() -> String {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
 
 ///|
 /// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
 /// Returns 1 on success, 0 on failure
+#cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
 pub fn rand_bytes(num : Int) -> Bytes raise {
   let result = FixedArray::make(num, b'\x00')
@@ -161,10 +190,12 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(src, dst)
 extern "C" fn sha1_ffi(src : Bytes, len : Int, dst : FixedArray[Byte]) = "moonbitlang_async_tls_SHA1"
 
 ///|
+#cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
 pub fn sha1(src : Bytes) -> Bytes {
   let result = FixedArray::make(20, b'\x00')

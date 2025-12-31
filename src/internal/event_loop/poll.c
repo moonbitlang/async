@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+
 #include <unistd.h>
 
 #ifdef __linux__
@@ -240,4 +242,6 @@ int moonbitlang_async_event_get_events(struct kevent *ev) {
 }
 
 // end of kqueue backend
+#endif
+
 #endif

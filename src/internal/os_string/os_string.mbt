@@ -13,11 +13,24 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 struct OsString(Bytes)
 
 ///|
+/// Windows uses UTF-16 encoding for various things
+#cfg(platform="windows")
+struct OsString(String)
+
+///|
+#cfg(not(platform="windows"))
 pub fn encode(str : StringView) -> OsString {
   @encoding/utf8.encode(str)
+}
+
+///|
+#cfg(platform="windows")
+pub fn encode(str : StringView) -> OsString {
+  str.to_string()
 }
 
 ///|
@@ -26,14 +39,26 @@ pub impl Show for OsString with output(self, logger) {
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub impl Show for OsString with to_string(self) {
   @encoding/utf8.decode_lossy(self.0)
 }
 
 ///|
+#cfg(platform="windows")
+pub impl Show for OsString with to_string(self) {
+  self.0
+}
+
+///|
+#cfg(not(platform="windows"))
 pub fn decode(os_str : @c_buffer.Buffer) -> String {
   let len = os_str.strlen()
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, offset=0, len~)
   @encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
 }
+
+///|
+#cfg(platform="windows")
+pub extern "C" fn decode(os_str : @c_buffer.Buffer) -> String = "moonbitlang_async_c_buffer_as_string"

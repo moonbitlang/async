@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(major, minor, fix)
 extern "C" fn load_openssl_ffi(
   major : Ref[Int],
@@ -21,15 +22,18 @@ extern "C" fn load_openssl_ffi(
 ) -> Int = "moonbitlang_async_load_openssl"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn init_bio_method(
   read : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
   write : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
 ) = "moonbitlang_async_init_bio_method"
 
 ///|
+#cfg(not(platform="windows"))
 let openssl_loaded : Ref[Bool] = @ref.new(false)
 
 ///|
+#cfg(not(platform="windows"))
 fn load_openssl() -> Unit {
   if openssl_loaded.val {
     return
@@ -50,6 +54,7 @@ fn load_openssl() -> Unit {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn init {
   load_openssl()
   init_bio_method((bio, dst, len) => bio.read(dst, len), (bio, src, len) => bio.write(

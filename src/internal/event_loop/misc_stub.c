@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+#include <moonbit.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <moonbit.h>
+
+int moonbitlang_async_read(int fd, char *buf, int offset, int len) {
+  return read(fd, buf + offset, len);
+}
+
+int moonbitlang_async_write(int fd, char *buf, int offset, int len) {
+  return write(fd, buf + offset, len);
+}
 
 int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
   return connect(sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
@@ -38,14 +47,6 @@ int moonbitlang_async_getsockerr(int sockfd) {
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &opt_len) < 0)
     return -1;
   return err;
-}
-
-int moonbitlang_async_read(int fd, char *buf, int offset, int len) {
-  return read(fd, buf + offset, len);
-}
-
-int moonbitlang_async_write(int fd, char *buf, int offset, int len) {
-  return write(fd, buf + offset, len);
 }
 
 int moonbitlang_async_recvfrom(
@@ -76,3 +77,5 @@ int moonbitlang_async_sendto(
   
   return sendto(sock, buf + offset, len, 0, addr, addr_len);
 }
+
+#endif // #ifndef _WIN32

@@ -20,7 +20,6 @@ pub let unimplemented : Unit = {
   ignore(@async.sleep)
   ignore(@event_loop.sleep)
   ignore(@coroutine.spawn)
-  ignore(@fs.unimplemented)
   ignore(@pipe.unimplemented)
   ignore(@stdio.unimplemented)
   ignore(@os_error.unimplemented)

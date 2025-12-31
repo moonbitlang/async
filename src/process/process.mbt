@@ -13,10 +13,20 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_curr_env() -> FixedArray[@os_string.OsString?] = "moonbitlang_async_get_curr_env"
 
 ///|
+#cfg(not(platform="windows"))
 let curr_env : FixedArray[@os_string.OsString?] = get_curr_env()
+
+///|
+#cfg(platform="windows")
+extern "C" fn get_curr_env() -> String = "moonbitlang_async_get_curr_env"
+
+///|
+#cfg(platform="windows")
+let curr_env : String = get_curr_env()
 
 ///|
 extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
@@ -26,6 +36,7 @@ extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_proces
 extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
 
 ///|
+#cfg(not(platform="windows"))
 async fn spawn(
   cmd : String,
   args : Array[String],
@@ -99,6 +110,122 @@ async fn spawn(
 }
 
 ///|
+#cfg(platform="windows")
+fn StringBuilder::write_arg_with_windows_escape(
+  builder : StringBuilder,
+  arg : String,
+) -> Unit raise {
+  let mut segment_start = 0
+  let mut index = 0
+  let mut trailing_backslash = 0
+  fn flush(skip : Int) raise {
+    if index > segment_start {
+      builder.write_stringview(arg[segment_start:index - trailing_backslash])
+      if trailing_backslash > 0 {
+        builder.write_string(String::make(trailing_backslash * 2, '\\'))
+      }
+      segment_start = index + skip
+    }
+  }
+
+  builder.write_char('"')
+  while index < arg.length() {
+    match arg.code_unit_at(index) {
+      '"' => {
+        flush(1)
+        builder.write_string("\\\"")
+      }
+      '\\' => trailing_backslash += 1
+      _ => trailing_backslash = 0
+    }
+    index += 1
+  }
+  flush(0)
+  builder.write_char('"')
+}
+
+///|
+#cfg(platform="windows")
+async fn spawn(
+  cmd : String,
+  args : Array[String],
+  extra_env~ : Map[String, String],
+  inherit_env~ : Bool,
+  stdin~ : &ProcessInput?,
+  stdout~ : &ProcessOutput?,
+  stderr~ : &ProcessOutput?,
+  cwd~ : String?,
+  context~ : String,
+) -> Int {
+  let cmd = match cmd {
+    [.., .. ".exe"] => cmd
+    _ => cmd + ".exe"
+  }
+  let command_line = StringBuilder::new()
+  command_line.write_arg_with_windows_escape(cmd)
+  for arg in args {
+    command_line..write_char(' ')..write_arg_with_windows_escape(arg)
+  }
+  let command_line = @os_string.encode(command_line.to_string())
+  let cwd = match cwd {
+    None => None
+    Some(cwd) => Some(@os_string.encode(cwd))
+  }
+  defer {
+    if stdin is Some(p) {
+      p.after_spawn()
+    }
+    if stdout is Some(p) {
+      p.after_spawn()
+    }
+    if stderr is Some(p) {
+      p.after_spawn()
+    }
+  }
+  let stdin = match stdin {
+    Some(pipe) => pipe.fd()
+    None => @fd_util.invalid_fd
+  }
+  let stdout = match stdout {
+    Some(pipe) => pipe.fd()
+    None => @fd_util.invalid_fd
+  }
+  let stderr = match stderr {
+    Some(pipe) => pipe.fd()
+    None => @fd_util.invalid_fd
+  }
+  let env = match (inherit_env, extra_env.is_empty()) {
+    (true, true) => None
+    (false, true) => Some(@os_string.encode("\u{0}"))
+    (_, false) => {
+      let env = StringBuilder::new()
+      for key, value in extra_env {
+        env
+        ..write_string(key)
+        ..write_char('=')
+        ..write_string(value)
+        ..write_string("\u{0}")
+      }
+      if inherit_env {
+        env.write_string(curr_env)
+      } else {
+        env.write_string("\u{0}")
+      }
+      Some(@os_string.encode(env.to_string()))
+    }
+  }
+  @event_loop.spawn(
+    command_line,
+    env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    context~,
+  )
+}
+
+///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` are encoded using UTF8.
@@ -145,7 +272,7 @@ pub async fn spawn_orphan(
 /// and return the exit code of the process.
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
-  @event_loop.wait_pid(pid)
+  @event_loop.wait_pid(pid, context~)
   let out = @ref.new(0)
   let ret = get_process_result(pid, out)
   if ret < 0 {
@@ -210,7 +337,7 @@ pub async fn run(
     cwd~,
     context~,
   )
-  @event_loop.wait_pid(pid) catch {
+  @event_loop.wait_pid(pid, context~) catch {
     err if @coroutine.is_being_cancelled() => {
       terminate_process(pid)
       raise err
@@ -393,19 +520,45 @@ pub async fn redirect_to_file(
   create? : Int,
   truncate? : Bool = false,
 ) -> &ProcessOutput {
-  RedirectToFile(@fs.open(path, mode=WriteOnly, create?, append~, truncate~))
+  let (create, mode) = match create {
+    Some(mode) => (true, mode)
+    None => (false, 0)
+  }
+  let (fd, kind) = @event_loop.open_detached(
+    path,
+    1, // write only
+    create~,
+    append~,
+    truncate~,
+    sync=0,
+    mode~,
+    is_async=false,
+    context="@process.redirect_to_file()",
+  )
+  RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))
 }
 
 ///|
 /// Redirect the content of a file at `path` to the stdin of a process.
 pub async fn redirect_from_file(path : String) -> &ProcessInput {
-  RedirectToFile(@fs.open(path, mode=ReadOnly))
+  let (fd, kind) = @event_loop.open_detached(
+    path,
+    0, // read only
+    create=false,
+    append=false,
+    truncate=false,
+    sync=0,
+    mode=0,
+    is_async=false,
+    context="@process.redirect_to_file()",
+  )
+  RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))
 }
 
 ///|
 /// An entity that can be used to redirect stdin of a process
 trait ProcessInput {
-  fd(Self) -> Int
+  fd(Self) -> @fd_util.Fd
   after_spawn(Self) -> Unit = _
 }
 
@@ -427,7 +580,7 @@ pub impl ProcessInput for @stdio.Input with fd(self) {
 ///|
 /// An entity that can be used to redirect stdout/stderr of a process
 trait ProcessOutput {
-  fd(Self) -> Int
+  fd(Self) -> @fd_util.Fd
   after_spawn(Self) -> Unit = _
 }
 
@@ -485,24 +638,28 @@ impl ProcessInput for TempPipeRead with after_spawn(self) {
 }
 
 ///|
-priv struct RedirectToFile(@fs.File)
+priv struct RedirectToFile(@fd_util.Fd, @fd_util.FileKind)
 
 ///|
 impl ProcessOutput for RedirectToFile with fd(self) {
-  self.0.fd()
+  self.0
 }
 
 ///|
 impl ProcessOutput for RedirectToFile with after_spawn(self) {
-  self.0.close()
+  @fd_util.close(self.0, kind=self.1, context="") catch {
+    _ => ()
+  }
 }
 
 ///|
 impl ProcessInput for RedirectToFile with fd(self) {
-  self.0.fd()
+  self.0
 }
 
 ///|
 impl ProcessInput for RedirectToFile with after_spawn(self) {
-  self.0.close()
+  @fd_util.close(self.0, kind=self.1, context="") catch {
+    _ => ()
+  }
 }

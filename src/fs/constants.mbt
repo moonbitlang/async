@@ -30,25 +30,33 @@ pub(all) enum FileKind {
 fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind = "%identity"
 
 ///|
+#cfg(not(platform="windows"))
 let const_F_OK : Int = get_F_OK()
 
 ///|
+#cfg(not(platform="windows"))
 let const_R_OK : Int = get_R_OK()
 
 ///|
+#cfg(not(platform="windows"))
 let const_W_OK : Int = get_W_OK()
 
 ///|
+#cfg(not(platform="windows"))
 let const_X_OK : Int = get_X_OK()
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_F_OK() -> Int = "moonbitlang_async_get_F_OK"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_R_OK() -> Int = "moonbitlang_async_get_R_OK"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_W_OK() -> Int = "moonbitlang_async_get_W_OK"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn get_X_OK() -> Int = "moonbitlang_async_get_X_OK"

@@ -14,6 +14,7 @@
 
 ///|
 /// A TLS-encrypted connection
+#cfg(not(platform="windows"))
 #alias(TLS, deprecated="use `Tls` instead")
 struct Tls {
   ssl : SSL
@@ -30,6 +31,7 @@ pub suberror OpenSSLError String derive(Show, ToJson)
 pub suberror ConnectionClosed derive(Show, ToJson)
 
 ///|
+#cfg(not(platform="windows"))
 fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   ctx : SSL_CTX,
   r : R,
@@ -44,13 +46,17 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
   match err {
     SSL_ERROR_WANT_READ => {
-      self.bio.flush_write()
+      self.bio.flush_write(flush_all=true)
       self.bio.read_more()
     }
-    SSL_ERROR_WANT_WRITE => self.bio.flush_write()
+    SSL_ERROR_WANT_WRITE => {
+      self.bio.flush_write(flush_all=false)
+      self.bio.write_buf.enlarge_to(1)
+    }
     SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise OpenSSLError(err_get_error())
     SSL_ERROR_ZERO_RETURN => raise ConnectionClosed
     err => abort("unexpected error code \{err} from OpenSSL")
@@ -69,6 +75,7 @@ async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
 ///
 /// If `host` is present and `sni` is `true` (`true` by default),
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
+#cfg(not(platform="windows"))
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   r : R,
   w : W,
@@ -101,7 +108,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       }
     }
   }
-  self.bio.flush_write()
+  self.bio.flush_write(flush_all=true)
   self
 }
 
@@ -136,6 +143,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
 ///
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
+#cfg(not(platform="windows"))
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   r : R,
   w : W,
@@ -163,7 +171,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
       }
     }
   }
-  self.bio.flush_write()
+  self.bio.flush_write(flush_all=true)
   self
 }
 
@@ -177,6 +185,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 ///
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
+#cfg(not(platform="windows"))
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
   inner : Inner,
   private_key_file~ : String,
@@ -195,6 +204,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
   let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
@@ -209,16 +219,18 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
     // imposible
     0
   }
-  self.bio.flush_write()
+  self.bio.flush_write(flush_all=true)
   n
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub impl @io.Reader for Tls with _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
   let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
@@ -229,7 +241,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
     // imposible
     0
   }
-  self.bio.flush_write()
+  self.bio.flush_write(flush_all=true)
   n
 }
 
@@ -239,6 +251,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
 ///
 /// Note that this function will not perform the TLS shutdown process,
 /// for graceful shutdown of a TLS connection, see `TLS::shutdown`.
+#cfg(not(platform="windows"))
 pub fn Tls::close(self : Tls) -> Unit {
   guard !self.closed else {  }
   self.closed = true
@@ -266,6 +279,7 @@ pub fn Tls::close(self : Tls) -> Unit {
 /// Furthermore, some servers may not response correctly to TLS shutdown.
 /// So it is highly recommended to add a timeout when calling this function,
 /// to prevent the program from haning indefinitely.
+#cfg(not(platform="windows"))
 pub async fn Tls::shutdown(self : Tls) -> Unit {
   match self.bio.state {
     Normal => ()
@@ -284,6 +298,14 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
       _ => self.handle_error(err)
     }
   } else {
-    self.bio.flush_write()
+    self.bio.flush_write(flush_all=true)
   }
+}
+
+///|
+// mute unused warning
+#cfg(not(platform="windows"))
+let _unused : Unit = {
+  ignore(@os_error.check_errno)
+  ignore(@os_string.encode)
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 async test "exists" {
   assert_true(@fs.exists("moon.mod.json"))
   @fs.open("moon.mod.json", mode=ReadOnly).close()
@@ -29,21 +30,25 @@ async test "exists" {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "can_read" {
   assert_true(@fs.can_read("moon.mod.json"))
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "can_write" {
   assert_true(@fs.can_write("moon.mod.json"))
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "can_execute" {
   assert_false(@fs.can_execute("moon.mod.json"))
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "chmod" {
   let path = "target/chmod_test"
   @async.with_task_group(fn(group) {

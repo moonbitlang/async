@@ -15,9 +15,49 @@
  */
 
 #include <stdint.h>
+#include <moonbit.h>
+
+#ifdef _WIN32
+
+#include <winsock2.h>
+#include <windows.h>
+
+#else
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+
+#endif
+
+
+#ifdef _WIN32
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_fd_is_valid(HANDLE handle) {
+  return handle == INVALID_HANDLE_VALUE;
+}
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_get_invalid_handle() {
+  return INVALID_HANDLE_VALUE;
+}
+
+
+#else
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_fd_is_valid(int fd) {
+  return fd < 0;
+}
+#endif
+
+#ifdef _WIN32
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_closesocket(HANDLE handle) {
+  return 0 == closesocket((SOCKET)handle);
+}
+#endif
+
+#ifndef _WIN32
 
 int moonbitlang_async_fd_is_nonblocking(int fd) {
   int flags = fcntl(fd, F_GETFL);
@@ -75,11 +115,65 @@ int moonbitlang_async_pipe(int *fds) {
   return 0;
 }
 
+#endif
+
+#ifdef _WIN32
+typedef FILE_BASIC_INFO file_time_t;
+#else
+typedef struct stat     file_time_t;
+#endif
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_sizeof_file_time() {
-  return sizeof(struct stat);
+  return sizeof(file_time_t);
 }
 
-int32_t moonbitlang_async_file_kind_from_sys_kind(int32_t sys_kind) {
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_file_kind_is_async(int64_t kind) {
+#ifdef _WIN32
+  // https://learn.microsoft.com/en-us/previous-versions/troubleshoot/windows/win32/asynchronous-disk-io-synchronous
+  return 0 == ((kind >> 32) & (FILE_ATTRIBUTE_COMPRESSED | FILE_ATTRIBUTE_ENCRYPTED));
+#else
+  switch (kind & S_IFMT) {
+  case S_IFSOCK:
+  case S_IFIFO:
+  case S_IFCHR:
+    return 1;
+  case S_IFREG:
+  case S_IFDIR:
+  case S_IFLNK:
+  case S_IFBLK:
+  default:
+    return 0;
+  }
+#endif
+}
+
+// For Windows, determining the kind of file requires two syscalls:
+// directories can only be detected via file attributes,
+// while pipes can only be detected via `GetFileType`.
+// Here, we use a 64bit integer to combine the result of the two.
+// The high 32bits is the file attribute,
+// while the low 32bits are return value of `GetFileType`.
+//
+// For UNIX like systems, the high 32bits are useless.
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_file_kind_from_sys_kind(int64_t sys_kind) {
+#ifdef _WIN32
+  switch (sys_kind & 0xffffffff) {
+  case FILE_TYPE_DISK: {
+    DWORD attrs = sys_kind >> 32;
+    if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+      return 2;
+    if (attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+      return 3;
+    return 1;
+  }
+  case FILE_TYPE_PIPE:    return 5;
+  case FILE_TYPE_CHAR:    return 7;
+  default:                return 0;
+  }
+#else
   switch (sys_kind & S_IFMT) {
   case S_IFREG:  return 1;
   case S_IFDIR:  return 2;
@@ -90,43 +184,123 @@ int32_t moonbitlang_async_file_kind_from_sys_kind(int32_t sys_kind) {
   case S_IFCHR:  return 7;
   default:       return 0;
   }
+#endif
 }
 
-int32_t moonbitlang_async_get_fd_kind_sync(int fd, int32_t *out) {
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_fd_kind_sync(
+#ifdef _WIN32
+  HANDLE handle,
+#else
+  int fd,
+#endif
+  int64_t *out
+) {
+#ifdef _WIN32
+
+  SetLastError(0);
+  int32_t kind = GetFileType(handle);
+  if (kind != FILE_TYPE_UNKNOWN) {
+    *out = kind;
+    return 0;
+  }
+
+
+  if (GetLastError())
+    return -1;
+
+  FILE_BASIC_INFO info;
+  if (
+    !GetFileInformationByHandleEx(
+      handle,
+      FileBasicInfo,
+      &info,
+      sizeof(FILE_BASIC_INFO)
+    )
+  ) {
+    return -1;
+  }
+
+  *out = (((int64_t)info.FileAttributes) << 32) | (int64_t)kind;
+  return 0;
+
+#else
+
   struct stat stat;
   if (fstat(fd, &stat) < 0) {
     return -1;
   }
   *out = stat.st_mode;
   return 0;
+
+#endif
 }
 
-#ifdef __MACH__
+#ifdef _WIN32
+
+#define GET_FILETIME_SEC(stat, kind) ((stat)->kind##Time.QuadPart / 10000000)
+#define GET_FILETIME_NSEC(stat, kind) (((stat)->kind##Time.QuadPart % 10000000) * 100)
+
+#elif defined(__MACH__)
+
 #define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##timespec
+
 #else
+
 #define GET_STAT_TIMESTAMP(statp, kind) (statp)->st_##kind##tim
+
 #endif
 
-int64_t moonbitlang_async_get_atime_sec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int64_t moonbitlang_async_get_atime_sec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_SEC(stat, LastAccess);
+#else
   return GET_STAT_TIMESTAMP(stat, a).tv_sec;
+#endif
 }
 
-int32_t moonbitlang_async_get_atime_nsec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_atime_nsec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_NSEC(stat, LastAccess);
+#else
   return GET_STAT_TIMESTAMP(stat, a).tv_nsec;
+#endif
 }
 
-int64_t moonbitlang_async_get_mtime_sec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int64_t moonbitlang_async_get_mtime_sec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_SEC(stat, LastWrite);
+#else
   return GET_STAT_TIMESTAMP(stat, m).tv_sec;
+#endif
 }
 
-int32_t moonbitlang_async_get_mtime_nsec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_mtime_nsec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_NSEC(stat, LastWrite);
+#else
   return GET_STAT_TIMESTAMP(stat, m).tv_nsec;
+#endif
 }
 
-int64_t moonbitlang_async_get_ctime_sec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int64_t moonbitlang_async_get_ctime_sec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_SEC(stat, Change);
+#else
   return GET_STAT_TIMESTAMP(stat, c).tv_sec;
+#endif
 }
 
-int32_t moonbitlang_async_get_ctime_nsec(struct stat *stat) {
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_ctime_nsec(file_time_t *stat) {
+#ifdef _WIN32
+  return GET_FILETIME_NSEC(stat, Change);
+#else
   return GET_STAT_TIMESTAMP(stat, c).tv_nsec;
+#endif
 }

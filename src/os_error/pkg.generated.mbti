@@ -4,6 +4,8 @@ package "moonbitlang/async/os_error"
 // Values
 pub fn check_errno(String) -> Unit raise OSError
 
+pub fn errno_to_string(Int) -> String
+
 pub fn get_errno() -> Int
 
 pub fn is_nonblocking_io_error() -> Bool
@@ -13,6 +15,7 @@ pub(all) suberror OSError {
   OSError(Int, context~ : String)
 }
 pub fn OSError::is_EACCES(Self) -> Bool
+pub fn OSError::is_ECONNREFUSED(Self) -> Bool
 pub fn OSError::is_EEXIST(Self) -> Bool
 pub fn OSError::is_EINTR(Self) -> Bool
 pub fn OSError::is_ENOENT(Self) -> Bool

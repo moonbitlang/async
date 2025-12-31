@@ -17,10 +17,14 @@ async test "realpath absolute" {
   let rp = @fs.realpath("src/fs/realpath_test.mbt")
   guard @env.current_dir() is Some(cwd)
   assert_true(rp.has_prefix(cwd))
-  inspect(rp[cwd.length():], content="/src/fs/realpath_test.mbt")
+  inspect(
+    rp[cwd.length():].replace_all(old="\\", new="/"),
+    content="/src/fs/realpath_test.mbt",
+  )
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "realpath link to absolute" {
   @async.with_task_group(fn(root) {
     guard @env.current_dir() is Some(cwd)
@@ -38,6 +42,7 @@ async test "realpath link to absolute" {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "realpath link to relative" {
   @async.with_task_group(fn(root) {
     guard @env.current_dir() is Some(cwd)
@@ -52,6 +57,7 @@ async test "realpath link to relative" {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "realpath link to dir" {
   @async.with_task_group(fn(root) {
     guard @env.current_dir() is Some(cwd)

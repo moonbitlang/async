@@ -21,7 +21,7 @@ async test "set cwd" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg(fn() {
-      let _ = @process.run("ls", [], stdout=w, cwd="src/process", extra_env={
+      let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="src/process", extra_env={
         "LC_ALL": "C",
       })
       guard @env.current_dir() is Some(new_cwd)
@@ -31,6 +31,7 @@ async test "set cwd" {
       .read_all()
       .text()
       .trim(char_set="\n\r ")
+      .replace_all(old="\r\n", new="\n")
       .split("\n")
       .to_array()
       |> then(x => {
@@ -38,9 +39,10 @@ async test "set cwd" {
         x
       })
     @json.inspect(files, content=[
-      "stub.c", "README.md", "process.mbt", "cwd_test.mbt", "env_test.mbt", "README.mbt.md",
-      "moon.pkg.json", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
-      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti",
+      "stub.c", "README.md", "windows.c", "process.mbt", "cwd_test.mbt", "env_test.mbt",
+      "README.mbt.md", "moon.pkg.json", "test_programs", "wait_test.mbt", "basic_test.mbt",
+      "cancel_test.mbt", "helper_test.mbt", "redirect_test.mbt", "unimplemented.mbt",
+      "pkg.generated.mbti", "commands_for_test.mbt", "unimplemented_test.mbt", "windows_escape_wbtest.mbt",
     ])
   })
 }

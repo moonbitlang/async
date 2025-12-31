@@ -15,22 +15,29 @@
 
 ///|
 async test "collect_stdout" {
-  let (code, output) = @process.collect_stdout("sh", ["-c", "printf abcd"])
+  let (code, output) = @process.collect_stdout(shell, [
+    "-c",
+    "\{write_stdout} abcd",
+  ])
   inspect(code, content="0")
   inspect(output.text(), content="abcd")
 }
 
 ///|
 async test "collect_error" {
-  let (code, output) = @process.collect_stderr("sh", ["-c", "printf abcd >&2"])
+  let (code, output) = @process.collect_stderr(shell, [
+    "-c",
+    "\{write_stderr} abcd",
+  ])
   inspect(code, content="0")
   inspect(output.text(), content="abcd")
 }
 
 ///|
 async test "collect_output" {
-  let (code, stdout, stderr) = @process.collect_output("sh", [
-    "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
+  let (code, stdout, stderr) = @process.collect_output(shell, [
+    "-c",
+    "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
   inspect(stdout.text(), content="abcd")
@@ -39,8 +46,9 @@ async test "collect_output" {
 
 ///|
 async test "collect_output_merged" {
-  let (code, output) = @process.collect_output_merged("sh", [
-    "-c", "printf ab; printf ab >&2; printf cd; printf cd >&2",
+  let (code, output) = @process.collect_output_merged(shell, [
+    "-c",
+    "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
   inspect(output.text(), content="ababcdcd")
@@ -48,6 +56,7 @@ async test "collect_output_merged" {
 
 ///|
 async test "collect_output blocked" {
+  let test_prog = cat.wait()
   @async.with_task_group(group => {
     let (cat_read, we_write) = @process.write_to_process()
     group.spawn_bg(() => {
@@ -58,8 +67,8 @@ async test "collect_output blocked" {
       }
     })
     let (code, stdout, stderr) = @process.collect_output(
-      "sh",
-      ["-c", "cat >&2"],
+      test_prog,
+      ["-stderr"],
       stdin=cat_read,
     )
     inspect(code, content="0")

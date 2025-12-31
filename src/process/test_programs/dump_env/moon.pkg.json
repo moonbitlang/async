@@ -1,0 +1,4 @@
+{
+  "native-stub": [ "stub.c" ],
+  "is-main": true
+}

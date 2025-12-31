@@ -24,6 +24,7 @@ async test "mkdir" {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "rmdir recursive" {
   let path = "target/rmdir_test"
   @fs.mkdir(path, permission=0o755)

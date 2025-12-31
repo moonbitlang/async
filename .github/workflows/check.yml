@@ -11,24 +11,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - name: ubuntu-latest
-            path: ubuntu_x86_64_moon_setup
-          - name: macos-latest
-            path: mac_m1_moon_setup
+        os: ["ubuntu-latest","macos-latest", "windows-latest"]
 
-    runs-on: ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
     timeout-minutes: 10
     steps:
+      - name: disable auto CRLF
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
+      - uses: ilammy/msvc-dev-cmd@v1
 
-      - name: install
+      - name: install (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: install (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: load SSH key for testing (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
 
       - name: moon version
         run: |
@@ -40,43 +53,60 @@ jobs:
           moon update
 
       - name: moon check
-        run: |
-          moon check --deny-warn
-          moon check -C examples --deny-warn
+        run: moon check --deny-warn
+
+      - name: moon check (examples)
+        run: moon check -C examples --deny-warn
 
       - name: moon test
-        run: |
-          moon test --release
-          moon test
-          moon test --release -C examples
-          moon test -C examples
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
+
+      - name: test examples
+        run: moon test -C examples
+
+      - name: test examples (release)
+        run: moon test --release -C examples
 
   nightly-build:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - name: ubuntu-latest
-            path: ubuntu_x86_64_moon_setup
-          - name: macos-latest
-            path: mac_m1_moon_setup
+        os: ["ubuntu-latest","macos-latest", "windows-latest"]
 
-    runs-on: ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
     timeout-minutes: 10
     steps:
+      - name: disable auto CRLF
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
+      - uses: ilammy/msvc-dev-cmd@v1
 
-      - name: install
+      - name: install (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
-      - name: enable new moon backend
+      - name: install (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        env:
+          MOONBIT_INSTALL_VERSION: nightly
         run: |
-          export MOON_UNSTABLE=rupes_recta
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: load SSH key for testing (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
 
       - name: moon version
         run: |
@@ -88,16 +118,22 @@ jobs:
           moon update
 
       - name: moon check
-        run: |
-          moon check
-          moon check -C examples
+        run: moon check
+
+      - name: moon check (examples)
+        run: moon check -C examples
 
       - name: moon test
-        run: |
-          moon test --release
-          moon test
-          moon test --release -C examples
-          moon test -C examples
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
+
+      - name: test examples
+        run: moon test -C examples
+
+      - name: test examples (release)
+        run: moon test --release -C examples
 
   js-build:
     runs-on: ubuntu-latest

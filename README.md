@@ -56,7 +56,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] native integration with the MoonBit language
 - [X] Linux support (`epoll`)
 - [X] MacOS support (`kqueue`)
-- [ ] Windows support
+- [X] Windows support (`IOCP`)
 - [ ] WASM backend
 - [X] Javascript backend
     - [X] integration with JavaScript promise

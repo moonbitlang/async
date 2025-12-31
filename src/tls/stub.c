@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+
 #include <dlfcn.h>
 #include <string.h>
 #include <moonbit.h>
@@ -266,3 +268,5 @@ void moonbitlang_async_tls_SHA1(
 ) {
   SHA1(src, len, dst);
 }
+
+#endif

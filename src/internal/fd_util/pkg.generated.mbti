@@ -2,11 +2,15 @@
 package "moonbitlang/async/internal/fd_util"
 
 // Values
-pub fn close(Int, context~ : String) -> Unit raise
+pub fn close(Int, kind~ : FileKind, context~ : String) -> Unit raise
 
 pub fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
 
+pub fn fd_is_valid(Int) -> Bool
+
 pub fn get_fd_kind_sync(Int, context~ : String) -> FileKind raise
+
+pub let invalid_fd : Int
 
 pub fn pipe(String) -> (Int, Int) raise
 
@@ -30,7 +34,8 @@ pub(all) enum FileKind {
   CharDevice
 }
 pub fn FileKind::can_poll(Self) -> Bool
-pub fn FileKind::from_sys_kind(Int) -> Self
+pub fn FileKind::from_sys_kind(Int64) -> Self
+pub fn FileKind::is_async(Int64) -> Bool
 pub impl Eq for FileKind
 pub impl Show for FileKind
 
@@ -41,6 +46,7 @@ pub fn FileTime::mtime(Self) -> (Int64, Int)
 pub fn FileTime::new() -> Self
 
 // Type aliases
+pub type Fd = Int
 
 // Traits
 

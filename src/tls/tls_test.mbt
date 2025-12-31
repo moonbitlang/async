@@ -13,6 +13,25 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
+async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/cert.pem",
+    certificate_type=PEM,
+  )
+}
+
+///|
+#cfg(platform="windows")
+async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(r, w)
+}
+
+///|
 async test "one way" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
@@ -24,14 +43,7 @@ async test "one way" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = @tls.Tls::server_from_pair(
-        server_read_from_client,
-        server_write_to_client,
-        private_key_file="test_keys/key.pem",
-        private_key_type=PEM,
-        certificate_file="test_keys/cert.pem",
-        certificate_type=PEM,
-      )
+      let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       while server.read_some() is Some(data) {
         let data = @encoding/utf8.decode(data)
@@ -84,14 +96,7 @@ async test "echo" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = @tls.Tls::server_from_pair(
-        server_read_from_client,
-        server_write_to_client,
-        private_key_file="test_keys/key.pem",
-        private_key_type=PEM,
-        certificate_file="test_keys/cert.pem",
-        certificate_type=PEM,
-      )
+      let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       while server.read_some() is Some(data) {
         log.write_string("server received: \{@encoding/utf8.decode(data)}\n")
@@ -179,14 +184,7 @@ async test "`read` already closed" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = @tls.Tls::server_from_pair(
-        server_read_from_client,
-        server_write_to_client,
-        private_key_file="test_keys/key.pem",
-        private_key_type=PEM,
-        certificate_file="test_keys/cert.pem",
-        certificate_type=PEM,
-      )
+      let server = test_server(server_read_from_client, server_write_to_client)
       server.close()
     })
     // client

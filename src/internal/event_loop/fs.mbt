@@ -17,6 +17,41 @@
 pub type Directory
 
 ///|
+pub async fn open_detached(
+  path : StringView,
+  // 0 => read only, 1 => write only, 2 => read write
+  access : Int,
+  create~ : Bool,
+  append~ : Bool,
+  truncate~ : Bool,
+  // 0 => no sync, 1 => data sync, 2 => full sync
+  sync~ : Int,
+  // permission for file when new file is created
+  mode~ : Int,
+  is_async~ : Bool,
+  context~ : String,
+) -> (@fd_util.Fd, Int64) {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::open(
+    path_bytes,
+    access,
+    create~,
+    append~,
+    truncate~,
+    sync~,
+    mode~,
+    is_async~,
+  )
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  } noraise {
+    _ => (job.get_open_job_result(), job.get_open_job_kind())
+  }
+}
+
+///|
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -30,26 +65,20 @@ pub async fn open(
   mode~ : Int,
   context~ : String,
 ) -> IoHandle {
-  let path_bytes = @os_string.encode(path)
-  let job = Job::open(
-    path_bytes,
+  let (fd, kind) = open_detached(
+    path,
     access,
     create~,
     append~,
     truncate~,
     sync~,
     mode~,
+    is_async=true,
+    context~,
   )
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
-    err => raise err
-  } noraise {
-    fd => {
-      let kind = @fd_util.FileKind::from_sys_kind(job.get_open_job_kind())
-      IoHandle::from_fd(fd, kind~)
-    }
-  }
+  let is_async = @fd_util.FileKind::is_async(kind)
+  let kind = @fd_util.FileKind::from_sys_kind(kind)
+  IoHandle::from_fd(fd, kind~, is_async~)
 }
 
 ///|
@@ -65,19 +94,22 @@ pub async fn file_kind_by_path(
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
   } noraise {
-    sys_kind => @fd_util.FileKind::from_sys_kind(sys_kind)
+    _ => @fd_util.FileKind::from_sys_kind(job.get_file_kind_by_path_result())
   }
 }
 
 ///|
-pub async fn file_size(fd : Int, context~ : String) -> Int64 {
+pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
   let job = Job::file_size(fd)
   let _ = perform_job_in_worker(job, context~)
   job.get_file_size_result()
 }
 
 ///|
-pub async fn file_time(fd : Int, context~ : String) -> @fd_util.FileTime {
+pub async fn file_time(
+  fd : @fd_util.Fd,
+  context~ : String,
+) -> @fd_util.FileTime {
   let result = @fd_util.FileTime::new()
   let job = Job::file_time(fd, result)
   let _ = perform_job_in_worker(job, context~)
@@ -193,8 +225,24 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
+#cfg(platform="windows")
+fn prepare_opendir_path(path : StringView) -> StringView {
+  if path is [.., '/' | '\\'] {
+    path + "*"
+  } else {
+    path + "\\*"
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn prepare_opendir_path(path : StringView) -> StringView {
+  path
+}
+
+///|
 pub async fn opendir(path : StringView, context~ : String) -> Directory {
-  let path_bytes = @os_string.encode(path)
+  let path_bytes = @os_string.encode(prepare_opendir_path(path))
   let job = Job::opendir(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
@@ -205,6 +253,14 @@ pub async fn opendir(path : StringView, context~ : String) -> Directory {
 }
 
 ///|
+#cfg(not(platform="windows"))
+pub extern "C" fn Directory::close(self : Directory) -> Int = "closedir"
+
+///|
+#cfg(platform="windows")
+pub extern "C" fn Directory::close(self : Directory) -> Int = "moonbitlang_async_closedir"
+
+///|
 pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
   let job = Job::readdir(dir)
   let _ = perform_job_in_worker(job, context~)
@@ -212,7 +268,8 @@ pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
 }
 
 ///|
-pub async fn realpath(path : StringView, context~ : String) -> Bytes {
+#cfg(not(platform="windows"))
+pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
   let job = Job::realpath(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
@@ -222,8 +279,18 @@ pub async fn realpath(path : StringView, context~ : String) -> Bytes {
   }
   let c_path = job.get_realpath_result()
   defer c_path.free()
-  let len = c_path.strlen()
-  let result = FixedArray::make(len, b'\x00')
-  c_path.blit_to_bytes(dst=result, offset=0, len~)
-  result.unsafe_reinterpret_as_bytes()
+  @os_string.decode(c_path)
+}
+
+///|
+#cfg(platform="windows")
+pub async fn realpath(path : StringView, context~ : String) -> String {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::realpath(path_bytes)
+  let _ = perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+    err => raise err
+  }
+  job.get_realpath_result()
 }

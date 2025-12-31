@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 async test "peer close connection" {
   @async.with_task_group(fn(root) {
     // server
@@ -22,13 +23,7 @@ async test "peer close connection" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let server = @tls.Tls::server(
-        conn,
-        private_key_file="test_keys/key.pem",
-        private_key_type=PEM,
-        certificate_file="test_keys/cert.pem",
-        certificate_type=PEM,
-      )
+      let server = test_server(conn, conn)
       defer server.close()
       inspect(server.read_all().text(), content="abcd")
       // close the underlying connection directly
@@ -46,3 +41,7 @@ async test "peer close connection" {
     })
   })
 }
+
+///|
+#cfg(platform="windows")
+let _unused : Unit = ignore(@socket.Addr::parse)

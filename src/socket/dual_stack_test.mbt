@@ -36,7 +36,11 @@ async test "Only_V4 server" {
       })
     })
     async fn client(protocol) {
-      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
+      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~) catch {
+        @os_error.OSError(_) as err if err.is_ECONNREFUSED() =>
+          raise Failure("connection refused")
+        err => raise err
+      }
       defer conn.close()
       conn.write("message")
     }
@@ -58,7 +62,7 @@ async test "Only_V4 server" {
       #|client(OnlyV4): Ok(())
       #|server received "message" from 127.0.0.1
       #|client(FavorV6): Ok(())
-      #|client(OnlyV6): Err(OSError("@socket.Tcp::connect(): Connection refused"))
+      #|client(OnlyV6): Err(Failure("connection refused"))
       #|
     ),
   )
@@ -83,7 +87,11 @@ async test "Only_V6 server" {
       })
     })
     async fn client(protocol) {
-      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
+      let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~) catch {
+        @os_error.OSError(_) as err if err.is_ECONNREFUSED() =>
+          raise Failure("connection refused")
+        err => raise err
+      }
       defer conn.close()
       conn.write("message")
     }
@@ -101,7 +109,7 @@ async test "Only_V6 server" {
     content=(
       #|server received "message" from [::1]
       #|client(FavorV4): Ok(())
-      #|client(OnlyV4): Err(OSError("@socket.Tcp::connect(): Connection refused"))
+      #|client(OnlyV4): Err(Failure("connection refused"))
       #|server received "message" from [::1]
       #|client(FavorV6): Ok(())
       #|server received "message" from [::1]

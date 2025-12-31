@@ -15,22 +15,18 @@
 
 ///|
 async test "cancel process" {
-  let test_prog =
-    #|sleep 10 &
-    #|child=$!
-    #|trap "echo received SIGTERM; kill -s TERM $child" TERM
-    #|wait $child
+  let test_prog = sleep_prog.wait()
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
-      @process.run("sh", ["-c", test_prog], stdout=w)
+      @process.run(test_prog, ["10000"], stdout=w)
     })
     root.spawn_bg(fn() {
       defer r.close()
       while r.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @encoding/utf8.decode(data).replace_all(old="\r\n", new="\n")
         log.write_string("from process: \{data}")
       }
     })
@@ -43,7 +39,7 @@ async test "cancel process" {
     content=(
       #|cancelling task running process
       #|process terminates
-      #|from process: received SIGTERM
+      #|from process: received termination signal
       #|
     ),
   )
@@ -57,30 +53,23 @@ async test "orphan process" {
     let task = root.spawn(allow_failure=true, fn() {
       defer log.write_string("process terminates\n")
       let pid = @process.spawn_orphan(
-        "sh",
-        ["-c", "echo first; sleep 1; echo second"],
+        shell,
+        ["-c", "\{write_stdout} first; sleep 1; \{write_stdout} second"],
         stdout=w,
       )
       @process.wait_pid(pid)
     })
-    root.spawn_bg(fn() {
-      defer r.close()
-      while r.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
-        log.write_string("from process: \{data}")
-      }
-    })
-    @async.sleep(500)
+    defer r.close()
+    inspect(@encoding/utf8.decode(r.read_exactly(5)), content="first")
     task.cancel()
     log.write_string("cancelling task running process\n")
+    inspect(r.read_all().text(), content="second")
   })
   inspect(
     log.to_string(),
     content=(
-      #|from process: first
       #|cancelling task running process
       #|process terminates
-      #|from process: second
       #|
     ),
   )
