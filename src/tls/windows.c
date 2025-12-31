@@ -134,10 +134,7 @@ int32_t moonbitlang_async_schannel_init_client(
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_schannel_init_server(
-  struct Context *ctx,
-  LPCWSTR server_name
-) {
+int32_t moonbitlang_async_schannel_init_server(struct Context *ctx) {
   const DWORD encoding_type = PKCS_7_ASN_ENCODING | X509_ASN_ENCODING;
   HCERTSTORE cert_store = CertOpenStore(
     CERT_STORE_PROV_SYSTEM_A,
@@ -154,8 +151,8 @@ int32_t moonbitlang_async_schannel_init_server(
     cert_store,
     encoding_type,
     0,
-    CERT_FIND_SUBJECT_STR_W,
-    server_name,
+    CERT_FIND_HAS_PRIVATE_KEY,
+    NULL,
     NULL
   );
 

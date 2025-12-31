@@ -28,7 +28,7 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 ///|
 #cfg(platform="windows")
 async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
-  @tls.Tls::server_from_pair(r, w, server_name="localhost")
+  @tls.Tls::server_from_pair(r, w)
 }
 
 ///|

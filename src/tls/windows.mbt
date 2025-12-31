@@ -31,11 +31,7 @@ extern "C" fn Schannel::init_client(ch : Schannel, verify~ : Bool) -> Int = "moo
 
 ///|
 #cfg(platform="windows")
-#borrow(server_name)
-extern "C" fn Schannel::init_server(
-  ch : Schannel,
-  server_name : @os_string.OsString,
-) -> Int = "moonbitlang_async_schannel_init_server"
+extern "C" fn Schannel::init_server(ch : Schannel) -> Int = "moonbitlang_async_schannel_init_server"
 
 ///|
 #cfg(platform="windows")
@@ -232,15 +228,14 @@ async fn Tls::accept(self : Tls) -> Unit {
 }
 
 ///|
+#internal(internal, "do not use, for internal testing only")
 #cfg(platform="windows")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   reader : R,
   writer : W,
-  server_name~ : String,
 ) -> Tls {
-  let server_name = @os_string.encode(server_name)
   let context = Schannel::new()
-  if context.init_server(server_name) is err && err != 0 {
+  if context.init_server() is err && err != 0 {
     raise OpenSSLError(@os_error.errno_to_string(err))
   }
   let endpoint = Endpoint::new(reader, writer)
