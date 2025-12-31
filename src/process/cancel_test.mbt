@@ -59,24 +59,17 @@ async test "orphan process" {
       )
       @process.wait_pid(pid)
     })
-    root.spawn_bg(fn() {
-      defer r.close()
-      while r.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
-        log.write_string("from process: \{data}\n")
-      }
-    })
-    @async.sleep(500)
+    defer r.close()
+    inspect(@encoding/utf8.decode(r.read_exactly(5)), content="first")
     task.cancel()
     log.write_string("cancelling task running process\n")
+    inspect(r.read_all().text(), content="second")
   })
   inspect(
     log.to_string(),
     content=(
-      #|from process: first
       #|cancelling task running process
       #|process terminates
-      #|from process: second
       #|
     ),
   )
