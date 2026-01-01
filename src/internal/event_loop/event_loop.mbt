@@ -14,6 +14,14 @@
 
 ///|
 #cfg(not(platform="windows"))
+pub const IS_WINDOWS : Bool = false
+
+///|
+#cfg(platform="windows")
+pub const IS_WINDOWS : Bool = true
+
+///|
+#cfg(not(platform="windows"))
 priv struct EventLoop {
   poll : Instance
   fds : Map[@fd_util.Fd, IoHandle]
