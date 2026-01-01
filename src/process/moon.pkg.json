@@ -16,6 +16,7 @@
   "targets": {
     "process.mbt": [ "native" ],
     "redirect.mbt": [ "native" ],
+    "cancellation.mbt": [ "native" ],
     "windows.mbt": [ "native" ],
     "unix.mbt": [ "native" ],
     "basic_test.mbt": [ "native" ],

@@ -47,4 +47,13 @@ void moonbitlang_async_terminate_process(DWORD pid) {
   GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
 }
 
+void moonbitlang_async_kill_process(DWORD pid) {
+  HANDLE handle = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+  if (handle == INVALID_HANDLE_VALUE)
+    return;
+
+  TerminateProcess(handle, 1);
+  CloseHandle(handle);
+}
+
 #endif

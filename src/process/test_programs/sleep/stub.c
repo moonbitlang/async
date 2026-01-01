@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+#include <stdint.h>
+#include <stdio.h>
+#include <moonbit.h>
+
+static int32_t swallow_cancel_signal = 0;
+
+MOONBIT_FFI_EXPORT
+void set_swallow_cancel_signal() {
+  swallow_cancel_signal = 1;
+}
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -22,15 +33,19 @@ BOOL WINAPI handler(DWORD ctrl_type) {
   switch (ctrl_type) {
     case CTRL_BREAK_EVENT:
       printf("received termination signal\n");
+      fflush(stdout);
+      if (!swallow_cancel_signal)
+        ExitProcess(1);
       break;
     default:
       printf("received other signal\n");
+      fflush(stdout);
       break;
   }
-  fflush(0);
-  ExitProcess(1);
+  return TRUE;
 }
 
+MOONBIT_FFI_EXPORT
 void register_termination_handler() {
   SetConsoleCtrlHandler(&handler, TRUE);
 }
@@ -38,15 +53,19 @@ void register_termination_handler() {
 #else
 
 #include <signal.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 void handler(int s) {
   switch (s) {
     case SIGTERM:
       printf("received termination signal\n");
+      fflush(stdout);
+      if (!swallow_cancel_signal)
+        exit(1);
       break;
     default:
       printf("received other signal\n");
+      fflush(stdout);
       break;
   }
 }
