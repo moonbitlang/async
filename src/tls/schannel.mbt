@@ -100,7 +100,7 @@ struct Tls {
   is_client : Bool
   host : String?
   read_buf : @io.ReaderBuffer
-  endpoint : Endpoint
+  transport : Transport
   mut curr_msg_remaining : Int
   mut curr_msg_trailer : Int
   mut shutdown : Bool
@@ -117,8 +117,8 @@ struct Tls {
 pub fn Tls::close(self : Tls) -> Unit {
   guard !self.closed else {  }
   self.closed = true
-  if self.endpoint.state is Normal {
-    self.endpoint.state = Closed
+  if self.transport.state is Normal {
+    self.transport.state = Closed
   }
   self.context.free()
 }
@@ -130,8 +130,8 @@ async fn Tls::connect(self : Tls) -> Unit {
     None => None
     Some(str) => Some(@os_string.encode(str))
   }
-  let read_buf = self.endpoint.reader._get_internal_buffer().repr()
-  let write_buf = self.endpoint.write_buf
+  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let write_buf = self.transport.write_buf
   for {
     let ret = self.context.connect(
       host,
@@ -146,11 +146,11 @@ async fn Tls::connect(self : Tls) -> Unit {
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
-        self.endpoint.flush_write(flush_all=true)
+        self.transport.flush_write(flush_all=true)
         break
       }
-      WantRead => self.endpoint.read_more()
-      WantWrite => self.endpoint.flush_write(flush_all=true)
+      WantRead => self.transport.read_more()
+      WantWrite => self.transport.flush_write(flush_all=true)
       Error => {
         let errno = @os_error.get_errno()
         raise OpenSSLError(@os_error.errno_to_string(errno))
@@ -174,7 +174,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   if context.init_client(verify~) is err && err != 0 {
     raise OpenSSLError(@os_error.errno_to_string(err))
   }
-  let endpoint = Endpoint::new(reader, writer)
+  let transport = Transport::new(reader, writer)
   let tls = {
     context,
     is_client: true,
@@ -182,7 +182,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     read_buf: @io.ReaderBuffer::new(),
     curr_msg_remaining: 0,
     curr_msg_trailer: 0,
-    endpoint,
+    transport,
     shutdown: false,
     closed: false,
   }
@@ -198,8 +198,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 ///|
 #cfg(platform="windows")
 async fn Tls::accept(self : Tls) -> Unit {
-  let read_buf = self.endpoint.reader._get_internal_buffer().repr()
-  let write_buf = self.endpoint.write_buf
+  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let write_buf = self.transport.write_buf
   for {
     let ret = self.context.accept(
       in_buffer=read_buf.buf.unsafe_reinterpret_as_bytes(),
@@ -213,11 +213,11 @@ async fn Tls::accept(self : Tls) -> Unit {
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
-        self.endpoint.flush_write(flush_all=true)
+        self.transport.flush_write(flush_all=true)
         break
       }
-      WantRead => self.endpoint.read_more()
-      WantWrite => self.endpoint.flush_write(flush_all=true)
+      WantRead => self.transport.read_more()
+      WantWrite => self.transport.flush_write(flush_all=true)
       Error => {
         let errno = @os_error.get_errno()
         raise OpenSSLError(@os_error.errno_to_string(errno))
@@ -238,13 +238,13 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   if context.init_server() is err && err != 0 {
     raise OpenSSLError(@os_error.errno_to_string(err))
   }
-  let endpoint = Endpoint::new(reader, writer)
+  let transport = Transport::new(reader, writer)
   let tls = {
     context,
     is_client: false,
     host: None,
     read_buf: @io.ReaderBuffer::new(),
-    endpoint,
+    transport,
     curr_msg_remaining: 0,
     curr_msg_trailer: 0,
     shutdown: false,
@@ -285,7 +285,7 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
   if self.closed {
     return 0
   }
-  let read_buf = self.endpoint.reader._get_internal_buffer().repr()
+  let read_buf = self.transport.reader._get_internal_buffer().repr()
   while self.curr_msg_remaining == 0 {
     read_buf.enlarge_to(self.context.record_overhead() + 1)
     let ret = self.context.read(
@@ -302,8 +302,9 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
           self.context.header_size() -
           self.curr_msg_trailer
       }
-      WantRead if read_buf.len == 0 && self.endpoint.state is Closed => return 0
-      WantRead => self.endpoint.read_more()
+      WantRead if read_buf.len == 0 && self.transport.state is Closed =>
+        return 0
+      WantRead => self.transport.read_more()
       Eof => {
         self.shutdown()
         return 0
@@ -346,7 +347,7 @@ extern "C" fn Schannel::write(
 ///|
 #cfg(platform="windows")
 pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
-  let write_buf = self.endpoint.write_buf
+  let write_buf = self.transport.write_buf
   guard write_buf.len == 0
   let max_len = write_buf.buf.length() -
     write_buf.start -
@@ -361,7 +362,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
   let ret = self.context.write(write_buf.buf, offset=write_buf.start, len~)
   write_buf.len += self.context.bytes_to_write()
   if ret is WantWrite {
-    self.endpoint.flush_write(flush_all=true)
+    self.transport.flush_write(flush_all=true)
     len
   } else {
     let errno = @os_error.get_errno()
@@ -379,7 +380,7 @@ extern "C" fn Schannel::shutdown(ch : Schannel) -> Int = "moonbitlang_async_scha
 pub async fn Tls::shutdown(self : Tls) -> Unit {
   guard !self.shutdown else {  }
   self.shutdown = true
-  match self.endpoint.state {
+  match self.transport.state {
     Normal => ()
     Closed => return
     Error(err) => raise err
@@ -392,38 +393,6 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
   } else {
     self.accept()
   }
-}
-
-///|
-#cfg(platform="windows")
-#borrow(buf)
-extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
-
-///|
-#cfg(platform="windows")
-#internal(internal, "for internal use only")
-pub fn rand_bytes(num : Int) -> Bytes raise {
-  let result = FixedArray::make(num, b'\x00')
-  if rand_bytes_ffi(result, num) == 0 {
-    @os_error.check_errno("@tls.rand_bytes()")
-  }
-  result.unsafe_reinterpret_as_bytes()
-}
-
-///|
-#cfg(platform="windows")
-#borrow(data, out)
-extern "C" fn sha1_ffi(data : Bytes, len : Int, out : FixedArray[Byte]) -> Int = "moonbitlang_async_tls_SHA1"
-
-///|
-#cfg(platform="windows")
-#internal(internal, "for internal use only")
-pub fn sha1(src : Bytes) -> Bytes raise {
-  let result = FixedArray::make(20, b'\x00')
-  if sha1_ffi(src, src.length(), result) == 0 {
-    @os_error.check_errno("@tls.sha1()")
-  }
-  result.unsafe_reinterpret_as_bytes()
 }
 
 ///|

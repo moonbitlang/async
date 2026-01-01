@@ -14,12 +14,14 @@
     "moonbitlang/async/socket"
   ],
   "targets": {
-    "bio.mbt": [ "native" ],
-    "ffi.mbt": [ "native" ],
-    "loader.mbt": [ "native" ],
+    "transport.mbt": [ "native" ],
+    "openssl.mbt": [ "native" ],
+    "schannel.mbt": [ "native" ],
+    "openssl_loader.mbt": [ "native" ],
     "tls.mbt": [ "native" ],
+    "crypto_util.mbt": [ "native" ],
     "tls_test.mbt": [ "native" ],
     "shutdown_test.mbt": [ "native" ]
   },
-  "native-stub": [ "stub.c", "windows.c" ]
+  "native-stub": [ "openssl.c", "schannel.c" ]
 }
