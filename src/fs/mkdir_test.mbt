@@ -36,3 +36,30 @@ async test "rmdir recursive" {
   @fs.rmdir(path, recursive=true)
   assert_true(result is Err(_))
 }
+
+///|
+async test "mkdir recursive" {
+  @async.with_task_group(group => {
+    let base_path = "target/recursive_mkdir"
+    let path = "\{base_path}/test//directory"
+    @fs.mkdir(path, permission=0o755, recursive=true)
+    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    @json.inspect(@fs.readdir(base_path), content=["test"])
+    @json.inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
+    @json.inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
+  })
+}
+
+///|
+#cfg(platform="windows")
+async test "mkdir recursive windows" {
+  @async.with_task_group(group => {
+    let base_path = "target\\recursive_mkdir_windows"
+    let path = "\{base_path}\\test\\\\directory"
+    @fs.mkdir(path, permission=0o755, recursive=true)
+    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    @json.inspect(@fs.readdir(base_path), content=["test"])
+    @json.inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
+    @json.inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
+  })
+}
