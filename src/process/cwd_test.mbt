@@ -39,10 +39,11 @@ async test "set cwd" {
         x
       })
     @json.inspect(files, content=[
-      "stub.c", "README.md", "windows.c", "process.mbt", "cwd_test.mbt", "env_test.mbt",
-      "README.mbt.md", "moon.pkg.json", "test_programs", "wait_test.mbt", "basic_test.mbt",
-      "cancel_test.mbt", "helper_test.mbt", "redirect_test.mbt", "unimplemented.mbt",
-      "pkg.generated.mbti", "commands_for_test.mbt", "unimplemented_test.mbt", "windows_escape_wbtest.mbt",
+      "stub.c", "unix.mbt", "README.md", "windows.c", "process.mbt", "windows.mbt",
+      "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md", "moon.pkg.json",
+      "test_programs", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
+      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "commands_for_test.mbt",
+      "unimplemented_test.mbt", "windows_escape_wbtest.mbt",
     ])
   })
 }
