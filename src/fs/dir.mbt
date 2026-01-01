@@ -15,8 +15,31 @@
 ///|
 /// Create a directory at `path`.
 /// The permission of the created directory must be set in `permission`.
-pub async fn mkdir(path : StringView, permission~ : Int) -> Unit {
-  @event_loop.mkdir(path, mode=permission, context="@fs.mkdir()")
+pub async fn mkdir(
+  path : StringView,
+  permission~ : Int,
+  recursive? : Bool = false,
+) -> Unit {
+  let context = "@fs.mkdir()"
+  @event_loop.mkdir(path, mode=permission, context~) catch {
+    @os_error.OSError(_) as err if recursive && err.is_ENOENT() => {
+      let last_path_sep_index = match path.rev_find("/") {
+        Some(index) => index
+        None if @event_loop.IS_WINDOWS && path.rev_find("\\") is Some(index) =>
+          index
+        None => raise err
+      }
+      let parent = path[:last_path_sep_index].trim_end(chars="/")
+      let parent = if @event_loop.IS_WINDOWS {
+        parent.trim_end(chars="\\")
+      } else {
+        parent
+      }
+      mkdir(parent, permission~, recursive~)
+      @event_loop.mkdir(path, mode=permission, context~)
+    }
+    err => raise err
+  }
 }
 
 ///|
