@@ -14,122 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef _WIN32
+#if defined(__MACH__) || defined(BSD)
 
 #include <unistd.h>
-
-#ifdef __linux__
-#include <sys/syscall.h>
-#include <sys/epoll.h>
-#include <sys/wait.h>
-#include <errno.h>
-
-int moonbitlang_async_poll_create() {
-  return epoll_create1(0);
-}
-
-void moonbitlang_async_poll_destroy(int epfd) {
-  close(epfd);
-}
-
-static const int ev_masks[] = {
-  0,
-  EPOLLIN,
-  EPOLLOUT,
-  EPOLLIN | EPOLLOUT,
-};
-
-// use mask to classify different kinds of entity
-static const uint64_t pid_mask = (uint64_t)1 << 63;
-
-int moonbitlang_async_poll_register(
-  int epfd,
-  int fd,
-  int prev_events,
-  int new_events,
-  int oneshot
-) {
-  int events = ev_masks[prev_events | new_events];
-  if (oneshot)
-    events |= EPOLLONESHOT;
-
-  events |= EPOLLET;
-  events |= EPOLLRDHUP;
-
-  epoll_data_t data;
-  data.u64 = fd;
-  struct epoll_event event = { events, data };
-  int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-  return epoll_ctl(epfd, op, fd, &event);
-}
-
-// return value:
-// - `>= 0`: success, return the pidfd
-// - `-1`: failure
-// - `-2`: already terminated
-int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
-  int pidfd = syscall(SYS_pidfd_open, pid, 0);
-  if (pidfd < 0)
-    return -1;
-
-  epoll_data_t data;
-  data.u64 = pid_mask | pidfd;
-
-  struct epoll_event event = { EPOLLIN, data };
-  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &event);
-  if (ret < 0) {
-    close(pidfd);
-    return -1;
-  }
-
-  return pidfd;
-}
-
-int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
-  return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
-}
-
-int moonbitlang_async_poll_remove_pid(int epfd, int pidfd) {
-  int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, pidfd, 0);
-  close(pidfd);
-  return ret;
-}
-
-#define EVENT_BUFFER_SIZE 1024
-static struct epoll_event event_buffer[EVENT_BUFFER_SIZE];
-
-int moonbitlang_async_poll_wait(int epfd, int timeout) {
-  return epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
-}
-
-// wrapper for handling event list
-struct epoll_event* moonbitlang_async_event_list_get(int index) {
-  return event_buffer + index;
-}
-
-int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
-  return ev->data.u64 & ~pid_mask;
-}
-
-int moonbitlang_async_event_get_events(struct epoll_event *ev) {
-  if (ev->data.u64 & pid_mask)
-    return 4;
-
-  if (ev->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
-    return 3;
-
-  int result = 0;
-  if (ev->events & EPOLLIN)
-    result |= 1;
-  if (ev->events & EPOLLOUT)
-    result |= 2;
-
-  return result;
-}
-
-// end of epoll backend
-#elif defined(__MACH__) || defined(BSD)
-
 #include <time.h>
 #include <sys/event.h>
 #include <sys/wait.h>
@@ -240,8 +127,5 @@ int moonbitlang_async_event_get_events(struct kevent *ev) {
 
   return 0;
 }
-
-// end of kqueue backend
-#endif
 
 #endif

@@ -219,6 +219,23 @@ int32_t moonbitlang_async_io_result_get_status(
 }
 
 MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handle) {
+  int32_t result = CancelIoEx(handle, overlapped);
+  // cancellation failure, wait for completion packet
+  if (!result)
+    return GetLastError() == ERROR_NOT_FOUND ? 0 : -1;
+
+  // no need to wait if the operation already completed
+  DWORD bytes_transferred;
+  if (GetOverlappedResult(handle, overlapped, &bytes_transferred, FALSE))
+    return 0;
+
+  // If the operation is still pending, wait for completion packet (`return 1`).
+  // Otherwise, the operation already failed, no need to wait.
+  return GetLastError() == ERROR_IO_INCOMPLETE ? 1 : 0;
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_errno_is_read_EOF(int32_t err) {
   return err == ERROR_HANDLE_EOF || err == ERROR_BROKEN_PIPE;
 }
