@@ -38,11 +38,70 @@ async test "cancel process" {
     log.to_string(),
     content=(
       #|cancelling task running process
-      #|process terminates
       #|from process: received termination signal
+      #|process terminates
       #|
     ),
   )
+}
+
+///|
+async test "cancel process timeout" {
+  let test_prog = sleep_prog.wait()
+  @async.with_task_group(fn(root) {
+    let (r, w) = @process.read_from_process()
+    let task = root.spawn(allow_failure=true, fn() {
+      @process.run(
+        test_prog,
+        ["-swallow-cancel-signal", "10000"],
+        stdout=w,
+        cancel_handler=@process.graceful_cancel(timeout=500),
+      )
+    })
+    let t_receive_graceful_termination = root.spawn(() => {
+      defer r.close()
+      guard r.read_some() is Some(data)
+      let data = @encoding/utf8.decode(data).trim_end(chars="\r\n")
+      let t = @async.now()
+      inspect(data, content="received termination signal")
+      t
+    })
+    @async.sleep(500)
+    let t_cancel = @async.now()
+    task.cancel()
+    inspect(try? task.wait(), content="Err(Cancelled)")
+    let t_process_terminates = @async.now()
+    let t1 = t_receive_graceful_termination.wait() - t_cancel
+    let t2 = t_process_terminates - t_cancel
+    inspect(t1 / 250, content="0")
+    inspect(t2 / 250, content="2")
+  })
+}
+
+///|
+async test "cancel process hard" {
+  let test_prog = sleep_prog.wait()
+  @async.with_task_group(fn(root) {
+    let (r, w) = @process.read_from_process()
+    let task = root.spawn(allow_failure=true, fn() {
+      @process.run(
+        test_prog,
+        ["10000"],
+        stdout=w,
+        cancel_handler=@process.hard_cancel(),
+      )
+    })
+    root.spawn_bg(() => {
+      defer r.close()
+      inspect(r.read_all().text(), content="")
+    })
+    @async.sleep(500)
+    let t0 = @async.now()
+    task.cancel()
+    inspect(try? task.wait(), content="Err(Cancelled)")
+    let t1 = @async.now()
+    inspect((t1 - t0) / 250, content="0")
+  })
 }
 
 ///|

@@ -17,11 +17,13 @@
 extern "C" fn register_termination_handler() = "register_termination_handler"
 
 ///|
+extern "C" fn set_swallow_cancel_signal() = "set_swallow_cancel_signal"
+
+///|
 extern "C" fn exit(code : Int) = "exit"
 
 ///|
 async fn main {
-  register_termination_handler()
   let mut time = 10_000
   let mut exit_code = 0
   loop @env.args()[1:] {
@@ -31,12 +33,17 @@ async fn main {
       exit_code = @strconv.parse_int(code)
       continue rest
     }
+    ["-swallow-cancel-signal", ..rest] => {
+      set_swallow_cancel_signal()
+      continue rest
+    }
     [['-', ..] as flag, ..] => fail("unrecognized argument \{flag}")
     [t, .. rest] => {
       time = @strconv.parse_int(t)
       continue rest
     }
   }
+  register_termination_handler()
   @async.sleep(time)
   exit(exit_code)
 }

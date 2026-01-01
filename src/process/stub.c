@@ -57,4 +57,8 @@ void moonbitlang_async_terminate_process(pid_t pid) {
   kill(pid, SIGTERM);
 }
 
+void moonbitlang_async_kill_process(pid_t pid) {
+  kill(pid, SIGKILL);
+}
+
 #endif

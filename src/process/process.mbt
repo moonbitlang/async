@@ -13,9 +13,6 @@
 // limitations under the License.
 
 ///|
-extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
-
-///|
 #borrow(out)
 extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
 
@@ -82,8 +79,6 @@ pub async fn wait_pid(pid : Int) -> Int {
 ///
 /// `run` will block until the new process terminates,
 /// and returns the exit status of the process.
-/// If current task is cancelled while blocking,
-/// the spawned process will be terminated via `SIGTERM`.
 /// To run the process in background, use `@async.spawn` or `@async.spawn_bg`.
 ///
 /// If `inherit_env` is `true` (`true` by default),
@@ -109,6 +104,16 @@ pub async fn wait_pid(pid : Int) -> Int {
 ///
 /// If `cwd` is present, the spawned command will be executed
 /// in the directory specified by `cwd`.
+///
+/// If current task is cancelled while blocking,
+/// `cancel_handler` will be used to automatically stop the process.
+/// `@process.run` will not return until the process terminates, even if cancelled.
+/// The default value of `cancel_handler` is `graceful_cancel(timeout=5000)`
+/// (First try to gracefully terminate the process, and if the process is still running
+/// after five seconds, terminate it forcefully).
+///
+/// If `cancel_handler` is still running after the process terminates,
+/// it will be cancelled.
 pub async fn run(
   cmd : String,
   args : Array[String],
@@ -118,6 +123,7 @@ pub async fn run(
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : String,
+  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
   let pid = spawn(
@@ -132,10 +138,11 @@ pub async fn run(
     context~,
   )
   @event_loop.wait_pid(pid, context~) catch {
-    err if @coroutine.is_being_cancelled() => {
-      terminate_process(pid)
-      raise err
-    }
+    _ if @coroutine.is_being_cancelled() =>
+      @async.protect_from_cancel(() => @async.with_task_group(group => {
+        group.spawn_bg(no_wait=true, () => cancel_handler(pid))
+        @event_loop.wait_pid(pid, context~)
+      }))
     err => raise err
   }
   let out = @ref.new(0)
