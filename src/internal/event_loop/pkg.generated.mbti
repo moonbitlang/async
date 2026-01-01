@@ -8,6 +8,8 @@ import(
 )
 
 // Values
+pub const IS_WINDOWS : Bool = false
+
 pub async fn access(StringView, amode~ : Int, context~ : String) -> Int
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit

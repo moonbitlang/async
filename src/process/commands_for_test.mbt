@@ -14,12 +14,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
-let is_windows = false
-
-///|
-#cfg(platform="windows")
-let is_windows = true
+let is_windows : Bool = @event_loop.IS_WINDOWS
 
 ///|
 let shell : String = if is_windows { "powershell" } else { "sh" }
