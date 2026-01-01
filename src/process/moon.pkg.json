@@ -15,6 +15,9 @@
   ],
   "targets": {
     "process.mbt": [ "native" ],
+    "redirect.mbt": [ "native" ],
+    "windows.mbt": [ "native" ],
+    "unix.mbt": [ "native" ],
     "basic_test.mbt": [ "native" ],
     "cancel_test.mbt": [ "native" ],
     "cwd_test.mbt": [ "native" ],
