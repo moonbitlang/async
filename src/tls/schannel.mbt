@@ -153,7 +153,7 @@ async fn Tls::connect(self : Tls) -> Unit {
       WantWrite => self.transport.flush_write(flush_all=true)
       Error => {
         let errno = @os_error.get_errno()
-        raise OpenSSLError(@os_error.errno_to_string(errno))
+        raise TlsError(@os_error.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -172,7 +172,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   ignore(sni)
   let context = Schannel::new()
   if context.init_client(verify~) is err && err != 0 {
-    raise OpenSSLError(@os_error.errno_to_string(err))
+    context.free()
+    raise TlsError(@os_error.errno_to_string(err))
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -220,7 +221,7 @@ async fn Tls::accept(self : Tls) -> Unit {
       WantWrite => self.transport.flush_write(flush_all=true)
       Error => {
         let errno = @os_error.get_errno()
-        raise OpenSSLError(@os_error.errno_to_string(errno))
+        raise TlsError(@os_error.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -236,7 +237,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 ) -> Tls {
   let context = Schannel::new()
   if context.init_server() is err && err != 0 {
-    raise OpenSSLError(@os_error.errno_to_string(err))
+    context.free()
+    raise TlsError(@os_error.errno_to_string(err))
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -312,7 +314,7 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
       WantWrite => panic()
       Error => {
         let errno = @os_error.get_errno()
-        raise OpenSSLError(@os_error.errno_to_string(errno))
+        raise TlsError(@os_error.errno_to_string(errno))
       }
       ReNegotiation =>
         if self.is_client {
@@ -366,7 +368,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
     len
   } else {
     let errno = @os_error.get_errno()
-    raise OpenSSLError(@os_error.errno_to_string(errno))
+    raise TlsError(@os_error.errno_to_string(errno))
   }
 }
 
@@ -386,7 +388,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
     Error(err) => raise err
   }
   if self.context.shutdown() is err && err != 0 {
-    raise OpenSSLError(@os_error.errno_to_string(err))
+    raise TlsError(@os_error.errno_to_string(err))
   }
   if self.is_client {
     self.connect()

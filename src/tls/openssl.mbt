@@ -289,7 +289,7 @@ async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
       self.transport.flush_write(flush_all=false)
       self.transport.write_buf.enlarge_to(1)
     }
-    SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise OpenSSLError(err_get_error())
+    SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise TlsError(err_get_error())
     SSL_ERROR_ZERO_RETURN => raise ConnectionClosed
     err => abort("unexpected error code \{err} from OpenSSL")
   }
@@ -316,32 +316,31 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   sni? : Bool = true,
 ) -> Tls {
   let self = Tls::from_pair(client_ctx, r, w, host~)
-  if not(verify) {
-    self.ssl.set_verify(false)
-  }
-  if host is Some(host) {
-    let host = @encoding/utf8.encode(host)
-    guard self.ssl.set_host(host) > 0 else {
+  try {
+    if not(verify) {
+      self.ssl.set_verify(false)
+    }
+    if host is Some(host) {
+      let host = @encoding/utf8.encode(host)
+      guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
+      if sni {
+        guard self.ssl.set_sni(host) > 0 else {
+          raise TlsError(err_get_error())
+        }
+      }
+    }
+    while self.ssl.connect() is ret && ret <= 0 {
+      self.handle_error(self.ssl.get_error(ret))
+    }
+    self.transport.flush_write(flush_all=true)
+  } catch {
+    err => {
       self.close()
-      raise OpenSSLError(err_get_error())
+      raise err
     }
-    if sni {
-      guard self.ssl.set_sni(host) > 0 else {
-        self.close()
-        raise OpenSSLError(err_get_error())
-      }
-    }
+  } noraise {
+    _ => self
   }
-  while self.ssl.connect() is ret && ret <= 0 {
-    self.handle_error(self.ssl.get_error(ret)) catch {
-      err => {
-        self.close()
-        raise err
-      }
-    }
-  }
-  self.transport.flush_write(flush_all=true)
-  self
 }
 
 ///|
@@ -366,24 +365,25 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   let private_key_file = @encoding/utf8.encode(private_key_file)
   let certificate_file = @encoding/utf8.encode(certificate_file)
   let self = Tls::from_pair(server_ctx, r, w, host=None)
-  if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
-    self.close()
-    raise OpenSSLError(err_get_error())
-  }
-  if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
-    self.close()
-    raise OpenSSLError(err_get_error())
-  }
-  while self.ssl.accept() is ret && ret <= 0 {
-    self.handle_error(self.ssl.get_error(ret)) catch {
-      err => {
-        self.close()
-        raise err
-      }
+  try {
+    if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
+      raise TlsError(err_get_error())
     }
+    if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
+      raise TlsError(err_get_error())
+    }
+    while self.ssl.accept() is ret && ret <= 0 {
+      self.handle_error(self.ssl.get_error(ret))
+    }
+    self.transport.flush_write(flush_all=true)
+  } catch {
+    err => {
+      self.close()
+      raise err
+    }
+  } noraise {
+    _ => self
   }
-  self.transport.flush_write(flush_all=true)
-  self
 }
 
 ///|

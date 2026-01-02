@@ -15,9 +15,9 @@ pub suberror ConnectionClosed
 pub impl Show for ConnectionClosed
 pub impl ToJson for ConnectionClosed
 
-pub suberror OpenSSLError String
-pub impl Show for OpenSSLError
-pub impl ToJson for OpenSSLError
+pub suberror TlsError String
+pub impl Show for TlsError
+pub impl ToJson for TlsError
 
 // Types and methods
 #alias(TLS, deprecated)
