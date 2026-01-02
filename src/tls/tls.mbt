@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub suberror OpenSSLError String derive(Show, ToJson)
+pub suberror TlsError String derive(Show, ToJson)
 
 ///|
 pub suberror ConnectionClosed derive(Show, ToJson)
