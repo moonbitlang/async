@@ -78,12 +78,12 @@ fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit {
 #cfg(not(platform="windows"))
 fn EventLoop::new() -> EventLoop raise {
   let poll = Instance::new()
-  let (notify_recv, notify_send) = @fd_util.pipe("initialze runtime")
-  try {
-    @fd_util.set_nonblocking(notify_recv, context="initialize runtime")
-    @fd_util.set_blocking(notify_send, context="initialize runtime")
-    poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent)
-  } catch {
+  let (notify_recv, notify_send) = @fd_util.pipe(
+    read_end_is_async=true,
+    write_end_is_async=false,
+    context="initialze runtime",
+  )
+  poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
     err => {
       @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
       @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")

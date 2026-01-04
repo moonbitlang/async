@@ -72,24 +72,6 @@ pub fn set_cloexec(fd : Fd, context~ : String) -> Unit raise {
 
 ///|
 #cfg(not(platform="windows"))
-#borrow(fds)
-extern "C" fn pipe_ffi(fds : FixedArray[Fd]) -> Int = "moonbitlang_async_pipe"
-
-///|
-#cfg(not(platform="windows"))
-pub fn pipe(context : String) -> (Fd, Fd) raise {
-  let fds : FixedArray[Int] = [0, 0]
-  if 0 != pipe_ffi(fds) {
-    @os_error.check_errno(context)
-  }
-  guard fds is [r, w]
-  set_cloexec(r, context~)
-  set_cloexec(w, context~)
-  (r, w)
-}
-
-///|
-#cfg(not(platform="windows"))
 extern "C" fn close_ffi(fd : Fd) -> Int = "close"
 
 ///|

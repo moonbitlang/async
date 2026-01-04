@@ -1,0 +1,111 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+#cfg(not(platform="windows"))
+#borrow(fds)
+extern "C" fn pipe_ffi(fds : FixedArray[Fd]) -> Int = "moonbitlang_async_pipe"
+
+///|
+#cfg(not(platform="windows"))
+pub fn pipe(
+  read_end_is_async~ : Bool,
+  write_end_is_async~ : Bool,
+  context~ : String,
+) -> (Fd, Fd) raise {
+  let fds : FixedArray[Int] = [0, 0]
+  if 0 != pipe_ffi(fds) {
+    @os_error.check_errno(context)
+  }
+  guard fds is [r, w]
+  try {
+    set_cloexec(r, context~)
+    set_cloexec(w, context~)
+    if read_end_is_async {
+      set_nonblocking(r, context~)
+    }
+    if write_end_is_async {
+      set_nonblocking(w, context~)
+    }
+  } catch {
+    err => {
+      close(r, kind=Pipe, context~)
+      close(w, kind=Pipe, context~)
+      raise err
+    }
+  }
+  (r, w)
+}
+
+///|
+// mute unused warning
+#cfg(not(platform="windows"))
+let _unused : Unit = ignore(@os_string.encode)
+
+///|
+#cfg(platform="windows")
+extern "C" fn get_current_process_id() -> UInt = "GetCurrentProcessId"
+
+///|
+#cfg(platform="windows")
+let current_process_id : UInt = get_current_process_id()
+
+///|
+#cfg(platform="windows")
+#borrow(name)
+extern "C" fn create_named_pipe_server(
+  name : @os_string.OsString,
+  is_async~ : Bool,
+) -> Fd = "moonbitlang_async_create_named_pipe_server"
+
+///|
+#cfg(platform="windows")
+#borrow(name)
+extern "C" fn create_named_pipe_client(
+  name : @os_string.OsString,
+  is_async~ : Bool,
+) -> Fd = "moonbitlang_async_create_named_pipe_client"
+
+///|
+#cfg(platform="windows")
+let pipe_id : Ref[UInt64] = @ref.new(0)
+
+///|
+#cfg(platform="windows")
+pub fn pipe(
+  read_end_is_async~ : Bool,
+  write_end_is_async~ : Bool,
+  context~ : String,
+) -> (Fd, Fd) raise {
+  pipe_id.val += 1
+  let name = @os_string.encode(
+    "\\\\.\\pipe\\moonbitlang_async.\{current_process_id}.\{pipe_id.val}",
+  )
+  let r = create_named_pipe_server(name, is_async=read_end_is_async)
+  if !fd_is_valid(r) {
+    @os_error.check_errno(context)
+  }
+  try {
+    let w = create_named_pipe_client(name, is_async=write_end_is_async)
+    if !fd_is_valid(w) {
+      @os_error.check_errno(context)
+    }
+    (r, w)
+  } catch {
+    err => {
+      close(r, kind=Pipe, context~)
+      raise err
+    }
+  }
+}

@@ -20,7 +20,7 @@ pub fn graceful_cancel(timeout~ : Int) -> CancellationHandler
 
 pub fn hard_cancel() -> CancellationHandler
 
-pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise
+pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
 
 pub async fn redirect_from_file(String) -> &ProcessInput
 
@@ -32,7 +32,7 @@ pub async fn spawn_orphan(String, Array[String], extra_env? : Map[String, String
 
 pub async fn wait_pid(Int) -> Int
 
-pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
+pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
 
 // Errors
 
@@ -40,6 +40,14 @@ pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise
 pub(all) struct CancellationHandler(async (Int) -> Unit)
 #deprecated
 pub fn CancellationHandler::inner(Self) -> async (Int) -> Unit
+
+type ReadFromProcess
+pub fn ReadFromProcess::close(Self) -> Unit
+pub impl @io.Reader for ReadFromProcess
+
+type WriteToProcess
+pub fn WriteToProcess::close(Self) -> Unit
+pub impl @io.Writer for WriteToProcess
 
 // Type aliases
 
