@@ -15,10 +15,33 @@
 
 ///|
 async fn main {
-  let out_channel = match @env.args()[1:] {
-    ["-stderr"] => @stdio.stderr
-    ["-stdout"] | [] => @stdio.stdout
+  let out_channel = @ref.new(@stdio.stdout)
+  let timeout = @ref.new(None)
+  loop @env.args()[1:] {
+    ["-stderr", ..rest] => {
+      out_channel.val = @stdio.stderr
+      continue rest
+    }
+    ["-stdout", ..rest] => {
+      out_channel.val = @stdio.stdout
+      continue rest
+    }
+    ["-timeout", ..rest] => {
+      guard rest is [t, ..rest] else {
+        fail("invalid argument")
+      }
+      timeout.val = Some(@strconv.parse_int(t))
+      continue rest 
+    }
+    [] => ()
     _ => fail("invalid arguments")
   }
-  out_channel.write_reader(@stdio.stdin)
+  async fn work() {
+    out_channel.val.write_reader(@stdio.stdin)
+  }
+  if timeout.val is Some(t) {
+    @async.with_timeout(t, work)
+  } else {
+    work()
+  }
 }

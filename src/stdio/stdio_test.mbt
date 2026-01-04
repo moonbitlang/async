@@ -18,12 +18,12 @@ let cat : @async.Lazy[String] = @async.lazy_init(() => {
   // Currently, dependencies of a module is built locally in that module,
   // so there will be no build lock conflict between this test and the `cat` program.
   let exit_code = @process.run("moon", [
-    "build", "-C", "examples", "--debug", "examples/cat",
+    "build", "-C", "src/process/test_programs", "--debug", "src/process/test_programs/cat",
   ])
   guard exit_code is 0 else {
     fail("failed to build `cat` program: \{exit_code}")
   }
-  "./examples/target/native/debug/build/cat/cat.exe"
+  "./src/process/test_programs/target/native/debug/build/cat/cat.exe"
 })
 
 ///|
@@ -89,4 +89,33 @@ async test "recover state" {
   @async.sleep(100)
   assert_false(@fd_util.fd_is_nonblocking(1, context=""))
   assert_false(@fd_util.fd_is_nonblocking(2, context=""))
+}
+
+///|
+async test "stdio cancel" {
+  let cat = cat.wait()
+  @async.with_task_group(group => {
+    let (cat_read, we_write) = @process.write_to_process()
+    let (we_read, cat_write) = @process.read_from_process()
+    group.spawn_bg(() => {
+      let code = @process.run(
+        cat,
+        ["-timeout", "500"],
+        stdin=cat_read,
+        stdout=cat_write,
+      )
+      inspect(code, content="1")
+    })
+    defer we_write.close()
+    defer we_read.close()
+    we_write.write("abcd")
+    inspect(
+      we_read.read_some(),
+      content=(
+        #|Some(b"abcd")
+      ),
+    )
+    @async.sleep(750)
+    inspect(we_read.read_all().text())
+  })
 }
