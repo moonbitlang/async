@@ -175,10 +175,7 @@ async fn EventLoop::wait_for_io_result(
   handle : @fd_util.Fd,
   context~ : String,
 ) -> Unit {
-  evloop.wait_for_job(
-    job_id,
-    cancel=CancelAndWait(() => io_result.cancel(handle, context~)),
-  )
+  evloop.wait_for_job(job_id, cancel=_ => io_result.cancel(handle, context~))
 }
 
 ///|
