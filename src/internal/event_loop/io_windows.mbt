@@ -81,12 +81,16 @@ fn IoResult::cancel(
   self : IoResult,
   handle : @fd_util.Fd,
   context~ : String,
-) -> Bool raise {
+) -> CancellationStatus raise {
   let ret = self.cancel_ffi(handle)
   if ret < 0 {
     @os_error.check_errno(context)
   }
-  ret == 1
+  if ret == 1 {
+    NeedWait
+  } else {
+    NoWait
+  }
 }
 
 ///|
@@ -231,15 +235,16 @@ pub async fn IoHandle::read(
   defer {
     handle.reading = false
   }
+  guard curr_loop.val is Some(evloop)
   if !handle.is_async {
     let job = Job::read(handle.fd, buf, offset, len, position=-1)
-    let n = perform_job_in_worker(job, context~) catch {
+    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
+    let n = perform_job_in_worker(job, context~, cancel~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
     }
     return n
   }
-  guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {
@@ -343,11 +348,12 @@ pub async fn IoHandle::write(
   defer {
     handle.writing = false
   }
+  guard curr_loop.val is Some(evloop)
   if !handle.is_async {
     let job = Job::write(handle.fd, buf, offset, len, position=-1)
-    return perform_job_in_worker(job, context~)
+    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
+    return perform_job_in_worker(job, context~, cancel~)
   }
-  guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {

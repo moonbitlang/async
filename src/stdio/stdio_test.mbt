@@ -116,6 +116,9 @@ async test "stdio cancel" {
       ),
     )
     @async.sleep(750)
-    inspect(we_read.read_all().text())
+    inspect(
+      we_read.read_all().text().trim(chars="\r\n"),
+      content="TimeoutError",
+    )
   })
 }
