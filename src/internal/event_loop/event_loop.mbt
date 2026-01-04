@@ -352,10 +352,18 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
+#warnings("-unused_constructor")
+priv enum CancellationStatus {
+  NoWait
+  NeedWait
+  RetryLater
+}
+
+///|
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
-  cancel? : (Int) -> Bool raise,
+  cancel? : (Int) -> CancellationStatus raise,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
@@ -363,18 +371,57 @@ async fn EventLoop::wait_for_job(
     None => @coroutine.protect_from_cancel(@coroutine.suspend)
     Some(cancel_func) =>
       @coroutine.suspend() catch {
-        _ =>
-          try cancel_func(job_id) catch {
-            err =>
-              @coroutine.protect_from_cancel(() => {
-                @coroutine.suspend()
-                raise err
-              })
-          } noraise {
-            false => ()
-            true => @coroutine.protect_from_cancel(@coroutine.suspend)
+        err =>
+          for {
+            let status = cancel_func(job_id) catch {
+              err =>
+                @coroutine.protect_from_cancel(() => {
+                  @coroutine.suspend()
+                  raise err
+                })
+            }
+            match status {
+              NeedWait => {
+                @coroutine.protect_from_cancel(@coroutine.suspend)
+                break
+              }
+              NoWait => raise err
+              RetryLater => {
+                @coroutine.protect_from_cancel(
+                  @coroutine.pause,
+                  resume_on_cancel=true,
+                )
+                if evloop.jobs.get(job_id) is None {
+                  break
+                }
+              }
+            }
           }
       }
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn Job::extract_result(job : Job, context~ : String) -> Int raise {
+  if job.err() is err && err > 0 {
+    raise @os_error.OSError(err, context~)
+  } else {
+    job.ret()
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Job::extract_result(job : Job, context~ : String) -> Int raise {
+  if job.err() is err && err > 0 {
+    if errno_is_cancelled(err) {
+      raise @coroutine.Cancelled
+    } else {
+      raise @os_error.OSError(err, context~)
+    }
+  } else {
+    job.ret()
   }
 }
 
@@ -382,7 +429,7 @@ async fn EventLoop::wait_for_job(
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  cancel? : (Int) -> Bool raise,
+  cancel? : (Int) -> CancellationStatus raise,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
@@ -400,9 +447,19 @@ async fn perform_job_in_worker(
     }
   }
   evloop.wait_for_job(job_id, cancel?)
-  if job.err() > 0 {
-    raise @os_error.OSError(job.err(), context~)
+  job.extract_result(context~)
+}
+
+///|
+#cfg(platform="windows")
+fn EventLoop::cancel_job_in_worker(
+  evloop : EventLoop,
+  job_id : Int,
+  context~ : String,
+) -> CancellationStatus raise {
+  if evloop.running_workers.get(job_id) is Some(worker) {
+    worker.cancel(context~)
   } else {
-    job.ret()
+    NoWait
   }
 }

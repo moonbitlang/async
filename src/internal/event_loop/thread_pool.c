@@ -223,6 +223,7 @@ void moonbitlang_async_wake_worker(
   worker->job_id = job_id;
   worker->job = job;
 #ifdef WAKEUP_METHOD_EVENT
+  worker->waiting = 0;
   SetEvent(worker->event);
 #elif defined(WAKEUP_METHOD_SIGNAL)
   pthread_kill(worker->id, SIGUSR1);
@@ -233,6 +234,22 @@ void moonbitlang_async_wake_worker(
   pthread_mutex_unlock(&(worker->mutex));
 #endif
 }
+
+#ifdef _WIN32
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
+  if (worker->waiting)
+    return 1;
+
+  if (CancelSynchronousIo(worker->id)) {
+    return 1;
+  } else if (GetLastError() == ERROR_NOT_FOUND) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+#endif
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
