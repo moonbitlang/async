@@ -162,7 +162,10 @@ pub fn Coroutine::check_error(coro : Coroutine) -> Unit raise {
 }
 
 ///|
-pub async fn protect_from_cancel(f : async () -> Unit) -> Unit {
+pub async fn[X] protect_from_cancel(
+  f : async () -> X,
+  resume_on_cancel? : Bool = false,
+) -> X {
   guard scheduler.curr_coro is Some(coro)
   if coro.shielded {
     // already in a shield, do nothing
@@ -172,9 +175,10 @@ pub async fn protect_from_cancel(f : async () -> Unit) -> Unit {
     defer {
       coro.shielded = false
     }
-    f()
-    if coro.cancelled {
+    let result = f()
+    if !resume_on_cancel && coro.cancelled {
       raise Cancelled
     }
+    result
   }
 }
