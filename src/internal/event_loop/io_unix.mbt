@@ -24,11 +24,12 @@ struct IoHandle {
 
 ///|
 #cfg(not(platform="windows"))
+#warnings("-unused_error_type")
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
   is_async? : Bool = true,
-) -> IoHandle {
+) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   ignore(is_async)

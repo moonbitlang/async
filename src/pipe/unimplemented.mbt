@@ -19,6 +19,4 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@event_loop.sleep)
   ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@os_error.unimplemented)
 }

@@ -13,26 +13,105 @@
 // limitations under the License.
 
 ///|
+/// A temporary pipe used to read output from a spawned process
+struct ReadFromProcess {
+  io : @event_loop.IoHandle
+  read_buf : @io.ReaderBuffer
+}
+
+///|
+/// A temporary pipe used to write data to a spawned process
+struct WriteToProcess(@event_loop.IoHandle)
+
+///|
 /// Create a temporary pipe for reading from stdout/stderr of a process.
 /// The return value is a pair `(r, w)`,
-/// where `r` is a `@pipe.PipeRead` that can be used to read process output,
+/// where `r` is a temporary pipe that can be used to read process output,
 /// and `w` should be passed to `@process.run`.
 ///
 /// `w` is temporary: it can only be passed to one `@process.run` call.
 /// However, it is safe to pass `w` to both `stdout` and `stderr` of the same process.
-pub fn read_from_process() -> (@pipe.PipeRead, &ProcessOutput) raise {
-  let (r, w) = @pipe.pipe()
-  (r, TempPipeWrite::{ pipe: w, closed: false })
+pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
+  let context = "@process.read_from_process()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=true,
+    write_end_is_async=false,
+    context~,
+  )
+  try {
+    let io = @event_loop.IoHandle::from_fd(r, kind=Pipe)
+    (
+      { io, read_buf: @io.ReaderBuffer::new() },
+      TempPipeWrite::{ pipe: w, closed: false },
+    )
+  } catch {
+    err => {
+      @fd_util.close(r, kind=Pipe, context~)
+      @fd_util.close(w, kind=Pipe, context~)
+      raise err
+    }
+  }
 }
 
 ///|
 /// Create a temporary pipe for writing to stdin of a process.
 /// The return value is a pair `(r, w)`,
-/// where `w` is a `@pipe.PipeWrite` that can be used to write to process output,
+/// where `w` is a temporary pipe that can be used to write to process output,
 /// and `r` should be passed to `@process.run`.
-pub fn write_to_process() -> (&ProcessInput, @pipe.PipeWrite) raise {
-  let (r, w) = @pipe.pipe()
-  (TempPipeRead::{ pipe: r, closed: false }, w)
+pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
+  let context = "@process.read_from_process()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=true,
+    context~,
+  )
+  try {
+    let io = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+    (TempPipeRead::{ pipe: r, closed: false }, io)
+  } catch {
+    err => {
+      @fd_util.close(r, kind=Pipe, context~)
+      @fd_util.close(w, kind=Pipe, context~)
+      raise err
+    }
+  }
+}
+
+///|
+pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
+  self.io.close()
+}
+
+///|
+pub impl @io.Reader for ReadFromProcess with _get_internal_buffer(self) {
+  self.read_buf
+}
+
+///|
+pub impl @io.Reader for ReadFromProcess with _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.io.read(
+    buf,
+    offset~,
+    len=max_len,
+    context="@process.ReadFromProcess::read()",
+  )
+}
+
+///|
+pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
+  let WriteToProcess(io) = self
+  io.close()
+}
+
+///|
+pub impl @io.Writer for WriteToProcess with write_once(self, buf, offset~, len~) {
+  let WriteToProcess(io) = self
+  io.write(buf, offset~, len~, context="@process.WriteToProcess::write()")
 }
 
 ///|
@@ -126,39 +205,43 @@ pub impl ProcessOutput for @stdio.Output with fd(self) {
 
 ///|
 priv struct TempPipeRead {
-  pipe : @pipe.PipeRead
+  pipe : @fd_util.Fd
   mut closed : Bool
 }
 
 ///|
 priv struct TempPipeWrite {
-  pipe : @pipe.PipeWrite
+  pipe : @fd_util.Fd
   mut closed : Bool
 }
 
 ///|
 impl ProcessOutput for TempPipeWrite with fd(self) {
-  self.pipe.fd()
+  self.pipe
 }
 
 ///|
 impl ProcessOutput for TempPipeWrite with after_spawn(self) {
   if !self.closed {
     self.closed = true
-    self.pipe.close()
+    @fd_util.close(self.pipe, kind=Pipe, context="") catch {
+      _ => ()
+    }
   }
 }
 
 ///|
 impl ProcessInput for TempPipeRead with fd(self) {
-  self.pipe.fd()
+  self.pipe
 }
 
 ///|
 impl ProcessInput for TempPipeRead with after_spawn(self) {
   if !self.closed {
     self.closed = true
-    self.pipe.close()
+    @fd_util.close(self.pipe, kind=Pipe, context="") catch {
+      _ => ()
+    }
   }
 }
 

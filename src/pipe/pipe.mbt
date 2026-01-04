@@ -37,94 +37,26 @@ pub fn PipeWrite::fd(self : PipeWrite) -> @fd_util.Fd {
 ///|
 /// Create a pipe using `pipe(2)` system call.
 /// Return the read end and write end of the pipe.
-#cfg(not(platform="windows"))
-pub fn pipe() -> (PipeRead, PipeWrite) raise {
-  let (r, w) = @fd_util.pipe("@pipe.pipe()")
-  @fd_util.set_nonblocking(r, context="@pipe.pipe()")
-  @fd_util.set_nonblocking(w, context="@pipe.pipe()")
-  let r = {
-    io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
-    read_buf: @io.ReaderBuffer::new(),
-  }
-  (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
-}
-
-///|
-#cfg(platform="windows")
-extern "C" fn get_current_process_id() -> UInt = "GetCurrentProcessId"
-
-///|
-#cfg(platform="windows")
-let current_process_id : UInt = get_current_process_id()
-
-///|
-#cfg(platform="windows")
-#borrow(name)
-extern "C" fn create_named_pipe_server(
-  name : @os_string.OsString,
-) -> @fd_util.Fd = "moonbitlang_async_create_named_pipe_server"
-
-///|
-#cfg(platform="windows")
-#borrow(name)
-extern "C" fn create_named_pipe_client(
-  name : @os_string.OsString,
-) -> @fd_util.Fd = "moonbitlang_async_create_named_pipe_client"
-
-///|
-#cfg(platform="windows")
-let pipe_id : Ref[UInt64] = @ref.new(0)
-
-///|
-/// Create a pipe using `pipe(2)` system call.
-/// Return the read end and write end of the pipe.
-#cfg(platform="windows")
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let context = "@pipe.pipe()"
-  pipe_id.val += 1
-  let name = @os_string.encode(
-    "\\\\.\\pipe\\moonbitlang_async.\{current_process_id}.\{pipe_id.val}",
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=true,
+    write_end_is_async=true,
+    context~,
   )
-  let r = {
-    let fd = create_named_pipe_server(name)
-    if !@fd_util.fd_is_valid(fd) {
-      @os_error.check_errno(context)
-    }
-    @event_loop.IoHandle::from_fd(fd, kind=Pipe) catch {
-      err => {
-        @fd_util.close(fd, kind=Pipe, context~)
-        raise err
-      }
-    }
-  }
   try {
-    let w = {
-      let fd = create_named_pipe_client(name)
-      if !@fd_util.fd_is_valid(fd) {
-        @os_error.check_errno(context)
-      }
-      @event_loop.IoHandle::from_fd(fd, kind=Pipe) catch {
-        err => {
-          @fd_util.close(fd, kind=Pipe, context~)
-          raise err
-        }
-      }
+    let r = {
+      io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
+      read_buf: @io.ReaderBuffer::new(),
     }
-    ({ io: r, read_buf: @io.ReaderBuffer::new() }, PipeWrite(w))
+    (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
   } catch {
     err => {
-      r.close()
+      @fd_util.close(r, kind=Pipe, context~)
+      @fd_util.close(w, kind=Pipe, context~)
       raise err
     }
   }
-}
-
-///|
-// mute unused warning
-#cfg(not(platfor="windows"))
-let _unused : Unit = {
-  ignore(@os_error.check_errno)
-  ignore(@os_string.encode)
 }
 
 ///|

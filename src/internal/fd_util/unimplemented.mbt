@@ -15,4 +15,7 @@
 ///|
 /// This package currently does not support JavaScript backend
 #cfg(target="js")
-pub let unimplemented : Unit = ignore(@os_error.unimplemented)
+pub let unimplemented : Unit = {
+  ignore(@os_error.unimplemented)
+  ignore(@os_string.unimplemented)
+}

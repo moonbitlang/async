@@ -103,6 +103,43 @@ int moonbitlang_async_set_cloexec(int fd) {
   return 0;
 }
 
+#endif
+
+#ifdef _WIN32
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_create_named_pipe_server(LPCWSTR name, int32_t is_async) {
+  DWORD flags = PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE;
+  if (is_async)
+    flags |= FILE_FLAG_OVERLAPPED;
+
+  return CreateNamedPipeW(
+    name,
+    flags,
+    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+    PIPE_UNLIMITED_INSTANCES,
+    1024,
+    1024,
+    0,
+    NULL
+  );
+}
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_create_named_pipe_client(LPCWSTR name, int32_t is_async) {
+  return CreateFileW(
+    name,
+    GENERIC_WRITE,
+    0,
+    NULL,
+    OPEN_EXISTING,
+    is_async ? FILE_FLAG_OVERLAPPED : 0,
+    NULL
+  );
+}
+
+#else
+
 int moonbitlang_async_pipe(int *fds) {
   if (pipe(fds) < 0)
     return -1;
