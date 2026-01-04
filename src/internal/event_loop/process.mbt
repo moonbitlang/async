@@ -69,13 +69,9 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
 #cfg(platform="windows")
 pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
   let job = Job::wait_for_process(pid)
-  perform_job_in_worker(
-    job,
-    context~,
-    cancel=CancelAndWait(() => {
-      job.cancel_process_waiter()
-      true
-    }),
-  )
+  perform_job_in_worker(job, context~, cancel=_ => {
+    job.cancel_process_waiter()
+    true
+  })
   |> ignore
 }

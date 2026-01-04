@@ -352,31 +352,19 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
-priv enum CancellationMode {
-  NoCancel
-  Ignore
-  CancelAndWait(() -> Bool raise)
-}
-
-///|
-// mute unused warning
-let _unused : Unit = ignore(CancelAndWait(() => true))
-
-///|
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
-  cancel~ : CancellationMode,
+  cancel? : (Int) -> Bool raise,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
   match cancel {
-    NoCancel => @coroutine.protect_from_cancel(@coroutine.suspend)
-    Ignore => @coroutine.suspend()
-    CancelAndWait(cancel_func) =>
+    None => @coroutine.protect_from_cancel(@coroutine.suspend)
+    Some(cancel_func) =>
       @coroutine.suspend() catch {
         _ =>
-          try cancel_func() catch {
+          try cancel_func(job_id) catch {
             err =>
               @coroutine.protect_from_cancel(() => {
                 @coroutine.suspend()
@@ -394,7 +382,7 @@ async fn EventLoop::wait_for_job(
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  cancel? : CancellationMode = NoCancel,
+  cancel? : (Int) -> Bool raise,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
@@ -411,7 +399,7 @@ async fn perform_job_in_worker(
       wake_worker(worker, job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel~)
+  evloop.wait_for_job(job_id, cancel?)
   if job.err() > 0 {
     raise @os_error.OSError(job.err(), context~)
   } else {
