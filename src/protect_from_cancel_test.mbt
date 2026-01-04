@@ -136,7 +136,7 @@ async test "protect_from_cancel with_timeout" {
 async test "protect_from_cancel fail" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
+    try? @async.with_task_group(fn(root) -> Unit {
       root.spawn_bg(fn() {
         @async.sleep(200)
         log.write_string("200ms tick\n")

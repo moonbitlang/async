@@ -12,7 +12,7 @@ pub fn no_more_work() -> Bool
 
 pub async fn pause() -> Unit
 
-pub async fn protect_from_cancel(async () -> Unit) -> Unit
+pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
 pub fn reschedule() -> Unit
 

@@ -18,7 +18,7 @@ pub fn now() -> Int64
 
 pub async fn pause() -> Unit
 
-pub async fn protect_from_cancel(async () -> Unit) -> Unit
+pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
 
