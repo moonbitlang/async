@@ -132,9 +132,9 @@ pub async fn file_time_by_path(
 }
 
 ///|
-pub async fn access(path : StringView, amode~ : Int, context~ : String) -> Int {
+pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
   let path_bytes = @os_string.encode(path)
-  perform_job_in_worker(Job::access(path_bytes, amode), context~) catch {
+  perform_job_in_worker(Job::access(path_bytes, acc), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err

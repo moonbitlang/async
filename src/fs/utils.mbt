@@ -75,7 +75,7 @@ pub async fn ctime(
 ///|
 #cfg(not(platform="windows"))
 pub async fn exists(path : StringView) -> Bool {
-  try @event_loop.access(path, amode=const_F_OK, context="@fs.exists()") catch {
+  try @event_loop.access(path, Exist, context="@fs.exists()") catch {
     @os_error.OSError(_) as err if err.is_ENOENT() => false
     err => raise err
   } noraise {
@@ -86,9 +86,7 @@ pub async fn exists(path : StringView) -> Bool {
 ///|
 #cfg(not(platform="windows"))
 pub async fn can_read(path : StringView) -> Bool {
-  try
-    @event_loop.access(path, amode=const_R_OK, context="@fs.can_read()")
-  catch {
+  try @event_loop.access(path, CanRead, context="@fs.can_read()") catch {
     @os_error.OSError(_) as err if err.is_ENOENT() => false
     @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err
@@ -100,9 +98,7 @@ pub async fn can_read(path : StringView) -> Bool {
 ///|
 #cfg(not(platform="windows"))
 pub async fn can_write(path : StringView) -> Bool {
-  try
-    @event_loop.access(path, amode=const_W_OK, context="@fs.can_write()")
-  catch {
+  try @event_loop.access(path, CanWrite, context="@fs.can_write()") catch {
     @os_error.OSError(_) as err if err.is_ENOENT() => false
     @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err
@@ -114,9 +110,7 @@ pub async fn can_write(path : StringView) -> Bool {
 ///|
 #cfg(not(platform="windows"))
 pub async fn can_execute(path : StringView) -> Bool {
-  try
-    @event_loop.access(path, amode=const_X_OK, context="@fs.can_execute")
-  catch {
+  try @event_loop.access(path, CanExecute, context="@fs.can_execute()") catch {
     @os_error.OSError(_) as err if err.is_ENOENT() => false
     @os_error.OSError(_) as err if err.is_EACCES() => false
     err => raise err

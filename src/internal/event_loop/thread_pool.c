@@ -976,8 +976,9 @@ void free_access_job(void *obj) {
 
 static
 void access_job_worker(struct job *job) {
+  static int access_modes[] = { F_OK, R_OK, W_OK, X_OK };
   struct access_job *access_job = (struct access_job*)job;
-  job->ret = access(access_job->path, access_job->amode);
+  job->ret = access(access_job->path, access_modes[access_job->amode]);
   if (job->ret < 0)
     job->err = errno;
 }
