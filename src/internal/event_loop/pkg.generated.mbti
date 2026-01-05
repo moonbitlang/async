@@ -10,7 +10,7 @@ import(
 // Values
 pub const IS_WINDOWS : Bool = false
 
-pub async fn access(StringView, amode~ : Int, context~ : String) -> Int
+pub async fn access(StringView, Access, context~ : String) -> Int
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit
 
@@ -59,6 +59,13 @@ pub fn with_event_loop(async () -> Unit) -> Unit raise
 // Errors
 
 // Types and methods
+pub(all) enum Access {
+  Exist
+  CanRead
+  CanWrite
+  CanExecute
+}
+
 #external
 pub type AddrInfo
 

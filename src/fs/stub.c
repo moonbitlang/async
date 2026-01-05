@@ -29,20 +29,4 @@ int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
 }
 
-int moonbitlang_async_get_R_OK() {
-  return R_OK;
-}
-
-int moonbitlang_async_get_W_OK() {
-  return W_OK;
-}
-
-int moonbitlang_async_get_X_OK() {
-  return X_OK;
-}
-
-int moonbitlang_async_get_F_OK() {
-  return F_OK;
-}
-
 #endif

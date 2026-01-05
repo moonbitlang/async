@@ -142,8 +142,16 @@ extern "C" fn Job::file_time_by_path(
 ) -> Job = "moonbitlang_async_make_file_time_by_path_job"
 
 ///|
+pub(all) enum Access {
+  Exist = 0
+  CanRead = 1
+  CanWrite = 2
+  CanExecute = 3
+}
+
+///|
 #owned(path)
-extern "C" fn Job::access(path : @os_string.OsString, amode : Int) -> Job = "moonbitlang_async_make_access_job"
+extern "C" fn Job::access(path : @os_string.OsString, access : Access) -> Job = "moonbitlang_async_make_access_job"
 
 ///|
 #owned(path)
