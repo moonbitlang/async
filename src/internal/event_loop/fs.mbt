@@ -28,7 +28,6 @@ pub async fn open_detached(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-  is_async~ : Bool,
   context~ : String,
 ) -> (@fd_util.Fd, Int64) {
   let path_bytes = @os_string.encode(path)
@@ -40,7 +39,6 @@ pub async fn open_detached(
     truncate~,
     sync~,
     mode~,
-    is_async~,
   )
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
@@ -73,12 +71,10 @@ pub async fn open(
     truncate~,
     sync~,
     mode~,
-    is_async=true,
     context~,
   )
-  let is_async = @fd_util.FileKind::is_async(kind)
   let kind = @fd_util.FileKind::from_sys_kind(kind)
-  IoHandle::from_fd(fd, kind~, is_async~)
+  IoHandle::from_fd(fd, kind~, is_async=false)
 }
 
 ///|

@@ -46,9 +46,6 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 }
 
 ///|
-pub extern "C" fn FileKind::is_async(sys_kind : Int64) -> Bool = "moonbitlang_async_file_kind_is_async"
-
-///|
 pub extern "C" fn FileKind::from_sys_kind(sys_kind : Int64) -> FileKind = "moonbitlang_async_file_kind_from_sys_kind"
 
 ///|

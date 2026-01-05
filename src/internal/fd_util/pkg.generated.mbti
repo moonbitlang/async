@@ -35,7 +35,6 @@ pub(all) enum FileKind {
 }
 pub fn FileKind::can_poll(Self) -> Bool
 pub fn FileKind::from_sys_kind(Int64) -> Self
-pub fn FileKind::is_async(Int64) -> Bool
 pub impl Eq for FileKind
 pub impl Show for FileKind
 

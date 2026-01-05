@@ -136,7 +136,6 @@ pub async fn redirect_to_file(
     truncate~,
     sync=0,
     mode~,
-    is_async=false,
     context="@process.redirect_to_file()",
   )
   RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))
@@ -153,7 +152,6 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     truncate=false,
     sync=0,
     mode=0,
-    is_async=false,
     context="@process.redirect_to_file()",
   )
   RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))

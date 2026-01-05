@@ -28,7 +28,7 @@ pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
-pub async fn open_detached(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, is_async~ : Bool, context~ : String) -> (Int, Int64)
+pub async fn open_detached(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (Int, Int64)
 
 pub async fn opendir(StringView, context~ : String) -> Directory
 

@@ -443,13 +443,20 @@ void read_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
+   OVERLAPPED overlapped;
+   memset(&overlapped, 0, sizeof(OVERLAPPED));
+   if (read_job->position > 0) {
+     overlapped.Offset = read_job->position & 0xffffffff;
+     overlapped.OffsetHigh = read_job->position >> 32;
+   }
+
    DWORD bytes_transferred;
    BOOL result = ReadFile(
      read_job->fd,
      read_job->buf + read_job->offset,
      read_job->len,
      &bytes_transferred,
-     NULL
+     read_job->position < 0 ? NULL : &overlapped
    );
    if (result)
      job->ret = bytes_transferred;
@@ -513,13 +520,20 @@ void write_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
+   OVERLAPPED overlapped;
+   memset(&overlapped, 0, sizeof(OVERLAPPED));
+   if (write_job->position > 0) {
+     overlapped.Offset = write_job->position & 0xffffffff;
+     overlapped.OffsetHigh = write_job->position >> 32;
+   }
+
    DWORD bytes_transferred;
    BOOL result = WriteFile(
      write_job->fd,
      write_job->buf + write_job->offset,
      write_job->len,
      &bytes_transferred,
-     NULL
+     write_job->position < 0 ? NULL : &overlapped
    );
    if (result)
      job->ret = bytes_transferred;
@@ -575,7 +589,6 @@ struct open_job {
   int truncate;
   int sync;
   int mode;
-  int is_async;
   HANDLE result;
   int64_t kind;
 };
@@ -627,8 +640,6 @@ void open_job_worker(struct job *job) {
     : (open_job->truncate ? TRUNCATE_EXISTING : OPEN_EXISTING);
 
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-  if (open_job->is_async)
-    flags |= FILE_FLAG_OVERLAPPED;
 
   DWORD access_flag = access_flags[open_job->access];
   if (open_job->append)
@@ -640,7 +651,7 @@ void open_job_worker(struct job *job) {
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
     NULL, // security attributes
     create_flags, // creation
-    flags, // flags and attributes
+    flags, // flags and attributes. Note that we open files in synchronous mode
     NULL // template file
   );
 
@@ -689,8 +700,7 @@ struct open_job *moonbitlang_async_make_open_job(
   int append,
   int truncate,
   int sync,
-  int mode,
-  int is_async
+  int mode
 ) {
 
   struct open_job *job = MAKE_JOB(open);
@@ -701,7 +711,6 @@ struct open_job *moonbitlang_async_make_open_job(
   job->truncate = truncate;
   job->sync = sync;
   job->mode = mode;
-  job->is_async = is_async;
   return job;
 }
 
