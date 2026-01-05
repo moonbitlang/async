@@ -13,6 +13,7 @@
   "test-import": [
     "moonbitlang/async",
     "moonbitlang/async/pipe",
+    "moonbitlang/async/fs",
     "moonbitlang/async/io"
   ],
   "targets": {
@@ -30,6 +31,7 @@
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native" ],
     "missing_close_test.mbt": [ "native" ],
+    "cancel_sync_test.mbt": [ "native" ],
     "event_loop.js.mbt": [ "js" ]
   },
   "native-stub": [

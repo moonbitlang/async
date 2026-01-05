@@ -102,10 +102,6 @@ extern "C" fn IoResult::status_ffi(
 
 ///|
 #cfg(platform="windows")
-extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
-
-///|
-#cfg(platform="windows")
 fn IoResult::status(
   result : IoResult,
   handle : @fd_util.Fd,
@@ -179,7 +175,7 @@ async fn EventLoop::wait_for_io_result(
   handle : @fd_util.Fd,
   context~ : String,
 ) -> Unit {
-  evloop.wait_for_job(job_id, cancel=_ => io_result.cancel(handle, context~))
+  evloop.wait_for_job(job_id, cancel=() => io_result.cancel(handle, context~))
 }
 
 ///|
@@ -244,8 +240,7 @@ pub async fn IoHandle::read(
       len,
       position=handle.read_offset,
     )
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~) catch {
+    let n = perform_job_in_worker(job, context~, cancel=true) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
     }
@@ -289,11 +284,9 @@ pub async fn IoHandle::read_at(
   position~ : Int64,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::read(handle.fd, buf, offset, len, position~)
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  perform_job_in_worker(job, context~, cancel~) catch {
+  perform_job_in_worker(job, context~, cancel=true) catch {
     @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
     err => raise err
   }
@@ -352,8 +345,7 @@ pub async fn IoHandle::write(
       len,
       position=handle.write_offset,
     )
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~)
+    let n = perform_job_in_worker(job, context~, cancel=true)
     handle.write_offset += n.to_int64()
     return n
   }
@@ -380,9 +372,7 @@ pub async fn IoHandle::write_at(
   position~ : Int64,
   context~ : String,
 ) -> Unit {
-  guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::write(handle.fd, buf, offset, len, position~)
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  ignore(perform_job_in_worker(job, context~, cancel~))
+  ignore(perform_job_in_worker(job, context~, cancel=true))
 }

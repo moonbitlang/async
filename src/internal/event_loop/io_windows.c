@@ -207,11 +207,6 @@ int32_t moonbitlang_async_io_result_get_job_id(struct IoResult *result) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_errno_is_cancelled(int32_t err) {
-  return err == ERROR_OPERATION_ABORTED;
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_io_result_get_status(
   LPOVERLAPPED overlapped,
   HANDLE file
