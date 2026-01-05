@@ -31,12 +31,10 @@ extern "C" fn spawn_worker(init_job_id : Int, init_job : Job) -> Worker = "moonb
 extern "C" fn wake_worker(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
-#cfg(platform="windows")
 #borrow(worker)
 extern "C" fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang_async_cancel_worker"
 
 ///|
-#cfg(platform="windows")
 fn Worker::cancel(
   worker : Worker,
   context~ : String,

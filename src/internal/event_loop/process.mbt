@@ -68,10 +68,12 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
 ///|
 #cfg(platform="windows")
 pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
+  ignore(context)
+  guard curr_loop.val is Some(evloop)
   let job = Job::wait_for_process(pid)
-  perform_job_in_worker(job, context~, cancel=_ => {
+  let job_id = evloop.submit_job_to_worker(job)
+  evloop.wait_for_job(job_id, cancel=() => {
     job.cancel_process_waiter()
     NeedWait
   })
-  |> ignore
 }

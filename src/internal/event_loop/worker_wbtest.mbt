@@ -18,14 +18,18 @@ extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
 
 ///|
 #cfg(target="native")
-async fn perform_sleep_job(t : Int) -> Unit {
-  perform_job_in_worker(Job::sleep(t), context="") |> ignore
+async fn perform_sleep_job(t : Int, cancel? : Bool = false) -> Unit {
+  perform_job_in_worker(Job::sleep(t), context="", cancel~) |> ignore
 }
 
 ///|
 #cfg(target="js")
-async fn perform_sleep_job(t : Int) -> Unit {
-  @async.protect_from_cancel(() => sleep(t))
+async fn perform_sleep_job(t : Int, cancel? : Bool = false) -> Unit {
+  if cancel {
+    sleep(t)
+  } else {
+    @async.protect_from_cancel(() => sleep(t))
+  }
 }
 
 ///|
@@ -85,7 +89,7 @@ async test "worker multiple" {
 }
 
 ///|
-async test "worker cancel1" {
+async test "worker no cancel1" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -123,7 +127,7 @@ async test "worker cancel1" {
 }
 
 ///|
-async test "worker cancel2" {
+async test "worker no cancel2" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     root.spawn_bg(fn() {
@@ -155,4 +159,32 @@ async test "worker cancel2" {
       #|
     ),
   )
+}
+
+///|
+// note: on Windows, `CancelSynchronousIo` cannot cancel `sleep`
+#cfg(not(platform="windows"))
+async test "worker cancel" {
+  let t0 = @async.now()
+  let result = @async.with_timeout_opt(400, () => perform_sleep_job(
+    1000,
+    cancel=true,
+  ))
+  let t1 = @async.now()
+  inspect(result, content="None")
+  inspect((t1 - t0) / 200, content="2")
+}
+
+///|
+// note: on Windows, `CancelSynchronousIo` cannot cancel `sleep`
+#cfg(not(platform="windows"))
+async test "worker cancel stress" {
+  @async.with_task_group(group => for _ in 0..<10 {
+    async fn worker() {
+      @async.with_timeout_opt(300, () => perform_sleep_job(300, cancel=true))
+      |> ignore
+    }
+
+    group.spawn_bg(worker)
+  })
 }

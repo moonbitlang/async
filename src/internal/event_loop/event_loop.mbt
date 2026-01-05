@@ -352,7 +352,6 @@ pub async fn sleep(duration : Int) -> Unit {
 }
 
 ///|
-#warnings("-unused_constructor")
 priv enum CancellationStatus {
   NoWait
   NeedWait
@@ -363,7 +362,7 @@ priv enum CancellationStatus {
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
-  cancel? : (Int) -> CancellationStatus raise,
+  cancel? : () -> CancellationStatus raise,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
@@ -373,7 +372,7 @@ async fn EventLoop::wait_for_job(
       @coroutine.suspend() catch {
         err =>
           for {
-            let status = cancel_func(job_id) catch {
+            let status = cancel_func() catch {
               err =>
                 @coroutine.protect_from_cancel(() => {
                   @coroutine.suspend()
@@ -402,36 +401,10 @@ async fn EventLoop::wait_for_job(
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn Job::extract_result(job : Job, context~ : String) -> Int raise {
-  if job.err() is err && err > 0 {
-    raise @os_error.OSError(err, context~)
-  } else {
-    job.ret()
-  }
-}
+extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
 
 ///|
-#cfg(platform="windows")
-fn Job::extract_result(job : Job, context~ : String) -> Int raise {
-  if job.err() is err && err > 0 {
-    if errno_is_cancelled(err) {
-      raise @coroutine.Cancelled
-    } else {
-      raise @os_error.OSError(err, context~)
-    }
-  } else {
-    job.ret()
-  }
-}
-
-///|
-async fn perform_job_in_worker(
-  job : Job,
-  context~ : String,
-  cancel? : (Int) -> CancellationStatus raise,
-) -> Int {
-  guard curr_loop.val is Some(evloop)
+fn EventLoop::submit_job_to_worker(evloop : EventLoop, job : Job) -> Int {
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {
@@ -446,12 +419,35 @@ async fn perform_job_in_worker(
       wake_worker(worker, job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel?)
-  job.extract_result(context~)
+  job_id
 }
 
 ///|
-#cfg(platform="windows")
+async fn perform_job_in_worker(
+  job : Job,
+  context~ : String,
+  cancel? : Bool = false,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  let job_id = evloop.submit_job_to_worker(job)
+  let cancel = if cancel {
+    Some(() => evloop.cancel_job_in_worker(job_id, context~))
+  } else {
+    None
+  }
+  evloop.wait_for_job(job_id, cancel?)
+  if job.err() is err && err > 0 {
+    if errno_is_cancelled(err) {
+      raise @coroutine.Cancelled
+    } else {
+      raise @os_error.OSError(err, context~)
+    }
+  } else {
+    job.ret()
+  }
+}
+
+///|
 fn EventLoop::cancel_job_in_worker(
   evloop : EventLoop,
   job_id : Int,
