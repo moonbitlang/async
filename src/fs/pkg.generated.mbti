@@ -62,6 +62,7 @@ pub fn Directory::close(Self) -> Unit
 pub async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[String]
 
 type File
+#deprecated
 pub fn File::as_dir(Self) -> Directory raise
 pub async fn File::atime(Self) -> (Int64, Int)
 pub fn File::close(Self) -> Unit
