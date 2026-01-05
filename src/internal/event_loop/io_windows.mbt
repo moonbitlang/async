@@ -237,25 +237,25 @@ pub async fn IoHandle::read(
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {
-    let job = Job::read(handle.fd, buf, offset, len, position=-1)
+    let job = Job::read(
+      handle.fd,
+      buf,
+      offset,
+      len,
+      position=handle.read_offset,
+    )
     let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
     let n = perform_job_in_worker(job, context~, cancel~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
     }
+    handle.read_offset += n.to_int64()
     return n
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {
-    Regular =>
-      IoResult::for_file(
-        job_id,
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len~,
-        position=handle.read_offset,
-      )
+    Regular => panic()
     Socket =>
       IoResult::for_socket(
         job_id,
@@ -291,17 +291,12 @@ pub async fn IoHandle::read_at(
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
-  let job_id = evloop.job_id
-  evloop.job_id += 1
-  let result = IoResult::for_file(
-    job_id,
-    buf.unsafe_reinterpret_as_bytes(),
-    offset~,
-    len~,
-    position~,
-  )
-  defer result.free()
-  handle.generic_read(job_id, result, context~)
+  let job = Job::read(handle.fd, buf, offset, len, position~)
+  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
+  perform_job_in_worker(job, context~, cancel~) catch {
+    @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+    err => raise err
+  }
 }
 
 ///|
@@ -350,21 +345,22 @@ pub async fn IoHandle::write(
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {
-    let job = Job::write(handle.fd, buf, offset, len, position=-1)
+    let job = Job::write(
+      handle.fd,
+      buf,
+      offset,
+      len,
+      position=handle.write_offset,
+    )
     let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    return perform_job_in_worker(job, context~, cancel~)
+    let n = perform_job_in_worker(job, context~, cancel~)
+    handle.write_offset += n.to_int64()
+    return n
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
   let result = match handle.kind {
-    Regular =>
-      IoResult::for_file(
-        job_id,
-        buf,
-        offset~,
-        len~,
-        position=handle.write_offset,
-      )
+    Regular => panic()
     Socket => IoResult::for_socket(job_id, buf, offset~, len~, flags=0)
     _ => IoResult::for_file(job_id, buf, offset~, len~, position=0)
   }
@@ -386,9 +382,7 @@ pub async fn IoHandle::write_at(
 ) -> Unit {
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
-  let job_id = evloop.job_id
-  evloop.job_id += 1
-  let result = IoResult::for_file(job_id, buf, offset~, len~, position~)
-  defer result.free()
-  ignore(handle.generic_write(job_id, result, context~))
+  let job = Job::write(handle.fd, buf, offset, len, position~)
+  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
+  ignore(perform_job_in_worker(job, context~, cancel~))
 }

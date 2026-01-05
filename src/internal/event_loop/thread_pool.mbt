@@ -101,7 +101,6 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-  is_async~ : Bool,
 ) -> Job = "moonbitlang_async_make_open_job"
 
 ///|
