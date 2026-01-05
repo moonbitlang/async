@@ -31,6 +31,7 @@ async test "read_all" {
 
 ///|
 #cfg(not(platform="windows"))
+#warnings("-deprecated")
 async test "as_dir" {
   let dir_file = @fs.open("src/fs", mode=ReadOnly)
   guard dir_file.kind() is Directory

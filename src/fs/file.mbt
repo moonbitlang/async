@@ -258,6 +258,7 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 /// result directory object is closed.
 /// If `as_dir` fails, the input file will be closed automatically.
 #cfg(not(platform="windows"))
+#deprecated("`as_dir` is deprecated because it is not portable, use `opendir` instead.")
 pub fn File::as_dir(self : File) -> Directory raise {
   let fd = self.io.detach_from_event_loop()
   let dir = as_dir_ffi(fd)

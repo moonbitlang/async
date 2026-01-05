@@ -354,6 +354,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
 #cfg(not(platform="windows"))
+#internal(internal, "do not use, for internal testing only")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   r : R,
   w : W,
@@ -397,6 +398,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 /// `private_key_file`, `private_key_type` specifies the private key of the server.
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
 #cfg(not(platform="windows"))
+#internal(internal, "do not use, for internal testing only")
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
   inner : Inner,
   private_key_file~ : String,
