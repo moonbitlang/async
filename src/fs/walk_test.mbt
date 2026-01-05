@@ -57,7 +57,7 @@ async test "walk failure" {
   inspect(
     try? @fs.walk("test_directory", max_concurrency=1, fn(path, _) {
       log.write_string("handling \{path}\n")
-      raise Failure("failure when handling directory")
+      raise @builtin.Failure("failure when handling directory")
     }),
     content=(
       #|Err(Failure("failure when handling directory"))
@@ -81,7 +81,7 @@ async test "walk allow_failure" {
       _,
     ) {
       log.write_string("handling \{path}\n")
-      raise Failure("failure when handling directory")
+      raise @builtin.Failure("failure when handling directory")
     }),
     content="Ok(())",
   )

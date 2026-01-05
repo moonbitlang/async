@@ -89,6 +89,8 @@ pub async fn[X] Promise::wait(
 ) -> X {
   ignore(promise)
   ignore(abort_controller)
+  // Yield once so the async stub remains a real async function.
+  @coroutine.pause()
   abort("unimplemented in native backend")
 }
 
@@ -108,6 +110,8 @@ pub async fn[X] Promise::wait(
 #warnings("-unused_async")
 pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
   ignore(f)
+  // Yield once so the async stub remains a real async function.
+  @coroutine.pause()
   abort("unimplemented in native backend")
 }
 

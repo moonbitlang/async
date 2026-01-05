@@ -263,13 +263,13 @@ async test "immediately cancelled" {
 ///|
 async test "immediate failure" {
   let result = try? @async.with_task_group(group => {
-    group.spawn_bg(() => raise Failure("failure"))
+    group.spawn_bg(() => fail("failure"))
     group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
   })
   inspect(
     result,
     content=(
-      #|Err(Failure("failure"))
+      #|Err(Failure("cancellation_test.mbt:266:26-266:41@moonbitlang/async_blackbox_test FAILED: failure"))
     ),
   )
 }
