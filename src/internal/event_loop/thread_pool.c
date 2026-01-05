@@ -959,7 +959,6 @@ struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
   return job;
 }
 
-#ifndef _WIN32
 // ===== access job, test permission of file path =====
 
 struct access_job {
@@ -976,11 +975,35 @@ void free_access_job(void *obj) {
 
 static
 void access_job_worker(struct job *job) {
+#ifdef _WIN32
+
+  static int access_modes[] = { 0, GENERIC_READ, GENERIC_WRITE, FILE_EXECUTE };
+  struct access_job *access_job = (struct access_job*)job;
+
+  HANDLE handle = CreateFileW(
+    (LPCWSTR)access_job->path,
+    access_modes[access_job->amode],
+    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL,
+    NULL
+  );
+  if (handle == INVALID_HANDLE_VALUE) {
+    job->err = GetLastError();
+  } else {
+    CloseHandle(handle);
+  }
+
+#else
+
   static int access_modes[] = { F_OK, R_OK, W_OK, X_OK };
   struct access_job *access_job = (struct access_job*)job;
   job->ret = access(access_job->path, access_modes[access_job->amode]);
   if (job->ret < 0)
     job->err = errno;
+
+#endif
 }
 
 struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
@@ -990,6 +1013,7 @@ struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
   return job;
 }
 
+#ifndef _WIN32
 // ===== chmod job, change permission of file =====
 
 struct chmod_job {
