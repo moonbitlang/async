@@ -13,6 +13,22 @@
 // limitations under the License.
 
 ///|
+/// Converts a byte slice to a readable ASCII/escape representation.
+///
+/// # Behavior
+/// - bytes in 0x20..0x7e are emitted as ASCII characters
+/// - '\n' is emitted as a newline character
+/// - '\r' and '\t' are emitted as the escape sequences "\\r" and "\\t"
+/// - other bytes are emitted as "\\x" followed by lowercase hex without padding
+///
+/// # Example
+/// ```mbt check
+/// test {
+///   let bytes : Bytes = [0, 1, 15, 16, 31, 32, 65, 10, 13, 9, 127]
+///   let rendered = ascii_to_string(bytes)
+///   inspect(rendered, content="\\x0\\x1\\xf\\x10\\x1f A\n\\r\\t\\x7f")
+/// }
+/// ```
 pub fn ascii_to_string(ascii : BytesView) -> String {
   let builder = StringBuilder::new()
   for byte in ascii {
