@@ -24,6 +24,7 @@ Converts bytes to a string using a simple ASCII-oriented escaping scheme.
 ## Examples
 
 ```mbt check
+///|
 test "printable and tab" {
   let bytes : Bytes = b"Hi\t!"
   let rendered = @bytes_util.ascii_to_string(bytes)
@@ -32,6 +33,7 @@ test "printable and tab" {
 ```
 
 ```mbt check
+///|
 test "non-printable bytes" {
   let bytes : Bytes = [0, 1, 15, 16, 31, 127]
   let rendered = @bytes_util.ascii_to_string(bytes)
@@ -40,6 +42,7 @@ test "non-printable bytes" {
 ```
 
 ```mbt check
+///|
 test "newline is literal" {
   let bytes : Bytes = [65, 10, 66]
   let rendered = @bytes_util.ascii_to_string(bytes)
