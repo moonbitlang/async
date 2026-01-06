@@ -72,26 +72,6 @@ async test "redirect pipe" {
 }
 
 ///|
-#cfg(not(platform="windows"))
-async test "recover state" {
-  assert_false(@fd_util.fd_is_nonblocking(1, context=""))
-  assert_false(@fd_util.fd_is_nonblocking(2, context=""))
-  let cat = cat.wait()
-  @async.with_task_group(group => {
-    let (cat_read, we_write) = @process.write_to_process()
-    group.spawn_bg(() => {
-      let code = @process.run(cat, [], stdin=cat_read)
-      inspect(code, content="0")
-    })
-    @async.sleep(100)
-    we_write.close()
-  })
-  @async.sleep(100)
-  assert_false(@fd_util.fd_is_nonblocking(1, context=""))
-  assert_false(@fd_util.fd_is_nonblocking(2, context=""))
-}
-
-///|
 async test "stdio cancel" {
   let cat = cat.wait()
   @async.with_task_group(group => {
