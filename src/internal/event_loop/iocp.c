@@ -31,7 +31,7 @@ void moonbitlang_async_poll_destroy(HANDLE iocp) {
 
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_poll_register(HANDLE iocp, HANDLE fd) {
-  if (!SetFileCompletionNotificationModes(fd, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
+  if (!SetFileCompletionNotificationModes(fd, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS | FILE_SKIP_SET_EVENT_ON_HANDLE))
     return -1;
   return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 0;
 }

@@ -20,6 +20,7 @@
 
 #ifdef _WIN32
 
+#include <stdio.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -108,6 +109,7 @@ int moonbitlang_async_listen(HANDLE sockfd) {
 
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_udp_client_connect(HANDLE sock, struct sockaddr *addr) {
+  fprintf(stderr, "Udp::connect()\n");
   return connect((SOCKET)sock, addr, Moonbit_array_length(addr));
 }
 

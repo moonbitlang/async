@@ -15,6 +15,7 @@
  */
 
 #ifdef _WIN32
+#include <stdio.h>
 #include <moonbit.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -175,6 +176,7 @@ struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t job_id) {
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_free_io_result(struct IoResult *obj) {
+  fprintf(stderr, "free_io_result(): %d\n", obj->kind);
   switch (obj->kind) {
   case File:
     moonbit_decref(((struct FileIoResult*)obj)->buf_obj);
@@ -263,13 +265,16 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         (LPOVERLAPPED)result,
         NULL
       );
+      fprintf(stderr, "WSARecv()\n");
       break;
     }
     case SocketWithAddr: {
+      fprintf(stderr, "before WSARecvFrom()\n");
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
       int addr_len = result->addr->sa_family == AF_INET
         ? sizeof(struct sockaddr_in)
         : sizeof(struct sockaddr_in6);
+      fprintf(stderr, "right before WSARecvFrom()\n");
       success = 0 == WSARecvFrom(
         (SOCKET)handle,
         &(result->buf),
@@ -281,6 +286,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         (LPOVERLAPPED)result,
         NULL
       );
+      fprintf(stderr, "WSARecvFrom()\n");
       break;
     }
   }
@@ -295,7 +301,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
+int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *track) {
   DWORD n_written = 0;
   int success;
 
@@ -313,6 +319,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
+      fprintf(stderr, "before WSASend(): %llx\n", track);
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
@@ -322,6 +329,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
         (LPOVERLAPPED)result,
         NULL
       );
+      fprintf(stderr, "WSASend() => %d, %d | %llx\n", success, GetLastError(), track);
       break;
     }
     case SocketWithAddr: {
@@ -340,6 +348,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
         (LPOVERLAPPED)result,
         NULL
       );
+      fprintf(stderr, "WSASendTo()\n");
       break;
     }
   }
@@ -468,6 +477,24 @@ int32_t moonbitlang_async_setup_accepted_socket(HANDLE listen_sock, HANDLE accep
     (char*)&listen_sock,
     sizeof(UINT_PTR)
   );
+}
+
+MOONBIT_FFI_EXPORT
+void print_log(char *msg) {
+  fprintf(stderr, "%s\n", msg);
+}
+
+MOONBIT_EXPORT
+void log_info(void *obj) {
+  fprintf(stderr, "log_info(%llx)\n", obj);
+  fprintf(stderr, "rc=%d\n", Moonbit_object_header(obj)->rc);
+}
+
+MOONBIT_EXPORT
+void checked_decref(void *obj) {
+  fprintf(stderr, "decref(%llx)\n", obj);
+  fprintf(stderr, "rc=%d\n", Moonbit_object_header(obj)->rc);
+  moonbit_decref(obj);
 }
 
 #endif // #ifdef _WIN32

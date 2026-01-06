@@ -187,6 +187,10 @@ extern "C" fn read_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlan
 extern "C" fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang_async_errno_is_read_EOF"
 
 ///|
+#borrow(msg)
+extern "C" fn log(msg : Bytes) = "print_log"
+
+///|
 #cfg(platform="windows")
 async fn IoHandle::generic_read(
   handle : IoHandle,
@@ -195,6 +199,7 @@ async fn IoHandle::generic_read(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
+  log("generic_read()")
   let n = read_ffi(handle.fd, result)
   if n >= 0 {
     // It is important to note that the logic here is correct
@@ -294,7 +299,22 @@ pub async fn IoHandle::read_at(
 
 ///|
 #cfg(platform="windows")
-extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_write"
+#borrow(ptr)
+extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, ptr : Any) -> Int = "moonbitlang_async_write"
+
+///|
+type Any
+
+///|
+#borrow(x)
+extern "C" fn log_info(x : Any) = "log_info"
+
+///|
+#owned(x)
+extern "C" fn decref(x : Any) = "checked_decref"
+
+///|
+fn[X] to_any(x : X) -> Any = "%identity"
 
 ///|
 #cfg(platform="windows")
@@ -305,8 +325,20 @@ async fn IoHandle::generic_write(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
-  let n = write_ffi(handle.fd, result)
+  log_info(to_any(evloop))
+  let n = write_ffi(handle.fd, result, to_any(evloop))
+  log_info(to_any(evloop))
   if n >= 0 {
+    log_info(to_any(evloop))
+    log("generic_write(): immediate success")
+    decref(to_any(context))
+    log_info(to_any(evloop))
+    decref(to_any(handle))
+    decref(to_any(evloop))
+    if n < 0 {
+      raise Failure::Failure("")
+    }
+    log("???")
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.

@@ -31,6 +31,7 @@
 #define UNICODE
 #endif
 
+#include <stdio.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
@@ -1804,6 +1805,7 @@ void getaddrinfo_job_worker(struct job *job) {
     &hint,
     &(getaddrinfo_job->result)
   );
+  fprintf(stderr, "GetAddrInfoW() => %d\n", err);
   // https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#return-value
   switch (err) {
     case WSATRY_AGAIN:
