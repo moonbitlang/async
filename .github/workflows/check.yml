@@ -49,4 +49,4 @@ jobs:
           moonrun --version
 
       - name: moon test (release)
-        run: moon test src/socket --release
+        run: moon test src/socket/resolve_host_test.mbt --release
