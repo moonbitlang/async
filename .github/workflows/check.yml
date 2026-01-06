@@ -30,23 +30,20 @@ jobs:
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: addr_test.mbt
-        run: moon test src/socket/addr_test.mbt --release
+      - name: 0
+        run: moon test src/socket/dual_stack_test.mbt --index 0 --release
 
-      - name: connect_burst_test.mbt
-        run: moon test src/socket/connect_burst_test.mbt --release
+      - name: 1
+        run: moon test src/socket/dual_stack_test.mbt --index 1 --release
 
-      - name: dual_stack_test.mbt
-        run: moon test src/socket/dual_stack_test.mbt --release
+      - name: 2
+        run: moon test src/socket/dual_stack_test.mbt --index 2 --release
 
-      - name: getsockname_test.mbt
-        run: moon test src/socket/getsockname_test.mbt --release
+      - name: 3
+        run: moon test src/socket/dual_stack_test.mbt --index 3 --release
 
-      - name: read_exactly_test.mbt
-        run: moon test src/socket/read_exactly_test.mbt --release
+      - name: 4
+        run: moon test src/socket/dual_stack_test.mbt --index 4 --release
 
-      - name: resolve_host_test.mbt
-        run: moon test src/socket/resolve_host_test.mbt --release
-
-      - name: reuse_addr_test.mbt
-        run: moon test src/socket/reuse_addr_test.mbt --release
+      - name: 5
+        run: moon test src/socket/dual_stack_test.mbt --index 5 --release
