@@ -22,31 +22,13 @@ jobs:
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
       - uses: ilammy/msvc-dev-cmd@v1
-
-      - name: install (Unix)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: install (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: load SSH key for testing (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
 
       - name: moon test (release)
         run: moon test src/socket/resolve_host_test.mbt --release
