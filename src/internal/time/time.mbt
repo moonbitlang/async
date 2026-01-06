@@ -13,6 +13,24 @@
 // limitations under the License.
 
 ///|
+/// Get the current wall-clock time in milliseconds.
+///
+/// This is the time source used by the async runtime. It is intended for
+/// computing elapsed time by subtraction. The value can jump forwards or
+/// backwards if the system clock is adjusted, so do not assume monotonicity.
+///
+/// Platform notes:
+/// - Unix/macOS: `gettimeofday()` (Unix epoch)
+/// - Windows: `GetSystemTimeAsFileTime()` (FILETIME epoch, 1601)
+/// - JavaScript: `Date.getTime()` (Unix epoch)
+///
+/// # Example
+/// ```mbt check
+/// test {
+///   let _ : Int64 = ms_since_epoch()
+///
+/// }
+/// ```
 #cfg(target="native")
 pub extern "C" fn ms_since_epoch() -> Int64 = "moonbitlang_async_get_ms_since_epoch"
 
@@ -22,6 +40,24 @@ extern "js" fn js_now() -> Double =
   #| () => (new Date()).getTime()
 
 ///|
+/// Get the current wall-clock time in milliseconds.
+///
+/// This is the time source used by the async runtime. It is intended for
+/// computing elapsed time by subtraction. The value can jump forwards or
+/// backwards if the system clock is adjusted, so do not assume monotonicity.
+///
+/// Platform notes:
+/// - Unix/macOS: `gettimeofday()` (Unix epoch)
+/// - Windows: `GetSystemTimeAsFileTime()` (FILETIME epoch, 1601)
+/// - JavaScript: `Date.getTime()` (Unix epoch)
+///
+/// # Example
+/// ```mbt check
+/// test {
+///   let _ : Int64 = ms_since_epoch()
+///
+/// }
+/// ```
 #cfg(target="js")
 pub fn ms_since_epoch() -> Int64 {
   js_now().to_int64()
