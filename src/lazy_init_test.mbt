@@ -40,7 +40,7 @@ async test "lazy init basic" {
 async test "lazy init failure" {
   let x : @async.Lazy[Unit] = @async.lazy_init(() => {
     @async.sleep(200)
-    raise Failure("msg")
+    raise Failure::Failure("msg")
   })
   let start = @async.now()
   fn current_tick() -> Int {

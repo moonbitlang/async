@@ -263,7 +263,7 @@ async test "immediately cancelled" {
 ///|
 async test "immediate failure" {
   let result = try? @async.with_task_group(group => {
-    group.spawn_bg(() => raise Failure("failure"))
+    group.spawn_bg(() => raise Failure::Failure("failure"))
     group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
   })
   inspect(

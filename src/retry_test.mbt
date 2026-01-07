@@ -175,7 +175,7 @@ async test "retry fatal_error" {
     if i < 3 {
       @async.with_timeout(100, () => @async.sleep(1000))
     } else {
-      raise Failure("fatal error")
+      raise Failure::Failure("fatal error")
     }
   }
 
