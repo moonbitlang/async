@@ -737,7 +737,9 @@ pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
   }
   let msg = msg.to_bytes()
   guard !self.pings.contains(msg) else {
-    raise Failure::Failure("A PING request with the same payload is already pending")
+    raise Failure::Failure(
+      "A PING request with the same payload is already pending",
+    )
   }
   self.pings[msg] = @coroutine.current_coroutine()
   defer self.pings.remove(msg)
