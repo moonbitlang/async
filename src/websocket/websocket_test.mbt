@@ -37,7 +37,7 @@ async test "websocket basic" {
       try ws.recv() catch {
         err => inspect(err, content="ConnectionClosed(Normal, None)")
       } noraise {
-        _ => raise Failure("expected error, but nothing happens")
+        _ => raise Failure::Failure("expected error, but nothing happens")
       }
     })
     let client = @websocket.connect("ws://localhost:\{addr.port()}")

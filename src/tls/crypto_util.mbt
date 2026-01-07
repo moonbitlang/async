@@ -25,7 +25,7 @@ extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbi
 pub fn rand_bytes(num : Int) -> Bytes raise {
   let result = FixedArray::make(num, b'\x00')
   if rand_bytes_ffi(result, num) != 1 {
-    raise Failure(err_get_error())
+    raise Failure::Failure(err_get_error())
   }
   result.unsafe_reinterpret_as_bytes()
 }

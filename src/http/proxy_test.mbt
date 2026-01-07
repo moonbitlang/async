@@ -213,7 +213,7 @@ async test "proxy error" {
           ),
         )
     } noraise {
-      _ => raise Failure("expected error, but nothing happens")
+      _ => raise Failure::Failure("expected error, but nothing happens")
     }
   })
 }
