@@ -17,6 +17,7 @@
 struct IoHandle {
   mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
+  is_async : Bool
   mut events : Int
   mut read : @coroutine.Coroutine?
   mut write : @coroutine.Coroutine?
@@ -32,8 +33,7 @@ pub fn IoHandle::from_fd(
 ) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
-  ignore(is_async)
-  let handle = { fd, kind, read: None, write: None, events: NoEvent }
+  let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
   evloop.fds[fd] = handle
   handle
 }
@@ -143,7 +143,7 @@ pub async fn IoHandle::read(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  if handle.kind.can_poll() {
+  if handle.is_async {
     handle.prepare_read()
     let ret = read_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {
@@ -161,8 +161,14 @@ pub async fn IoHandle::read(
     }
     ret
   } else {
+    let cancel = if handle.kind.can_poll() {
+      guard curr_loop.val is Some(evloop)
+      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+    } else {
+      None
+    }
     let job = Job::read(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~)
+    perform_job_in_worker(job, context~, cancel?)
   }
 }
 
@@ -200,7 +206,7 @@ pub async fn IoHandle::write(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  if handle.kind.can_poll() {
+  if handle.is_async {
     handle.prepare_write()
     let ret = write_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {
@@ -218,8 +224,14 @@ pub async fn IoHandle::write(
     }
     ret
   } else {
+    let cancel = if handle.kind.can_poll() {
+      guard curr_loop.val is Some(evloop)
+      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+    } else {
+      None
+    }
     let job = Job::write(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~)
+    perform_job_in_worker(job, context~, cancel?)
   }
 }
 

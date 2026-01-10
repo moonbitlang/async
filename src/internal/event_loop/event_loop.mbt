@@ -451,7 +451,6 @@ async fn perform_job_in_worker(
 }
 
 ///|
-#cfg(platform="windows")
 fn EventLoop::cancel_job_in_worker(
   evloop : EventLoop,
   job_id : Int,
