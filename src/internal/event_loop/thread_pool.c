@@ -186,7 +186,10 @@ thread_worker_result_t worker_loop(void *data) {
       0
     );
 #else
-    write(pool.notify_send, &job_id, sizeof(int));
+    do {
+      if (write(pool.notify_send, &job_id, sizeof(int)) > 0)
+        break;
+    } while (errno == EINTR);
 #endif
 
 #ifdef WAKEUP_METHOD_EVENT
@@ -226,6 +229,7 @@ void moonbitlang_async_wake_worker(
   worker->waiting = 0;
   SetEvent(worker->event);
 #elif defined(WAKEUP_METHOD_SIGNAL)
+  worker->waiting = 0;
   pthread_kill(worker->id, SIGUSR1);
 #elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_lock(&(worker->mutex));
@@ -235,11 +239,12 @@ void moonbitlang_async_wake_worker(
 #endif
 }
 
-#ifdef _WIN32
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
   if (worker->waiting)
     return 1;
+
+#ifdef _WIN32
 
   if (CancelSynchronousIo(worker->id)) {
     return 1;
@@ -248,7 +253,18 @@ int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
   } else {
     return -1;
   }
+
+#else
+
+  pthread_kill(worker->id, SIGUSR2);
+  return 0;
+
+#endif
 }
+
+#ifndef _WIN32
+static
+void nop_signal_handler(int signum) {}
 #endif
 
 MOONBIT_FFI_EXPORT
@@ -269,6 +285,16 @@ void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
   pthread_sigmask(SIG_BLOCK, &signals_to_block, 0);
 
   signal(SIGPIPE, SIG_IGN);
+
+  // register a dummy handler for `SIGUSR2,
+  // so that when we cancel blocking IO in worker thread via `SIGUSR2`:
+  // 1. the program won't get killed
+  // 2. blocked syscall will be interrupted
+  struct sigaction act;
+  act.sa_handler = nop_signal_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction(SIGUSR2, &act, NULL);
 #endif
 
   pool.notify_send = notify_send;
@@ -351,6 +377,15 @@ int32_t moonbitlang_async_fetch_completion(int notify_recv) {
   return job_id;
 }
 #endif
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_errno_is_cancelled(int32_t err) {
+#ifdef _WIN32
+  return err == ERROR_OPERATION_ABORTED;
+#else
+  return err == EINTR;
+#endif
+}
 
 // =========================================================
 // ===================== concrete jobs =====================

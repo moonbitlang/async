@@ -74,7 +74,7 @@ pub async fn open(
     context~,
   )
   let kind = @fd_util.FileKind::from_sys_kind(kind)
-  IoHandle::from_fd(fd, kind~, is_async=false)
+  IoHandle::from_fd(fd, kind~, is_async=!IS_WINDOWS && kind.can_poll())
 }
 
 ///|

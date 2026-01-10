@@ -14,35 +14,23 @@
 
 ///|
 #cfg(not(platform="windows"))
-fn setup_stdio(
-  fd : Int,
-  context~ : String,
-  restore_context~ : String,
-) -> IoHandle {
+fn setup_stdio(fd : Int, context~ : String) -> IoHandle {
   let kind = @fd_util.get_fd_kind_sync(fd, context~) catch {
     err => abort("\{context}: \{err}")
   }
-  let handle = { fd, kind, events: NoEvent, read: None, write: None }
-  let need_unblock = kind.can_poll() &&
-    not(try! @fd_util.fd_is_nonblocking(fd, context~))
-  fn init() raise {
-    guard curr_loop.val is Some(evloop)
-    guard evloop.fds.get(fd) is None
-    evloop.fds[fd] = handle
-    if need_unblock {
-      @fd_util.set_nonblocking(fd, context~)
-    }
-  }
-
-  fn exit() raise {
-    let _ = handle.detach_from_event_loop()
-    handle.events = NoEvent
-    if need_unblock {
-      @fd_util.set_blocking(fd, context=restore_context)
-    }
-  }
-
-  register_hook(init~, exit~)
+  let is_async = try! @fd_util.fd_is_nonblocking(fd, context~)
+  let handle = { fd, kind, is_async, events: NoEvent, read: None, write: None }
+  register_hook(
+    init=() => {
+      guard curr_loop.val is Some(evloop)
+      guard evloop.fds.get(fd) is None
+      evloop.fds[fd] = handle
+    },
+    exit=() => {
+      let _ = handle.detach_from_event_loop()
+      handle.events = NoEvent
+    },
+  )
   handle
 }
 
@@ -52,11 +40,7 @@ extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "GetStdHandle"
 
 ///|
 #cfg(platform="windows")
-fn setup_stdio(
-  id : Int,
-  context~ : String,
-  restore_context~ : String,
-) -> IoHandle {
+fn setup_stdio(id : Int, context~ : String) -> IoHandle {
   // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
   let fd = get_std_handle(-10 - id)
   if !@fd_util.fd_is_valid(fd) {
@@ -86,31 +70,16 @@ fn setup_stdio(
       guard evloop.fds.get(fd) is None
       evloop.fds[fd] = handle
     },
-    exit=() => {
-      ignore(restore_context)
-      ignore(handle.detach_from_event_loop())
-    },
+    exit=() => ignore(handle.detach_from_event_loop()),
   )
   handle
 }
 
 ///|
-pub let stdin : IoHandle = setup_stdio(
-  0,
-  context="initialize `stdin`",
-  restore_context="restore `stdin`",
-)
+pub let stdin : IoHandle = setup_stdio(0, context="initialize `stdin`")
 
 ///|
-pub let stdout : IoHandle = setup_stdio(
-  1,
-  context="initialize `stdout`",
-  restore_context="restore `stdout`",
-)
+pub let stdout : IoHandle = setup_stdio(1, context="initialize `stdout`")
 
 ///|
-pub let stderr : IoHandle = setup_stdio(
-  2,
-  context="initialize `stderr`",
-  restore_context="restore `stderr`",
-)
+pub let stderr : IoHandle = setup_stdio(2, context="initialize `stderr`")
