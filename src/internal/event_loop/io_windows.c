@@ -487,15 +487,11 @@ void print_log(char *msg) {
 MOONBIT_EXPORT
 void log_info(void *obj1, void *obj2) {
   fprintf(stderr, "log_info(handle=%llx, evloop=%llx)\n", obj1, obj2);
-  fprintf(stderr, "handle->rc=%d\n", Moonbit_object_header(obj1)->rc);
-  fprintf(stderr, "evloop->rc=%d\n", Moonbit_object_header(obj2)->rc);
 }
 
 MOONBIT_EXPORT
 void checked_decref(void *obj1, void *obj2) {
   fprintf(stderr, "decref(handle=%llx, evloop=%llx)\n", obj1, obj2);
-  fprintf(stderr, "handle->rc=%d\n", Moonbit_object_header(obj1)->rc);
-  fprintf(stderr, "evloop->rc=%d\n", Moonbit_object_header(obj2)->rc);
   moonbit_decref(obj1);
   moonbit_decref(obj2);
 }
