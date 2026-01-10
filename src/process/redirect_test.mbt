@@ -50,8 +50,8 @@ async test "merge multiple" {
 async test "redirect to file" {
   let cat = cat.wait()
   @async.with_task_group(fn(root) {
-    let input_file = "target/process_redirect_test_in.txt"
-    let output_file = "target/process_redirect_test_out.txt"
+    let input_file = "_build/process_redirect_test_in.txt"
+    let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     @fs.write_file(input_file, "abcd", create=0o644)

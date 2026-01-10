@@ -49,7 +49,7 @@ fn make_test_prog(name : String) -> @async.Lazy[String] {
     if code != 0 {
       fail("failed to build test program `\{name}`: \{code}")
     }
-    "src/process/test_programs/target/native/debug/build/\{name}/\{name}.exe"
+    "src/process/test_programs/_build/native/debug/build/\{name}/\{name}.exe"
   })
 }
 

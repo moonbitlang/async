@@ -15,7 +15,7 @@
 ///|
 #cfg(not(platform="windows"))
 async test "stat" {
-  let link_path = "target/fs_stat_test"
+  let link_path = "_build/fs_stat_test"
   @fs.symlink(link_path, target="../LICENSE")
   @async.with_task_group(fn(group) {
     group.add_defer(() => @fs.remove(link_path))

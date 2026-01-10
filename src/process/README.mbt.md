@@ -165,7 +165,7 @@ Use a file as process input:
 #cfg(target="native")
 async test "redirect input from file" {
   @async.with_task_group(fn(root) {
-    let input_file = "target/process_test_input.txt"
+    let input_file = "_build/process_test_input.txt"
     @fs.write_file(input_file, "file content", create=0o644)
     root.add_defer(fn() { @fs.remove(input_file) })
     let (code, output) = @process.collect_stdout(
@@ -188,7 +188,7 @@ Write process output to a file:
 #cfg(target="native")
 async test "redirect output to file" {
   @async.with_task_group(fn(root) {
-    let output_file = "target/process_test_output.txt"
+    let output_file = "_build/process_test_output.txt"
     root.add_defer(fn() { @fs.remove(output_file) })
     let code = @process.run(
       "echo",
@@ -211,8 +211,8 @@ Copy file content using process redirection:
 #cfg(target="native")
 async test "file to file redirection" {
   @async.with_task_group(fn(root) {
-    let input_file = "target/process_redirect_in.txt"
-    let output_file = "target/process_redirect_out.txt"
+    let input_file = "_build/process_redirect_in.txt"
+    let output_file = "_build/process_redirect_out.txt"
     @fs.write_file(input_file, "redirect test", create=0o644)
     root.add_defer(fn() { @fs.remove(input_file) })
     root.add_defer(fn() { @fs.remove(output_file) })

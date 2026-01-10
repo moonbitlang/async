@@ -14,7 +14,7 @@
 
 ///|
 async test "mkdir" {
-  let path = "target/mkdir_test"
+  let path = "_build/mkdir_test"
   @fs.mkdir(path, permission=0o755)
   @fs.write_file("\{path}/file", "", create=0o644)
   let result = @fs.readdir(path, sort=true)
@@ -26,7 +26,7 @@ async test "mkdir" {
 ///|
 #cfg(not(platform="windows"))
 async test "rmdir recursive" {
-  let path = "target/rmdir_test"
+  let path = "_build/rmdir_test"
   @fs.mkdir(path, permission=0o755)
   @fs.write_file("\{path}/file", "", create=0o644)
   @fs.mkdir("\{path}/inner", permission=0o755)
@@ -40,7 +40,7 @@ async test "rmdir recursive" {
 ///|
 async test "mkdir recursive" {
   @async.with_task_group(group => {
-    let base_path = "target/recursive_mkdir"
+    let base_path = "_build/recursive_mkdir"
     let path = "\{base_path}/test//directory"
     @fs.mkdir(path, permission=0o755, recursive=true)
     group.add_defer(() => @fs.rmdir(base_path, recursive=true))

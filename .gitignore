@@ -1,6 +1,8 @@
-target/
+_build/
+target
 .mooncakes/
 .DS_Store
 examples/target/
+examples/_target/
 examples/.mooncakes/
 .moonagent
