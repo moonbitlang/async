@@ -301,7 +301,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *obj1, void *obj2) {
+int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *obj1, void *obj2, void *obj3) {
   DWORD n_written = 0;
   int success;
 
@@ -319,7 +319,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
-      fprintf(stderr, "before WSASend(): handle=%llx, evloop=%llx\n", obj1, obj2);
+      fprintf(stderr, "before WSASend(): handle=%llx, evloop=%llx, context=%llx\n", obj1, obj2, obj3);
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
@@ -329,7 +329,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         (LPOVERLAPPED)result,
         NULL
       );
-      fprintf(stderr, "WSASend() => %d, %d | handle=%llx, evloop=%llx\n", success, GetLastError(), obj1, obj2);
+      fprintf(stderr, "WSASend() => %d, %d | handle=%llx, evloop=%llx, context=%llx\n", success, GetLastError(), obj1, obj2, obj3);
       break;
     }
     case SocketWithAddr: {

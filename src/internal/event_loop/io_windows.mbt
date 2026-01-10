@@ -299,8 +299,8 @@ pub async fn IoHandle::read_at(
 
 ///|
 #cfg(platform="windows")
-#borrow(x, y)
-extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, x : IoHandle, y : EventLoop) -> Int = "moonbitlang_async_write"
+#borrow(x, y, z)
+extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, x : IoHandle, y : EventLoop, z : String) -> Int = "moonbitlang_async_write"
 
 ///|
 #borrow(x, y, z)
@@ -320,7 +320,7 @@ async fn IoHandle::generic_write(
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   log_info(handle, evloop, context)
-  let n = write_ffi(handle.fd, result, handle, evloop)
+  let n = write_ffi(handle.fd, result, handle, evloop, context)
   log_info(handle, evloop, context)
   if n >= 0 {
     log_info(handle, evloop, context)
