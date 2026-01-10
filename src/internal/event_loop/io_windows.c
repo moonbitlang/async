@@ -495,6 +495,7 @@ void checked_decref(void *obj1, void *obj2, void *obj3) {
   moonbit_decref(obj1);
   moonbit_decref(obj2);
   moonbit_decref(obj3);
+  fprintf(stderr, "after decref(handle=%llx, evloop=%llx, context=%llx)\n", obj1, obj2, obj3);
 }
 
 #endif // #ifdef _WIN32
