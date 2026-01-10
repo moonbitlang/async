@@ -271,7 +271,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
       int addr_len = result->addr->sa_family == AF_INET
         ? sizeof(struct sockaddr_in)
         : sizeof(struct sockaddr_in6);
-      fprintf(stderr, "right before WSARecvFrom(): buffer=%llx\n", result->buf.buf);
+      fprintf(stderr, "right before WSARecvFrom(): n_read=%llx, flags=%llx, addr_len=%llx\n", &n_read, &flags, &addr_len);
       for (int32_t i = 0; i < 10; ++i) {
         DWORD *ptr = (&addr_len) - i;
         fprintf(stderr, "%llx: %x\n", ptr, *ptr);
