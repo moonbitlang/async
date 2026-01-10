@@ -274,7 +274,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
       int addr_len = result->addr->sa_family == AF_INET
         ? sizeof(struct sockaddr_in)
         : sizeof(struct sockaddr_in6);
-      fprintf(stderr, "right before WSARecvFrom()\n");
+      fprintf(stderr, "right before WSARecvFrom(): buffer=%llx\n", result->buf.buf);
       success = 0 == WSARecvFrom(
         (SOCKET)handle,
         &(result->buf),
@@ -319,7 +319,15 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
-      fprintf(stderr, "before WSASend(): handle=%llx, evloop=%llx, context=%llx\n", obj1, obj2, obj3);
+      fprintf(
+        stderr,
+        "before WSASend(): buf=%llx, stack=%llx, handle=%llx, evloop=%llx, context=%llx\n",
+        result->buf.buf,
+        &n_written,
+        obj1,
+        obj2,
+        obj3
+      );
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
