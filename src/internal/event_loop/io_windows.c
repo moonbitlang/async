@@ -78,6 +78,7 @@ struct SocketWithAddrIoResult {
 
   // address buffer
   struct sockaddr *addr;
+  int addr_len;
 };
 
 struct ConnectIoResult {
@@ -150,6 +151,9 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
   result->buf.buf = buf + offset;
   result->buf.len = len;
   result->addr = addr;
+  result->addr_len = addr->sa_family == AF_INET
+    ? sizeof(struct sockaddr_in)
+    : sizeof(struct sockaddr_in6);
   return result;
 }
 
@@ -264,18 +268,8 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
       break;
     }
     case SocketWithAddr: {
-      fprintf(stderr, "before WSARecvFrom()\n");
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
       DWORD flags = 0;
-      fprintf(stderr, "%llx\n", result->addr);
-      int addr_len = result->addr->sa_family == AF_INET
-        ? sizeof(struct sockaddr_in)
-        : sizeof(struct sockaddr_in6);
-      fprintf(stderr, "right before WSARecvFrom(): n_read=%llx, flags=%llx, addr_len=%llx\n", &n_read, &flags, &addr_len);
-      for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&addr_len) - i;
-        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
-      }
       success = 0 == WSARecvFrom(
         (SOCKET)handle,
         &(result->buf),
@@ -283,15 +277,10 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         &n_read,
         &flags,
         result->addr,
-        &addr_len,
+        &result->addr_len,
         (LPOVERLAPPED)result,
         NULL
       );
-      for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&addr_len) - i;
-        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
-      }
-      fprintf(stderr, "WSARecvFrom()\n");
       break;
     }
   }
@@ -324,18 +313,6 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
-      fprintf(
-        stderr,
-        "before WSASend(): stack=%llx, handle=%llx, evloop=%llx, context=%llx\n",
-        &n_written,
-        obj1,
-        obj2,
-        obj3
-      );
-      for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&n_written) - i;
-        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
-      }
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
@@ -345,18 +322,10 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         (LPOVERLAPPED)result,
         NULL
       );
-      fprintf(stderr, "WSASend() => %d, %d | handle=%llx, evloop=%llx, context=%llx\n", success, GetLastError(), obj1, obj2, obj3);
-      for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&n_written) - i;
-        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
-      }
       break;
     }
     case SocketWithAddr: {
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
-      int addr_len = result->addr->sa_family == AF_INET
-        ? sizeof(struct sockaddr_in)
-        : sizeof(struct sockaddr_in6);
       success = 0 == WSASendTo(
         (SOCKET)handle,
         &(result->buf),
@@ -364,11 +333,10 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         &n_written,
         0,
         result->addr,
-        addr_len,
+        &result->addr_len,
         (LPOVERLAPPED)result,
         NULL
       );
-      fprintf(stderr, "WSASendTo()\n");
       break;
     }
   }
