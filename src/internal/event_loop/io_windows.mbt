@@ -299,22 +299,16 @@ pub async fn IoHandle::read_at(
 
 ///|
 #cfg(platform="windows")
-#borrow(ptr)
-extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, ptr : Any) -> Int = "moonbitlang_async_write"
+#borrow(x, y)
+extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, x : IoHandle, y : EventLoop) -> Int = "moonbitlang_async_write"
 
 ///|
-type Any
+#borrow(x, y)
+extern "C" fn log_info(x : IoHandle, y : EventLoop) = "log_info"
 
 ///|
-#borrow(x)
-extern "C" fn log_info(x : Any) = "log_info"
-
-///|
-#owned(x)
-extern "C" fn decref(x : Any) = "checked_decref"
-
-///|
-fn[X] to_any(x : X) -> Any = "%identity"
+#owned(x, y)
+extern "C" fn decref(x : IoHandle, y : EventLoop) = "checked_decref"
 
 ///|
 #cfg(platform="windows")
@@ -325,16 +319,13 @@ async fn IoHandle::generic_write(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
-  log_info(to_any(evloop))
-  let n = write_ffi(handle.fd, result, to_any(evloop))
-  log_info(to_any(evloop))
+  log_info(handle, evloop)
+  let n = write_ffi(handle.fd, result, handle, evloop)
+  log_info(handle, evloop)
   if n >= 0 {
-    log_info(to_any(evloop))
+    log_info(handle, evloop)
     log("generic_write(): immediate success")
-    decref(to_any(context))
-    log_info(to_any(evloop))
-    decref(to_any(handle))
-    decref(to_any(evloop))
+    decref(handle, evloop)
     if n < 0 {
       raise Failure::Failure("")
     }

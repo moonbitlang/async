@@ -301,7 +301,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *track) {
+int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *obj1, void *obj2) {
   DWORD n_written = 0;
   int success;
 
@@ -319,7 +319,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *tr
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
-      fprintf(stderr, "before WSASend(): %llx\n", track);
+      fprintf(stderr, "before WSASend(): handle=%llx, evloop=%llx\n", obj1, obj2);
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
@@ -329,7 +329,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *tr
         (LPOVERLAPPED)result,
         NULL
       );
-      fprintf(stderr, "WSASend() => %d, %d | %llx\n", success, GetLastError(), track);
+      fprintf(stderr, "WSASend() => %d, %d | handle=%llx, evloop=%llx\n", success, GetLastError(), obj1, obj2);
       break;
     }
     case SocketWithAddr: {
@@ -485,16 +485,19 @@ void print_log(char *msg) {
 }
 
 MOONBIT_EXPORT
-void log_info(void *obj) {
-  fprintf(stderr, "log_info(%llx)\n", obj);
-  fprintf(stderr, "rc=%d\n", Moonbit_object_header(obj)->rc);
+void log_info(void *obj1, void *obj2) {
+  fprintf(stderr, "log_info(handle=%llx, evloop=%llx)\n", obj1, obj2);
+  fprintf(stderr, "handle->rc=%d\n", Moonbit_object_header(obj1)->rc);
+  fprintf(stderr, "evloop->rc=%d\n", Moonbit_object_header(obj2)->rc);
 }
 
 MOONBIT_EXPORT
-void checked_decref(void *obj) {
-  fprintf(stderr, "decref(%llx)\n", obj);
-  fprintf(stderr, "rc=%d\n", Moonbit_object_header(obj)->rc);
-  moonbit_decref(obj);
+void checked_decref(void *obj1, void *obj2) {
+  fprintf(stderr, "decref(handle=%llx, evloop=%llx)\n", obj1, obj2);
+  fprintf(stderr, "handle->rc=%d\n", Moonbit_object_header(obj1)->rc);
+  fprintf(stderr, "evloop->rc=%d\n", Moonbit_object_header(obj2)->rc);
+  moonbit_decref(obj1);
+  moonbit_decref(obj2);
 }
 
 #endif // #ifdef _WIN32
