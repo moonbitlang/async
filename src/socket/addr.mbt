@@ -118,7 +118,12 @@ extern "C" fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr = "moonbitl
 extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
 
 ///|
+#cfg(not(platfrom="windows"))
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
+
+///|
+#cfg(platfrom="windows")
+extern "C" fn AddrInfo::free(self : AddrInfo) = "FreeAddrInfoW"
 
 ///|
 /// Error message from failure in resolving a network hostname.
