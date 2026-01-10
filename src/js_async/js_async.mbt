@@ -41,7 +41,9 @@ extern "js" fn JsValue::to_string(v : JsValue) -> String =
 
 ///|
 /// A JavaScript exception wrapped in MoonBit error
-suberror JsError JsValue
+suberror JsError {
+  JsError(JsValue)
+}
 
 ///|
 pub impl Show for JsError with output(self, logger) {

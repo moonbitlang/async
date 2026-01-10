@@ -15,7 +15,9 @@ pub suberror ConnectionClosed
 pub impl Show for ConnectionClosed
 pub impl ToJson for ConnectionClosed
 
-pub suberror TlsError String
+pub suberror TlsError {
+  TlsError(String)
+}
 pub impl Show for TlsError
 pub impl ToJson for TlsError
 

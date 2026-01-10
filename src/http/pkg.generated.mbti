@@ -37,7 +37,9 @@ pub suberror HttpProtocolError {
 pub impl Show for HttpProtocolError
 pub impl ToJson for HttpProtocolError
 
-pub suberror ProxyError Response
+pub suberror ProxyError {
+  ProxyError(Response)
+}
 pub impl Show for ProxyError
 pub impl ToJson for ProxyError
 

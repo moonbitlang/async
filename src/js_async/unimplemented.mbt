@@ -24,7 +24,9 @@ pub type Promise[X]
 ///|
 /// A JavaScript exception wrapped in MoonBit error
 #internal(unimplemented, "unimplemented in native backend")
-suberror JsError Unit
+suberror JsError {
+  JsError(Unit)
+}
 
 ///|
 #internal(unimplemented, "unimplemented in native backend")

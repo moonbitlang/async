@@ -124,7 +124,9 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 /// Error message from failure in resolving a network hostname.
 /// The content of the error message is platfrom-dependent,
 /// so users should never depend on it.
-pub suberror ResolveHostnameError String derive(Show, ToJson)
+pub suberror ResolveHostnameError {
+  ResolveHostnameError(String)
+} derive(Show, ToJson)
 
 ///|
 pub(all) enum IpProtocolPreference {
