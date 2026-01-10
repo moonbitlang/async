@@ -303,12 +303,12 @@ pub async fn IoHandle::read_at(
 extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult, x : IoHandle, y : EventLoop) -> Int = "moonbitlang_async_write"
 
 ///|
-#borrow(x, y)
-extern "C" fn log_info(x : IoHandle, y : EventLoop) = "log_info"
+#borrow(x, y, z)
+extern "C" fn log_info(x : IoHandle, y : EventLoop, z : String) = "log_info"
 
 ///|
-#owned(x, y)
-extern "C" fn decref(x : IoHandle, y : EventLoop) = "checked_decref"
+#owned(x, y, z)
+extern "C" fn decref(x : IoHandle, y : EventLoop, z : String) = "checked_decref"
 
 ///|
 #cfg(platform="windows")
@@ -319,16 +319,14 @@ async fn IoHandle::generic_write(
   context~ : String,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
-  log_info(handle, evloop)
+  log_info(handle, evloop, context)
   let n = write_ffi(handle.fd, result, handle, evloop)
-  log_info(handle, evloop)
+  log_info(handle, evloop, context)
   if n >= 0 {
-    log_info(handle, evloop)
+    log_info(handle, evloop, context)
     log("generic_write(): immediate success")
-    decref(handle, evloop)
+    decref(handle, evloop, context)
     log("???")
-    ignore(context)
-    log("????")
     if n < 0 {
       raise Failure::Failure("")
     }

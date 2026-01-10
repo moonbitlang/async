@@ -485,15 +485,16 @@ void print_log(char *msg) {
 }
 
 MOONBIT_EXPORT
-void log_info(void *obj1, void *obj2) {
-  fprintf(stderr, "log_info(handle=%llx, evloop=%llx)\n", obj1, obj2);
+void log_info(void *obj1, void *obj2, void *obj3) {
+  fprintf(stderr, "log_info(handle=%llx, evloop=%llx, context=%llx)\n", obj1, obj2, obj3);
 }
 
 MOONBIT_EXPORT
-void checked_decref(void *obj1, void *obj2) {
-  fprintf(stderr, "decref(handle=%llx, evloop=%llx)\n", obj1, obj2);
+void checked_decref(void *obj1, void *obj2, void *obj3) {
+  fprintf(stderr, "decref(handle=%llx, evloop=%llx, context=%llx)\n", obj1, obj2, obj3);
   moonbit_decref(obj1);
   moonbit_decref(obj2);
+  moonbit_decref(obj3);
 }
 
 #endif // #ifdef _WIN32
