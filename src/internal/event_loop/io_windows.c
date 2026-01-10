@@ -273,7 +273,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         : sizeof(struct sockaddr_in6);
       fprintf(stderr, "right before WSARecvFrom(): buffer=%llx\n", result->buf.buf);
       for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&n_read) - i;
+        DWORD *ptr = (&addr_len) - i;
         fprintf(stderr, "%llx: %x\n", ptr, *ptr);
       }
       success = 0 == WSARecvFrom(
@@ -288,7 +288,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         NULL
       );
       for (int32_t i = 0; i < 10; ++i) {
-        DWORD *ptr = (&n_read) - i;
+        DWORD *ptr = (&addr_len) - i;
         fprintf(stderr, "%llx: %x\n", ptr, *ptr);
       }
       fprintf(stderr, "WSARecvFrom()\n");
