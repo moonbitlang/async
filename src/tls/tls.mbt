@@ -13,7 +13,9 @@
 // limitations under the License.
 
 ///|
-pub suberror TlsError String derive(Show, ToJson)
+pub suberror TlsError {
+  TlsError(String)
+} derive(Show, ToJson)
 
 ///|
 pub suberror ConnectionClosed derive(Show, ToJson)

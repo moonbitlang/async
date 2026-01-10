@@ -12,7 +12,9 @@ pub suberror InvalidAddr
 pub impl Show for InvalidAddr
 pub impl ToJson for InvalidAddr
 
-pub suberror ResolveHostnameError String
+pub suberror ResolveHostnameError {
+  ResolveHostnameError(String)
+}
 pub impl Show for ResolveHostnameError
 pub impl ToJson for ResolveHostnameError
 
