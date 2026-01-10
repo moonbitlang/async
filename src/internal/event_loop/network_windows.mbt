@@ -43,7 +43,6 @@ pub async fn IoHandle::recvfrom(
     buf.unsafe_reinterpret_as_bytes(),
     offset~,
     len~,
-    flags=0,
     addr~,
   )
   defer result.free()
@@ -73,7 +72,6 @@ pub async fn IoHandle::sendto(
     buf,
     offset~,
     len~,
-    flags=0,
     addr~,
   )
   defer result.free()

@@ -36,7 +36,6 @@ extern "C" fn IoResult::for_socket(
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
-  flags~ : Int,
 ) -> IoResult = "moonbitlang_async_make_socket_io_result"
 
 ///|
@@ -47,7 +46,6 @@ extern "C" fn IoResult::for_socket_with_addr(
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
-  flags~ : Int,
   addr~ : Bytes,
 ) -> IoResult = "moonbitlang_async_make_socket_with_addr_io_result"
 
@@ -262,7 +260,6 @@ pub async fn IoHandle::read(
         buf.unsafe_reinterpret_as_bytes(),
         offset~,
         len~,
-        flags=0,
       )
     _ =>
       IoResult::for_file(
@@ -377,7 +374,7 @@ pub async fn IoHandle::write(
   evloop.job_id += 1
   let result = match handle.kind {
     Regular => panic()
-    Socket => IoResult::for_socket(job_id, buf, offset~, len~, flags=0)
+    Socket => IoResult::for_socket(job_id, buf, offset~, len~)
     _ => IoResult::for_file(job_id, buf, offset~, len~, position=0)
   }
   defer result.free()

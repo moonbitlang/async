@@ -64,7 +64,6 @@ struct SocketIoResult {
 
   // data for WSA socket IO
   WSABUF buf;
-  DWORD flags;
 };
 
 struct SocketWithAddrIoResult {
@@ -76,7 +75,6 @@ struct SocketWithAddrIoResult {
 
   // data for WSA socket IO
   WSABUF buf;
-  DWORD flags;
 
   // address buffer
   struct sockaddr *addr;
@@ -130,14 +128,12 @@ struct SocketIoResult *moonbitlang_async_make_socket_io_result(
   int32_t job_id,
   char *buf,
   int32_t offset,
-  int32_t len,
-  int32_t flags
+  int32_t len
 ) {
   struct SocketIoResult *result = MAKE_IO_RESULT(job_id, Socket);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
-  result->flags = flags;
   return result;
 }
 
@@ -147,14 +143,12 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
   char *buf,
   int32_t offset,
   int32_t len,
-  int32_t flags,
   struct sockaddr *addr
 ) {
   struct SocketWithAddrIoResult *result = MAKE_IO_RESULT(job_id, SocketWithAddr);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
-  result->flags = flags;
   result->addr = addr;
   return result;
 }
@@ -256,12 +250,13 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
     }
     case Socket: {
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
+      DWORD flags = 0;
       success = 0 == WSARecv(
         (SOCKET)handle,
         &(result->buf),
         1,
         &n_read,
-        &(result->flags),
+        &flags,
         (LPOVERLAPPED)result,
         NULL
       );
@@ -271,6 +266,8 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
     case SocketWithAddr: {
       fprintf(stderr, "before WSARecvFrom()\n");
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
+      DWORD flags = 0;
+      fprintf(stderr, "%llx\n", result->addr);
       int addr_len = result->addr->sa_family == AF_INET
         ? sizeof(struct sockaddr_in)
         : sizeof(struct sockaddr_in6);
@@ -280,7 +277,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         &(result->buf),
         1,
         &n_read,
-        &(result->flags),
+        &flags,
         result->addr,
         &addr_len,
         (LPOVERLAPPED)result,
@@ -331,7 +328,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         &(result->buf),
         1,
         &n_written,
-        result->flags,
+        0,
         (LPOVERLAPPED)result,
         NULL
       );
@@ -348,7 +345,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         &(result->buf),
         1,
         &n_written,
-        result->flags,
+        0,
         result->addr,
         addr_len,
         (LPOVERLAPPED)result,
