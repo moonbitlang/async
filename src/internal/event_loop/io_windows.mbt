@@ -326,6 +326,7 @@ async fn IoHandle::generic_write(
     log_info(handle, evloop)
     log("generic_write(): immediate success")
     decref(handle, evloop)
+    log_info(handle, evloop)
     ignore(context)
     if n < 0 {
       raise Failure::Failure("")
