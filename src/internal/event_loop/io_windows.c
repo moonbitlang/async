@@ -318,12 +318,16 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
       struct SocketIoResult *result = (struct SocketIoResult*)result_obj;
       fprintf(
         stderr,
-        "before WSASend(): stack=%llx, handle=%llx, evloop=%llx, context=%llx, dummy=%d, dummy=%d\n",
+        "before WSASend(): stack=%llx, handle=%llx, evloop=%llx, context=%llx\n",
         &n_written,
         obj1,
         obj2,
         obj3
       );
+      for (int32_t i = 0; i < 10; ++i) {
+        DWORD *ptr = (&n_written) - i;
+        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
+      }
       success = 0 == WSASend(
         (SOCKET)handle,
         &(result->buf),
