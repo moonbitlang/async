@@ -338,6 +338,10 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj, void *ob
         NULL
       );
       fprintf(stderr, "WSASend() => %d, %d | handle=%llx, evloop=%llx, context=%llx\n", success, GetLastError(), obj1, obj2, obj3);
+      for (int32_t i = 0; i < 10; ++i) {
+        DWORD *ptr = (&n_written) - i;
+        fprintf(stderr, "%llx: %x\n", ptr, *ptr);
+      }
       break;
     }
     case SocketWithAddr: {
