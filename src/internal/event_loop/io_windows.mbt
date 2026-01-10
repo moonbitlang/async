@@ -326,12 +326,12 @@ async fn IoHandle::generic_write(
     log_info(handle, evloop)
     log("generic_write(): immediate success")
     decref(handle, evloop)
-    log_info(handle, evloop)
+    log("???")
     ignore(context)
     if n < 0 {
       raise Failure::Failure("")
     }
-    log("???")
+    log("?????")
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
