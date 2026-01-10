@@ -77,8 +77,11 @@ struct SocketWithAddrIoResult {
   WSABUF buf;
   DWORD flags;
 
-  // address buffer
+  // address buffer.
+  // According to the https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsarecvfrom,
+  // both the address and address length pointer of `WSARecvFrom` should be persistent
   struct sockaddr *addr;
+  int addr_len;
 };
 
 struct ConnectIoResult {
@@ -155,6 +158,9 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
   result->buf.len = len;
   result->flags = flags;
   result->addr = addr;
+  result->addr_len = addr->sa_family == AF_INET
+    ? sizeof(struct sockaddr_in)
+    : sizeof(struct sockaddr_in6);
   return result;
 }
 
@@ -272,9 +278,6 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
     }
     case SocketWithAddr: {
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
-      int addr_len = result->addr->sa_family == AF_INET
-        ? sizeof(struct sockaddr_in)
-        : sizeof(struct sockaddr_in6);
       success = 0 == WSARecvFrom(
         (SOCKET)handle,
         &(result->buf),
@@ -282,7 +285,7 @@ int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
         &n_read,
         &(result->flags),
         result->addr,
-        &addr_len,
+        &result->addr_len,
         (LPOVERLAPPED)result,
         NULL
       );
@@ -331,9 +334,6 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
     }
     case SocketWithAddr: {
       struct SocketWithAddrIoResult *result = (struct SocketWithAddrIoResult*)result_obj;
-      int addr_len = result->addr->sa_family == AF_INET
-        ? sizeof(struct sockaddr_in)
-        : sizeof(struct sockaddr_in6);
       success = 0 == WSASendTo(
         (SOCKET)handle,
         &(result->buf),
@@ -341,7 +341,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
         &n_written,
         result->flags,
         result->addr,
-        addr_len,
+        result->addr_len,
         (LPOVERLAPPED)result,
         NULL
       );
