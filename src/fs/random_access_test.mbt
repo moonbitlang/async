@@ -14,7 +14,7 @@
 
 ///|
 async test "write_at" {
-  let path = "target/write_at_test"
+  let path = "_build/write_at_test"
   // initialize
   @fs.write_file(path, "abcdef", create=0o644, sync=Full)
   // first read
@@ -38,7 +38,7 @@ async test "write_at" {
 
 ///|
 async test "read_at" {
-  let path = "target/read_at_test"
+  let path = "_build/read_at_test"
   @fs.write_file(path, "abcdef", create=0o644, sync=Full)
   {
     let r = @fs.open(path, mode=ReadOnly)

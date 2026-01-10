@@ -3,9 +3,9 @@
 set -e
 
 moon build -C examples
-go build -o examples/target/http_server_benchmark_go examples/http_server_benchmark/http_server_benchmark.go
+go build -o examples/_build/http_server_benchmark_go examples/http_server_benchmark/http_server_benchmark.go
 
-server=./examples/target/native/release/build/http_server_benchmark/http_server_benchmark.exe
+server=./examples/_build/native/release/build/http_server_benchmark/http_server_benchmark.exe
 
 run_moonbit() {
   $server &
@@ -26,7 +26,7 @@ run_node() {
 }
 
 run_go() {
-  GOMAXPROCS=1 ./examples/target/http_server_benchmark_go &
+  GOMAXPROCS=1 ./examples/_build/http_server_benchmark_go &
   server_pid=$!
   trap "kill $server_pid; exit" INT
   sleep 0.5

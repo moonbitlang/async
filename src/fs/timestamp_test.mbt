@@ -56,7 +56,7 @@ async test "timestamp for path" {
 // `atime` is not reliable on Windows.
 #cfg(platform="windows")
 async test "mtime for path" {
-  let path = "target/timestamp_test"
+  let path = "_build/timestamp_test"
   @async.with_task_group(fn(group) {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
@@ -111,7 +111,7 @@ async test "timestamp for opened file" {
 // `atime` is not reliable on Windows.
 #cfg(platform="windows")
 async test "mtime for opened file" {
-  let path = "target/opened_file_timestamp_test"
+  let path = "_build/opened_file_timestamp_test"
   @async.with_task_group(fn(group) {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))

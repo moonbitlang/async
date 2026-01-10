@@ -23,13 +23,13 @@ let cat : @async.Lazy[String] = @async.lazy_init(() => {
   guard exit_code is 0 else {
     fail("failed to build `cat` program: \{exit_code}")
   }
-  "./src/process/test_programs/target/native/debug/build/cat/cat.exe"
+  "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
 })
 
 ///|
 async test "redirect_file" {
   let cat = cat.wait()
-  let out_file = "target/stdio_file_test"
+  let out_file = "_build/stdio_file_test"
   let code = @process.run(
     cat,
     [],

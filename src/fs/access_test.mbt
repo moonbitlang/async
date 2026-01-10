@@ -47,7 +47,7 @@ async test "can_execute" {
 ///|
 #cfg(not(platform="windows"))
 async test "chmod" {
-  let path = "target/chmod_test"
+  let path = "_build/chmod_test"
   @async.with_task_group(fn(group) {
     @fs.write_file(path, "abcd", create=0o444)
     group.add_defer(() => @fs.remove(path))
