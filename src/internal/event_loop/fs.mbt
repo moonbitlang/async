@@ -79,6 +79,12 @@ pub async fn open(
     context~,
   )
   let kind = @fd_util.FileKind::from_sys_kind(kind)
+  // On Windows, due to a lot of complexity,
+  // we use synchronous IO + thread pool unconditionally for regular files.
+  // However, on Windows, overlapped IO must be enabled on file creation time,
+  // but we cannot know the kind of a file before opening it.
+  // So, we use synchronous IO unconditionally for everything opened by path,
+  // including named pipes.
   IoHandle::from_fd(fd, kind~, is_async=!IS_WINDOWS && kind.can_poll())
 }
 

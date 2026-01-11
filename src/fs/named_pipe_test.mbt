@@ -19,9 +19,9 @@ extern "C" fn mkfifo(path : @os_string.OsString, mode : Int) -> Int = "mkfifo"
 
 ///|
 #cfg(not(platform="windows"))
-async test "cancel FIFO open" {
+async test "cancel named fifo open" {
   @async.with_task_group(group => {
-    let path = "_build/cancel_fifo_read"
+    let path = "_build/cancel_open_test"
     if mkfifo(@os_string.encode(path), 0o644) < 0 {
       @os_error.check_errno("mkfifo")
     }
@@ -47,8 +47,72 @@ async test "cancel named pipe open" {
     @os_error.check_errno(context)
   }
   defer (try! @fd_util.close(server, kind=Pipe, context~))
-  let client1 = @fs.open(path, mode=WriteOnly)
+  let client1 = @fs.open(path, mode=ReadOnly)
   defer client1.close()
-  let result = @async.with_timeout_opt(500, () => @fs.open(path, mode=WriteOnly).close())
+  let result = @async.with_timeout_opt(500, () => @fs.open(path, mode=ReadOnly).close())
   inspect(result, content="None")
+}
+
+///|
+#cfg(not(platform="windows"))
+async test "named fifo" {
+  @async.with_task_group(group => {
+    let path = "_build/named_pipe_test"
+    if mkfifo(@os_string.encode(path), 0o644) < 0 {
+      @os_error.check_errno("mkfifo")
+    }
+    group.add_defer(() => @fs.remove(path))
+    group.spawn_bg(() => {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      inspect(r.read_until("\n").unwrap_or(""), content="abcd")
+      inspect(
+        @async.with_timeout_opt(250, () => r.read_all().text()),
+        content="None",
+      )
+      inspect(r.read_all().text(), content="efgh")
+    })
+    group.spawn_bg(() => {
+      let w = @fs.open(path, mode=WriteOnly)
+      defer w.close()
+      w.write("abcd\n")
+      @async.sleep(500)
+      w.write("efgh")
+    })
+  })
+}
+
+///|
+#cfg(platform="windows")
+async test "named pipe" {
+  @async.with_task_group(group => {
+    let context = "cancel named pipe open test"
+    let path = "\\\\.\\pipe\\moonbitlang_async_named_pipe_test"
+    let w = @fd_util.create_named_pipe_server(
+      @os_string.encode(path),
+      is_async=true,
+    )
+    if !@fd_util.fd_is_valid(w) {
+      @os_error.check_errno(context)
+    }
+    group.spawn_bg(() => {
+      let r = @fs.open(path, mode=ReadOnly)
+      defer r.close()
+      inspect(r.read_until("\n").unwrap_or(""), content="abcd")
+      inspect(
+        @async.with_timeout_opt(250, () => r.read_all().text()),
+        content="None",
+      )
+      inspect(r.read_all().text(), content="efgh")
+    })
+    group.spawn_bg(() => {
+      // wait for the client to connect
+      @async.sleep(200)
+      let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+      defer w.close()
+      ignore(w.write("abcd\n", offset=0, len=5, context=""))
+      @async.sleep(500)
+      ignore(w.write("efgh", offset=0, len=4, context=""))
+    })
+  })
 }
