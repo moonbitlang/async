@@ -92,19 +92,19 @@ pub fn pipe(
   let name = @os_string.encode(
     "\\\\.\\pipe\\moonbitlang_async.\{current_process_id}.\{pipe_id.val}",
   )
-  let r = create_named_pipe_server(name, is_async=read_end_is_async)
-  if !fd_is_valid(r) {
+  let w = create_named_pipe_server(name, is_async=write_end_is_async)
+  if !fd_is_valid(w) {
     @os_error.check_errno(context)
   }
   try {
-    let w = create_named_pipe_client(name, is_async=write_end_is_async)
-    if !fd_is_valid(w) {
+    let r = create_named_pipe_client(name, is_async=read_end_is_async)
+    if !fd_is_valid(r) {
       @os_error.check_errno(context)
     }
     (r, w)
   } catch {
     err => {
-      close(r, kind=Pipe, context~)
+      close(w, kind=Pipe, context~)
       raise err
     }
   }

@@ -109,7 +109,7 @@ int moonbitlang_async_set_cloexec(int fd) {
 
 MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_create_named_pipe_server(LPCWSTR name, int32_t is_async) {
-  DWORD flags = PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE;
+  DWORD flags = PIPE_ACCESS_OUTBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE;
   if (is_async)
     flags |= FILE_FLAG_OVERLAPPED;
 
@@ -129,7 +129,7 @@ MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_create_named_pipe_client(LPCWSTR name, int32_t is_async) {
   return CreateFileW(
     name,
-    GENERIC_WRITE,
+    GENERIC_READ,
     0,
     NULL,
     OPEN_EXISTING,
