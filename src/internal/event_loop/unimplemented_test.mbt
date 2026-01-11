@@ -18,5 +18,4 @@ let _ignore_unused_import : Unit = {
   ignore(@io.pipe)
   ignore(@async.sleep)
   ignore(@pipe.unimplemented)
-  ignore(@fs.unimplemented)
 }
