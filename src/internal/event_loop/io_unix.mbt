@@ -25,7 +25,6 @@ struct IoHandle {
 
 ///|
 #cfg(not(platform="windows"))
-#warnings("-unused_error_type")
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
@@ -33,6 +32,9 @@ pub fn IoHandle::from_fd(
 ) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
+  if is_async {
+    @fd_util.set_nonblocking(fd, context="@event_loop.IoHandle::from_fd()")
+  }
   let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
   evloop.fds[fd] = handle
   handle
