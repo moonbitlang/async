@@ -40,7 +40,12 @@ pub async fn open_detached(
     sync~,
     mode~,
   )
-  try perform_job_in_worker(job, context~) catch {
+  fn cancel(job_id) raise {
+    guard curr_loop.val is Some(evloop)
+    evloop.cancel_job_in_worker(job_id, context~)
+  }
+
+  try perform_job_in_worker(job, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
     err => raise err
