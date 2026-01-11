@@ -25,7 +25,7 @@ async test "read_all" {
     "README.mbt.md", "constants.mbt", "moon.pkg.json", "stat_test.mbt", "walk_test.mbt",
     "mkdir_test.mbt", "access_test.mbt", "create_test.mbt", "read_all_test.mbt",
     "realpath_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "text_file_test.mbt",
-    "timestamp_test.mbt", "random_access_test.mbt",
+    "timestamp_test.mbt", "named_pipe_test.mbt", "random_access_test.mbt",
   ])
 }
 
@@ -75,6 +75,6 @@ test "readdir clear errno" {
     let dir = @fs.opendir("src/fs")
     defer dir.close()
     let list = dir.read_all()
-    inspect(list.length(), content="22")
+    inspect(list.length(), content="23")
   })
 }
