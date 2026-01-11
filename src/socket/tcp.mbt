@@ -158,7 +158,6 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
     }
     @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
-    @fd_util.set_nonblocking(conn.fd(), context="@socket.TcpServer::accept()")
   } catch {
     err => {
       conn.close()

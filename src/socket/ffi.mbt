@@ -23,7 +23,6 @@ fn make_tcp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise 
     @os_error.check_errno(context)
   }
   @fd_util.set_cloexec(sock, context~)
-  @fd_util.set_nonblocking(sock, context~)
   sock
 }
 
@@ -48,7 +47,6 @@ fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise 
     @os_error.check_errno(context)
   }
   @fd_util.set_cloexec(sock, context~)
-  @fd_util.set_nonblocking(sock, context~)
   sock
 }
 
