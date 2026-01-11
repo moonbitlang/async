@@ -680,21 +680,30 @@ void open_job_worker(struct job *job) {
   if (open_job->append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
 
-  open_job->result = CreateFileW(
-    (LPCWSTR)open_job->filename,
-    access_flag, // desired access
-    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-    NULL, // security attributes
-    create_flags, // creation
-    flags, // flags and attributes. Note that we open files in synchronous mode
-    NULL // template file
-  );
+  do {
+    open_job->result = CreateFileW(
+      (LPCWSTR)open_job->filename,
+      access_flag, // desired access
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
+      NULL, // security attributes
+      create_flags, // creation
+      flags, // flags and attributes. Note that we open files in synchronous mode
+      NULL // template file
+    );
 
-  // get the kind of the file
-  if (open_job->result == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
-  }
+    // get the kind of the file
+    if (open_job->result == INVALID_HANDLE_VALUE) {
+      job->err = GetLastError();
+      if (job->err != ERROR_PIPE_BUSY)
+        return;
+
+      // We are trying to open a named pipe, but no pipe instance is available,
+      // so wait until any instance is available.
+      // This wait is cancellable via `CancelSynchronousIo`.
+      WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER);
+      continue;
+    }
+  } while (0);
 
   if (!get_file_kind(open_job->result, &(open_job->kind))) {
     job->err = GetLastError();

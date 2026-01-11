@@ -64,7 +64,7 @@ let current_process_id : UInt = get_current_process_id()
 ///|
 #cfg(platform="windows")
 #borrow(name)
-extern "C" fn create_named_pipe_server(
+pub extern "C" fn create_named_pipe_server(
   name : @os_string.OsString,
   is_async~ : Bool,
 ) -> Fd = "moonbitlang_async_create_named_pipe_server"
