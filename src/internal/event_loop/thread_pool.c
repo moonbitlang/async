@@ -273,6 +273,27 @@ int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
 #endif
 }
 
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_free_worker(struct worker *worker) {
+  // terminate the worker
+  moonbitlang_async_wake_worker(worker, 0, 0);
+
+#ifdef _WIN32
+  WaitForSingleObject(worker->id, INFINITE);
+#else
+  pthread_join(worker->id, 0);
+#endif
+
+#ifdef WAKEUP_METHOD_EVENT
+  CloseHandle(worker->event);
+#elif defined(WAKEUP_METHOD_COND_VAR)
+  pthread_mutex_destroy(&(worker->mutex));
+  pthread_cond_destroy(&(worker->cond));
+#endif
+
+  free(worker);
+}
+
 #ifndef _WIN32
 static
 void nop_signal_handler(int signum) {}
@@ -324,35 +345,12 @@ void moonbitlang_async_destroy_thread_pool() {
 #endif
 }
 
-static
-void free_worker(void *target) {
-  struct worker *worker = (struct worker*)target;
-  // terminate the worker
-  moonbitlang_async_wake_worker(worker, 0, 0);
-
-#ifdef _WIN32
-  WaitForSingleObject(worker->id, INFINITE);
-#else
-  pthread_join(worker->id, 0);
-#endif
-
-#ifdef WAKEUP_METHOD_EVENT
-  CloseHandle(worker->event);
-#elif defined(WAKEUP_METHOD_COND_VAR)
-  pthread_mutex_destroy(&(worker->mutex));
-  pthread_cond_destroy(&(worker->cond));
-#endif
-}
-
 MOONBIT_FFI_EXPORT
 struct worker *moonbitlang_async_spawn_worker(
   int32_t init_job_id,
   struct job *init_job
 ) {
-  struct worker *worker = (struct worker*)moonbit_make_external_object(
-    &free_worker,
-    sizeof(struct worker)
-  );
+  struct worker *worker = (struct worker*)malloc(sizeof(struct worker));
   worker->job_id = init_job_id;
   worker->job = init_job;
   worker->waiting = 0;
