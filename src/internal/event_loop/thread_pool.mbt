@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#external
 priv type Worker
 
 ///|
@@ -26,16 +27,16 @@ extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 extern "C" fn Worker::spawn(init_job_id : Int, init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
-#borrow(worker)
+extern "C" fn Worker::free(worker : Worker) = "moonbitlang_async_free_worker"
+
+///|
 #owned(job)
 extern "C" fn Worker::wake(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
-#borrow(worker)
 extern "C" fn Worker::enter_idle(worker : Worker) = "moonbitlang_async_worker_enter_idle"
 
 ///|
-#borrow(worker)
 extern "C" fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang_async_cancel_worker"
 
 ///|

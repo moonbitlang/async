@@ -305,6 +305,9 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
     self.poll.remove_pid(pid)
   }
   self.pids.clear()
+  for worker in self.idle_workers {
+    worker.free()
+  }
 }
 
 ///|
@@ -327,6 +330,9 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
     coro.cancel()
   }
   self.jobs.clear()
+  for worker in self.idle_workers {
+    worker.free()
+  }
 }
 
 ///|
