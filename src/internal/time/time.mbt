@@ -62,3 +62,9 @@ extern "js" fn js_now() -> Double =
 pub fn ms_since_epoch() -> Int64 {
   js_now().to_int64()
 }
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+pub fn ms_since_epoch() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}

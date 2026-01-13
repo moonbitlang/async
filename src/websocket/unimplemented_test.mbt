@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="js")
+#cfg(not(target="native"))
 fn init {
   ignore(@async.sleep)
   ignore(@aqueue.Unbounded)

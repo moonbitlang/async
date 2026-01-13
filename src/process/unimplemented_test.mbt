@@ -13,5 +13,5 @@
 // limitations under the License.
 
 ///|
-#cfg(target="js")
+#cfg(not(target="native"))
 let _unimplemented : Unit = ignore(@fs.unimplemented)

@@ -30,7 +30,9 @@
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native" ],
     "missing_close_test.mbt": [ "native" ],
-    "event_loop.js.mbt": [ "js" ]
+    "worker_wbtest.mbt": [ "native", "js" ],
+    "event_loop.js.mbt": [ "js" ],
+    "unimplemented.mbt": [ "wasm", "wasm-gc" ]
   },
   "native-stub": [
     "epoll.c",
