@@ -13,10 +13,18 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@fs.unimplemented)
-  ignore(@process.unimplemented)
+  ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)
+  ignore(@os_string.unimplemented)
+  ignore(@os_error.unimplemented)
+  ignore(@time.ms_since_epoch)
+  ignore(@coroutine.is_being_cancelled)
+}
+
+///|
+#warnings("-unused_error_type-unused_async")
+pub async fn sleep(duration : Int) -> Unit {
+  ignore(duration)
+  abort("`sleep` is unimplemented on WASM backend")
 }

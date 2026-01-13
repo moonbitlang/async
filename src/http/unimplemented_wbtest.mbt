@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="js")
+#cfg(not(target="native"))
 fn _ignore_unused_import() -> Unit {
   ignore(@async.sleep)
   ignore(@fs.unimplemented)

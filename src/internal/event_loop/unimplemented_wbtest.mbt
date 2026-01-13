@@ -13,10 +13,5 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@fs.unimplemented)
-  ignore(@process.unimplemented)
-  ignore(@fd_util.unimplemented)
-}
+#cfg(any(target="wasm", target="wasm-gc"))
+let _unused_import : Unit = ignore(@async.sleep)

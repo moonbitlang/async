@@ -14,5 +14,5 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(target="js")
+#cfg(not(target="native"))
 pub let unimplemented : Unit = ignore(@c_buffer.unimplemented)

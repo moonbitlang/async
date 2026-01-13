@@ -7,7 +7,7 @@
   ],
   "targets": {
     "js_async.mbt": [ "js" ],
-    "unimplemented.mbt": [ "native" ],
+    "unimplemented.mbt": [ "native", "wasm", "wasm-gc" ],
     "js_async_test.mbt": [ "js" ]
   }
 }

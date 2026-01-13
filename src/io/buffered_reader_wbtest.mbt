@@ -344,7 +344,7 @@ async test "BufferedReader::read_line" {
 }
 
 ///|
-#cfg(target="js")
+#cfg(not(target="native"))
 fn _ignore_unused_import() -> Unit {
   ignore(@fs.unimplemented)
 }

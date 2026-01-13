@@ -14,7 +14,7 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(target="js")
+#cfg(not(target="native"))
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@event_loop.sleep)
