@@ -160,6 +160,27 @@ jobs:
           moon test --release --target js
           moon test --target js
 
+  wasm-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon check
+        run: |
+          moon check --target wasm --deny-warn
+          moon check --target wasm-gc --deny-warn
+
   moon-format:
     runs-on: ubuntu-latest
     timeout-minutes: 10
