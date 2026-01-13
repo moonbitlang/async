@@ -206,7 +206,7 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     }
     Some(job) => {
       self.running_workers[job.job_id] = worker
-      wake_worker(worker, job.job_id, job.job)
+      worker.wake(job.job_id, job.job)
     }
   }
   if self.jobs.get(job_id) is Some(coro) {
@@ -441,12 +441,12 @@ async fn perform_job_in_worker(
     None if evloop.running_workers.length() > evloop.max_worker_count =>
       evloop.job_queue.push_back({ job_id, job })
     None => {
-      let worker = spawn_worker(job_id, job)
+      let worker = Worker::spawn(job_id, job)
       evloop.running_workers[job_id] = worker
     }
     Some(worker) => {
       evloop.running_workers[job_id] = worker
-      wake_worker(worker, job_id, job)
+      worker.wake(job_id, job)
     }
   }
   evloop.wait_for_job(job_id, cancel?)
