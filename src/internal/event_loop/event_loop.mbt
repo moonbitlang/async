@@ -200,7 +200,10 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
   guard self.running_workers.get(job_id) is Some(worker)
   self.running_workers.remove(job_id)
   match self.job_queue.pop_front() {
-    None => self.idle_workers.push_back(worker)
+    None => {
+      worker.enter_idle()
+      self.idle_workers.push_back(worker)
+    }
     Some(job) => {
       self.running_workers[job.job_id] = worker
       wake_worker(worker, job.job_id, job.job)

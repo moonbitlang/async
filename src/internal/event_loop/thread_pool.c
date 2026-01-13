@@ -222,9 +222,12 @@ void moonbitlang_async_wake_worker(
   int32_t job_id,
   struct job *job
 ) {
-  moonbit_decref(worker->job);
+  if (worker->job)
+    moonbit_decref(worker->job);
+
   worker->job_id = job_id;
   worker->job = job;
+
 #ifdef WAKEUP_METHOD_EVENT
   worker->waiting = 0;
   SetEvent(worker->event);
@@ -237,6 +240,14 @@ void moonbitlang_async_wake_worker(
   pthread_cond_signal(&(worker->cond));
   pthread_mutex_unlock(&(worker->mutex));
 #endif
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_worker_enter_idle(struct worker *worker) {
+  if (worker->job)
+    moonbit_decref(worker->job);
+
+  worker->job = 0;
 }
 
 MOONBIT_FFI_EXPORT

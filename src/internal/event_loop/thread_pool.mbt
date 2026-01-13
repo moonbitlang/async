@@ -32,6 +32,10 @@ extern "C" fn wake_worker(worker : Worker, job_id : Int, job : Job) = "moonbitla
 
 ///|
 #borrow(worker)
+extern "C" fn Worker::enter_idle(worker : Worker) = "moonbitlang_async_worker_enter_idle"
+
+///|
+#borrow(worker)
 extern "C" fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang_async_cancel_worker"
 
 ///|
