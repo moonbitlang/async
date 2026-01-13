@@ -147,6 +147,13 @@ pub async fn readdir(
 /// `walk(path, f, ..)` recursively walk the directory `path`,
 /// and call `f` on every sub-directory in `path`, including `path` itself.
 ///
+/// If `exclude` is present, it will be invoked with the path of every directory
+/// before traversing them. If `exclude` returns `true`,
+/// the directory and all its children will be skipped.
+/// The path passed to `exclude` has the following format:
+/// - always start with `path`
+/// - does not contain trailing directory separator
+///
 /// The directories are walked in parallel.
 /// Use `max_concurrency` to limit the number of workers spawned in parallel.
 /// For example, setting `max_concurrency=1` result in sequential walking.
@@ -159,6 +166,7 @@ pub async fn readdir(
 pub async fn walk(
   path : StringView,
   f : async (String, Array[String]) -> Unit,
+  exclude? : (String) -> Bool = _ => false,
   max_concurrency? : Int = 1000,
   allow_failure? : Bool = false,
 ) -> Unit {
@@ -166,6 +174,7 @@ pub async fn walk(
   let sem = @async.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
     fn handle_path(path : String) {
+      guard !exclude(path) else {  }
       group.spawn_bg(allow_failure~, fn() {
         sem.acquire()
         defer sem.release()
