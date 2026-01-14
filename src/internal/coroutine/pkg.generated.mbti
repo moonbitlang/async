@@ -2,6 +2,8 @@
 package "moonbitlang/async/internal/coroutine"
 
 // Values
+pub fn check_cancellation() -> Unit raise
+
 pub fn current_coroutine() -> Coroutine
 
 pub fn has_immediately_ready_task() -> Bool

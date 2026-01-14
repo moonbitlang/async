@@ -226,6 +226,7 @@ pub async fn IoHandle::read(
   len~ : Int,
   context~ : String,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard !handle.reading
   handle.reading = true
   defer {
@@ -285,6 +286,7 @@ pub async fn IoHandle::read_at(
   position~ : Int64,
   context~ : String,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::read(handle.fd, buf, offset, len, position~)
@@ -334,6 +336,7 @@ pub async fn IoHandle::write(
   len~ : Int,
   context~ : String,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard !handle.writing
   handle.writing = true
   defer {
@@ -376,6 +379,7 @@ pub async fn IoHandle::write_at(
   position~ : Int64,
   context~ : String,
 ) -> Unit {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::write(handle.fd, buf, offset, len, position~)
