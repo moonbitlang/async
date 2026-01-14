@@ -709,7 +709,8 @@ void open_job_worker(struct job *job) {
       // We are trying to open a named pipe, but no pipe instance is available,
       // so wait until any instance is available.
       // This wait is cancellable via `CancelSynchronousIo`.
-      WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER);
+      if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER))
+        job->err = GetLastError();
       continue;
     }
   } while (0);
@@ -1662,6 +1663,8 @@ void wait_for_process_job_worker(struct job *job) {
   DWORD result = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
   if (result == WAIT_FAILED)
     job->err = GetLastError();
+  else if (result == WAIT_OBJECT_0 + 1)
+    job->err = ERROR_OPERATION_ABORTED;
 }
 
 struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(

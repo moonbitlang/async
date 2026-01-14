@@ -102,10 +102,6 @@ extern "C" fn IoResult::status_ffi(
 
 ///|
 #cfg(platform="windows")
-extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
-
-///|
-#cfg(platform="windows")
 fn IoResult::status(
   result : IoResult,
   handle : @fd_util.Fd,
