@@ -266,13 +266,7 @@ jobs:
 
       - name: setup sanitizer check
         run: |
-          for f in $(find src -name "moon.pkg.json" -not -wholename "src/internal/*" -print); do
-            content_except_first_brace=$(cat $f | tail -c +2)
-            (
-              echo -e -n '{\n  "link": { "native": { "cc-flags": "-g -fsanitize=address -fno-omit-frame-pointer" }},'
-              printf "%s\n" "$content_except_first_brace"
-            ) >$f
-          done
+          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |
