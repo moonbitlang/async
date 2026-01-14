@@ -384,7 +384,8 @@ async fn EventLoop::wait_for_job(
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
   match cancel {
-    None => @coroutine.protect_from_cancel(@coroutine.suspend)
+    None =>
+      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
     Some(cancel_func) =>
       @coroutine.suspend() catch {
         err =>
