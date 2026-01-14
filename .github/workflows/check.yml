@@ -273,6 +273,51 @@ jobs:
           export ASAN_OPTIONS=fast_unwind_on_malloc=0
           moon test
 
+  sanitizer-check-windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: disable auto CRLF
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: install
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: load SSH key for testing (Windows)
+        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
+
+      - name: disable mimalloc
+        run: |
+          echo "" >dummy_libmoonbitrun.c
+          $out_path = Convert-Path ~/.moon/lib/libmoonbitrun.o
+          cl.exe dummy_libmoonbitrun.c /c /Fo: $out_path
+
+      - name: setup sanitizer check
+        run: |
+          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
+
+      - name: run test with address sanitizer
+        run: |
+          $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
+          moon test
+
   coverage-check:
     runs-on: ubuntu-latest
     continue-on-error: true
