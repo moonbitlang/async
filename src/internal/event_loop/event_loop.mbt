@@ -337,18 +337,25 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  let poll_coro = @coroutine.spawn(fn() {
+  try {
     while not(@coroutine.no_more_work() && self.running_workers.is_empty()) {
       self.poll() catch {
         @os_error.OSError(_) as err if err.is_EINTR() => continue
         err => raise err
       }
-      @coroutine.pause()
+      @coroutine.reschedule()
     }
-  })
-  @coroutine.reschedule()
-  self.cleanup()
-  poll_coro.unwrap()
+  } catch {
+    err => {
+      self.cleanup()
+      // In case the event loop has encountered some fatal error,
+      // propagate the error to relevant coroutines.
+      while not(@coroutine.no_more_work()) {
+        @coroutine.reschedule()
+      }
+      raise err
+    }
+  }
 }
 
 ///|

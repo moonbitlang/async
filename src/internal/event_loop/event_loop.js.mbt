@@ -22,6 +22,20 @@ let _ignore_unused_import : Unit = {
 }
 
 ///|
+pub fn reschedule() -> Unit {
+  guard !@coroutine.no_more_work() else {  }
+  @coroutine.reschedule()
+  // Instead of looping blockingly until there is no ready task,
+  // we only perform one round of scheduling here
+  // (i.e., only those tasks already ready when `reschedule` is called are run).
+  // Remaining tasks are delayed untin the next js event loop,
+  // so that those blocking jobs got a chance to execute instead of starving.
+  if @coroutine.has_immediately_ready_task() {
+    ignore(set_timeout(0, reschedule))
+  }
+}
+
+///|
 #external
 priv type Timer
 
@@ -38,7 +52,7 @@ pub async fn sleep(duration : Int) -> Unit {
   let coro = @coroutine.current_coroutine()
   let timer = set_timeout(duration, fn() {
     coro.wake()
-    @coroutine.reschedule()
+    reschedule()
   })
   @coroutine.suspend() catch {
     err => {

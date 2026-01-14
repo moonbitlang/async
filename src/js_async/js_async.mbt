@@ -127,7 +127,7 @@ pub async fn[X] Promise::wait(
     waiter.ret = Some(value.cast())
     if waiter.coro is Some(coro) {
       coro.wake()
-      @coroutine.reschedule()
+      @event_loop.reschedule()
     }
   }
 
@@ -135,7 +135,7 @@ pub async fn[X] Promise::wait(
     waiter.err = Some(JsError(err))
     if waiter.coro is Some(coro) {
       coro.wake()
-      @coroutine.reschedule()
+      @event_loop.reschedule()
     }
   }
 

@@ -44,8 +44,15 @@ pub fn no_more_work() -> Bool {
 }
 
 ///|
+/// Perform a new rousd of scheduling by running all ready coroutines.
+/// While running these coroutines, new coroutines may get waken or spawned,
+/// these new coroutines will *not* get executed in this run of `reschedule`.
+/// This give the event loop a chance to check of completed IO operations
+/// and prevent starvation, even when there is always immediately ready coroutine.
 pub fn reschedule() -> Unit {
-  while scheduler.run_later.pop_front() is Some(coro) {
+  let n = scheduler.run_later.length()
+  for _ in 0..<n {
+    guard scheduler.run_later.pop_front() is Some(coro) else { break }
     coro.ready = false
     guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
     coro.state = Running

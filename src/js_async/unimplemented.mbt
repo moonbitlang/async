@@ -13,7 +13,10 @@
 // limitations under the License.
 
 ///|
-let _ignore_unused_import : Unit = ignore(@coroutine.spawn)
+let _ignore_unused_import : Unit = {
+  ignore(@coroutine.spawn)
+  ignore(@event_loop.sleep)
+}
 
 ///|
 /// A JavaScript promise that resolves to a value of type `X`
