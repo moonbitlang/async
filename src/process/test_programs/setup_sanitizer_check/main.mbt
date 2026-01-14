@@ -24,7 +24,7 @@ fn Json::get_or_add(
 
 ///|
 #cfg(platform="windows")
-let sanitizer_flags = "/Zi /fsanitize=address"
+let sanitizer_flags = "/Z7 /fsanitize=address"
 
 ///|
 #cfg(not(platform="windows"))
@@ -33,8 +33,14 @@ let sanitizer_flags = "-fsanitize=address -g -fno-omit-frame-pointer"
 ///|
 async fn main {
   fn exclude(path : String) {
-    path
-    is ("./target" | "./_build" | "./examples/target" | "./examples/_build")
+    match path {
+      "./target" | "./_build" | "./examples/target" | "./examples/_build" => true
+      "./src/process/test_programs/dump_env" =>
+        // This program may be run in an (almost) empty environment,
+        // ASAN will not work with some linking related variables missing
+        true
+      _ => false
+    }
   }
 
   @fs.walk(".", exclude~, (path, files) => for file in files {
