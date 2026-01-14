@@ -146,6 +146,7 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int {
   if handle.is_async {
+    @coroutine.check_cancellation()
     handle.prepare_read()
     let ret = read_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {
@@ -209,6 +210,7 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int {
   if handle.is_async {
+    @coroutine.check_cancellation()
     handle.prepare_write()
     let ret = write_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {

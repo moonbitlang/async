@@ -13,10 +13,14 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@io.pipe)
-  ignore(@async.sleep)
-  ignore(@pipe.unimplemented)
-  ignore(@fs.unimplemented)
+async test "cancel before submit" {
+  let file = @fs.open("LICENSE", mode=ReadOnly)
+  defer file.close()
+  let buf = FixedArray::make(1, b'\x00')
+  let result = @async.with_timeout_opt(1, fn() {
+    while file._direct_read(buf, offset=0, max_len=1) is 1 {
+
+    }
+  })
+  inspect(result, content="None")
 }

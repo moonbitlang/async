@@ -429,6 +429,7 @@ async fn perform_job_in_worker(
   context~ : String,
   cancel? : (Int) -> CancellationStatus raise,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1

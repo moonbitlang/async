@@ -30,6 +30,7 @@ pub async fn IoHandle::recvfrom(
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.reading
   handle.reading = true
@@ -60,6 +61,7 @@ pub async fn IoHandle::sendto(
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.writing
   handle.writing = true
@@ -95,6 +97,7 @@ pub async fn IoHandle::connect(
   addr : Bytes,
   context~ : String,
 ) -> Unit {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.writing
   handle.writing = true
@@ -139,6 +142,7 @@ pub async fn IoHandle::accept(
   conn_sock : @fd_util.Fd,
   context~ : String,
 ) -> IoHandle {
+  @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.reading
   handle.reading = true

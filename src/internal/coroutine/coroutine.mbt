@@ -53,6 +53,13 @@ pub fn is_being_cancelled() -> Bool {
 }
 
 ///|
+pub fn check_cancellation() -> Unit raise {
+  if is_being_cancelled() {
+    raise Cancelled
+  }
+}
+
+///|
 pub(all) suberror Cancelled derive(Show)
 
 ///|
