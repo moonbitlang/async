@@ -398,7 +398,10 @@ async fn EventLoop::wait_for_job(
             }
             match status {
               NeedWait => {
-                @coroutine.protect_from_cancel(@coroutine.suspend)
+                @coroutine.protect_from_cancel(
+                  @coroutine.suspend,
+                  resume_on_cancel=true,
+                )
                 break
               }
               NoWait => raise err
@@ -418,28 +421,7 @@ async fn EventLoop::wait_for_job(
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn Job::extract_result(job : Job, context~ : String) -> Int raise {
-  if job.err() is err && err > 0 {
-    raise @os_error.OSError(err, context~)
-  } else {
-    job.ret()
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn Job::extract_result(job : Job, context~ : String) -> Int raise {
-  if job.err() is err && err > 0 {
-    if errno_is_cancelled(err) {
-      raise @coroutine.Cancelled
-    } else {
-      raise @os_error.OSError(err, context~)
-    }
-  } else {
-    job.ret()
-  }
-}
+extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
 
 ///|
 async fn perform_job_in_worker(
@@ -463,7 +445,15 @@ async fn perform_job_in_worker(
     }
   }
   evloop.wait_for_job(job_id, cancel?)
-  job.extract_result(context~)
+  if job.err() is err && err > 0 {
+    if errno_is_cancelled(err) {
+      raise @coroutine.Cancelled
+    } else {
+      raise @os_error.OSError(err, context~)
+    }
+  } else {
+    job.ret()
+  }
 }
 
 ///|
