@@ -25,7 +25,7 @@ async fn perform_sleep_job(t : Int) -> Unit {
 ///|
 #cfg(target="js")
 async fn perform_sleep_job(t : Int) -> Unit {
-  @async.protect_from_cancel(() => sleep(t))
+  @async.protect_from_cancel(() => sleep(t), resume_on_cancel=true)
 }
 
 ///|
@@ -116,7 +116,7 @@ async test "worker cancel1" {
       #|trying to cancel
       #|tick
       #|tick
-      #|sleep cancelled with Cancelled
+      #|done
       #|
     ),
   )
@@ -151,7 +151,7 @@ async test "worker cancel2" {
     content=(
       #|tick
       #|trying to terminate now
-      #|sleep cancelled with Cancelled
+      #|done
       #|
     ),
   )
