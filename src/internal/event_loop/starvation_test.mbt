@@ -13,27 +13,20 @@
 // limitations under the License.
 
 ///|
-/// This function is used for integration of `moonbitlang/async`
-/// into the MoonBit toolchain, do not call directly.
-#coverage.skip
-#cfg(target="native")
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  @event_loop.with_event_loop(() => main()) catch {
-    err => {
-      // TODO: output the error to stderr
-      println(err)
-      exit(1)
-    }
-  }
-}
-
-///|
-#cfg(target="native")
-extern "C" fn exit(code : Int) = "exit"
-
-///|
-#cfg(target="js")
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn(main)
-  @event_loop.reschedule()
+async test "starvation" {
+  let log = []
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      @async.sleep(50)
+      log.push("sleep completed")
+    })
+    group.spawn_bg(() => {
+      let start = @async.now()
+      while @async.now() - start < 100 {
+        @async.pause()
+      }
+      log.push("busy wait completed")
+    })
+  })
+  @json.inspect(log, content=["sleep completed", "busy wait completed"])
 }

@@ -33,7 +33,9 @@ test "coroutine ping-pong" {
       })
     })
   })
-  @coroutine.reschedule()
+  while !@coroutine.no_more_work() {
+    @coroutine.reschedule()
+  }
   coro.unwrap()
   inspect(
     log.to_string(),
