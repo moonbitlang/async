@@ -51,6 +51,7 @@ async fn main {
     let native = link.get_or_add("native", () => {})
     guard native is Object(native) else { fail("invalid moon.pkg.json") }
     native["cc-flags"] = Json::string(sanitizer_flags)
+    native["stub-cc-flags"] = Json::string(sanitizer_flags)
     @fs.write_file(full_path, content.stringify())
   })
 }
