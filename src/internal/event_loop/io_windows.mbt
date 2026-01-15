@@ -202,6 +202,7 @@ async fn IoHandle::generic_read(
     // via `SetFileCompletionNotificationModes`.
     // Otherwise, even if the read operation itself indicates immediate success,
     // we still need to wait for the completion packet to obtain correct result.
+    @coroutine.pause()
     n
   } else if @os_error.is_nonblocking_io_error() {
     evloop.wait_for_io_result(job_id, result, handle.fd, context~)
@@ -312,6 +313,7 @@ async fn IoHandle::generic_write(
   guard curr_loop.val is Some(evloop)
   let n = write_ffi(handle.fd, result)
   if n >= 0 {
+    @coroutine.pause()
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
