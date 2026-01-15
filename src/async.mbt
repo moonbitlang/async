@@ -229,3 +229,74 @@ async fn[X] moonbitlang_async_retry(
       }
   }
 }
+
+///|
+pub async fn[X] all(
+  tasks : Array[async () -> X],
+  parallelism? : Int,
+) -> Array[X] {
+  let semaphore = if parallelism is Some(p) {
+    Some(@semaphore.Semaphore::new(p))
+  } else {
+    None
+  }
+  let results = Array::make(tasks.length(), None)
+  with_task_group(tg => for i, task in tasks {
+    if semaphore is Some(sem) {
+      sem.acquire()
+    }
+    tg.spawn_bg(fn() {
+      // We rely on the assumption that the task spawned will 100% executed
+      // even if it is cancelled, so that we can release the semaphore properly.
+      defer (if semaphore is Some(sem) { sem.release() })
+      let result = task()
+      results[i] = Some(result)
+    })
+  })
+  results.map(r => r.unwrap())
+}
+
+///|
+pub async fn[X] any(
+  tasks : Array[async () -> X],
+  parallelism? : Int,
+  allow_failure? : Bool = false,
+) -> X {
+  let semaphore = if parallelism is Some(p) {
+    Some(@semaphore.Semaphore::new(p))
+  } else {
+    None
+  }
+  if tasks.is_empty() {
+    fail("no tasks provided to any()")
+  }
+  let result = @ref.new(None)
+  with_task_group(tg => for task in tasks {
+    if semaphore is Some(sem) {
+      sem.acquire()
+    }
+    tg.spawn_bg(fn() {
+      // We rely on the assumption that the task spawned will 100% executed
+      // even if it is cancelled, so that we can release the semaphore properly.
+      defer (if semaphore is Some(sem) { sem.release() })
+      try task() catch {
+        e =>
+          if allow_failure {
+            if result.val is (None | Some(Err(_))) {
+              result.val = Some(Err(e))
+            } else {
+              ()
+            }
+          } else {
+            raise e
+          }
+      } noraise {
+        value => {
+          result.val = Some(Ok(value))
+          tg.return_immediately(())
+        }
+      }
+    })
+  })
+  result.val.unwrap().unwrap_or_error()
+}
