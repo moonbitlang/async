@@ -272,7 +272,7 @@ pub async fn[X] all(
 ///   and all other running tasks are cancelled.
 /// - If `allow_failure` is `false` (default), `any` fails as soon as any task fails.
 /// - If `allow_failure` is `true`, failing tasks are ignored and `any` waits for the first success.
-/// - If all tasks fail, `any` fails with the error from the last task.
+/// - If all tasks fail, `any` fails with the error from a random task.
 ///
 /// The `max_concurrent` parameter limits the number of tasks that can run concurrently.
 /// If not specified, all tasks run at once.
@@ -291,33 +291,28 @@ pub async fn[X] any(
   if tasks.is_empty() {
     fail("no tasks provided to any()")
   }
-  let result = @ref.new(None)
+  let mut result = None
+  let mut last_err = None
   with_task_group(tg => for task in tasks {
     if semaphore is Some(sem) {
       sem.acquire()
     }
-    tg.spawn_bg(fn() {
+    tg.spawn_bg(allow_failure~, fn() {
       // We rely on the assumption that the task spawned will 100% executed
       // even if it is cancelled, so that we can release the semaphore properly.
       defer (if semaphore is Some(sem) { sem.release() })
-      try task() catch {
-        e =>
-          if allow_failure {
-            if result.val is (None | Some(Err(_))) {
-              result.val = Some(Err(e))
-            } else {
-              ()
-            }
-          } else {
-            raise e
-          }
-      } noraise {
-        value => {
-          result.val = Some(Ok(value))
-          tg.return_immediately(())
+      result = Some(task()) catch {
+        e => {
+          last_err = Some(e)
+          raise e
         }
       }
+      tg.return_immediately(())
     })
   })
-  result.val.unwrap().unwrap_or_error()
+  if result is Some(result) {
+    result
+  } else {
+    raise last_err.unwrap()
+  }
 }
