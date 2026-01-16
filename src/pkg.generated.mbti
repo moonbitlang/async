@@ -8,9 +8,9 @@ import(
 )
 
 // Values
-pub async fn[X] all(Array[async () -> X], parallelism? : Int) -> Array[X]
+pub async fn[X] all(Array[async () -> X], max_concurrent? : Int) -> Array[X]
 
-pub async fn[X] any(Array[async () -> X], parallelism? : Int, allow_failure? : Bool) -> X
+pub async fn[X] any(Array[async () -> X], max_concurrent? : Int, allow_failure? : Bool) -> X
 
 pub fn is_being_cancelled() -> Bool
 
