@@ -240,7 +240,7 @@ async fn[X] moonbitlang_async_retry(
 /// The `max_concurrent` parameter limits the number of tasks that can run concurrently.
 /// If not specified, all tasks run at once.
 pub async fn[X] all(
-  tasks : Array[async () -> X],
+  tasks : ArrayView[async () -> X],
   max_concurrent? : Int,
 ) -> Array[X] {
   let semaphore = if max_concurrent is Some(p) {
@@ -279,7 +279,7 @@ pub async fn[X] all(
 ///
 /// `any` requires at least one task and will fail if the array is empty.
 pub async fn[X] any(
-  tasks : Array[async () -> X],
+  tasks : ArrayView[async () -> X],
   max_concurrent? : Int,
   allow_failure? : Bool = false,
 ) -> X {
