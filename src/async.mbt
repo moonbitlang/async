@@ -278,10 +278,12 @@ pub async fn[X] all(
 /// If not specified, all tasks run at once.
 ///
 /// `any` requires at least one task and will fail if the array is empty.
+#callsite(autofill(loc))
 pub async fn[X] any(
   tasks : ArrayView[async () -> X],
   max_concurrent? : Int,
   allow_failure? : Bool = false,
+  loc~ : SourceLoc,
 ) -> X {
   let semaphore = if max_concurrent is Some(p) {
     Some(@semaphore.Semaphore::new(p))
@@ -289,7 +291,7 @@ pub async fn[X] any(
     None
   }
   if tasks.is_empty() {
-    fail("no tasks provided to any()")
+    fail("no tasks provided to any()", loc~)
   }
   let mut result = None
   let mut last_err = None

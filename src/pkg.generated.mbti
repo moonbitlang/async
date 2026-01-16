@@ -10,7 +10,8 @@ import(
 // Values
 pub async fn[X] all(ArrayView[async () -> X], max_concurrent? : Int) -> Array[X]
 
-pub async fn[X] any(ArrayView[async () -> X], max_concurrent? : Int, allow_failure? : Bool) -> X
+#callsite(autofill(loc))
+pub async fn[X] any(ArrayView[async () -> X], max_concurrent? : Int, allow_failure? : Bool, loc~ : SourceLoc) -> X
 
 pub fn is_being_cancelled() -> Bool
 
