@@ -231,11 +231,19 @@ async fn[X] moonbitlang_async_retry(
 }
 
 ///|
+/// `all(tasks, max_concurrent?)` waits for all tasks to complete and returns their results.
+///
+/// - All tasks are spawned and executed (optionally with `max_concurrent` limit).
+/// - If all tasks succeed, `all` returns an array of results in the same order as `tasks`.
+/// - If any task fails, `all` fails with that error and other running tasks are cancelled.
+///
+/// The `max_concurrent` parameter limits the number of tasks that can run concurrently.
+/// If not specified, all tasks run at once.
 pub async fn[X] all(
   tasks : Array[async () -> X],
-  parallelism? : Int,
+  max_concurrent? : Int,
 ) -> Array[X] {
-  let semaphore = if parallelism is Some(p) {
+  let semaphore = if max_concurrent is Some(p) {
     Some(@semaphore.Semaphore::new(p))
   } else {
     None
@@ -257,12 +265,25 @@ pub async fn[X] all(
 }
 
 ///|
+/// `any(tasks, max_concurrent?, allow_failure?)` waits for the first task to complete successfully.
+///
+/// - All tasks are spawned and executed (optionally with `max_concurrent` limit).
+/// - When the first task completes successfully, `any` returns its result immediately
+///   and all other running tasks are cancelled.
+/// - If `allow_failure` is `false` (default), `any` fails as soon as any task fails.
+/// - If `allow_failure` is `true`, failing tasks are ignored and `any` waits for the first success.
+/// - If all tasks fail, `any` fails with the error from the last task.
+///
+/// The `max_concurrent` parameter limits the number of tasks that can run concurrently.
+/// If not specified, all tasks run at once.
+///
+/// `any` requires at least one task and will fail if the array is empty.
 pub async fn[X] any(
   tasks : Array[async () -> X],
-  parallelism? : Int,
+  max_concurrent? : Int,
   allow_failure? : Bool = false,
 ) -> X {
-  let semaphore = if parallelism is Some(p) {
+  let semaphore = if max_concurrent is Some(p) {
     Some(@semaphore.Semaphore::new(p))
   } else {
     None
