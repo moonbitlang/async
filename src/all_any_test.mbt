@@ -14,87 +14,77 @@
 
 ///|
 async test "all basic" {
+  let start = @async.now()
   let results = @async.all([
     fn() {
-      @async.sleep(100)
+      @async.sleep(400)
       1
     },
     fn() {
-      @async.sleep(50)
+      @async.sleep(200)
       2
     },
     fn() { 3 },
   ])
+  let duration = (@async.now() - start).to_int()
   @json.inspect(results, content=[1, 2, 3])
+  inspect((duration + 50) / 200, content="2")
 }
 
 ///|
 async test "all preserves order" {
-  let log = StringBuilder::new()
+  let log = []
   let results = @async.all([
     fn() {
       @async.sleep(300)
-      log.write_string("task 0\n")
+      log.push("task 0")
       0
     },
     fn() {
       @async.sleep(100)
-      log.write_string("task 1\n")
+      log.push("task 1")
       1
     },
     fn() {
-      log.write_string("task 2\n")
+      log.push("task 2")
       2
     },
   ])
-  inspect(
-    log.to_string(),
-    content=(
-      #|task 2
-      #|task 1
-      #|task 0
-      #|
-    ),
-  )
+  @json.inspect(log, content=["task 2", "task 1", "task 0"])
   @json.inspect(results, content=[0, 1, 2])
 }
 
 ///|
 async test "all with max_concurrent" {
-  let mut running = 0
-  let results = try? @async.all(
+  let log = []
+  let result = @async.all(
     [
       fn() {
-        running += 1
-        defer {
-          running -= 1
-        }
-        assert_true(running <= 2)
+        log.push("task #1 started")
+        defer log.push("task #1 completed")
         @async.sleep(200)
         0
       },
       fn() {
-        running += 1
-        defer {
-          running -= 1
-        }
-        assert_true(running <= 2)
-        @async.sleep(200)
+        log.push("task #2 started")
+        defer log.push("task #2 completed")
+        @async.sleep(100)
         1
       },
       fn() {
-        running += 1
-        defer {
-          running -= 1
-        }
-        assert_true(running <= 2)
+        log.push("task #3 started")
+        defer log.push("task #3 completed")
         @async.sleep(200)
         2
       },
     ],
     max_concurrent=2,
   )
-  @json.inspect(results, content={ "Ok": [0, 1, 2] })
+  @json.inspect(result, content=[0, 1, 2])
+  @json.inspect(log, content=[
+    "task #1 started", "task #2 started", "task #2 completed", "task #3 started",
+    "task #1 completed", "task #3 completed",
+  ])
 }
 
 ///|
@@ -111,141 +101,175 @@ async test "all single task" {
 
 ///|
 async test "all failure propagates" {
-  let success = []
-  try
-    @async.all([
-      fn() {
-        @async.sleep(100)
-        success.push(0)
-      },
-      fn() {
-        @async.sleep(50)
-        success.push(1)
-        raise Failure::Failure("Err")
-      },
-      fn() {
-        @async.sleep(200)
-        success.push(2)
-      },
-    ])
-  catch {
-    Failure::Failure(msg) => {
-      assert_eq(msg, "Err")
-      inspect(success, content="[1]")
+  let log = []
+  let result = try? @async.all([
+    fn() {
+      @async.sleep(100)
+      log.push("task #1 completed")
+    },
+    fn() {
+      @async.sleep(200)
+      log.push("task #2 failing")
+      raise Failure::Failure("Err")
+    },
+    fn() {
+      @async.sleep(300) catch {
+        err => {
+          log.push("task #3 cancelled with \{err}")
+          raise err
+        }
+      }
+      log.push("task #3 completed")
+    },
+  ])
+  @json.inspect(result, content={ "Err": ["Failure", "Err"] })
+  @json.inspect(log, content=[
+    "task #1 completed", "task #2 failing", "task #3 cancelled with Cancelled",
+  ])
+}
+
+///|
+async test "all cancelled" {
+  let log = []
+  async fn task(idx : Int, sleep_time : Int) -> Int {
+    @async.sleep(sleep_time) catch {
+      err => {
+        log.push("task #\{idx} cancelled with \{err}")
+        raise err
+      }
     }
-    _ => fail("Should have raised Failure")
-  } noraise {
-    _ => fail("Should have raised Failure")
+    log.push("task #\{idx} completed")
+    idx
   }
+
+  let result = @async.with_timeout_opt(300, () => @async.all([
+    () => task(1, 450),
+    () => task(2, 150),
+  ]))
+  inspect(result, content="None")
+  @json.inspect(log, content=[
+    "task #2 completed", "task #1 cancelled with Cancelled",
+  ])
 }
 
 ///|
 async test "any basic" {
+  let start = @async.now()
   let result = @async.any([
     fn() {
-      @async.sleep(300)
+      @async.sleep(600)
       1
     },
     fn() {
-      @async.sleep(100)
+      @async.sleep(200)
       2
     },
     fn() {
-      @async.sleep(200)
+      @async.sleep(400)
       3
     },
   ])
+  let duration = (@async.now() - start).to_int()
   @json.inspect(result, content=2)
+  inspect((duration + 50) / 200, content="1")
 }
 
 ///|
 async test "any returns first success" {
-  let log = StringBuilder::new()
-  let result = @async.any([
-    fn() {
-      @async.sleep(300)
-      log.write_string("task 0\n")
-      0
-    },
-    fn() {
-      @async.sleep(100)
-      log.write_string("task 1\n")
-      1
-    },
-    fn() {
-      @async.sleep(200)
-      log.write_string("task 2\n")
-      2
-    },
-  ])
-  inspect(
-    log.to_string(),
-    content=(
-      #|task 1
-      #|
-    ),
-  )
-  @json.inspect(result, content=1)
-}
+  let log = []
+  async fn task(idx : Int, sleep_time : Int) -> Int {
+    @async.sleep(sleep_time) catch {
+      err => {
+        log.push("task #\{idx} cancelled with \{err}")
+        raise err
+      }
+    }
+    log.push("task #\{idx} completed")
+    idx
+  }
 
-// TODO: Fix this test - there seems to be an issue with the implementation
-// when tasks fail, "trying to spawn from a terminated task group" error occurs
+  let result = @async.any([
+    () => task(1, 600),
+    () => task(2, 200),
+    () => task(3, 400),
+  ])
+  @json.inspect(result, content=2)
+  @json.inspect(log, content=[
+    "task #2 completed", "task #1 cancelled with Cancelled", "task #3 cancelled with Cancelled",
+  ])
+}
 
 ///|
 async test "any failure without allow_failure" {
-  let log = StringBuilder::new()
-  try
-    @async.any([
-      fn() {
-        @async.sleep(100)
-        log.write_string("task 0\n")
-      },
-      fn() {
-        @async.sleep(50)
-        raise Failure::Failure("Err")
-      },
-    ])
-  catch {
-    Failure::Failure(msg) => assert_eq(msg, "Err")
-    _ => fail("Should have raised Failure")
-  } noraise {
-    _ => fail("Should have raised Failure")
-  }
+  let log = []
+  let result = try? @async.any([
+    fn() {
+      @async.sleep(300) catch {
+        err => {
+          log.push("task #1 cancelled with \{err}")
+          raise err
+        }
+      }
+      log.push("task #1 completed")
+    },
+    fn() {
+      @async.sleep(150)
+      raise Failure::Failure("Err")
+    },
+  ])
+  @json.inspect(result, content={ "Err": ["Failure", "Err"] })
+  @json.inspect(log, content=["task #1 cancelled with Cancelled"])
 }
 
 ///|
 async test "any with allow_failure" {
-  let log = StringBuilder::new()
+  let log = []
   let result = @async.any(
     [
       fn() {
-        @async.sleep(100)
-        log.write_string("task 0\n")
+        @async.sleep(300)
+        log.push("task #1 failing")
         raise Err
       },
       fn() {
-        @async.sleep(50)
-        log.write_string("task 1\n")
+        @async.sleep(150)
+        log.push("task #2 failing")
         raise Failure::Failure("fail")
       },
       fn() {
-        @async.sleep(150)
-        log.write_string("task 2\n")
+        @async.sleep(450)
+        log.push("task #3 completed")
         2
       },
     ],
     allow_failure=true,
   )
-  inspect(
-    log.to_string(),
-    content=(
-      #|task 1
-      #|task 0
-      #|task 2
-      #|
-    ),
-  )
+  @json.inspect(log, content=[
+    "task #2 failing", "task #1 failing", "task #3 completed",
+  ])
   @json.inspect(result, content=2)
+}
+
+///|
+async test "any with allow_failure all fail" {
+  let log = []
+  let result = try? @async.any(
+    [
+      fn() -> Int {
+        @async.sleep(300)
+        log.push("task #1 failing")
+        raise Err
+      },
+      fn() {
+        @async.sleep(150)
+        log.push("task #2 failing")
+        raise Failure::Failure("fail")
+      },
+    ],
+    allow_failure=true,
+  )
+  @json.inspect(log, content=["task #2 failing", "task #1 failing"])
+  inspect(result, content="Err(Err)")
 }
 
 ///|
@@ -256,63 +280,33 @@ async test "any single task" {
 
 ///|
 async test "any empty fails" {
-  try @async.any(Array::make(0, () => ())) catch {
-    Failure::Failure(_) => ()
-    _ => fail("Should have raised Failure")
-  } noraise {
-    _ => fail("Should have raised Failure")
-  }
-}
-
-///|
-async test "any all fail without allow_failure" {
-  try
-    @async.any([
-      fn() {
-        @async.sleep(100)
-        0
-      },
-      fn() {
-        @async.sleep(50)
-        raise Failure::Failure("error 1")
-      },
-    ])
-  catch {
-    Failure::Failure(msg) => assert_eq(msg, "error 1")
-    _ => fail("Should have raised error 1")
-  } noraise {
-    _ => fail("Should have raised error 1")
-  }
-}
-
-///|
-async test "any all fail with allow_failure" {
-  let log = StringBuilder::new()
-  @async.any(
-    [
-      fn() {
-        @async.sleep(100)
-        log.write_string("task 0\n")
-        raise Failure::Failure("error 0")
-      },
-      fn() {
-        @async.sleep(50)
-        log.write_string("task 1\n")
-        raise Failure::Failure("error 1")
-      },
+  @json.inspect(try? (@async.any([]) : Unit), content={
+    "Err": [
+      "Failure", "async.mbt:292:5-292:39@moonbitlang/async FAILED: no tasks provided to any()",
     ],
-    allow_failure=true,
-  ) catch {
-    Failure::Failure(msg) => log.write_string("caught: \{msg}\n")
-    _ => log.write_string("caught other error\n")
+  })
+}
+
+///|
+async test "any cancelled" {
+  let log = []
+  async fn task(idx : Int, sleep_time : Int) -> Int {
+    @async.sleep(sleep_time) catch {
+      err => {
+        log.push("task #\{idx} cancelled with \{err}")
+        raise err
+      }
+    }
+    log.push("task #\{idx} completed")
+    idx
   }
-  inspect(
-    log.to_string(),
-    content=(
-      #|task 1
-      #|task 0
-      #|caught: error 0
-      #|
-    ),
-  )
+
+  let result = @async.with_timeout_opt(200, () => @async.any([
+    () => task(1, 400),
+    () => task(2, 400),
+  ]))
+  inspect(result, content="None")
+  @json.inspect(log, content=[
+    "task #1 cancelled with Cancelled", "task #2 cancelled with Cancelled",
+  ])
 }
