@@ -41,7 +41,7 @@ jobs:
         run: |
           for ($i = 0; $i -lt 20; $i++) {
             moon test src/http
-            moon test --release
+            moon test src/http --release
           }
 
   nightly-build:
@@ -75,5 +75,5 @@ jobs:
         run: |
           for ($i = 0; $i -lt 20; $i++) {
             moon test src/http
-            moon test --release
+            moon test src/http --release
           }
