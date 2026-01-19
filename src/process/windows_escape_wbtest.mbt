@@ -41,20 +41,10 @@ test "windows command line arg escape" {
   )
   let test_str =
     #|\
-  inspect(
-    test_arg(test_str),
-    content=(
-      #|"\\"
-    ),
-  )
+  inspect(test_arg(test_str), content="\\")
   let test_str =
     #|a\\\c
-  inspect(
-    test_arg(test_str),
-    content=(
-      #|"a\\\c"
-    ),
-  )
+  inspect(test_arg(test_str), content="a\\\\\\c")
   let test_str =
     #|a\"c
   inspect(
