@@ -39,7 +39,7 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -lt 20; $i++) {
+          for ($i = 0; $i -lt 100; $i++) {
             moon test src/http
             moon test src/http --release
           }
@@ -73,7 +73,7 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -lt 20; $i++) {
+          for ($i = 0; $i -lt 100; $i++) {
             moon test src/http
             moon test src/http --release
           }
