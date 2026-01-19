@@ -26,6 +26,20 @@ fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
   arg : String,
 ) -> Unit raise {
+  // Do not add double quotes if it is unnecessary to do so.
+  // This help with simple cases when the program is not using C argv syntax,
+  // such as `rundll32.exe`.
+  let need_quote = for char in arg {
+    if char is (' ' | '\t' | '"') {
+      break true
+    }
+  } else {
+    false
+  }
+  if !need_quote {
+    builder.write_string(arg)
+    return
+  }
   let mut segment_start = 0
   let mut index = 0
   let mut trailing_backslash = 0
