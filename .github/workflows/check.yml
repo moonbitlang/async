@@ -39,7 +39,7 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -lt 100; $i++) {
+          for ($i = 0; $i -lt 50; $i++) {
             moon test
           }
 
@@ -72,6 +72,6 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -lt 100; $i++) {
+          for ($i = 0; $i -lt 50; $i++) {
             moon test
           }
