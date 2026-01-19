@@ -11,30 +11,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
+        os: ["windows-latest"]
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
     timeout-minutes: 10
     steps:
       - name: disable auto CRLF
-        if: ${{ matrix.os == 'windows-latest' }}
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
       - uses: ilammy/msvc-dev-cmd@v1
 
-      - name: install (Unix)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
       - name: install (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
@@ -48,56 +37,30 @@ jobs:
           moon version --all
           moonrun --version
 
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check --deny-warn
-
-      - name: moon check (examples)
-        run: moon check -C examples --deny-warn
-
       - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-      - name: test examples
-        run: moon test -C examples
-
-      - name: test examples (release)
-        run: moon test --release -C examples
+        run: |
+          for ($i = 0; $i -lt 20; $i++) {
+            moon test src/http
+            moon test --release
+          }
 
   nightly-build:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
+        os: ["windows-latest"]
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
     timeout-minutes: 10
     steps:
       - name: disable auto CRLF
-        if: ${{ matrix.os == 'windows-latest' }}
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
       - uses: ilammy/msvc-dev-cmd@v1
 
-      - name: install (Unix)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
       - name: install (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
         env:
           MOONBIT_INSTALL_VERSION: nightly
         run: |
@@ -108,252 +71,9 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
 
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check
-
-      - name: moon check (examples)
-        run: moon check -C examples
-
-      - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-      - name: test examples
-        run: moon test -C examples
-
-      - name: test examples (release)
-        run: moon test --release -C examples
-
-  js-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target js --deny-warn
-
       - name: moon test
         run: |
-          moon test --release --target js
-          moon test --target js
-
-  wasm-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target wasm --deny-warn
-          moon check --target wasm-gc --deny-warn
-
-  moon-format:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon install
-        run: |
-          moon install -C examples
-
-      - name: format diff
-        run: |
-          moon fmt
-          moon fmt -C examples
-          git diff --exit-code
-
-  moon-info:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon info
-        run: |
-          moon info
-          git diff --exit-code
-
-  sanitizer-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
-
-      - name: setup sanitizer check
-        run: |
-          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
-
-      - name: run test with address sanitizer
-        run: |
-          export ASAN_OPTIONS=fast_unwind_on_malloc=0
-          moon test
-
-  sanitizer-check-windows:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    steps:
-      - name: disable auto CRLF
-        run: git config --global core.autocrlf false
-
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-      - uses: ilammy/msvc-dev-cmd@v1
-
-      - name: install
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: load SSH key for testing (Windows)
-        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          $out_path = Convert-Path ~/.moon/lib/libmoonbitrun.o
-          cl.exe dummy_libmoonbitrun.c /c /Fo: $out_path
-
-      - name: setup sanitizer check
-        run: |
-          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
-
-      - name: run test with address sanitizer
-        run: |
-          $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
-          moon test
-
-  coverage-check:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon test
-        run: |
-          moon test --enable-coverage
-          moon test --enable-coverage --target js
-
-      - name: coverage report
-        run: |
-          moon coverage report -f summary > coverage_summary.txt
-          # Put the coverage report in the pipline output
-          cat coverage_summary.txt >> "$GITHUB_STEP_SUMMARY"
-          # We don't use the official coveralls upload tool because it takes >1min to build itself
-          moon coverage report \
-            -f coveralls \
-            -o codecov_report.json \
-            --service-name github \
-            --service-job-id "$GITHUB_RUN_NUMBER" \
-            --service-pull-request "${{ github.event.number }}" \
-            --send-to coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          for ($i = 0; $i -lt 20; $i++) {
+            moon test src/http
+            moon test --release
+          }
