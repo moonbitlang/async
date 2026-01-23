@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/core/random",
+  "moonbitlang/core/env",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/strconv",
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+}
+
+options(
+  "is-main": true,
+)

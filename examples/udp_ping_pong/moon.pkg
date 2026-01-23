@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+}
+
+options(
+  "is-main": true,
+)

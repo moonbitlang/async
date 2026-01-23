@@ -1,0 +1,38 @@
+import {
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/strconv",
+  "moonbitlang/core/buffer",
+  "moonbitlang/async/io",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/tls",
+  "moonbitlang/async/internal/io_buffer",
+}
+
+import "test" {
+  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/async",
+}
+
+import "wbtest" {
+  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/internal/bytes_util",
+}
+
+options(
+  targets: {
+    "client.mbt": [ "native" ],
+    "client_test.mbt": [ "native" ],
+    "parser.mbt": [ "native" ],
+    "parser_wbtest.mbt": [ "native" ],
+    "proxy_test.mbt": [ "native" ],
+    "request.mbt": [ "native" ],
+    "request_test.mbt": [ "native" ],
+    "resolve_url_wbtest.mbt": [ "native" ],
+    "send.mbt": [ "native" ],
+    "send_wbtest.mbt": [ "native" ],
+    "server.mbt": [ "native" ],
+    "utils.mbt": [ "native" ],
+  },
+)
