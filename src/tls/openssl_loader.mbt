@@ -30,7 +30,7 @@ extern "C" fn init_bio_method(
 
 ///|
 #cfg(not(platform="windows"))
-let openssl_loaded : Ref[Bool] = @ref.new(false)
+let openssl_loaded : Ref[Bool] = Ref::new(false)
 
 ///|
 #cfg(not(platform="windows"))
@@ -39,9 +39,9 @@ fn load_openssl() -> Unit {
     return
   }
   openssl_loaded.val = true
-  let major = @ref.new(0)
-  let minor = @ref.new(0)
-  let fix = @ref.new(0)
+  let major = Ref::new(0)
+  let minor = Ref::new(0)
+  let fix = Ref::new(0)
   match load_openssl_ffi(major, minor, fix) {
     0 => ()
     1 => abort("failed to load OpenSSL")

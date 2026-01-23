@@ -79,7 +79,7 @@ extern "C" fn create_named_pipe_client(
 
 ///|
 #cfg(platform="windows")
-let pipe_id : Ref[UInt64] = @ref.new(0)
+let pipe_id : Ref[UInt64] = Ref::new(0)
 
 ///|
 #cfg(platform="windows")

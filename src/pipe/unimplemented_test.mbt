@@ -14,4 +14,7 @@
 
 ///|
 #cfg(not(target="native"))
-let _ignore_unused_import : Unit = ignore(@async.sleep)
+let _ignore_unused_import : Unit = {
+  ignore(@async.sleep)
+  ignore(@encoding/utf8.encode(""))
+}

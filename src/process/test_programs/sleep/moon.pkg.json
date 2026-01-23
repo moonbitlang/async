@@ -1,5 +1,9 @@
 {
-  "import": [ "moonbitlang/async" ],
+  "import": [
+    "moonbitlang/core/strconv",
+    "moonbitlang/core/env",
+    "moonbitlang/async"
+  ],
   "native-stub": [ "stub.c" ],
   "is-main": true
 }

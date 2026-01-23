@@ -58,7 +58,7 @@ priv struct QueuedJob {
 }
 
 ///|
-let curr_loop : Ref[EventLoop?] = @ref.new(None)
+let curr_loop : Ref[EventLoop?] = Ref::new(None)
 
 ///|
 priv struct EventLoopHook {

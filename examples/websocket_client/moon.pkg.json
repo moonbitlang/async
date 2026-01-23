@@ -1,5 +1,6 @@
 {
   "import": [
+    "moonbitlang/core/strconv",
     "moonbitlang/async/websocket",
     "moonbitlang/async",
     "moonbitlang/async/stdio",

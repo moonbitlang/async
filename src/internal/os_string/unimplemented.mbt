@@ -15,4 +15,7 @@
 ///|
 /// This package currently does not support JavaScript backend
 #cfg(not(target="native"))
-pub let unimplemented : Unit = ignore(@c_buffer.unimplemented)
+pub let unimplemented : Unit = {
+  ignore(@c_buffer.unimplemented)
+  ignore(@encoding/utf8.encode(""))
+}

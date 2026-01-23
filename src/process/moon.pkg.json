@@ -11,6 +11,11 @@
     "moonbitlang/async/os_error"
   ],
   "test-import": [
+    "moonbitlang/core/env",
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
     "moonbitlang/async/fs"
   ],
   "targets": {

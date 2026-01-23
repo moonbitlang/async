@@ -1,5 +1,11 @@
 {
   "import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
+    "moonbitlang/core/json",
+    "moonbitlang/core/cmp",
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/io_buffer"
   ],

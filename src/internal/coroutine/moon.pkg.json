@@ -1,5 +1,7 @@
 {
-  "import": [],
+  "import": [
+    "moonbitlang/core/deque"
+  ],
   "test-import": [
     "moonbitlang/async"
   ]

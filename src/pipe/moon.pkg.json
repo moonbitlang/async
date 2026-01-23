@@ -5,6 +5,10 @@
     "moonbitlang/async/io"
   ],
   "test-import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
     "moonbitlang/async"
   ],
   "targets": {
