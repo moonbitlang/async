@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/tls"
 
-import(
-  "moonbitlang/async/io"
-)
+import {
+  "moonbitlang/async/io",
+}
 
 // Values
 pub fn rand_bytes(Int) -> Bytes raise

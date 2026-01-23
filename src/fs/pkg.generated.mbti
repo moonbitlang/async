@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/fs"
 
-import(
-  "moonbitlang/async/io"
-)
+import {
+  "moonbitlang/async/io",
+}
 
 // Values
 pub async fn atime(StringView, follow_symlink? : Bool) -> (Int64, Int)

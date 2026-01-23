@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/stdio"
 
-import(
-  "moonbitlang/async/io"
-)
+import {
+  "moonbitlang/async/io",
+}
 
 // Values
 pub let stderr : Output
