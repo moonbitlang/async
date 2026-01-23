@@ -98,7 +98,7 @@ async test "return_immediately recursive cancel" {
     }
     log.push("inner group finished")
   })
-  @json.inspect(log, content=["inner group finished", "100ms tick"])
+  json_inspect(log, content=["inner group finished", "100ms tick"])
 }
 
 ///|
@@ -114,5 +114,5 @@ async test "return_immediately called outside" {
     )))
     log.push("inner group finished")
   })
-  @json.inspect(log, content=["inner group finished", "100ms tick"])
+  json_inspect(log, content=["inner group finished", "100ms tick"])
 }

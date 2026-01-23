@@ -31,7 +31,7 @@ async test "ping auto-reply" {
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
     http_client.write(ping_frame)
-    @json.inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
+    json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
     inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
     ws_client.send_text("1234")
   })
@@ -92,9 +92,9 @@ async test "ping auto-reply race-with-write" {
     // However, the pong message will interrupt it.
     http_client.write(ping_frame)
     // The `PONG` reply should come first
-    @json.inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
+    json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
     inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
-    @json.inspect(http_client.read_exactly(2).to_array(), content=[0x81, 0x04])
+    json_inspect(http_client.read_exactly(2).to_array(), content=[0x81, 0x04])
     inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="1234")
   })
 }
@@ -133,7 +133,7 @@ async test "close test" {
     // However, the close message will interrupt it.
     ws_client.send_close(code=Normal, reason="abcd")
     // The `close` reply should come first
-    @json.inspect(http_client.read_exactly(2).to_array(), content=[0x88, 6])
+    json_inspect(http_client.read_exactly(2).to_array(), content=[0x88, 6])
     guard http_client.read_exactly(2) is [u16be(code)]
     inspect(code, content="1000")
     inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")

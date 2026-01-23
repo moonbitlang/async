@@ -19,7 +19,7 @@ async test "walk sequential" {
     files.sort()
     dirs.push((path, files))
   })
-  @json.inspect(dirs, content=[
+  json_inspect(dirs, content=[
     ["test_directory", ["file", "inner1"]],
     ["test_directory/inner1", ["file", "inner2"]],
     ["test_directory/inner1/inner2", ["file"]],
@@ -102,7 +102,7 @@ async test "walk exclude 1" {
   @fs.walk("test_directory", exclude=p => p is [.., '1'], (path, _) => walked.push(
     path,
   ))
-  @json.inspect(walked, content=["test_directory"])
+  json_inspect(walked, content=["test_directory"])
 }
 
 ///|
@@ -111,5 +111,5 @@ async test "walk exclude 2" {
   @fs.walk("test_directory", exclude=p => p is [.., '2'], (path, _) => walked.push(
     path,
   ))
-  @json.inspect(walked, content=["test_directory", "test_directory/inner1"])
+  json_inspect(walked, content=["test_directory", "test_directory/inner1"])
 }

@@ -28,5 +28,5 @@ async test "starvation" {
       log.push("busy wait completed")
     })
   })
-  @json.inspect(log, content=["sleep completed", "busy wait completed"])
+  json_inspect(log, content=["sleep completed", "busy wait completed"])
 }

@@ -63,7 +63,7 @@ async test "UTF8 validation" {
     send_bad_message([0xf0, 0x80, 0x80, 0x79])
     send_bad_message([0xf0, 0x79, 0x80, 0x80])
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 0",
     "client: [b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
     "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 1",

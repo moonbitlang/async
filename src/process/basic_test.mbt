@@ -36,7 +36,7 @@ async test "basic_ls" {
         x
       })
     // files.sort()
-    @json.inspect(files, content=[
+    json_inspect(files, content=[
       "stub.c", "unix.mbt", "README.md", "windows.c", "process.mbt", "windows.mbt",
       "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md", "moon.pkg.json",
       "test_programs", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",

@@ -22,7 +22,7 @@ async test "discard oldest basic" {
   while q.try_get() is Some(x) {
     result.push(x)
   }
-  @json.inspect(result, content=[2, 3])
+  json_inspect(result, content=[2, 3])
 }
 
 ///|
@@ -36,7 +36,7 @@ async test "discard oldest try_put" {
   while q.try_get() is Some(x) {
     result.push(x)
   }
-  @json.inspect(result, content=[1, 2])
+  json_inspect(result, content=[1, 2])
 }
 
 ///|
@@ -49,7 +49,7 @@ async test "discard latest basic" {
   while q.try_get() is Some(x) {
     result.push(x)
   }
-  @json.inspect(result, content=[1, 2])
+  json_inspect(result, content=[1, 2])
 }
 
 ///|
@@ -63,5 +63,5 @@ async test "discard latest try_put" {
   while q.try_get() is Some(x) {
     result.push(x)
   }
-  @json.inspect(result, content=[1, 2])
+  json_inspect(result, content=[1, 2])
 }

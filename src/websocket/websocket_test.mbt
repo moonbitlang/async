@@ -68,11 +68,11 @@ async test "single frame multiple read" {
       defer ws.close()
       let msg = ws.recv()
       inspect(msg.kind, content="Text")
-      @json.inspect(msg.read_all().text(), content="abc")
+      json_inspect(msg.read_all().text(), content="abc")
       let msg = ws.recv()
       inspect(msg.kind, content="Text")
-      @json.inspect(msg.read_exactly(2), content="ab")
-      @json.inspect(msg.read_exactly(2), content="cd")
+      json_inspect(msg.read_exactly(2), content="ab")
+      json_inspect(msg.read_exactly(2), content="cd")
     })
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
@@ -147,7 +147,7 @@ async test "write buffering" {
     // close the channel
     client.send_close()
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "server received new message: Text", "server received: abcd",
   ])
 }
