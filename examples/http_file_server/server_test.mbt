@@ -64,10 +64,8 @@ async test "basic" {
     client_log.write_string("client: GET /examples/http_file_server\n")
     client(addr, "/examples/http_file_server", client_log)
     client_log.write_string("\n\n")
-    client_log.write_string(
-      "client: GET /examples/http_file_server/moon.pkg.json\n",
-    )
-    client(addr, "/examples/http_file_server/moon.pkg.json", client_log)
+    client_log.write_string("client: GET /examples/http_file_server/moon.pkg\n")
+    client(addr, "/examples/http_file_server/moon.pkg", client_log)
     client_log.write_string("\n\n")
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
@@ -125,27 +123,27 @@ async test "basic" {
       #|<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>
       #|<a href="/examples">..</a><br/><br/>
       #|<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>
-      #|<a href="/examples/http_file_server/moon.pkg.json">moon.pkg.json</a><br/>
+      #|<a href="/examples/http_file_server/moon.pkg">moon.pkg</a><br/>
       #|<a href="/examples/http_file_server/server_test.mbt">server_test.mbt</a><br/>
       #|<a href="/examples/http_file_server/pkg.generated.mbti">pkg.generated.mbti</a><br/>
       #|</div></body></html>
       #|
-      #|client: GET /examples/http_file_server/moon.pkg.json
+      #|client: GET /examples/http_file_server/moon.pkg
       #|HTTP/1.1 200 OK
       #|content-type: appliaction/octet-stream
       #|transfer-encoding: chunked
-      #|{
-      #|  "import": [
-      #|    "moonbitlang/core/env",
-      #|    "moonbitlang/async",
-      #|    "moonbitlang/async/socket",
-      #|    "moonbitlang/async/fs",
-      #|    "moonbitlang/async/http",
-      #|    "moonbitlang/async/process"
-      #|  ],
-      #|  "is-main": true
+      #|import {
+      #|  "moonbitlang/core/env",
+      #|  "moonbitlang/async",
+      #|  "moonbitlang/async/socket",
+      #|  "moonbitlang/async/fs",
+      #|  "moonbitlang/async/http",
+      #|  "moonbitlang/async/process",
       #|}
       #|
+      #|options(
+      #|  "is-main": true,
+      #|)
       #|
       #|HTTP/1.1 200 OK
       #|content-type: application/octet-stream
@@ -153,7 +151,7 @@ async test "basic" {
       #|transfer-encoding: chunked
       #|examples/http_file_server/
       #|examples/http_file_server/main.mbt
-      #|examples/http_file_server/moon.pkg.json
+      #|examples/http_file_server/moon.pkg
       #|examples/http_file_server/server_test.mbt
       #|examples/http_file_server/pkg.generated.mbti
       #|
