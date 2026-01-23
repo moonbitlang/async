@@ -13,13 +13,5 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
 #cfg(not(target="native"))
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@semaphore.Semaphore::release)
-  ignore(@tls.unimplemented)
-  ignore(@http.unimplemented)
-  ignore(@coroutine.spawn)
-  ignore(@encoding/utf8.encode(""))
-}
+let _ignore_unused_import : Unit = ignore(@encoding/utf8.encode(""))

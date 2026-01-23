@@ -136,6 +136,7 @@ async test "basic" {
       #|transfer-encoding: chunked
       #|{
       #|  "import": [
+      #|    "moonbitlang/core/env",
       #|    "moonbitlang/async",
       #|    "moonbitlang/async/socket",
       #|    "moonbitlang/async/fs",

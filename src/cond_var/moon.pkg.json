@@ -1,5 +1,6 @@
 {
   "import": [
+    "moonbitlang/core/deque",
     "moonbitlang/async/internal/coroutine"
   ],
   "test-import": [

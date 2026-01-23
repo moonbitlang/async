@@ -1,5 +1,8 @@
 {
   "import": [
+    "moonbitlang/core/deque",
+    "moonbitlang/core/sorted_set",
+    "moonbitlang/core/cmp",
     "moonbitlang/async/os_error",
     "moonbitlang/async/internal/coroutine",
     "moonbitlang/async/internal/fd_util",
@@ -11,6 +14,10 @@
     "moonbitlang/async"
   ],
   "test-import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
     "moonbitlang/async",
     "moonbitlang/async/pipe",
     "moonbitlang/async/fs",

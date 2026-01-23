@@ -7,6 +7,13 @@
     "moonbitlang/async/internal/os_string",
     "moonbitlang/async"
   ],
+  "test-import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
+    "moonbitlang/core/env"
+  ],
   "targets": {
     "access_test.mbt": [ "native" ],
     "constants.mbt": [ "native" ],

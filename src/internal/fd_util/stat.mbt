@@ -18,7 +18,7 @@ extern "C" fn get_fd_kind_sync_ffi(fd : Fd, out : Ref[Int64]) -> Int = "moonbitl
 
 ///|
 pub fn get_fd_kind_sync(fd : Fd, context~ : String) -> FileKind raise {
-  let out = @ref.new(0L)
+  let out = Ref::new(0L)
   if get_fd_kind_sync_ffi(fd, out) < 0 {
     @os_error.check_errno(context)
   }

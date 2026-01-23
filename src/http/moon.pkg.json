@@ -1,14 +1,28 @@
 {
   "import": [
+    "moonbitlang/core/cmp",
+    "moonbitlang/core/strconv",
+    "moonbitlang/core/buffer",
     "moonbitlang/async/io",
     "moonbitlang/async/socket",
     "moonbitlang/async/tls",
     "moonbitlang/async/internal/io_buffer"
   ],
   "wbtest-import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
     "moonbitlang/async",
     "moonbitlang/async/fs",
     "moonbitlang/async/internal/bytes_util"
+  ],
+  "test-import": [
+    {
+      "path": "moonbitlang/core/encoding/utf8",
+      "alias": "encoding/utf8"
+    },
+    "moonbitlang/async"
   ],
   "targets": {
     "client.mbt": [ "native" ],
@@ -23,8 +37,5 @@
     "request_test.mbt": [ "native" ],
     "proxy_test.mbt": [ "native" ],
     "resolve_url_wbtest.mbt": [ "native" ]
-  },
-  "test-import": [
-    "moonbitlang/async"
-  ]
+  }
 }

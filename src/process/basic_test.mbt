@@ -31,11 +31,7 @@ async test "basic_ls" {
       .replace_all(old="\r\n", new="\n")
       .split("\n")
       .to_array()
-      |> then(x => {
-        x.sort()
-        x
-      })
-    // files.sort()
+    files.sort()
     json_inspect(files, content=[
       "stub.c", "unix.mbt", "README.md", "windows.c", "process.mbt", "windows.mbt",
       "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md", "moon.pkg.json",

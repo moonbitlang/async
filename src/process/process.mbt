@@ -64,7 +64,7 @@ pub async fn spawn_orphan(
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
   @event_loop.wait_pid(pid, context~)
-  let out = @ref.new(0)
+  let out = Ref::new(0)
   let ret = get_process_result(pid, out)
   if ret < 0 {
     @os_error.check_errno(context)
@@ -145,7 +145,7 @@ pub async fn run(
       }))
     err => raise err
   }
-  let out = @ref.new(0)
+  let out = Ref::new(0)
   let ret = get_process_result(pid, out)
   if ret < 0 {
     @os_error.check_errno(context)

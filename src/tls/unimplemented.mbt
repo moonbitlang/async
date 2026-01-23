@@ -23,4 +23,5 @@ pub let unimplemented : Unit = {
   ignore(@semaphore.Semaphore::acquire)
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
+  ignore(@encoding/utf8.encode(""))
 }

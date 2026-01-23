@@ -403,4 +403,5 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 let _unused : Unit = {
   ignore(@c_buffer.null)
   ignore(@bytes_util.ascii_to_string)
+  ignore(@encoding/utf8.encode(""))
 }

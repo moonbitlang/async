@@ -62,3 +62,7 @@ pub fn decode(os_str : @c_buffer.Buffer) -> String {
 ///|
 #cfg(platform="windows")
 pub extern "C" fn decode(os_str : @c_buffer.Buffer) -> String = "moonbitlang_async_c_buffer_as_string"
+
+///|
+#cfg(platform="windows")
+let _mute_unused_warning : Unit = ignore(@encoding/utf8.encode(""))
