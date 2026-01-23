@@ -27,7 +27,7 @@ async test "blocking unbuffered" {
       @async.sleep(100)
     })
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "put(0)", "get() => 0", "put(1)", "get() => 1", "put(2)", "get() => 2",
   ])
 }
@@ -47,7 +47,7 @@ async test "blocking buffered" {
       @async.sleep(100)
     })
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "put(0)", "put(1)", "get() => 0", "put(2)", "get() => 1", "put(3)", "get() => 2",
     "get() => 3",
   ])
@@ -72,7 +72,7 @@ async test "blocking fairness" {
       ignore(q.get())
     })
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "task 1 put(0)", "task 2 put(0)", "task 1 put(1)", "task 2 put(1)", "task 1 put(2)",
     "task 2 put(2)",
   ])
@@ -101,7 +101,7 @@ async test "blocking cancellation" {
       err => raise err
     }
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "put() completed", "put() completed", "put() cancelled",
   ])
 }
@@ -134,7 +134,7 @@ async test "blocking fairness2" {
     @async.sleep(200)
     inspect(queue.get(), content="0")
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "task 1: put() completed", "task 1: get() => 0", "task 2: put() completed", "task 2: get() => 0",
     "task 1: put() completed", "task 1: get() => 1", "task 2: put() completed", "task 2: get() => 1",
   ])
@@ -161,7 +161,7 @@ async test "blocking immediate cancellation" {
     @async.sleep(100)
     inspect(q.try_get(), content="Some(1)")
   })
-  @json.inspect(log, content=["put() completed"])
+  json_inspect(log, content=["put() completed"])
 }
 
 ///|

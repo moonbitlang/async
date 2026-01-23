@@ -43,14 +43,14 @@ async test "read_at" {
   {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    @json.inspect(r.read_exactly_at(2, position=r.size() - 2), content="ef")
-    @json.inspect(r.read_exactly_at(2, position=2), content="cd")
+    json_inspect(r.read_exactly_at(2, position=r.size() - 2), content="ef")
+    json_inspect(r.read_exactly_at(2, position=2), content="cd")
     // still read from the start
-    @json.inspect(r.read_exactly(2), content="ab")
+    json_inspect(r.read_exactly(2), content="ab")
     let buf = FixedArray::make(2, b'\x00')
     let n = r.read_at(buf, position=5)
     inspect(n, content="1")
-    @json.inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="f")
+    json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="f")
   }
   @fs.remove(path)
 }

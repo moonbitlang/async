@@ -44,7 +44,7 @@ async test "passthrough mode" {
       @async.sleep(200)
     }
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "client sending: abcd", "server received: abcd", "client sending: efgh", "server received: efgh",
     "client sending: ijkl", "server received: ijkl",
   ])
@@ -124,7 +124,7 @@ async test "proxied https request" {
     ))
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "proxy server: connected to www.example.org:443 successfully",
   ])
 }
@@ -144,7 +144,7 @@ async test "proxied http request" {
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "proxy server: connected to www.example.org:80 successfully",
   ])
 }
@@ -183,7 +183,7 @@ async test "proxied misc request" {
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")
   }
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "proxy server: connected to localhost:XXXXX successfully", "target server: received request Get / ",
     "proxy server: connected to localhost:XXXXX successfully", "target server: received request Put / abcd",
     "proxy server: connected to localhost:XXXXX successfully", "target server: received request Post / efgh",

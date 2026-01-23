@@ -43,5 +43,5 @@ async test "external client" {
       ),
     )
   })
-  @json.inspect(log, content=["new client to /", "Text: Hello, Server!"])
+  json_inspect(log, content=["new client to /", "Text: Hello, Server!"])
 }

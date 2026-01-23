@@ -27,7 +27,7 @@ async test "all basic" {
     fn() { 3 },
   ])
   let duration = (@async.now() - start).to_int()
-  @json.inspect(results, content=[1, 2, 3])
+  json_inspect(results, content=[1, 2, 3])
   inspect((duration + 50) / 200, content="2")
 }
 
@@ -50,8 +50,8 @@ async test "all preserves order" {
       2
     },
   ])
-  @json.inspect(log, content=["task 2", "task 1", "task 0"])
-  @json.inspect(results, content=[0, 1, 2])
+  json_inspect(log, content=["task 2", "task 1", "task 0"])
+  json_inspect(results, content=[0, 1, 2])
 }
 
 ///|
@@ -80,8 +80,8 @@ async test "all with max_concurrent" {
     ],
     max_concurrent=2,
   )
-  @json.inspect(result, content=[0, 1, 2])
-  @json.inspect(log, content=[
+  json_inspect(result, content=[0, 1, 2])
+  json_inspect(log, content=[
     "task #1 started", "task #2 started", "task #2 completed", "task #3 started",
     "task #1 completed", "task #3 completed",
   ])
@@ -90,13 +90,13 @@ async test "all with max_concurrent" {
 ///|
 async test "all empty" {
   let results : Array[Int] = @async.all([])
-  @json.inspect(results, content=[])
+  json_inspect(results, content=[])
 }
 
 ///|
 async test "all single task" {
   let result = @async.all([fn() { 42 }])
-  @json.inspect(result, content=[42])
+  json_inspect(result, content=[42])
 }
 
 ///|
@@ -122,8 +122,8 @@ async test "all failure propagates" {
       log.push("task #3 completed")
     },
   ])
-  @json.inspect(result, content={ "Err": ["Failure", "Err"] })
-  @json.inspect(log, content=[
+  json_inspect(result, content={ "Err": ["Failure", "Err"] })
+  json_inspect(log, content=[
     "task #1 completed", "task #2 failing", "task #3 cancelled with Cancelled",
   ])
 }
@@ -147,7 +147,7 @@ async test "all cancelled" {
     () => task(2, 150),
   ]))
   inspect(result, content="None")
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "task #2 completed", "task #1 cancelled with Cancelled",
   ])
 }
@@ -170,7 +170,7 @@ async test "any basic" {
     },
   ])
   let duration = (@async.now() - start).to_int()
-  @json.inspect(result, content=2)
+  json_inspect(result, content=2)
   inspect((duration + 50) / 200, content="1")
 }
 
@@ -193,8 +193,8 @@ async test "any returns first success" {
     () => task(2, 200),
     () => task(3, 400),
   ])
-  @json.inspect(result, content=2)
-  @json.inspect(log, content=[
+  json_inspect(result, content=2)
+  json_inspect(log, content=[
     "task #2 completed", "task #1 cancelled with Cancelled", "task #3 cancelled with Cancelled",
   ])
 }
@@ -217,8 +217,8 @@ async test "any failure without allow_failure" {
       raise Failure::Failure("Err")
     },
   ])
-  @json.inspect(result, content={ "Err": ["Failure", "Err"] })
-  @json.inspect(log, content=["task #1 cancelled with Cancelled"])
+  json_inspect(result, content={ "Err": ["Failure", "Err"] })
+  json_inspect(log, content=["task #1 cancelled with Cancelled"])
 }
 
 ///|
@@ -244,10 +244,10 @@ async test "any with allow_failure" {
     ],
     allow_failure=true,
   )
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "task #2 failing", "task #1 failing", "task #3 completed",
   ])
-  @json.inspect(result, content=2)
+  json_inspect(result, content=2)
 }
 
 ///|
@@ -268,19 +268,19 @@ async test "any with allow_failure all fail" {
     ],
     allow_failure=true,
   )
-  @json.inspect(log, content=["task #2 failing", "task #1 failing"])
+  json_inspect(log, content=["task #2 failing", "task #1 failing"])
   inspect(result, content="Err(Err)")
 }
 
 ///|
 async test "any single task" {
   let result = @async.any([fn() { 42 }])
-  @json.inspect(result, content=42)
+  json_inspect(result, content=42)
 }
 
 ///|
 async test "any empty fails" {
-  @json.inspect(try? (@async.any([]) : Unit), content={
+  json_inspect(try? (@async.any([]) : Unit), content={
     "Err": [
       "Failure", "all_any_test.mbt:283:23-283:37@moonbitlang/async_blackbox_test FAILED: no tasks provided to any()",
     ],
@@ -306,7 +306,7 @@ async test "any cancelled" {
     () => task(2, 400),
   ]))
   inspect(result, content="None")
-  @json.inspect(log, content=[
+  json_inspect(log, content=[
     "task #1 cancelled with Cancelled", "task #2 cancelled with Cancelled",
   ])
 }

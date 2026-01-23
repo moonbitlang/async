@@ -20,7 +20,7 @@ async test "read_all" {
     .read_all()
     .filter_map(x => if x is "target" { None } else { Some(x) })
   list.sort()
-  @json.inspect(list, content=[
+  json_inspect(list, content=[
     "stub.c", "dir.mbt", "file.mbt", "README.md", "utils.mbt", "dir_test.mbt", "eof_test.mbt",
     "README.mbt.md", "constants.mbt", "moon.pkg.json", "stat_test.mbt", "walk_test.mbt",
     "mkdir_test.mbt", "access_test.mbt", "create_test.mbt", "read_all_test.mbt",
@@ -52,7 +52,7 @@ async test "as_dir" {
     assert_eq(kind, @fs.kind(path))
     kinds.push("\{file}: \{kind}")
   }
-  @json.inspect(kinds, content=[
+  json_inspect(kinds, content=[
     "stub.c: Regular", "dir.mbt: Regular", "file.mbt: Regular", "README.md: Regular",
     "utils.mbt: Regular", "dir_test.mbt: Regular", "eof_test.mbt: Regular", "README.mbt.md: Regular",
     "constants.mbt: Regular", "moon.pkg.json: Regular", "stat_test.mbt: Regular",
