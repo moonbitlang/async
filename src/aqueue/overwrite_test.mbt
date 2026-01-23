@@ -15,7 +15,7 @@
 ///|
 async test "discard oldest basic" {
   let q = @async.Queue::new(kind=DiscardOldest(2))
-  for i in 1..=3 {
+  for i in 1..<=3 {
     q.put(i)
   }
   let result = []
@@ -42,7 +42,7 @@ async test "discard oldest try_put" {
 ///|
 async test "discard latest basic" {
   let q = @async.Queue::new(kind=DiscardLatest(2))
-  for i in 1..=3 {
+  for i in 1..<=3 {
     q.put(i)
   }
   let result = []
