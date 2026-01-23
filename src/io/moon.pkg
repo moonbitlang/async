@@ -1,0 +1,17 @@
+import {
+  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/core/json",
+  "moonbitlang/core/cmp",
+  "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/io_buffer",
+}
+
+import "test" {
+  "moonbitlang/async",
+}
+
+import "wbtest" {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/internal/bytes_util",
+}

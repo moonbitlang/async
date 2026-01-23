@@ -1,6 +1,0 @@
-{
-  "targets": {
-    "c_buffer.mbt": [ "native" ]
-  },
-  "native-stub": [ "stub.c" ]
-}

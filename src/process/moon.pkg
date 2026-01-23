@@ -1,0 +1,36 @@
+import {
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/fd_util",
+  "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/pipe",
+  "moonbitlang/async/stdio",
+  "moonbitlang/async",
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+}
+
+import "test" {
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/async/fs",
+}
+
+options(
+  "native-stub": [ "stub.c", "windows.c" ],
+  targets: {
+    "basic_test.mbt": [ "native" ],
+    "cancel_test.mbt": [ "native" ],
+    "cancellation.mbt": [ "native" ],
+    "commands_for_test.mbt": [ "native" ],
+    "cwd_test.mbt": [ "native" ],
+    "env_test.mbt": [ "native" ],
+    "helper_test.mbt": [ "native" ],
+    "process.mbt": [ "native" ],
+    "redirect.mbt": [ "native" ],
+    "redirect_test.mbt": [ "native" ],
+    "unix.mbt": [ "native" ],
+    "wait_test.mbt": [ "native" ],
+    "windows.mbt": [ "native" ],
+  },
+)
