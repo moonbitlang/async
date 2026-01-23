@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async"
 
-import(
-  "moonbitlang/async/aqueue"
-  "moonbitlang/async/cond_var"
-  "moonbitlang/async/semaphore"
-)
+import {
+  "moonbitlang/async/aqueue",
+  "moonbitlang/async/cond_var",
+  "moonbitlang/async/semaphore",
+}
 
 // Values
 pub async fn[X] all(ArrayView[async () -> X], max_concurrent? : Int) -> Array[X]
