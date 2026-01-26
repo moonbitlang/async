@@ -61,3 +61,6 @@ let dump_env_prog : @async.Lazy[String] = make_test_prog("dump_env")
 
 ///|
 let cat : @async.Lazy[String] = make_test_prog("cat")
+
+///|
+let spawn_prog : @async.Lazy[String] = make_test_prog("spawn")

@@ -26,6 +26,7 @@ extern "C" fn exit(code : Int) = "exit"
 async fn main {
   let mut time = 10_000
   let mut exit_code = 0
+  let mut msg_after_sleep = None
   loop @env.args()[1:] {
     [] => ()
     ["-exit-code", .. rest] => {
@@ -37,6 +38,11 @@ async fn main {
       set_swallow_cancel_signal()
       continue rest
     }
+    ["-print-after-sleep", ..rest] => {
+      guard rest is [msg, ..rest] else { fail("invalid arguments") }
+      msg_after_sleep = Some(msg)
+      continue rest
+    }
     [['-', ..] as flag, ..] => fail("unrecognized argument \{flag}")
     [t, .. rest] => {
       time = @strconv.parse_int(t)
@@ -45,5 +51,8 @@ async fn main {
   }
   register_termination_handler()
   @async.sleep(time)
+  if msg_after_sleep is Some(msg) {
+    println(msg)
+  }
   exit(exit_code)
 }
