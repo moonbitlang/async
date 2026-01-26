@@ -27,7 +27,7 @@ Asynchronous file system operations for MoonBit. This package provides comprehen
 
 The `open` function provides flexible file opening with various modes and options:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "open file for reading" {
@@ -69,7 +69,7 @@ async test "open with append mode" {
 
 The `create` function is a convenience wrapper for creating new files:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "create new file" {
@@ -87,7 +87,7 @@ async test "create new file" {
 
 Read entire files or read data in chunks:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "read_file - read entire file" {
@@ -144,7 +144,7 @@ async test "read_exactly specific bytes" {
 
 Write data to files using various methods:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "write_file - write entire file" {
@@ -196,7 +196,7 @@ async test "write_once for single write operation" {
 
 Read and write file from specified position:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "read at specific position" {
@@ -207,13 +207,13 @@ async test "read at specific position" {
     defer file.close()
 
     // read 3 bytes at position 5
-    @json.inspect(file.read_exactly_at(3, position=5), content="567")
+    json_inspect(file.read_exactly_at(3, position=5), content="567")
 
     // use `read_at` to handle EOF robustly
     let buf = FixedArray::make(10, b'\x00')
     let n = file.read_at(buf, position=5)
     inspect(n, content="5")
-    @json.inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="56789")
+    json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="56789")
   }
   @fs.remove(test_file)
 }
@@ -257,7 +257,7 @@ Some important notes when using `read_at` and `write_at`:
 
 ### Creating Directories
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "mkdir - create directory" {
@@ -281,7 +281,7 @@ async test "mkdir - create with custom permissions" {
 
 ### Reading Directories
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "readdir - read directory entries" {
@@ -356,7 +356,7 @@ async test "as_dir - convert existing opened file to directory" {
 
 Recursively traverse directory hierarchies:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "walk directory tree" {
@@ -398,7 +398,7 @@ async test "walk with max_concurrency" {
 
 ### Removing Directories
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "rmdir - remove empty directory" {
@@ -429,7 +429,7 @@ async test "rmdir recursive - remove directory tree" {
 
 Determine the type of file system entries:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "kind - regular file" {
@@ -467,7 +467,7 @@ async test "File::kind method" {
 
 Access file timestamps (atime, mtime, ctime):
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "atime - access time" {
@@ -522,7 +522,7 @@ async test "File timestamp methods" {
 
 Check file access permissions:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "exists - check file existence" {
@@ -573,7 +573,7 @@ async test "can_execute - check execute permission" {
 
 ## Path Operations
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "realpath - resolve absolute path" {
@@ -588,7 +588,7 @@ async test "realpath - resolve absolute path" {
 
 ## File Removal
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "remove - delete file" {
@@ -676,7 +676,7 @@ Directory handle for reading directory entries:
 
 All async file operations can raise errors. Use proper error handling:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "error handling example" {

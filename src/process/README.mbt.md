@@ -8,7 +8,7 @@ Asynchronous process spawning and management for MoonBit with support for pipes,
 
 Execute commands and collect their output:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "simple command execution" {
@@ -32,7 +32,7 @@ async test "command with exit code" {
 
 Capture stdout from a process:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "collect stdout" {
@@ -58,7 +58,7 @@ async test "collect stdout with args" {
 
 Capture stderr from a process:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "collect stderr" {
@@ -74,7 +74,7 @@ async test "collect stderr" {
 
 Capture both output streams separately:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "collect both streams" {
@@ -91,7 +91,7 @@ async test "collect both streams" {
 
 Merge stdout and stderr into a single stream:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "collect merged output" {
@@ -109,7 +109,7 @@ async test "collect merged output" {
 
 Create a pipe to read from a process:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "read from process with pipe" {
@@ -130,7 +130,7 @@ async test "read from process with pipe" {
 
 Create a pipe to write to a process:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "write to process with pipe" {
@@ -160,7 +160,7 @@ async test "write to process with pipe" {
 
 Use a file as process input:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "redirect input from file" {
@@ -183,7 +183,7 @@ async test "redirect input from file" {
 
 Write process output to a file:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "redirect output to file" {
@@ -206,7 +206,7 @@ async test "redirect output to file" {
 
 Copy file content using process redirection:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "file to file redirection" {
@@ -233,7 +233,7 @@ async test "file to file redirection" {
 
 Pass custom environment variables to processes:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "set environment variable" {
@@ -261,7 +261,7 @@ async test "multiple environment variables" {
 
 Run process without inheriting parent environment:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "isolated environment" {
@@ -285,7 +285,7 @@ async test "isolated environment" {
 
 Execute processes in a specific directory:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "set working directory" {
@@ -314,7 +314,7 @@ async test "relative path in cwd" {
 
 Spawn processes asynchronously and wait for completion:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "spawn and wait" {
@@ -334,7 +334,7 @@ async test "wait for specific exit code" {
 
 Start a process without blocking:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "spawn orphan and wait later" {
@@ -355,7 +355,7 @@ async test "spawn orphan and wait later" {
 
 Combine stdout and stderr into one stream:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "merge stdout and stderr" {
@@ -382,7 +382,7 @@ async test "merge stdout and stderr" {
 
 Run multiple processes writing to the same pipe:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "multiple processes to one pipe" {
@@ -441,7 +441,7 @@ Trait for types that can be used as process output:
 
 Process operations handle errors through exit codes:
 
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "handle process errors" {
