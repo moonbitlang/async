@@ -21,7 +21,7 @@ Asynchronous I/O abstraction for MoonBit. This package provides fundamental abst
 
 The fastest way to experiment with `@moonbitlang/async/io` is to couple it with an in-memory pipe and an async task group. The writer task produces bytes, while the reader task consumes them:
 
-```moonbit
+```moonbit check
 ///|
 async test "quick start pipeline" {
   @async.with_task_group(fn(root) {
@@ -60,7 +60,7 @@ On the receiver side, the trait object type `&Data` provides helper methods `.bi
 which converts receive data to raw binary/UTF-8 encoded string/UTF-8 encoded JSON string in respect.
 This allows convenient conversion of received data to various formats.
 
-```moonbit
+```moonbit check
 ///|
 async test "data as binary" {
   @async.with_task_group(fn(root) {
@@ -106,8 +106,8 @@ async test "data as json" {
     })
     let data = r.read_all()
     let json = data.json()
-    // `@json.inspect` asserts that the parsed JSON matches the expected structure.
-    @json.inspect(json, content={ "name": "John", "age": 30 })
+    // `json_inspect` asserts that the parsed JSON matches the expected structure.
+    json_inspect(json, content={ "name": "John", "age": 30 })
   })
 }
 ```
@@ -124,7 +124,7 @@ The `Reader` trait exposes three complementary levels of granularity:
 
 Each example below shows how a reader pairs with `@io.pipe()` and includes inline comments that highlight the important steps.
 
-```moonbit
+```moonbit check
 ///|
 async test "read from reader" {
   @async.with_task_group(fn(root) {
@@ -312,7 +312,7 @@ async test "read_until - used to read file line by line" {
 
 The snippets below demonstrate each mode with progressive complexity.
 
-```moonbit
+```moonbit check
 ///|
 async test "write to writer" {
   @async.with_task_group(fn(root) {
@@ -432,7 +432,7 @@ async test "write string" {
 
 `BufferedWriter` batches small writes into a fixed-capacity buffer before flushing them to the underlying destination. This greatly reduces syscall overhead and network chatter when dealing with chatty protocols. You can control the buffer size at construction time and decide when to `flush` explicitly—for example before handing the underlying writer to a different subsystem.
 
-```moonbit
+```moonbit check
 ///|
 async test "BufferedWriter - basic buffering" {
   let log = StringBuilder::new()
