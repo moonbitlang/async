@@ -4,7 +4,7 @@ HTTP support for `moonbitlang/async`.
 
 Simple HTTP request can be made in just one line:
 
-```moonbit
+```moonbit check
 ///|
 #cfg(target="native")
 async test {
@@ -39,7 +39,7 @@ can be used to perform step (1)-(3) above.
 
 A complete example:
 
-```moonbit
+```moonbit check
 ///|
 #cfg(target="native")
 async test {
@@ -71,7 +71,7 @@ It receives three parameters:
 
 Here's an example server that returns 404 to every request:
 
-```moonbit
+```moonbit check
 ///|
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
