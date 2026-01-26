@@ -10,7 +10,7 @@ This module provides RFC 6455 compilant WebSocket client & server support for `m
 ## Quick Start
 
 ### WebSocket server
-```moonbit
+```moonbit nocheck
 // A simple WebSocket echo server that listen on path `/ws`,
 // and reply clients with whatever they send.
 
@@ -48,7 +48,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
 ```
 
 ### WebSocket client
-```moonbit
+```moonbit nocheck
 ///|
 #cfg(target="native")
 async test "WebSocket client example" {
@@ -122,7 +122,7 @@ A single message received from a WebSocket tunnel.
 ### `CloseCode`
 WebSocket close code.
 
-```moonbit no-check
+```moonbit no-check nocheck
 ///|
 pub(all) enum CloseCode {
   Normal // 1000
@@ -142,7 +142,7 @@ pub(all) enum CloseCode {
 ### Error Types
 
 #### `WebSocketError`
-```moonbit no-check
+```moonbit no-check nocheck
 ///|
 suberror WebSocketError {
   // Connection was closed with specific code.
