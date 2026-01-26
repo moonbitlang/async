@@ -1381,6 +1381,7 @@ void opendir_job_worker(struct job *job) {
 struct opendir_job *moonbitlang_async_make_opendir_job(char *path) {
   struct opendir_job *job = MAKE_JOB(opendir);
   job->path = path;
+  job->result = 0;
   job->result_fetched = 0;
   return job;
 }
