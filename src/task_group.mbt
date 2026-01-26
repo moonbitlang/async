@@ -51,7 +51,7 @@ fn[X] TaskGroup::spawn_coroutine(
   no_wait~ : Bool,
   allow_failure~ : Bool,
 ) -> @coroutine.Coroutine {
-  guard self.state is Running else {
+  guard self.state is Running || !self.children.is_empty() else {
     abort("trying to spawn from a terminated task group")
   }
   if not(no_wait) {
@@ -74,7 +74,6 @@ fn[X] TaskGroup::spawn_coroutine(
         self.parent.wake()
       }
     }
-    guard self.state is Running else {  }
     f() catch {
       err if allow_failure => raise err
       err => {
@@ -93,6 +92,9 @@ fn[X] TaskGroup::spawn_coroutine(
 
   let coro = @coroutine.spawn(worker)
   self.children.add(coro)
+  if not(self.state is Running) {
+    coro.cancel()
+  }
   coro
 }
 
@@ -106,8 +108,16 @@ fn[X] TaskGroup::spawn_coroutine(
 /// Ithe whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
 ///
-/// If the task group is already cancelled or has been terminated,
-/// `spawn_bg` will fail with error and the child task will not be spawned.
+/// If the task group is already cancelled, but `with_task_group` is still running
+/// (i.e. there are still other running child task in the group),
+/// `spawn_bg` will still succeed, but the child task will be cancelled immediately.
+/// In this case, the child task still get a chance to start execution
+/// (which means you can rely on `defer` at the start of child task being triggered),
+/// but will be in cancelled state from the very beginning
+/// (e.g. all async IO operation will be cancelled immediately before starting).
+///
+/// Calling `spawn_bg` after `with_task_group` completed or inside `group.add_defer` 
+/// is not allowed, and will abort the program immediately.
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn_bg` returns.
@@ -132,8 +142,16 @@ pub fn[X] TaskGroup::spawn_bg(
 /// Ithe whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
 ///
-/// If the task group is already cancelled or has been terminated,
-/// `spawn` will fail with error and the child task will not be spawned.
+/// If the task group is already cancelled, but `with_task_group` is still running
+/// (i.e. there are still other running child task in the group),
+/// `spawn` will still succeed, but the child task will be cancelled immediately.
+/// In this case, the child task still get a chance to start execution
+/// (which means you can rely on `defer` at the start of child task being triggered),
+/// but will be in cancelled state from the very beginning
+/// (e.g. all async IO operation will be cancelled immediately before starting).
+///
+/// Calling `spawn` after `with_task_group` completed or inside `group.add_defer` 
+/// is not allowed, and will abort the program immediately.
 ///
 /// It is undefined whether the child task will start running immediately
 /// before `spawn` returns.
@@ -154,11 +172,16 @@ pub fn[G, X] TaskGroup::spawn(
 
 ///|
 /// Attach a defer block, represented as a cleanup function, to a task group.
-/// The clenaup function will be invoked when the group terminates.
+/// The clenaup function will be invoked when the group terminates,
+/// so all child task of the group (created via `spawn` or `spawn_bg`)
+/// must have terminated when any group defer code is invoked.
+/// Calling `spawn` or `spawn_bg` inside group defer is not allowed,
+/// and will abort the program immediately.
+///
 /// Group scoped defer blocks are executed in FILO order, just like normal `defer`.
 /// `with_task_group` will only exit after all group defer blocks terminate.
 ///
-/// Note that if the whole task group is cancelled,
+/// Note that if the whole `with_task_group` is cancelled from outside,
 /// async operations in group defer block will be cancelled immediately too.
 /// Users can use `protect_from_cancel` to prevent async tasks from being cancelled.
 /// It is highly recommended to add a hard timeout to async defer block in this case,
