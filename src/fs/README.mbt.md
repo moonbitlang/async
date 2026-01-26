@@ -566,8 +566,13 @@ async test "realpath - resolve absolute path" {
   @fs.mkdir(test_dir, permission=0o755)
   let real_path = @fs.realpath(test_dir)
   @fs.rmdir(test_dir)
-  inspect(real_path.contains(test_dir), content="true")
-  inspect(real_path[0] == '/', content="true")
+  guard @env.current_dir() is Some(cwd)
+  assert_true(real_path.has_prefix(cwd))
+  inspect(
+    // replace `\\` with `/` for Windows
+    real_path[cwd.length():].replace_all(old="\\", new="/"),
+    content="/_build/test_realpath",
+  )
 }
 ```
 
