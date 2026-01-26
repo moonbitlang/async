@@ -31,23 +31,6 @@ pub async fn spawn(
 }
 
 ///|
-#cfg(platform="windows")
-pub async fn spawn(
-  command_line : @os_string.OsString,
-  env~ : @os_string.OsString?,
-  stdin~ : @fd_util.Fd,
-  stdout~ : @fd_util.Fd,
-  stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString?,
-  context~ : String,
-) -> Int {
-  perform_job_in_worker(
-    Job::spawn(command_line, env, stdin, stdout, stderr, cwd),
-    context~,
-  )
-}
-
-///|
 #cfg(not(platform="windows"))
 pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
   guard curr_loop.val is Some(evloop)
@@ -63,15 +46,4 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
     evloop.poll.remove_pid(alt_id)
   }
   @coroutine.suspend()
-}
-
-///|
-#cfg(platform="windows")
-pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
-  let job = Job::wait_for_process(pid)
-  perform_job_in_worker(job, context~, cancel=_ => {
-    job.cancel_process_waiter()
-    NeedWait
-  })
-  |> ignore
 }
