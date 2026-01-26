@@ -24,7 +24,7 @@ let curr_env : String = get_curr_env()
 #cfg(platform="windows")
 fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
-  arg : String,
+  arg : StringView,
 ) -> Unit raise {
   // Do not add double quotes if it is unnecessary to do so.
   // This help with simple cases when the program is not using C argv syntax,
@@ -37,7 +37,7 @@ fn StringBuilder::write_arg_with_windows_escape(
     false
   }
   if !need_quote {
-    builder.write_string(arg)
+    builder.write_stringview(arg)
     return
   }
   let mut segment_start = 0
@@ -72,14 +72,14 @@ fn StringBuilder::write_arg_with_windows_escape(
 ///|
 #cfg(platform="windows")
 async fn spawn(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env~ : Map[String, String],
   inherit_env~ : Bool,
   stdin~ : &ProcessInput?,
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
-  cwd~ : String?,
+  cwd~ : StringView?,
   context~ : String,
 ) -> Int {
   let cmd = match cmd {

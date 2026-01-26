@@ -36,14 +36,14 @@ extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlan
 /// The meaning of the arguments is the same as `@process.run`,
 /// see `@process.run` for more details.
 pub async fn spawn_orphan(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
-  cwd? : String,
+  cwd? : StringView,
 ) -> Int {
   spawn(
     cmd,
@@ -115,14 +115,14 @@ pub async fn wait_pid(pid : Int) -> Int {
 /// If `cancel_handler` is still running after the process terminates,
 /// it will be cancelled.
 pub async fn run(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
-  cwd? : String,
+  cwd? : StringView,
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
@@ -159,13 +159,13 @@ pub async fn run(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_stdout(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
-  cwd? : String,
+  cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
@@ -191,13 +191,13 @@ pub async fn collect_stdout(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_stderr(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
-  cwd? : String,
+  cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
@@ -224,12 +224,12 @@ pub async fn collect_stderr(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_output(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
-  cwd? : String,
+  cwd? : StringView,
 ) -> (Int, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
@@ -263,12 +263,12 @@ pub async fn collect_output(
 ///
 /// The meaning of parameters is the same as `@process.run`
 pub async fn collect_output_merged(
-  cmd : String,
+  cmd : StringView,
   args : Array[String],
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
-  cwd? : String,
+  cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {

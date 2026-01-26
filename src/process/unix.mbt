@@ -23,14 +23,14 @@ let curr_env : FixedArray[@os_string.OsString?] = get_curr_env()
 ///|
 #cfg(not(platform="windows"))
 async fn spawn(
-  cmd : String,
-  args : Array[String],
+  cmd : StringView,
+  args : ArrayView[String],
   extra_env~ : Map[String, String],
   inherit_env~ : Bool,
   stdin~ : &ProcessInput?,
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
-  cwd~ : String?,
+  cwd~ : StringView?,
   context~ : String,
 ) -> Int {
   let cmd = @os_string.encode(cmd)

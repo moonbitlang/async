@@ -8,13 +8,13 @@ import {
 }
 
 // Values
-pub async fn collect_output(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data, &@io.Data)
+pub async fn collect_output(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data, &@io.Data)
 
-pub async fn collect_output_merged(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_output_merged(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub async fn collect_stderr(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub async fn collect_stdout(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : String) -> (Int, &@io.Data)
+pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
 
 pub fn graceful_cancel(timeout~ : Int) -> CancellationHandler
 
@@ -26,9 +26,9 @@ pub async fn redirect_from_file(String) -> &ProcessInput
 
 pub async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
 
-pub async fn run(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String, cancel_handler? : CancellationHandler) -> Int
+pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
 
-pub async fn spawn_orphan(String, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : String) -> Int
+pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
 
 pub async fn wait_pid(Int) -> Int
 
