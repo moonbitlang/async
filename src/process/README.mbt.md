@@ -10,7 +10,7 @@ Execute commands and collect their output:
 
 ```moonbit check
 ///|
-#cfg(target="native")
+#cfg(all(target="native", not(platform="windows")))
 async test "simple command execution" {
   let (exit_code, output) = @process.collect_stdout("echo", ["Hello, World!"])
   inspect(exit_code, content="0")
@@ -19,7 +19,7 @@ async test "simple command execution" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(all(target="native", not(platform="windows")))
 async test "command with exit code" {
   let exit_code = @process.run("sh", ["-c", "exit 42"])
   inspect(exit_code, content="42")
