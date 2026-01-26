@@ -122,7 +122,7 @@ A single message received from a WebSocket tunnel.
 ### `CloseCode`
 WebSocket close code.
 
-```moonbit no-check
+```moonbit no-check nocheck
 ///|
 pub(all) enum CloseCode {
   Normal // 1000
@@ -142,7 +142,7 @@ pub(all) enum CloseCode {
 ### Error Types
 
 #### `WebSocketError`
-```moonbit no-check
+```moonbit no-check nocheck
 ///|
 suberror WebSocketError {
   // Connection was closed with specific code.
