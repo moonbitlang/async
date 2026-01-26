@@ -13,22 +13,21 @@
 // limitations under the License.
 
 ///|
-fn Json::get_or_add(
-  input : Json,
-  key : String,
-  update : () -> Json,
-) -> Json raise {
-  guard input is Object(map) else { fail("invalid moon.pkg.json") }
-  map.get_or_init(key, update)
-}
-
-///|
 #cfg(platform="windows")
 let sanitizer_flags = "/Z7 /fsanitize=address"
 
 ///|
 #cfg(not(platform="windows"))
 let sanitizer_flags = "-fsanitize=address -g -fno-omit-frame-pointer"
+
+///|
+let link_config : String =
+  $|  link: {
+  $|    "native": {
+  $|      "cc-flags": "\{sanitizer_flags}",
+  $|      "stub-cc-flags": "\{sanitizer_flags}",
+  $|    },
+  $|  },
 
 ///|
 async fn main {
@@ -44,14 +43,24 @@ async fn main {
   }
 
   @fs.walk(".", exclude~, (path, files) => for file in files {
-    guard file is "moon.pkg.json" else {  }
+    guard file is "moon.pkg" else {  }
     let full_path = "\{path}/\{file}"
-    let content = @json.parse(@fs.read_file(full_path).text())
-    let link = content.get_or_add("link", () => {})
-    let native = link.get_or_add("native", () => {})
-    guard native is Object(native) else { fail("invalid moon.pkg.json") }
-    native["cc-flags"] = Json::string(sanitizer_flags)
-    native["stub-cc-flags"] = Json::string(sanitizer_flags)
-    @fs.write_file(full_path, content.stringify())
+    let content = @fs.read_file(full_path).text().split("\n")
+    let transformed = StringBuilder::new()
+    let mut found = false
+    for line in content {
+      transformed..write_stringview(line)..write_char('\n')
+      if !found && line is "options(" {
+        found = true
+        transformed..write_string(link_config)..write_char('\n')
+      }
+    }
+    if !found {
+      transformed
+      ..write_string("\noptions(\n")
+      ..write_string(link_config)
+      ..write_string("\n)")
+    }
+    @fs.write_file(full_path, transformed.to_string())
   })
 }
