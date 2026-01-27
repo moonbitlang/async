@@ -17,6 +17,7 @@ import "test" {
 }
 
 options(
+  "max-concurrent-tests": 5,
   "native-stub": [ "stub.c", "windows.c" ],
   targets: {
     "basic_test.mbt": [ "native" ],
@@ -29,6 +30,7 @@ options(
     "process.mbt": [ "native" ],
     "redirect.mbt": [ "native" ],
     "redirect_test.mbt": [ "native" ],
+    "spawn_in_group_test.mbt": [ "native" ],
     "unix.mbt": [ "native" ],
     "wait_test.mbt": [ "native" ],
     "windows.mbt": [ "native" ],

@@ -2,6 +2,7 @@
 package "moonbitlang/async/process"
 
 import {
+  "moonbitlang/async",
   "moonbitlang/async/io",
   "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
@@ -28,6 +29,8 @@ pub async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? :
 
 pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
 
+pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool, allow_failure? : Bool) -> Process
+
 pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
 
 pub async fn wait_pid(Int) -> Int
@@ -40,6 +43,14 @@ pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
 pub(all) struct CancellationHandler(async (Int) -> Unit)
 #deprecated
 pub fn CancellationHandler::inner(Self) -> async (Int) -> Unit
+
+pub struct Process {
+  pid : Int
+  // private fields
+}
+pub fn Process::cancel(Self) -> Unit
+pub fn Process::try_wait(Self) -> Int? raise
+pub async fn Process::wait(Self) -> Int
 
 type ReadFromProcess
 pub fn ReadFromProcess::close(Self) -> Unit
