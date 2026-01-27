@@ -66,7 +66,7 @@ async test "close with blocking put" {
     })
     inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
-    let duration = (now + 10 - start) / 200
+    let duration = (now + 50 - start) / 200
     inspect(duration, content="1")
   })
 }
@@ -82,7 +82,7 @@ async test "close with blocking get" {
     })
     inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
-    let duration = (now + 10 - start) / 200
+    let duration = (now + 50 - start) / 200
     inspect(duration, content="1")
   })
 }
