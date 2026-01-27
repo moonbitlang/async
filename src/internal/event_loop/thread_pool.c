@@ -1521,13 +1521,12 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
 #ifdef _WIN32
 
 static
-HANDLE global_job_object;
+HANDLE global_job_object = INVALID_HANDLE_VALUE;
 
 int32_t moonbitlang_async_init_global_job_objeect() {
   HANDLE job = CreateJobObjectA(NULL, NULL);
-  if (job == NULL) {
-    return INVALID_HANDLE_VALUE;
-  }
+  if (job == NULL)
+    return 0;
 
   JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
   memset(&info, 0, sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
@@ -1631,6 +1630,59 @@ void spawn_job_worker(struct job *job) {
                              // via sending Ctrl+Break console event
     | CREATE_UNICODE_ENVIRONMENT;
 
+  STARTUPINFOEXW startup_info;
+  memset(&startup_info, 0, sizeof(STARTUPINFOEXW));
+  startup_info.StartupInfo.cb = sizeof(STARTUPINFOW);
+  startup_info.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+  startup_info.StartupInfo.hStdInput = spawn_job->stdio[0];
+  startup_info.StartupInfo.hStdOutput = spawn_job->stdio[1];
+  startup_info.StartupInfo.hStdError = spawn_job->stdio[2];
+
+#ifdef PROC_THREAD_ATTRIBUTE_JOB_LIST
+
+  if (!spawn_job->is_orphan) {
+    // On Windows 10 and later, there is a way to
+    // atomically assign a child process to new job atomically on creation.
+    // This can avoid race condition when main process is killed after `CreateProcess`,
+    // but before `AssignProcessToJobObject` on the child process.
+    create_flags |= EXTENDED_STARTUPINFO_PRESENT;
+    startup_info.cb = sizeof(STARTUPINFOEXW);
+
+    SIZE_T attrs_size;
+    InitializeProcThreadAttributeList(NULL, 1, 0, &attrs_size);
+    startup_info.lpAttributeList = malloc(attrs_size);
+    if (
+      !InitializeProcThreadAttributeList(
+        startup_info.lpAttributeList,
+        1,
+        0,
+        &attrs_size
+      )
+    ) {
+      job->err = GetLastError();
+      free(attrs);
+      return;
+    }
+
+    if (
+      !UpdateProcThreadAttributeList(
+        attrs,
+        0,
+        PROC_THREAD_ATTRIBUTE_JOB_LIST,
+        &global_job_object,
+        sizeof(global_job_object),
+        NULL,
+        NULL
+      )
+    ) {
+      job->err = GetLastError();
+      free(attrs);
+      return;
+    }
+  }
+
+#else
+
   // Notice that we are not setting `CREATE_BREAKAWAY_FROM_JOB` here for orphan process here.
   // Because in case the main process is already in a job disallowing break away,
   // setting `CREATE_BREAKAWAY_FROM_JOB` will fail the `CreateProcess` call.
@@ -1640,14 +1692,7 @@ void spawn_job_worker(struct job *job) {
     create_flags |= CREATE_SUSPENDED;
   }
 
-  STARTUPINFOW startup_info;
-  startup_info.cb = sizeof(STARTUPINFOW);
-
-  memset(&startup_info, 0, startup_info.cb);
-  startup_info.dwFlags = STARTF_USESTDHANDLES;
-  startup_info.hStdInput = spawn_job->stdio[0];
-  startup_info.hStdOutput = spawn_job->stdio[1];
-  startup_info.hStdError = spawn_job->stdio[2];
+#endif
 
   PROCESS_INFORMATION process_info;
   BOOL result = CreateProcessW(
@@ -1659,9 +1704,14 @@ void spawn_job_worker(struct job *job) {
     create_flags,
     spawn_job->environment,
     spawn_job->cwd,
-    &startup_info,
+    (LPSTARTUPINFOW)&startup_info,
     &process_info
   );
+
+  if (startup_info.lpAttributeList) {
+    DeleteProcThreadAttributeList(startup_info.lpAttributeList);
+    free(startup_info.lpAttributeList);
+  }
 
   if (!result) {
     job->err = GetLastError();
