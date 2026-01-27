@@ -80,6 +80,7 @@ async fn spawn(
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
   cwd~ : StringView?,
+  is_orphan~ : Bool,
   context~ : String,
 ) -> Int {
   let cmd = match cmd {
@@ -146,6 +147,7 @@ async fn spawn(
     stdout~,
     stderr~,
     cwd~,
+    is_orphan~,
     context~,
   )
 }
