@@ -71,7 +71,7 @@ fn StringBuilder::write_arg_with_windows_escape(
 
 ///|
 #cfg(platform="windows")
-async fn spawn(
+async fn raw_spawn(
   cmd : StringView,
   args : ArrayView[String],
   extra_env~ : Map[String, String],

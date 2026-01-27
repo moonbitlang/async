@@ -22,7 +22,7 @@ let curr_env : FixedArray[@os_string.OsString?] = get_curr_env()
 
 ///|
 #cfg(not(platform="windows"))
-async fn spawn(
+async fn raw_spawn(
   cmd : StringView,
   args : ArrayView[String],
   extra_env~ : Map[String, String],

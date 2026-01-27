@@ -45,7 +45,7 @@ pub async fn spawn_orphan(
   stderr? : &ProcessOutput,
   cwd? : StringView,
 ) -> Int {
-  spawn(
+  raw_spawn(
     cmd,
     args,
     extra_env~,
@@ -127,7 +127,7 @@ pub async fn run(
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
-  let pid = spawn(
+  let pid = raw_spawn(
     cmd,
     args,
     extra_env~,
@@ -153,6 +153,97 @@ pub async fn run(
     @os_error.check_errno(context)
   }
   out.val
+}
+
+///|
+/// A handle to a spawned process
+pub struct Process {
+  pid : Int
+  priv result : @async.Task[Int]
+}
+
+///|
+/// Wait for a process to terminate, return the exit code of the process
+pub async fn Process::wait(self : Process) -> Int {
+  self.result.wait()
+}
+
+///|
+/// If the process already terminated, return its exit code.
+/// If the process is still running, return `None`.
+pub fn Process::try_wait(self : Process) -> Int? raise {
+  self.result.try_wait()
+}
+
+///|
+/// Cancel a child process.
+/// The method of cancellation is determined by the `cancel_handler` parameter of `@process.spawn`.
+/// Notice that after `.cancel()` is called,
+/// if may take a while before the child process actually terminates.
+/// Use `.wait()` to wait for actual termination of the child process.
+pub fn Process::cancel(self : Process) -> Unit {
+  self.result.cancel()
+}
+
+///|
+/// Spawn a child process inside a task group.
+/// If `no_wait` is `false` (`fales` by default),
+/// the task group will only exit when the child process terminates.
+/// If `no_wait` is `true`, the child process will be terminated automatically
+/// when the task group terminates.
+///
+/// A `Process` object will be returned,
+/// users can retrieve the PID of the spawned process via `.pid`,
+/// or wait for the process to terminate via `.wait()`/`.try_wait()`.
+///
+/// All arguments except `group`, `no_wait` and `allow_failure`
+/// has the same meaning as `@process.run`, see `@process.run` for more details.
+/// Set `allow_failure=true` (`false` by default) if explicit cancellation
+/// of the child process is desired.
+pub async fn[X] spawn(
+  group : @async.TaskGroup[X],
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env? : Map[String, String] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  stdout? : &ProcessOutput,
+  stderr? : &ProcessOutput,
+  cwd? : StringView,
+  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+  no_wait? : Bool,
+  allow_failure? : Bool,
+) -> Process {
+  let context = "@process.spawn()"
+  let pid = raw_spawn(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    is_orphan=false,
+    context~,
+  )
+  let result = group.spawn(no_wait?, allow_failure?, () => {
+    @event_loop.wait_pid(pid, context~) catch {
+      _ if @coroutine.is_being_cancelled() =>
+        @async.protect_from_cancel(() => @async.with_task_group(group => {
+          group.spawn_bg(no_wait=true, () => cancel_handler(pid))
+          @event_loop.wait_pid(pid, context~)
+        }))
+      err => raise err
+    }
+    let out = Ref::new(0)
+    let ret = get_process_result(pid, out)
+    if ret < 0 {
+      @os_error.check_errno(context)
+    }
+    out.val
+  })
+  { pid, result }
 }
 
 ///|
