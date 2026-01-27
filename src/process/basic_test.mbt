@@ -15,15 +15,13 @@
 
 ///|
 async test "basic_ls" {
-  @async.with_task_group(root => {
+  @async.with_task_group(group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
-    root.spawn_bg(fn() {
-      @process.run(shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
-        "LC_ALL": "C",
-      })
-      |> ignore
+    @process.spawn(group, shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
+      "LC_ALL": "C",
     })
+    |> ignore
     let files = r
       .read_all()
       .text()
@@ -46,19 +44,17 @@ async test "basic_ls" {
 ///|
 async test "basic_cat" {
   let cat = cat.wait()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    root.spawn_bg(fn() {
-      @process.run(cat, [], stdin=cat_read, stdout=cat_write) |> ignore
-    })
-    root.spawn_bg(fn() {
+    @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
+    group.spawn_bg(fn() {
       defer we_write.close()
       we_write.write(b"abcd")
       @async.sleep(50)
       we_write.write(b"efgh")
     })
-    root.spawn_bg(fn() {
+    group.spawn_bg(fn() {
       defer we_read.close()
       inspect(we_read.read_all().text(), content="abcdefgh")
     })

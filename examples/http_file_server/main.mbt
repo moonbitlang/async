@@ -81,19 +81,23 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   @async.with_task_group(fn(group) {
     let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
-    group.spawn_bg(fn() {
-      if is_windows {
-        @process.run(
-          "tar",
-          ["-c", "-z", "-f", "-", path],
-          stdout=zip_write_to_us,
-        )
-        |> ignore
-      } else {
-        @process.run("zip", ["-q", "-r", "-", path], stdout=zip_write_to_us)
-        |> ignore
-      }
-    })
+    if is_windows {
+      @process.spawn(
+        group,
+        "tar",
+        ["-c", "-z", "-f", "-", path],
+        stdout=zip_write_to_us,
+      )
+      |> ignore
+    } else {
+      @process.spawn(
+        group,
+        "zip",
+        ["-q", "-r", "-", path],
+        stdout=zip_write_to_us,
+      )
+      |> ignore
+    }
     conn
     ..send_response(200, "OK", extra_headers={
       "Content-Type": "application/octet-stream",

@@ -26,6 +26,31 @@ async test "command with exit code" {
 }
 ```
 
+### Spawn process in the background
+Spawning process in the background can be achieved by combining `@process.run` and `@async.TaskGroup::spawn_bg`.
+`@proces` also provides a convenient helper `@process.spawn`,
+which accept a task group as its first parameter, and spawn the process in the task group:
+
+```moonbit check
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "spawn command in background" {
+  @async.with_task_group(group => {
+    let process = @process.spawn(group, "sh", ["-c", "sleep 0.5; exit 42"])
+    // do other stuff while the process is running in the background
+    @async.sleep(250)
+    // use `.wait()` to wait for the child process, or `.try_wait()` to peek its status
+    inspect(process.wait(), content="42")
+  })
+}
+```
+
+Child process follows rules of structured concurrency as well:
+
+- by default, the task group will wait for the child process
+- the child process will be terminated automatically when the task group terminates
+  (for example when `no_wait=true` is passed to `@process.spawn`)
+
 ## Collecting Process Output
 
 ### Collect Standard Output
@@ -113,13 +138,10 @@ Create a pipe to read from a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "read from process with pipe" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(group => {
     let (reader, writer) = @process.read_from_process()
     defer reader.close()
-    root.spawn_bg(fn() {
-      let _ = @process.run("echo", ["Hello from process"], stdout=writer)
-
-    })
+    let _ = @process.spawn(group, "echo", ["Hello from process"], stdout=writer)
     let output = reader.read_all().text()
     inspect(output.has_prefix("Hello"), content="true")
   })
@@ -134,18 +156,21 @@ Create a pipe to write to a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "write to process with pipe" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    root.spawn_bg(fn() {
-      let _ = @process.run("cat", ["-"], stdin=cat_read, stdout=cat_write)
-
-    })
-    root.spawn_bg(fn() {
+    let _ = @process.spawn(
+      group,
+      "cat",
+      ["-"],
+      stdin=cat_read,
+      stdout=cat_write,
+    )
+    group.spawn_bg(() => {
       defer we_write.close()
       we_write.write(b"test input\n")
     })
-    root.spawn_bg(fn() {
+    group.spawn_bg(() => {
       defer we_read.close()
       let output = we_read.read_all().text()
       inspect(output.contains("test input"), content="true")
@@ -332,7 +357,11 @@ async test "wait for specific exit code" {
 
 ### Spawn Orphan Process
 
-Start a process without blocking:
+Start a orphan process with unbounded lifetime.
+The orphan process will not be automatically cancelled,
+and may live longer than the main process.
+It is recommended to use `@process.spawn` or `@process.run` whenever possible,
+use `@process.spawn_orphan` only when it is absolutely necessary:
 
 ```moonbit check
 ///|
@@ -359,18 +388,16 @@ Combine stdout and stderr into one stream:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "merge stdout and stderr" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(group => {
     let (reader, writer) = @process.read_from_process()
     defer reader.close()
-    root.spawn_bg(fn() {
-      let _ = @process.run(
-        "sh",
-        ["-c", "echo 'to stdout'; echo 'to stderr' >&2"],
-        stdout=writer,
-        stderr=writer,
-      )
-
-    })
+    let _ = @process.spawn(
+      group,
+      "sh",
+      ["-c", "echo 'to stdout'; echo 'to stderr' >&2"],
+      stdout=writer,
+      stderr=writer,
+    )
     let output = reader.read_all().text()
     inspect(output.contains("to stdout"), content="true")
     inspect(output.contains("to stderr"), content="true")
@@ -396,14 +423,8 @@ async test "multiple processes to one pipe" {
     })
     defer writer.close()
     @async.with_task_group(fn(group) {
-      group.spawn_bg(fn() {
-        let _ = @process.run("echo", ["first"], stdout=writer)
-
-      })
-      group.spawn_bg(fn() {
-        let _ = @process.run("echo", ["second"], stdout=writer)
-
-      })
+      @process.spawn(group, "echo", ["first"], stdout=writer) |> ignore
+      @process.spawn(group, "echo", ["second"], stdout=writer) |> ignore
     })
   })
 }
@@ -435,7 +456,7 @@ Trait for types that can be used as process output:
 4. **Handle exit codes** appropriately for error detection
 5. **Set working directory** explicitly when path-dependent
 6. **Use environment variables** for configuration
-7. **Prefer `@process.run`** together with `@async.TaskGroup::spawn`. Only use `spawn_orphan` when necessary.
+7. **Prefer `@process.spawn` or `@process.run`**. Only use `spawn_orphan` when necessary.
 
 ## Error Handling
 

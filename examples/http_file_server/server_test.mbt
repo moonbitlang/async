@@ -79,13 +79,12 @@ async test "basic" {
     tmp_file.close()
     let (from_unzip, w) = @process.read_from_process()
     defer from_unzip.close()
-    root.spawn_bg(fn() {
-      if is_windows {
-        @process.run("tar", ["-t", "-f", tmp_file_name], stdout=w) |> ignore
-      } else {
-        @process.run("unzip", ["-l", tmp_file_name], stdout=w) |> ignore
-      }
-    })
+    if is_windows {
+      @process.spawn(root, "tar", ["-t", "-f", tmp_file_name], stdout=w)
+      |> ignore
+    } else {
+      @process.spawn(root, "unzip", ["-l", tmp_file_name], stdout=w) |> ignore
+    }
     let zip_content = []
     for i = 0; ; i = i + 1 {
       if is_windows {
