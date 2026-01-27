@@ -1520,12 +1520,69 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
 // ===== spawn job, spawn foreign process =====
 #ifdef _WIN32
 
+static
+HANDLE global_job_object;
+
+int32_t moonbitlang_async_init_global_job_objeect() {
+  HANDLE job = CreateJobObjectA(NULL, NULL);
+  if (job == NULL) {
+    return INVALID_HANDLE_VALUE;
+  }
+
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
+  memset(&info, 0, sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
+
+  info.BasicLimitInformation.LimitFlags =
+    JOB_OBJECT_LIMIT_BREAKAWAY_OK
+    | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK
+    | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+  if (
+    !SetInformationJobObject(
+      job,
+      JobObjectExtendedLimitInformation,
+      &info,
+      sizeof(info)
+    )
+  ) {
+    goto on_error;
+  }
+
+  if (!AssignProcessToJobObject(job, GetCurrentProcess())) {
+    if (GetLastError() == ERROR_ACCESS_DENIED) {
+      // Here we try to assign current process to the job for two purpose:
+      //
+      // 1. workaround the bug mentioned in https://github.com/libuv/libuv/pull/4152
+      // 2. according to https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject,
+      //    prior to Windows 8, a process can only be associated with a single job.
+      //    In this case, if the main process is already in a job,
+      //    our child process will by default also be in the same job,
+      //    so we cannot associate child process to a new job.
+      //    So here we simply give up auto-kill child process if
+      //    we cannot assign current process to the new object, which means:
+      //    
+      //    a. we are in Windows 7 or earlier
+      //    b. the main process is already associated with a job
+      SetLastError(0);
+    }
+    goto on_error;
+  }
+
+  global_job_object = job;
+  return 1;
+
+on_error:
+  CloseHandle(job);
+  return 0;
+}
+
 struct spawn_job {
   struct job job;
   LPWSTR command_line;
   void *environment;
   HANDLE stdio[3];
   LPWSTR cwd;
+  int32_t is_orphan;
 };
 
 static
@@ -1569,20 +1626,28 @@ void spawn_job_worker(struct job *job) {
     }
   }
 
-  STARTUPINFOW startup_info = {
-    sizeof(STARTUPINFOW), // size of structure
-    NULL, // reserved
-    NULL, // desktop,
-    NULL, // console title
-    0, 0, 0, 0, // x, y, w, h of new window
-    0, 0, 0, // width, height and fill character of new console window
-    STARTF_USESTDHANDLES, // flags
-    0, // wShowWindow
-    0, NULL, // reserved
-    spawn_job->stdio[0], // stdin
-    spawn_job->stdio[1], // stdout
-    spawn_job->stdio[2] // stderr
-  };
+  DWORD create_flags =
+    CREATE_NEW_PROCESS_GROUP // so that we can gracefully terminate this process
+                             // via sending Ctrl+Break console event
+    | CREATE_UNICODE_ENVIRONMENT;
+
+  // Notice that we are not setting `CREATE_BREAKAWAY_FROM_JOB` here for orphan process here.
+  // Because in case the main process is already in a job disallowing break away,
+  // setting `CREATE_BREAKAWAY_FROM_JOB` will fail the `CreateProcess` call.
+  if (!spawn_job->is_orphan && global_job_object != INVALID_HANDLE_VALUE) {
+    // to avoid the child process exit too fast
+    // before we assign it to the job object
+    create_flags |= CREATE_SUSPENDED;
+  }
+
+  STARTUPINFOW startup_info;
+  startup_info.cb = sizeof(STARTUPINFOW);
+
+  memset(&startup_info, 0, startup_info.cb);
+  startup_info.dwFlags = STARTF_USESTDHANDLES;
+  startup_info.hStdInput = spawn_job->stdio[0];
+  startup_info.hStdOutput = spawn_job->stdio[1];
+  startup_info.hStdError = spawn_job->stdio[2];
 
   PROCESS_INFORMATION process_info;
   BOOL result = CreateProcessW(
@@ -1590,10 +1655,8 @@ void spawn_job_worker(struct job *job) {
     spawn_job->command_line,
     NULL, // security attributes for process
     NULL, // security attributes for main thread
-    TRUE, // do not inherit handle;
-    CREATE_NEW_PROCESS_GROUP // so that we can gracefully terminate this process
-                             // via sending Ctrl+Break console event
-    | CREATE_UNICODE_ENVIRONMENT,
+    TRUE, // do not inherit handle
+    create_flags,
     spawn_job->environment,
     spawn_job->cwd,
     &startup_info,
@@ -1603,6 +1666,19 @@ void spawn_job_worker(struct job *job) {
   if (!result) {
     job->err = GetLastError();
     return;
+  }
+
+  if (create_flags & CREATE_SUSPENDED) {
+    // On Windows, hard termination is much more common,
+    // due to lack of a universal way for graceful process termination.
+    // So assign the new process to a job object,
+    // so that it is automatically killed on when the main process is killed.
+    if (!AssignProcessToJobObject(global_job_object, process_info.hProcess)) {
+      job->err = GetLastError();
+      TerminateProcess(process_info.hProcess, 1);
+      return;
+    }
+    ResumeThread(process_info.hThread);
   }
 
   // Since process waiting is not performance-critical,
@@ -1621,7 +1697,8 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   HANDLE stdin_handle,
   HANDLE stdout_handle,
   HANDLE stderr_handle,
-  LPWSTR cwd
+  LPWSTR cwd,
+  int32_t is_orphan
 ) {
   struct spawn_job *job = MAKE_JOB(spawn);
   job->command_line = command_line;
@@ -1630,6 +1707,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[1] = stdout_handle;
   job->stdio[2] = stderr_handle;
   job->cwd = cwd;
+  job->is_orphan = is_orphan;
   return job;
 }
 

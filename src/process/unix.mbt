@@ -31,6 +31,7 @@ async fn spawn(
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
   cwd~ : StringView?,
+  is_orphan~ : Bool,
   context~ : String,
 ) -> Int {
   let cmd = @os_string.encode(cmd)
@@ -91,5 +92,8 @@ async fn spawn(
       envp
     }
   }
+  // currently auto kill child process on hard termination is not supported on Unix,
+  // so `is_orphan` makes no difference on actual spawning
+  ignore(is_orphan)
   @event_loop.spawn(cmd, argv, env~, stdin~, stdout~, stderr~, cwd~, context~)
 }

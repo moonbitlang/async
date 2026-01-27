@@ -135,6 +135,7 @@ async test "orphan process" {
 }
 
 ///|
+#cfg(platform="windows")
 async test "kill children on hard cancel" {
   let spawn = spawn_prog.wait()
   let sleep = sleep_prog.wait()
@@ -143,6 +144,25 @@ async test "kill children on hard cancel" {
   @async.with_timeout(300, () => @process.run(
       spawn,
       [sleep, "450", "-print-after-sleep", "after sleep"],
+      stdout=w,
+      cancel_handler=@process.hard_cancel(),
+    )
+    |> ignore) catch {
+    @async.TimeoutError => ()
+    err => raise err
+  }
+  inspect(r.read_all().text().trim(), content="")
+}
+
+///|
+async test "do not kill orphan children on hard cancel" {
+  let spawn = spawn_prog.wait()
+  let sleep = sleep_prog.wait()
+  let (r, w) = @process.read_from_process()
+  defer r.close()
+  @async.with_timeout(300, () => @process.run(
+      spawn,
+      ["-orphan", sleep, "450", "-print-after-sleep", "after sleep"],
       stdout=w,
       cancel_handler=@process.hard_cancel(),
     )

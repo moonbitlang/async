@@ -54,6 +54,7 @@ pub async fn spawn_orphan(
     stdout~,
     stderr~,
     cwd~,
+    is_orphan=true,
     context="@process.spawn_orphan()",
   )
 }
@@ -135,6 +136,7 @@ pub async fn run(
     stdout~,
     stderr~,
     cwd~,
+    is_orphan=false,
     context~,
   )
   @event_loop.wait_pid(pid, context~) catch {

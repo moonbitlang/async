@@ -234,6 +234,7 @@ extern "C" fn Job::spawn(
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
   cwd : @os_string.OsString?,
+  is_orphan~ : Bool,
 ) -> Job = "moonbitlang_async_make_spawn_job"
 
 ///|

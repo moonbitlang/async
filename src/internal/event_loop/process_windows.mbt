@@ -14,6 +14,24 @@
 
 ///|
 #cfg(platform="windows")
+extern "C" fn init_global_job_object_ffi() -> Bool = "moonbitlang_async_init_global_job_objeect"
+
+///|
+#cfg(platform="windows")
+let global_job_object_initialized : Ref[Bool] = Ref::new(false)
+
+///|
+#cfg(platform="windows")
+fn init_global_job_object() -> Unit raise {
+  guard global_job_object_initialized.val is false else {  }
+  global_job_object_initialized.val = true
+  if !init_global_job_object_ffi() {
+    @os_error.check_errno("create global job object")
+  }
+}
+
+///|
+#cfg(platform="windows")
 pub async fn spawn(
   command_line : @os_string.OsString,
   env~ : @os_string.OsString?,
@@ -21,10 +39,12 @@ pub async fn spawn(
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
   cwd~ : @os_string.OsString?,
+  is_orphan~ : Bool,
   context~ : String,
 ) -> Int {
+  init_global_job_object()
   perform_job_in_worker(
-    Job::spawn(command_line, env, stdin, stdout, stderr, cwd),
+    Job::spawn(command_line, env, stdin, stdout, stderr, cwd, is_orphan~),
     context~,
   )
 }
