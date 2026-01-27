@@ -102,7 +102,7 @@ pub async fn Conn::from_http_client(
 /// See `@http.Client::new` for more details.
 ///
 /// Example:
-/// ```moonbit no-check
+/// ```moonbit no-check nocheck
 /// let ws = Client::connect("ws://example.com/endpoint")
 /// ```
 #as_free_fn
