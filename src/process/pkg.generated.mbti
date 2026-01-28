@@ -29,7 +29,7 @@ pub async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? :
 
 pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
 
-pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool, allow_failure? : Bool) -> Process
+pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
 
 pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
 

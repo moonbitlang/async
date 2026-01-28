@@ -196,10 +196,8 @@ pub fn Process::cancel(self : Process) -> Unit {
 /// users can retrieve the PID of the spawned process via `.pid`,
 /// or wait for the process to terminate via `.wait()`/`.try_wait()`.
 ///
-/// All arguments except `group`, `no_wait` and `allow_failure`
-/// has the same meaning as `@process.run`, see `@process.run` for more details.
-/// Set `allow_failure=true` (`false` by default) if explicit cancellation
-/// of the child process is desired.
+/// All arguments except `group` and `no_wait` have the same meaning as `@process.run`,
+/// see `@process.run` for more details.
 pub async fn[X] spawn(
   group : @async.TaskGroup[X],
   cmd : StringView,
@@ -212,7 +210,6 @@ pub async fn[X] spawn(
   cwd? : StringView,
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
   no_wait? : Bool,
-  allow_failure? : Bool,
 ) -> Process {
   let context = "@process.spawn()"
   let pid = raw_spawn(
@@ -227,7 +224,7 @@ pub async fn[X] spawn(
     is_orphan=false,
     context~,
   )
-  let result = group.spawn(no_wait?, allow_failure?, () => {
+  let result = group.spawn(no_wait?, () => {
     @event_loop.wait_pid(pid, context~) catch {
       _ if @coroutine.is_being_cancelled() =>
         @async.protect_from_cancel(() => @async.with_task_group(group => {
