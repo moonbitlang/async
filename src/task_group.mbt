@@ -104,7 +104,11 @@ fn[X] TaskGroup::spawn_coroutine(
 /// Spawn a child task in a task group, and run it asynchronously in the background.
 ///
 /// Unless `no_wait` (`false` by default) is `true`,
-/// the whole task group will only exit after this child task terminates.
+/// the task group will wait for this task to complete before normal exit.
+/// No matter what the value of `no_wait` is,
+/// `with_task_group` will only return after all child tasks terminate.
+/// The task will be cancelled automatically if it is still running
+/// when the task group wishes to terminate,
 ///
 /// Unless `allow_failure` (`false` by default) is `true`,
 /// the whole task group will also fail if the spawned task fails, 
@@ -143,7 +147,11 @@ pub fn[X] TaskGroup::spawn_bg(
 /// and retrieved using `.wait()`, or cancelled using `.cancel()`.
 ///
 /// Unless `no_wait` (`false` by default) is `true`,
-/// the whole task group will only exit after this child task terminates.
+/// the task group will wait for this task to complete before normal exit.
+/// No matter what the value of `no_wait` is,
+/// `with_task_group` will only return after all child tasks terminate.
+/// The task will be cancelled automatically if it is still running
+/// when the task group wishes to terminate,
 ///
 /// Unless `allow_failure` (`false` by default) is `true`,
 /// Ithe whole task group will also fail if the spawned task fails, 
