@@ -16,6 +16,14 @@ From this example, you can learn about:
 - how to spawn foreign process in the background
 - how to limit the max number of concurrent tasks using `@async.Semaphore`
 
+## `curl`
+A simple command line utility that download the content of a HTTP URL, similar to `curl`.
+
+From this example, you can learn about:
+
+- how to perform HTTP GET request streamingly
+- how to use proxy when performing HTTP request
+
 ## `cat`
 A simple MoonBit program similar to the famous `cat` command line utility.
 It echoes the content of input file or standard input to standard output.
