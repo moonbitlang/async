@@ -84,13 +84,7 @@ async test "Process:cancel" {
       defer r.close()
       inspect(r.read_all().text().trim(), content="received termination signal")
     })
-    let child = @process.spawn(
-      group,
-      sleep,
-      ["10000"],
-      stdout=w,
-      allow_failure=true,
-    )
+    let child = @process.spawn(group, sleep, ["10000"], stdout=w)
     t0 = @async.now()
     @async.sleep(500)
     child.cancel()

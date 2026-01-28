@@ -19,7 +19,7 @@ async test "cancel process" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(allow_failure=true, fn() {
+    let task = root.spawn(() => {
       defer log.write_string("process terminates\n")
       @process.run(test_prog, ["10000"], stdout=w)
     })
@@ -50,14 +50,12 @@ async test "cancel process timeout" {
   let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(allow_failure=true, fn() {
-      @process.run(
-        test_prog,
-        ["-swallow-cancel-signal", "10000"],
-        stdout=w,
-        cancel_handler=@process.graceful_cancel(timeout=500),
-      )
-    })
+    let task = root.spawn(() => @process.run(
+      test_prog,
+      ["-swallow-cancel-signal", "10000"],
+      stdout=w,
+      cancel_handler=@process.graceful_cancel(timeout=500),
+    ))
     let t_receive_graceful_termination = root.spawn(() => {
       defer r.close()
       guard r.read_some() is Some(data)
@@ -83,14 +81,12 @@ async test "cancel process hard" {
   let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(allow_failure=true, fn() {
-      @process.run(
-        test_prog,
-        ["10000"],
-        stdout=w,
-        cancel_handler=@process.hard_cancel(),
-      )
-    })
+    let task = root.spawn(() => @process.run(
+      test_prog,
+      ["10000"],
+      stdout=w,
+      cancel_handler=@process.hard_cancel(),
+    ))
     root.spawn_bg(() => {
       defer r.close()
       inspect(r.read_all().text(), content="")
@@ -109,7 +105,7 @@ async test "orphan process" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(allow_failure=true, fn() {
+    let task = root.spawn(() => {
       defer log.write_string("process terminates\n")
       let pid = @process.spawn_orphan(
         shell,
