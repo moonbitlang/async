@@ -146,7 +146,7 @@ async test "blocking immediate cancellation" {
   @async.with_task_group(group => {
     let q = @async.Queue::new(kind=Blocking(1))
     q.put(0)
-    let put_task = group.spawn(allow_failure=true, () => {
+    let put_task = group.spawn(() => {
       q.put(1) catch {
         err => {
           log.push("put() cancelled")

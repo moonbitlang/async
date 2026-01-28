@@ -43,8 +43,6 @@ pub fn[X] Task::try_wait(self : Task[X]) -> X? raise {
 
 ///|
 /// Cancel a task. Subsequent attempt to wait for the task will receive error.
-/// Note that if the task is *not* spawned with `allow_failure=true`,
-/// the whole task group will fail too.
 pub fn[X] Task::cancel(self : Task[X]) -> Unit {
   self.coro.cancel()
 }

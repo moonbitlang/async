@@ -76,13 +76,15 @@ fn[X] TaskGroup::spawn_coroutine(
     }
     f() catch {
       err if allow_failure => raise err
+      @coroutine.Cancelled as err if @coroutine.is_being_cancelled() =>
+        raise err
       err => {
         if self.state is Running {
           for child in self.children {
             child.cancel()
           }
           self.state = Fail(err)
-        } else if not(err is @coroutine.Cancelled) {
+        } else {
           self.state = Fail(err)
         }
         raise err
@@ -105,8 +107,13 @@ fn[X] TaskGroup::spawn_coroutine(
 /// the whole task group will only exit after this child task terminates.
 ///
 /// Unless `allow_failure` (`false` by default) is `true`,
-/// Ithe whole task group will also fail if the spawned task fails, 
+/// the whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
+///
+/// Cancelled task (either cancelled by the group or manually cancelled via `Task::cancel`)
+/// are not consider failing, although they raise a cancellation error.
+/// However, if the task raise some other error during cancellation handling,
+/// it will be considered failing.
 ///
 /// If the task group is already cancelled, but `with_task_group` is still running
 /// (i.e. there are still other running child task in the group),
@@ -141,6 +148,11 @@ pub fn[X] TaskGroup::spawn_bg(
 /// Unless `allow_failure` (`false` by default) is `true`,
 /// Ithe whole task group will also fail if the spawned task fails, 
 /// other tasks in the group will be cancelled in this case.
+///
+/// Cancelled task (either cancelled by the group or manually cancelled via `Task::cancel`)
+/// are not consider failing, although they raise a cancellation error.
+/// However, if the task raise some other error during cancellation handling,
+/// it will be considered failing.
 ///
 /// If the task group is already cancelled, but `with_task_group` is still running
 /// (i.e. there are still other running child task in the group),

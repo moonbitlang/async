@@ -105,7 +105,7 @@ async test "semaphore cancellation no_swallow" {
   @async.with_task_group(fn(root) {
     let semaphore = @semaphore.Semaphore::new(1)
     semaphore.acquire()
-    let acquire_taskire_task = root.spawn(allow_failure=true, fn() {
+    let acquire_taskire_task = root.spawn(() => {
       semaphore.acquire()
       log.write_string("acquire() succeed\n")
     })

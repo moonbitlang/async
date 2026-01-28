@@ -16,15 +16,13 @@
 async test "manual cancel" {
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
-    let task = root.spawn(allow_failure=true, fn() {
-      try {
-        @async.sleep(300)
-        buf.write_string("task finished\n")
-      } catch {
-        err => {
-          buf.write_string("cancelled by error \{err}\n")
-          raise err
-        }
+    let task = root.spawn(() => try {
+      @async.sleep(300)
+      buf.write_string("task finished\n")
+    } catch {
+      err => {
+        buf.write_string("cancelled by error \{err}\n")
+        raise err
       }
     })
     @async.sleep(100)
@@ -157,7 +155,7 @@ async test "recursive cancel" {
           buf.write_string("tick\n")
         }
       })
-      let task = root.spawn(allow_failure=true, fn() {
+      let task = root.spawn(() => {
         @async.sleep(1000) catch {
           err => buf.write_string("first sleep cancelled with \{err}\n")
         }
@@ -240,7 +238,7 @@ async test "error in cancellation" {
 async test "immediately cancelled" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
-    let task = root.spawn(allow_failure=true, fn() {
+    let task = root.spawn(() => {
       defer log.write_string("task terminated\n")
       log.write_string("task started\n")
       @async.sleep(100)

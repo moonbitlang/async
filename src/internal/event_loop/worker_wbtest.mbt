@@ -94,15 +94,13 @@ async test "worker cancel1" {
         log.write_string("tick\n")
       }
     })
-    let task = root.spawn(allow_failure=true, fn() {
-      try perform_sleep_job(1000) catch {
-        err => {
-          log.write_string("sleep cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => log.write_string("done\n")
+    let task = root.spawn(() => try perform_sleep_job(1000) catch {
+      err => {
+        log.write_string("sleep cancelled with \{err}\n")
+        raise err
       }
+    } noraise {
+      _ => log.write_string("done\n")
     })
     @async.sleep(500)
     log.write_string("trying to cancel\n")

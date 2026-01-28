@@ -32,7 +32,7 @@ async test "cond var cancellation no_swallow" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let cond = @cond_var.Cond::new()
-    let wait_task = root.spawn(allow_failure=true, () => {
+    let wait_task = root.spawn(() => {
       cond.wait()
       log.write_string("waiter 1 succeed\n")
     })
