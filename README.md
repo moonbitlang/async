@@ -6,7 +6,9 @@ Currently, this library only supports native/LLVM backends on Linux/MacOS.
 
 API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
 You can also find small examples in `examples`,
-these examples can be run via `moon run -C examples <example-name>` in project root.
+these examples can be run via `moon run -C examples examples/<example-name>` in project root.
+Youn can find a brief introduction to some examples in `examples/README.md`,
+including the topics each example covers.
 
 WARNING: this library is current experimental, API is subject to future change.
 
