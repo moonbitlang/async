@@ -17,6 +17,8 @@ from this example.
 A simple WebSocket echo server written in MoonBit.
 
 You can learn about the basis of writting WebSocket servers in MoonBit from this example.
+You can also learn about the basis of writting WebSocket client from the test file
+`examples/websocket_echo_server/server_test.mbt`.
 
 ## `line_processing`
 A simple command line program that search from specific pattern from a list of files,
