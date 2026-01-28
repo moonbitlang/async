@@ -40,9 +40,11 @@ async fn serve_directory(
 ///|
 async fn serve_file(
   conn : @http.ServerConnection,
-  file : @fs.File,
+  file_path : String,
   path~ : String,
 ) -> Unit {
+  let file = @fs.open(file_path, mode=ReadOnly)
+  defer file.close()
   let content_type = match path {
     [.., .. ".png"] => "image/png"
     [.., .. ".jpg"] | "jpeg" => "image/jpeg"
@@ -133,25 +135,21 @@ pub async fn server_main(
     }
     log("serving \{path}")
     guard request.meth is Get else { return }
-    let file = @fs.open(base_path + path, mode=ReadOnly) catch {
-      _ => {
-        serve_404(conn)
-        return
-      }
+    let full_path = base_path + path
+    guard @fs.exists(full_path) else {
+      serve_404(conn)
+      return
     }
-    if file.kind() is Directory {
+    if @fs.kind(full_path) is Directory {
       if download_zip {
-        file.close()
-        serve_zip(conn, base_path + path)
+        serve_zip(conn, full_path)
       } else {
-        file.close()
-        let dir = @fs.opendir(base_path + path)
+        let dir = @fs.opendir(full_path)
         defer dir.close()
         serve_directory(conn, dir, path~)
       }
     } else {
-      defer file.close()
-      serve_file(conn, file, path~)
+      serve_file(conn, full_path, path~)
     }
   })
 }
