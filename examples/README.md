@@ -1,5 +1,27 @@
 # Examples for using `moonbitlang/async`
 
+## `line_processing`
+A simple command line program that search from specific pattern from a list of files,
+similar to `grep`.
+
+You can learn about how to process files/streams line-by-line incrementally from this example.
+
+## `xargs`
+A simple command line utility similar to the famous `xargs`,
+which run a command multiple times with arguments read from standard input.
+
+From this example, you can learn about:
+
+- basic usage of task group to spawn multiple tasks
+- how to spawn foreign process in the background
+- how to limit the max number of concurrent tasks using `@async.Semaphore`
+
+## `cat`
+A simple MoonBit program similar to the famous `cat` command line utility.
+It echoes the content of input file or standard input to standard output.
+
+You can learn basic stream operations on files/standard input/standard output from this example.
+
 ## `http_file_server`
 A simple HTTP file server written in MoonBit,
 similar to `python -m http.server`,
@@ -19,18 +41,6 @@ A simple WebSocket echo server written in MoonBit.
 You can learn about the basis of writting WebSocket servers in MoonBit from this example.
 You can also learn about the basis of writting WebSocket client from the test file
 `examples/websocket_echo_server/server_test.mbt`.
-
-## `line_processing`
-A simple command line program that search from specific pattern from a list of files,
-similar to `grep`.
-
-You can learn about how to process files/streams line-by-line incrementally from this example.
-
-## `cat`
-A simple MoonBit program similar to the famous `cat` command line utility.
-It echoes the content of input file or standard input to standard output.
-
-You can learn basic stream operations on files/standard input/standard output from this example.
 
 ## `tcp_echo_server`
 A simple TCP echo server written in MoonBit.
