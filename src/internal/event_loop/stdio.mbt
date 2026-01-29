@@ -36,7 +36,7 @@ fn setup_stdio(fd : Int, context~ : String) -> IoHandle {
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "GetStdHandle"
+extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_std_handle"
 
 ///|
 #cfg(platform="windows")

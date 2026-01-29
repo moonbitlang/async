@@ -18,7 +18,7 @@ extern "C" fn init_WSA_ffi() -> Int = "moonbitlang_async_init_WSA"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn cleanup_WSA_ffi() -> Int = "WSACleanup"
+extern "C" fn cleanup_WSA_ffi() -> Int = "moonbitlang_async_cleanup_WSA"
 
 ///|
 #cfg(platform="windows")
