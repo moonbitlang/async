@@ -150,13 +150,19 @@ struct worker {
 };
 
 #ifdef _WIN32
+
 typedef DWORD thread_worker_result_t;
+#define THREAD_PROC_CALLING_CONVENTION WINAPI
+
 #else
+
 typedef void* thread_worker_result_t;
+#define THREAD_PROC_CALLING_CONVENTION
+
 #endif
 
 static
-thread_worker_result_t worker_loop(void *data) {
+thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
   int sig;
   struct worker *self = (struct worker*)data;
 
