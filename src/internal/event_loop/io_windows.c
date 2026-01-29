@@ -23,9 +23,15 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_init_WSA() {
   WSADATA data;
   return WSAStartup(MAKEWORD(2, 2), &data);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_cleanup_WSA() {
+  return WSACleanup;
 }
 
 enum IoResultKind {
@@ -468,6 +474,11 @@ int32_t moonbitlang_async_setup_accepted_socket(HANDLE listen_sock, HANDLE accep
     (char*)&listen_sock,
     sizeof(UINT_PTR)
   );
+}
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_get_std_handle(int32_t id) {
+  return GetStdHandle(id);
 }
 
 #endif // #ifdef _WIN32

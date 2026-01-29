@@ -52,8 +52,12 @@ int32_t moonbitlang_async_fd_is_valid(int fd) {
 
 #ifdef _WIN32
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_closesocket(HANDLE handle) {
-  return 0 == closesocket((SOCKET)handle);
+int32_t moonbitlang_async_close_fd(HANDLE handle, int32_t is_socket) {
+  if (is_socket) {
+    return 0 == closesocket((SOCKET)handle);
+  } else {
+    return CloseHandle(handle);
+  }
 }
 #endif
 
