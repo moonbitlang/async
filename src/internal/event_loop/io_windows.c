@@ -31,7 +31,7 @@ int32_t moonbitlang_async_init_WSA() {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cleanup_WSA() {
-  return WSACleanup;
+  return WSACleanup();
 }
 
 enum IoResultKind {
