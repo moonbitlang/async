@@ -165,6 +165,34 @@ async test "blocking immediate cancellation" {
 }
 
 ///|
+async test "blocking zero buffered" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=Blocking(0))
+    group.spawn_bg(() => for i in 0..<4 {
+      q.put(i)
+      log.push("put(\{i})")
+    })
+    group.spawn_bg(() => for _ in 0..<4 {
+      let x = q.get()
+      log.push("get() => \{x}")
+      @async.sleep(100)
+    })
+  })
+  json_inspect(log, content=[
+    "get() => 0", "put(0)", "get() => 1", "put(1)", "get() => 2", "put(2)", "get() => 3",
+    "put(3)",
+  ])
+}
+
+///|
+async test "zero buffered try_put" {
+  let q = @aqueue.Queue::new(kind=Blocking(0))
+  inspect(q.try_put(0), content="false")
+  inspect(q.try_get(), content="None")
+}
+
+///|
 test "blocking try_put" {
   let q = @aqueue.Queue::new(kind=Blocking(3))
   inspect(q.try_put(0), content="true")
