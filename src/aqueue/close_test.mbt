@@ -72,6 +72,22 @@ async test "close with blocking put" {
 }
 
 ///|
+async test "close zero buffered with blocking put" {
+  let q = @aqueue.new(kind=Blocking(0))
+  @async.with_task_group(group => {
+    let start = @async.now()
+    group.spawn_bg(() => {
+      @async.sleep(200)
+      q.close()
+    })
+    inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    let now = @async.now()
+    let duration = (now + 50 - start) / 200
+    inspect(duration, content="1")
+  })
+}
+
+///|
 async test "close with blocking get" {
   let q : @aqueue.Queue[Int] = @aqueue.new(kind=Unbounded)
   @async.with_task_group(group => {
