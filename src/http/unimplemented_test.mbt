@@ -16,5 +16,5 @@
 #cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
   ignore(@async.sleep)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

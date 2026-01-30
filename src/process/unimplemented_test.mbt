@@ -16,5 +16,5 @@
 #cfg(not(target="native"))
 let _unimplemented : Unit = {
   ignore(@fs.unimplemented)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

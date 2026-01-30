@@ -321,7 +321,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       self.ssl.set_verify(false)
     }
     if host is Some(host) {
-      let host = @encoding/utf8.encode(host)
+      let host = @utf8.encode(host)
       guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
       if sni {
         guard self.ssl.set_sni(host) > 0 else {
@@ -363,8 +363,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> Tls {
-  let private_key_file = @encoding/utf8.encode(private_key_file)
-  let certificate_file = @encoding/utf8.encode(certificate_file)
+  let private_key_file = @utf8.encode(private_key_file)
+  let certificate_file = @utf8.encode(certificate_file)
   let self = Tls::from_pair(server_ctx, r, w, host=None)
   try {
     if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {

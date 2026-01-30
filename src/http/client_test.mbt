@@ -19,7 +19,7 @@ async fn test_server(server : @http.Server, log : &Logger) -> Unit {
       "server received request: \{request.meth} \{request.path}\n",
     )
     while body.read_some() is Some(data) {
-      let data = @encoding/utf8.decode(data)
+      let data = @utf8.decode(data)
       log.write_string("server received: \{data}")
     }
     conn.send_response(200, "OK")
@@ -40,7 +40,7 @@ async test "request streaming" {
     group.spawn_bg(no_wait=true, () => test_server(server, log))
     async fn fetch_response(client : @http.Client) {
       while client.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("client received: \{data}")
       }
     }

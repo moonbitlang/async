@@ -63,6 +63,6 @@ impl Writer with write_reader(self, reader) {
 ///|
 impl Writer with write_string(self, str, encoding~) {
   guard encoding is UTF8
-  let data = @encoding/utf8.encode(str, bom=false)
+  let data = @utf8.encode(str, bom=false)
   self.write(data)
 }

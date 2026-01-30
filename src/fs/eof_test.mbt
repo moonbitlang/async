@@ -28,8 +28,5 @@ async test "read EOF" {
   }
   @fs.remove(path)
   assert_eq(n, 4)
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[0:n]),
-    content="abcd",
-  )
+  inspect(@utf8.decode(buf.unsafe_reinterpret_as_bytes()[0:n]), content="abcd")
 }

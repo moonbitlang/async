@@ -267,7 +267,7 @@ async fn Conn::send_close_unchecked(
 
   // discard current message and send the `close` frame
   self.write_buf.unsafe_write_uint16_be(self.payload_start, code.to_uint16())
-  let reason_bytes = @encoding/utf8.encode(reason.unwrap_or(""))
+  let reason_bytes = @utf8.encode(reason.unwrap_or(""))
   if reason_bytes.length() > 123 {
     // Close reason too long
     // TODO: should we close the connection anyway?
@@ -443,7 +443,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
   }
   let payload = reply.unsafe_reinterpret_as_bytes()[payload_start:]
   let (close_code, reason) = if payload is [u16be(code), .. reason] {
-    let reason = @encoding/utf8.decode(reason) catch {
+    let reason = @utf8.decode(reason) catch {
       _ =>
         self.protocol_error(
           "Invalid UTF8 in close reason",

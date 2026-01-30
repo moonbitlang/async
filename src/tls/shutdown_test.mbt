@@ -40,7 +40,7 @@ async test "peer close connection" {
     // the underlying TCP connection will be reset,
     // due to pending data in the recv buffer.
     // Read something before closing the connection solves the problem.
-    inspect(@encoding/utf8.decode(client.read_exactly(4)), content="1234")
+    inspect(@utf8.decode(client.read_exactly(4)), content="1234")
     client.write("abcd")
     // close the underlying connection directly
   })

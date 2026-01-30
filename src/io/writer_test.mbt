@@ -42,7 +42,7 @@ async test "write reader" {
     root.spawn_bg(fn() {
       defer r1.close()
       while r1.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })

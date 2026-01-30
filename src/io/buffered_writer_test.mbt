@@ -33,7 +33,7 @@ async test "BufferedWriter" {
     root.spawn_bg(fn() {
       defer r.close()
       while r.read_some() is Some(data) {
-        log.write_string("received: \{@encoding/utf8.decode(data)}\n")
+        log.write_string("received: \{@utf8.decode(data)}\n")
       }
     })
   })
@@ -66,7 +66,7 @@ async test "BufferedWriter::write_reader" {
     root.spawn_bg(fn() {
       defer r1.close()
       while r1.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })

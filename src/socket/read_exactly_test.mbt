@@ -27,13 +27,13 @@ async test "read_exactly" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let msg1 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg1 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("first message: \{msg1}")
-      let msg2 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg2 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("second message: \{msg2}")
-      let msg3 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg3 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
     })
@@ -76,13 +76,13 @@ async test "read_exactly failure" {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
-      let msg1 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg1 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("first message: \{msg1}")
-      let msg2 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg2 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("second message: \{msg2}")
-      let msg3 = conn.read_exactly(4) |> @encoding/utf8.decode
+      let msg3 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
       // let the client close first to avoid socket entering `TIME_WAIT` state,

@@ -24,7 +24,7 @@ struct OsString(String)
 ///|
 #cfg(not(platform="windows"))
 pub fn encode(str : StringView) -> OsString {
-  @encoding/utf8.encode(str)
+  @utf8.encode(str)
 }
 
 ///|
@@ -41,7 +41,7 @@ pub impl Show for OsString with output(self, logger) {
 ///|
 #cfg(not(platform="windows"))
 pub impl Show for OsString with to_string(self) {
-  @encoding/utf8.decode_lossy(self.0)
+  @utf8.decode_lossy(self.0)
 }
 
 ///|
@@ -56,7 +56,7 @@ pub fn decode(os_str : @c_buffer.Buffer) -> String {
   let len = os_str.strlen()
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, offset=0, len~)
-  @encoding/utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
+  @utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
 }
 
 ///|
@@ -65,4 +65,4 @@ pub extern "C" fn decode(os_str : @c_buffer.Buffer) -> String = "moonbitlang_asy
 
 ///|
 #cfg(platform="windows")
-let _mute_unused_warning : Unit = ignore(@encoding/utf8.encode(""))
+let _mute_unused_warning : Unit = ignore(@utf8.encode(""))

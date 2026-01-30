@@ -47,17 +47,17 @@ pub impl Data for BytesView with to_bytesview(self) {
 
 ///|
 pub impl Data for String with to_bytes(self) {
-  @encoding/utf8.encode(self)
+  @utf8.encode(self)
 }
 
 ///|
 pub impl Data for StringView with to_bytes(self) {
-  @encoding/utf8.encode(self)
+  @utf8.encode(self)
 }
 
 ///|
 pub impl Data for Json with to_bytes(self) {
-  @encoding/utf8.encode(self.stringify())
+  @utf8.encode(self.stringify())
 }
 
 // ==============================================================================
@@ -84,7 +84,7 @@ pub fn &Data::binary(self : &Data) -> Bytes {
 /// Calling this method will cause string decoding,
 /// so user should avoid calling `.text()` more than once.
 pub fn &Data::text(self : &Data) -> String raise {
-  self.to_bytes() |> @encoding/utf8.decode
+  self.to_bytes() |> @utf8.decode
 }
 
 ///|
@@ -93,5 +93,5 @@ pub fn &Data::text(self : &Data) -> String raise {
 /// Calling this method will cause string decoding and json parsing,
 /// so user should avoid calling `.json()` more than once.
 pub fn &Data::json(self : &Data) -> Json raise {
-  self.to_bytes() |> @encoding/utf8.decode |> @json.parse
+  self.to_bytes() |> @utf8.decode |> @json.parse
 }

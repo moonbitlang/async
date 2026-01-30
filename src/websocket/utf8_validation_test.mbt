@@ -101,7 +101,7 @@ async test "UTF8 validation large message" {
     defer client.close()
     @async.with_task_group(group => {
       let chunk_text = String::make(1024, '☺')
-      let chunk_bin = @encoding/utf8.encode(chunk_text)
+      let chunk_bin = @utf8.encode(chunk_text)
       group.spawn_bg(() => {
         client.start_message(Text)
         client.write("a")
@@ -111,10 +111,10 @@ async test "UTF8 validation large message" {
         client.end_message()
       })
       let reply = client.recv()
-      inspect(@encoding/utf8.decode(reply.read_exactly(1)), content="a")
+      inspect(@utf8.decode(reply.read_exactly(1)), content="a")
       for n = 0; n < 10240; n = n + chunk_bin.length() {
         let reply_chunk = reply.read_exactly(chunk_bin.length())
-        assert_eq(@encoding/utf8.decode(reply_chunk), chunk_text)
+        assert_eq(@utf8.decode(reply_chunk), chunk_text)
       }
       inspect(reply.read_some(), content="None")
     })

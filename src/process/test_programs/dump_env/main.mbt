@@ -38,6 +38,6 @@ extern "C" fn next_entry() -> Bytes = "next_entry"
 fn main {
   init_env()
   while next_entry() is entry && entry.length() > 0 {
-    println(@encoding/utf8.decode_lossy(entry))
+    println(@utf8.decode_lossy(entry))
   }
 }
