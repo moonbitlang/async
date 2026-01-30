@@ -53,9 +53,12 @@ pub(all) enum Kind {
 /// in a non-blocking manner.
 struct Queue[X] {
   kind : Kind
+  /// invariant: if `readers` is non-empty, `buffer` must be empty
   readers : @deque.Deque[Reader[X]]
+  /// invariant: if `writers` is non-empty, `buffer` must be full
   writers : @deque.Deque[Writer[X]]
-  /// invariant: if `buffer` is non-empty, `readers` must be empty
+  /// invariant: if `buffer` is non-empty, `readers` must be empty; 
+  /// if `buffer` is not full, `writers` must be empty
   buffer : @deque.Deque[X]
   /// `Some(err)` if the queue is already closed
   mut closed : Error?
@@ -71,8 +74,8 @@ pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
   match kind {
     Unbounded => ()
     Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>
-      if n <= 0 {
-        abort("queue size must be positive")
+      if n < 0 {
+        abort("queue size must not be negative")
       }
   }
   {
@@ -139,10 +142,11 @@ pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
           raise err
         }
       }
-      DiscardOldest(_) => {
-        let _ = self.buffer.pop_front()
-        self.buffer.push_back(data)
-      }
+      DiscardOldest(n) =>
+        if n > 0 {
+          let _ = self.buffer.pop_front()
+          self.buffer.push_back(data)
+        }
       DiscardLatest(_) => ()
     }
   }
@@ -247,21 +251,28 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
 /// If the queue is already closed and there is no buffered elements,
 /// `try_get` will fail immediately.
 pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
-  let result = self.buffer.pop_front()
-  if result is Some(_) {
-    loop self.writers.pop_front() {
-      None => ()
-      Some({ coro: None, .. }) => continue self.writers.pop_front()
-      Some({ coro: Some(coro), value } as writer) => {
-        self.buffer.push_back(value)
-        coro.wake()
-        writer.coro = None
+  loop self.writers.pop_front() {
+    None => {
+      let data = self.buffer.pop_front()
+      if data is None && self.closed is Some(err) {
+        raise err
       }
+      data
     }
-  } else if self.closed is Some(err) {
-    raise err
+    Some({ coro: None, .. }) => continue self.writers.pop_front()
+    Some({ coro: Some(coro), value } as writer) => {
+      guard self.kind is Blocking(_) else { panic() }
+      let mut data = self.buffer.pop_front()
+      if data is Some(_) {
+        self.buffer.push_back(value)
+      } else {
+        data = Some(value)
+      }
+      coro.wake()
+      writer.coro = None
+      data
+    }
   }
-  result
 }
 
 ///|
