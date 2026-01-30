@@ -56,7 +56,11 @@ fn Worker::cancel(
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn fetch_completion_ffi(notify_recv : @fd_util.Fd) -> Int = "moonbitlang_async_fetch_completion"
+#borrow(output)
+extern "C" fn fetch_completion_ffi(
+  notify_recv : @fd_util.Fd,
+  output : FixedArray[Int],
+) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
 priv type Job
