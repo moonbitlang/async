@@ -261,7 +261,6 @@ pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
     }
     Some({ coro: None, .. }) => continue self.writers.pop_front()
     Some({ coro: Some(coro), value } as writer) => {
-      guard self.kind is Blocking(_) else { panic() }
       let mut data = self.buffer.pop_front()
       if data is Some(_) {
         self.buffer.push_back(value)
