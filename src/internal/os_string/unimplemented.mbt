@@ -17,5 +17,5 @@
 #cfg(not(target="native"))
 pub let unimplemented : Unit = {
   ignore(@c_buffer.unimplemented)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

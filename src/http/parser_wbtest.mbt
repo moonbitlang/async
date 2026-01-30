@@ -156,7 +156,7 @@ async test "read_request stream" {
     let request = input.read_request()
     log_request(request, log)
     while input.read_some() is Some(data) {
-      let data = @encoding/utf8.decode(data)
+      let data = @utf8.decode(data)
       log.write_string("received \{data} from body\n")
     }
   })

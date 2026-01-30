@@ -26,7 +26,7 @@ async test "cancel process" {
     root.spawn_bg(fn() {
       defer r.close()
       while r.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data).replace_all(old="\r\n", new="\n")
+        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
         log.write_string("from process: \{data}")
       }
     })
@@ -59,7 +59,7 @@ async test "cancel process timeout" {
     let t_receive_graceful_termination = root.spawn(() => {
       defer r.close()
       guard r.read_some() is Some(data)
-      let data = @encoding/utf8.decode(data).trim_end(chars="\r\n")
+      let data = @utf8.decode(data).trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
       t
@@ -115,7 +115,7 @@ async test "orphan process" {
       @process.wait_pid(pid)
     })
     defer r.close()
-    inspect(@encoding/utf8.decode(r.read_exactly(5)), content="first")
+    inspect(@utf8.decode(r.read_exactly(5)), content="first")
     task.cancel()
     log.write_string("cancelling task running process\n")
     inspect(r.read_all().text(), content="second")

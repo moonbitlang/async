@@ -81,7 +81,7 @@ const MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 fn generate_accept_key(client_key : String) -> String raise {
   // WebSocket magic string as defined in RFC 6455
   let combined = client_key + MAGIC
-  let combined_bytes = @encoding/utf8.encode(combined)
+  let combined_bytes = @utf8.encode(combined)
 
   // Use the crypto library for proper SHA-1 hashing
   let hash = @tls.sha1(combined_bytes)
@@ -99,12 +99,12 @@ fn verify_utf8(data : BytesView, remaining~ : Int) -> Int raise {
       (0, 0xe0..<0xf0) => continue i + 1, 2
       (0, 0xf0) => continue i + 1, 3
       (0, _) => {
-        ignore(@encoding/utf8.decode(data[i:i + 1]))
+        ignore(@utf8.decode(data[i:i + 1]))
         panic()
       }
       (remaining, 0x80..<0xc0) => continue i + 1, remaining - 1
       (_, byte) => {
-        ignore(@encoding/utf8.decode([0xc0, byte]))
+        ignore(@utf8.decode([0xc0, byte]))
         panic()
       }
     }

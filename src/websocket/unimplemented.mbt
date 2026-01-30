@@ -21,5 +21,5 @@ pub let unimplemented : Unit = {
   ignore(@tls.unimplemented)
   ignore(@http.unimplemented)
   ignore(@coroutine.spawn)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

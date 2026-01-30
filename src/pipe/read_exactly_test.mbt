@@ -24,11 +24,11 @@ async test "read_exactly" {
     // reader
     root.spawn_bg(fn() {
       defer r.close()
-      let msg1 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
-      let msg2 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg2 = r.read_exactly(4) |> @utf8.decode
       log("second message: \{msg2}")
-      let msg3 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg3 = r.read_exactly(4) |> @utf8.decode
       log("third message: \{msg3}")
     })
     // writer
@@ -66,11 +66,11 @@ async test "read_exactly failure" {
     // reader
     root.spawn_bg(fn() {
       defer r.close()
-      let msg1 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
-      let msg2 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg2 = r.read_exactly(4) |> @utf8.decode
       log("second message: \{msg2}")
-      let msg3 = r.read_exactly(4) |> @encoding/utf8.decode
+      let msg3 = r.read_exactly(4) |> @utf8.decode
       log("third message: \{msg3}")
     })
     // writer

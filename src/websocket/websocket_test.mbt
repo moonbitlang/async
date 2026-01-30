@@ -132,7 +132,7 @@ async test "write buffering" {
         }
         log.push("server received new message: \{msg.kind}")
         while msg.read_some() is Some(chunk) {
-          let chunk = @encoding/utf8.decode(chunk)
+          let chunk = @utf8.decode(chunk)
           log.push("server received: \{chunk}")
         }
       }

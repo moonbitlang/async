@@ -19,7 +19,7 @@ test "missing_close" {
     @async.with_task_group(fn(root) {
       let (r, w) = @pipe.pipe()
       root.spawn_bg(fn() {
-        let data = r.read_exactly(4) |> @encoding/utf8.decode
+        let data = r.read_exactly(4) |> @utf8.decode
         @async.sleep(10)
         log.write_string("received \{data}\n")
       })

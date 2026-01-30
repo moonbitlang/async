@@ -18,5 +18,5 @@ fn _ignore_unused_import() -> Unit {
   ignore(@async.sleep)
   ignore(@fs.unimplemented)
   ignore(@bytes_util.ascii_to_string)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

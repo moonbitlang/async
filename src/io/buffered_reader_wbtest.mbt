@@ -37,7 +37,7 @@ async test "BufferedReader::read" {
     let buf = FixedArray::make(6, b'0')
     while reader.read(buf) is n && n > 0 {
       let data = buf.unsafe_reinterpret_as_bytes()[0:n]
-      let data = @encoding/utf8.decode(data)
+      let data = @utf8.decode(data)
       log.write_string("received: \{data}\n")
     }
     log.write_string("buffered reader closed\n")
@@ -67,7 +67,7 @@ async test "BufferedReader::read_exactly" {
     let reader = BufferedReader::new(r)
     for {
       let data = reader.read_exactly(6)
-      let data = @encoding/utf8.decode(data)
+      let data = @utf8.decode(data)
       log.write_string("received: \{data}\n")
     }
   }) catch {
@@ -131,18 +131,18 @@ async test "BufferedReader::op_as_view" {
       root.spawn_bg(() => writer(log, w))
       defer r.close()
       let reader = BufferedReader::new(r)
-      let slice = @encoding/utf8.decode(reader[0:6])
+      let slice = @utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
       // should be idempotent
-      let slice = @encoding/utf8.decode(reader[0:6])
+      let slice = @utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-      let slice = @encoding/utf8.decode(reader[0:6])
+      let slice = @utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
       log.write_string("reader.drop(4)\n")
       reader.drop(4)
-      let slice = @encoding/utf8.decode(reader[0:6])
+      let slice = @utf8.decode(reader[0:6])
       log.write_string("reader[0:6]: \{slice}\n")
     }),
   )

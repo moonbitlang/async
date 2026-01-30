@@ -109,10 +109,7 @@ async test "read in chunks using File" {
   let n = file.read(buf)
   @fs.remove(test_file)
   inspect(n, content="5")
-  inspect(
-    @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
-    content="01234",
-  )
+  inspect(@utf8.decode(buf.unsafe_reinterpret_as_bytes()), content="01234")
 }
 
 ///|
@@ -136,7 +133,7 @@ async test "read_exactly specific bytes" {
   let bytes = file.read_exactly(5)
   file.close()
   @fs.remove(test_file)
-  inspect(@encoding/utf8.decode(bytes), content="12345")
+  inspect(@utf8.decode(bytes), content="12345")
 }
 ```
 

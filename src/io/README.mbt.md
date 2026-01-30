@@ -73,7 +73,7 @@ async test "data as binary" {
     })
     let data = r.read_all()
     let binary = data.binary()
-    inspect(@encoding/utf8.decode(binary), content="binary data")
+    inspect(@utf8.decode(binary), content="binary data")
   })
 }
 
@@ -142,7 +142,7 @@ async test "read from reader" {
     inspect(n, content="13")
     // Convert the binary slice to UTF-8 text for inspection.
     inspect(
-      @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()),
+      @utf8.decode(buf.unsafe_reinterpret_as_bytes()),
       content="Hello, World!",
     )
   })
@@ -160,9 +160,9 @@ async test "read_exactly - read exact number of bytes" {
     })
     // Blocks until exactly 5 bytes are received or ReaderClosed is raised.
     let data1 = r.read_exactly(5)
-    inspect(@encoding/utf8.decode(data1), content="01234")
+    inspect(@utf8.decode(data1), content="01234")
     let data2 = r.read_exactly(5)
-    inspect(@encoding/utf8.decode(data2), content="56789")
+    inspect(@utf8.decode(data2), content="56789")
   })
 }
 
@@ -254,7 +254,7 @@ async test "drop - advance stream by discarding data" {
     // The number of bytes actually dropped would be returned.
     inspect(r.drop(5), content="5")
     let data = r.read_exactly(5)
-    inspect(@encoding/utf8.decode(data), content="56789")
+    inspect(@utf8.decode(data), content="56789")
   })
 }
 
@@ -380,7 +380,7 @@ async test "write_reader - copy from reader to writer" {
     root.spawn_bg(fn() {
       defer r1.close()
       while r1.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })
@@ -455,7 +455,7 @@ async test "BufferedWriter - basic buffering" {
     root.spawn_bg(fn() {
       defer r.close()
       while r.read_some() is Some(data) {
-        log.write_string("received: \{@encoding/utf8.decode(data)}\n")
+        log.write_string("received: \{@utf8.decode(data)}\n")
       }
     })
   })
@@ -526,7 +526,7 @@ async test "BufferedWriter::write_reader - buffered copy" {
     root.spawn_bg(fn() {
       defer r1.close()
       while r1.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })

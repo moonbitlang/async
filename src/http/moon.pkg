@@ -9,12 +9,12 @@ import {
 }
 
 import "test" {
-  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
 }
 
 import "wbtest" {
-  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/bytes_util",

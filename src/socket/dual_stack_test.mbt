@@ -175,7 +175,7 @@ async test "Only_V4 UDP server" {
       let buf = FixedArray::make(1024, b'\x00')
       for {
         let (len, addr) = server.recvfrom(buf)
-        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
@@ -225,7 +225,7 @@ async test "Only_V6 UDP server" {
       let buf = FixedArray::make(1024, b'\x00')
       for {
         let (len, addr) = server.recvfrom(buf)
-        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
@@ -272,7 +272,7 @@ async test "dual stack UDP server" {
       let buf = FixedArray::make(1024, b'\x00')
       for {
         let (len, addr) = server.recvfrom(buf)
-        let msg = @encoding/utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
+        let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]

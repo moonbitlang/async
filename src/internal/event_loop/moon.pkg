@@ -11,7 +11,7 @@ import {
 }
 
 import "test" {
-  "moonbitlang/core/encoding/utf8" as @encoding/utf8,
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",

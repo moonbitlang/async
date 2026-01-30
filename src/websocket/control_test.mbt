@@ -32,7 +32,7 @@ async test "ping auto-reply" {
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
     http_client.write(ping_frame)
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
-    inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
+    inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
     ws_client.send_text("1234")
   })
 }
@@ -93,9 +93,9 @@ async test "ping auto-reply race-with-write" {
     http_client.write(ping_frame)
     // The `PONG` reply should come first
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
-    inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
+    inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x81, 0x04])
-    inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="1234")
+    inspect(@utf8.decode(http_client.read_exactly(4)), content="1234")
   })
 }
 
@@ -136,7 +136,7 @@ async test "close test" {
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x88, 6])
     guard http_client.read_exactly(2) is [u16be(code)]
     inspect(code, content="1000")
-    inspect(@encoding/utf8.decode(http_client.read_exactly(4)), content="abcd")
+    inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
   })
 }
 

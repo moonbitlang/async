@@ -29,7 +29,7 @@ async test "passthrough mode" {
       conn..send_response(200, "OK")..end_response()
       conn.enter_passthrough_mode()
       while conn.read_some() is Some(packet) {
-        let packet = @encoding/utf8.decode(packet)
+        let packet = @utf8.decode(packet)
         log.push("server received: \{packet}")
       }
     })

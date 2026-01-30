@@ -46,7 +46,7 @@ async test "one way" {
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       while server.read_some() is Some(data) {
-        let data = @encoding/utf8.decode(data)
+        let data = @utf8.decode(data)
         log.write_string("server received: \{data}\n")
       } else {
         server.shutdown()
@@ -99,7 +99,7 @@ async test "echo" {
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       while server.read_some() is Some(data) {
-        log.write_string("server received: \{@encoding/utf8.decode(data)}\n")
+        log.write_string("server received: \{@utf8.decode(data)}\n")
         server.write(data)
       } else {
         server.shutdown()

@@ -19,5 +19,5 @@ let _ignore_unused_import : Unit = {
   ignore(@async.sleep)
   ignore(@pipe.unimplemented)
   ignore(@fs.unimplemented)
-  ignore(@encoding/utf8.encode(""))
+  ignore(@utf8.encode(""))
 }

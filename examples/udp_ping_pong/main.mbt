@@ -27,9 +27,9 @@ async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
       group.spawn_bg(fn() {
         @async.sleep(10)
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-        println("server received: \{@encoding/utf8.decode(msg)}")
+        println("server received: \{@utf8.decode(msg)}")
         let reply = "pong"
-        server.sendto(@encoding/utf8.encode(reply), addr)
+        server.sendto(@utf8.encode(reply), addr)
         println("server sent: \{reply}")
         if msg == b"exit" {
           println("server initiate terminate")
@@ -56,13 +56,13 @@ async fn client(
 ) -> Unit {
   let conn = @socket.UdpClient::new(addr)
   defer conn.close()
-  conn.send(@encoding/utf8.encode(msg))
+  conn.send(@utf8.encode(msg))
   println("client \{id} sent: \{msg}")
   let buf = FixedArray::make(1024, b'0')
   if conn.recv(buf) is n && n > 0 {
     @async.sleep(10)
     let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
-    println("client \{id} received: \{@encoding/utf8.decode(msg)}")
+    println("client \{id} received: \{@utf8.decode(msg)}")
   } else {
     println("client \{id}: connection closed by peer")
   }

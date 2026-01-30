@@ -24,7 +24,7 @@ async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
     println("received new connection")
     while conn.read_some() is Some(msg) {
       @async.sleep(10)
-      println("server received: \{@encoding/utf8.decode(msg)}")
+      println("server received: \{@utf8.decode(msg)}")
       let reply = "pong"
       conn.write(reply)
       println("server sent: \{reply}")
@@ -62,7 +62,7 @@ async fn client(
   println("client \{id} sent: \{msg}")
   if conn.read_some() is Some(msg) {
     @async.sleep(10)
-    let msg = @encoding/utf8.decode(msg)
+    let msg = @utf8.decode(msg)
     println("client \{id} received: \{msg}")
   } else {
     println("client \{id}: connection closed by peer")
