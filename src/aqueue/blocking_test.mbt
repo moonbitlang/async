@@ -213,3 +213,123 @@ test "blocking try_put" {
   inspect(q.try_put(3), content="true")
   inspect(q.try_put(4), content="false")
 }
+
+///|
+async test "blocked zero buffered try_get" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=Blocking(0))
+    assert_eq(None, q.try_get())
+    for i in 0..<3 {
+      group.spawn_bg(() => {
+        q.put(i)
+        log.push("put(\{i})")
+      })
+    }
+    group.spawn_bg(() => while q.try_get() is Some(x) {
+      log.push("try_get() => \{x}")
+    })
+    assert_eq(None, q.try_get())
+  })
+  json_inspect(log, content=[
+    "try_get() => 0", "try_get() => 1", "try_get() => 2", "put(0)", "put(1)", "put(2)",
+  ])
+}
+
+///|
+async test "blocked zero buffered try_put" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=Blocking(0))
+    assert_eq(false, q.try_put(-1))
+    for _ in 0..<3 {
+      group.spawn_bg(() => {
+        let x = q.get()
+        log.push("get() => \{x}")
+      })
+    }
+    group.spawn_bg(() => for i in 0..<3 {
+      if q.try_put(i) {
+        log.push("try_put(\{i})")
+      } else {
+        log.push("try_put(\{i}) => false")
+      }
+    })
+    assert_eq(false, q.try_put(-1))
+  })
+  json_inspect(log, content=[
+    "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
+  ])
+}
+
+///|
+async test "blocked zero buffered discard oldest try_get" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=DiscardOldest(0))
+    assert_eq(None, q.try_get())
+    for i in 0..<3 {
+      group.spawn_bg(() => {
+        q.put(i) // will be discarded since the buffer size is 0 and no waiting readers
+        log.push("put(\{i})")
+      })
+    }
+    group.spawn_bg(() => while q.try_get() is Some(x) {
+      log.push("try_get() => \{x}")
+    })
+    assert_eq(None, q.try_get())
+  })
+  json_inspect(log, content=["put(0)", "put(1)", "put(2)"])
+}
+
+///|
+async test "blocked zero buffered discard oldest try_put" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=DiscardOldest(0))
+    assert_eq(false, q.try_put(-1))
+    for _ in 0..<3 {
+      group.spawn_bg(() => {
+        let x = q.get()
+        log.push("get() => \{x}")
+      })
+    }
+    group.spawn_bg(() => for i in 0..<3 {
+      if q.try_put(i) {
+        log.push("try_put(\{i})")
+      } else {
+        log.push("try_put(\{i}) => false")
+      }
+    })
+    assert_eq(false, q.try_put(-1))
+  })
+  json_inspect(log, content=[
+    "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
+  ])
+}
+
+///|
+async test "blocked zero buffered discard latest try_put" {
+  let log = []
+  @async.with_task_group(group => {
+    let q = @async.Queue::new(kind=DiscardLatest(0))
+    assert_eq(false, q.try_put(-1))
+    for _ in 0..<3 {
+      group.spawn_bg(() => {
+        let x = q.get()
+        log.push("get() => \{x}")
+      })
+    }
+    group.spawn_bg(() => for i in 0..<3 {
+      if q.try_put(i) {
+        log.push("try_put(\{i})")
+      } else {
+        log.push("try_put(\{i}) => false")
+      }
+    })
+    assert_eq(false, q.try_put(-1))
+  })
+  json_inspect(log, content=[
+    "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
+  ])
+}
