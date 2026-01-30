@@ -33,6 +33,7 @@ priv struct EventLoop {
   job_queue : @deque.Deque[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
+  completed_jobs_buffer : FixedArray[Int]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
 }
@@ -102,6 +103,7 @@ fn EventLoop::new() -> EventLoop raise {
     job_queue: @deque.new(),
     idle_workers: @deque.new(),
     running_workers: {},
+    completed_jobs_buffer: FixedArray::make(1024, 0),
     jobs: {},
     timers: @sorted_set.new(),
   }
@@ -227,11 +229,20 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         coro.wake()
       }
     } else if fd == self.notify_recv {
-      while fetch_completion_ffi(self.notify_recv) is job_id && job_id >= 0 {
-        self.handle_completed_job(job_id)
-      } else {
-        if not(@os_error.is_nonblocking_io_error()) {
+      while true {
+        let bytes_transferred = fetch_completion_ffi(
+          self.notify_recv,
+          self.completed_jobs_buffer,
+        )
+        if bytes_transferred < 0 {
           @os_error.check_errno("runtime internal: failed to get completed job")
+        }
+        let n = bytes_transferred / 4
+        for i in 0..<n {
+          self.handle_completed_job(self.completed_jobs_buffer[i])
+        }
+        if n < self.completed_jobs_buffer.length() {
+          break
         }
       }
     } else if self.fds.get(fd) is Some(handle) {

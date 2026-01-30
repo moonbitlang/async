@@ -383,13 +383,9 @@ struct worker *moonbitlang_async_spawn_worker(
 }
 
 #ifndef _WIN32
-int32_t moonbitlang_async_fetch_completion(int notify_recv) {
-  int job_id;
-  int32_t ret = read(notify_recv, &job_id, sizeof(int));
-  if (ret < 0)
-    return ret;
-
-  return job_id;
+int32_t moonbitlang_async_fetch_completion(int notify_recv, int32_t *output) {
+  int max_len = Moonbit_array_length(output);
+  return read(notify_recv, (char*)output, max_len * sizeof(int32_t));
 }
 #endif
 
