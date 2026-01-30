@@ -65,3 +65,29 @@ async test "discard latest try_put" {
   }
   json_inspect(result, content=[1, 2])
 }
+
+///|
+async test "discard oldest zero buffered" {
+  let q = @async.Queue::new(kind=DiscardOldest(0))
+  // all `put` should have no effect
+  inspect(q.try_put(1), content="false")
+  inspect(q.try_put(2), content="false")
+  let result = []
+  while q.try_get() is Some(x) {
+    result.push(x)
+  }
+  json_inspect(result, content=[])
+}
+
+///|
+async test "discard latest zero buffered" {
+  let q = @async.Queue::new(kind=DiscardLatest(0))
+  // all `put` should have no effect
+  inspect(q.try_put(1), content="false")
+  inspect(q.try_put(2), content="false")
+  let result = []
+  while q.try_get() is Some(x) {
+    result.push(x)
+  }
+  json_inspect(result, content=[])
+}
