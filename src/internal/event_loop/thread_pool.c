@@ -19,6 +19,10 @@
 
 #ifdef _WIN32
 
+#ifndef _MSC_VER
+#error "Currently only MSVC is supported on Windows"
+#endif
+
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
