@@ -19,18 +19,6 @@
 
 #ifdef _WIN32
 
-#ifndef NTDDI_VERSION
-#define NTDDI_VERSION 0x06010000
-#endif
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0601
-#endif
-
-#ifndef UNICODE
-#define UNICODE
-#endif
-
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
@@ -1648,7 +1636,7 @@ void spawn_job_worker(struct job *job) {
     // This can avoid race condition when main process is killed after `CreateProcess`,
     // but before `AssignProcessToJobObject` on the child process.
     create_flags |= EXTENDED_STARTUPINFO_PRESENT;
-    startup_info.cb = sizeof(STARTUPINFOEXW);
+    startup_info.StartupInfo.cb = sizeof(STARTUPINFOEXW);
 
     SIZE_T attrs_size;
     InitializeProcThreadAttributeList(NULL, 1, 0, &attrs_size);
@@ -1662,13 +1650,13 @@ void spawn_job_worker(struct job *job) {
       )
     ) {
       job->err = GetLastError();
-      free(attrs);
+      free(startup_info.lpAttributeList);
       return;
     }
 
     if (
-      !UpdateProcThreadAttributeList(
-        attrs,
+      !UpdateProcThreadAttribute(
+        startup_info.lpAttributeList,
         0,
         PROC_THREAD_ATTRIBUTE_JOB_LIST,
         &global_job_object,
@@ -1678,7 +1666,7 @@ void spawn_job_worker(struct job *job) {
       )
     ) {
       job->err = GetLastError();
-      free(attrs);
+      free(startup_info.lpAttributeList);
       return;
     }
   }
