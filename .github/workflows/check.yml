@@ -30,8 +30,8 @@ jobs:
       - name: moon test
         run: |
           for i in $(seq 1 10); do
-            moon test --release --target js src/aqueue
+            moon test --release --target js
             moon clean
-            moon test --target js src/aqueue
+            moon test --target js
             moon clean
           done
