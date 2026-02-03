@@ -1,0 +1,119 @@
+name: coverage
+
+on:
+  pull_request:
+
+jobs:
+  coverage-windows:
+    runs-on: 'windows-latest'
+    continue-on-error: false
+    timeout-minutes: 10
+
+    steps:
+      - name: disable auto CRLF
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: install (Windows)
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: load SSH key for testing (Windows)
+        run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon test
+        run: moon test --enable-coverage
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-windows
+          path: _build/moonbit_coverage_*
+
+  coverage-unix:
+    runs-on: 'ubuntu-latest'
+    continue-on-error: false
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
+
+      - name: install (Unix)
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon test
+        run: moon test --enable-coverage
+
+      - name: moon test (JS backend)
+        run: moon test --enable-coverage --target js
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-unix
+          path: _build/moonbit_coverage_*
+
+  display-coverage-result:
+    runs-on: ubuntu-latest
+    needs: [coverage-windows, coverage-unix]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: generate source traces
+        run: |
+          moon test --enable-coverage --build-only
+          moon test --enable-coverage --build-only --target js
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: coverage-data-windows
+          path: _build
+
+      - name: handle CRLF in Windows coverage data
+        run: |
+          for f in $(ls _build | grep moonbit_coverage_); do
+            sed -e 's/\r//g' -i _build/$f
+          done
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: coverage-data-unix
+          path: _build
+
+      - name: coverage report
+        run: |
+          moon coverage report -f summary
+          # We don't use the official coveralls upload tool because it takes >1min to build itself
+          moon coverage report \
+            -f coveralls \
+            -o codecov_report.json \
+            --service-name github \
+            --service-job-id "$GITHUB_RUN_NUMBER" \
+            --service-pull-request "${{ github.event.number }}" \
+            --send-to coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
