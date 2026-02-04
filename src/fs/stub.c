@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+#include <windows.h>
+#include <moonbit.h>
+
+#else
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -26,8 +31,53 @@
 #include <sys/file.h>
 #include <moonbit.h>
 
+#endif
+
+
+#ifndef _WIN32
+
 int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
+}
+
+#endif
+
+
+#ifdef _WIN32
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_errno_is_lock_violation(int32_t err) {
+  return err == ERROR_LOCK_VIOLATION;
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_try_lock_file(HANDLE handle, int exclusive) {
+  OVERLAPPED overlapped;
+  memset(&overlapped, 0, sizeof(OVERLAPPED));
+  // See the comment on `flock_job_worker` in `thread_pool.c` for more details
+  overlapped.Offset = 0xfffffffe;
+  overlapped.OffsetHigh = 0xffffffff;
+  BOOL result = LockFileEx(
+    handle,
+    LOCKFILE_FAIL_IMMEDIATELY | (exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0),
+    0,
+    1,
+    0,
+    &overlapped
+  );
+  return result ? 0 : -1;
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_unlock_file(HANDLE handle) {
+  BOOL result = UnlockFile(handle, 0xfffffffe, 0xffffffff, 1, 0);
+  return result ? 0 : -1;
+}
+
+#else
+
+int32_t moonbitlang_async_errno_is_lock_violation(int32_t err) {
+  return err == EWOULDBLOCK;
 }
 
 int moonbitlang_async_try_lock_file(int fd, int exclusive) {

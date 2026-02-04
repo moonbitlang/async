@@ -1146,9 +1146,39 @@ static
 void flock_job_worker(struct job *job) {
   struct flock_job *flock_job = (struct flock_job*)job;
 
+#ifdef _WIN32
+
+  OVERLAPPED overlapped;
+  memset(&overlapped, 0, sizeof(OVERLAPPED));
+  // We want to provide advisory lock here
+  // (i.e. only lock operations conflict with each other, raw IO are not affected),
+  // because mandatory file lock is not available on Linux/MacOS.
+  // However, Windows only provides mandatory file lock.
+  // Fortunately, https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex
+  // explicitly state that locking a region beyond end of file is *not* an error.
+  // So, here we lock the last byte in the whole address space to simulate advisory locking,
+  // as this region can almost never get touched by normal IO operations.
+  overlapped.Offset = 0xfffffffe;
+  overlapped.OffsetHigh = 0xffffffff;
+  BOOL ret = LockFileEx(
+    flock_job->fd,
+    flock_job->exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0,
+    0, // reserved
+    1,
+    0,
+    &overlapped
+  );
+
+  if (!ret)
+    job->err = GetLastError();
+
+#else
+
   int ret = flock(flock_job->fd, flock_job->exclusive ? LOCK_EX : LOCK_SH);
   if (ret < 0)
     job->err = errno;
+
+#endif
 }
 
 struct flock_job *moonbitlang_async_make_flock_job(HANDLE fd, int exclusive) {

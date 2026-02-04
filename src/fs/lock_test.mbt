@@ -277,3 +277,22 @@ async test "flock cancelled" {
     "child: releasing lock",
   ])
 }
+
+///|
+async test "flock advisory" {
+  let log = []
+  let file_name = "_build/flock_advisory"
+  @async.with_task_group(group => {
+    @fs.write_file(file_name, create=0o644, "abcd")
+    let file = @fs.open(file_name, mode=ReadWrite)
+    defer file.close()
+    group.add_defer(() => @fs.remove(file_name))
+    run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
+    @async.sleep(250)
+    log.push("attempting to read")
+    log.push("read from file: \{file.read_all().text()}")
+  })
+  json_inspect(log, content=[
+    "child: acquired lock", "attempting to read", "read from file: abcd", "child: releasing lock",
+  ])
+}
