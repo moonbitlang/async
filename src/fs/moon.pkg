@@ -14,6 +14,7 @@ import "test" {
 }
 
 options(
+  "max-concurrent-tests": 5,
   "native-stub": [ "stub.c" ],
   targets: {
     "README.mbt.md": [ "native" ],
