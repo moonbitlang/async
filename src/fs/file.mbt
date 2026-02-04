@@ -229,6 +229,56 @@ pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
 }
 
 ///|
+/// The kind of lock that can be acquired on a file.
+/// `Exclusive` lock must be unique,
+/// while multiple `Shared` lock can coexist.
+/// `Exclusive` lock and `Shared` lock are mutually exclusive.
+pub(all) enum Lock {
+  Shared
+  Exclusive
+}
+
+///|
+/// Lock a file, block until the lock is successfully acquired.
+pub async fn File::lock(self : File, lock : Lock) -> Unit {
+  self.io.lock(exclusive=lock is Exclusive, context="@fs.File::lock()")
+}
+
+///|
+extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
+
+///|
+/// Try to lock a file.
+/// If the lock is successfully acquired, `true` is returned.
+/// If the lock cannot be acquired immediately
+/// (because an incompatible lock is held by another process),
+/// `false` is returned immediately.
+pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
+  let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
+  if ret >= 0 {
+    true
+  } else if @os_error.is_nonblocking_io_error() {
+    false
+  } else {
+    @os_error.check_errno("@fs.File::try_lock()")
+    false
+  }
+}
+
+///|
+extern "C" fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_unlock_file"
+
+///|
+/// Unlock a file that was previously locked by this process.
+pub fn File::unlock(self : File) -> Unit {
+  if unlock_ffi(self.fd()) < 0 {
+    // swallow the error so that we can use `unlock` in `defer`.
+    // TODO: remove the `try!` after we support raising error in `defer`.
+    try! @os_error.check_errno("@fs.File::unlock()")
+  }
+}
+
+///|
 /// Remove the file located at `path`. `path` is encoded using UTF8.
 pub async fn remove(path : StringView) -> Unit {
   @event_loop.remove(path, context="@fs.remove()")

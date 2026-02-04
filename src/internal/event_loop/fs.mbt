@@ -174,6 +174,21 @@ pub async fn IoHandle::fsync(
 }
 
 ///|
+pub async fn IoHandle::lock(
+  handle : IoHandle,
+  exclusive~ : Bool,
+  context~ : String,
+) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  perform_job_in_worker(
+    Job::flock(handle.fd, exclusive),
+    cancel=job_id => evloop.cancel_job_in_worker(job_id, context~),
+    context~,
+  )
+  |> ignore
+}
+
+///|
 pub async fn remove(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   try perform_job_in_worker(Job::remove(path_bytes), context~) catch {

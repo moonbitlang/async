@@ -168,6 +168,9 @@ extern "C" fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job = "moonb
 extern "C" fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
 
 ///|
+extern "C" fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job = "moonbitlang_async_make_flock_job"
+
+///|
 #owned(path)
 extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_async_make_remove_job"
 

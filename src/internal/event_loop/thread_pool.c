@@ -44,6 +44,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 
 typedef int HANDLE;
 
@@ -1128,6 +1129,32 @@ struct fsync_job *moonbitlang_async_make_fsync_job(HANDLE fd, int only_data) {
   struct fsync_job *job = MAKE_JOB(fsync);
   job->fd = fd;
   job->only_data = only_data;
+  return job;
+}
+
+// ===== flock job, place advisory lock on a file =====
+struct flock_job {
+  struct job job;
+  HANDLE fd;
+  int exclusive;
+};
+
+static
+void free_flock_job(void *obj) {}
+
+static
+void flock_job_worker(struct job *job) {
+  struct flock_job *flock_job = (struct flock_job*)job;
+
+  int ret = flock(flock_job->fd, flock_job->exclusive ? LOCK_EX : LOCK_SH);
+  if (ret < 0)
+    job->err = errno;
+}
+
+struct flock_job *moonbitlang_async_make_flock_job(HANDLE fd, int exclusive) {
+  struct flock_job *job = MAKE_JOB(flock);
+  job->fd = fd;
+  job->exclusive = exclusive;
   return job;
 }
 

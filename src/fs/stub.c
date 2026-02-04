@@ -23,10 +23,19 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <moonbit.h>
 
 int moonbitlang_async_dir_is_null(DIR *dir) {
   return dir == 0;
+}
+
+int moonbitlang_async_try_lock_file(int fd, int exclusive) {
+  return flock(fd, LOCK_NB | (exclusive ? LOCK_EX : LOCK_SH));
+}
+
+int moonbitlang_async_unlock_file(int fd) {
+  return flock(fd, LOCK_UN);
 }
 
 #endif
