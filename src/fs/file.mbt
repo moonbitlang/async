@@ -245,6 +245,9 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 }
 
 ///|
+extern "C" fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang_async_errno_is_lock_violation"
+
+///|
 extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
 
 ///|
@@ -257,7 +260,7 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
   let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
   if ret >= 0 {
     true
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if errno_is_lock_violation(@os_error.get_errno()) {
     false
   } else {
     @os_error.check_errno("@fs.File::try_lock()")
