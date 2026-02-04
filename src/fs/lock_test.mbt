@@ -82,6 +82,7 @@ async test "flock exclusive vs exclusive blocking" {
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
+    @async.sleep(10)
     log.push("acquired lock")
   })
   json_inspect(log, content=[
@@ -122,6 +123,7 @@ async test "flock shared vs exclusive blocking" {
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
+    @async.sleep(10)
     log.push("acquired lock")
   })
   json_inspect(log, content=[
@@ -162,6 +164,7 @@ async test "flock exclusive vs shared blocking" {
     log.push("attempting to acquire lock")
     file.lock(Shared)
     defer file.unlock()
+    @async.sleep(10)
     log.push("acquired lock")
   })
   json_inspect(log, content=[
@@ -200,6 +203,7 @@ async test "flock shared vs shared blocking" {
     log.push("attempting to acquire lock")
     file.lock(Shared)
     defer file.unlock()
+    @async.sleep(10)
     log.push("acquired lock")
   })
   json_inspect(log, content=[
@@ -247,6 +251,7 @@ async test "flock shared vs shared vs exclusive blocking" {
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
+    @async.sleep(10)
     log.push("acquired lock")
   })
   json_inspect(log, content=[
