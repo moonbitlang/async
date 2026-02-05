@@ -89,3 +89,29 @@ int moonbitlang_async_unlock_file(int fd) {
 }
 
 #endif
+
+#ifdef _WIN32
+
+MOONBIT_FFI_EXPORT
+moonbit_string_t moonbitlang_async_get_tmp_path() {
+  static wchar_t buffer[1024];
+
+  const DWORD buffer_len = sizeof(buffer) / sizeof(wchar_t);
+  DWORD len = GetTempPath2W(buffer_len, buffer);
+
+  if (len == 0) {
+    return NULL;
+  }
+
+  if (len > buffer_len) {
+    moonbit_string_t str = moonbit_make_string_raw(len - 1);
+    len = GetTempPath2W(len, (LPWSTR)str);
+    return len == 0 ? NULL : str;
+  } else {
+    moonbit_string_t str = moonbit_make_string_raw(len);
+    memcpy(str, buffer, len * sizeof(wchar_t));
+    return str;
+  }
+}
+
+#endif

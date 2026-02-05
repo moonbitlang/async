@@ -1,9 +1,13 @@
 import {
+  "moonbitlang/core/random",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/int",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/internal/env_util",
   "moonbitlang/async",
 }
 
@@ -35,6 +39,8 @@ options(
     "stat_test.mbt": [ "native" ],
     "text_file_test.mbt": [ "native" ],
     "timestamp_test.mbt": [ "native" ],
+    "tmpdir.mbt": [ "native" ],
+    "tmpdir_test.mbt": [ "native" ],
     "utils.mbt": [ "native" ],
     "walk_test.mbt": [ "native" ],
   },
