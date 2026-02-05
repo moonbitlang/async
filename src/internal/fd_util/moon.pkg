@@ -1,5 +1,6 @@
 import {
   "moonbitlang/async/os_error",
+  "moonbitlang/async/internal/env_util",
   "moonbitlang/async/internal/os_string",
 }
 

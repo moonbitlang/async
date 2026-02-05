@@ -55,14 +55,6 @@ let _unused : Unit = ignore(@os_string.encode)
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_current_process_id() -> UInt = "GetCurrentProcessId"
-
-///|
-#cfg(platform="windows")
-let current_process_id : UInt = get_current_process_id()
-
-///|
-#cfg(platform="windows")
 #borrow(name)
 pub extern "C" fn create_named_pipe_server(
   name : @os_string.OsString,
@@ -90,7 +82,7 @@ pub fn pipe(
 ) -> (Fd, Fd) raise {
   pipe_id.val += 1
   let name = @os_string.encode(
-    "\\\\.\\pipe\\moonbitlang_async.\{current_process_id}.\{pipe_id.val}",
+    "\\\\.\\pipe\\moonbitlang_async.\{@env_util.current_process}.\{pipe_id.val}",
   )
   let w = create_named_pipe_server(name, is_async=write_end_is_async)
   if !fd_is_valid(w) {
