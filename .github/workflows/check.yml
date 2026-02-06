@@ -121,7 +121,7 @@ jobs:
         run: moon check
 
       - name: moon check (examples)
-        run: moon check -C examples
+        run: moon check --manifest-path examples/moon.mod.json
 
       - name: moon test
         run: moon test
@@ -130,10 +130,10 @@ jobs:
         run: moon test --release
 
       - name: test examples
-        run: moon test -C examples
+        run: moon test --manifest-path examples/moon.mod.json
 
       - name: test examples (release)
-        run: moon test --release -C examples
+        run: moon test --release --manifest-path examples/moon.mod.json
 
   js-build:
     runs-on: ubuntu-latest
