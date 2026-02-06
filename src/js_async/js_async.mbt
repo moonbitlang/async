@@ -192,11 +192,14 @@ pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
 /// The async function `f` will be run in a global context,
 /// so there is no structured concurrency support for `Promise::from_async`,
 /// and this function should only be used for exporting MoonBit code to JavaScript.
+///
+/// It is undefined whether `f` will actually start running immediately,
+/// or start at the next JavaScript event loop.
 pub fn[X] Promise::from_async(
   f : async () -> X,
   abort_signal? : AbortSignal,
 ) -> Promise[X] {
-  JsValue::new_promise((resolve, reject) => {
+  let promise = JsValue::new_promise((resolve, reject) => {
     let coro = @coroutine.spawn(() => try f() catch {
       @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
         reject(JsValue::abort_error())
@@ -207,5 +210,7 @@ pub fn[X] Promise::from_async(
     if abort_signal is Some(signal) {
       signal.on_abort(() => coro.cancel())
     }
-  }).cast()
+  })
+  @coroutine.reschedule()
+  promise.cast()
 }

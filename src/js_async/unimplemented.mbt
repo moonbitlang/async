@@ -130,6 +130,9 @@ pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
 /// The async function `f` will be run in a global context,
 /// so there is no structured concurrency support for `Promise::from_async`,
 /// and this function should only be used for exporting MoonBit code to JavaScript.
+///
+/// It is undefined whether `f` will actually start running immediately,
+/// or start at the next JavaScript event loop.
 #internal(unimplemented, "unimplemented in native backend")
 #warnings("-unused_async")
 pub fn[X] Promise::from_async(
