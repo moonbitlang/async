@@ -26,10 +26,9 @@ async test "cancel named fifo open" {
       @os_error.check_errno("mkfifo")
     }
     group.add_defer(() => @fs.remove(path))
-    let result = @async.with_timeout_opt(500, () => @fs.open(
-      path,
-      mode=ReadOnly,
-    ).close())
+    let result = @async.with_timeout_opt(500, () => {
+      @fs.open(path, mode=ReadOnly).close()
+    })
     inspect(result, content="None")
   })
 }
@@ -49,7 +48,9 @@ async test "cancel named pipe open" {
   defer (try! @fd_util.close(server, kind=Pipe, context~))
   let client1 = @fs.open(path, mode=ReadOnly)
   defer client1.close()
-  let result = @async.with_timeout_opt(500, () => @fs.open(path, mode=ReadOnly).close())
+  let result = @async.with_timeout_opt(500, () => {
+    @fs.open(path, mode=ReadOnly).close()
+  })
   inspect(result, content="None")
 }
 

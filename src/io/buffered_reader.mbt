@@ -42,7 +42,7 @@ async fn[R : Reader] ReaderBuffer::try_ensure(
       return false
     }
     self.len += n
-  } else {
+  } nobreak {
     true
   }
 }

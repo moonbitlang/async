@@ -249,17 +249,19 @@ pub async fn[X] all(
     None
   }
   let results = Array::make(tasks.length(), None)
-  with_task_group(tg => for i, task in tasks {
-    if semaphore is Some(sem) {
-      sem.acquire()
+  with_task_group(tg => {
+    for i, task in tasks {
+      if semaphore is Some(sem) {
+        sem.acquire()
+      }
+      tg.spawn_bg(fn() {
+        // We rely on the assumption that the task spawned will 100% executed
+        // even if it is cancelled, so that we can release the semaphore properly.
+        defer (if semaphore is Some(sem) { sem.release() })
+        let result = task()
+        results[i] = Some(result)
+      })
     }
-    tg.spawn_bg(fn() {
-      // We rely on the assumption that the task spawned will 100% executed
-      // even if it is cancelled, so that we can release the semaphore properly.
-      defer (if semaphore is Some(sem) { sem.release() })
-      let result = task()
-      results[i] = Some(result)
-    })
   })
   results.map(r => r.unwrap())
 }
@@ -295,22 +297,24 @@ pub async fn[X] any(
   }
   let mut result = None
   let mut last_err = None
-  with_task_group(tg => for task in tasks {
-    if semaphore is Some(sem) {
-      sem.acquire()
-    }
-    tg.spawn_bg(allow_failure~, fn() {
-      // We rely on the assumption that the task spawned will 100% executed
-      // even if it is cancelled, so that we can release the semaphore properly.
-      defer (if semaphore is Some(sem) { sem.release() })
-      result = Some(task()) catch {
-        e => {
-          last_err = Some(e)
-          raise e
-        }
+  with_task_group(tg => {
+    for task in tasks {
+      if semaphore is Some(sem) {
+        sem.acquire()
       }
-      tg.return_immediately(())
-    })
+      tg.spawn_bg(allow_failure~, fn() {
+        // We rely on the assumption that the task spawned will 100% executed
+        // even if it is cancelled, so that we can release the semaphore properly.
+        defer (if semaphore is Some(sem) { sem.release() })
+        result = Some(task()) catch {
+          e => {
+            last_err = Some(e)
+            raise e
+          }
+        }
+        tg.return_immediately(())
+      })
+    }
   })
   if result is Some(result) {
     result

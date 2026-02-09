@@ -48,7 +48,7 @@ async test "one way" {
       while server.read_some() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("server received: \{data}\n")
-      } else {
+      } nobreak {
         server.shutdown()
       }
     })
@@ -101,7 +101,7 @@ async test "echo" {
       while server.read_some() is Some(data) {
         log.write_string("server received: \{@utf8.decode(data)}\n")
         server.write(data)
-      } else {
+      } nobreak {
         server.shutdown()
       }
     })

@@ -18,17 +18,19 @@ async test "external client" {
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
-    group.spawn_bg(no_wait=true, () => server.run_forever((request, _, conn) => {
-      log.push("new client to \{request.path}")
-      let ws = @websocket.from_http_server(request, conn)
-      defer ws.close()
-      for {
-        let msg = ws.recv()
-        let data = msg.read_all().text()
-        log.push("\{msg.kind}: \{data}")
-        ws..start_message(msg.kind)..write(data)..end_message()
-      }
-    }))
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever((request, _, conn) => {
+        log.push("new client to \{request.path}")
+        let ws = @websocket.from_http_server(request, conn)
+        defer ws.close()
+        for {
+          let msg = ws.recv()
+          let data = msg.read_all().text()
+          log.push("\{msg.kind}: \{data}")
+          ws..start_message(msg.kind)..write(data)..end_message()
+        }
+      })
+    })
     let (_, output) = @process.collect_stdout("node", [
       "src/websocket/client.ts",
       "ws://localhost:\{port}",

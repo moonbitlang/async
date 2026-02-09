@@ -141,10 +141,12 @@ pub async fn run(
   )
   @event_loop.wait_pid(pid, context~) catch {
     _ if @coroutine.is_being_cancelled() =>
-      @async.protect_from_cancel(() => @async.with_task_group(group => {
-        group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-        @event_loop.wait_pid(pid, context~)
-      }))
+      @async.protect_from_cancel(() => {
+        @async.with_task_group(group => {
+          group.spawn_bg(no_wait=true, () => cancel_handler(pid))
+          @event_loop.wait_pid(pid, context~)
+        })
+      })
     err => raise err
   }
   let out = Ref::new(0)
@@ -227,10 +229,12 @@ pub async fn[X] spawn(
   let result = group.spawn(no_wait?, () => {
     @event_loop.wait_pid(pid, context~) catch {
       _ if @coroutine.is_being_cancelled() =>
-        @async.protect_from_cancel(() => @async.with_task_group(group => {
-          group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          @event_loop.wait_pid(pid, context~)
-        }))
+        @async.protect_from_cancel(() => {
+          @async.with_task_group(group => {
+            group.spawn_bg(no_wait=true, () => cancel_handler(pid))
+            @event_loop.wait_pid(pid, context~)
+          })
+        })
       err => raise err
     }
     let out = Ref::new(0)
@@ -260,16 +264,9 @@ pub async fn collect_stdout(
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     defer r.close()
-    let exit_code = group.spawn(() => run(
-      cmd,
-      args,
-      extra_env~,
-      inherit_env~,
-      stdin?,
-      stdout=w,
-      stderr?,
-      cwd?,
-    ))
+    let exit_code = group.spawn(() => {
+      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr?, cwd?)
+    })
     let output = r.read_all()
     (exit_code.wait(), output)
   })
@@ -292,16 +289,9 @@ pub async fn collect_stderr(
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     defer r.close()
-    let exit_code = group.spawn(() => run(
-      cmd,
-      args,
-      extra_env~,
-      inherit_env~,
-      stdin?,
-      stdout?,
-      stderr=w,
-      cwd?,
-    ))
+    let exit_code = group.spawn(() => {
+      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout?, stderr=w, cwd?)
+    })
     let output = r.read_all()
     (exit_code.wait(), output)
   })
@@ -324,16 +314,18 @@ pub async fn collect_output(
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group(fn(group) {
-    let exit_code = group.spawn(() => run(
-      cmd,
-      args,
-      extra_env~,
-      inherit_env~,
-      stdin?,
-      stdout=w_out,
-      stderr=w_err,
-      cwd?,
-    ))
+    let exit_code = group.spawn(() => {
+      run(
+        cmd,
+        args,
+        extra_env~,
+        inherit_env~,
+        stdin?,
+        stdout=w_out,
+        stderr=w_err,
+        cwd?,
+      )
+    })
     let stdout = group.spawn(() => {
       defer r_out.close()
       r_out.read_all()
@@ -363,16 +355,9 @@ pub async fn collect_output_merged(
   let (r, w) = read_from_process()
   @async.with_task_group(fn(group) {
     defer r.close()
-    let exit_code = group.spawn(() => run(
-      cmd,
-      args,
-      extra_env~,
-      inherit_env~,
-      stdin?,
-      stdout=w,
-      stderr=w,
-      cwd?,
-    ))
+    let exit_code = group.spawn(() => {
+      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr=w, cwd?)
+    })
     let output = r.read_all()
     (exit_code.wait(), output)
   })

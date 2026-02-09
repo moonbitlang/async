@@ -36,7 +36,7 @@ async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
           raise ServerTerminate
         }
       })
-    } else {
+    } nobreak {
       println("server: connection closed by peer")
     }
   }) catch {

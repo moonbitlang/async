@@ -16,15 +16,17 @@
 async test "reuse addr" {
   let port = 4214
   @async.with_task_group(group => {
-    group.spawn_bg(() => for _ in 0..<2 {
-      let server = @socket.TcpServer::new(
-        @socket.Addr::parse("127.0.0.1:\{port}"),
-        reuse_addr=true,
-      )
-      defer server.close()
-      let (conn, _) = server.accept()
-      defer conn.close()
-      conn.write("abcd")
+    group.spawn_bg(() => {
+      for _ in 0..<2 {
+        let server = @socket.TcpServer::new(
+          @socket.Addr::parse("127.0.0.1:\{port}"),
+          reuse_addr=true,
+        )
+        defer server.close()
+        let (conn, _) = server.accept()
+        defer conn.close()
+        conn.write("abcd")
+      }
     })
     @async.sleep(100)
     for _ in 0..<2 {

@@ -33,7 +33,7 @@ async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
         @async.sleep(20)
         raise ServerTerminate
       }
-    } else {
+    } nobreak {
       println("server: connection closed by peer")
     }
   }) catch {

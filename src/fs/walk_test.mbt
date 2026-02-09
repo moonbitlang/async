@@ -99,17 +99,17 @@ async test "walk allow_failure" {
 ///|
 async test "walk exclude 1" {
   let walked = []
-  @fs.walk("test_directory", exclude=p => p is [.., '1'], (path, _) => walked.push(
-    path,
-  ))
+  @fs.walk("test_directory", exclude=p => p is [.., '1'], (path, _) => {
+    walked.push(path)
+  })
   json_inspect(walked, content=["test_directory"])
 }
 
 ///|
 async test "walk exclude 2" {
   let walked = []
-  @fs.walk("test_directory", exclude=p => p is [.., '2'], (path, _) => walked.push(
-    path,
-  ))
+  @fs.walk("test_directory", exclude=p => p is [.., '2'], (path, _) => {
+    walked.push(path)
+  })
   json_inspect(walked, content=["test_directory", "test_directory/inner1"])
 }

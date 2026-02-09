@@ -57,7 +57,7 @@ fn load_openssl() -> Unit {
 #cfg(not(platform="windows"))
 fn init {
   load_openssl()
-  init_bio_method((bio, dst, len) => bio.read(dst, len), (bio, src, len) => bio.write(
-    src, len,
-  ))
+  init_bio_method((bio, dst, len) => bio.read(dst, len), (bio, src, len) => {
+    bio.write(src, len)
+  })
 }

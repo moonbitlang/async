@@ -91,8 +91,10 @@ async test "return_immediately recursive cancel" {
       @async.sleep(100)
       log.push("100ms tick")
     })
-    @async.with_task_group(group => group.return_immediately(()) catch {
-      _ => @async.sleep(200)
+    @async.with_task_group(group => {
+      group.return_immediately(()) catch {
+        _ => @async.sleep(200)
+      }
     }) catch {
       _ => ()
     }
@@ -109,9 +111,9 @@ async test "return_immediately called outside" {
       @async.sleep(100)
       log.push("100ms tick")
     })
-    @async.with_task_group(inner => outer.spawn_bg(() => inner.return_immediately(
-      (),
-    )))
+    @async.with_task_group(inner => {
+      outer.spawn_bg(() => inner.return_immediately(()))
+    })
     log.push("inner group finished")
   })
   json_inspect(log, content=["inner group finished", "100ms tick"])

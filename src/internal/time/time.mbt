@@ -28,7 +28,6 @@
 /// ```mbt check
 /// test {
 ///   let _ : Int64 = ms_since_epoch()
-///
 /// }
 /// ```
 #cfg(target="native")
@@ -55,7 +54,6 @@ extern "js" fn js_now() -> Double =
 /// ```mbt check
 /// test {
 ///   let _ : Int64 = ms_since_epoch()
-///
 /// }
 /// ```
 #cfg(target="js")

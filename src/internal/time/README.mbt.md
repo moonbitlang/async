@@ -28,7 +28,6 @@ Return the current wall-clock time in milliseconds.
 ///|
 test "read timestamp" {
   let _ : Int64 = @time.ms_since_epoch()
-
 }
 ```
 

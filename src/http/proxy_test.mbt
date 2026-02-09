@@ -115,13 +115,15 @@ async test "proxied https request" {
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
-    group.spawn_bg(no_wait=true, () => server.run_forever(
-      handle_connect(log, _, _, _),
-    ))
-    let (_, result) = @async.with_timeout(3000, () => @http.get(
-      "https://www.example.org",
-      proxy=@http.Client::new("http://localhost:\{port}"),
-    ))
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever(handle_connect(log, _, _, _))
+    })
+    let (_, result) = @async.with_timeout(3000, () => {
+      @http.get(
+        "https://www.example.org",
+        proxy=@http.Client::new("http://localhost:\{port}"),
+      )
+    })
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
   json_inspect(log, content=[
@@ -135,9 +137,9 @@ async test "proxied http request" {
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
-    group.spawn_bg(no_wait=true, () => server.run_forever(
-      handle_connect(log, _, _, _),
-    ))
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever(handle_connect(log, _, _, _))
+    })
     let (_, result) = @http.get(
       "http://www.example.org",
       proxy=@http.Client::new("http://localhost:\{port}"),
@@ -157,20 +159,22 @@ async test "proxied misc request" {
   let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
   let port = server.addr().port()
   @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => proxy_server.run_forever(
-      handle_connect(log, _, _, _),
-    ))
-    group.spawn_bg(no_wait=true, () => server.run_forever((conn, _) => {
-      let conn = @http.ServerConnection::new(conn)
-      for {
-        let request = conn.read_request()
-        let body = conn.read_all().text()
-        log.push(
-          "target server: received request \{request.meth} \{request.path} \{body}",
-        )
-        conn..send_response(200, "OK")..end_response()
-      }
-    }))
+    group.spawn_bg(no_wait=true, () => {
+      proxy_server.run_forever(handle_connect(log, _, _, _))
+    })
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever((conn, _) => {
+        let conn = @http.ServerConnection::new(conn)
+        for {
+          let request = conn.read_request()
+          let body = conn.read_all().text()
+          log.push(
+            "target server: received request \{request.meth} \{request.path} \{body}",
+          )
+          conn..send_response(200, "OK")..end_response()
+        }
+      })
+    })
     async fn proxy() {
       @http.Client::new("http://localhost:\{proxy_server_addr.port()}")
     }
@@ -178,7 +182,6 @@ async test "proxied misc request" {
     let _ = @http.get("http://localhost:\{port}", proxy=proxy())
     let _ = @http.put("http://localhost:\{port}", "abcd", proxy=proxy())
     let _ = @http.post("http://localhost:\{port}", "efgh", proxy=proxy())
-
   })
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")
@@ -195,10 +198,12 @@ async test "proxy error" {
   let proxy_server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
   let port = proxy_server.addr().port()
   @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => proxy_server.run_forever((_, _, conn) => {
-      conn.send_response(407, "ProxyAuthenticationRequired")
-      conn.end_response()
-    }))
+    group.spawn_bg(no_wait=true, () => {
+      proxy_server.run_forever((_, _, conn) => {
+        conn.send_response(407, "ProxyAuthenticationRequired")
+        conn.end_response()
+      })
+    })
     try
       @http.get(
         "https://www.example.org",

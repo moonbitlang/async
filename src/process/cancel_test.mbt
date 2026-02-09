@@ -50,12 +50,14 @@ async test "cancel process timeout" {
   let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(() => @process.run(
-      test_prog,
-      ["-swallow-cancel-signal", "10000"],
-      stdout=w,
-      cancel_handler=@process.graceful_cancel(timeout=500),
-    ))
+    let task = root.spawn(() => {
+      @process.run(
+        test_prog,
+        ["-swallow-cancel-signal", "10000"],
+        stdout=w,
+        cancel_handler=@process.graceful_cancel(timeout=500),
+      )
+    })
     let t_receive_graceful_termination = root.spawn(() => {
       defer r.close()
       guard r.read_some() is Some(data)
@@ -81,12 +83,14 @@ async test "cancel process hard" {
   let test_prog = sleep_prog.wait()
   @async.with_task_group(fn(root) {
     let (r, w) = @process.read_from_process()
-    let task = root.spawn(() => @process.run(
-      test_prog,
-      ["10000"],
-      stdout=w,
-      cancel_handler=@process.hard_cancel(),
-    ))
+    let task = root.spawn(() => {
+      @process.run(
+        test_prog,
+        ["10000"],
+        stdout=w,
+        cancel_handler=@process.hard_cancel(),
+      )
+    })
     root.spawn_bg(() => {
       defer r.close()
       inspect(r.read_all().text(), content="")
@@ -137,13 +141,15 @@ async test "kill children on hard cancel" {
   let sleep = sleep_prog.wait()
   let (r, w) = @process.read_from_process()
   defer r.close()
-  @async.with_timeout(300, () => @process.run(
+  @async.with_timeout(300, () => {
+    @process.run(
       spawn,
       [sleep, "450", "-print-after-sleep", "after sleep"],
       stdout=w,
       cancel_handler=@process.hard_cancel(),
     )
-    |> ignore) catch {
+    |> ignore
+  }) catch {
     @async.TimeoutError => ()
     err => raise err
   }
@@ -156,13 +162,15 @@ async test "do not kill orphan children on hard cancel" {
   let sleep = sleep_prog.wait()
   let (r, w) = @process.read_from_process()
   defer r.close()
-  @async.with_timeout(300, () => @process.run(
+  @async.with_timeout(300, () => {
+    @process.run(
       spawn,
       ["-orphan", sleep, "450", "-print-after-sleep", "after sleep"],
       stdout=w,
       cancel_handler=@process.hard_cancel(),
     )
-    |> ignore) catch {
+    |> ignore
+  }) catch {
     @async.TimeoutError => ()
     err => raise err
   }
