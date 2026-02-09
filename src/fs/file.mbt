@@ -240,6 +240,14 @@ pub(all) enum Lock {
 
 ///|
 /// Lock a file, block until the lock is successfully acquired.
+///
+/// The lock here is advisory, so normal read/write operations
+/// on the file are not affected by the lock,
+/// only another attempt to lock the same file may conflict with the lock here.
+///
+/// The underlying syscall used to implement the lock is undefined.
+/// So the lock should only be used for synchronization between multiple process
+/// written using `moonbitlang/async`.
 pub async fn File::lock(self : File, lock : Lock) -> Unit {
   self.io.lock(exclusive=lock is Exclusive, context="@fs.File::lock()")
 }
@@ -256,6 +264,14 @@ extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbi
 /// If the lock cannot be acquired immediately
 /// (because an incompatible lock is held by another process),
 /// `false` is returned immediately.
+///
+/// The lock here is advisory, so normal read/write operations
+/// on the file are not affected by the lock,
+/// only another attempt to lock the same file may conflict with the lock here.
+///
+/// The underlying syscall used to implement the lock is undefined.
+/// So the lock should only be used for synchronization between multiple process
+/// written using `moonbitlang/async`.
 pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
   let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
   if ret >= 0 {
