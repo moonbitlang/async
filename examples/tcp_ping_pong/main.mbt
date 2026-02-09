@@ -20,7 +20,7 @@ pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
-  server.run_forever(allow_failure=false, fn(conn, _) {
+  server.run_forever(allow_failure=false, (conn, _) => {
     println("received new connection")
     while conn.read_some() is Some(msg) {
       @async.sleep(10)
@@ -71,12 +71,12 @@ async fn client(
 
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(() => server_main(server, println))
-    root.spawn_bg(fn() {
-      @async.with_task_group(fn(ctx) {
+    root.spawn_bg(() => {
+      @async.with_task_group(ctx => {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
           ctx.spawn_bg(() => client(addr, println, i, msg))

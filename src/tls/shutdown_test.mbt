@@ -14,11 +14,11 @@
 
 ///|
 async test "peer close connection" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     // server
     let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()

@@ -16,9 +16,9 @@
 async test "spawn_loop basic" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
+    try? @async.with_task_group(root => {
       let mut i = 0
-      root.spawn_loop(fn() {
+      root.spawn_loop(() => {
         log.write_string("tick \{i}\n")
         i = i + 1
         if i < 3 {
@@ -44,9 +44,9 @@ async test "spawn_loop basic" {
 async test "spawn_loop basic-error" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
+    try? @async.with_task_group(root => {
       let mut i = 0
-      root.spawn_loop(fn() {
+      root.spawn_loop(() => {
         log.write_string("tick \{i}\n")
         i = i + 1
         if i >= 3 {
@@ -71,8 +71,8 @@ async test "spawn_loop basic-error" {
 async test "spawn_loop retry-exponential" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
+    try? @async.with_task_group(root => {
+      root.spawn_bg(() => {
         for i in 0..<9 {
           @async.sleep(200)
           log.write_string("tick \{i}\n")
@@ -82,7 +82,7 @@ async test "spawn_loop retry-exponential" {
       let mut i = 0
       root.spawn_loop(
         retry=ExponentialDelay(initial=200, factor=2, maximum=600),
-        fn() {
+        () => {
           log.write_string("loop \{i}\n")
           i = i + 1
           match i {

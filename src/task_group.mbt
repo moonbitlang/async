@@ -233,7 +233,7 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X) -> X {
     result: None,
     group_defer: [],
   }
-  tg.spawn_bg(fn() {
+  tg.spawn_bg(() => {
     let value = f(tg)
     if tg.result is None {
       tg.result = Some(value)
@@ -311,7 +311,7 @@ pub fn[X] TaskGroup::spawn_loop(
   max_retry? : Int,
   fatal_error? : (Error) -> Bool,
 ) -> Unit {
-  self.spawn_bg(no_wait~, allow_failure~, fn() {
+  self.spawn_bg(no_wait~, allow_failure~, () => {
     for {
       let result = match retry {
         None => f()

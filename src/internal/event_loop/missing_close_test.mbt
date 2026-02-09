@@ -15,15 +15,15 @@
 ///|
 test "missing_close" {
   let log = StringBuilder::new()
-  @event_loop.with_event_loop(fn() {
-    @async.with_task_group(fn(root) {
+  @event_loop.with_event_loop(() => {
+    @async.with_task_group(root => {
       let (r, w) = @pipe.pipe()
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         let data = r.read_exactly(4) |> @utf8.decode
         @async.sleep(10)
         log.write_string("received \{data}\n")
       })
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         let data = "abcd"
         w.write(data)
         log.write_string("written \{data}\n")

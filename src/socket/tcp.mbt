@@ -121,13 +121,13 @@ pub async fn TcpServer::run_forever(
     None => None
     Some(n) => Some(@async.Semaphore::new(n))
   }
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     for {
       let (conn, addr) = self.accept()
       if conn_limit is Some(limit) {
         limit.acquire()
       }
-      group.spawn_bg(allow_failure~, fn() {
+      group.spawn_bg(allow_failure~, () => {
         defer conn.close()
         if conn_limit is Some(limit) {
           defer limit.release()

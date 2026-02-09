@@ -34,11 +34,11 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 ///|
 async test "one way" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -53,7 +53,7 @@ async test "one way" {
       }
     })
     // client
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -87,11 +87,11 @@ async test "one way" {
 ///|
 async test "echo" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -106,7 +106,7 @@ async test "echo" {
       }
     })
     // client
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -139,11 +139,11 @@ async test "echo" {
 
 ///|
 async test "`connect` accidental close" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -152,7 +152,7 @@ async test "`connect` accidental close" {
       @async.sleep(100)
     })
     // client
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -175,11 +175,11 @@ async test "`connect` accidental close" {
 
 ///|
 async test "`read` already closed" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -188,7 +188,7 @@ async test "`read` already closed" {
       server.close()
     })
     // client
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()

@@ -15,9 +15,9 @@
 
 ///|
 async test "merge multiple" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @pipe.pipe()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       defer r.close()
       inspect(
         r.read_all().text(),
@@ -45,7 +45,7 @@ async test "merge multiple" {
 ///|
 async test "redirect to file" {
   let cat = cat.wait()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let input_file = "_build/process_redirect_test_in.txt"
     let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))

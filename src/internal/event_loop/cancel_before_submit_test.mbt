@@ -17,7 +17,7 @@ async test "cancel before submit" {
   let file = @fs.open("LICENSE", mode=ReadOnly)
   defer file.close()
   let buf = FixedArray::make(1, b'\x00')
-  let result = @async.with_timeout_opt(1, fn() {
+  let result = @async.with_timeout_opt(1, () => {
     while file._direct_read(buf, offset=0, max_len=1) is 1 {
 
     }

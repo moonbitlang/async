@@ -26,7 +26,7 @@ async test "realpath absolute" {
 ///|
 #cfg(not(platform="windows"))
 async test "realpath link to absolute" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     guard @env.current_dir() is Some(cwd)
     let path = match cwd {
       [.., '/'] => cwd + "src/fs/realpath_test.mbt"
@@ -44,7 +44,7 @@ async test "realpath link to absolute" {
 ///|
 #cfg(not(platform="windows"))
 async test "realpath link to relative" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     guard @env.current_dir() is Some(cwd)
     let rel_path = "../src/fs/realpath_test.mbt"
     let link_path = "_build/realpath_test_link_to_relative.test"
@@ -59,7 +59,7 @@ async test "realpath link to relative" {
 ///|
 #cfg(not(platform="windows"))
 async test "realpath link to dir" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     guard @env.current_dir() is Some(cwd)
     let rel_path = "../src/fs"
     let link_path = "_build/realpath_test_link_to_dir.test"

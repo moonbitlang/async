@@ -15,16 +15,16 @@
 ///|
 test "coroutine ping-pong" {
   let log = StringBuilder::new()
-  let coro = @coroutine.spawn(fn() {
-    @async.with_task_group(fn(group) {
-      group.spawn_bg(fn() {
+  let coro = @coroutine.spawn(() => {
+    @async.with_task_group(group => {
+      group.spawn_bg(() => {
         log.write_string("ping\n")
         @async.pause()
         log.write_string("ping\n")
         @async.pause()
         log.write_string("ping\n")
       })
-      group.spawn_bg(fn() {
+      group.spawn_bg(() => {
         log.write_string("pong\n")
         @async.pause()
         log.write_string("pong\n")

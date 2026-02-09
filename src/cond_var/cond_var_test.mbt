@@ -14,7 +14,7 @@
 
 ///|
 async test "cond var cancellation" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let cond = @cond_var.Cond::new()
     root.spawn_bg(() => {
       @async.sleep(500)

@@ -16,15 +16,15 @@
 async test "all basic" {
   let start = @async.now()
   let results = @async.all([
-    fn() {
+    () => {
       @async.sleep(400)
       1
     },
-    fn() {
+    () => {
       @async.sleep(200)
       2
     },
-    fn() { 3 },
+    () => 3,
   ])
   let duration = (@async.now() - start).to_int()
   json_inspect(results, content=[1, 2, 3])
@@ -35,17 +35,17 @@ async test "all basic" {
 async test "all preserves order" {
   let log = []
   let results = @async.all([
-    fn() {
+    () => {
       @async.sleep(300)
       log.push("task 0")
       0
     },
-    fn() {
+    () => {
       @async.sleep(100)
       log.push("task 1")
       1
     },
-    fn() {
+    () => {
       log.push("task 2")
       2
     },
@@ -59,19 +59,19 @@ async test "all with max_concurrent" {
   let log = []
   let result = @async.all(
     [
-      fn() {
+      () => {
         log.push("task #1 started")
         defer log.push("task #1 completed")
         @async.sleep(200)
         0
       },
-      fn() {
+      () => {
         log.push("task #2 started")
         defer log.push("task #2 completed")
         @async.sleep(100)
         1
       },
-      fn() {
+      () => {
         log.push("task #3 started")
         defer log.push("task #3 completed")
         @async.sleep(200)
@@ -95,7 +95,7 @@ async test "all empty" {
 
 ///|
 async test "all single task" {
-  let result = @async.all([fn() { 42 }])
+  let result = @async.all([() => 42])
   json_inspect(result, content=[42])
 }
 
@@ -103,16 +103,16 @@ async test "all single task" {
 async test "all failure propagates" {
   let log = []
   let result = try? @async.all([
-    fn() {
+    () => {
       @async.sleep(100)
       log.push("task #1 completed")
     },
-    fn() {
+    () => {
       @async.sleep(200)
       log.push("task #2 failing")
       raise Failure::Failure("Err")
     },
-    fn() {
+    () => {
       @async.sleep(300) catch {
         err => {
           log.push("task #3 cancelled with \{err}")
@@ -155,15 +155,15 @@ async test "all cancelled" {
 async test "any basic" {
   let start = @async.now()
   let result = @async.any([
-    fn() {
+    () => {
       @async.sleep(600)
       1
     },
-    fn() {
+    () => {
       @async.sleep(200)
       2
     },
-    fn() {
+    () => {
       @async.sleep(400)
       3
     },
@@ -202,7 +202,7 @@ async test "any returns first success" {
 async test "any failure without allow_failure" {
   let log = []
   let result = try? @async.any([
-    fn() {
+    () => {
       @async.sleep(300) catch {
         err => {
           log.push("task #1 cancelled with \{err}")
@@ -211,7 +211,7 @@ async test "any failure without allow_failure" {
       }
       log.push("task #1 completed")
     },
-    fn() {
+    () => {
       @async.sleep(150)
       raise Failure::Failure("Err")
     },
@@ -225,17 +225,17 @@ async test "any with allow_failure" {
   let log = []
   let result = @async.any(
     [
-      fn() {
+      () => {
         @async.sleep(300)
         log.push("task #1 failing")
         raise Err
       },
-      fn() {
+      () => {
         @async.sleep(150)
         log.push("task #2 failing")
         raise Failure::Failure("fail")
       },
-      fn() {
+      () => {
         @async.sleep(450)
         log.push("task #3 completed")
         2
@@ -252,14 +252,14 @@ async test "any with allow_failure" {
 ///|
 async test "any with allow_failure all fail" {
   let log = []
-  let result = try? @async.any(
+  let result : Result[Array[Int], _] = try? @async.any(
     [
-      fn() -> Int {
+      () => {
         @async.sleep(300)
         log.push("task #1 failing")
         raise Err
       },
-      fn() {
+      () => {
         @async.sleep(150)
         log.push("task #2 failing")
         raise Failure::Failure("fail")
@@ -273,7 +273,7 @@ async test "any with allow_failure all fail" {
 
 ///|
 async test "any single task" {
-  let result = @async.any([fn() { 42 }])
+  let result = @async.any([() => 42])
   json_inspect(result, content=42)
 }
 

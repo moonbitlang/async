@@ -14,9 +14,9 @@
 
 ///|
 async test "send_request basic" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
       sender
@@ -43,9 +43,9 @@ async test "send_request basic" {
 
 ///|
 async test "send_request stream" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
       let file = @fs.open("LICENSE", mode=ReadOnly)
@@ -303,9 +303,9 @@ async test "send_request stream" {
 
 ///|
 async test "send_request stream2" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
       sender.send_request(Get, "/", extra_headers={
@@ -344,9 +344,9 @@ async test "send_request stream2" {
 
 ///|
 async test "send invalid header" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w, headers={
         "Content-Length": "42",

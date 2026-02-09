@@ -15,7 +15,7 @@
 ///|
 async test "manual cancel" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(fn(root) {
+  let result = try? @async.with_task_group(root => {
     let task = root.spawn(() => {
       try {
         @async.sleep(300)
@@ -49,12 +49,12 @@ suberror Err derive(Show)
 ///|
 async test "error propagation" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  let result = try? @async.with_task_group(root => {
+    root.spawn_bg(() => {
       @async.sleep(300)
       raise Err
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       try {
         @async.sleep(200)
         buf.write_string("task 2, tick 1\n")
@@ -84,15 +84,15 @@ async test "error propagation" {
 ///|
 async test "multiple scope" {
   let buf = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       try
         @async.with_task_group(fn(ctx) {
-          ctx.spawn_bg(fn() {
+          ctx.spawn_bg(() => {
             @async.sleep(200)
             raise Err
           })
-          ctx.spawn_bg(fn() {
+          ctx.spawn_bg(() => {
             try @async.sleep(400) catch {
               err => {
                 buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
@@ -109,14 +109,14 @@ async test "multiple scope" {
         _ => buf.write_string("ctx 1 finished normally\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       try
         @async.with_task_group(fn(ctx) {
-          ctx.spawn_bg(fn() {
+          ctx.spawn_bg(() => {
             @async.sleep(500)
             raise Err
           })
-          ctx.spawn_bg(fn() {
+          ctx.spawn_bg(() => {
             try @async.sleep(300) catch {
               err => {
                 buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
@@ -150,8 +150,8 @@ async test "multiple scope" {
 async test "recursive cancel" {
   let buf = StringBuilder::new()
   buf.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
+    try? @async.with_task_group(root => {
+      root.spawn_bg(() => {
         for _ in 0..<2 {
           @async.sleep(400)
           buf.write_string("tick\n")
@@ -189,9 +189,9 @@ async test "recursive cancel" {
 async test "spawn directly error" {
   let buf = StringBuilder::new()
   buf.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
-        @async.with_task_group(fn(group) {
+    try? @async.with_task_group(root => {
+      root.spawn_bg(() => {
+        @async.with_task_group(group => {
           @async.sleep(1)
           group.spawn_bg(() => raise Err)
           buf.write_string("after spawn\n")
@@ -215,8 +215,8 @@ async test "spawn directly error" {
 async test "error in cancellation" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(no_wait=true, fn() {
+    try? @async.with_task_group(root => {
+      root.spawn_bg(no_wait=true, () => {
         @async.sleep(1000) catch {
           _ => {
             log.write_string("causing other error in cancellation handler\n")
@@ -239,7 +239,7 @@ async test "error in cancellation" {
 ///|
 async test "immediately cancelled" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let task = root.spawn(() => {
       defer log.write_string("task terminated\n")
       log.write_string("task started\n")

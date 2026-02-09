@@ -23,7 +23,7 @@ async test "resolve mooncakes.io" {
 ///|
 async test "resolve cancel" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let lock = @async.Semaphore::new(1, initial_value=1)
     let task = root.spawn(() => {
       lock.release()

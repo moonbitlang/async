@@ -23,10 +23,10 @@ let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
 ///|
 async test "Only_V4 server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
@@ -71,13 +71,13 @@ async test "Only_V4 server" {
 ///|
 async test "Only_V6 server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.TcpServer::new(
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
@@ -122,10 +122,10 @@ async test "Only_V6 server" {
 ///|
 async test "dual stack server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:0"))
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
@@ -167,10 +167,10 @@ async test "dual stack server" {
 ///|
 async test "Only_V4 UDP server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
@@ -214,13 +214,13 @@ async test "Only_V4 UDP server" {
 ///|
 async test "Only_V6 UDP server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer::new(
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {
@@ -264,10 +264,10 @@ async test "Only_V6 UDP server" {
 ///|
 async test "dual stack UDP server" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:0"))
     let port = server.addr().port()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for {

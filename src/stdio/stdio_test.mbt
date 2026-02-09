@@ -45,15 +45,15 @@ async test "redirect_file" {
 
 ///|
 async test "redirect pipe" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let cat = cat.wait()
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       let code = @process.run(cat, [], stdin=cat_read, stdout=cat_write)
       inspect(code, content="0")
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer we_write.close()
       we_write.write(b"abcd\n")
       @async.sleep(50)
