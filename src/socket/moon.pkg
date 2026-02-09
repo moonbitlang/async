@@ -8,9 +8,9 @@ import {
   "moonbitlang/async",
 }
 
-import "test" {
+import {
   "moonbitlang/core/encoding/utf8",
-}
+} for "test"
 
 options(
   "native-stub": [ "socket.c" ],

@@ -10,12 +10,12 @@ import {
   "moonbitlang/async/internal/coroutine",
 }
 
-import "test" {
+import {
   "moonbitlang/async",
   "moonbitlang/async/socket",
   "moonbitlang/async/process",
   "moonbitlang/async/aqueue",
-}
+} for "test"
 
 options(
   targets: {

@@ -8,17 +8,17 @@ import {
   "moonbitlang/async/internal/io_buffer",
 }
 
-import "test" {
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
-}
+} for "test"
 
-import "wbtest" {
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/bytes_util",
-}
+} for "wbtest"
 
 options(
   targets: {

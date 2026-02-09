@@ -3,9 +3,9 @@ import {
   "moonbitlang/async/internal/event_loop",
 }
 
-import "test" {
+import {
   "moonbitlang/async",
-}
+} for "test"
 
 options(
   targets: {

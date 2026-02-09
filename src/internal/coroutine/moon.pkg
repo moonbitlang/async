@@ -2,6 +2,6 @@ import {
   "moonbitlang/core/deque",
 }
 
-import "test" {
+import {
   "moonbitlang/async",
-}
+} for "test"

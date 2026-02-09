@@ -10,17 +10,17 @@ import {
   "moonbitlang/async/internal/time",
 }
 
-import "test" {
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
-}
+} for "test"
 
-import "wbtest" {
+import {
   "moonbitlang/async",
-}
+} for "wbtest"
 
 options(
   "native-stub": [

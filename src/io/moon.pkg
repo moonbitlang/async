@@ -6,13 +6,13 @@ import {
   "moonbitlang/async/internal/io_buffer",
 }
 
-import "test" {
+import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
-}
+} for "test"
 
-import "wbtest" {
+import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/bytes_util",
-}
+} for "wbtest"

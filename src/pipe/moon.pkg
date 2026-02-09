@@ -4,10 +4,10 @@ import {
   "moonbitlang/async/io",
 }
 
-import "test" {
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
-}
+} for "test"
 
 options(
   targets: {
