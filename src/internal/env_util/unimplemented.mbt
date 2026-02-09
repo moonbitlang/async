@@ -14,7 +14,4 @@
 
 ///|
 #cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@utf8.encode(""))
-  ignore(@process.unimplemented)
-}
+pub let unimplemented : Unit = ()

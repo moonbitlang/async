@@ -22,4 +22,5 @@ pub let unimplemented : Unit = {
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
+  ignore(@env_util.unimplemented)
 }
