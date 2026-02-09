@@ -56,7 +56,7 @@ jobs:
         run: moon check --deny-warn
 
       - name: moon check (examples)
-        run: moon check -C examples --deny-warn
+        run: moon check --manifest-path examples/moon.mod.json --deny-warn
 
       - name: moon test
         run: moon test
@@ -65,10 +65,10 @@ jobs:
         run: moon test --release
 
       - name: test examples
-        run: moon test -C examples
+        run: moon test --manifest-path examples/moon.mod.json
 
       - name: test examples (release)
-        run: moon test --release -C examples
+        run: moon test --release --manifest-path examples/moon.mod.json
 
   nightly-build:
     strategy:
@@ -201,14 +201,10 @@ jobs:
         run: |
           moon update
 
-      - name: moon install
-        run: |
-          moon install -C examples
-
       - name: format diff
         run: |
           moon fmt
-          moon fmt -C examples
+          moon fmt --manifest-path examples/moon.mod.json
           git diff --exit-code
 
   moon-info:
@@ -266,7 +262,7 @@ jobs:
 
       - name: setup sanitizer check
         run: |
-          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |
@@ -311,7 +307,7 @@ jobs:
 
       - name: setup sanitizer check
         run: |
-          moon run --debug -C src/process/test_programs src/process/test_programs/setup_sanitizer_check
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |

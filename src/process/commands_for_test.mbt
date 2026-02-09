@@ -41,8 +41,8 @@ fn make_test_prog(name : String) -> @async.Lazy[String] {
   @async.lazy_init(() => {
     let code = @process.run("moon", [
       "build",
-      "-C",
-      "src/process/test_programs",
+      "--manifest-path",
+      "src/process/test_programs/moon.mod.json",
       "src/process/test_programs/\{name}",
       "--debug",
     ])
