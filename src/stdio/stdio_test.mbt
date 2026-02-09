@@ -18,7 +18,8 @@ let cat : @async.Lazy[String] = @async.lazy_init(() => {
   // Currently, dependencies of a module is built locally in that module,
   // so there will be no build lock conflict between this test and the `cat` program.
   let exit_code = @process.run("moon", [
-    "build", "-C", "src/process/test_programs", "--debug", "src/process/test_programs/cat",
+    "build", "--manifest-path", "src/process/test_programs/moon.mod.json", "--debug",
+    "src/process/test_programs/cat",
   ])
   guard exit_code is 0 else {
     fail("failed to build `cat` program: \{exit_code}")
