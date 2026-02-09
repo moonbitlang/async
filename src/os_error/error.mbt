@@ -63,7 +63,7 @@ pub impl Show for OSError with output(self, logger) -> Unit {
   logger
   ..write_string("OSError(")
   ..write_object("\{context}: \{errno_to_string(errno)}")
-  ..write_string(")")
+  .write_string(")")
 }
 
 ///|

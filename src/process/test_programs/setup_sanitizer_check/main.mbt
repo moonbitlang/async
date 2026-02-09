@@ -49,17 +49,17 @@ async fn main {
     let transformed = StringBuilder::new()
     let mut found = false
     for line in content {
-      transformed..write_stringview(line)..write_char('\n')
+      transformed..write_stringview(line).write_char('\n')
       if !found && line is "options(" {
         found = true
-        transformed..write_string(link_config)..write_char('\n')
+        transformed..write_string(link_config).write_char('\n')
       }
     }
     if !found {
       transformed
       ..write_string("\noptions(\n")
       ..write_string(link_config)
-      ..write_string("\n)")
+      .write_string("\n)")
     }
     @fs.write_file(full_path, transformed.to_string())
   })

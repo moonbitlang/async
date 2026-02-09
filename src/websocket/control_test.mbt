@@ -188,7 +188,7 @@ async test "ping inside message" {
     defer ws.close()
     @async.with_task_group(group => {
       group.spawn_bg(() => {
-        ws..start_message(Text)..ping()..write("1234")..end_message()
+        ws..start_message(Text)..ping()..write("1234").end_message()
       })
       inspect(ws.recv().read_all().text(), content="abcd")
     })

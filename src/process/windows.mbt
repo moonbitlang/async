@@ -90,7 +90,7 @@ async fn raw_spawn(
   let command_line = StringBuilder::new()
   command_line.write_arg_with_windows_escape(cmd)
   for arg in args {
-    command_line..write_char(' ')..write_arg_with_windows_escape(arg)
+    command_line..write_char(' ').write_arg_with_windows_escape(arg)
   }
   let command_line = @os_string.encode(command_line.to_string())
   let cwd = match cwd {
@@ -130,7 +130,7 @@ async fn raw_spawn(
         ..write_string(key)
         ..write_char('=')
         ..write_string(value)
-        ..write_string("\u{0}")
+        .write_string("\u{0}")
       }
       if inherit_env {
         env.write_string(curr_env)

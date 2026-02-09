@@ -16,7 +16,7 @@
 async test "main" {
   let log = StringBuilder::new()
   fn println(msg) -> Unit {
-    log..write_string(msg)..write_string("\n")
+    log..write_string(msg).write_string("\n")
   }
 
   let result = try? @tcp_ping_pong.main_prog(println)

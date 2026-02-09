@@ -26,7 +26,7 @@ async test "passthrough mode" {
       let request = conn.read_request()
       inspect(request.meth, content="Connect")
       inspect(request.path, content="/path")
-      conn..send_response(200, "OK")..end_response()
+      conn..send_response(200, "OK").end_response()
       conn.enter_passthrough_mode()
       while conn.read_some() is Some(packet) {
         let packet = @utf8.decode(packet)
@@ -82,11 +82,11 @@ async fn handle_connect(
   conn : @http.ServerConnection,
 ) -> Unit {
   guard request.meth is Connect else {
-    conn..send_response(400, "BadRequest")..end_response()
+    conn..send_response(400, "BadRequest").end_response()
     return
   }
   guard request.path.rev_find(":") is Some(index) else {
-    conn..send_response(400, "BadRequest")..end_response()
+    conn..send_response(400, "BadRequest").end_response()
     return
   }
   let client = try {
@@ -95,13 +95,13 @@ async fn handle_connect(
     @socket.Tcp::connect_to_host(host, port~)
   } catch {
     err => {
-      conn..send_response(502, "BadGateway")..end_response()
+      conn..send_response(502, "BadGateway").end_response()
       raise err
     }
   }
   defer client.close()
   log.push("proxy server: connected to \{request.path} successfully")
-  conn..send_response(200, "OK")..end_response()
+  conn..send_response(200, "OK").end_response()
   conn.enter_passthrough_mode()
   @async.with_task_group(group => {
     group.spawn_bg(() => conn.write_reader(client))
@@ -177,7 +177,7 @@ async test "proxied misc request" {
           log.push(
             "target server: received request \{request.meth} \{request.path} \{body}",
           )
-          conn..send_response(200, "OK")..end_response()
+          conn..send_response(200, "OK").end_response()
         }
       })
     })

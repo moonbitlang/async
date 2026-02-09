@@ -47,7 +47,7 @@ async test "UTF8 validation" {
     async fn send_bad_message(msg : Bytes) {
       let client = @websocket.connect("ws://localhost:\{addr.port()}")
       defer client.close()
-      client..start_message(Text)..write(msg)..end_message()
+      client..start_message(Text)..write(msg).end_message()
       let result = try? client.recv().read_all().binary()
       log.push("client: \{msg.to_array()} => \{result}")
       @async.sleep(100)
@@ -96,7 +96,7 @@ async test "UTF8 validation large message" {
         defer ws.close()
         let msg = ws.recv()
         inspect(msg.kind, content="Text")
-        ws..start_message(Text)..write_reader(msg)..end_message()
+        ws..start_message(Text)..write_reader(msg).end_message()
       })
     })
     let client = @websocket.connect("ws://localhost:\{port}")

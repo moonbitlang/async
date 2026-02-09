@@ -217,7 +217,7 @@ async fn Sender::send_headers(
   for pair in headers.to_array() {
     let (k, v) = pair
     guard !forbidden_headers.contains(k.to_lower()) else {  }
-    self..write(k)..write(": ")..write(v)..write("\r\n")
+    self..write(k)..write(": ")..write(v).write("\r\n")
   }
 }
 
@@ -240,9 +240,11 @@ async fn Sender::send_request(
     Trace => self.write("TRACE ")
     Patch => self.write("PATCH ")
   }
-  self..write(path)..write(" HTTP/1.1\r\n")
-  self.write(self.headers)
-  self.send_headers(extra_headers)
+  self
+  ..write(path)
+  ..write(" HTTP/1.1\r\n")
+  ..write(self.headers)
+  .send_headers(extra_headers)
   self.mode = WaitingBody
 }
 
@@ -260,8 +262,8 @@ async fn Sender::send_response(
   ..write(" ")
   ..write(reason)
   ..write("\r\n")
-  self.write(self.headers)
-  self.send_headers(extra_headers)
+  ..write(self.headers)
+  .send_headers(extra_headers)
   self.mode = WaitingBody
 }
 

@@ -24,7 +24,7 @@ async test "send_request basic" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      ..end_body()
+      .end_body()
     })
     defer r.close()
     inspect(
@@ -56,7 +56,7 @@ async test "send_request stream" {
         "User-Agent": "MoonBit",
       })
       ..write_reader(file)
-      ..end_body()
+      .end_body()
     })
     defer r.close()
     inspect(

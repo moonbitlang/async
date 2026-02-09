@@ -103,7 +103,7 @@ async test "basic" {
     }
     zip_content.sort()
     for file in zip_content {
-      client_log..write_string(file)..write_string("\n")
+      client_log..write_string(file).write_string("\n")
     }
   })
   inspect(

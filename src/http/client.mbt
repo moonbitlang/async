@@ -70,7 +70,7 @@ pub async fn Client::connect(
     try {
       let response = proxy..request(Connect, path).end_request()
       guard response.code is (200..<300) else { raise ProxyError(response) }
-      proxy..skip_response_body()..enter_passthrough_mode()
+      proxy..skip_response_body().enter_passthrough_mode()
     } catch {
       err => {
         proxy.close()

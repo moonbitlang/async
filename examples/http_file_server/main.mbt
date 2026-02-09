@@ -25,7 +25,7 @@ async fn serve_directory(
   ..write("<!DOCTYPE html><html><head></head><body>")
   ..write("<h1>\{path}</h1>\n")
   ..write("<div style=\"margin: 1em; font-size: 15pt\">")
-  ..write("<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n")
+  .write("<a href=\"\{path}?download_zip\">download as zip</a><br/><br/>\n")
   if path[:-1].rev_find("/") is Some(index) {
     let parent : StringView = if index == 0 { "/" } else { path[:index] }
     conn.write("<a href=\"\{parent}\">..</a><br/><br/>\n")
@@ -34,7 +34,7 @@ async fn serve_directory(
     let sep = if path is [.., '/'] { "" } else { "/" }
     conn.write("<a href=\"\{path}\{sep}\{file}\">\{file}</a><br/>\n")
   }
-  conn..write("</div></body></html>")..end_response()
+  conn..write("</div></body></html>").end_response()
 }
 
 ///|
@@ -60,7 +60,7 @@ async fn serve_file(
   conn
   ..send_response(200, "OK", extra_headers={ "Content-Type": content_type })
   ..write_reader(file)
-  ..end_response()
+  .end_response()
 }
 
 ///|
@@ -106,7 +106,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
       "Content-Disposition": "filename=\{base_name}.zip",
     })
     ..write_reader(we_read_from_zip)
-    ..end_response()
+    .end_response()
   })
 }
 
@@ -118,7 +118,7 @@ async fn serve_404(conn : @http.ServerConnection) -> Unit {
   conn
   ..send_response(404, "NotFound", extra_headers={ "Content-Type": "text/html" })
   ..write(page_for_404)
-  ..end_response()
+  .end_response()
 }
 
 ///|
