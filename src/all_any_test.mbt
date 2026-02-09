@@ -281,7 +281,7 @@ async test "any single task" {
 async test "any empty fails" {
   json_inspect(try? (@async.any([]) : Unit), content={
     "Err": [
-      "Failure", "all_any_test.mbt:283:22-283:36@moonbitlang/async_blackbox_test FAILED: no tasks provided to any()",
+      "Failure", "all_any_test.mbt:282:22-282:36@moonbitlang/async_blackbox_test FAILED: no tasks provided to any()",
     ],
   })
 }
