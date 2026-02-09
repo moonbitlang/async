@@ -15,14 +15,14 @@
 ///|
 async test "aqueue basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Unbounded)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for _ in 0..<6 {
         log.write_string("get => \{queue.get()}\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for x in 0..<6 {
         @async.sleep(70)
         queue.put(x)
@@ -53,14 +53,14 @@ async test "aqueue basic" {
 ///|
 async test "aqueue multi-reader" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Unbounded)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       @async.sleep(70)
       let x = queue.get()
       log.write_string("task 1: get => \{x}\n")
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       let x = queue.get()
       log.write_string("task 2: get => \{x}\n")
     })
@@ -81,16 +81,16 @@ async test "aqueue multi-reader" {
 ///|
 async test "aqueue cancellation" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Unbounded)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for x in 0..<4 {
         @async.sleep(300)
         log.write_string("put(\{x})\n")
         queue.put(x)
       }
     })
-    @async.with_timeout(750, fn() {
+    @async.with_timeout(750, () => {
       for {
         let x = queue.get() catch {
           err => {
@@ -124,7 +124,7 @@ async test "aqueue cancellation" {
 async test "aqueue cancellation no_swallow" {
   // `get` should not swallow the value
   let log = StringBuilder::new()
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     let q = @aqueue.Queue::new(kind=Unbounded)
     let get_task = group.spawn(() => log.write_string("get() => \{q.get()}\n"))
     @async.sleep(100)
@@ -145,15 +145,15 @@ async test "aqueue cancellation no_swallow" {
 ///|
 async test "aqueue fairness" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Unbounded)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for _ in 0..<2 {
         let x = queue.get()
         log.write_string("task 1: get => \{x}\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for _ in 0..<2 {
         let x = queue.get()
         log.write_string("task 2: get => \{x}\n")
@@ -181,10 +181,10 @@ async test "aqueue fairness" {
 ///|
 async test "aqueue fairness2" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Unbounded)
     queue.put(1)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for _ in 0..<2 {
         let x = queue.get()
         log.write_string("task 1: get => \{x}\n")
@@ -192,7 +192,7 @@ async test "aqueue fairness2" {
         queue.put(x + 1)
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       @async.sleep(100)
       for _ in 0..<2 {
         let x = queue.get()

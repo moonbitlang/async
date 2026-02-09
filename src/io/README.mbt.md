@@ -24,13 +24,13 @@ The fastest way to experiment with `@moonbitlang/async/io` is to couple it with 
 ```moonbit check
 ///|
 async test "quick start pipeline" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     // Create a pair of connected endpoints that speak the Reader/Writer protocols.
     // Data written to the write end (`writer`) can be read from the read end (`reader`)
     let (reader, writer) = @io.pipe()
 
     // Spawn a background writer that sends a UTF-8 string in three chunks.
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer writer.close()
       writer.write(b"Hello, ")
       @async.sleep(10)
@@ -63,10 +63,10 @@ This allows convenient conversion of received data to various formats.
 ```moonbit check
 ///|
 async test "data as binary" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Send raw binary bytes.
       w.write(b"binary data")
@@ -79,10 +79,10 @@ async test "data as binary" {
 
 ///|
 async test "data as text" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Send UTF-8 encoded string
       w.write("Hello, MoonBit!")
@@ -95,10 +95,10 @@ async test "data as text" {
 
 ///|
 async test "data as json" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // send UTF-8 encoded JSON string
       let data : Json = { "name": "John", "age": 30 }
@@ -127,11 +127,11 @@ Each example below shows how a reader pairs with `@io.pipe()` and includes inlin
 ```moonbit check
 ///|
 async test "read from reader" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     // Create connected endpoints. `r` is a Reader, `w` is a Writer.
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Emit the payload in a single chunk.
       w.write(b"Hello, World!")
@@ -150,10 +150,10 @@ async test "read from reader" {
 
 ///|
 async test "read_exactly - read exact number of bytes" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Produce a fixed-size frame.
       w.write(b"0123456789")
@@ -168,10 +168,10 @@ async test "read_exactly - read exact number of bytes" {
 
 ///|
 async test "read_some - read next chunk of data" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // the writer supplieds data in two chunks
       w.write("abcd")
@@ -213,10 +213,10 @@ async test "read_some - read next chunk of data" {
 
 ///|
 async test "read_all - read entire content" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w.write(b"Complete content")
     })
@@ -229,10 +229,10 @@ async test "read_all - read entire content" {
 
 ///|
 async test "read_all large data" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Large payloads can be streamed without precomputing the size.
       w.write(Bytes::make(4097, 0))
@@ -243,10 +243,10 @@ async test "read_all large data" {
 
 ///|
 async test "drop - advance stream by discarding data" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w.write(b"0123456789")
     })
@@ -260,10 +260,10 @@ async test "drop - advance stream by discarding data" {
 
 ///|
 async test "read_until - read text from stream until a separator is found" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w.write("abcd|")
       w.write("defg")
@@ -315,10 +315,10 @@ The snippets below demonstrate each mode with progressive complexity.
 ```moonbit check
 ///|
 async test "write to writer" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Each call appends to the outgoing stream.
       w.write(b"Hello")
@@ -333,10 +333,10 @@ async test "write to writer" {
 
 ///|
 async test "write_once - single write operation" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let data : Bytes = b"Test data"
       // Manually call `write_once` to demonstrate partial write accounting.
@@ -350,15 +350,15 @@ async test "write_once - single write operation" {
 
 ///|
 async test "write large data" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
       // `write` handles chunking internally, avoiding manual loops.
       w.write(data)
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       inspect(r.read_all().binary().length(), content="16384")
     })
@@ -368,23 +368,23 @@ async test "write large data" {
 ///|
 async test "write_reader - copy from reader to writer" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r2.close()
       defer w1.close()
       // Stream everything from `r2` into `w1` via `write_reader`.
       w1.write_reader(r2)
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r1.close()
       while r1.read_some() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w2.close()
       // Simulate a producer that emits three frames with pauses in between.
       log.write_string("sending 4 bytes\n")
@@ -413,10 +413,10 @@ async test "write_reader - copy from reader to writer" {
 
 ///|
 async test "write string" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       // Unicode data is transparently encoded via UTF-8.
       w.write("abcd中文☺")
@@ -436,9 +436,9 @@ async test "write string" {
 ///|
 async test "BufferedWriter - basic buffering" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log.write_string("2 bytes written\n")
@@ -452,7 +452,7 @@ async test "BufferedWriter - basic buffering" {
       // Force the remaining bytes out of the buffer.
       w.flush()
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       while r.read_some() is Some(data) {
         log.write_string("received: \{@utf8.decode(data)}\n")
@@ -474,10 +474,10 @@ async test "BufferedWriter - basic buffering" {
 
 ///|
 async test "BufferedWriter::new with custom size" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=8)
       inspect(w.capacity(), content="8")
@@ -492,10 +492,10 @@ async test "BufferedWriter::new with custom size" {
 
 ///|
 async test "BufferedWriter::flush - commit buffered data" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=16)
       w.write(b"buffer")
@@ -512,10 +512,10 @@ async test "BufferedWriter::flush - commit buffered data" {
 ///|
 async test "BufferedWriter::write_reader - buffered copy" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r2.close()
       defer w1.close()
       let w1 = @io.BufferedWriter::new(w1, size=6)
@@ -523,14 +523,14 @@ async test "BufferedWriter::write_reader - buffered copy" {
       // Flush ensures the trailing fragment is committed before closing.
       w1.flush()
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r1.close()
       while r1.read_some() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w2.close()
       log.write_string("sending 4 bytes\n")
       w2.write(b"abcd")

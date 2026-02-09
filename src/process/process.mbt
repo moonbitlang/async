@@ -262,7 +262,7 @@ pub async fn collect_stdout(
   cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     defer r.close()
     let exit_code = group.spawn(() => {
       run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr?, cwd?)
@@ -287,7 +287,7 @@ pub async fn collect_stderr(
   cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     defer r.close()
     let exit_code = group.spawn(() => {
       run(cmd, args, extra_env~, inherit_env~, stdin?, stdout?, stderr=w, cwd?)
@@ -313,7 +313,7 @@ pub async fn collect_output(
 ) -> (Int, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     let exit_code = group.spawn(() => {
       run(
         cmd,
@@ -353,7 +353,7 @@ pub async fn collect_output_merged(
   cwd? : StringView,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     defer r.close()
     let exit_code = group.spawn(() => {
       run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr=w, cwd?)

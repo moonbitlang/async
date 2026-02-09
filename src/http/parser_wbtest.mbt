@@ -34,9 +34,9 @@ fn log_response(req : Response, logger : &Logger) -> Unit {
 ///|
 async test "read_request basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -63,9 +63,9 @@ async test "read_request basic" {
 ///|
 async test "read_request fixed body" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -95,9 +95,9 @@ async test "read_request fixed body" {
 ///|
 async test "read_request chunked" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -131,9 +131,9 @@ async test "read_request chunked" {
 ///|
 async test "read_request stream" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -181,9 +181,9 @@ async test "read_request stream" {
 ///|
 async test "multiple request" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -245,9 +245,9 @@ async test "multiple request" {
 ///|
 async test "read_response basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")

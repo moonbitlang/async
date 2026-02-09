@@ -14,13 +14,13 @@
 
 ///|
 async fn main {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:4200"))
     defer server.close()
     for {
       let buf = FixedArray::make(1024, b'0')
       let (n, addr) = server.recvfrom(buf)
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         let buf = buf.unsafe_reinterpret_as_bytes()
         server.sendto(buf[0:n].to_bytes(), addr)
       })

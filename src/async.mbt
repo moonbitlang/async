@@ -79,8 +79,8 @@ pub async fn[X] with_timeout(
   f : async () -> X,
   error? : Error = TimeoutError,
 ) -> X {
-  with_task_group(fn(group) {
-    group.spawn_bg(no_wait=true, fn() {
+  with_task_group(group => {
+    group.spawn_bg(no_wait=true, () => {
       sleep(time)
       raise error
     })
@@ -99,8 +99,8 @@ pub async fn[X] with_timeout(
 /// - If `f` is still running after `timeout` milliseconds,
 /// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
 pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
-  with_task_group(fn(group) {
-    group.spawn_bg(no_wait=true, fn() {
+  with_task_group(group => {
+    group.spawn_bg(no_wait=true, () => {
       sleep(time)
       group.return_immediately(None)
     })
@@ -254,7 +254,7 @@ pub async fn[X] all(
       if semaphore is Some(sem) {
         sem.acquire()
       }
-      tg.spawn_bg(fn() {
+      tg.spawn_bg(() => {
         // We rely on the assumption that the task spawned will 100% executed
         // even if it is cancelled, so that we can release the semaphore properly.
         defer (if semaphore is Some(sem) { sem.release() })
@@ -302,7 +302,7 @@ pub async fn[X] any(
       if semaphore is Some(sem) {
         sem.acquire()
       }
-      tg.spawn_bg(allow_failure~, fn() {
+      tg.spawn_bg(allow_failure~, () => {
         // We rely on the assumption that the task spawned will 100% executed
         // even if it is cancelled, so that we can release the semaphore properly.
         defer (if semaphore is Some(sem) { sem.release() })

@@ -15,8 +15,8 @@
 ///|
 async test "no_wait cancelled" {
   let buf = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(no_wait=true, fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(no_wait=true, () => {
       try @async.sleep(1000) catch {
         err => {
           buf.write_string("`no_wait` task cancelled with \{err}\n")
@@ -42,8 +42,8 @@ async test "no_wait cancelled" {
 ///|
 async test "no_wait normal exit" {
   let buf = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(no_wait=true, fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(no_wait=true, () => {
       try @async.sleep(100) catch {
         err => {
           buf.write_string("`no_wait` task cancelled with \{err}\n")

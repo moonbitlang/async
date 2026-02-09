@@ -16,7 +16,7 @@
 async test "retry immediate" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.retry(Immediate, fn() {
+  @async.retry(Immediate, () => {
     log.write_string("tick \{i}\n")
     i = i + 1
     if i < 3 {
@@ -37,8 +37,8 @@ async test "retry immediate" {
 ///|
 async test "retry fixed" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       for i in 0..<3 {
         @async.sleep(200)
         log.write_string("tick \{i}\n")
@@ -46,7 +46,7 @@ async test "retry fixed" {
     })
     @async.sleep(100)
     let mut i = 0
-    @async.retry(FixedDelay(200), fn() {
+    @async.retry(FixedDelay(200), () => {
       log.write_string("loop \{i}\n")
       i = i + 1
       if i < 3 {
@@ -72,8 +72,8 @@ async test "retry fixed" {
 async test "retry exponential" {
   let log = StringBuilder::new()
   log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.spawn_bg(fn() {
+    try? @async.with_task_group(root => {
+      root.spawn_bg(() => {
         for i in 0..<7 {
           @async.sleep(200)
           log.write_string("tick \{i}\n")
@@ -81,7 +81,7 @@ async test "retry exponential" {
       })
       @async.sleep(100)
       let mut i = 0
-      @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), fn() {
+      @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), () => {
         log.write_string("loop \{i}\n")
         i = i + 1
         if i < 4 {
@@ -115,8 +115,8 @@ async test "retry exponential" {
 async test "retry cancelled1" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.with_timeout(500, fn() {
-    @async.retry(Immediate, fn() {
+  @async.with_timeout(500, () => {
+    @async.retry(Immediate, () => {
       @async.sleep(200)
       log.write_string("loop \{i}\n")
       i = i + 1
@@ -140,8 +140,8 @@ async test "retry cancelled1" {
 async test "retry cancelled2" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.with_timeout(500, fn() {
-    @async.retry(FixedDelay(200), fn() {
+  @async.with_timeout(500, () => {
+    @async.retry(FixedDelay(200), () => {
       log.write_string("loop \{i}\n")
       i = i + 1
       raise Err

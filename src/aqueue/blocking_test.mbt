@@ -127,10 +127,10 @@ async test "blocking cancellation" {
 ///|
 async test "blocking fairness2" {
   let log = []
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let queue = @aqueue.Queue::new(kind=Blocking(1))
     queue.put(0)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for i in 0..<2 {
         queue.put(i)
         log.push("task 1: put() completed")
@@ -139,7 +139,7 @@ async test "blocking fairness2" {
         log.push("task 1: get() => \{x}")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       @async.sleep(100)
       for i in 0..<2 {
         queue.put(i)

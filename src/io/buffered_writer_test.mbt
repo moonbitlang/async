@@ -17,7 +17,7 @@ async test "BufferedWriter" {
   let log = StringBuilder::new()
   @async.with_task_group(fn(root) {
     let (r, w) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log.write_string("2 bytes written\n")
@@ -30,7 +30,7 @@ async test "BufferedWriter" {
       w.write("ef")
       w.flush()
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       while r.read_some() is Some(data) {
         log.write_string("received: \{@utf8.decode(data)}\n")
@@ -56,21 +56,21 @@ async test "BufferedWriter::write_reader" {
   @async.with_task_group(fn(root) {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r2.close()
       defer w1.close()
       let w1 = @io.BufferedWriter::new(w1, size=6)
       w1.write_reader(r2)
       w1.flush()
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r1.close()
       while r1.read_some() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w2.close()
       log.write_string("sending 4 bytes\n")
       w2.write(b"abcd")

@@ -31,8 +31,8 @@ async fn perform_sleep_job(t : Int) -> Unit {
 ///|
 async test "worker basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(400)
         log.write_string("tick\n")
@@ -56,15 +56,15 @@ async test "worker basic" {
 ///|
 async test "worker multiple" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(200)
         log.write_string("tick\n")
       }
     })
     for i in 0..<3 {
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         perform_sleep_job(100 + i * 200)
         log.write_string("#\{i} done\n")
       })
@@ -87,8 +87,8 @@ async test "worker multiple" {
 ///|
 async test "worker cancel1" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       for _ in 0..<4 {
         @async.sleep(200)
         log.write_string("tick\n")
@@ -125,14 +125,14 @@ async test "worker cancel1" {
 ///|
 async test "worker cancel2" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
-    root.spawn_bg(fn() {
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(400)
         log.write_string("tick\n")
       }
     })
-    root.spawn_bg(allow_failure=true, fn() {
+    root.spawn_bg(allow_failure=true, () => {
       try perform_sleep_job(1000) catch {
         err => {
           log.write_string("sleep cancelled with \{err}\n")

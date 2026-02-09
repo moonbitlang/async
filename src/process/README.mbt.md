@@ -189,10 +189,10 @@ Use a file as process input:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "redirect input from file" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let input_file = "_build/process_test_input.txt"
     @fs.write_file(input_file, "file content", create=0o644)
-    root.add_defer(fn() { @fs.remove(input_file) })
+    root.add_defer(() => @fs.remove(input_file))
     let (code, output) = @process.collect_stdout(
       "cat",
       [],
@@ -212,9 +212,9 @@ Write process output to a file:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "redirect output to file" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let output_file = "_build/process_test_output.txt"
-    root.add_defer(fn() { @fs.remove(output_file) })
+    root.add_defer(() => @fs.remove(output_file))
     let code = @process.run(
       "echo",
       ["test output"],
@@ -235,12 +235,12 @@ Copy file content using process redirection:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "file to file redirection" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let input_file = "_build/process_redirect_in.txt"
     let output_file = "_build/process_redirect_out.txt"
     @fs.write_file(input_file, "redirect test", create=0o644)
-    root.add_defer(fn() { @fs.remove(input_file) })
-    root.add_defer(fn() { @fs.remove(output_file) })
+    root.add_defer(() => @fs.remove(input_file))
+    root.add_defer(() => @fs.remove(output_file))
     let _ = @process.run(
       "cat",
       [],
@@ -413,16 +413,16 @@ Run multiple processes writing to the same pipe:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple processes to one pipe" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (reader, writer) = @pipe.pipe()
-    root.spawn_bg(no_wait=true, fn() {
+    root.spawn_bg(no_wait=true, () => {
       defer reader.close()
       let output = reader.read_all().text()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })
     defer writer.close()
-    @async.with_task_group(fn(group) {
+    @async.with_task_group(group => {
       @process.spawn(group, "echo", ["first"], stdout=writer) |> ignore
       @process.spawn(group, "echo", ["second"], stdout=writer) |> ignore
     })

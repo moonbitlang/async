@@ -17,13 +17,13 @@
 async test "cancel process" {
   let test_prog = sleep_prog.wait()
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
       defer log.write_string("process terminates\n")
       @process.run(test_prog, ["10000"], stdout=w)
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       while r.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
@@ -48,7 +48,7 @@ async test "cancel process" {
 ///|
 async test "cancel process timeout" {
   let test_prog = sleep_prog.wait()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
       @process.run(
@@ -81,7 +81,7 @@ async test "cancel process timeout" {
 ///|
 async test "cancel process hard" {
   let test_prog = sleep_prog.wait()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
       @process.run(
@@ -107,7 +107,7 @@ async test "cancel process hard" {
 ///|
 async test "orphan process" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
       defer log.write_string("process terminates\n")

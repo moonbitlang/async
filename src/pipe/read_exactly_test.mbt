@@ -19,10 +19,10 @@ async test "read_exactly" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @pipe.pipe()
     // reader
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
@@ -32,7 +32,7 @@ async test "read_exactly" {
       log("third message: \{msg3}")
     })
     // writer
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       log("first message sent")
       w.write("abcdef")
@@ -61,10 +61,10 @@ async test "read_exactly failure" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @pipe.pipe()
     // reader
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
@@ -74,7 +74,7 @@ async test "read_exactly failure" {
       log("third message: \{msg3}")
     })
     // writer
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       defer w.close()
       log("first message sent")
       w.write("abcdef")

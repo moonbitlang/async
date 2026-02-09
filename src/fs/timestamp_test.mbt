@@ -23,7 +23,7 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 #cfg(not(platform="windows"))
 async test "timestamp for path" {
   let path = "/tmp/timestamp_test"
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
@@ -57,7 +57,7 @@ async test "timestamp for path" {
 #cfg(platform="windows")
 async test "mtime for path" {
   let path = "_build/timestamp_test"
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
@@ -75,7 +75,7 @@ async test "mtime for path" {
 #cfg(not(platform="windows"))
 async test "timestamp for opened file" {
   let path = "/tmp/opened_file_timestamp_test"
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
@@ -112,7 +112,7 @@ async test "timestamp for opened file" {
 #cfg(platform="windows")
 async test "mtime for opened file" {
   let path = "_build/opened_file_timestamp_test"
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     @fs.write_file(path, "abcd", create=0o644, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)

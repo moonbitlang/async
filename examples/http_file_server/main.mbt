@@ -80,7 +80,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   } else {
     path
   }
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
     if is_windows {

@@ -178,7 +178,7 @@ pub async fn run_server(
   @socket.TcpServer::new(addr, dual_stack?, reuse_addr?).run_forever(
     allow_failure?,
     max_connections?,
-    fn(conn, addr) {
+    (conn, addr) => {
       let conn = ServerConnection::new(conn, headers?)
       f(conn, addr)
     },

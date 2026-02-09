@@ -48,13 +48,13 @@ async test "basic_cat" {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
-    group.spawn_bg(fn() {
+    group.spawn_bg(() => {
       defer we_write.close()
       we_write.write(b"abcd")
       @async.sleep(50)
       we_write.write(b"efgh")
     })
-    group.spawn_bg(fn() {
+    group.spawn_bg(() => {
       defer we_read.close()
       inspect(we_read.read_all().text(), content="abcdefgh")
     })

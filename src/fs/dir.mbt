@@ -175,7 +175,7 @@ pub async fn walk(
   @async.with_task_group(fn(group) {
     fn handle_path(path : String) {
       guard !exclude(path) else {  }
-      group.spawn_bg(allow_failure~, fn() {
+      group.spawn_bg(allow_failure~, () => {
         sem.acquire()
         defer sem.release()
         let files = readdir(path)

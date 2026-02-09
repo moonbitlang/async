@@ -52,7 +52,7 @@ async test "basic" {
   }
 
   let client_log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(no_wait=true, () => {
@@ -68,12 +68,9 @@ async test "basic" {
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))
-    client(
-      addr,
-      "/examples/http_file_server?download_zip",
-      client_log,
-      handle_response=tmp_file.write_reader(_),
-    )
+    client(addr, "/examples/http_file_server?download_zip", client_log, handle_response=body => {
+      tmp_file.write_reader(body)
+    })
     tmp_file.close()
     let (from_unzip, w) = @process.read_from_process()
     defer from_unzip.close()

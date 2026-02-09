@@ -48,7 +48,7 @@ async fn main {
     command_and_args => command_and_args
   }
   guard command_and_args is [cmd, .. args] else { fail("no command specified") }
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     while @stdio.stdin.read_until("\n") is Some(line) {
       if max_jobs is Some(limit) {
         limit.acquire()

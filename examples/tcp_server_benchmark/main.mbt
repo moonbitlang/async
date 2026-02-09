@@ -25,21 +25,21 @@ async fn client(
 ) -> (Int64, Double) {
   let mut throughput_sum : Int64 = 0
   let mut latency_sum : Int64 = 0
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     let mut remaining = total_conn
     for _ in 0..<max_concurrent_conn {
-      group.spawn_bg(fn() {
+      group.spawn_bg(() => {
         let buf = FixedArray::make(1024, b'0')
         while remaining > 0 {
           remaining -= 1
           @async.sleep(rand.int(limit=conn_duration / 10))
           let conn = @socket.Tcp::connect(dst)
           defer conn.close()
-          @async.with_task_group(fn(conn_group) {
+          @async.with_task_group(conn_group => {
             let mut send_count : Int64 = 0
             let mut recv_count : Int64 = 0
             let mut before : Int64 = 0
-            conn_group.spawn_loop(no_wait=true, fn() {
+            conn_group.spawn_loop(no_wait=true, () => {
               if send_count == 0 {
                 before = @async.now()
               }
@@ -47,7 +47,7 @@ async fn client(
               send_count += data.length().to_int64()
               IterContinue
             })
-            conn_group.spawn_loop(no_wait=true, fn() {
+            conn_group.spawn_loop(no_wait=true, () => {
               let n = conn.read(buf)
               if recv_count == 0 {
                 latency_sum += @async.now() - before

@@ -68,7 +68,7 @@ async test "as_dir" {
 
 ///|
 test "readdir clear errno" {
-  @event_loop.with_event_loop(fn() {
+  @event_loop.with_event_loop(() => {
     // do something to set a non-zero errno
     try @fs.open("/this/file/does/not/exist", mode=ReadOnly) catch {
       _ => ()

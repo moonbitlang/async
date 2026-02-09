@@ -20,11 +20,11 @@ pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
-  @async.with_task_group(fn(group) {
+  @async.with_task_group(group => {
     defer server.close()
     let buf = FixedArray::make(1024, b'0')
     while server.recvfrom(buf) is (n, addr) && n > 0 {
-      group.spawn_bg(fn() {
+      group.spawn_bg(() => {
         @async.sleep(10)
         let msg = buf.unsafe_reinterpret_as_bytes()[0:n]
         println("server received: \{@utf8.decode(msg)}")
@@ -70,12 +70,12 @@ async fn client(
 
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(() => server_main(server, println))
-    root.spawn_bg(fn() {
-      @async.with_task_group(fn(ctx) {
+    root.spawn_bg(() => {
+      @async.with_task_group(ctx => {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
           ctx.spawn_bg(() => client(addr, println, i, msg))

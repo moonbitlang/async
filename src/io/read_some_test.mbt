@@ -15,7 +15,7 @@
 ///|
 async test "read_some basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => writer(log, w))
@@ -40,7 +40,7 @@ async test "read_some basic" {
 ///|
 async test "read_some length limit 1" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => writer(log, w))
@@ -68,7 +68,7 @@ async test "read_some length limit 1" {
 ///|
 async test "read_some length limit 2" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => writer(log, w))
@@ -95,7 +95,7 @@ async test "read_some length limit 2" {
 ///|
 async test "read_some length limit 3" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => {

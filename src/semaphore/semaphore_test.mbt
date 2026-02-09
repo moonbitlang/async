@@ -15,10 +15,10 @@
 ///|
 async test "semaphore mutex" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let semaphore = @semaphore.Semaphore::new(1)
     for i in 0..<3 {
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
         @async.sleep(300)
@@ -48,10 +48,10 @@ async test "semaphore mutex" {
 ///|
 async test "semaphore multiple value" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let semaphore = @semaphore.Semaphore::new(2)
     for i in 0..<6 {
-      root.spawn_bg(fn() {
+      root.spawn_bg(() => {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
         @async.sleep(300)
@@ -83,9 +83,9 @@ async test "semaphore multiple value" {
 
 ///|
 async test "semaphore cancellation" {
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let semaphore = @semaphore.Semaphore::new(1)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       semaphore.acquire()
       @async.sleep(500)
       semaphore.release()
@@ -102,7 +102,7 @@ async test "semaphore cancellation" {
 ///|
 async test "semaphore cancellation no_swallow" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let semaphore = @semaphore.Semaphore::new(1)
     semaphore.acquire()
     let acquire_taskire_task = root.spawn(() => {
@@ -127,9 +127,9 @@ async test "semaphore cancellation no_swallow" {
 ///|
 async test "semaphore fairness" {
   let log = StringBuilder::new()
-  @async.with_task_group(fn(root) {
+  @async.with_task_group(root => {
     let semaphore = @semaphore.Semaphore::new(1)
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       for _ in 0..<3 {
         semaphore.acquire()
         log.write_string("task 1 acquired resource\n")
@@ -137,7 +137,7 @@ async test "semaphore fairness" {
         semaphore.release()
       }
     })
-    root.spawn_bg(fn() {
+    root.spawn_bg(() => {
       @async.sleep(100)
       for _ in 0..<3 {
         semaphore.acquire()
