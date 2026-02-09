@@ -51,7 +51,10 @@ pub fn pipe(
 ///|
 // mute unused warning
 #cfg(not(platform="windows"))
-let _unused : Unit = ignore(@os_string.encode)
+let _unused : Unit = {
+  ignore(@os_string.encode)
+  ignore(@env_util.current_process)
+}
 
 ///|
 #cfg(platform="windows")
