@@ -24,10 +24,10 @@ async fn test_server(server : @http.Server, log : &Logger) -> Unit {
     }
     conn.send_response(200, "OK")
     log.write_string("server: sending \{request.meth} response part 1\n")
-    conn..write("\{request.meth} response part 1\n")..flush()
+    conn..write("\{request.meth} response part 1\n").flush()
     @async.sleep(100)
     log.write_string("server: sending \{request.meth} response part 2\n")
-    conn..write("\{request.meth} response part 2\n")
+    conn.write("\{request.meth} response part 2\n")
   })
 }
 
@@ -61,7 +61,7 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log.write_string("client: sending PUT data part 1\n")
-      client..write("PUT data part 1\n")..flush()
+      client..write("PUT data part 1\n").flush()
       @async.sleep(100)
       log.write_string("client: sending PUT data part 2\n")
       client.write("PUT data part 2\n")
@@ -75,7 +75,7 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log.write_string("client: sending POST data part 1\n")
-      client..write("POST data part 1\n")..flush()
+      client..write("POST data part 1\n").flush()
       @async.sleep(100)
       log.write_string("client: sending POST data part 2\n")
       client.write("POST data part 2\n")

@@ -40,7 +40,7 @@ pub fn ascii_to_string(ascii : BytesView) -> String {
       x =>
         builder
         ..write_string("\\x")
-        ..write_string(x.to_int().to_string(radix=16))
+        .write_string(x.to_int().to_string(radix=16))
     }
   }
   builder.to_string()

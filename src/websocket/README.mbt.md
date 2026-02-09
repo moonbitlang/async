@@ -41,7 +41,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
       // After all message content is written,
       // `.end_message()` should be called to terminate the message.
       // Fragmentation of message will be performed automatically.
-      ws..start_message(msg.kind)..write_reader(msg)..end_message()
+      ws..start_message(msg.kind)..write_reader(msg).end_message()
     }
   })
 }

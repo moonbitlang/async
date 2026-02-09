@@ -117,7 +117,7 @@ async fn main {
     ..write_uint64_le(now)
     ..write_uint64_le(now)
     ..write_uint64_le(now)
-    ..write_uint64_le(now)
+    .write_uint64_le(now)
     @random.Rand::chacha8(seed=seed.contents())
   }
   let (throughput, average_latency) = client(

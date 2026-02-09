@@ -27,7 +27,7 @@ async test "external client" {
           let msg = ws.recv()
           let data = msg.read_all().text()
           log.push("\{msg.kind}: \{data}")
-          ws..start_message(msg.kind)..write(data)..end_message()
+          ws..start_message(msg.kind)..write(data).end_message()
         }
       })
     })

@@ -283,6 +283,6 @@ fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
     ..write_string(".")
     ..write_object(addr[14].to_int())
     ..write_string(".")
-    ..write_object(addr[15].to_int())
+    .write_object(addr[15].to_int())
   }
 }

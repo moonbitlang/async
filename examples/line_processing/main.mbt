@@ -60,9 +60,9 @@ async fn process_lines(
     }
     if keep {
       if show_name {
-        output..write(name)..write(":")
+        output..write(name).write(":")
       }
-      output..write(line_prefix(line_no))..write(line)..write("\n")
+      output..write(line_prefix(line_no))..write(line).write("\n")
     }
     line_no += 1
   }

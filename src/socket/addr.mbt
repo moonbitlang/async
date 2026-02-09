@@ -68,7 +68,7 @@ pub impl Show for Addr with output(self, logger) {
     // IPv6 address format
     logger.write_char('[')
     write_ipv6_str(self.get_ipv6_bytes(), logger)
-    logger..write_char(']')..write_char(':')..write_object(self.port())
+    logger..write_char(']')..write_char(':').write_object(self.port())
   } else {
     // IPv4 address format
     let ip = self.ip()
@@ -82,7 +82,7 @@ pub impl Show for Addr with output(self, logger) {
     ..write_char('.')
     ..write_object(ip & 255)
     ..write_char(':')
-    ..write_object(port)
+    .write_object(port)
   }
 }
 
