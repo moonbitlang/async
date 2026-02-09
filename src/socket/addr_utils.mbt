@@ -248,7 +248,7 @@ fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
       add_zero_group(zero_group_start, i)
       continue i + 1, i + 1
     }
-  } else {
+  } nobreak {
     add_zero_group(zero_group_start, i)
   }
   let is_v4_mapped = match longest_zero_group {

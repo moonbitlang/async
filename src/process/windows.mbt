@@ -33,7 +33,7 @@ fn StringBuilder::write_arg_with_windows_escape(
     if char is (' ' | '\t' | '"') {
       break true
     }
-  } else {
+  } nobreak {
     false
   }
   if !need_quote {

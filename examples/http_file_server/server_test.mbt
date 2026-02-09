@@ -55,11 +55,9 @@ async test "basic" {
   @async.with_task_group(fn(root) {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
-    root.spawn_bg(no_wait=true, () => @http_file_server.server_main(
-      server,
-      path=".",
-      log~,
-    ))
+    root.spawn_bg(no_wait=true, () => {
+      @http_file_server.server_main(server, path=".", log~)
+    })
     @async.sleep(50)
     client_log.write_string("client: GET /examples/http_file_server\n")
     client(addr, "/examples/http_file_server", client_log)

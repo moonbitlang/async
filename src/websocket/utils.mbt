@@ -108,7 +108,7 @@ fn verify_utf8(data : BytesView, remaining~ : Int) -> Int raise {
         panic()
       }
     }
-  } else {
+  } nobreak {
     remaining
   }
 }

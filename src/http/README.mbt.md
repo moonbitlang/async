@@ -75,8 +75,8 @@ Here's an example server that returns 404 to every request:
 ///|
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
-  @http.Server::new(listen_addr).run_forever((request, _body, conn) => conn
-    ..send_response(404, "NotFound")
-    ..write("`\{request.path}` not found"))
+  @http.Server::new(listen_addr).run_forever((request, _body, conn) => {
+    conn..send_response(404, "NotFound")..write("`\{request.path}` not found")
+  })
 }
 ```

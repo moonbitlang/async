@@ -200,12 +200,14 @@ pub fn[X] Promise::from_async(
   abort_signal? : AbortSignal,
 ) -> Promise[X] {
   let promise = JsValue::new_promise((resolve, reject) => {
-    let coro = @coroutine.spawn(() => try f() catch {
-      @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
-        reject(JsValue::abort_error())
-      err => reject(JsValue::make(err.to_string()))
-    } noraise {
-      ret => resolve(JsValue::make(ret))
+    let coro = @coroutine.spawn(() => {
+      try f() catch {
+        @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
+          reject(JsValue::abort_error())
+        err => reject(JsValue::make(err.to_string()))
+      } noraise {
+        ret => resolve(JsValue::make(ret))
+      }
     })
     if abort_signal is Some(signal) {
       signal.on_abort(() => coro.cancel())

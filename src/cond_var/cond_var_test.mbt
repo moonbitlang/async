@@ -59,9 +59,11 @@ async test "cond var fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let cond = @cond_var.Cond::new()
-    root.spawn_bg(() => for _ in 0..<3 {
-      cond.wait()
-      log.write_string("task 1 received signal\n")
+    root.spawn_bg(() => {
+      for _ in 0..<3 {
+        cond.wait()
+        log.write_string("task 1 received signal\n")
+      }
     })
     root.spawn_bg(() => {
       @async.sleep(100)

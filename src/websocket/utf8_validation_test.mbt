@@ -90,13 +90,15 @@ async test "UTF8 validation large message" {
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
-    group.spawn_bg(no_wait=true, () => server.run_forever((req, _, conn) => {
-      let ws = @websocket.from_http_server(req, conn)
-      defer ws.close()
-      let msg = ws.recv()
-      inspect(msg.kind, content="Text")
-      ws..start_message(Text)..write_reader(msg)..end_message()
-    }))
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever((req, _, conn) => {
+        let ws = @websocket.from_http_server(req, conn)
+        defer ws.close()
+        let msg = ws.recv()
+        inspect(msg.kind, content="Text")
+        ws..start_message(Text)..write_reader(msg)..end_message()
+      })
+    })
     let client = @websocket.connect("ws://localhost:\{port}")
     defer client.close()
     @async.with_task_group(group => {

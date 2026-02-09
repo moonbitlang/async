@@ -16,13 +16,15 @@
 async test "manual cancel" {
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(fn(root) {
-    let task = root.spawn(() => try {
-      @async.sleep(300)
-      buf.write_string("task finished\n")
-    } catch {
-      err => {
-        buf.write_string("cancelled by error \{err}\n")
-        raise err
+    let task = root.spawn(() => {
+      try {
+        @async.sleep(300)
+        buf.write_string("task finished\n")
+      } catch {
+        err => {
+          buf.write_string("cancelled by error \{err}\n")
+          raise err
+        }
       }
     })
     @async.sleep(100)

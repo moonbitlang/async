@@ -113,12 +113,14 @@ async test "close test" {
       defer ws.close()
       @async.with_task_group(group => {
         // currently, auto-reply is only triggered when the user is actually reading.
-        group.spawn_bg(() => inspect(
-          try? ws.recv().read_all().text(),
-          content=(
-            #|Err(ConnectionClosed(Normal, Some("abcd")))
-          ),
-        ))
+        group.spawn_bg(() => {
+          inspect(
+            try? ws.recv().read_all().text(),
+            content=(
+              #|Err(ConnectionClosed(Normal, Some("abcd")))
+            ),
+          )
+        })
         ws.start_message(Text)
         ws.write("1234")
         @async.sleep(400)
@@ -185,11 +187,9 @@ async test "ping inside message" {
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
     @async.with_task_group(group => {
-      group.spawn_bg(() => ws
-        ..start_message(Text)
-        ..ping()
-        ..write("1234")
-        ..end_message())
+      group.spawn_bg(() => {
+        ws..start_message(Text)..ping()..write("1234")..end_message()
+      })
       inspect(ws.recv().read_all().text(), content="abcd")
     })
   })
@@ -278,12 +278,14 @@ async test "duplicated ping" {
       group.spawn_bg(() => {
         @async.with_task_group(inner => {
           inner.spawn_bg(() => ws.ping(msg="1"))
-          inner.spawn_bg(() => inspect(
-            try? ws.ping(msg="1"),
-            content=(
-              #|Err(Failure("A PING request with the same payload is already pending"))
-            ),
-          ))
+          inner.spawn_bg(() => {
+            inspect(
+              try? ws.ping(msg="1"),
+              content=(
+                #|Err(Failure("A PING request with the same payload is already pending"))
+              ),
+            )
+          })
         })
         ws.send_text("1234")
       })

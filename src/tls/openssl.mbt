@@ -438,10 +438,10 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
       break 0
     }
     self.handle_error(err)
-  } else {
-    // imposible
+  } nobreak {
     0
   }
+  // imposible
   self.transport.flush_write(flush_all=true)
   n
 }
@@ -460,10 +460,10 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
       break ret
     }
     self.handle_error(self.ssl.get_error(ret))
-  } else {
-    // imposible
+  } nobreak {
     0
   }
+  // imposible
   self.transport.flush_write(flush_all=true)
   n
 }
@@ -516,7 +516,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
   while self.ssl.shutdown() is ret && ret < 0 {
     let err = self.ssl.get_error(ret)
     self.handle_error(err)
-  } else {
+  } nobreak {
     self.transport.flush_write(flush_all=true)
   }
 }

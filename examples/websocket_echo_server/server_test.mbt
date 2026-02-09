@@ -15,7 +15,9 @@
 ///|
 async test "test server" {
   @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => @websocket_echo_server.start_echo_server())
+    group.spawn_bg(no_wait=true, () => {
+      @websocket_echo_server.start_echo_server()
+    })
     let client = @websocket.connect("ws://localhost:9001")
     defer client.close()
     client.send_binary("abcd")

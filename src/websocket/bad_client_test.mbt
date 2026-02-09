@@ -18,27 +18,31 @@ async test "bad client" {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
     let server_result_queue = @async.Queue::new(kind=Unbounded)
-    group.spawn_bg(no_wait=true, () => server.run_forever((req, _, conn) => {
-      let ws = @websocket.from_http_server(req, conn)
-      defer ws.close()
-      let result = try? {
-        let result = ws.recv().read_all().text()
-        ws.send_text(result)
-        result
-      }
-      server_result_queue.put(result)
-      // delay closing of the TCP connection,
-      // so that the client has enough time to react to the CLOSE frame
-      @async.sleep(50)
-    }))
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever((req, _, conn) => {
+        let ws = @websocket.from_http_server(req, conn)
+        defer ws.close()
+        let result = try? ({
+          let result = ws.recv().read_all().text()
+          ws.send_text(result)
+          result
+        })
+        server_result_queue.put(result)
+        // delay closing of the TCP connection,
+        // so that the client has enough time to react to the CLOSE frame
+        @async.sleep(50)
+      })
+    })
     async fn test_bad_frames(frames : Array[Bytes]) {
       let http_client = @http.Client::new("http://localhost:\{port}")
       defer http_client.close()
       let ws_client = @websocket.from_http_client(http_client, "/")
       defer ws_client.close()
       @async.with_task_group(group => {
-        group.spawn_bg(() => for frame in frames {
-          http_client.write(frame)
+        group.spawn_bg(() => {
+          for frame in frames {
+            http_client.write(frame)
+          }
         })
         try? ws_client.recv().read_all().text()
       })
