@@ -11,11 +11,11 @@ import {
   "moonbitlang/async",
 }
 
-import "test" {
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
   "moonbitlang/async/process",
-}
+} for "test"
 
 options(
   "max-concurrent-tests": 5,

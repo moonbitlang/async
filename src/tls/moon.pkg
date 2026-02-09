@@ -10,11 +10,11 @@ import {
   "moonbitlang/async/os_error",
 }
 
-import "test" {
+import {
   "moonbitlang/async",
   "moonbitlang/async/pipe",
   "moonbitlang/async/socket",
-}
+} for "test"
 
 options(
   "native-stub": [ "openssl.c", "schannel.c" ],
