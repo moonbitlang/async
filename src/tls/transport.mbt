@@ -75,7 +75,7 @@ async fn Transport::read_more(self : Transport) -> Unit {
 }
 
 ///|
-async fn Transport::flush_write(self : Transport, flush_all~ : Bool) -> Unit {
+async fn Transport::flush_write(self : Transport) -> Unit {
   self.write_lock.acquire()
   defer self.write_lock.release()
   guard self.write_buf.len > 0 else {  }
@@ -84,24 +84,10 @@ async fn Transport::flush_write(self : Transport, flush_all~ : Bool) -> Unit {
     Closed => raise ConnectionClosed
     Error(err) => raise err
   }
-  if flush_all {
-    let start = self.write_buf.start
-    let end = self.write_buf.start + self.write_buf.len
-    let data = self.write_buf.buf.unsafe_reinterpret_as_bytes()[start:end]
-    self.writer.write(data)
-    self.write_buf.start = 0
-    self.write_buf.len = 0
-  } else {
-    let n = self.writer.write_once(
-      self.write_buf.buf.unsafe_reinterpret_as_bytes(),
-      offset=self.write_buf.start,
-      len=self.write_buf.len,
-    ) catch {
-      err => {
-        self.state = Error(err)
-        raise err
-      }
-    }
-    self.write_buf.drop(n)
-  }
+  let start = self.write_buf.start
+  let end = self.write_buf.start + self.write_buf.len
+  let data = self.write_buf.buf.unsafe_reinterpret_as_bytes()[start:end]
+  self.writer.write(data)
+  self.write_buf.start = 0
+  self.write_buf.len = 0
 }

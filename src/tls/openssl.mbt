@@ -282,11 +282,11 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
   match err {
     SSL_ERROR_WANT_READ => {
-      self.transport.flush_write(flush_all=true)
+      self.transport.flush_write()
       self.transport.read_more()
     }
     SSL_ERROR_WANT_WRITE => {
-      self.transport.flush_write(flush_all=false)
+      self.transport.flush_write()
       self.transport.write_buf.enlarge_to(1)
     }
     SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise TlsError(err_get_error())
@@ -332,7 +332,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     while self.ssl.connect() is ret && ret <= 0 {
       self.handle_error(self.ssl.get_error(ret))
     }
-    self.transport.flush_write(flush_all=true)
+    self.transport.flush_write()
   } catch {
     err => {
       self.close()
@@ -376,7 +376,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     while self.ssl.accept() is ret && ret <= 0 {
       self.handle_error(self.ssl.get_error(ret))
     }
-    self.transport.flush_write(flush_all=true)
+    self.transport.flush_write()
   } catch {
     err => {
       self.close()
@@ -442,7 +442,7 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
     0
   }
   // imposible
-  self.transport.flush_write(flush_all=true)
+  self.transport.flush_write()
   n
 }
 
@@ -464,7 +464,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
     0
   }
   // imposible
-  self.transport.flush_write(flush_all=true)
+  self.transport.flush_write()
   n
 }
 
@@ -517,7 +517,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
     let err = self.ssl.get_error(ret)
     self.handle_error(err)
   } nobreak {
-    self.transport.flush_write(flush_all=true)
+    self.transport.flush_write()
   }
 }
 
