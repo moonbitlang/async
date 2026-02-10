@@ -146,11 +146,11 @@ async fn Tls::connect(self : Tls) -> Unit {
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
-        self.transport.flush_write(flush_all=true)
+        self.transport.flush_write()
         break
       }
       WantRead => self.transport.read_more()
-      WantWrite => self.transport.flush_write(flush_all=true)
+      WantWrite => self.transport.flush_write()
       Error => {
         let errno = @os_error.get_errno()
         raise TlsError(@os_error.errno_to_string(errno))
@@ -214,11 +214,11 @@ async fn Tls::accept(self : Tls) -> Unit {
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
-        self.transport.flush_write(flush_all=true)
+        self.transport.flush_write()
         break
       }
       WantRead => self.transport.read_more()
-      WantWrite => self.transport.flush_write(flush_all=true)
+      WantWrite => self.transport.flush_write()
       Error => {
         let errno = @os_error.get_errno()
         raise TlsError(@os_error.errno_to_string(errno))
@@ -364,7 +364,7 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
   let ret = self.context.write(write_buf.buf, offset=write_buf.start, len~)
   write_buf.len += self.context.bytes_to_write()
   if ret is WantWrite {
-    self.transport.flush_write(flush_all=true)
+    self.transport.flush_write()
     len
   } else {
     let errno = @os_error.get_errno()
