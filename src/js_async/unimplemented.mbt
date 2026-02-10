@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#coverage.skip
 let _ignore_unused_import : Unit = {
   ignore(@coroutine.spawn)
   ignore(@event_loop.sleep)
@@ -22,17 +23,20 @@ let _ignore_unused_import : Unit = {
 /// A JavaScript promise that resolves to a value of type `X`
 #external
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub type Promise[X]
 
 ///|
 /// A JavaScript exception wrapped in MoonBit error
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 suberror JsError {
   JsError(Unit)
 }
 
 ///|
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub impl Show for JsError with output(self, _logger) {
   let JsError(x) = self
   let _ = JsError(x)
@@ -43,17 +47,20 @@ pub impl Show for JsError with output(self, _logger) {
 /// A JavaScript `AbortController` used to cancel promises
 #external
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub type AbortController
 
 ///|
 /// A JavaScript `AbortSignal` used to cancel promises
 #external
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub type AbortSignal
 
 ///|
 /// Create a new abort controller
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub fn AbortController::new() -> AbortController {
   abort("unimplemented in native backend")
 }
@@ -62,6 +69,7 @@ pub fn AbortController::new() -> AbortController {
 /// Get the abort signal of an abort controller.
 /// The abort signal will be triggered when `.abort()` is called on the controller.
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub fn AbortController::signal(self : Self) -> AbortSignal {
   ignore(self)
   abort("unimplemented in native backend")
@@ -71,6 +79,7 @@ pub fn AbortController::signal(self : Self) -> AbortSignal {
 /// Abort the abort controller and activate its abort signal.
 /// All promises tied to the signal will be cancelled.
 #internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
 pub fn AbortController::abort(self : Self) -> Unit {
   ignore(self)
   abort("unimplemented in native backend")
@@ -88,6 +97,7 @@ pub fn AbortController::abort(self : Self) -> Unit {
 /// If `abort_controller` is absent, `wait` is non-cancellable.
 #internal(unimplemented, "unimplemented in native backend")
 #warnings("-unused_async")
+#coverage.skip
 pub async fn[X] Promise::wait(
   promise : Promise[X],
   abort_controller? : AbortController,
@@ -111,6 +121,7 @@ pub async fn[X] Promise::wait(
 /// For non-cancellable JavaScript code, use `Promise::wait()` directly.
 #internal(unimplemented, "unimplemented in native backend")
 #warnings("-unused_async")
+#coverage.skip
 pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
   ignore(f)
   abort("unimplemented in native backend")
@@ -135,6 +146,7 @@ pub async fn[X] run_promise(f : (AbortSignal) -> Promise[X]) -> X {
 /// or start at the next JavaScript event loop.
 #internal(unimplemented, "unimplemented in native backend")
 #warnings("-unused_async")
+#coverage.skip
 pub fn[X] Promise::from_async(
   f : async () -> X,
   abort_signal? : AbortSignal,

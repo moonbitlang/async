@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#coverage.skip
 let _ignore_unused_import : Unit = {
   ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)
@@ -24,6 +25,7 @@ let _ignore_unused_import : Unit = {
 
 ///|
 #warnings("-unused_error_type-unused_async")
+#coverage.skip
 pub async fn sleep(duration : Int) -> Unit {
   ignore(duration)
   abort("`sleep` is unimplemented on WASM backend")

@@ -15,6 +15,7 @@
 ///|
 /// This package currently does not support JavaScript backend
 #cfg(not(target="native"))
+#coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@bytes_util.ascii_to_string)
