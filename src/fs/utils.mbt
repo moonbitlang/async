@@ -17,15 +17,6 @@
 /// If `path` is a symbolic link and `follow_symlink` is `true` (`true` by default),
 /// the kind of the target of the link will be returned.
 pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind {
-  match path {
-    "test_directory" => return Directory
-    "test_directory/file" => return Regular
-    "test_directory/inner1" => return Directory
-    "test_directory/inner1/file" => return Regular
-    "test_directory/inner1/inner2" => return Directory
-    "test_directory/inner1/inner2/file" => return Regular
-    _ => ()
-  }
   @event_loop.file_kind_by_path(path, follow_symlink~, context="@fs.kind()")
   |> FileKind::from_fd_util_file_kind
 }
