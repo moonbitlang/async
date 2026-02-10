@@ -401,7 +401,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 // mute unused warning
 #cfg(platform="windows")
 let _unused : Unit = {
-  ignore(@c_buffer.null)
+  ignore(@c_buffer.Buffer::strlen)
   ignore(@bytes_util.ascii_to_string)
   ignore(@utf8.encode(""))
 }

@@ -43,12 +43,6 @@ pub extern "C" fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang_
 pub extern "C" fn Buffer::strlen(buf : Buffer) -> Int = "moonbitlang_async_strlen"
 
 ///|
-extern "C" fn Buffer::null() -> Buffer = "moonbitlang_async_null_pointer"
-
-///|
-pub let null : Buffer = Buffer::null()
-
-///|
 pub extern "C" fn Buffer::is_null(ptr : Buffer) -> Bool = "moonbitlang_async_pointer_is_null"
 
 ///|

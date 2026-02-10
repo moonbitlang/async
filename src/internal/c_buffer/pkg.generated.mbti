@@ -2,7 +2,6 @@
 package "moonbitlang/async/internal/c_buffer"
 
 // Values
-pub let null : Buffer
 
 // Errors
 
