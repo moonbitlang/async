@@ -14,4 +14,5 @@
 
 ///|
 #cfg(not(target="native"))
+#coverage.skip
 pub let unimplemented : Unit = ()
