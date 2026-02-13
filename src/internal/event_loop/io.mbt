@@ -13,13 +13,6 @@
 // limitations under the License.
 
 ///|
-pub fn IoHandle::from_existing_fd(fd : @fd_util.Fd) -> IoHandle {
-  guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is Some(io)
-  io
-}
-
-///|
 pub fn IoHandle::fd(handle : IoHandle) -> @fd_util.Fd {
   handle.fd
 }
