@@ -79,7 +79,6 @@ pub fn IoHandle::close(Self) -> Unit
 pub async fn IoHandle::connect(Self, Bytes, context~ : String) -> Unit
 pub fn IoHandle::detach_from_event_loop(Self) -> Int
 pub fn IoHandle::fd(Self) -> Int
-pub fn IoHandle::from_existing_fd(Int) -> Self
 pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind, is_async? : Bool) -> Self raise
 pub async fn IoHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
 pub fn IoHandle::kind(Self) -> @fd_util.FileKind
