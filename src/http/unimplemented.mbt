@@ -22,3 +22,8 @@ pub let unimplemented : Unit = {
   ignore(@tls.unimplemented)
   ignore(@io_buffer.new)
 }
+
+///|
+#cfg(not(target="js"))
+#coverage.skip
+let _unused : Unit = ignore(@js_async.AbortController::new)

@@ -6,7 +6,7 @@ Simple HTTP request can be made in just one line:
 
 ```moonbit check
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="js"))
 async test {
   let (response, body) = @http.get("https://www.moonbitlang.com")
   inspect(response.code, content="200")
@@ -41,7 +41,7 @@ A complete example:
 
 ```moonbit check
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="js"))
 async test {
   let client = @http.Client::new("https://www.moonbitlang.com")
   defer client.close()
@@ -51,6 +51,11 @@ async test {
   assert_true(body.text().has_prefix("<!doctype html>"))
 }
 ```
+
+All HTTP client API, including the simple request helpers `@http.get` etc.,
+are supported on JavaScript backend using `fetch` API,
+meaning that you can use these API in browser environment.
+Notice that some feature, such as proxy, is not supported on JavaScript backend.
 
 ## Writing HTTP servers
 The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.

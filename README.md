@@ -61,14 +61,14 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] Windows support (`IOCP`)
 - [ ] WASM backend
 - [X] Javascript backend
-    - [X] integration with JavaScript promise
+    - [X] integration with JavaScript promise and Web API `ReadableStream`
     - [X] all IO-independent API, including:
         - `moonbitlang/async`
         - `moonbitlang/async/io`
         - `moonbitlang/async/aqueue`
         - `moonbitlang/async/semaphore`
         - `moonbitlang/async/cond_var`
-    - [ ] implement `@http` API in JavaScript using fetch API
+    - [X] HTTP Client API support in `@http` using fetch API
     - [ ] implement other IO primitives in JavaScript using Node.js
 
 

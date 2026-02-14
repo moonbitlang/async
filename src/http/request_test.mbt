@@ -23,3 +23,13 @@ async test "http request" {
   let (_, result) = @http.get("http://www.example.org")
   assert_true(result.text().has_prefix("<!doctype html>"))
 }
+
+///|
+async test "request cancel" {
+  let result = @async.with_timeout_opt(200, () => {
+    @http.get(
+      "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
+    )
+  })
+  assert_true(result is None)
+}
