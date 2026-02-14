@@ -25,7 +25,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
-      - uses: ilammy/msvc-dev-cmd@v1
+      - name: install MSVC (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: install (Unix)
         if: ${{ matrix.os != 'windows-latest' }}
@@ -88,7 +90,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
-      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: install MSVC (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: install (Unix)
         if: ${{ matrix.os != 'windows-latest' }}
@@ -280,6 +285,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
+
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: install
