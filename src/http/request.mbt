@@ -89,6 +89,7 @@ async fn perform_request(
 ///
 /// `proxy`, if present, specifies the proxy to use for this request.
 /// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
 #callsite(migration(port, fill=false, msg="specify the port in URI instead"))

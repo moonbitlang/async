@@ -13,31 +13,87 @@
 // limitations under the License.
 
 ///|
-async fn test_server(server : @http.Server, log : &Logger) -> Unit {
-  server.run_forever((request, body, conn) => {
-    log.write_string(
-      "server received request: \{request.meth} \{request.path}\n",
-    )
-    while body.read_some() is Some(data) {
-      let data = @utf8.decode(data)
-      log.write_string("server received: \{data}")
-    }
-    conn.send_response(200, "OK")
-    log.write_string("server: sending \{request.meth} response part 1\n")
-    conn..write("\{request.meth} response part 1\n").flush()
-    @async.sleep(100)
-    log.write_string("server: sending \{request.meth} response part 2\n")
-    conn.write("\{request.meth} response part 2\n")
+#cfg(target="native")
+fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int raise {
+  let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+  group.spawn_bg(no_wait=true, () => {
+    server.run_forever((request, body, conn) => {
+      let meth = request.meth.to_string().to_upper()
+      log.write_string("server received request: \{meth} \{request.path}\n")
+      while body.read_some() is Some(data) {
+        let data = @utf8.decode(data)
+        log.write_string("server received: \{data}")
+      }
+      conn.send_response(200, "OK")
+      log.write_string("server: sending \{meth} response part 1\n")
+      conn..write("\{meth} response part 1\n").flush()
+      @async.sleep(100)
+      log.write_string("server: sending \{meth} response part 2\n")
+      conn.write("\{meth} response part 2\n")
+    })
   })
+  server.addr().port()
+}
+
+///|
+#cfg(target="js")
+#external
+type Server
+
+///|
+#cfg(target="js")
+extern "js" fn Server::close(server : Server) =
+  #| (server) => server.close()
+
+///|
+#cfg(target="js")
+extern "js" fn Server::port(server : Server) -> Int =
+  #| (server) => server.address().port
+
+///|
+#cfg(target="js")
+extern "js" fn Server::create(
+  logger : (String) -> Unit,
+) -> @js_async.Promise[Server] =
+  #| (logger) => {
+  #|   const http = require('node:http')
+  #|   const server = http.createServer()
+  #|   server.on('request', (req, response) => {
+  #|     logger(`server received request: ${req.method} ${req.url}\n`)
+  #|     req.on('data', (data) => {
+  #|       logger(`server received: ${data}`)
+  #|     })
+  #|     req.on('end', () => {
+  #|       response.statusCode  = 200
+  #|       response.statusMessage = "OK"
+  #|       logger(`server: sending ${req.method} response part 1\n`)
+  #|       response.write(`${req.method} response part 1\n`, () => {
+  #|         setTimeout(() => {
+  #|           logger(`server: sending ${req.method} response part 2\n`)
+  #|           response.end(`${req.method} response part 2\n`)
+  #|         }, 100)
+  #|       })
+  #|     })
+  #|   })
+  #|   server.listen(0, '127.0.0.1')
+  #|   return new Promise((resolve) => {
+  #|     server.on('listening', () => resolve(server))
+  #|   })
+  #| }
+
+///|
+#cfg(target="js")
+async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
+  let server = Server::create(msg => log.write_string(msg)).wait()
+  group.add_defer(() => server.close())
+  server.port()
 }
 
 ///|
 async test "request streaming" {
   let log = StringBuilder::new()
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let port = server.addr().port()
-    group.spawn_bg(no_wait=true, () => test_server(server, log))
+    let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
       while client.read_some() is Some(data) {
         let data = @utf8.decode(data)
@@ -47,10 +103,7 @@ async test "request streaming" {
 
     {
       log.write_string("client sending GET request\n")
-      let (response, client) = @http.get_stream(
-        "http://localhost:\{port}/get",
-        body="GET data\n",
-      )
+      let (response, client) = @http.get_stream("http://localhost:\{port}/get")
       defer client.close()
       inspect(response.code, content="200")
       fetch_response(client)
@@ -91,33 +144,44 @@ async test "request streaming" {
     log,
     content=(
       #|client sending GET request
-      #|server received request: Get /get
-      #|server received: GET data
-      #|server: sending Get response part 1
-      #|client received: Get response part 1
-      #|server: sending Get response part 2
-      #|client received: Get response part 2
+      #|server received request: GET /get
+      #|server: sending GET response part 1
+      #|client received: GET response part 1
+      #|server: sending GET response part 2
+      #|client received: GET response part 2
       #|client sending PUT request
       #|client: sending PUT data part 1
-      #|server received request: Put /put
+      #|server received request: PUT /put
       #|server received: PUT data part 1
       #|client: sending PUT data part 2
       #|server received: PUT data part 2
-      #|server: sending Put response part 1
-      #|client received: Put response part 1
-      #|server: sending Put response part 2
-      #|client received: Put response part 2
+      #|server: sending PUT response part 1
+      #|client received: PUT response part 1
+      #|server: sending PUT response part 2
+      #|client received: PUT response part 2
       #|client sending POST request
       #|client: sending POST data part 1
-      #|server received request: Post /post
+      #|server received request: POST /post
       #|server received: POST data part 1
       #|client: sending POST data part 2
       #|server received: POST data part 2
-      #|server: sending Post response part 1
-      #|client received: Post response part 1
-      #|server: sending Post response part 2
-      #|client received: Post response part 2
+      #|server: sending POST response part 1
+      #|client received: POST response part 1
+      #|server: sending POST response part 2
+      #|client received: POST response part 2
       #|
     ),
   )
+}
+
+///|
+async test "multiple request" {
+  let client = @http.Client::new("https://www.moonbitlang.com")
+  defer client.close()
+  let response1 = client.get("/")
+  inspect(response1.code, content="200")
+  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+  let response2 = client.get("/download")
+  inspect(response2.code, content="200")
+  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
 }
