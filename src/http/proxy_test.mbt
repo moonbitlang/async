@@ -122,14 +122,14 @@ async test "proxied https request" {
     })
     let (_, result) = @async.with_timeout(3000, () => {
       @http.get(
-        "https://www.example.org",
+        "https://www.moonbitlang.com",
         proxy=@http.Client::new("http://localhost:\{port}"),
       )
     })
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
   json_inspect(log, content=[
-    "proxy server: connected to www.example.org:443 successfully",
+    "proxy server: connected to www.moonbitlang.com:443 successfully",
   ])
 }
 
@@ -212,7 +212,7 @@ async test "proxy error" {
     })
     try
       @http.get(
-        "https://www.example.org",
+        "https://www.moonbitlang.com",
         proxy=@http.Client::new("http://localhost:\{port}"),
       )
     catch {

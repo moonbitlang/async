@@ -14,7 +14,7 @@
 
 ///|
 async test "https request" {
-  let (_, result) = @http.get("https://www.example.org")
+  let (_, result) = @http.get("https://www.moonbitlang.com")
   assert_true(result.text().has_prefix("<!doctype html>"))
 }
 

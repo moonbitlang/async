@@ -8,7 +8,7 @@ Simple HTTP request can be made in just one line:
 ///|
 #cfg(target="native")
 async test {
-  let (response, body) = @http.get("https://www.example.org")
+  let (response, body) = @http.get("https://www.moonbitlang.com")
   inspect(response.code, content="200")
   assert_true(body.text().has_prefix("<!doctype html>"))
 }
@@ -43,7 +43,7 @@ A complete example:
 ///|
 #cfg(target="native")
 async test {
-  let client = @http.Client::new("https://www.example.org")
+  let client = @http.Client::new("https://www.moonbitlang.com")
   defer client.close()
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")
