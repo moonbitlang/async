@@ -67,8 +67,8 @@ async test "read dir" {
     recursive: false,
   }).wait()
   json_inspect(files, content=[
-    "js_async.mbt", "js_async_test.mbt", "moon.pkg", "pkg.generated.mbti", "unimplemented.mbt",
-    "unimplemented_test.mbt",
+    "js_async.mbt", "js_async_test.mbt", "moon.pkg", "pkg.generated.mbti", "readable_stream.mbt",
+    "readable_stream_test.mbt", "unimplemented.mbt", "unimplemented_test.mbt",
   ])
 }
 

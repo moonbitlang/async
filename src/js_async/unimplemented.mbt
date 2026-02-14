@@ -155,3 +155,79 @@ pub fn[X] Promise::from_async(
   ignore(abort_signal)
   abort("unimplemented in native backend")
 }
+
+///|
+/// The `ReadableStream` type in Web API, see
+///   https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream
+/// for more details.
+///
+/// Use this type on JavaScript FFI boundary to interact with
+/// API that make use of `ReadableStream`, such as `fetch`.
+#internal(unimplemented, "unimplemented in native backend")
+type JsReadableStream
+
+///|
+/// A wrapper around `JsReadableStream`
+/// that allows reading the content of the stream via the `@io.Reader` interface.
+///
+/// This type SHOULD NOT be used on FFI directly:
+/// its ABI is NOT the same as `JsReadableStream`,
+/// and most JavaScript types won't understand it.
+#internal(unimplemented, "unimplemented in native backend")
+type ReadableStream
+
+///|
+/// Create a `ReadableStream` wrapper from a `JsReadableStream` object,
+/// in order to read the content of the stream from the MoonBit side.
+/// The ownership of the JS stream will be transferred to the `ReadableStream`:
+/// other code cannot read the stream anymore.
+#internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
+pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
+  ignore(stream)
+  abort("unimplemented in native backend")
+}
+
+///|
+/// Close a `ReadableStream`. The underlying JS stream will be cancelled.
+#internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
+pub fn ReadableStream::close(self : ReadableStream) -> Unit {
+  ignore(self)
+  abort("unimplemented in native backend")
+}
+
+///|
+#coverage.skip
+pub impl @io.Reader for ReadableStream with _get_internal_buffer(_) {
+  abort("unimplemented in native backend")
+}
+
+///|
+#coverage.skip
+pub impl @io.Reader for ReadableStream with _direct_read(
+  _,
+  _,
+  offset~,
+  max_len~,
+) {
+  ignore(offset)
+  ignore(max_len)
+  abort("unimplemented in native backend")
+}
+
+///|
+/// Create an anonymous pipe and wrap the read end into a `JsReadableStream`.
+/// This allows writing data from MoonBit code to JavaScript.
+/// Usually users should pass the read end of the pipe (`JsReadableStream`)
+/// to JavaScript code, and write to the write end of the pipe (`@io.PipeWrite`)
+/// from MoonBit code.
+///
+/// Closing the write end of the pipe will signal EOF on the read end.
+/// If the read end of the stream is cancelled from the JavaScript side,
+/// further write operations on the write end will fail with error.
+#internal(unimplemented, "unimplemented in native backend")
+#coverage.skip
+pub fn JsReadableStream::new_pipe() -> (JsReadableStream, @io.PipeWrite) {
+  abort("unimplemented in native backend")
+}
