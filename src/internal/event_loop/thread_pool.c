@@ -1975,12 +1975,20 @@ struct getaddrinfo_job {
   struct job job;
   char *hostname;
   addrinfo_t *result;
+  int32_t result_fetched;
 };
 
 static
 void free_getaddrinfo_job(void *obj) {
   struct getaddrinfo_job *job = (struct getaddrinfo_job*)obj;
   moonbit_decref(job->hostname);
+  if (job->result && !job->result_fetched) {
+#ifdef _WIN32
+    FreeAddrInfoW(job->result);
+#else
+    freeaddrinfo(job->result);
+#endif
+  }
 }
 
 static
@@ -2034,9 +2042,12 @@ void getaddrinfo_job_worker(struct job *job) {
 struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
   struct getaddrinfo_job *job = MAKE_JOB(getaddrinfo);
   job->hostname = hostname;
+  job->result = 0;
+  job->result_fetched = 0;
   return job;
 }
 
 addrinfo_t *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job) {
+  job->result_fetched = 1;
   return job->result;
 }
