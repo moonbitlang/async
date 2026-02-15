@@ -267,3 +267,37 @@ async test "read_response basic" {
     ),
   )
 }
+
+///|
+async test "read_response passthrough fallback (no length headers)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Connection: close\r\n")
+      ..write("Content-Type: text/plain\r\n\r\n")
+      // No Content-Length or Transfer-Encoding
+      // Body ends when connection closes
+      .write("Hello, World!")
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response()
+    log_response(response, log)
+
+    // Read body via PassThrough fallback (reads until EOF/connection close)
+    log.write_string(input.read_all().text())
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|200 OK
+      #|connection: close
+      #|content-type: text/plain
+      #|Hello, World!
+    ),
+  )
+}

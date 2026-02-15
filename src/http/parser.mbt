@@ -213,6 +213,17 @@ async fn Reader::read_response(self : Reader) -> Response {
   }
   let reason = response_line[code_len + 1:].to_string()
   let headers = self.read_headers()
+
+  // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
+  // Neither header present → read until connection close
+  //
+  // other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
+  if self.body is Empty &&
+    headers.get("content-length") is None &&
+    headers.get("transfer-encoding") is None {
+    self.body = PassThrough // Read until connection close
+  }
+
   { code, reason, headers }
 }
 
