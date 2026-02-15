@@ -301,3 +301,248 @@ async test "read_response passthrough fallback (no length headers)" {
     ),
   )
 }
+
+///|
+async test "read_response 204 No Content (no body)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 204 No Content\r\n")
+      ..write("Connection: keep-alive\r\n")
+      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      // 204 responses MUST NOT contain a message body
+      // Connection remains open for next request
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response()
+    log_response(response, log)
+    // Body should be Empty, not PassThrough
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|204 No Content
+      #|connection: keep-alive
+      #|date: Mon, 15 Feb 2026 00:00:00 GMT
+      #|body: 
+
+    ),
+  )
+}
+
+///|
+async test "read_response 304 Not Modified (no body)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 304 Not Modified\r\n")
+      ..write("Connection: keep-alive\r\n")
+      ..write("ETag: \"abc123\"\r\n")
+      .write("Cache-Control: max-age=3600\r\n\r\n")
+      // 304 responses MUST NOT contain a message body
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response()
+    log_response(response, log)
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|304 Not Modified
+      #|connection: keep-alive
+      #|etag: "abc123"
+      #|cache-control: max-age=3600
+      #|body: 
+
+    ),
+  )
+}
+
+///|
+async test "read_response 100 Continue (no body)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 100 Continue\r\n")
+      .write("\r\n")
+      // 1xx responses MUST NOT contain a message body
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response()
+    log_response(response, log)
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|100 Continue
+      #|body: 
+
+    ),
+  )
+}
+
+///|
+test "should_read_body_until_close - true cases" {
+  let headers_no_length : Map[String, String] = {}
+
+  // 200 OK with no length headers
+  inspect(
+    should_read_body_until_close(200, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 201 Created with no length headers
+  inspect(
+    should_read_body_until_close(201, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 202 Accepted with no length headers
+  inspect(
+    should_read_body_until_close(202, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 203 with no length headers
+  inspect(
+    should_read_body_until_close(203, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 205 Reset Content with no length headers
+  inspect(
+    should_read_body_until_close(205, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 3xx (except 304) with no length headers
+  inspect(
+    should_read_body_until_close(301, headers_no_length, Empty),
+    content="true",
+  )
+
+  inspect(
+    should_read_body_until_close(302, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 4xx with no length headers
+  inspect(
+    should_read_body_until_close(404, headers_no_length, Empty),
+    content="true",
+  )
+
+  // 5xx with no length headers
+  inspect(
+    should_read_body_until_close(500, headers_no_length, Empty),
+    content="true",
+  )
+}
+
+///|
+test "should_read_body_until_close - false cases (bodyless status codes)" {
+  let headers_no_length : Map[String, String] = {}
+
+  // 1xx informational responses
+  inspect(
+    should_read_body_until_close(100, headers_no_length, Empty),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(101, headers_no_length, Empty),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(199, headers_no_length, Empty),
+    content="false",
+  )
+
+  // 204 No Content
+  inspect(
+    should_read_body_until_close(204, headers_no_length, Empty),
+    content="false",
+  )
+
+  // 304 Not Modified
+  inspect(
+    should_read_body_until_close(304, headers_no_length, Empty),
+    content="false",
+  )
+}
+
+///|
+test "should_read_body_until_close - false cases (headers present)" {
+  // Content-Length present
+  let headers_with_length : Map[String, String] = {
+    "content-length": "42",
+  }
+  inspect(
+    should_read_body_until_close(200, headers_with_length, Empty),
+    content="false",
+  )
+
+  // Transfer-Encoding present
+  let headers_with_transfer : Map[String, String] = {
+    "transfer-encoding": "chunked",
+  }
+  inspect(
+    should_read_body_until_close(200, headers_with_transfer, Empty),
+    content="false",
+  )
+
+  // Both present
+  let headers_with_both : Map[String, String] = {
+    "content-length": "42",
+    "transfer-encoding": "chunked",
+  }
+  inspect(
+    should_read_body_until_close(200, headers_with_both, Empty),
+    content="false",
+  )
+}
+
+///|
+test "should_read_body_until_close - false cases (body already determined)" {
+  let headers_no_length : Map[String, String] = {}
+
+  // Body is Fixed (already determined by Content-Length)
+  inspect(
+    should_read_body_until_close(200, headers_no_length, Fixed(42)),
+    content="false",
+  )
+
+  // Body is Chunked (already determined by Transfer-Encoding)
+  inspect(
+    should_read_body_until_close(200, headers_no_length, Chunked(0)),
+    content="false",
+  )
+
+  // Body is PassThrough (already set)
+  inspect(
+    should_read_body_until_close(200, headers_no_length, PassThrough),
+    content="false",
+  )
+}

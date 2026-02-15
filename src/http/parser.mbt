@@ -186,6 +186,25 @@ async fn Reader::read_request(self : Reader) -> Request {
 }
 
 ///|
+/// Determines if the response body should be read until connection close.
+/// Returns true when:
+/// - No Content-Length or Transfer-Encoding header is present
+/// - Body has not been determined by other means (still Empty)
+/// - Status code is not 1xx, 204, or 304 (which MUST NOT have a message body)
+fn should_read_body_until_close(
+  code : Int,
+  headers : Map[String, String],
+  current_body : BodyKind
+) -> Bool {
+  current_body is Empty &&
+    headers.get("content-length") is None &&
+    headers.get("transfer-encoding") is None &&
+    code >= 200 &&
+    code != 204 &&
+    code != 304
+}
+
+///|
 /// Read the header of a HTTP/1.1 response from a HTTP reader.
 /// This function must be called after the body of the last response is consumed,
 /// otherwise it will abort the program immediately.
@@ -215,12 +234,8 @@ async fn Reader::read_response(self : Reader) -> Response {
   let headers = self.read_headers()
 
   // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
-  // Neither header present → read until connection close
-  //
-  // other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
-  if self.body is Empty &&
-    headers.get("content-length") is None &&
-    headers.get("transfer-encoding") is None {
+  // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
+  if should_read_body_until_close(code, headers, self.body) {
     self.body = PassThrough // Read until connection close
   }
 
