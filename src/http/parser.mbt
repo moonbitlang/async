@@ -18,6 +18,7 @@ priv enum BodyKind {
   Fixed(Int)
   Chunked(Int)
   PassThrough
+  WaitConnectionClose
 }
 
 ///|
@@ -90,6 +91,7 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       n
     }
     PassThrough => self.transport._direct_read(buf, offset~, max_len~)
+    WaitConnectionClose => self.transport._direct_read(buf, offset~, max_len~)
   }
 }
 
@@ -236,7 +238,7 @@ async fn Reader::read_response(self : Reader) -> Response {
   // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
   // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
   if should_read_body_until_close(code, headers, self.body) {
-    self.body = PassThrough // Read until connection close
+    self.body = WaitConnectionClose // Read until connection close
   }
 
   { code, reason, headers }
