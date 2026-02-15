@@ -194,14 +194,14 @@ async fn Reader::read_request(self : Reader) -> Request {
 fn should_read_body_until_close(
   code : Int,
   headers : Map[String, String],
-  current_body : BodyKind
+  current_body : BodyKind,
 ) -> Bool {
   current_body is Empty &&
-    headers.get("content-length") is None &&
-    headers.get("transfer-encoding") is None &&
-    code >= 200 &&
-    code != 204 &&
-    code != 304
+  headers.get("content-length") is None &&
+  headers.get("transfer-encoding") is None &&
+  code >= 200 &&
+  code != 204 &&
+  code != 304
 }
 
 ///|

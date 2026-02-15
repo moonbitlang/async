@@ -332,7 +332,6 @@ async test "read_response 204 No Content (no body)" {
       #|connection: keep-alive
       #|date: Mon, 15 Feb 2026 00:00:00 GMT
       #|body: 
-
     ),
   )
 }
@@ -367,7 +366,6 @@ async test "read_response 304 Not Modified (no body)" {
       #|etag: "abc123"
       #|cache-control: max-age=3600
       #|body: 
-
     ),
   )
 }
@@ -397,7 +395,6 @@ async test "read_response 100 Continue (no body)" {
     content=(
       #|100 Continue
       #|body: 
-
     ),
   )
 }
@@ -496,9 +493,7 @@ test "should_read_body_until_close - false cases (bodyless status codes)" {
 ///|
 test "should_read_body_until_close - false cases (headers present)" {
   // Content-Length present
-  let headers_with_length : Map[String, String] = {
-    "content-length": "42",
-  }
+  let headers_with_length : Map[String, String] = { "content-length": "42" }
   inspect(
     should_read_body_until_close(200, headers_with_length, Empty),
     content="false",
