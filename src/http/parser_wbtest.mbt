@@ -460,7 +460,6 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     content=(
       #|200 Connection Established
       #|body: 
-
     ),
   )
 }
@@ -496,7 +495,6 @@ async test "read_response HEAD 200 (no body)" {
       #|content-length: 1234
       #|content-type: text/html
       #|body: 
-
     ),
   )
 }
