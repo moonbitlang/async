@@ -45,7 +45,7 @@ pub suberror ProxyError {
 /// so `headers` should not be used by the caller later.
 /// The following headers is automatically set,
 /// and must not be specified in `headers`:
-/// 
+///
 /// - Host
 /// - Content-Length, Transfer-Encoding
 ///
@@ -122,7 +122,7 @@ pub async fn Client::connect(
 /// so `headers` should not be used by the caller later.
 /// The following headers is automatically set,
 /// and must not be specified in `headers`:
-/// 
+///
 /// - Host
 /// - Content-Length, Transfer-Encoding
 ///
@@ -211,7 +211,11 @@ pub async fn Client::flush(self : Client) -> Unit {
 pub async fn Client::end_request(self : Client) -> Response {
   self.sender.end_body()
   self.reader.skip_body()
-  self.reader.read_response()
+  let response = self.reader.read_response(
+    request_method=self.sender.request_method,
+  )
+  self.sender.request_method = None
+  response
 }
 
 ///|
@@ -228,7 +232,7 @@ pub async fn Client::end_request(self : Client) -> Response {
 /// extra HTTP headers can be passed via `extra_headers`.
 /// The following headers is automatically set by `request`,
 /// and must not be specified in `extra_headers`:
-/// 
+///
 /// - Host
 /// - Content-Length, Transfer-Encoding
 pub async fn Client::request(

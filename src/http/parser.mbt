@@ -97,7 +97,7 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 impl @io.Reader for Reader with _get_internal_buffer(self) {
-  if self.body is PassThrough {
+  if self.body is PassThrough || self.body is WaitConnectionClose {
     self.transport._get_internal_buffer()
   } else {
     self.read_buf
@@ -192,17 +192,30 @@ async fn Reader::read_request(self : Reader) -> Request {
 /// Returns true when:
 /// - No Content-Length or Transfer-Encoding header is present
 /// - Body has not been determined by other means (still Empty)
-/// - Status code is not 1xx, 204, or 304 (which MUST NOT have a message body)
+/// - Status code is not 1xx, 204, 205, or 304 (which MUST NOT have a message body)
+/// - Not a successful (2xx) response to a CONNECT request (which becomes a tunnel)
+/// - Not a response to a HEAD request (which never has a message body)
 fn should_read_body_until_close(
   code : Int,
   headers : Map[String, String],
   current_body : BodyKind,
+  request_method : RequestMethod?,
 ) -> Bool {
+  // HEAD responses never have a message body, regardless of headers
+  if request_method is Some(Head) {
+    return false
+  }
+  // Successful CONNECT responses (2xx) switch connection to tunnel mode
+  // and have no HTTP message body
+  if request_method is Some(Connect) && code >= 200 && code < 300 {
+    return false
+  }
   current_body is Empty &&
   headers.get("content-length") is None &&
   headers.get("transfer-encoding") is None &&
   code >= 200 &&
   code != 204 &&
+  code != 205 &&
   code != 304
 }
 
@@ -217,7 +230,13 @@ fn should_read_body_until_close(
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_response`, all header fields will be in lower case.
-async fn Reader::read_response(self : Reader) -> Response {
+///
+/// The optional `request_method` parameter should be provided when reading responses
+/// to requests with special body handling (e.g., CONNECT).
+async fn Reader::read_response(
+  self : Reader,
+  request_method? : RequestMethod? = None,
+) -> Response {
   guard self.body is Empty
   guard self.transport.read_until("\r\n") is Some(response_line) else {
     raise @io.ReaderClosed
@@ -237,7 +256,7 @@ async fn Reader::read_response(self : Reader) -> Response {
 
   // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
   // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
-  if should_read_body_until_close(code, headers, self.body) {
+  if should_read_body_until_close(code, headers, self.body, request_method) {
     self.body = WaitConnectionClose // Read until connection close
   }
 

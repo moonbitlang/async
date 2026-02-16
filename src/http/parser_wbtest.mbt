@@ -337,6 +337,40 @@ async test "read_response 204 No Content (no body)" {
 }
 
 ///|
+async test "read_response 205 Reset Content (no body)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 205 Reset Content\r\n")
+      ..write("Connection: keep-alive\r\n")
+      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      // 205 responses MUST NOT contain a message body
+      // Connection remains open for next request
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response()
+    log_response(response, log)
+    // Body should be Empty, not WaitConnectionClose
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|205 Reset Content
+      #|connection: keep-alive
+      #|date: Mon, 15 Feb 2026 00:00:00 GMT
+      #|body: 
+    ),
+  )
+}
+
+///|
 async test "read_response 304 Not Modified (no body)" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
@@ -400,59 +434,121 @@ async test "read_response 100 Continue (no body)" {
 }
 
 ///|
+async test "read_response CONNECT 200 (no body, tunnel mode)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 Connection Established\r\n")
+      .write("\r\n")
+      // Successful CONNECT responses switch to tunnel mode
+      // Connection remains open for tunneled traffic
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response(request_method=Some(Connect))
+    log_response(response, log)
+    // Body should be Empty, not WaitConnectionClose
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|200 Connection Established
+      #|body: 
+
+    ),
+  )
+}
+
+///|
+async test "read_response HEAD 200 (no body)" {
+  let log = StringBuilder::new()
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Content-Length: 1234\r\n")
+      ..write("Content-Type: text/html\r\n")
+      .write("\r\n")
+      // HEAD responses never have a body, even with Content-Length
+      // Connection remains open for next request
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response(request_method=Some(Head))
+    log_response(response, log)
+    // Body should be Empty, not Fixed(1234)
+    let body_text = input.read_all().text()
+    log.write_string("body: ")
+    log.write_string(body_text)
+  })
+  inspect(
+    log.to_string(),
+    content=(
+      #|200 OK
+      #|content-length: 1234
+      #|content-type: text/html
+      #|body: 
+
+    ),
+  )
+}
+
+///|
 test "should_read_body_until_close - true cases" {
   let headers_no_length : Map[String, String] = {}
 
   // 200 OK with no length headers
   inspect(
-    should_read_body_until_close(200, headers_no_length, Empty),
+    should_read_body_until_close(200, headers_no_length, Empty, None),
     content="true",
   )
 
   // 201 Created with no length headers
   inspect(
-    should_read_body_until_close(201, headers_no_length, Empty),
+    should_read_body_until_close(201, headers_no_length, Empty, None),
     content="true",
   )
 
   // 202 Accepted with no length headers
   inspect(
-    should_read_body_until_close(202, headers_no_length, Empty),
+    should_read_body_until_close(202, headers_no_length, Empty, None),
     content="true",
   )
 
   // 203 with no length headers
   inspect(
-    should_read_body_until_close(203, headers_no_length, Empty),
-    content="true",
-  )
-
-  // 205 Reset Content with no length headers
-  inspect(
-    should_read_body_until_close(205, headers_no_length, Empty),
+    should_read_body_until_close(203, headers_no_length, Empty, None),
     content="true",
   )
 
   // 3xx (except 304) with no length headers
   inspect(
-    should_read_body_until_close(301, headers_no_length, Empty),
+    should_read_body_until_close(301, headers_no_length, Empty, None),
     content="true",
   )
 
   inspect(
-    should_read_body_until_close(302, headers_no_length, Empty),
+    should_read_body_until_close(302, headers_no_length, Empty, None),
     content="true",
   )
 
   // 4xx with no length headers
   inspect(
-    should_read_body_until_close(404, headers_no_length, Empty),
+    should_read_body_until_close(404, headers_no_length, Empty, None),
     content="true",
   )
 
   // 5xx with no length headers
   inspect(
-    should_read_body_until_close(500, headers_no_length, Empty),
+    should_read_body_until_close(500, headers_no_length, Empty, None),
     content="true",
   )
 }
@@ -463,29 +559,35 @@ test "should_read_body_until_close - false cases (bodyless status codes)" {
 
   // 1xx informational responses
   inspect(
-    should_read_body_until_close(100, headers_no_length, Empty),
+    should_read_body_until_close(100, headers_no_length, Empty, None),
     content="false",
   )
 
   inspect(
-    should_read_body_until_close(101, headers_no_length, Empty),
+    should_read_body_until_close(101, headers_no_length, Empty, None),
     content="false",
   )
 
   inspect(
-    should_read_body_until_close(199, headers_no_length, Empty),
+    should_read_body_until_close(199, headers_no_length, Empty, None),
     content="false",
   )
 
   // 204 No Content
   inspect(
-    should_read_body_until_close(204, headers_no_length, Empty),
+    should_read_body_until_close(204, headers_no_length, Empty, None),
+    content="false",
+  )
+
+  // 205 Reset Content
+  inspect(
+    should_read_body_until_close(205, headers_no_length, Empty, None),
     content="false",
   )
 
   // 304 Not Modified
   inspect(
-    should_read_body_until_close(304, headers_no_length, Empty),
+    should_read_body_until_close(304, headers_no_length, Empty, None),
     content="false",
   )
 }
@@ -495,7 +597,7 @@ test "should_read_body_until_close - false cases (headers present)" {
   // Content-Length present
   let headers_with_length : Map[String, String] = { "content-length": "42" }
   inspect(
-    should_read_body_until_close(200, headers_with_length, Empty),
+    should_read_body_until_close(200, headers_with_length, Empty, None),
     content="false",
   )
 
@@ -504,7 +606,7 @@ test "should_read_body_until_close - false cases (headers present)" {
     "transfer-encoding": "chunked",
   }
   inspect(
-    should_read_body_until_close(200, headers_with_transfer, Empty),
+    should_read_body_until_close(200, headers_with_transfer, Empty, None),
     content="false",
   )
 
@@ -514,7 +616,7 @@ test "should_read_body_until_close - false cases (headers present)" {
     "transfer-encoding": "chunked",
   }
   inspect(
-    should_read_body_until_close(200, headers_with_both, Empty),
+    should_read_body_until_close(200, headers_with_both, Empty, None),
     content="false",
   )
 }
@@ -525,19 +627,80 @@ test "should_read_body_until_close - false cases (body already determined)" {
 
   // Body is Fixed (already determined by Content-Length)
   inspect(
-    should_read_body_until_close(200, headers_no_length, Fixed(42)),
+    should_read_body_until_close(200, headers_no_length, Fixed(42), None),
     content="false",
   )
 
   // Body is Chunked (already determined by Transfer-Encoding)
   inspect(
-    should_read_body_until_close(200, headers_no_length, Chunked(0)),
+    should_read_body_until_close(200, headers_no_length, Chunked(0), None),
     content="false",
   )
 
   // Body is PassThrough (already set)
   inspect(
-    should_read_body_until_close(200, headers_no_length, PassThrough),
+    should_read_body_until_close(200, headers_no_length, PassThrough, None),
+    content="false",
+  )
+}
+
+///|
+test "should_read_body_until_close - false cases (CONNECT requests)" {
+  let headers_no_length : Map[String, String] = {}
+
+  // Successful CONNECT (2xx) responses become tunnels with no HTTP body
+  inspect(
+    should_read_body_until_close(200, headers_no_length, Empty, Some(Connect)),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(201, headers_no_length, Empty, Some(Connect)),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(299, headers_no_length, Empty, Some(Connect)),
+    content="false",
+  )
+
+  // Failed CONNECT (non-2xx) should follow normal rules
+  // 4xx error responses can have a body
+  inspect(
+    should_read_body_until_close(400, headers_no_length, Empty, Some(Connect)),
+    content="true",
+  )
+
+  inspect(
+    should_read_body_until_close(502, headers_no_length, Empty, Some(Connect)),
+    content="true",
+  )
+}
+
+///|
+test "should_read_body_until_close - false cases (HEAD requests)" {
+  let headers_no_length : Map[String, String] = {}
+
+  // HEAD responses never have a message body, regardless of status code
+  inspect(
+    should_read_body_until_close(200, headers_no_length, Empty, Some(Head)),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(404, headers_no_length, Empty, Some(Head)),
+    content="false",
+  )
+
+  inspect(
+    should_read_body_until_close(500, headers_no_length, Empty, Some(Head)),
+    content="false",
+  )
+
+  // Even with Content-Length header, HEAD should not read body
+  let headers_with_length : Map[String, String] = { "content-length": "42" }
+  inspect(
+    should_read_body_until_close(200, headers_with_length, Empty, Some(Head)),
     content="false",
   )
 }
