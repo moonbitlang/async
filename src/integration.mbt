@@ -17,6 +17,7 @@
 /// into the MoonBit toolchain, do not call directly.
 #coverage.skip
 #cfg(target="native")
+#doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
     err => {
@@ -33,6 +34,7 @@ extern "C" fn exit(code : Int) = "exit"
 
 ///|
 #cfg(target="js")
+#doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   let _ = @coroutine.spawn(main)
   @event_loop.reschedule()
