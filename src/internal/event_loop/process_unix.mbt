@@ -35,9 +35,7 @@ pub async fn spawn(
 pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
   guard curr_loop.val is Some(evloop)
   // Try pidfd first (Linux 5.3+), fall back to worker-thread waitpid
-  let register_result : RegisterPidResult? = try {
-    Some(evloop.poll.register_pid(pid))
-  } catch {
+  let register_result : RegisterPidResult? = Some(evloop.poll.register_pid(pid)) catch {
     _ => None
   }
   match register_result {
