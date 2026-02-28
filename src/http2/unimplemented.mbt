@@ -13,20 +13,13 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
+/// This package currently does not support JavaScript or WebAssembly backends
 #cfg(not(target="native"))
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
-  ignore(@socket.unimplemented)
-  ignore(@tls.unimplemented)
-  ignore(@io_buffer.new)
-  ignore(@http2.unimplemented)
-  ignore(@coroutine.is_being_cancelled)
-  ignore(@async.sleep)
+  ignore(@hpack.Encoder::encode)
+  ignore(@semaphore.Semaphore::release)
+  ignore(@cond_var.Cond::new)
+  ignore(@aqueue.Kind::Unbounded)
 }
-
-///|
-#cfg(not(target="js"))
-#coverage.skip
-let _unused : Unit = ignore(@js_async.AbortController::new)

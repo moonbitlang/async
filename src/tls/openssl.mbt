@@ -140,6 +140,25 @@ extern "C" fn SSL::get_error(self : SSL, ret : Int) -> Int = "moonbitlang_async_
 
 ///|
 #cfg(not(platform="windows"))
+#borrow(protos)
+extern "C" fn SSL::set_alpn_protos(
+  self : SSL,
+  protos : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_tls_ssl_set_alpn_protos"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(buf)
+extern "C" fn SSL::get_alpn_selected(self : SSL, buf : FixedArray[Byte]) -> Int = "moonbitlang_async_tls_ssl_get_alpn_selected"
+
+///|
+#cfg(not(platform="windows"))
+#owned(protos)
+extern "C" fn SSL_CTX::set_alpn_select_cb(ctx : SSL_CTX, protos : Bytes) = "moonbitlang_async_tls_ssl_ctx_set_alpn_select"
+
+///|
+#cfg(not(platform="windows"))
 const SSL_ERROR_SSL = 1
 
 ///|
@@ -169,6 +188,31 @@ fn err_get_error() -> String {
   let buf = Bytes::make(256, 0)
   let len = err_get_error_ffi(buf)
   @bytes_util.ascii_to_string(buf[:len])
+}
+
+///|
+#cfg(not(platform="windows"))
+fn encode_alpn_protos(protocols : Array[String]) -> Bytes {
+  let buf = @buffer.new()
+  for proto in protocols {
+    let bytes = @utf8.encode(proto)
+    buf.write_byte(bytes.length().to_byte())
+    buf.write_bytes(bytes)
+  }
+  buf.contents()
+}
+
+// The server-side ALPN callback (`alpn_select_cb` in openssl.c) reads the
+// first 4 bytes as a little-endian uint32 length, then the wire bytes follow.
+
+///|
+#cfg(not(platform="windows"))
+fn encode_alpn_protos_for_cb(protocols : Array[String]) -> Bytes {
+  let wire = encode_alpn_protos(protocols)
+  let buf = @buffer.new()
+  buf.write_int_le(wire.length())
+  buf.write_bytes(wire)
+  buf.contents()
 }
 
 ///|
@@ -284,10 +328,22 @@ async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
     SSL_ERROR_WANT_READ => {
       self.transport.flush_write()
       self.transport.read_more()
+      // If tls.close() was called while we were suspended in read_more(),
+      // ssl has been freed — raise an error to prevent use-after-free.
+      // Normal TCP EOF from the peer does not set self.closed; that path
+      // is handled by the existing `transport.state is Closed` check
+      // inside _direct_read after ssl.read() returns.
+      if self.closed {
+        raise ConnectionClosed
+      }
     }
     SSL_ERROR_WANT_WRITE => {
       self.transport.flush_write()
       self.transport.write_buf.enlarge_to(1)
+      // Same protection for the write path.
+      if self.closed {
+        raise ConnectionClosed
+      }
     }
     SSL_ERROR_SSL | SSL_ERROR_SYSCALL => raise TlsError(err_get_error())
     SSL_ERROR_ZERO_RETURN => raise ConnectionClosed
@@ -314,6 +370,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
+  alpn? : Array[String],
 ) -> Tls {
   let self = Tls::from_pair(client_ctx, r, w, host~)
   try {
@@ -327,6 +384,12 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
         guard self.ssl.set_sni(host) > 0 else {
           raise TlsError(err_get_error())
         }
+      }
+    }
+    if alpn is Some(protocols) {
+      let wire = encode_alpn_protos(protocols)
+      if self.ssl.set_alpn_protos(wire, wire.length()) != 0 {
+        raise TlsError("failed to set ALPN protocols")
       }
     }
     while self.ssl.connect() is ret && ret <= 0 {
@@ -362,9 +425,14 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   private_key_type~ : X509FileType,
   certificate_file~ : String,
   certificate_type~ : X509FileType,
+  alpn? : Array[String],
 ) -> Tls {
   let private_key_file = @utf8.encode(private_key_file)
   let certificate_file = @utf8.encode(certificate_file)
+  if alpn is Some(protocols) {
+    let encoded = encode_alpn_protos_for_cb(protocols)
+    SSL_CTX::set_alpn_select_cb(server_ctx, encoded)
+  }
   let self = Tls::from_pair(server_ctx, r, w, host=None)
   try {
     if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
@@ -405,6 +473,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
   private_key_type~ : X509FileType,
   certificate_file~ : String,
   certificate_type~ : X509FileType,
+  alpn? : Array[String],
 ) -> Tls {
   Tls::server_from_pair(
     inner,
@@ -413,12 +482,16 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
     private_key_type~,
     certificate_file~,
     certificate_type~,
+    alpn?,
   )
 }
 
 ///|
 #cfg(not(platform="windows"))
 pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
+  if self.closed {
+    return 0
+  }
   let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       break ret
@@ -518,6 +591,18 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
     self.handle_error(err)
   } nobreak {
     self.transport.flush_write()
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+pub fn Tls::selected_alpn(self : Tls) -> String? {
+  let buf = FixedArray::make(256, b'\x00')
+  let len = self.ssl.get_alpn_selected(buf)
+  if len > 0 {
+    Some(@bytes_util.ascii_to_string(buf.unsafe_reinterpret_as_bytes()[:len]))
+  } else {
+    None
   }
 }
 

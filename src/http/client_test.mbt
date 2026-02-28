@@ -176,12 +176,14 @@ async test "request streaming" {
 
 ///|
 async test "multiple request" {
-  let client = @http.Client::new("https://www.moonbitlang.com")
-  defer client.close()
-  let response1 = client.get("/")
-  inspect(response1.code, content="200")
-  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
-  let response2 = client.get("/download")
-  inspect(response2.code, content="200")
-  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+  @async.with_timeout(30000, () => {
+    let client = @http.Client::new("https://www.moonbitlang.com")
+    defer client.close()
+    let response1 = client.get("/")
+    inspect(response1.code, content="200")
+    assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+    let response2 = client.get("/download")
+    inspect(response2.code, content="200")
+    assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+  })
 }

@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/hpack"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Decoder
+pub fn Decoder::decode(Self, Bytes) -> Array[(String, String)] raise
+pub fn Decoder::new(max_table_size? : Int) -> Self
+
+type Encoder
+pub fn Encoder::encode(Self, Array[(String, String)]) -> Bytes
+pub fn Encoder::new(max_table_size? : Int, huffman? : Bool) -> Self
+
+// Type aliases
+
+// Traits
+

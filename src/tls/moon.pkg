@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/buffer",
   "moonbitlang/core/cmp",
   "moonbitlang/async/io",
   "moonbitlang/async/semaphore",
