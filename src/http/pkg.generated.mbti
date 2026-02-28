@@ -4,6 +4,7 @@ package "moonbitlang/async/http"
 import {
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
+  "moonbitlang/async/tls",
 }
 
 // Values
@@ -115,7 +116,7 @@ type Server
 pub async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)
 pub fn Server::addr(Self) -> @socket.Addr
 pub fn Server::close(Self) -> Unit
-pub fn Server::new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String]) -> Self raise
+pub fn Server::new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String], tls_certificate_file? : String, tls_certificate_type? : @tls.X509FileType, tls_private_key_file? : String, tls_private_key_type? : @tls.X509FileType) -> Self raise
 pub async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 type ServerConnection

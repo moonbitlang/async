@@ -1,0 +1,131 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/http2"
+
+import {
+  "moonbitlang/async/aqueue",
+  "moonbitlang/async/cond_var",
+  "moonbitlang/async/io",
+}
+
+// Values
+
+// Errors
+pub suberror H2Error {
+  H2Error(H2ErrorCode, String)
+}
+pub impl Show for H2Error
+pub impl ToJson for H2Error
+
+// Types and methods
+type FlowWindow
+
+pub(all) struct Frame {
+  header : FrameHeader
+  payload : Bytes
+}
+pub impl Show for Frame
+
+pub(all) struct FrameHeader {
+  length : Int
+  frame_type : FrameType
+  flags : Byte
+  stream_id : Int
+}
+pub impl Show for FrameHeader
+
+pub(all) enum FrameType {
+  Data
+  Headers
+  Priority
+  RstStream
+  Settings
+  PushPromise
+  Ping
+  GoAway
+  WindowUpdate
+  Continuation
+  Unknown(Byte)
+}
+pub impl Eq for FrameType
+pub impl Show for FrameType
+
+pub struct H2ClientConnection {
+  conn : H2Connection
+}
+pub async fn H2ClientConnection::close(Self) -> Unit
+pub async fn[R : @io.Reader, W : @io.Writer] H2ClientConnection::new(R, W) -> Self
+pub async fn H2ClientConnection::run_read_loop(Self) -> Unit
+pub async fn H2ClientConnection::send_request(Self, String, String, scheme? : String, headers? : Map[String, String], authority? : String) -> H2Stream
+pub async fn H2ClientConnection::send_request_with_body(Self, String, String, Bytes, scheme? : String, headers? : Map[String, String], authority? : String) -> H2Stream
+
+type H2Connection
+
+pub(all) enum H2ErrorCode {
+  NoError
+  ProtocolError
+  InternalError
+  FlowControlError
+  SettingsTimeout
+  StreamClosed
+  FrameSizeError
+  RefusedStream
+  Cancel
+  CompressionError
+  ConnectError
+  EnhanceYourCalm
+  InadequateSecurity
+  Http11Required
+}
+pub impl Eq for H2ErrorCode
+pub impl Show for H2ErrorCode
+pub impl ToJson for H2ErrorCode
+
+pub struct H2ServerConnection {
+  conn : H2Connection
+}
+pub async fn H2ServerConnection::accept_stream(Self) -> H2Stream
+pub async fn H2ServerConnection::close(Self) -> Unit
+pub async fn[R : @io.Reader, W : @io.Writer] H2ServerConnection::new(R, W) -> Self
+pub async fn H2ServerConnection::run_read_loop(Self) -> Unit
+pub async fn H2ServerConnection::send_data(Self, H2Stream, Bytes, end_stream? : Bool) -> Unit
+pub async fn H2ServerConnection::send_response(Self, H2Stream, Int, headers? : Map[String, String], end_stream? : Bool) -> Unit
+pub async fn H2ServerConnection::send_trailers(Self, H2Stream, Map[String, String]) -> Unit
+
+pub struct H2Stream {
+  id : Int
+  mut state : StreamState
+  send_window : FlowWindow
+  mut recv_window : Int
+  inbound_data : @aqueue.Queue[Bytes]
+  mut headers : Map[String, String]?
+  headers_ready : @cond_var.Cond
+  mut trailers : Map[String, String]?
+  trailers_ready : @cond_var.Cond
+  mut error : H2ErrorCode?
+  conn : H2Connection
+  read_buf : @io.ReaderBuffer
+}
+pub fn H2Stream::get_error(Self) -> H2ErrorCode?
+pub async fn H2Stream::send_data(Self, Bytes, end_stream? : Bool) -> Unit
+pub async fn H2Stream::send_trailers(Self, Map[String, String]) -> Unit
+pub fn H2Stream::stream_id(Self) -> Int
+pub async fn H2Stream::wait_headers(Self) -> Map[String, String]
+pub async fn H2Stream::wait_trailers(Self) -> Map[String, String]?
+pub impl @io.Reader for H2Stream
+
+pub(all) enum StreamState {
+  Idle
+  ReservedLocal
+  ReservedRemote
+  Open
+  HalfClosedLocal
+  HalfClosedRemote
+  Closed
+}
+pub impl Eq for StreamState
+pub impl Show for StreamState
+
+// Type aliases
+
+// Traits
+

@@ -19,12 +19,24 @@ priv enum ClientTransport {
 }
 
 ///|
+/// HTTP/2 client state, created when ALPN negotiation selects h2.
+priv struct H2ClientState {
+  conn : @http2.H2ClientConnection
+  read_loop_coro : @coroutine.Coroutine
+  host : String
+  scheme : String
+  persistent_headers : Map[String, String]
+  mut stream : @http2.H2Stream?
+}
+
+///|
 /// Simple HTTP client which connect to a remote host via TCP
 struct Client {
   reader : Reader
   transport : ClientTransport
   tls : @tls.Tls?
   sender : Sender
+  h2 : H2ClientState?
 }
 
 ///|
@@ -86,7 +98,7 @@ pub async fn Client::connect(
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host~) catch {
+      let tls = @tls.Tls::client(conn, host~, alpn=["h2", "http/1.1"]) catch {
         err => {
           transport.close()
           raise err
@@ -97,7 +109,7 @@ pub async fn Client::connect(
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host~) catch {
+      let tls = @tls.Tls::client(proxy, host~, alpn=["h2", "http/1.1"]) catch {
         err => {
           transport.close()
           raise err
@@ -106,7 +118,42 @@ pub async fn Client::connect(
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }
-  { transport, tls, reader, sender }
+  // Check if HTTP/2 was negotiated via ALPN
+  let h2 : H2ClientState? = match tls {
+    Some(t) =>
+      if t.selected_alpn() is Some("h2") {
+        let h2_conn = @http2.H2ClientConnection::new(t, t) catch {
+          err => {
+            t.close()
+            transport.close()
+            raise err
+          }
+        }
+        let read_loop_coro = @coroutine.spawn(async fn() {
+          h2_conn.run_read_loop() catch {
+            _ => ()
+          }
+        })
+        let h2_headers : Map[String, String] = {}
+        for k, v in headers {
+          if k != "Host" {
+            h2_headers[k] = v
+          }
+        }
+        Some({
+          conn: h2_conn,
+          read_loop_coro,
+          host,
+          scheme: "https",
+          persistent_headers: h2_headers,
+          stream: None,
+        })
+      } else {
+        None
+      }
+    None => None
+  }
+  { transport, tls, reader, sender, h2 }
 }
 
 ///|
@@ -158,6 +205,9 @@ fn ClientTransport::close(self : ClientTransport) -> Unit {
 /// This function is idempotent: it is safe to call `.close()` multiple times,
 /// only the first `.close()` call takes effect.
 pub fn Client::close(self : Client) -> Unit {
+  if self.h2 is Some(h2) {
+    h2.read_loop_coro.cancel()
+  }
   if self.tls is Some(tls) {
     tls.close()
   }
@@ -166,12 +216,26 @@ pub fn Client::close(self : Client) -> Unit {
 
 ///|
 pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
-  self.reader._direct_read(buf, offset~, max_len~)
+  if self.h2 is Some(h2) {
+    match h2.stream {
+      Some(stream) => stream._direct_read(buf, offset~, max_len~)
+      None => 0
+    }
+  } else {
+    self.reader._direct_read(buf, offset~, max_len~)
+  }
 }
 
 ///|
 pub impl @io.Reader for Client with _get_internal_buffer(self) {
-  self.reader._get_internal_buffer()
+  if self.h2 is Some(h2) {
+    match h2.stream {
+      Some(stream) => stream._get_internal_buffer()
+      None => self.reader._get_internal_buffer()
+    }
+  } else {
+    self.reader._get_internal_buffer()
+  }
 }
 
 ///|
@@ -182,20 +246,44 @@ pub impl @io.Reader for Client with _get_internal_buffer(self) {
 /// Writing to `@http.Client` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  guard not(self.sender.mode is SendingHeader)
-  self.sender.write_once(buf, offset~, len~)
+  if self.h2 is Some(h2) {
+    guard h2.stream is Some(stream)
+    let data = buf[offset:offset + len].to_bytes()
+    stream.send_data(data, end_stream=false)
+    len
+  } else {
+    guard not(self.sender.mode is SendingHeader)
+    self.sender.write_once(buf, offset~, len~)
+  }
 }
 
 ///|
 pub impl @io.Writer for Client with write_reader(self, reader) {
-  guard not(self.sender.mode is SendingHeader)
-  self.sender.write_reader(reader)
+  if self.h2 is Some(_) {
+    // For H2, read from reader and write via self.write which calls write_once
+    let buf : FixedArray[Byte] = FixedArray::make(16384, b'\x00')
+    for {
+      let n = reader._direct_read(buf, offset=0, max_len=buf.length())
+      if n == 0 {
+        break
+      }
+      self.write(buf.unsafe_reinterpret_as_bytes()[:n])
+    }
+  } else {
+    guard not(self.sender.mode is SendingHeader)
+    self.sender.write_reader(reader)
+  }
 }
 
 ///|
 /// Flush buffered data in the request body being sent, if any.
 pub async fn Client::flush(self : Client) -> Unit {
-  self.sender.flush()
+  if self.h2 is Some(_) {
+    // H2 sends DATA frames immediately, no buffering
+    ()
+  } else {
+    self.sender.flush()
+  }
 }
 
 ///|
@@ -209,9 +297,29 @@ pub async fn Client::flush(self : Client) -> Unit {
 /// If the body of the last response is still not consumed,
 /// it will be discarded.
 pub async fn Client::end_request(self : Client) -> Response {
-  self.sender.end_body()
-  self.reader.skip_body()
-  self.reader.read_response()
+  if self.h2 is Some(h2) {
+    guard h2.stream is Some(stream)
+    // Send END_STREAM (empty DATA frame with END_STREAM flag)
+    stream.send_data(Bytes::make(0, b'\x00'), end_stream=true)
+    // Wait for response headers from the server
+    let headers = stream.wait_headers()
+    let code = match headers.get(":status") {
+      Some(status) => @strconv.parse_int(status, base=10) catch { _ => 200 }
+      None => 200
+    }
+    // Build response headers excluding pseudo-headers
+    let response_headers : Map[String, String] = {}
+    for k, v in headers {
+      if k.length() > 0 && k[0] != ':' {
+        response_headers[k] = v
+      }
+    }
+    { code, reason: "", headers: response_headers }
+  } else {
+    self.sender.end_body()
+    self.reader.skip_body()
+    self.reader.read_response()
+  }
 }
 
 ///|
@@ -237,14 +345,50 @@ pub async fn Client::request(
   path : String,
   extra_headers? : Map[String, String] = {},
 ) -> Unit {
-  self.sender.send_request(meth, path, extra_headers~)
+  if self.h2 is Some(h2) {
+    let meth_str = match meth {
+      Get => "GET"
+      Head => "HEAD"
+      Post => "POST"
+      Put => "PUT"
+      Delete => "DELETE"
+      Connect => "CONNECT"
+      Options => "OPTIONS"
+      Trace => "TRACE"
+      Patch => "PATCH"
+    }
+    let all_headers : Map[String, String] = {}
+    for k, v in h2.persistent_headers {
+      all_headers[k] = v
+    }
+    for k, v in extra_headers {
+      all_headers[k] = v
+    }
+    let stream = h2.conn.send_request(
+      meth_str,
+      path,
+      scheme=h2.scheme,
+      headers=all_headers,
+      authority=h2.host,
+    )
+    h2.stream = Some(stream)
+  } else {
+    self.sender.send_request(meth, path, extra_headers~)
+  }
 }
 
 ///|
 /// Skip the body of the response currently being produced,
 /// so that the next request can be made.
 pub async fn Client::skip_response_body(self : Client) -> Unit {
-  self.reader.skip_body()
+  if self.h2 is Some(_) {
+    // Drain the H2 stream's remaining data
+    while self.drop(1024) == 1024 {
+
+    }
+  } else {
+    self.reader.skip_body()
+  }
 }
 
 ///|
@@ -298,6 +442,9 @@ pub async fn Client::post(
 /// (i.e. not in the middle of sending a request).
 /// Unread data from the body of the last response will be discarded.
 pub async fn Client::enter_passthrough_mode(self : Client) -> Unit {
+  guard self.h2 is None else {
+    abort("enter_passthrough_mode is not supported for HTTP/2")
+  }
   guard self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()

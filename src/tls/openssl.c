@@ -72,7 +72,10 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
-  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))
+  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))\
+  IMPORT_FUNC(int, SSL_set_alpn_protos, (SSL *ssl, const unsigned char *protos, unsigned int protos_len))\
+  IMPORT_FUNC(void, SSL_get0_alpn_selected, (const SSL *ssl, const unsigned char **data, unsigned int *len))\
+  IMPORT_FUNC(void, SSL_CTX_set_alpn_select_cb, (SSL_CTX *ctx, int (*cb)(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg), void *arg))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
 IMPORTED_OPEN_SSL_FUNCTIONS
@@ -267,6 +270,51 @@ void moonbitlang_async_tls_SHA1(
   moonbit_bytes_t dst
 ) {
   SHA1(src, len, dst);
+}
+
+int moonbitlang_async_tls_ssl_set_alpn_protos(SSL *ssl, const char *protos, int len) {
+  return SSL_set_alpn_protos(ssl, (const unsigned char *)protos, (unsigned int)len);
+}
+
+int moonbitlang_async_tls_ssl_get_alpn_selected(SSL *ssl, char *out_buf) {
+  const unsigned char *data = 0;
+  unsigned int len = 0;
+  SSL_get0_alpn_selected(ssl, &data, &len);
+  if (data && len > 0) {
+    memcpy(out_buf, data, len);
+  }
+  return (int)len;
+}
+
+static int alpn_select_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen,
+                          const unsigned char *in, unsigned int inlen, void *arg) {
+  // arg points to the protocol list (wire format) that the server supports
+  // We iterate through client's list (in) and try to match with server's list (arg)
+  const unsigned char *server_protos = (const unsigned char *)arg;
+  // We stored server proto list length in the first 4 bytes
+  unsigned int server_protos_len = *(unsigned int *)server_protos;
+  server_protos += 4;
+
+  const unsigned char *client = in;
+  while (client < in + inlen) {
+    unsigned char client_len = *client++;
+    const unsigned char *server = server_protos;
+    while (server < server_protos + server_protos_len) {
+      unsigned char server_len = *server++;
+      if (client_len == server_len && memcmp(client, server, client_len) == 0) {
+        *out = client;
+        *outlen = client_len;
+        return 0; // SSL_TLSEXT_ERR_OK
+      }
+      server += server_len;
+    }
+    client += client_len;
+  }
+  return 3; // SSL_TLSEXT_ERR_NOACK
+}
+
+void moonbitlang_async_tls_ssl_ctx_set_alpn_select(SSL_CTX *ctx, void *protos) {
+  SSL_CTX_set_alpn_select_cb(ctx, alpn_select_cb, protos);
 }
 
 #endif

@@ -265,7 +265,12 @@ fn EventLoop::poll(self : Self) -> Unit raise {
     let fd = event.fd()
     if @fd_util.fd_is_valid(fd) {
       // completed IO operation on a file descriptor
-      guard self.fds.get(fd) is Some(_) else {  }
+      // Note: we intentionally do NOT guard on self.fds.get(fd) here.
+      // When a socket is closed (IoHandle::close), the fd is removed from
+      // self.fds before closesocket() is called. closesocket() posts IOCP
+      // completions for any pending I/O. We must still process these
+      // completions to wake coroutines waiting in protect_from_cancel(suspend()),
+      // otherwise they hang forever.
       let result = event.io_result()
       let job_id = result.job_id()
       if self.jobs.get(job_id) is Some(coro) {

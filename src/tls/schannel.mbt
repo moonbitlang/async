@@ -162,18 +162,35 @@ async fn Tls::connect(self : Tls) -> Unit {
 
 ///|
 #cfg(platform="windows")
+fn encode_alpn_protos(protocols : Array[String]) -> Bytes {
+  let buf = @buffer.new()
+  for proto in protocols {
+    let bytes = @utf8.encode(proto)
+    buf.write_byte(bytes.length().to_byte())
+    buf.write_bytes(bytes)
+  }
+  buf.contents()
+}
+
+///|
+#cfg(platform="windows")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   reader : R,
   writer : W,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
+  alpn? : Array[String],
 ) -> Tls {
   ignore(sni)
   let context = Schannel::new()
   if context.init_client(verify~) is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))
+  }
+  if alpn is Some(protocols) {
+    let wire = encode_alpn_protos(protocols)
+    context.set_alpn(wire, wire.length())
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -234,11 +251,16 @@ async fn Tls::accept(self : Tls) -> Unit {
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   reader : R,
   writer : W,
+  alpn? : Array[String],
 ) -> Tls {
   let context = Schannel::new()
   if context.init_server() is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))
+  }
+  if alpn is Some(protocols) {
+    let wire = encode_alpn_protos(protocols)
+    context.set_alpn(wire, wire.length())
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -259,6 +281,27 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     }
   }
   tls
+}
+
+///|
+/// WARNING: this API is currently for testing only.
+/// On Windows, `private_key_file`, `private_key_type`, `certificate_file`,
+/// and `certificate_type` are ignored; SChannel uses the Windows certificate store.
+#internal(internal, "do not use, for internal testing only")
+#cfg(platform="windows")
+pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+  inner : Inner,
+  private_key_file~ : String,
+  private_key_type~ : X509FileType,
+  certificate_file~ : String,
+  certificate_type~ : X509FileType,
+  alpn? : Array[String],
+) -> Tls {
+  ignore(private_key_file)
+  ignore(private_key_type)
+  ignore(certificate_file)
+  ignore(certificate_type)
+  Tls::server_from_pair(inner, inner, alpn?)
 }
 
 ///|
@@ -289,6 +332,9 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
   }
   let read_buf = self.transport.reader._get_internal_buffer().repr()
   while self.curr_msg_remaining == 0 {
+    if self.closed {
+      return 0
+    }
     read_buf.enlarge_to(self.context.record_overhead() + 1)
     let ret = self.context.read(
       read_buf.buf,
@@ -374,6 +420,23 @@ pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
 
 ///|
 #cfg(platform="windows")
+#borrow(ch, wire)
+extern "C" fn Schannel::set_alpn(
+  ch : Schannel,
+  wire : Bytes,
+  len : Int,
+) -> Unit = "moonbitlang_async_schannel_set_alpn"
+
+///|
+#cfg(platform="windows")
+#borrow(ch, buf)
+extern "C" fn Schannel::get_alpn_selected(
+  ch : Schannel,
+  buf : FixedArray[Byte],
+) -> Int = "moonbitlang_async_schannel_get_alpn_selected"
+
+///|
+#cfg(platform="windows")
 #borrow(ch)
 extern "C" fn Schannel::shutdown(ch : Schannel) -> Int = "moonbitlang_async_schannel_shutdown"
 
@@ -398,10 +461,18 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 }
 
 ///|
+#cfg(platform="windows")
+pub fn Tls::selected_alpn(self : Tls) -> String? {
+  let buf = FixedArray::make(256, b'\x00')
+  let len = self.context.get_alpn_selected(buf)
+  if len > 0 {
+    Some(@bytes_util.ascii_to_string(buf.unsafe_reinterpret_as_bytes()[:len]))
+  } else {
+    None
+  }
+}
+
+///|
 // mute unused warning
 #cfg(platform="windows")
-let _unused : Unit = {
-  ignore(@c_buffer.Buffer::strlen)
-  ignore(@bytes_util.ascii_to_string)
-  ignore(@utf8.encode(""))
-}
+let _unused : Unit = ignore(@c_buffer.Buffer::strlen)

@@ -47,6 +47,8 @@ struct Context {
   int32_t bytes_to_write;
   int32_t msg_trailer;
   SecPkgContext_StreamSizes stream_sizes;
+  char *alpn_protos;       // ALPN wire-format bytes (length-prefixed list)
+  int32_t alpn_protos_len;
 };
 
 MOONBIT_FFI_EXPORT
@@ -59,6 +61,8 @@ void moonbitlang_async_schannel_free(struct Context *ctx) {
     case Uninitialized:
       break;
   }
+  if (ctx->alpn_protos)
+    free(ctx->alpn_protos);
   free(ctx);
 }
 
@@ -68,6 +72,8 @@ struct Context *moonbitlang_async_schannel_new() {
   result->state = Uninitialized;
   result->context.dwUpper = 0;
   result->context.dwLower = 0;
+  result->alpn_protos = NULL;
+  result->alpn_protos_len = 0;
   return result;
 }
 
@@ -198,6 +204,50 @@ int32_t moonbitlang_async_schannel_init_server(struct Context *ctx) {
   }
 }
 
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_set_alpn(
+  struct Context *ctx,
+  const char *wire,
+  int32_t len
+) {
+  ctx->alpn_protos = (char*)malloc(len);
+  memcpy(ctx->alpn_protos, wire, len);
+  ctx->alpn_protos_len = len;
+}
+
+// Allocates and returns a SEC_APPLICATION_PROTOCOLS blob wrapping `wire` in ALPN wire format.
+// Caller must free() the returned pointer.
+static void *build_sec_app_protos(const char *wire, int32_t wire_len, DWORD *out_size) {
+  DWORD list_size = (DWORD)(sizeof(SEC_APPLICATION_PROTOCOL_NEGOTIATION_EXT)
+                  + sizeof(unsigned short)
+                  + (DWORD)wire_len);
+  DWORD total = sizeof(DWORD) + list_size;
+  char *buf = (char*)malloc(total);
+  *(DWORD*)buf = list_size;
+  SEC_APPLICATION_PROTOCOL_LIST *lst = (SEC_APPLICATION_PROTOCOL_LIST*)(buf + sizeof(DWORD));
+  lst->ProtoNegoExt = SecApplicationProtocolNegotiationExt_ALPN;
+  lst->ProtocolListSize = (unsigned short)wire_len;
+  memcpy(lst->ProtocolList, wire, wire_len);
+  *out_size = total;
+  return buf;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_schannel_get_alpn_selected(
+  struct Context *ctx,
+  char *out_buf
+) {
+  SecPkgContext_ApplicationProtocol app_proto;
+  SECURITY_STATUS ret = QueryContextAttributes(
+    &ctx->context, SECPKG_ATTR_APPLICATION_PROTOCOL, &app_proto);
+  if (ret != SEC_E_OK
+      || app_proto.ProtoNegoStatus != SecApplicationProtocolNegotiationStatus_Success
+      || app_proto.ProtoNegoExt != SecApplicationProtocolNegotiationExt_ALPN)
+    return 0;
+  memcpy(out_buf, app_proto.ProtocolId, app_proto.ProtocolIdSize);
+  return (int32_t)app_proto.ProtocolIdSize;
+}
+
 enum TlsState {
   Completed = 0,
   WantRead = 1,
@@ -219,7 +269,13 @@ int32_t moonbitlang_async_schannel_connect(
   int32_t out_buffer_len
 ) {
   SecBufferDesc input_desc, output_desc;
-  SecBuffer input[2], output[1];
+  SecBuffer input[3], output[1];
+
+  // Build ALPN extension buffer if protocols were provided.
+  void *sec_app_protos = NULL;
+  DWORD sec_app_protos_size = 0;
+  if (ctx->alpn_protos)
+    sec_app_protos = build_sec_app_protos(ctx->alpn_protos, ctx->alpn_protos_len, &sec_app_protos_size);
 
   if (ctx->state == ContextInitialized) {
     input[0].BufferType = SECBUFFER_TOKEN;
@@ -233,6 +289,22 @@ int32_t moonbitlang_async_schannel_connect(
     input_desc.ulVersion = SECBUFFER_VERSION;
     input_desc.cBuffers = 2;
     input_desc.pBuffers = input;
+
+    if (sec_app_protos) {
+      input[2].BufferType = SECBUFFER_APPLICATION_PROTOCOLS;
+      input[2].cbBuffer = sec_app_protos_size;
+      input[2].pvBuffer = sec_app_protos;
+      input_desc.cBuffers = 3;
+    }
+  } else if (sec_app_protos) {
+    // First call: pInput is normally NULL, but we need it for ALPN.
+    input[0].BufferType = SECBUFFER_APPLICATION_PROTOCOLS;
+    input[0].cbBuffer = sec_app_protos_size;
+    input[0].pvBuffer = sec_app_protos;
+
+    input_desc.ulVersion = SECBUFFER_VERSION;
+    input_desc.cBuffers = 1;
+    input_desc.pBuffers = input;
   }
 
   output[0].BufferType = SECBUFFER_TOKEN;
@@ -245,6 +317,10 @@ int32_t moonbitlang_async_schannel_connect(
 
   ctx->bytes_read = ctx->bytes_to_write = 0;
 
+  // Determine pInput: NULL on first call unless ALPN is set.
+  SecBufferDesc *p_input =
+    (ctx->state == ContextInitialized || sec_app_protos) ? &input_desc : NULL;
+
   int32_t ret = InitializeSecurityContextW(
     &ctx->handle,
     ctx->state == ContextInitialized ? &ctx->context : NULL,
@@ -252,7 +328,7 @@ int32_t moonbitlang_async_schannel_connect(
     ISC_REQ_CONFIDENTIALITY | ISC_REQ_INTEGRITY, // `fContextReq`
     0, // `Reserved1`
     0, // `TargetDataRep`, unused by schannel
-    ctx->state == ContextInitialized ? &input_desc : NULL, // `pInput`
+    p_input, // `pInput`
     0, // `Reserved2`
     &ctx->context, // `phNewContext`
     &output_desc, // `pOutput`
@@ -260,8 +336,11 @@ int32_t moonbitlang_async_schannel_connect(
     NULL // `ptsExpiry`
   );
 
+  if (sec_app_protos)
+    free(sec_app_protos);
+
   ctx->bytes_read = in_buffer_len;
-  if (input[1].BufferType == SECBUFFER_EXTRA)
+  if (ctx->state == ContextInitialized && input[1].BufferType == SECBUFFER_EXTRA)
     ctx->bytes_read -= input[1].cbBuffer;
 
   switch (ret) {
@@ -304,7 +383,7 @@ int32_t moonbitlang_async_schannel_accept(
   int32_t out_buffer_len
 ) {
   SecBufferDesc input_desc, output_desc;
-  SecBuffer input[2], output[1];
+  SecBuffer input[3], output[1];
 
   input[0].BufferType = SECBUFFER_TOKEN;
   input[0].cbBuffer = in_buffer_len;
@@ -317,6 +396,17 @@ int32_t moonbitlang_async_schannel_accept(
   input_desc.ulVersion = SECBUFFER_VERSION;
   input_desc.cBuffers = 2;
   input_desc.pBuffers = input;
+
+  // Build ALPN extension buffer if protocols were provided.
+  void *sec_app_protos = NULL;
+  DWORD sec_app_protos_size = 0;
+  if (ctx->alpn_protos) {
+    sec_app_protos = build_sec_app_protos(ctx->alpn_protos, ctx->alpn_protos_len, &sec_app_protos_size);
+    input[2].BufferType = SECBUFFER_APPLICATION_PROTOCOLS;
+    input[2].cbBuffer = sec_app_protos_size;
+    input[2].pvBuffer = sec_app_protos;
+    input_desc.cBuffers = 3;
+  }
 
   output[0].BufferType = SECBUFFER_TOKEN;
   output[0].cbBuffer = out_buffer_len;
@@ -339,6 +429,9 @@ int32_t moonbitlang_async_schannel_accept(
     &ctx->context_attrs, // `pfContextAttr`
     NULL // `ptsExpiry`
   );
+
+  if (sec_app_protos)
+    free(sec_app_protos);
 
   ctx->bytes_read = in_buffer_len;
   if (input[1].BufferType == SECBUFFER_EXTRA)

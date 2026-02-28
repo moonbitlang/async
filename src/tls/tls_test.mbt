@@ -32,6 +32,26 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 }
 
 ///|
+#cfg(not(platform="windows"))
+async fn test_server_alpn(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/cert.pem",
+    certificate_type=PEM,
+    alpn=["h2", "http/1.1"],
+  )
+}
+
+///|
+#cfg(platform="windows")
+async fn test_server_alpn(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(r, w, alpn=["h2", "http/1.1"])
+}
+
+///|
 async test "one way" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
@@ -200,6 +220,48 @@ async test "`read` already closed" {
       )
       defer client.close()
       inspect(try? client.read_some(), content="Ok(None)")
+    })
+  })
+}
+
+///|
+async test "ALPN negotiation" {
+  @async.with_task_group(root => {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    // server
+    root.spawn_bg(() => {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let server = test_server_alpn(
+        server_read_from_client, server_write_to_client,
+      )
+      defer server.close()
+      inspect(server.selected_alpn(), content="Some(\"h2\")")
+      while server.read_some() is Some(_) {
+
+      } nobreak {
+        server.shutdown()
+      }
+    })
+    // client
+    root.spawn_bg(() => {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      let client = @tls.Tls::client_from_pair(
+        client_read_from_server,
+        client_write_to_server,
+        verify=false,
+        alpn=["h2", "http/1.1"],
+      )
+      defer client.close()
+      inspect(client.selected_alpn(), content="Some(\"h2\")")
+      client.shutdown()
+      let _ = client.read_all()
     })
   })
 }

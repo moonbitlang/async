@@ -5,8 +5,11 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
   "moonbitlang/async/tls",
+  "moonbitlang/async/http2",
   "moonbitlang/async/internal/io_buffer",
+  "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/js_async",
+  "moonbitlang/async",
 }
 
 import {

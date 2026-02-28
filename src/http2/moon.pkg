@@ -1,0 +1,22 @@
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/cmp",
+  "moonbitlang/async/io",
+  "moonbitlang/async/hpack",
+  "moonbitlang/async/semaphore",
+  "moonbitlang/async/cond_var",
+  "moonbitlang/async/aqueue",
+}
+
+options(
+  targets: {
+    "client.mbt": [ "native" ],
+    "connection.mbt": [ "native" ],
+    "flow_control.mbt": [ "native" ],
+    "frame.mbt": [ "native" ],
+    "server.mbt": [ "native" ],
+    "settings.mbt": [ "native" ],
+    "stream.mbt": [ "native" ],
+    "types.mbt": [ "native" ],
+  },
+)

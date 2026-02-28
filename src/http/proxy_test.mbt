@@ -144,10 +144,12 @@ async test "proxied http request" {
         handle_connect(log, req, body, conn)
       })
     })
-    let (_, result) = @http.get(
-      "http://www.example.org",
-      proxy=@http.Client::new("http://localhost:\{port}"),
-    )
+    let (_, result) = @async.with_timeout(30000, () => {
+      @http.get(
+        "http://www.example.org",
+        proxy=@http.Client::new("http://localhost:\{port}"),
+      )
+    })
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
   json_inspect(log, content=[
