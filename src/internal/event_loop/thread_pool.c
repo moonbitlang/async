@@ -1872,12 +1872,19 @@ void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *
 
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 // posix_spawn is unavailable on Android API < 28.
-// Provide a stub that returns ENOSYS so the linker is satisfied.
-// The networking-only use case never calls this code path.
+// Return a job pre-filled with ENOSYS so the caller gets a proper error
+// instead of hanging forever (a NULL job causes the worker thread to exit
+// without sending a completion notification).
 
 struct spawn_job {
   struct job job;
 };
+
+static void free_spawn_job(void *obj) {}
+
+static void spawn_job_worker(struct job *job) {
+  job->err = ENOSYS;
+}
 
 struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,
@@ -1890,7 +1897,8 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
 ) {
   (void)path; (void)args; (void)envp;
   (void)stdin_fd; (void)stdout_fd; (void)stderr_fd; (void)cwd;
-  return NULL;
+  struct spawn_job *job = MAKE_JOB(spawn);
+  return job;
 }
 
 #else // posix_spawn available
