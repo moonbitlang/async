@@ -69,6 +69,7 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(long, SSL_CTX_ctrl, (SSL_CTX *ctx, int cmd, long larg, void *parg))\
   IMPORT_FUNC(void, SSL_CTX_set_verify, (SSL_CTX *ctx, int mode, int (*verify_cb)(int, void*)))\
   IMPORT_FUNC(int, SSL_CTX_set_default_verify_paths, (SSL_CTX *ctx))\
+  IMPORT_FUNC(int, SSL_CTX_load_verify_locations, (SSL_CTX *ctx, const char *CAfile, const char *CApath))\
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
@@ -84,6 +85,8 @@ int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
 #ifdef __MACH__
   handle = dlopen("/usr/lib/libssl.48.dylib", RTLD_LAZY);
   if (!handle) handle = dlopen("/usr/lib/libssl.46.dylib", RTLD_LAZY);
+#elif defined(__ANDROID__)
+  handle = dlopen("libssl.so", RTLD_LAZY);
 #else
   handle = dlopen("libssl.so.3", RTLD_LAZY);
   if (!handle) handle = dlopen("libssl.so.1.1", RTLD_LAZY);
@@ -92,6 +95,8 @@ int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
   if (!handle) return 1;
 
   unsigned long (*OPENSSL_version_num)() = dlsym(handle, "OpenSSL_version_num");
+  if (!OPENSSL_version_num)
+    OPENSSL_version_num = dlsym(handle, "SSLeay");  // BoringSSL compat
   if (!OPENSSL_version_num)
     return 2;
 
@@ -172,10 +177,16 @@ SSL_CTX *moonbitlang_async_tls_client_ctx() {
   SSL_CTX *client_ctx = SSL_CTX_new(TLS_client_method());
 
   SSL_CTX_set_verify(client_ctx, SSL_VERIFY_PEER, 0);
+#ifdef __ANDROID__
+  if (!SSL_CTX_set_default_verify_paths(client_ctx)) {
+    SSL_CTX_load_verify_locations(client_ctx, NULL, "/system/etc/security/cacerts/");
+  }
+#else
   if (!SSL_CTX_set_default_verify_paths(client_ctx)) {
     SSL_CTX_free(client_ctx);
     return 0;
   }
+#endif
 
   SSL_CTX_ctrl(client_ctx, SSL_CTRL_MODE, SSL_MODE_ENABLE_PARTIAL_WRITE, 0);
   return client_ctx;

@@ -24,7 +24,11 @@ let tmpdir_seed : @random.Rand = {
 
 ///|
 #cfg(not(platform="windows"))
-let tmp_base_path : String = "/tmp/"
+extern "C" fn get_tmp_base_path_ffi() -> String = "moonbitlang_async_get_tmp_base_path"
+
+///|
+#cfg(not(platform="windows"))
+let tmp_base_path : String = get_tmp_base_path_ffi()
 
 ///|
 #cfg(platform="windows")

@@ -45,6 +45,8 @@
 #include <netdb.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/wait.h>
+#include <dlfcn.h>
 
 typedef int HANDLE;
 
@@ -366,7 +368,11 @@ struct worker *moonbitlang_async_spawn_worker(
 #else
   pthread_attr_t attr;
   pthread_attr_init(&attr);
+#ifdef __ANDROID__
+  pthread_attr_setstacksize(&attr, 64 * 1024);
+#else
   pthread_attr_setstacksize(&attr, 512);
+#endif
 
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
@@ -1913,7 +1919,21 @@ void spawn_job_worker(struct job *job) {
     }
   }
   if (spawn_job->cwd) {
+#ifdef __ANDROID__
+    // addchdir_np only available on Android API 34+; check at runtime
+    static int (*addchdir_fn)(posix_spawn_file_actions_t *, const char *) = NULL;
+    static int checked = 0;
+    if (!checked) {
+      addchdir_fn = dlsym(RTLD_DEFAULT, "posix_spawn_file_actions_addchdir_np");
+      checked = 1;
+    }
+    if (addchdir_fn)
+      job->err = addchdir_fn(&file_actions, spawn_job->cwd);
+    else
+      job->err = ENOSYS;
+#else
     job->err = posix_spawn_file_actions_addchdir_np(&file_actions, spawn_job->cwd);
+#endif
     if (job->err) goto exit;
   }
 
@@ -1959,6 +1979,49 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[2] = stderr_fd;
   job->cwd = cwd;
   return job;
+}
+
+// Unix wait_for_process: blocking waitpid in worker thread
+// Used as fallback when pidfd_open is not available (e.g. Android, older Linux)
+
+struct wait_for_process_job {
+  struct job job;
+  pid_t pid;
+  volatile int cancelled;
+};
+
+static
+void free_wait_for_process_job(void *obj) {}
+
+static
+void wait_for_process_job_worker(struct job *job) {
+  struct wait_for_process_job *wj = (struct wait_for_process_job*)job;
+  int status;
+  while (1) {
+    int ret = waitpid(wj->pid, &status, 0);
+    if (ret == wj->pid) break;
+    if (ret < 0 && errno != EINTR) {
+      job->err = errno;
+      return;
+    }
+    if (wj->cancelled) {
+      job->err = ECANCELED;
+      return;
+    }
+  }
+}
+
+struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
+  int pid
+) {
+  struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
+  job->pid = pid;
+  job->cancelled = 0;
+  return job;
+}
+
+void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *job) {
+  job->cancelled = 1;
 }
 
 #endif
