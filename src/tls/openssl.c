@@ -35,6 +35,8 @@ typedef struct BIO BIO;
 typedef struct SSL SSL;
 typedef struct SSL_CTX SSL_CTX;
 typedef struct SSL_METHOD SSL_METHOD;
+typedef struct X509 X509;
+typedef struct X509_STORE X509_STORE;
 
 #define IMPORTED_OPEN_SSL_FUNCTIONS\
   IMPORT_FUNC(BIO_METHOD*, BIO_meth_new, (int type, const char *name))\
@@ -73,11 +75,27 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
-  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))
+  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))\
+  IMPORT_FUNC(X509_STORE *, SSL_CTX_get_cert_store, (const SSL_CTX *ctx))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
 IMPORTED_OPEN_SSL_FUNCTIONS
 #undef IMPORT_FUNC
+
+#ifdef __ANDROID__
+#include <dirent.h>
+#include <stdio.h>
+
+// Additional functions from libcrypto needed for Android CA cert loading.
+// Android's /system/etc/security/cacerts/ uses MD5-based hash filenames
+// (OpenSSL 1.0 style), but OpenSSL 3.x uses SHA1-based hashes for directory
+// lookup. We bypass hash lookup by iterating the directory and loading each
+// cert directly.
+#define X509_FILETYPE_PEM 1
+static X509 *(*PEM_read_X509)(FILE *fp, X509 **x, void *cb, void *u);
+static int (*X509_STORE_add_cert)(X509_STORE *store, X509 *x);
+static void (*X509_free)(X509 *a);
+#endif
 
 int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
   void *handle = 0;
@@ -115,6 +133,17 @@ int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
   IMPORTED_OPEN_SSL_FUNCTIONS
 
 #undef LOAD_FUNC
+
+#ifdef __ANDROID__
+  // Load additional functions from libcrypto for Android CA cert loading.
+  // libcrypto.so is already loaded as a dependency of libssl.so.
+  void *crypto_handle = dlopen("libcrypto.so", RTLD_LAZY);
+  if (crypto_handle) {
+    PEM_read_X509 = dlsym(crypto_handle, "PEM_read_X509");
+    X509_STORE_add_cert = dlsym(crypto_handle, "X509_STORE_add_cert");
+    X509_free = dlsym(crypto_handle, "X509_free");
+  }
+#endif
 
   return 0;
 }
@@ -178,8 +207,33 @@ SSL_CTX *moonbitlang_async_tls_client_ctx() {
 
   SSL_CTX_set_verify(client_ctx, SSL_VERIFY_PEER, 0);
 #ifdef __ANDROID__
-  if (!SSL_CTX_set_default_verify_paths(client_ctx)) {
-    SSL_CTX_load_verify_locations(client_ctx, NULL, "/system/etc/security/cacerts/");
+  // Android's /system/etc/security/cacerts/ uses MD5-based hash filenames,
+  // but OpenSSL 3.x directory lookup expects SHA1-based hashes. Bypass hash
+  // lookup by iterating the directory and loading each cert directly.
+  if (PEM_read_X509 && X509_STORE_add_cert && X509_free) {
+    X509_STORE *store = SSL_CTX_get_cert_store(client_ctx);
+    DIR *dir = opendir("/system/etc/security/cacerts");
+    if (dir) {
+      struct dirent *entry;
+      char path[512];
+      while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_name[0] == '.') continue;
+        snprintf(path, sizeof(path), "/system/etc/security/cacerts/%s", entry->d_name);
+        FILE *fp = fopen(path, "r");
+        if (fp) {
+          X509 *cert = PEM_read_X509(fp, NULL, NULL, NULL);
+          if (cert) {
+            X509_STORE_add_cert(store, cert);
+            X509_free(cert);
+          }
+          fclose(fp);
+        }
+      }
+      closedir(dir);
+    }
+  } else {
+    // Fallback if libcrypto symbols unavailable
+    SSL_CTX_set_default_verify_paths(client_ctx);
   }
 #else
   if (!SSL_CTX_set_default_verify_paths(client_ctx)) {

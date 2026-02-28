@@ -39,7 +39,9 @@
 #include <errno.h>
 #include <time.h>
 #include <dirent.h>
+#if !defined(__ANDROID__) || __ANDROID_API__ >= 28
 #include <spawn.h>
+#endif
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -1868,6 +1870,31 @@ void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *
 
 #else
 
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+// posix_spawn is unavailable on Android API < 28.
+// Provide a stub that returns ENOSYS so the linker is satisfied.
+// The networking-only use case never calls this code path.
+
+struct spawn_job {
+  struct job job;
+};
+
+struct spawn_job *moonbitlang_async_make_spawn_job(
+  char *path,
+  char **args,
+  char **envp,
+  int stdin_fd,
+  int stdout_fd,
+  int stderr_fd,
+  char *cwd
+) {
+  (void)path; (void)args; (void)envp;
+  (void)stdin_fd; (void)stdout_fd; (void)stderr_fd; (void)cwd;
+  return NULL;
+}
+
+#else // posix_spawn available
+
 struct spawn_job {
   struct job job;
   char *path;
@@ -1980,6 +2007,8 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->cwd = cwd;
   return job;
 }
+
+#endif // posix_spawn availability
 
 // Unix wait_for_process: blocking waitpid in worker thread
 // Used as fallback when pidfd_open is not available (e.g. Android, older Linux)
