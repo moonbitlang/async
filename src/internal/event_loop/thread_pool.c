@@ -2036,7 +2036,10 @@ void wait_for_process_job_worker(struct job *job) {
   int status;
   while (1) {
     int ret = waitpid(wj->pid, &status, 0);
-    if (ret == wj->pid) break;
+    if (ret == wj->pid) {
+      job->ret = WEXITSTATUS(status);
+      break;
+    }
     if (ret < 0 && errno != EINTR) {
       job->err = errno;
       return;

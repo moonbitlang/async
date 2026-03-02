@@ -51,11 +51,12 @@ pub async fn spawn(
 
 ///|
 #cfg(platform="windows")
-pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
+pub async fn wait_pid(pid : Int, context~ : String) -> Int? {
   let job = Job::wait_for_process(pid)
   perform_job_in_worker(job, context~, cancel=_ => {
     job.cancel_process_waiter()
     NeedWait
   })
   |> ignore
+  None
 }
