@@ -212,9 +212,7 @@ pub async fn Client::flush(self : Client) -> Unit {
 pub async fn Client::end_request(self : Client) -> Response {
   self.sender.end_body()
   self.reader.skip_body()
-  let response = self.reader.read_response(
-    request_method=self.request_method,
-  )
+  let response = self.reader.read_response(request_method=self.request_method)
   self.request_method = None
   response
 }
