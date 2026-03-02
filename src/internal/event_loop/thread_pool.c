@@ -1895,8 +1895,13 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   int stderr_fd,
   char *cwd
 ) {
-  (void)path; (void)args; (void)envp;
-  (void)stdin_fd; (void)stdout_fd; (void)stderr_fd; (void)cwd;
+  (void)stdin_fd; (void)stdout_fd; (void)stderr_fd;
+  // Release owned MoonBit objects immediately — the stub never uses them.
+  moonbit_decref(path);
+  moonbit_decref(args);
+  moonbit_decref(envp);
+  if (cwd)
+    moonbit_decref(cwd);
   struct spawn_job *job = MAKE_JOB(spawn);
   return job;
 }
