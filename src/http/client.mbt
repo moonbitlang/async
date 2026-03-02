@@ -35,31 +35,7 @@ pub suberror ProxyError {
 } derive(Show, ToJson)
 
 ///|
-/// Create a new HTTP client by connecting to a remote host.
-/// If `protocol` is `Https` (`Https` by default),
-/// a TLS connection will be established,
-/// and the certificate of the remote peer will be verified.
-///
-/// `headers` can be used to specify persistent headers for the client,
-/// i.e. all requests made from this client will share these headers.
-/// The ownership of `headers` will be transferred to the new client,
-/// so `headers` should not be used by the caller later.
-/// The following headers is automatically set,
-/// and must not be specified in `headers`:
-///
-/// - Host
-/// - Content-Length, Transfer-Encoding
-///
-/// If `proxy` is present, it should be another HTTP client in a clean state.
-/// The new client will send a `CONNECT` request via the proxy client
-/// and try to establish a tunnel via the proxy client.
-/// All subsequent requests made by the new client will go through the proxy tunnel.
-/// The ownership of the proxy client is transferred to the new client,
-/// so it must not be used nor closed anymore by the caller.
-/// Using another HTTP client as proxy allows advanced features such as
-/// proxy authentication and https `CONNECT` proxy.
-#deprecated("use `@http.Client::new()` and specify protocol/port in the URI instead", skip_current_package=true)
-pub async fn Client::connect(
+async fn Client::connect(
   host : String,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,

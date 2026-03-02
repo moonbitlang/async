@@ -7,26 +7,17 @@ import {
 }
 
 // Values
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn get(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
+pub async fn get(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
 
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn get_stream(String, headers? : Map[String, String], port? : Int, body? : &@io.Data, proxy? : Client) -> (Response, Client)
+pub async fn get_stream(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, Client)
 
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn post(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
+pub async fn post(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data)
 
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn post_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
+pub async fn post_stream(String, headers? : Map[String, String], proxy? : Client) -> Client
 
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn put(String, &@io.Data, headers? : Map[String, String], port? : Int, proxy? : Client) -> (Response, &@io.Data)
+pub async fn put(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data)
 
-#label_migration(port, fill=false, msg="specify the port in URI instead")
-pub async fn put_stream(String, headers? : Map[String, String], port? : Int, proxy? : Client) -> Client
-
-#deprecated
-pub async fn run_server(@socket.Addr, async (ServerConnection, @socket.Addr) -> Unit, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, allow_failure? : Bool, max_connections? : Int) -> Unit
+pub async fn put_stream(String, headers? : Map[String, String], proxy? : Client) -> Client
 
 // Errors
 pub suberror HttpProtocolError {
@@ -53,8 +44,6 @@ pub impl ToJson for URIParseError
 // Types and methods
 type Client
 pub fn Client::close(Self) -> Unit
-#deprecated
-pub async fn Client::connect(String, headers? : Map[String, String], protocol? : Protocol, port? : Int, proxy? : Self) -> Self
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit

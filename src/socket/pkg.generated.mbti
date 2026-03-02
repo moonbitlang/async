@@ -40,7 +40,6 @@ pub(all) enum IpProtocolPreference {
 }
 pub impl Show for IpProtocolPreference
 
-#alias(TCP, deprecated)
 type Tcp
 pub fn Tcp::addr(Self) -> Addr
 pub fn Tcp::close(Self) -> Unit
@@ -50,7 +49,6 @@ pub fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_cou
 pub impl @io.Reader for Tcp
 pub impl @io.Writer for Tcp
 
-#alias(TCPServer, deprecated)
 type TcpServer
 pub async fn TcpServer::accept(Self) -> (Tcp, Addr)
 pub fn TcpServer::addr(Self) -> Addr

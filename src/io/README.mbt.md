@@ -580,7 +580,6 @@ Trait for writing data to a destination. Methods include:
 - `write_once(data, offset~, len~)` - Single write operation
 - `write(data)` - Write data (may require multiple operations)
 - `write_reader(reader)` - Copy data from reader to writer
-- `write_string(str, encoding~)` - Write string with encoding (deprecated)
 
 ### Data
 

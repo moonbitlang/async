@@ -29,9 +29,6 @@ pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> B
 
 pub async fn sleep(Int) -> Unit
 
-#deprecated
-pub fn with_event_loop(async (TaskGroup[Unit]) -> Unit) -> Unit raise
-
 pub async fn[X] with_task_group(async (TaskGroup[X]) -> X) -> X
 
 pub async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
@@ -39,10 +36,6 @@ pub async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
 pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
-#deprecated
-pub suberror AlreadyTerminated
-pub impl Show for AlreadyTerminated
-
 pub suberror TimeoutError
 pub impl Show for TimeoutError
 pub impl ToJson for TimeoutError

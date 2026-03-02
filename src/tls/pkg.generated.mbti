@@ -22,7 +22,6 @@ pub impl Show for TlsError
 pub impl ToJson for TlsError
 
 // Types and methods
-#alias(TLS, deprecated)
 type Tls
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(Inner, verify? : Bool, host? : String, sni? : Bool) -> Self
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool) -> Self

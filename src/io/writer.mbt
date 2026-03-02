@@ -22,8 +22,6 @@ pub(open) trait Writer {
   async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
   async write(Self, &Data) -> Unit = _
   async write_reader(Self, &Reader) -> Unit = _
-  #deprecated("use `write` instead", skip_current_package=true)
-  async write_string(Self, StringView, encoding~ : Encoding) -> Unit = _
 }
 
 ///|
@@ -58,11 +56,4 @@ impl Writer with write_reader(self, reader) {
     let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
     self.write(buf_bytes[:n])
   }
-}
-
-///|
-impl Writer with write_string(self, str, encoding~) {
-  guard encoding is UTF8
-  let data = @utf8.encode(str, bom=false)
-  self.write(data)
 }
