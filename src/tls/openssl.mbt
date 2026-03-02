@@ -245,7 +245,6 @@ fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
 ///|
 /// A TLS-encrypted connection
 #cfg(not(platform="windows"))
-#alias(TLS, deprecated="use `Tls` instead")
 struct Tls {
   ssl : SSL
   host : String?

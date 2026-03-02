@@ -41,10 +41,6 @@ struct TaskGroup[X] {
 }
 
 ///|
-#deprecated("this error is no longer emitted")
-pub suberror AlreadyTerminated derive(Show)
-
-///|
 fn[X] TaskGroup::spawn_coroutine(
   self : TaskGroup[X],
   f : async () -> Unit,

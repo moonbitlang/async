@@ -394,17 +394,6 @@ pub async fn read_file(
 }
 
 ///|
-/// Read the contents of a text file located at `path`.
-#deprecated("use `read_file(path).text()` instead")
-pub async fn read_text_file(
-  path : StringView,
-  encoding~ : @io.Encoding,
-) -> String {
-  guard encoding is UTF8
-  read_file(path).text()
-}
-
-///|
 /// Write data to a file located at `path`.
 /// The meaning of `sync`, `append`, `create`, and `truncate`,
 /// is the same as `open`, except that `truncate` is `true` by default.
@@ -420,23 +409,4 @@ pub async fn write_file(
   let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
   defer file.close()
   file.write(content.binary())
-}
-
-///|
-/// Write data to a text file located at `path`.
-/// The meaning of `sync`, `append`, `create`, truncate` is the same as `open`,
-/// except that `truncate` is `true` by default. See `open` for more details.
-#deprecated("use `write_file(path, content)` instead")
-pub async fn write_text_file(
-  path : StringView,
-  content : String,
-  encoding~ : @io.Encoding,
-  sync? : SyncMode = Data,
-  append? : Bool = false,
-  create? : Int,
-  truncate? : Bool = true,
-) -> Unit {
-  let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
-  defer file.close()
-  file.write_string(content, encoding~)
 }

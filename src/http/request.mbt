@@ -33,10 +33,7 @@ pub suberror URIParseError {
 } derive(Show, ToJson)
 
 ///|
-fn resolve_url(
-  uri : String,
-  port? : Int,
-) -> (Protocol, Int, String, String) raise {
+fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -49,18 +46,12 @@ fn resolve_url(
   } else {
     (uri.to_string(), "/")
   }
-  let (host, port) = match port {
-    Some(port) => (host, port)
-    None =>
-      if host lexmatch? (host, ":" ("[0-9]+" as port_str)) {
-        let port = @strconv.parse_int(port_str) catch {
-          _ => raise InvalidFormat
-        }
-        guard port is (1..<65536) else { raise InvalidFormat }
-        (host.to_string(), port)
-      } else {
-        (host, protocol.default_port())
-      }
+  let (host, port) = if host lexmatch? (host, ":" ("[0-9]+" as port_str)) {
+    let port = @strconv.parse_int(port_str) catch { _ => raise InvalidFormat }
+    guard port is (1..<65536) else { raise InvalidFormat }
+    (host.to_string(), port)
+  } else {
+    (host, protocol.default_port())
   }
   let path = if path == "" { "/" } else { path }
   (protocol, port, host, path)
@@ -72,10 +63,9 @@ async fn perform_request(
   meth : RequestMethod,
   headers : Map[String, String],
   body : &@io.Data,
-  port? : Int,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let (protocol, port, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   defer client.close()
   let response = client..request(meth, path)..write(body).end_request()
@@ -92,41 +82,35 @@ async fn perform_request(
 /// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
-  port? : Int,
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Get, headers, body, port?, proxy?)
+  perform_request(uri, Get, headers, body, proxy?)
 }
 
 ///|
 /// Similar to `get`, but performs a `PUT` request instead.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn put(
   uri : String,
   content : &@io.Data,
   headers? : Map[String, String] = {},
-  port? : Int,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Put, headers, content, port?, proxy?)
+  perform_request(uri, Put, headers, content, proxy?)
 }
 
 ///|
 /// Similar to `get`, but performs a `POST` request instead.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn post(
   uri : String,
   content : &@io.Data,
   headers? : Map[String, String] = {},
-  port? : Int,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Post, headers, content, port?, proxy?)
+  perform_request(uri, Post, headers, content, proxy?)
 }
 
 ///|
@@ -139,15 +123,13 @@ pub async fn post(
 ///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn get_stream(
   uri : String,
   headers? : Map[String, String] = {},
-  port? : Int,
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, Client) {
-  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let (protocol, port, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try {
     let response = client..request(Get, path)..write(body).end_request()
@@ -173,14 +155,12 @@ pub async fn get_stream(
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn put_stream(
   uri : String,
   headers? : Map[String, String] = {},
-  port? : Int,
   proxy? : Client,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let (protocol, port, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Put, path) catch {
     err => {
@@ -205,14 +185,12 @@ pub async fn put_stream(
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
-#callsite(migration(port, fill=false, msg="specify the port in URI instead"))
 pub async fn post_stream(
   uri : String,
   headers? : Map[String, String] = {},
-  port? : Int,
   proxy? : Client,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri, port?)
+  let (protocol, port, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, port~, proxy?)
   try client.request(Post, path) catch {
     err => {

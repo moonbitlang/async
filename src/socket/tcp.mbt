@@ -14,7 +14,6 @@
 
 ///|
 /// A Tcp connection
-#alias(TCP, deprecated="use `Tcp` instead")
 struct Tcp {
   io : @event_loop.IoHandle
   family : AddrFamily
@@ -27,7 +26,6 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 }
 
 ///|
-#alias(TCPServer, deprecated="use `TcpServer` instead")
 struct TcpServer {
   io : @event_loop.IoHandle
   family : AddrFamily
