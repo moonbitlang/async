@@ -230,12 +230,9 @@ fn should_read_body_until_close(
 ///
 /// HTTP header fields are case insensitive.
 /// In the result of `read_response`, all header fields will be in lower case.
-///
-/// The optional `request_method` parameter should be provided when reading responses
-/// to requests with special body handling (e.g., CONNECT).
 async fn Reader::read_response(
   self : Reader,
-  request_method? : RequestMethod? = None,
+  request_method~ : RequestMethod?,
 ) -> Response {
   guard self.body is Empty
   guard self.transport.read_until("\r\n") is Some(response_line) else {

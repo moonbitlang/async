@@ -25,6 +25,7 @@ struct Client {
   transport : ClientTransport
   tls : @tls.Tls?
   sender : Sender
+  mut request_method : RequestMethod?
 }
 
 ///|
@@ -106,7 +107,7 @@ pub async fn Client::connect(
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }
-  { transport, tls, reader, sender }
+  { transport, tls, reader, sender, request_method: None }
 }
 
 ///|
@@ -212,9 +213,9 @@ pub async fn Client::end_request(self : Client) -> Response {
   self.sender.end_body()
   self.reader.skip_body()
   let response = self.reader.read_response(
-    request_method=self.sender.request_method,
+    request_method=self.request_method,
   )
-  self.sender.request_method = None
+  self.request_method = None
   response
 }
 
@@ -242,6 +243,7 @@ pub async fn Client::request(
   extra_headers? : Map[String, String] = {},
 ) -> Unit {
   self.sender.send_request(meth, path, extra_headers~)
+  self.request_method = Some(meth)
 }
 
 ///|

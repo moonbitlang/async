@@ -28,7 +28,6 @@ priv struct Sender {
   mut send_buf : FixedArray[Byte]
   mut send_len : Int
   headers : Bytes
-  mut request_method : RequestMethod?
 }
 
 ///|
@@ -53,7 +52,6 @@ fn[W : @io.Writer] Sender::new(
     send_buf: FixedArray::make(1024, 0),
     send_len: 0,
     headers: header_text.contents(),
-    request_method: None,
   }
 }
 
@@ -248,7 +246,6 @@ async fn Sender::send_request(
   ..write(self.headers)
   .send_headers(extra_headers)
   self.mode = WaitingBody
-  self.request_method = Some(meth)
 }
 
 ///|
