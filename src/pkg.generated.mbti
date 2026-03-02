@@ -27,8 +27,6 @@ pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> 
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
 
-pub fn run_async_main(async () -> Unit) -> Unit
-
 pub async fn sleep(Int) -> Unit
 
 #deprecated
