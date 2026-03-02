@@ -1870,44 +1870,6 @@ void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *
 
 #else
 
-#if defined(__ANDROID__) && __ANDROID_API__ < 28
-// posix_spawn is unavailable on Android API < 28.
-// Return a job pre-filled with ENOSYS so the caller gets a proper error
-// instead of hanging forever (a NULL job causes the worker thread to exit
-// without sending a completion notification).
-
-struct spawn_job {
-  struct job job;
-};
-
-static void free_spawn_job(void *obj) {}
-
-static void spawn_job_worker(struct job *job) {
-  job->err = ENOSYS;
-}
-
-struct spawn_job *moonbitlang_async_make_spawn_job(
-  char *path,
-  char **args,
-  char **envp,
-  int stdin_fd,
-  int stdout_fd,
-  int stderr_fd,
-  char *cwd
-) {
-  (void)stdin_fd; (void)stdout_fd; (void)stderr_fd;
-  // Release owned MoonBit objects immediately — the stub never uses them.
-  moonbit_decref(path);
-  moonbit_decref(args);
-  moonbit_decref(envp);
-  if (cwd)
-    moonbit_decref(cwd);
-  struct spawn_job *job = MAKE_JOB(spawn);
-  return job;
-}
-
-#else // posix_spawn available
-
 struct spawn_job {
   struct job job;
   char *path;
@@ -1926,6 +1888,19 @@ void free_spawn_job(void *obj) {
   if (job->cwd)
     moonbit_decref(job->cwd);
 }
+
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+
+// posix_spawn is unavailable on Android API < 28.
+// Return a job pre-filled with ENOSYS so the caller gets a proper error
+// instead of hanging forever (a NULL job causes the worker thread to exit
+// without sending a completion notification).
+static
+void spawn_job_worker(struct job *job) {
+  job->err = ENOSYS;
+}
+
+#else // posix_spawn available
 
 static
 void spawn_job_worker(struct job *job) {
@@ -2001,6 +1976,8 @@ exit:
   posix_spawn_file_actions_destroy(&file_actions);
 }
 
+#endif // posix_spawn availability
+
 struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,
   char **args,
@@ -2020,8 +1997,6 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->cwd = cwd;
   return job;
 }
-
-#endif // posix_spawn availability
 
 // Unix wait_for_process: blocking waitpid in worker thread
 // Used as fallback when pidfd_open is not available (e.g. Android, older Linux)
