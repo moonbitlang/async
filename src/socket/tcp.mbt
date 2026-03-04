@@ -26,6 +26,11 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 }
 
 ///|
+pub fn Tcp::fd(self : Tcp) -> @fd_util.Fd {
+  self.io.fd()
+}
+
+///|
 struct TcpServer {
   io : @event_loop.IoHandle
   family : AddrFamily
@@ -141,6 +146,11 @@ pub async fn TcpServer::run_forever(
 ///|
 pub fn TcpServer::close(self : TcpServer) -> Unit {
   self.io.close()
+}
+
+///|
+pub fn TcpServer::fd(self : TcpServer) -> @fd_util.Fd {
+  self.io.fd()
 }
 
 ///|

@@ -50,6 +50,11 @@ pub fn UdpClient::close(self : UdpClient) -> Unit {
 }
 
 ///|
+pub fn UdpClient::fd(self : UdpClient) -> @fd_util.Fd {
+  self.io.fd()
+}
+
+///|
 /// Get the local address of a UDP client.
 pub fn UdpClient::addr(self : UdpClient) -> Addr {
   getsockname(self.io.fd(), self.family)
@@ -65,6 +70,11 @@ struct UdpServer {
 ///|
 pub fn UdpServer::close(self : UdpServer) -> Unit {
   self.io.close()
+}
+
+///|
+pub fn UdpServer::fd(self : UdpClient) -> @fd_util.Fd {
+  self.io.fd()
 }
 
 ///|
