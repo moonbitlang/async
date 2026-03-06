@@ -27,6 +27,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <moonbit.h>
@@ -114,4 +115,21 @@ moonbit_string_t moonbitlang_async_get_tmp_path() {
   }
 }
 
+#else
+
+moonbit_string_t moonbitlang_async_get_tmp_path() {
+  const char *path;
+#ifdef __ANDROID__
+  const char *tmpdir = getenv("TMPDIR");
+  path = tmpdir ? tmpdir : "/data/local/tmp/";
+#else
+  path = "/tmp/";
+#endif
+  size_t len = strlen(path);
+  moonbit_string_t str = moonbit_make_string_raw(len);
+  for (size_t i = 0; i < len; i++) {
+    ((uint16_t*)str)[i] = (uint16_t)(unsigned char)path[i];
+  }
+  return str;
+}
 #endif
