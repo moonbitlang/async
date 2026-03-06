@@ -39,12 +39,15 @@
 #include <errno.h>
 #include <time.h>
 #include <dirent.h>
+#if !defined(__ANDROID__) || __ANDROID_API__ >= 28
 #include <spawn.h>
+#endif
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 
 typedef int HANDLE;
 
@@ -71,6 +74,10 @@ typedef int HANDLE;
 #else
 // Other UNIX-like systems, use signal and `sigwait` to wake up worker threads
 #define WAKEUP_METHOD_SIGNAL
+
+#if defined(__ANDROID__) && __ANDROID_API__ < 34
+#define posix_spawn_file_actions_addchdir_np(...) ENOSYS
+#endif
 
 #endif
 
@@ -366,7 +373,11 @@ struct worker *moonbitlang_async_spawn_worker(
 #else
   pthread_attr_t attr;
   pthread_attr_init(&attr);
+#ifdef __ANDROID__
+  pthread_attr_setstacksize(&attr, 64 * 1024);
+#else
   pthread_attr_setstacksize(&attr, 512);
+#endif
 
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
   pthread_attr_destroy(&attr);
@@ -1881,6 +1892,19 @@ void free_spawn_job(void *obj) {
     moonbit_decref(job->cwd);
 }
 
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+
+// posix_spawn is unavailable on Android API < 28.
+// Return a job pre-filled with ENOSYS so the caller gets a proper error
+// instead of hanging forever (a NULL job causes the worker thread to exit
+// without sending a completion notification).
+static
+void spawn_job_worker(struct job *job) {
+  job->err = ENOSYS;
+}
+
+#else // posix_spawn available
+
 static
 void spawn_job_worker(struct job *job) {
   struct spawn_job *spawn_job = (struct spawn_job *)job;
@@ -1941,6 +1965,8 @@ exit:
   posix_spawn_file_actions_destroy(&file_actions);
 }
 
+#endif // posix_spawn availability
+
 struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,
   char **args,
@@ -1958,6 +1984,37 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[1] = stdout_fd;
   job->stdio[2] = stderr_fd;
   job->cwd = cwd;
+  return job;
+}
+
+// Unix wait_for_process: blocking waitpid in worker thread
+// Used as fallback when pidfd_open is not available (e.g. Android, older Linux)
+
+struct wait_for_process_job {
+  struct job job;
+  pid_t pid;
+};
+
+static
+void free_wait_for_process_job(void *obj) {}
+
+static
+void wait_for_process_job_worker(struct job *job) {
+  struct wait_for_process_job *wj = (struct wait_for_process_job*)job;
+  int status;
+  int ret = waitpid(wj->pid, &status, 0);
+  if (ret == wj->pid) {
+    job->ret = WEXITSTATUS(status);
+  } else {
+    job->err = errno;
+  }
+}
+
+struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
+  int pid
+) {
+  struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
+  job->pid = pid;
   return job;
 }
 

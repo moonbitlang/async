@@ -64,13 +64,17 @@ pub async fn spawn_orphan(
 /// and return the exit code of the process.
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
-  @event_loop.wait_pid(pid, context~)
-  let out = Ref::new(0)
-  let ret = get_process_result(pid, out)
-  if ret < 0 {
-    @os_error.check_errno(context)
+  match @event_loop.wait_pid(pid, context~) {
+    Some(exit_code) => exit_code
+    None => {
+      let out = Ref::new(0)
+      let ret = get_process_result(pid, out)
+      if ret < 0 {
+        @os_error.check_errno(context)
+      }
+      out.val
+    }
   }
-  out.val
 }
 
 ///|
@@ -139,7 +143,7 @@ pub async fn run(
     is_orphan=false,
     context~,
   )
-  @event_loop.wait_pid(pid, context~) catch {
+  let maybe_exit = @event_loop.wait_pid(pid, context~) catch {
     _ if @coroutine.is_being_cancelled() =>
       @async.protect_from_cancel(() => {
         @async.with_task_group(group => {
@@ -149,12 +153,17 @@ pub async fn run(
       })
     err => raise err
   }
-  let out = Ref::new(0)
-  let ret = get_process_result(pid, out)
-  if ret < 0 {
-    @os_error.check_errno(context)
+  match maybe_exit {
+    Some(exit_code) => exit_code
+    None => {
+      let out = Ref::new(0)
+      let ret = get_process_result(pid, out)
+      if ret < 0 {
+        @os_error.check_errno(context)
+      }
+      out.val
+    }
   }
-  out.val
 }
 
 ///|
@@ -227,7 +236,7 @@ pub async fn[X] spawn(
     context~,
   )
   let result = group.spawn(no_wait?, () => {
-    @event_loop.wait_pid(pid, context~) catch {
+    let maybe_exit = @event_loop.wait_pid(pid, context~) catch {
       _ if @coroutine.is_being_cancelled() =>
         @async.protect_from_cancel(() => {
           @async.with_task_group(group => {
@@ -237,12 +246,17 @@ pub async fn[X] spawn(
         })
       err => raise err
     }
-    let out = Ref::new(0)
-    let ret = get_process_result(pid, out)
-    if ret < 0 {
-      @os_error.check_errno(context)
+    match maybe_exit {
+      Some(exit_code) => exit_code
+      None => {
+        let out = Ref::new(0)
+        let ret = get_process_result(pid, out)
+        if ret < 0 {
+          @os_error.check_errno(context)
+        }
+        out.val
+      }
     }
-    out.val
   })
   { pid, result }
 }

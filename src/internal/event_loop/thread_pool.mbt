@@ -245,7 +245,6 @@ extern "C" fn Job::spawn(
 ) -> Job = "moonbitlang_async_make_spawn_job"
 
 ///|
-#cfg(platform="windows")
 extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
