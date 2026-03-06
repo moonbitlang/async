@@ -32,18 +32,39 @@ pub async fn spawn(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
+#borrow(out)
+extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
+
+///|
+#cfg(not(platform="windows"))
+pub async fn wait_pid(pid : Int, context~ : String) -> Int {
   guard curr_loop.val is Some(evloop)
-  ignore(context)
-  let alt_id = match evloop.poll.register_pid(pid) {
-    Running(id) => id
-    Stopped => return
+  guard support_wait_pid_via_poll() else {
+    // pidfd not available, fall back to blocking waitpid in worker thread.
+    // The worker reaps the child and stores the exit code in job.ret(),
+    // so return it here to avoid a second waitpid in get_process_result.
+    let job = Job::wait_for_process(pid)
+    let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
+      evloop.cancel_job_in_worker(job_id, context~)
+    })
+    exit_code
   }
-  guard evloop.pids.get(alt_id) is None
-  evloop.pids[alt_id] = @coroutine.current_coroutine()
-  defer {
-    evloop.pids.remove(alt_id)
-    evloop.poll.remove_pid(alt_id)
+  match evloop.poll.register_pid(pid) {
+    Running(alt_id) => {
+      guard evloop.pids.get(alt_id) is None
+      evloop.pids[alt_id] = @coroutine.current_coroutine()
+      defer {
+        evloop.pids.remove(alt_id)
+        evloop.poll.remove_pid(alt_id)
+      }
+      @coroutine.suspend()
+    }
+    Stopped => ()
   }
-  @coroutine.suspend()
+  let out = Ref::new(0)
+  let ret = get_process_result(pid, out)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  out.val
 }

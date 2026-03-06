@@ -74,6 +74,12 @@ fn Instance::register(self : Instance, fd : @fd_util.Fd) -> Unit raise {
 }
 
 ///|
+/// On Linux <5.3, `pidfd` is not supported,
+/// hence we cannot wait for a process via `epoll`.
+#cfg(not(platform="windows"))
+extern "C" fn support_wait_pid_via_poll() -> Bool = "moonbitlang_async_support_wait_pid_via_poll"
+
+///|
 #cfg(not(platform="windows"))
 extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
 

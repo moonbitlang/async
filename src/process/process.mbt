@@ -13,10 +13,6 @@
 // limitations under the License.
 
 ///|
-#borrow(out)
-extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
-
-///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` are encoded using UTF8.
@@ -65,12 +61,6 @@ pub async fn spawn_orphan(
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
   @event_loop.wait_pid(pid, context~)
-  let out = Ref::new(0)
-  let ret = get_process_result(pid, out)
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  out.val
 }
 
 ///|
@@ -149,12 +139,6 @@ pub async fn run(
       })
     err => raise err
   }
-  let out = Ref::new(0)
-  let ret = get_process_result(pid, out)
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  out.val
 }
 
 ///|
@@ -237,12 +221,6 @@ pub async fn[X] spawn(
         })
       err => raise err
     }
-    let out = Ref::new(0)
-    let ret = get_process_result(pid, out)
-    if ret < 0 {
-      @os_error.check_errno(context)
-    }
-    out.val
   })
   { pid, result }
 }

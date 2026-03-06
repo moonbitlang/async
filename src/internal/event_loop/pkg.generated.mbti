@@ -52,7 +52,7 @@ pub let stdout : IoHandle
 
 pub async fn symlink(StringView, StringView, context~ : String) -> Unit
 
-pub async fn wait_pid(Int, context~ : String) -> Unit
+pub async fn wait_pid(Int, context~ : String) -> Int
 
 pub fn with_event_loop(async () -> Unit) -> Unit raise
 

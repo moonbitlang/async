@@ -51,11 +51,22 @@ pub async fn spawn(
 
 ///|
 #cfg(platform="windows")
-pub async fn wait_pid(pid : Int, context~ : String) -> Unit {
+#borrow(out)
+extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
+
+///|
+#cfg(platform="windows")
+pub async fn wait_pid(pid : Int, context~ : String) -> Int {
   let job = Job::wait_for_process(pid)
   perform_job_in_worker(job, context~, cancel=_ => {
     job.cancel_process_waiter()
     NeedWait
   })
   |> ignore
+  let out = Ref::new(0)
+  let ret = get_process_result(pid, out)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  out.val
 }

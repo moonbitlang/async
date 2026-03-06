@@ -23,7 +23,6 @@ pub let unimplemented : Unit = {
   ignore(@coroutine.spawn)
   ignore(@pipe.unimplemented)
   ignore(@stdio.unimplemented)
-  ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
 }
