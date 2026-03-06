@@ -15,35 +15,38 @@
  */
 
 #ifdef _WIN32
-
 #include <windows.h>
+#else
+#include <sys/wait.h>
+#endif
+
 #include <moonbit.h>
 
-moonbit_string_t moonbitlang_async_get_curr_env() {
-  LPWCH env_block = GetEnvironmentStringsW();
-  if (!env_block)
-    return moonbit_make_string(0, 0);
+#ifdef _WIN32
 
-  int len = 1;
-  while (env_block[len - 1] != 0 || env_block[len] != 0) {
-    ++len;
-  }
-  moonbit_string_t result = moonbit_make_string_raw(len);
-  memcpy(result, env_block, len * sizeof(WCHAR));
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_process_result(DWORD pid, DWORD *out) {
+  HANDLE handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+  if (handle == INVALID_HANDLE_VALUE)
+    return -1;
+
+  int result = GetExitCodeProcess(handle, out) ? 0 : -1;
+  CloseHandle(handle);
   return result;
 }
 
-void moonbitlang_async_terminate_process(DWORD pid) {
-  GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
-}
+#else
 
-void moonbitlang_async_kill_process(DWORD pid) {
-  HANDLE handle = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-  if (handle == INVALID_HANDLE_VALUE)
-    return;
-
-  TerminateProcess(handle, 1);
-  CloseHandle(handle);
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_process_result(pid_t pid, int *out) {
+  int wstatus;
+  int ret = waitpid(pid, &wstatus, 0);
+  if (ret > 0) {
+    *out = WEXITSTATUS(wstatus);
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
 #endif

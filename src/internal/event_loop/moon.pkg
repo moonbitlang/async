@@ -30,6 +30,7 @@ options(
     "thread_pool.c",
     "io_unix.c",
     "io_windows.c",
+    "process.c",
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],

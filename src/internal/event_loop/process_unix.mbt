@@ -32,7 +32,12 @@ pub async fn spawn(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn wait_pid(pid : Int, context~ : String) -> Int? {
+#borrow(out)
+extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
+
+///|
+#cfg(not(platform="windows"))
+pub async fn wait_pid(pid : Int, context~ : String) -> Int {
   guard curr_loop.val is Some(evloop)
   guard support_wait_pid_via_poll() else {
     // pidfd not available, fall back to blocking waitpid in worker thread.
@@ -42,7 +47,7 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Int? {
     let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
       evloop.cancel_job_in_worker(job_id, context~)
     })
-    Some(exit_code)
+    exit_code
   }
   match evloop.poll.register_pid(pid) {
     Running(alt_id) => {
@@ -53,8 +58,13 @@ pub async fn wait_pid(pid : Int, context~ : String) -> Int? {
         evloop.poll.remove_pid(alt_id)
       }
       @coroutine.suspend()
-      None
     }
-    Stopped => None
+    Stopped => ()
   }
+  let out = Ref::new(0)
+  let ret = get_process_result(pid, out)
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  out.val
 }
