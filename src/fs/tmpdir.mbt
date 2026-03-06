@@ -23,19 +23,9 @@ let tmpdir_seed : @random.Rand = {
 }
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn get_tmp_base_path_ffi() -> String = "moonbitlang_async_get_tmp_base_path"
-
-///|
-#cfg(not(platform="windows"))
-let tmp_base_path : String = get_tmp_base_path_ffi()
-
-///|
-#cfg(platform="windows")
 extern "C" fn get_tmp_path_ffi() -> String? = "moonbitlang_async_get_tmp_path"
 
 ///|
-#cfg(platform="windows")
 let tmp_base_path : String = {
   guard get_tmp_path_ffi() is Some(path) else {
     let err = @os_error.errno_to_string(@os_error.get_errno())

@@ -89,22 +89,6 @@ int moonbitlang_async_unlock_file(int fd) {
   return flock(fd, LOCK_UN);
 }
 
-moonbit_string_t moonbitlang_async_get_tmp_base_path() {
-  const char *path;
-#ifdef __ANDROID__
-  const char *tmpdir = getenv("TMPDIR");
-  path = tmpdir ? tmpdir : "/data/local/tmp/";
-#else
-  path = "/tmp/";
-#endif
-  size_t len = strlen(path);
-  moonbit_string_t str = moonbit_make_string_raw(len);
-  for (size_t i = 0; i < len; i++) {
-    ((uint16_t*)str)[i] = (uint16_t)(unsigned char)path[i];
-  }
-  return str;
-}
-
 #endif
 
 #ifdef _WIN32
@@ -131,4 +115,21 @@ moonbit_string_t moonbitlang_async_get_tmp_path() {
   }
 }
 
+#else
+
+moonbit_string_t moonbitlang_async_get_tmp_path() {
+  const char *path;
+#ifdef __ANDROID__
+  const char *tmpdir = getenv("TMPDIR");
+  path = tmpdir ? tmpdir : "/data/local/tmp/";
+#else
+  path = "/tmp/";
+#endif
+  size_t len = strlen(path);
+  moonbit_string_t str = moonbit_make_string_raw(len);
+  for (size_t i = 0; i < len; i++) {
+    ((uint16_t*)str)[i] = (uint16_t)(unsigned char)path[i];
+  }
+  return str;
+}
 #endif
