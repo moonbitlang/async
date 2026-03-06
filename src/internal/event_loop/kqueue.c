@@ -55,6 +55,10 @@ int moonbitlang_async_poll_register(
   return kevent(kqfd, &event, 1, 0, 0, 0);
 }
 
+int moonbitlang_async_support_wait_pid_via_poll() {
+  return 1;
+}
+
 // return value:
 // - `>= 0`: success, return the pid itself
 // - `-1`: failure

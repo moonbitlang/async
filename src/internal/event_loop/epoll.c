@@ -21,6 +21,7 @@
 #include <sys/epoll.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <linux/version.h>
 
 int moonbitlang_async_poll_create() {
   return epoll_create1(0);
@@ -61,11 +62,17 @@ int moonbitlang_async_poll_register(
   return epoll_ctl(epfd, op, fd, &event);
 }
 
+int moonbitlang_async_support_wait_pid_via_poll() {
+  return LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0);
+}
+
 // return value:
 // - `>= 0`: success, return the pidfd
 // - `-1`: failure
 // - `-2`: already terminated
 int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
+
   int pidfd = syscall(SYS_pidfd_open, pid, 0);
   if (pidfd < 0)
     return -1;
@@ -81,6 +88,12 @@ int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
   }
 
   return pidfd;
+
+#else
+
+  return -1;
+
+#endif
 }
 
 int moonbitlang_async_poll_remove(int epfd, int fd, int events) {

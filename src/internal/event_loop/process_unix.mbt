@@ -34,19 +34,17 @@ pub async fn spawn(
 #cfg(not(platform="windows"))
 pub async fn wait_pid(pid : Int, context~ : String) -> Int? {
   guard curr_loop.val is Some(evloop)
-  // Try pidfd first (Linux 5.3+), fall back to worker-thread waitpid
-  try evloop.poll.register_pid(pid) catch {
-    _ => {
-      // pidfd not available, fall back to blocking waitpid in worker thread.
-      // The worker reaps the child and stores the exit code in job.ret(),
-      // so return it here to avoid a second waitpid in get_process_result.
-      let job = Job::wait_for_process(pid)
-      let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
-        evloop.cancel_job_in_worker(job_id, context~)
-      })
-      Some(exit_code)
-    }
-  } noraise {
+  guard support_wait_pid_via_poll() else {
+    // pidfd not available, fall back to blocking waitpid in worker thread.
+    // The worker reaps the child and stores the exit code in job.ret(),
+    // so return it here to avoid a second waitpid in get_process_result.
+    let job = Job::wait_for_process(pid)
+    let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
+      evloop.cancel_job_in_worker(job_id, context~)
+    })
+    Some(exit_code)
+  }
+  match evloop.poll.register_pid(pid) {
     Running(alt_id) => {
       guard evloop.pids.get(alt_id) is None
       evloop.pids[alt_id] = @coroutine.current_coroutine()
