@@ -173,7 +173,7 @@ async test "Only_V4 UDP server" {
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
-      for {
+      for ;; {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
@@ -223,7 +223,7 @@ async test "Only_V6 UDP server" {
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
-      for {
+      for ;; {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
@@ -270,7 +270,7 @@ async test "dual stack UDP server" {
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
-      for {
+      for ;; {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()

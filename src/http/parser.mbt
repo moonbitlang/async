@@ -107,7 +107,7 @@ impl @io.Reader for Reader with _get_internal_buffer(self) {
 ///|
 async fn Reader::read_headers(self : Reader) -> Map[String, String] {
   let headers = {}
-  for {
+  for ;; {
     guard self.transport.read_until("\r\n") is Some(header_line) else {
       raise @io.ReaderClosed
     }

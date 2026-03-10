@@ -23,7 +23,7 @@ async test "external client" {
         log.push("new client to \{request.path}")
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()
-        for {
+        for ;; {
           let msg = ws.recv()
           let data = msg.read_all().text()
           log.push("\{msg.kind}: \{data}")

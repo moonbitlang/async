@@ -125,7 +125,7 @@ pub async fn TcpServer::run_forever(
     Some(n) => Some(@async.Semaphore::new(n))
   }
   @async.with_task_group(group => {
-    for {
+    for ;; {
       let (conn, addr) = self.accept()
       if conn_limit is Some(limit) {
         limit.acquire()

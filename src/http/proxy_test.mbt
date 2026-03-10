@@ -171,7 +171,7 @@ async test "proxied misc request" {
     group.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, _) => {
         let conn = @http.ServerConnection::new(conn)
-        for {
+        for ;; {
           let request = conn.read_request()
           let body = conn.read_all().text()
           log.push(

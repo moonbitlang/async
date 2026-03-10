@@ -128,7 +128,7 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
 impl @io.Writer for Sender with write_reader(self, reader) {
   match self.mode {
     SendingHeader =>
-      for {
+      for ;; {
         if self.send_len >= self.send_buf.length() {
           self.flush()
         }
@@ -157,7 +157,7 @@ impl @io.Writer for Sender with write_reader(self, reader) {
       self.send_buf[3] = '\r'
       self.send_buf[4] = '\n'
       let max_len = self.send_buf.length() - 7
-      for {
+      for ;; {
         let len = reader.read(self.send_buf, offset=5, max_len~)
         if len == 0 {
           break
