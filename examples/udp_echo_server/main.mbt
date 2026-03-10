@@ -17,7 +17,7 @@ async fn main {
   @async.with_task_group(root => {
     let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:4200"))
     defer server.close()
-    for {
+    for ;; {
       let buf = FixedArray::make(1024, b'0')
       let (n, addr) = server.recvfrom(buf)
       root.spawn_bg(() => {

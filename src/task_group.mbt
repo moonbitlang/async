@@ -308,7 +308,7 @@ pub fn[X] TaskGroup::spawn_loop(
   fatal_error? : (Error) -> Bool,
 ) -> Unit {
   self.spawn_bg(no_wait~, allow_failure~, () => {
-    for {
+    for ;; {
       let result = match retry {
         None => f()
         Some(strategy) =>

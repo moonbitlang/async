@@ -24,7 +24,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
     guard request.path is "/ws" else { conn.send_response(404, "NotFound") }
     let ws = @websocket.from_http_server(request, conn)
     defer ws.close()
-    for {
+    for ;; {
       // Receive a new message using `ws.recv()`
       // WebSocket message can be very long,
       // so `ws.recv()` does not read the full message into memory.

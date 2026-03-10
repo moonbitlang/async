@@ -25,7 +25,7 @@ let curr_env : String = get_curr_env()
 fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
   arg : StringView,
-) -> Unit raise {
+) -> Unit {
   // Do not add double quotes if it is unnecessary to do so.
   // This help with simple cases when the program is not using C argv syntax,
   // such as `rundll32.exe`.
@@ -43,7 +43,7 @@ fn StringBuilder::write_arg_with_windows_escape(
   let mut segment_start = 0
   let mut index = 0
   let mut trailing_backslash = 0
-  fn flush(skip : Int) raise {
+  fn flush(skip : Int) {
     if index > segment_start {
       builder.write_stringview(arg[segment_start:index - trailing_backslash])
       if trailing_backslash > 0 {

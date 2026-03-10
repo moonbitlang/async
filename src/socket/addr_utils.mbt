@@ -29,15 +29,15 @@ fn try_parse_ipv6(
   }
 
   // Check the part after the closing bracket, it must be ":port"
-  let remaining = input[bracket_end + 1:] catch { _ => raise InvalidAddr }
+  let remaining = input[bracket_end + 1:]
   guard remaining.has_prefix(":") else {
     // Missing port after IPv6 address
     raise InvalidAddr
   }
 
   // Parse the IPv6 address and port
-  let ip_str = input[1:bracket_end] catch { _ => raise InvalidAddr }
-  let port_str = remaining[1:] catch { _ => raise InvalidAddr }
+  let ip_str = input[1:bracket_end]
+  let port_str = remaining[1:]
 
   // Parse the IPv6 address into a byte array
   let ip_bytes = parse_ipv6_to_bytes(ip_str)
@@ -212,8 +212,8 @@ fn parse_ipv4_to_bytes(
 fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
   // Find the last colon to separate IP and port
   guard input.rev_find(":") is Some(last_colon) else { raise InvalidAddr }
-  let ip_str = input[:last_colon] catch { _ => raise InvalidAddr }
-  let port_str = input[last_colon + 1:] catch { _ => raise InvalidAddr }
+  let ip_str = input[:last_colon]
+  let port_str = input[last_colon + 1:]
   let port = parse_port(port_str)
   // Parse the IP address
   let (a, b, c, d) = parse_ipv4_to_bytes(ip_str.view())

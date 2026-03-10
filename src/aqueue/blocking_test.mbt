@@ -80,7 +80,7 @@ async test "blocking fairness" {
       }
     })
     group.spawn_bg(no_wait=true, () => {
-      for {
+      for ;; {
         @async.sleep(100)
         ignore(q.get())
       }
@@ -99,13 +99,13 @@ async test "blocking cancellation" {
     let q = @async.Queue::new(kind=Blocking(1))
     q.put(0)
     group.spawn_bg(no_wait=true, () => {
-      for {
+      for ;; {
         @async.sleep(200)
         ignore(q.get())
       }
     })
     @async.with_timeout(500, () => {
-      for {
+      for ;; {
         q.put(0) catch {
           err => {
             log.push("put() cancelled")

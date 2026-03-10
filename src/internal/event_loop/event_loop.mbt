@@ -400,7 +400,7 @@ async fn EventLoop::wait_for_job(
     Some(cancel_func) =>
       @coroutine.suspend() catch {
         err =>
-          for {
+          for ;; {
             let status = cancel_func(job_id) catch {
               err =>
                 @coroutine.protect_from_cancel(() => {

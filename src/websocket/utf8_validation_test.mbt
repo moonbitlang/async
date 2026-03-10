@@ -20,7 +20,7 @@ async test "UTF8 validation" {
     let addr = server.addr()
     group.spawn_bg(no_wait=true, () => {
       defer server.close()
-      for {
+      for ;; {
         let (conn, _) = server.accept()
         let request = conn.read_request() catch {
           err => {

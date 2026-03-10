@@ -125,7 +125,7 @@ async test "write buffering" {
       let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @websocket.ConnectionClosed(_) => break
           err => raise err
@@ -179,7 +179,7 @@ async test "large message" {
     client.start_message(Binary)
     let chunk = Bytes::makei(1500, i => (i % 0x100).to_byte())
     let mut checksum = 0
-    for i in 0..<20 {
+    for _ in 0..<20 {
       for byte in chunk {
         checksum += byte.to_int()
       }

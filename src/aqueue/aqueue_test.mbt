@@ -91,7 +91,7 @@ async test "aqueue cancellation" {
       }
     })
     @async.with_timeout(750, () => {
-      for {
+      for ;; {
         let x = queue.get() catch {
           err => {
             log.write_string("`queue.get()` cancelled with \{err}\n")

@@ -228,7 +228,7 @@ pub async fn Server::run_forever(
   self.server.run_forever(allow_failure?, max_connections?, (conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)
     defer conn.close()
-    for {
+    for ;; {
       let request = conn.read_request()
       f(request, conn, conn)
       if conn.closed {

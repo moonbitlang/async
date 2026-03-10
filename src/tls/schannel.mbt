@@ -132,7 +132,7 @@ async fn Tls::connect(self : Tls) -> Unit {
   }
   let read_buf = self.transport.reader._get_internal_buffer().repr()
   let write_buf = self.transport.write_buf
-  for {
+  for ;; {
     let ret = self.context.connect(
       host,
       in_buffer=read_buf.buf.unsafe_reinterpret_as_bytes(),
@@ -201,7 +201,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 async fn Tls::accept(self : Tls) -> Unit {
   let read_buf = self.transport.reader._get_internal_buffer().repr()
   let write_buf = self.transport.write_buf
-  for {
+  for ;; {
     let ret = self.context.accept(
       in_buffer=read_buf.buf.unsafe_reinterpret_as_bytes(),
       in_buffer_offset=read_buf.start,
