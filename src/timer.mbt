@@ -13,16 +13,12 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@async.sleep)
-  ignore(@event_loop.Timer::new)
-  ignore(@coroutine.spawn)
-  ignore(@pipe.unimplemented)
-  ignore(@stdio.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
+/// `sleep` will wait for the given time (in milliseconds) before returning.
+/// Other task can still run while current task is sleeping.
+/// If current task is cancelled, `sleep` will return early with an error.
+pub async fn sleep(duration : Int) -> Unit {
+  let coro = @coroutine.current_coroutine()
+  let timer = @event_loop.Timer::new(duration, () => coro.wake())
+  defer timer.cancel()
+  @coroutine.suspend()
 }

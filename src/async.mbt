@@ -13,12 +13,6 @@
 // limitations under the License.
 
 ///|
-/// `sleep` will wait for the given time (in milliseconds) before returning.
-/// Other task can still run while current task is sleeping.
-/// If current task is cancelled, `sleep` will return early with an error.
-pub using @event_loop {sleep}
-
-///|
 /// Pause current task and give other tasks chance to execute.
 /// When performing long running pure computation (i.e. no IO involved),
 /// `pause` can be used to avoid starving other tasks.

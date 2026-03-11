@@ -189,7 +189,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   let now = @time.ms_since_epoch()
   for timer in self.timers {
     if timer.expire_time <= now {
-      timer.coro.wake()
+      (timer.callback)()
     } else {
       break
     }
@@ -367,15 +367,6 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       raise err
     }
   }
-}
-
-///|
-pub async fn sleep(duration : Int) -> Unit {
-  guard curr_loop.val is Some(evloop)
-  let timer = Timer::new(duration, @coroutine.current_coroutine())
-  evloop.timers.add(timer)
-  defer evloop.timers.remove(timer)
-  @coroutine.suspend()
 }
 
 ///|

@@ -25,7 +25,7 @@ async fn perform_sleep_job(t : Int) -> Unit {
 ///|
 #cfg(target="js")
 async fn perform_sleep_job(t : Int) -> Unit {
-  @async.protect_from_cancel(() => sleep(t), resume_on_cancel=true)
+  @async.protect_from_cancel(() => @async.sleep(t), resume_on_cancel=true)
 }
 
 ///|

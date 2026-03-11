@@ -13,20 +13,29 @@
 // limitations under the License.
 
 ///|
-priv struct Timer {
+struct Timer {
   timer_id : Int
   expire_time : Int64
-  coro : @coroutine.Coroutine
+  callback : () -> Unit
 }
 
 ///|
 let timer_id : Ref[Int] = { val: 0 }
 
 ///|
-fn Timer::new(duration : Int, coro : @coroutine.Coroutine) -> Timer {
+pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
+  guard curr_loop.val is Some(evloop)
   let expire_time = @time.ms_since_epoch() + duration.to_int64()
   timer_id.val += 1
-  { timer_id: timer_id.val, expire_time, coro }
+  let timer = { timer_id: timer_id.val, expire_time, callback }
+  evloop.timers.add(timer)
+  timer
+}
+
+///|
+pub fn Timer::cancel(timer : Timer) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  evloop.timers.remove(timer)
 }
 
 ///|

@@ -13,16 +13,21 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@async.sleep)
-  ignore(@event_loop.Timer::new)
-  ignore(@coroutine.spawn)
-  ignore(@pipe.unimplemented)
-  ignore(@stdio.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
+#external
+type Timer
+
+///|
+extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
+  #| (duration, f) => setTimeout(f, duration)
+
+///|
+pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
+  set_timeout(duration, () => {
+    f()
+    reschedule()
+  })
 }
+
+///|
+pub extern "js" fn Timer::cancel(self : Timer) =
+  #| (timer) => clearTimeout(timer)

@@ -34,30 +34,3 @@ pub fn reschedule() -> Unit {
     ignore(set_timeout(0, reschedule))
   }
 }
-
-///|
-#external
-priv type Timer
-
-///|
-extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
-  #| (duration, f) => setTimeout(f, duration)
-
-///|
-extern "js" fn Timer::cancel(self : Timer) =
-  #| (timer) => clearTimeout(timer)
-
-///|
-pub async fn sleep(duration : Int) -> Unit {
-  let coro = @coroutine.current_coroutine()
-  let timer = set_timeout(duration, fn() {
-    coro.wake()
-    reschedule()
-  })
-  @coroutine.suspend() catch {
-    err => {
-      timer.cancel()
-      raise err
-    }
-  }
-}

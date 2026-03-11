@@ -40,8 +40,6 @@ pub async fn remove(StringView, context~ : String) -> Unit
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
 
-pub async fn sleep(Int) -> Unit
-
 pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Int
 
 pub let stderr : IoHandle
@@ -89,6 +87,10 @@ pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : In
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+
+type Timer
+pub fn Timer::cancel(Self) -> Unit
+pub fn Timer::new(Int, () -> Unit) -> Self
 
 // Type aliases
 
