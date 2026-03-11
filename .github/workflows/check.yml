@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
+        os: ["windows-latest"]
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
@@ -50,33 +50,18 @@ jobs:
           moon version --all
           moonrun --version
 
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check --deny-warn
-
-      - name: moon check (examples)
-        run: moon check --manifest-path examples/moon.mod.json --deny-warn
-
       - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-      - name: test examples
-        run: moon test --manifest-path examples/moon.mod.json
-
-      - name: test examples (release)
-        run: moon test --release --manifest-path examples/moon.mod.json
+        run: |
+          for ($i = 0; $i -le 10; $i++) {
+            moon test
+            moon test --release
+          }
 
   nightly-build:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
+        os: ["windows-latest"]
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
@@ -118,161 +103,12 @@ jobs:
           moon version --all
           moonrun --version
 
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check
-
-      - name: moon check (examples)
-        run: moon check --manifest-path examples/moon.mod.json
-
-      - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-      - name: test examples
-        run: moon test --manifest-path examples/moon.mod.json
-
-      - name: test examples (release)
-        run: moon test --release --manifest-path examples/moon.mod.json
-
-  js-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target js --deny-warn
-
       - name: moon test
         run: |
-          moon test --release --target js
-          moon test --target js
-
-  wasm-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target wasm --deny-warn
-          moon check --target wasm-gc --deny-warn
-
-  moon-format:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: format diff
-        run: |
-          moon fmt
-          moon fmt --manifest-path examples/moon.mod.json
-          git diff --exit-code
-
-  moon-info:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon info
-        run: |
-          moon info
-          git diff --exit-code
-
-  sanitizer-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
-
-      - name: setup sanitizer check
-        run: |
-          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_sanitizer_check
-
-      - name: run test with address sanitizer
-        run: |
-          export ASAN_OPTIONS=fast_unwind_on_malloc=0
-          moon test
+          for ($i = 0; $i -le 10; $i++) {
+            moon test
+            moon test --release
+          }
 
   sanitizer-check-windows:
     runs-on: windows-latest
@@ -318,4 +154,6 @@ jobs:
       - name: run test with address sanitizer
         run: |
           $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
-          moon test
+          for ($i = 0; $i -le 10; $i++) {
+            moon test
+          }
