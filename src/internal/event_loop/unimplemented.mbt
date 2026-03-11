@@ -24,9 +24,17 @@ let _ignore_unused_import : Unit = {
 }
 
 ///|
-#warnings("-unused_error_type-unused_async")
-#coverage.skip
-pub async fn sleep(duration : Int) -> Unit {
+type Timer
+
+///|
+pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
   ignore(duration)
-  abort("`sleep` is unimplemented on WASM backend")
+  ignore(callback)
+  abort("`Timer::new()` is unimplemented on WASM backend")
+}
+
+///|
+pub fn Timer::cancel(timer : Timer) -> Unit {
+  ignore(timer)
+  abort("`Timer::cancel()` is unimplemented on WASM backend")
 }

@@ -18,7 +18,7 @@
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
-  ignore(@event_loop.sleep)
+  ignore(@event_loop.Timer::new)
   ignore(@async.sleep)
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)

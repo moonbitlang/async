@@ -16,7 +16,7 @@
 #coverage.skip
 let _ignore_unused_import : Unit = {
   ignore(@coroutine.spawn)
-  ignore(@event_loop.sleep)
+  ignore(@event_loop.Timer::new)
 }
 
 ///|
