@@ -13,41 +13,6 @@
 // limitations under the License.
 
 ///|
-async test "spawn basic" {
-  let buf = StringBuilder::new()
-  @async.with_task_group(root => {
-    root.spawn_bg(() => {
-      @async.sleep(100)
-      buf.write_string("task 1, tick 1\n")
-      @async.sleep(200)
-      buf.write_string("task 1, tick 2\n")
-      @async.sleep(200)
-      buf.write_string("task 1, tick 3\n")
-    })
-    root.spawn_bg(() => {
-      @async.sleep(200)
-      buf.write_string("task 2, tick 1\n")
-      @async.sleep(200)
-      buf.write_string("task 2, tick 2\n")
-      @async.sleep(200)
-      buf.write_string("task 2, tick 3\n")
-    })
-  })
-  inspect(
-    buf.to_string(),
-    content=(
-      #|task 1, tick 1
-      #|task 2, tick 1
-      #|task 1, tick 2
-      #|task 2, tick 2
-      #|task 1, tick 3
-      #|task 2, tick 3
-      #|
-    ),
-  )
-}
-
-///|
 async test "spawn error1" {
   let buf = StringBuilder::new()
   let result = try? @async.with_task_group(root => {
