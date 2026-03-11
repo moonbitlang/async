@@ -8,7 +8,3 @@ import {
   "moonbitlang/async/semaphore",
   "moonbitlang/async/cond_var",
 }
-
-options(
-  "max-concurrent-tests": 15,
-)
