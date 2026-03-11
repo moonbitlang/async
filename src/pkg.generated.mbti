@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/aqueue",
   "moonbitlang/async/cond_var",
   "moonbitlang/async/semaphore",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -40,6 +41,10 @@ pub suberror TimeoutError
 pub impl Show for TimeoutError
 pub impl ToJson for TimeoutError
 
+pub suberror TimerCancelled
+pub impl Show for TimerCancelled
+pub impl @debug.Debug for TimerCancelled
+
 // Types and methods
 type Lazy[X]
 pub async fn[X] Lazy::wait(Self[X]) -> X
@@ -61,6 +66,12 @@ pub fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
 pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool) -> Task[X]
 pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit
 pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> IterResult, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
+
+type Timer
+pub fn Timer::cancel(Self, err? : Error) -> Unit
+pub fn Timer::new(Int) -> Self
+pub fn Timer::refresh(Self) -> Unit
+pub async fn Timer::wait(Self) -> Unit
 
 // Type aliases
 pub using @cond_var {type Cond as CondVar}
