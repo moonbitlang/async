@@ -33,6 +33,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 extern "C" fn exit(code : Int) = "exit"
 
 ///|
+#coverage.skip
 #cfg(target="js")
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
