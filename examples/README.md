@@ -59,3 +59,8 @@ You can learn about the basic structure of a TCP server in MoonBit from this exa
 A simple UDP echo server written in MoonBit.
 
 You can learn about the basic structure of a UDP server in MoonBit from this example.
+
+## `idle_timeout`
+A simple toy program that exit automatically if the user have not type anything in the terminal for 5 seconds.
+
+You can learn about the pattern of setting up a idle timeout system in MoonBit from this example.
