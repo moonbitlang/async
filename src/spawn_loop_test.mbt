@@ -69,52 +69,29 @@ async test "spawn_loop basic-error" {
 
 ///|
 async test "spawn_loop retry-exponential" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        for i in 0..<9 {
-          @async.sleep(200)
-          log.write_string("tick \{i}\n")
+  let log = []
+  @async.with_task_group(group => {
+    let mut i = 0
+    let start = @async.now()
+    fn tick() {
+      (@async.now() - start + 50).to_int() / 200
+    }
+    group.spawn_loop(
+      retry=ExponentialDelay(initial=200, factor=2, maximum=600),
+      () => {
+        log.push("loop \{i} at tick #\{tick()}")
+        i = i + 1
+        match i {
+          1 | 2 | 3 => raise Err
+          4 => IterContinue
+          5 | 6 => raise Err
+          _ => IterEnd
         }
-      })
-      @async.sleep(100)
-      let mut i = 0
-      root.spawn_loop(
-        retry=ExponentialDelay(initial=200, factor=2, maximum=600),
-        () => {
-          log.write_string("loop \{i}\n")
-          i = i + 1
-          match i {
-            1 | 2 | 3 => raise Err
-            4 => IterContinue
-            5 | 6 => raise Err
-            _ => IterEnd
-          }
-        },
-      )
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|loop 0
-      #|tick 0
-      #|loop 1
-      #|tick 1
-      #|tick 2
-      #|loop 2
-      #|tick 3
-      #|tick 4
-      #|tick 5
-      #|loop 3
-      #|loop 4
-      #|tick 6
-      #|loop 5
-      #|tick 7
-      #|tick 8
-      #|loop 6
-      #|Ok(())
-    ),
-  )
+      },
+    )
+  })
+  json_inspect(log, content=[
+    "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #3", "loop 3 at tick #6",
+    "loop 4 at tick #6", "loop 5 at tick #7", "loop 6 at tick #9",
+  ])
 }

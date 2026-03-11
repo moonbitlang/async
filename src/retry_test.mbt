@@ -36,79 +36,45 @@ async test "retry immediate" {
 
 ///|
 async test "retry fixed" {
-  let log = StringBuilder::new()
-  @async.with_task_group(root => {
-    root.spawn_bg(() => {
-      for i in 0..<3 {
-        @async.sleep(200)
-        log.write_string("tick \{i}\n")
-      }
-    })
-    @async.sleep(100)
-    let mut i = 0
-    @async.retry(FixedDelay(200), () => {
-      log.write_string("loop \{i}\n")
-      i = i + 1
-      if i < 3 {
-        raise Err
-      }
-    })
+  let log = []
+  let start = @async.now()
+  fn tick() {
+    (@async.now() - start + 50).to_int() / 200
+  }
+  let mut i = 0
+  @async.retry(FixedDelay(200), () => {
+    log.push("loop \{i} at tick #\{tick()}")
+    i = i + 1
+    if i < 3 {
+      raise Err
+    }
   })
-  inspect(
-    log.to_string(),
-    content=(
-      #|loop 0
-      #|tick 0
-      #|loop 1
-      #|tick 1
-      #|loop 2
-      #|tick 2
-      #|
-    ),
-  )
+  log.push("retry completed at tick #\{tick()}")
+  json_inspect(log, content=[
+    "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #2", "retry completed at tick #2",
+  ])
 }
 
 ///|
 async test "retry exponential" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        for i in 0..<7 {
-          @async.sleep(200)
-          log.write_string("tick \{i}\n")
-        }
-      })
-      @async.sleep(100)
-      let mut i = 0
-      @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), () => {
-        log.write_string("loop \{i}\n")
-        i = i + 1
-        if i < 4 {
-          raise Err
-        }
-      })
-      log.write_string("retry completed\n")
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|loop 0
-      #|tick 0
-      #|loop 1
-      #|tick 1
-      #|tick 2
-      #|loop 2
-      #|tick 3
-      #|tick 4
-      #|tick 5
-      #|loop 3
-      #|retry completed
-      #|tick 6
-      #|Ok(())
-    ),
-  )
+  let log = []
+  let start = @async.now()
+  fn tick() {
+    (@async.now() - start + 50).to_int() / 200
+  }
+  let mut i = 0
+  @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), () => {
+    log.push("loop \{i} at tick #\{tick()}")
+    i = i + 1
+    if i < 4 {
+      raise Err
+    }
+  })
+  log.push("retry completed at tick #\{tick()}")
+  json_inspect(log, content=[
+    "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #3", "loop 3 at tick #6",
+    "retry completed at tick #6",
+  ])
 }
 
 ///|
