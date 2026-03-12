@@ -25,11 +25,12 @@ options(
   targets: {
     "client.js.mbt": [ "js" ],
     "client.mbt": [ "native" ],
+    "client.wasm-gc.mbt": [ "wasm-gc" ],
     "client_test.mbt": [ "native", "js" ],
     "parser.mbt": [ "native" ],
     "parser_wbtest.mbt": [ "native" ],
     "proxy_test.mbt": [ "native" ],
-    "request.mbt": [ "native", "js" ],
+    "request.mbt": [ "native", "js", "wasm-gc" ],
     "request_test.mbt": [ "native", "js" ],
     "resolve_url_wbtest.mbt": [ "native" ],
     "send.mbt": [ "native" ],
