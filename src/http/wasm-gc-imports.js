@@ -1,7 +1,8 @@
 // Import object for moonbitlang/async http wasm-gc fetch client.
 // When loading the compiled wasm-gc module, merge this into the import object:
 //
-//   const imports = { ...otherImports, ...httpImports };
+//   import { moonbitlang_async_http } from "./wasm-gc-imports.js";
+//   const imports = { ...otherImports, moonbitlang_async_http };
 //   const { instance } = await WebAssembly.instantiateStreaming(fetch("module.wasm"), imports);
 
 export const moonbitlang_async_http = {

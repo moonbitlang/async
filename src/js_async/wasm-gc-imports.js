@@ -1,7 +1,8 @@
-// Import object for moonbitlang/async js_async wasm-gc Promise and stream bridging.
-// When loading the compiled wasm-gc module, merge this into the import object:
+// Import objects for moonbitlang/async js_async wasm-gc Promise and stream bridging.
+// When loading the compiled wasm-gc module, merge these into the import object:
 //
-//   const imports = { ...otherImports, ...jsAsyncImports };
+//   import { moonbitlang_async_js, moonbitlang_async_stream } from "./wasm-gc-imports.js";
+//   const imports = { ...otherImports, moonbitlang_async_js, moonbitlang_async_stream };
 //   const { instance } = await WebAssembly.instantiateStreaming(fetch("module.wasm"), imports);
 
 export const moonbitlang_async_js = {
