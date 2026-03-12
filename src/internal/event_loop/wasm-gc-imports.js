@@ -1,7 +1,8 @@
-// Import object for moonbitlang/async wasm-gc timer and event loop.
-// When loading the compiled wasm-gc module, merge this into the import object:
+// Import objects for moonbitlang/async wasm-gc timer, event loop, and time modules.
+// When loading the compiled wasm-gc module, merge these into the import object:
 //
-//   const imports = { ...otherImports, ...asyncImports };
+//   import { moonbitlang_async_timer, moonbitlang_async_time } from "./wasm-gc-imports.js";
+//   const imports = { ...otherImports, moonbitlang_async_timer, moonbitlang_async_time };
 //   const { instance } = await WebAssembly.instantiateStreaming(fetch("module.wasm"), imports);
 
 export const moonbitlang_async_timer = {
