@@ -6,8 +6,8 @@
 //   const { instance } = await WebAssembly.instantiateStreaming(fetch("module.wasm"), imports);
 
 export const moonbitlang_async_timer = {
-  set_timeout: (duration, f) => setTimeout(f, duration),
-  clear_timeout: (timer) => clearTimeout(timer),
+  setTimeout: (duration, f) => setTimeout(f, duration),
+  clearTimeout: (timer) => clearTimeout(timer),
 };
 
 export const moonbitlang_async_time = {
