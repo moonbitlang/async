@@ -34,9 +34,7 @@ extern "C" fn SSL_CTX::server() -> SSL_CTX = "moonbitlang_async_tls_server_ctx"
 let client_ctx : SSL_CTX = {
   load_openssl()
   let ctx = SSL_CTX::client()
-  guard not(ctx.is_null()) else {
-    abort("failed to initialize SSL client context")
-  }
+  guard !ctx.is_null() else { abort("failed to initialize SSL client context") }
   ctx
 }
 
@@ -45,9 +43,7 @@ let client_ctx : SSL_CTX = {
 let server_ctx : SSL_CTX = {
   load_openssl()
   let ctx = SSL_CTX::server()
-  guard not(ctx.is_null()) else {
-    abort("failed to initialize SSL server context")
-  }
+  guard !ctx.is_null() else { abort("failed to initialize SSL server context") }
   ctx
 }
 
@@ -316,7 +312,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 ) -> Tls {
   let self = Tls::from_pair(client_ctx, r, w, host~)
   try {
-    if not(verify) {
+    if !verify {
       self.ssl.set_verify(false)
     }
     if host is Some(host) {

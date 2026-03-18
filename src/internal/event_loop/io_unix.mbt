@@ -116,7 +116,7 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
   evloop.fds.remove(handle.fd)
-  if not(handle.events is NoEvent) {
+  if !(handle.events is NoEvent) {
     evloop.poll.remove(handle.fd, events=handle.events) catch {
       err => abort("detach \{handle.fd} from loop: \{err}")
     }

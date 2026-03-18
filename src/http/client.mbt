@@ -159,13 +159,13 @@ pub impl @io.Reader for Client with _get_internal_buffer(self) {
 /// Writing to `@http.Client` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  guard not(self.sender.mode is SendingHeader)
+  guard !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
 pub impl @io.Writer for Client with write_reader(self, reader) {
-  guard not(self.sender.mode is SendingHeader)
+  guard !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 

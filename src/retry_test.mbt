@@ -131,7 +131,7 @@ async test "retry cancelled2" {
 async test "retry fatal_error" {
   let log = StringBuilder::new()
   fn fatal_error(err) {
-    not(err is @async.TimeoutError)
+    !(err is @async.TimeoutError)
   }
 
   let mut i = 0

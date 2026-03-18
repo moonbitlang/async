@@ -109,10 +109,10 @@ pub async fn Directory::read_all(
 ) -> Array[String] {
   let result = []
   while dir.read_next() is Some(entry) {
-    if not(include_special) && entry is ("." | "..") {
+    if !include_special && entry is ("." | "..") {
       continue
     }
-    if not(include_hidden) && entry is ['.', ..] {
+    if !include_hidden && entry is ['.', ..] {
       continue
     }
     result.push(entry)

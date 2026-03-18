@@ -130,14 +130,14 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
     }
     match key {
       "content-length" => {
-        guard not(self.body is Fixed(_)) else { raise BadRequest }
+        guard !(self.body is Fixed(_)) else { raise BadRequest }
         let len = @strconv.parse_int(value, base=10)
         if self.body is Empty && len > 0 {
           self.body = Fixed(len)
         }
       }
       "transfer-encoding" => {
-        guard not(self.body is Chunked(_)) else { raise BadRequest }
+        guard !(self.body is Chunked(_)) else { raise BadRequest }
         guard value.to_lower() is "chunked" else { raise NotImplemented }
         self.body = Chunked(0)
       }

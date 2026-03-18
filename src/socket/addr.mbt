@@ -165,12 +165,12 @@ pub async fn Addr::resolve(
   // search for address with preferred protocol
   match protocol {
     FavorV4 | OnlyV4 => {
-      if not(first_addr.is_ipv6()) {
+      if !first_addr.is_ipv6() {
         return first_addr
       }
-      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+      for ai = ai_root.next(); !ai.is_null(); ai = ai.next() {
         let addr = ai.to_addr(port)
-        if not(addr.is_ipv6()) {
+        if !addr.is_ipv6() {
           return addr
         }
       }
@@ -184,7 +184,7 @@ pub async fn Addr::resolve(
       if first_addr.is_ipv6() {
         return first_addr
       }
-      for ai = ai_root.next(); not(ai.is_null()); ai = ai.next() {
+      for ai = ai_root.next(); !ai.is_null(); ai = ai.next() {
         let addr = ai.to_addr(port)
         if addr.is_ipv6() {
           return addr

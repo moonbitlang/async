@@ -17,6 +17,11 @@
 pub type Directory
 
 ///|
+fn StringView::escape(self : StringView) -> String {
+  self.to_string().escape()
+}
+
+///|
 pub async fn open_detached(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -47,7 +52,7 @@ pub async fn open_detached(
 
   try perform_job_in_worker(job, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => (job.get_open_job_result(), job.get_open_job_kind())
@@ -98,7 +103,7 @@ pub async fn file_kind_by_path(
   let job = Job::file_kind_by_path(path_bytes, follow_symlink~)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => @fd_util.FileKind::from_sys_kind(job.get_file_kind_by_path_result())
@@ -134,7 +139,7 @@ pub async fn file_time_by_path(
   let job = Job::file_time_by_path(path_bytes, result, follow_symlink~)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -147,7 +152,7 @@ pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
   let path_bytes = @os_string.encode(path)
   perform_job_in_worker(Job::access(path_bytes, acc), context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
 }
@@ -157,7 +162,7 @@ pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   try perform_job_in_worker(Job::chmod(path_bytes, mode), context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -193,7 +198,7 @@ pub async fn remove(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   try perform_job_in_worker(Job::remove(path_bytes), context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -214,7 +219,7 @@ pub async fn symlink(
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(
         errno,
-        context="\{context}: \{repr(target)} => \{repr(path)}",
+        context="\{context}: \{target.escape()} => \{path.escape()}",
       )
     err => raise err
   } noraise {
@@ -227,7 +232,7 @@ pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   try perform_job_in_worker(Job::mkdir(path_bytes, mode), context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -239,7 +244,7 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   try perform_job_in_worker(Job::rmdir(path_bytes), context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -268,7 +273,7 @@ pub async fn opendir(path : StringView, context~ : String) -> Directory {
   let job = Job::opendir(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
   job.get_opendir_result()
@@ -296,7 +301,7 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
   let job = Job::realpath(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
   let c_path = job.get_realpath_result()
@@ -311,7 +316,7 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
   let job = Job::realpath(path_bytes)
   let _ = perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(path)}")
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
   job.get_realpath_result()
