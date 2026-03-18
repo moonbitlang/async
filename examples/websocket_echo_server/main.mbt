@@ -37,7 +37,7 @@ async fn main {
 /// Start the WebSocket echo server
 /// This function starts a server that listens on localhost:9001
 /// and echoes back any messages it receives from clients
-pub async fn start_echo_server() -> Unit {
+async fn start_echo_server() -> Unit {
   println("Starting WebSocket echo server on localhost:9001")
   let server = @http.Server::new(@socket.Addr::parse("0.0.0.0:9001"))
   server.run_forever((request, _, conn) => {
