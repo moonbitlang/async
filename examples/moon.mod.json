@@ -2,7 +2,9 @@
   "name": "moonbitlang/async_examples",
   "version": "0.3.0",
   "deps": {
-    "moonbitlang/async": "0.16.8"
+    "moonbitlang/async": {
+      "path": ".."
+    }
   },
   "readme": "README.md",
   "repository": "https://github.com/moonbitlang/async",
