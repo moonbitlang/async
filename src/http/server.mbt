@@ -108,13 +108,13 @@ pub impl @io.Writer for ServerConnection with write_once(
   offset~,
   len~,
 ) {
-  guard not(self.sender.mode is SendingHeader)
+  guard !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
 pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
-  guard not(self.sender.mode is SendingHeader)
+  guard !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 

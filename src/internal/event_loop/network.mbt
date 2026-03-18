@@ -41,7 +41,7 @@ pub async fn getaddrinfo(
   let job = Job::getaddrinfo(host_bytes)
   let ret = perform_job_in_worker(job, cancel=_ => NoWait, context~) catch {
     @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{repr(host)}")
+      raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
     err => raise err
   }
   if ret != 0 {
