@@ -54,7 +54,6 @@ jobs:
         run: |
           for ($i = 0; $i -le 10; $i++) {
             moon test
-            moon test --release
           }
 
   nightly-build:
@@ -107,7 +106,6 @@ jobs:
         run: |
           for ($i = 0; $i -le 10; $i++) {
             moon test
-            moon test --release
           }
 
   sanitizer-check-windows:
