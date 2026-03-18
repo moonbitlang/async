@@ -19,39 +19,60 @@ async test "main" {
     log..write_string(msg).write_string("\n")
   }
 
-  let result = try? @udp_ping_pong.main_prog(println)
+  let result = try? main_prog(println)
   log.write_string(result.to_string())
   inspect(
     log.to_string(),
     content=(
+      #|received new connection
+      #|client 0: connection established
       #|client 0 sent: ping
       #|server received: ping
       #|server sent: pong
       #|client 0 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 1: connection established
       #|client 1 sent: pong
       #|server received: pong
       #|server sent: pong
       #|client 1 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 2: connection established
       #|client 2 sent: ping
       #|server received: ping
       #|server sent: pong
       #|client 2 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 3: connection established
       #|client 3 sent: ping
       #|server received: ping
       #|server sent: pong
       #|client 3 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 4: connection established
       #|client 4 sent: pong
       #|server received: pong
       #|server sent: pong
       #|client 4 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 5: connection established
       #|client 5 sent: ping
       #|server received: ping
       #|server sent: pong
       #|client 5 received: pong
+      #|server: connection closed by peer
+      #|received new connection
+      #|client 6: connection established
       #|client 6 sent: exit
       #|server received: exit
       #|server sent: pong
       #|server initiate terminate
+      #|client 6 received: pong
       #|server terminate: ServerTerminate
       #|Ok(())
     ),
