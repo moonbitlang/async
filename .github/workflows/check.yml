@@ -56,7 +56,7 @@ jobs:
 
       - name: setup debug symbol
         run: |
-          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol -- src
 
       - name: moon test
         run: |
@@ -116,7 +116,7 @@ jobs:
 
       - name: setup debug symbol
         run: |
-          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol -- src
 
       - name: moon test
         run: |

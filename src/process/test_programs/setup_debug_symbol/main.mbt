@@ -42,7 +42,12 @@ async fn main {
     }
   }
 
-  @fs.walk(".", exclude~, (path, files) => for file in files {
+  let path = match @env.args() {
+    [_, path, ..] => path
+    _ => "."
+  }
+
+  @fs.walk(path, exclude~, (path, files) => for file in files {
     guard file is "moon.pkg" else {  }
     let full_path = "\{path}/\{file}"
     let content = @fs.read_file(full_path).text().split("\n")
