@@ -45,10 +45,18 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
 
+      - name: patch runtime to support backtarce (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: cp patched_runtime.c ~/.moon/lib/runtime.c
+
       - name: moon version
         run: |
           moon version --all
           moonrun --version
+
+      - name: setup debug symbol
+        run: |
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol
 
       - name: moon test
         run: |
@@ -97,10 +105,18 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
 
+      - name: patch runtime to support backtarce (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: cp patched_runtime.c ~/.moon/lib/runtime.c
+
       - name: moon version
         run: |
           moon version --all
           moonrun --version
+
+      - name: setup debug symbol
+        run: |
+          moon run --debug --manifest-path src/process/test_programs/moon.mod.json src/process/test_programs/setup_debug_symbol
 
       - name: moon test
         run: |
@@ -129,6 +145,9 @@ jobs:
 
       - name: load SSH key for testing (Windows)
         run: certutil -p test -user -importPFX My ./test_keys/cert.p12 NoRoot
+
+      - name: patch runtime to support backtarce (Windows)
+        run: cp patched_runtime.c ~/.moon/lib/runtime.c
 
       - name: moon version
         run: |
