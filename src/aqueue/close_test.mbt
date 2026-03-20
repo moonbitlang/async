@@ -61,12 +61,12 @@ async test "close with blocking put" {
   @async.with_task_group(group => {
     let start = @async.now()
     group.spawn_bg(() => {
-      @async.sleep(200)
+      @async.sleep(300)
       q.close()
     })
     inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
-    let duration = (now + 50 - start) / 200
+    let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
   })
 }

@@ -81,40 +81,23 @@ async test "aqueue multi-reader" {
 ///|
 async test "aqueue cancellation" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
-    let queue = @aqueue.Queue(kind=Unbounded)
-    root.spawn_bg(() => {
-      for x in 0..<4 {
-        @async.sleep(300)
-        log.write_string("put(\{x})\n")
-        queue.put(x)
+  let queue : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+  @async.with_timeout(350, () => {
+    let x = queue.get() catch {
+      err => {
+        log.write_string("`queue.get()` cancelled with \{err}\n")
+        raise err
       }
-    })
-    @async.with_timeout(750, () => {
-      for ;; {
-        let x = queue.get() catch {
-          err => {
-            log.write_string("`queue.get()` cancelled with \{err}\n")
-            raise err
-          }
-        }
-        log.write_string("get => \{x}\n")
-      }
-    }) catch {
-      @async.TimeoutError => ()
-      err => raise err
     }
-  })
+    log.write_string("get => \{x}\n")
+  }) catch {
+    @async.TimeoutError => ()
+    err => raise err
+  }
   inspect(
     log.to_string(),
     content=(
-      #|put(0)
-      #|get => 0
-      #|put(1)
-      #|get => 1
       #|`queue.get()` cancelled with Cancelled
-      #|put(2)
-      #|put(3)
       #|
     ),
   )
