@@ -273,3 +273,43 @@ async test "immediate failure" {
     ),
   )
 }
+
+//|
+
+///|
+async test "task group cancel & complete at the same time" {
+  let log = []
+  @async.with_task_group(outer => {
+    @async.with_task_group(inner => {
+      outer.spawn_bg(no_wait=true, () => {
+        for i = 1; ; i = i + 1 {
+          @async.pause()
+          log.push("round #\{i}")
+        }
+      })
+      // At round #1, the following things will happen in order:
+      // - `inner.return_immediately()` is called,
+      //   and all tasks in `inner` are cancelled,
+      //   including the main task of `inner`.
+      // - `task1` starts and completes, waking the main task of `inner`
+      // So here we will have `.cancer()` and `.wake()` called on the same coroutine,
+      // but the coroutine should be woken only once in this case.
+      inner.spawn_bg(() => inner.return_immediately(()))
+      let task1 = inner.spawn(() => ())
+      task1.wait() catch {
+        err => {
+          log.push("inner group main task cancelled")
+          @async.protect_from_cancel(() => {
+            @async.pause()
+            log.push("inner group main task cleanup completed")
+            raise err
+          })
+        }
+      }
+    })
+  })
+  json_inspect(log, content=[
+    "round #1", "inner group main task cancelled", "round #2", "inner group main task cleanup completed",
+    "round #3",
+  ])
+}
