@@ -21,10 +21,8 @@ async test "spawn_loop basic" {
       root.spawn_loop(() => {
         log.write_string("tick \{i}\n")
         i = i + 1
-        if i < 3 {
-          IterContinue
-        } else {
-          IterEnd
+        if i >= 3 {
+          raise @async.BreakFromSpawnLoop
         }
       })
     }),
@@ -52,7 +50,6 @@ async test "spawn_loop basic-error" {
         if i >= 3 {
           raise Err
         }
-        IterContinue
       })
     }),
   )
@@ -83,9 +80,9 @@ async test "spawn_loop retry-exponential" {
         i = i + 1
         match i {
           1 | 2 | 3 => raise Err
-          4 => IterContinue
+          4 => ()
           5 | 6 => raise Err
-          _ => IterEnd
+          _ => raise @async.BreakFromSpawnLoop
         }
       },
     )

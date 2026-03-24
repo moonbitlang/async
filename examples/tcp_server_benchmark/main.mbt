@@ -45,7 +45,6 @@ async fn client(
               }
               conn.write(data)
               send_count += data.length().to_int64()
-              IterContinue
             })
             conn_group.spawn_loop(no_wait=true, () => {
               let n = conn.read(buf)
@@ -53,7 +52,6 @@ async fn client(
                 latency_sum += @async.now() - before
               }
               recv_count += n.to_int64()
-              IterContinue
             })
             @async.sleep(conn_duration)
             throughput_sum += (send_count + recv_count) *
