@@ -286,7 +286,9 @@ pub fn[X] TaskGroup::return_immediately(
 ///|
 /// Similar to `spawn_bg`, but the spawn a loop,
 /// i.e. the spawned task will be restarted after it terminates.
-/// The spawned task can terminate the loop by returning `IterEnd`.
+/// The spawned task can terminate the loop by raising
+/// the special error `BreakFromSpawnLoop`,
+/// the loop will terminate normally instead of failing in this case.
 ///
 /// If `retry_method` is set, within each loop,
 /// the spawned task will be automatically restarted on failure.
@@ -297,7 +299,7 @@ pub fn[X] TaskGroup::return_immediately(
 /// The meaning of `no_wait` and `allow_failure` is the same as `spawn_bg`.
 pub fn[X] TaskGroup::spawn_loop(
   self : TaskGroup[X],
-  f : async () -> IterResult,
+  f : async () -> Unit,
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
   retry? : RetryMethod,
@@ -305,13 +307,28 @@ pub fn[X] TaskGroup::spawn_loop(
   fatal_error? : (Error) -> Bool,
 ) -> Unit {
   self.spawn_bg(no_wait~, allow_failure~, () => {
-    for ;; {
-      let result = match retry {
-        None => f()
-        Some(strategy) =>
-          moonbitlang_async_retry(strategy, f, max_retry?, fatal_error?)
+    try {
+      match retry {
+        None =>
+          for ;; {
+            f()
+          }
+        Some(strategy) => {
+          let fatal_error = err => {
+            err is BreakFromSpawnLoop || (fatal_error is Some(f) && f(err))
+          }
+          for ;; {
+            moonbitlang_async_retry(strategy, f, max_retry?, fatal_error~)
+          }
+        }
       }
-      guard result is IterContinue else { break }
+    } catch {
+      BreakFromSpawnLoop => ()
+      err => raise err
     }
   })
 }
+
+///|
+/// A special error used to break away from `TaskGroup::spawn_loop`.
+pub(all) suberror BreakFromSpawnLoop
