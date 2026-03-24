@@ -42,8 +42,10 @@ pub impl Hash for Coroutine with hash_combine(self, hasher) {
 
 ///|
 pub fn Coroutine::wake(self : Coroutine) -> Unit {
-  self.ready = true
-  scheduler.run_later.push_back(self)
+  if !self.ready {
+    self.ready = true
+    scheduler.run_later.push_back(self)
+  }
 }
 
 ///|
@@ -65,7 +67,7 @@ pub(all) suberror Cancelled derive(Show)
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {
   self.cancelled = true
-  if !(self.shielded || self.ready) {
+  if !self.shielded {
     self.wake()
   }
 }
