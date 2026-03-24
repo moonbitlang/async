@@ -63,7 +63,18 @@ int moonbitlang_async_poll_register(
 }
 
 int moonbitlang_async_support_wait_pid_via_poll() {
-  return LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
+  int pidfd = syscall(SYS_pidfd_open, getpid(), 0);
+  if (pidfd >= 0) {
+    close(pidfd);
+    return 1;
+  } else {
+    // TODO: check if `errno` is one of `ENOSYS` or `EPERM`.
+    return 0;
+  }
+#else
+  return 0;
+#endif
 }
 
 // return value:
