@@ -235,23 +235,20 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X) -> X {
       tg.result = Some(value)
     }
   })
-  if !tg.children.is_empty() {
-    @coroutine.suspend() catch {
-      err =>
-        if tg.state is Running {
-          tg.state = Fail(err)
-          for child in tg.children {
-            child.cancel()
-          }
+  @coroutine.suspend() catch {
+    err => {
+      if tg.state is Running {
+        tg.state = Fail(err)
+      }
+      if !tg.children.is_empty() {
+        for child in tg.children {
+          child.cancel()
         }
+        protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      }
     }
   }
-  if !tg.children.is_empty() {
-    protect_from_cancel(@coroutine.suspend) catch {
-      _ => ()
-    }
-  }
-  tg.children.clear()
+  guard tg.children.is_empty()
   while tg.group_defer.pop() is Some(defer_block) {
     defer_block() catch {
       err => if tg.state is Done { tg.state = Fail(err) }
