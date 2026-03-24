@@ -39,7 +39,7 @@ extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlan
 #cfg(not(platform="windows"))
 pub async fn wait_pid(pid : Int, context~ : String) -> Int {
   guard curr_loop.val is Some(evloop)
-  guard support_wait_pid_via_poll() else {
+  guard support_wait_pid_via_poll else {
     // pidfd not available, fall back to blocking waitpid in worker thread.
     // The worker reaps the child and stores the exit code in job.ret(),
     // so return it here to avoid a second waitpid in get_process_result.
