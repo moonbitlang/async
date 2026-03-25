@@ -60,7 +60,7 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -le 100; $i++) {
+          for ($i = 0; $i -le 500; $i++) {
             moon test src/tls
           }
 
@@ -120,7 +120,7 @@ jobs:
 
       - name: moon test
         run: |
-          for ($i = 0; $i -le 100; $i++) {
+          for ($i = 0; $i -le 500; $i++) {
             moon test src/tls
           }
 
@@ -171,6 +171,6 @@ jobs:
       - name: run test with address sanitizer
         run: |
           $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
-          for ($i = 0; $i -le 100; $i++) {
+          for ($i = 0; $i -le 500; $i++) {
             moon test src/tls
           }
