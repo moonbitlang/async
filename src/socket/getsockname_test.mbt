@@ -15,7 +15,7 @@
 ///|
 async test "getsockname TCP" {
   @async.with_task_group(group => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr()
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")
@@ -40,7 +40,7 @@ async test "getsockname TCP" {
 ///|
 async test "getsockname UDP" {
   @async.with_task_group(group => {
-    let server = @socket.UdpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.UdpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr()
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")

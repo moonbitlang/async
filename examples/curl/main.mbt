@@ -31,7 +31,7 @@ async fn download(
 ) -> Unit {
   let proxy = match proxy {
     None => None
-    Some(proxy_url) => Some(@http.Client::new(proxy_url))
+    Some(proxy_url) => Some(@http.Client(proxy_url))
   }
   let (_response, body) = @http.get_stream(url, proxy?)
   defer body.close()

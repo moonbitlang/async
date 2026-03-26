@@ -54,7 +54,7 @@ async fn client(
   id : Int,
   msg : String,
 ) -> Unit {
-  let conn = @socket.UdpClient::new(addr)
+  let conn = @socket.UdpClient(addr)
   defer conn.close()
   conn.send(@utf8.encode(msg))
   println("client \{id} sent: \{msg}")
@@ -71,7 +71,7 @@ async fn client(
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
   @async.with_task_group(root => {
-    let server = @socket.UdpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.UdpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(() => server_main(server, println))
     root.spawn_bg(() => {

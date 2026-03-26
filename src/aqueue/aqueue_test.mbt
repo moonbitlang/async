@@ -16,7 +16,7 @@
 async test "aqueue basic" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Unbounded)
+    let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg(() => {
       for _ in 0..<6 {
         log.write_string("get => \{queue.get()}\n")
@@ -54,7 +54,7 @@ async test "aqueue basic" {
 async test "aqueue multi-reader" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Unbounded)
+    let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg(() => {
       @async.sleep(70)
       let x = queue.get()
@@ -82,7 +82,7 @@ async test "aqueue multi-reader" {
 async test "aqueue cancellation" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Unbounded)
+    let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg(() => {
       for x in 0..<4 {
         @async.sleep(300)
@@ -125,7 +125,7 @@ async test "aqueue cancellation no_swallow" {
   // `get` should not swallow the value
   let log = StringBuilder::new()
   @async.with_task_group(group => {
-    let q = @aqueue.Queue::new(kind=Unbounded)
+    let q = @aqueue.Queue(kind=Unbounded)
     let get_task = group.spawn(() => log.write_string("get() => \{q.get()}\n"))
     @async.sleep(100)
     q.put(42)
@@ -146,7 +146,7 @@ async test "aqueue cancellation no_swallow" {
 async test "aqueue fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Unbounded)
+    let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg(() => {
       for _ in 0..<2 {
         let x = queue.get()
@@ -182,7 +182,7 @@ async test "aqueue fairness" {
 async test "aqueue fairness2" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Unbounded)
+    let queue = @aqueue.Queue(kind=Unbounded)
     queue.put(1)
     root.spawn_bg(() => {
       for _ in 0..<2 {
@@ -216,7 +216,7 @@ async test "aqueue fairness2" {
 
 ///|
 test "try_get" {
-  let q = @aqueue.Queue::new(kind=Unbounded)
+  let q = @aqueue.Queue(kind=Unbounded)
   inspect(q.try_get(), content="None")
   assert_true(q.try_put(42))
   inspect(q.try_get(), content="Some(42)")

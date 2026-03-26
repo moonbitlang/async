@@ -51,17 +51,19 @@ pub(all) enum Kind {
 ///|
 /// An asynchronous queue, where reader can wait for data to arrive
 /// in a non-blocking manner.
-struct Queue[X] {
+pub struct Queue[X] {
   kind : Kind
   /// invariant: if `readers` is non-empty, `buffer` must be empty
-  readers : @deque.Deque[Reader[X]]
+  priv readers : @deque.Deque[Reader[X]]
   /// invariant: if `writers` is non-empty, `buffer` must be full
-  writers : @deque.Deque[Writer[X]]
+  priv writers : @deque.Deque[Writer[X]]
   /// invariant: if `buffer` is non-empty, `readers` must be empty; 
   /// if `buffer` is not full, `writers` must be empty
-  buffer : @deque.Deque[X]
+  priv buffer : @deque.Deque[X]
   /// `Some(err)` if the queue is already closed
-  mut closed : Error?
+  priv mut closed : Error?
+
+  fn[X] new(kind~ : Kind) -> Queue[X]
 }
 
 ///|
@@ -69,8 +71,7 @@ struct Queue[X] {
 /// The behavior of `put` is determined by the `kind` argument,
 /// see the type `@aqueue.Kind` for more details.
 #as_free_fn
-#callsite(migration(kind, fill=true, msg="specify the kind of queue explicitly via `kind=...`"))
-pub fn[X] Queue::new(kind? : Kind = Unbounded) -> Queue[X] {
+pub fn[X] Queue::new(kind~ : Kind) -> Queue[X] {
   match kind {
     Unbounded => ()
     Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>

@@ -16,7 +16,7 @@
 async test "passthrough mode" {
   let log = []
   @async.with_task_group(group => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr()
     group.spawn_bg(() => {
       defer server.close()
@@ -33,7 +33,7 @@ async test "passthrough mode" {
         log.push("server received: \{packet}")
       }
     })
-    let client = @http.Client::new("http://localhost:\{server_addr.port()}")
+    let client = @http.Client("http://localhost:\{server_addr.port()}")
     defer client.close()
     let response = client..request(Connect, "/path").end_request()
     inspect(response.code, content="200")
@@ -53,7 +53,7 @@ async test "passthrough mode" {
 ///|
 async test "passthrough mode remaining data" {
   @async.with_task_group(group => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr()
     group.spawn_bg(() => {
       defer server.close()
@@ -113,7 +113,7 @@ async fn handle_connect(
 async test "proxied https request" {
   let log = []
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
     group.spawn_bg(no_wait=true, () => {
       server.run_forever((req, body, conn) => {
@@ -123,7 +123,7 @@ async test "proxied https request" {
     let (_, result) = @async.with_timeout(3000, () => {
       @http.get(
         "https://www.moonbitlang.com",
-        proxy=@http.Client::new("http://localhost:\{port}"),
+        proxy=@http.Client("http://localhost:\{port}"),
       )
     })
     assert_true(result.text().has_prefix("<!doctype html>"))
@@ -137,7 +137,7 @@ async test "proxied https request" {
 async test "proxied http request" {
   let log = []
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr().port()
     group.spawn_bg(no_wait=true, () => {
       server.run_forever((req, body, conn) => {
@@ -146,7 +146,7 @@ async test "proxied http request" {
     })
     let (_, result) = @http.get(
       "http://www.example.org",
-      proxy=@http.Client::new("http://localhost:\{port}"),
+      proxy=@http.Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
@@ -158,9 +158,9 @@ async test "proxied http request" {
 ///|
 async test "proxied misc request" {
   let log = []
-  let proxy_server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+  let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let proxy_server_addr = proxy_server.addr()
-  let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+  let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
   let port = server.addr().port()
   @async.with_task_group(group => {
     group.spawn_bg(no_wait=true, () => {
@@ -182,7 +182,7 @@ async test "proxied misc request" {
       })
     })
     async fn proxy() {
-      @http.Client::new("http://localhost:\{proxy_server_addr.port()}")
+      @http.Client("http://localhost:\{proxy_server_addr.port()}")
     }
 
     let _ = @http.get("http://localhost:\{port}", proxy=proxy())
@@ -201,7 +201,7 @@ async test "proxied misc request" {
 
 ///|
 async test "proxy error" {
-  let proxy_server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+  let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let port = proxy_server.addr().port()
   @async.with_task_group(group => {
     group.spawn_bg(no_wait=true, () => {
@@ -213,7 +213,7 @@ async test "proxy error" {
     try
       @http.get(
         "https://www.moonbitlang.com",
-        proxy=@http.Client::new("http://localhost:\{port}"),
+        proxy=@http.Client("http://localhost:\{port}"),
       )
     catch {
       err =>

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-let lock_file_prog : @async.Lazy[String] = @async.lazy_init(() => {
+let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
   let code = @process.run("moon", [
     "build", "--manifest-path", "src/process/test_programs/moon.mod.json", "src/process/test_programs/lock_file",
     "--debug",

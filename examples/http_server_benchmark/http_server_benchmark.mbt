@@ -17,7 +17,7 @@ let port : Int = 3001
 
 ///|
 async fn main {
-  let server = @http.Server::new(@socket.Addr::parse("0.0.0.0:\{port}"))
+  let server = @http.Server(@socket.Addr::parse("0.0.0.0:\{port}"))
   server.run_forever((request, _body, conn) => {
     match (request.meth, request.path) {
       (Get, "/") => conn.send_response(200, "OK")

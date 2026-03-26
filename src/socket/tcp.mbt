@@ -31,9 +31,11 @@ pub fn Tcp::fd(self : Tcp) -> @fd_util.Fd {
 }
 
 ///|
-struct TcpServer {
-  io : @event_loop.IoHandle
+pub struct TcpServer {
   family : AddrFamily
+  priv io : @event_loop.IoHandle
+
+  fn new(addr : Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer raise
 }
 
 ///|

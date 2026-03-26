@@ -6,7 +6,12 @@ package "moonbitlang/async/semaphore"
 // Errors
 
 // Types and methods
-type Semaphore
+pub struct Semaphore {
+  size : Int
+  // private fields
+
+  fn new(Int, initial_value? : Int) -> Semaphore
+}
 pub async fn Semaphore::acquire(Self) -> Unit
 pub fn Semaphore::new(Int, initial_value? : Int) -> Self
 pub fn Semaphore::release(Self) -> Unit

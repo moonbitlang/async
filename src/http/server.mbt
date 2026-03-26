@@ -147,9 +147,16 @@ pub async fn ServerConnection::send_response(
 
 ///|
 /// A HTTP server
-struct Server {
-  server : @socket.TcpServer
-  headers : Map[String, String]
+pub struct Server {
+  priv server : @socket.TcpServer
+  priv headers : Map[String, String]
+
+  fn new(
+    addr : @socket.Addr,
+    dual_stack? : Bool,
+    reuse_addr? : Bool,
+    headers? : Map[String, String],
+  ) -> Server raise
 }
 
 ///|
