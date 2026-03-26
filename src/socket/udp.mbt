@@ -18,9 +18,11 @@
 /// UDP is a connectionless protocol, here "connected" means
 /// the client always send packet to and receive packet from
 /// the specified remote server.
-struct UdpClient {
-  io : @event_loop.IoHandle
+pub struct UdpClient {
   family : AddrFamily
+  priv io : @event_loop.IoHandle
+
+  fn new(server : Addr) -> UdpClient raise
 }
 
 ///|
@@ -62,9 +64,11 @@ pub fn UdpClient::addr(self : UdpClient) -> Addr {
 
 ///|
 /// A UDP server bound to a listen address and receive packets from clients.
-struct UdpServer {
-  io : @event_loop.IoHandle
+pub struct UdpServer {
   family : AddrFamily
+  priv io : @event_loop.IoHandle
+
+  fn new(addr : Addr, dual_stack? : Bool) -> UdpServer raise
 }
 
 ///|

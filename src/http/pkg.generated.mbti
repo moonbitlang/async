@@ -42,7 +42,11 @@ pub impl Show for URIParseError
 pub impl ToJson for URIParseError
 
 // Types and methods
-type Client
+pub struct Client {
+  // private fields
+
+  async fn new(String, headers? : Map[String, String], proxy? : Client) -> Client
+}
 pub fn Client::close(Self) -> Unit
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
@@ -100,7 +104,11 @@ pub(all) struct Response {
 pub impl Show for Response
 pub impl ToJson for Response
 
-type Server
+pub struct Server {
+  // private fields
+
+  fn new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String]) -> Server raise
+}
 pub async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)
 pub fn Server::addr(Self) -> @socket.Addr
 pub fn Server::close(Self) -> Unit

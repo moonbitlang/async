@@ -18,7 +18,7 @@ async test "reuse addr" {
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       for _ in 0..<2 {
-        let server = @socket.TcpServer::new(
+        let server = @socket.TcpServer(
           @socket.Addr::parse("127.0.0.1:\{port}"),
           reuse_addr=true,
         )

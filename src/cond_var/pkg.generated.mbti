@@ -6,7 +6,11 @@ package "moonbitlang/async/cond_var"
 // Errors
 
 // Types and methods
-type Cond
+pub struct Cond {
+  // private fields
+
+  fn new() -> Cond
+}
 pub fn Cond::broadcast(Self) -> Unit
 pub fn Cond::new() -> Self
 pub fn Cond::signal(Self) -> Unit

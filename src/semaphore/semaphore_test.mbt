@@ -16,7 +16,7 @@
 async test "semaphore mutex" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let semaphore = @semaphore.Semaphore::new(1)
+    let semaphore = @semaphore.Semaphore(1)
     for i in 0..<3 {
       root.spawn_bg(() => {
         semaphore.acquire()
@@ -49,7 +49,7 @@ async test "semaphore mutex" {
 async test "semaphore multiple value" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let semaphore = @semaphore.Semaphore::new(2)
+    let semaphore = @semaphore.Semaphore(2)
     for i in 0..<6 {
       root.spawn_bg(() => {
         semaphore.acquire()
@@ -84,7 +84,7 @@ async test "semaphore multiple value" {
 ///|
 async test "semaphore cancellation" {
   @async.with_task_group(root => {
-    let semaphore = @semaphore.Semaphore::new(1)
+    let semaphore = @semaphore.Semaphore(1)
     root.spawn_bg(() => {
       semaphore.acquire()
       @async.sleep(500)
@@ -103,7 +103,7 @@ async test "semaphore cancellation" {
 async test "semaphore cancellation no_swallow" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let semaphore = @semaphore.Semaphore::new(1)
+    let semaphore = @semaphore.Semaphore(1)
     semaphore.acquire()
     let acquire_taskire_task = root.spawn(() => {
       semaphore.acquire()
@@ -128,7 +128,7 @@ async test "semaphore cancellation no_swallow" {
 async test "semaphore fairness" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let semaphore = @semaphore.Semaphore::new(1)
+    let semaphore = @semaphore.Semaphore(1)
     root.spawn_bg(() => {
       for _ in 0..<3 {
         semaphore.acquire()
@@ -163,7 +163,7 @@ async test "semaphore fairness" {
 
 ///|
 test "try_acquire" {
-  let semaphore = @semaphore.Semaphore::new(2, initial_value=0)
+  let semaphore = @semaphore.Semaphore(2, initial_value=0)
   inspect(semaphore.try_acquire(), content="false")
   semaphore.release()
   inspect(semaphore.try_acquire(), content="true")

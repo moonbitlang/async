@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv enum AddrFamily {
+pub(all) enum AddrFamily {
   IPv4 = 4
   IPv6 = 6
 }

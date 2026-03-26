@@ -62,7 +62,7 @@ async test "Timer basic" {
     })
     @async.sleep(300)
     log.push("creating timer")
-    let timer = @async.Timer::new(300)
+    let timer = @async.Timer(300)
     @async.with_task_group(group => {
       for _ in 0..<3 {
         group.spawn_bg(() => {
@@ -81,7 +81,7 @@ async test "Timer basic" {
 
 ///|
 async test "Timer no waiter" {
-  let timer = Timer::new(200)
+  let timer = @async.Timer(200)
   @async.sleep(400)
   inspect(
     @async.with_timeout_opt(0, () => timer.wait()),
@@ -93,13 +93,13 @@ async test "Timer no waiter" {
 
 ///|
 async test "Timer no one waiting" {
-  let _ = Timer::new(1000000)
+  let _ = @async.Timer(1000000)
   @async.pause()
 }
 
 ///|
 async test "Timer waiter cancelled 1" {
-  let timer = Timer::new(600)
+  let timer = @async.Timer(600)
   assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
   @async.sleep(200)
   assert_false(@async.with_timeout_opt(300, () => timer.wait()) is None)
@@ -107,7 +107,7 @@ async test "Timer waiter cancelled 1" {
 
 ///|
 async test "Timer waiter cancelled 2" {
-  let timer = Timer::new(300)
+  let timer = @async.Timer(300)
   assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
   @async.sleep(200)
   assert_false(@async.with_timeout_opt(0, () => timer.wait()) is None)
@@ -117,7 +117,7 @@ async test "Timer waiter cancelled 2" {
 async test "Timer::cancel" {
   let log = []
   let start = @async.now()
-  let timer = Timer::new(450)
+  let timer = @async.Timer(450)
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       @async.sleep(150)
@@ -148,7 +148,7 @@ async test "Timer::refresh has waiter" {
     (@async.now() - start + 50).to_int() / 150
   }
 
-  let timer = Timer::new(300)
+  let timer = @async.Timer(300)
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       timer.wait()
@@ -178,7 +178,7 @@ async test "Timer::refresh no waiter" {
     (@async.now() - start + 50).to_int() / 150
   }
 
-  let timer = Timer::new(300)
+  let timer = @async.Timer(300)
   @async.sleep(150)
   timer.refresh()
   log.push("refresh timer at tick #\{tick()}")
@@ -197,7 +197,7 @@ async test "Timer::refresh already terminated" {
     (@async.now() - start + 50).to_int() / 150
   }
 
-  let timer = Timer::new(300)
+  let timer = @async.Timer(300)
   @async.sleep(450)
   timer.refresh()
   log.push("refresh timer at tick #\{tick()}")
@@ -210,7 +210,7 @@ async test "Timer::refresh already terminated" {
 
 ///|
 async test "Timer::refresh already cancelled" {
-  let timer = Timer::new(300)
+  let timer = @async.Timer(300)
   timer.cancel()
   timer.refresh()
   inspect(

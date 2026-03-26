@@ -20,12 +20,18 @@ priv enum ClientTransport {
 
 ///|
 /// Simple HTTP client which connect to a remote host via TCP
-struct Client {
-  reader : Reader
-  transport : ClientTransport
-  tls : @tls.Tls?
-  sender : Sender
-  mut request_method : RequestMethod?
+pub struct Client {
+  priv reader : Reader
+  priv transport : ClientTransport
+  priv tls : @tls.Tls?
+  priv sender : Sender
+  priv mut request_method : RequestMethod?
+
+  async fn new(
+    uri : String,
+    headers? : Map[String, String],
+    proxy? : Client,
+  ) -> Client
 }
 
 ///|

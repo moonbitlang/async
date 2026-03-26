@@ -22,7 +22,7 @@ Sometimes, the simple one-time `@http.get` etc. is insufficient,
 for example you need to reuse the same connection for multiple requests,
 or the request/response body is very large and need to be processed lazily.
 In this case, you can use the `@http.Client` type.
-`@http.Client` can be created via `@http.Client::new(uri)`.
+`@http.Client` can be created via `@http.Client(uri)`.
 
 The workflow of performing a request with `@http.Client` is:
 
@@ -43,7 +43,7 @@ A complete example:
 ///|
 #cfg(any(target="native", target="js"))
 async test {
-  let client = @http.Client::new("https://www.moonbitlang.com")
+  let client = @http.Client("https://www.moonbitlang.com")
   defer client.close()
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")
@@ -59,7 +59,7 @@ Notice that some feature, such as proxy, is not supported on JavaScript backend.
 
 ## Writing HTTP servers
 The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.
-A HTTP server should first get created via `@http.Server::new(..)`,
+A HTTP server should first get created via `@http.Server(..)`,
 after that, `server.run_forever(f)` automatically start and run the server.
 The callback function `f` is used to handle HTTP requests.
 It receives three parameters:
@@ -80,7 +80,7 @@ Here's an example server that returns 404 to every request:
 ///|
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
-  @http.Server::new(listen_addr).run_forever((request, _body, conn) => {
+  @http.Server(listen_addr).run_forever((request, _body, conn) => {
     conn..send_response(404, "NotFound").write("`\{request.path}` not found")
   })
 }

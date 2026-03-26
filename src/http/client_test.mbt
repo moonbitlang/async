@@ -15,7 +15,7 @@
 ///|
 #cfg(target="native")
 fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int raise {
-  let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+  let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true, () => {
     server.run_forever((request, body, conn) => {
       let meth = request.meth.to_string().to_upper()
@@ -176,7 +176,7 @@ async test "request streaming" {
 
 ///|
 async test "multiple request" {
-  let client = @http.Client::new("https://www.moonbitlang.com")
+  let client = @http.Client("https://www.moonbitlang.com")
   defer client.close()
   let response1 = client.get("/")
   inspect(response1.code, content="200")

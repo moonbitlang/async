@@ -62,13 +62,19 @@ priv struct OngoingRequest {
 }
 
 ///|
-struct Client {
-  host : String
-  port : Int
-  protocol : Protocol
-  headers : Map[String, String]
-  mut request : OngoingRequest?
-  mut response_body : @js_async.ReadableStream?
+pub struct Client {
+  priv host : String
+  priv port : Int
+  priv protocol : Protocol
+  priv headers : Map[String, String]
+  priv mut request : OngoingRequest?
+  priv mut response_body : @js_async.ReadableStream?
+
+  async fn new(
+    uri : String,
+    headers? : Map[String, String],
+    proxy? : Client,
+  ) -> Client
 }
 
 ///|

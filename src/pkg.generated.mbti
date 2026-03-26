@@ -18,8 +18,6 @@ pub fn is_being_cancelled() -> Bool
 
 pub fn is_cancellation_error(Error) -> Bool
 
-pub fn[X] lazy_init(async () -> X) -> Lazy[X]
-
 pub fn now() -> Int64
 
 pub async fn pause() -> Unit
@@ -48,7 +46,13 @@ pub impl Show for TimerCancelled
 pub impl @debug.Debug for TimerCancelled
 
 // Types and methods
-type Lazy[X]
+pub struct Lazy[X] {
+  // private fields
+
+  fn[X] new(async () -> X) -> Lazy[X]
+}
+#as_free_fn(lazy_init, deprecated)
+pub fn[X] Lazy::new(async () -> X) -> Self[X]
 pub async fn[X] Lazy::wait(Self[X]) -> X
 
 pub(all) enum RetryMethod {
@@ -69,7 +73,12 @@ pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_fai
 pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit
 pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
 
-type Timer
+pub struct Timer {
+  duration : Int
+  // private fields
+
+  fn new(Int) -> Timer
+}
 pub fn Timer::cancel(Self, err? : Error) -> Unit
 pub fn Timer::new(Int) -> Self
 pub fn Timer::refresh(Self) -> Unit

@@ -30,10 +30,12 @@ priv struct Waiter {
 }
 
 ///|
-struct Semaphore {
-  mut value : Int
+pub struct Semaphore {
   size : Int
-  waiters : @deque.Deque[Waiter]
+  priv mut value : Int
+  priv waiters : @deque.Deque[Waiter]
+
+  fn new(size : Int, initial_value? : Int) -> Semaphore
 }
 
 ///|

@@ -44,7 +44,7 @@ async fn client(msg : Bytes, addr : @socket.Addr) -> Unit {
 async test "connection burst" {
   let mut result = 0
   @async.with_task_group(root => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr()
     root.spawn_bg(() => result = server_main(server))
     root.spawn_bg(() => {
@@ -63,7 +63,7 @@ async test "connection burst" {
 async test "connection burst with ipv6" {
   let mut result = 0
   @async.with_task_group(root => {
-    let server = @socket.TcpServer::new(
+    let server = @socket.TcpServer(
       @socket.Addr::parse("[::1]:0"),
       dual_stack=false,
     )

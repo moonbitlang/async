@@ -30,8 +30,10 @@ priv struct Waiter {
 
 ///|
 /// A condition variable that can be used for synchronization between tasks.
-struct Cond {
-  waiters : @deque.Deque[Waiter]
+pub struct Cond {
+  priv waiters : @deque.Deque[Waiter]
+
+  fn new() -> Cond
 }
 
 ///|

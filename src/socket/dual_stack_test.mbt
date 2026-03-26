@@ -24,7 +24,7 @@ let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
 async test "Only_V4 server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr().port()
     root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
@@ -72,7 +72,7 @@ async test "Only_V4 server" {
 async test "Only_V6 server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.TcpServer::new(
+    let server = @socket.TcpServer(
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
@@ -123,7 +123,7 @@ async test "Only_V6 server" {
 async test "dual stack server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.TcpServer::new(@socket.Addr::parse("[::]:0"))
+    let server = @socket.TcpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr().port()
     root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
@@ -168,7 +168,7 @@ async test "dual stack server" {
 async test "Only_V4 UDP server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.UdpServer::new(@socket.Addr::parse("0.0.0.0:0"))
+    let server = @socket.UdpServer(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr().port()
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
@@ -184,7 +184,7 @@ async test "Only_V4 UDP server" {
     })
     async fn client(protocol) {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
-      let client = @socket.UdpClient::new(addr)
+      let client = @socket.UdpClient(addr)
       defer client.close()
       client.send("message")
     }
@@ -215,7 +215,7 @@ async test "Only_V4 UDP server" {
 async test "Only_V6 UDP server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.UdpServer::new(
+    let server = @socket.UdpServer(
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
@@ -234,7 +234,7 @@ async test "Only_V6 UDP server" {
     })
     async fn client(protocol) {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
-      let client = @socket.UdpClient::new(addr)
+      let client = @socket.UdpClient(addr)
       defer client.close()
       client.send("message")
     }
@@ -265,7 +265,7 @@ async test "Only_V6 UDP server" {
 async test "dual stack UDP server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
-    let server = @socket.UdpServer::new(@socket.Addr::parse("[::]:0"))
+    let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr().port()
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
@@ -281,7 +281,7 @@ async test "dual stack UDP server" {
     })
     async fn client(protocol) {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
-      let client = @socket.UdpClient::new(addr)
+      let client = @socket.UdpClient(addr)
       defer client.close()
       client.send("message")
     }

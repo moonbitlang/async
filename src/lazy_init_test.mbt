@@ -20,7 +20,7 @@ async test "lazy init basic" {
     (@async.now() - start + 20).to_int() / 200
   }
 
-  let x = @async.lazy_init(() => {
+  let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
     @async.sleep(200)
     log.push("lazy init completed at tick \{current_tick()}")
@@ -38,7 +38,7 @@ async test "lazy init basic" {
 
 ///|
 async test "lazy init failure" {
-  let x : @async.Lazy[Unit] = @async.lazy_init(() => {
+  let x : @async.Lazy[Unit] = @async.Lazy(() => {
     @async.sleep(200)
     raise Failure::Failure("msg")
   })
@@ -73,7 +73,7 @@ async test "lazy init cancelled" {
     (@async.now() - start + 20).to_int() / 200
   }
 
-  let x = @async.lazy_init(() => {
+  let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
     @async.sleep(400) catch {
       err => {
@@ -102,7 +102,7 @@ async test "lazy init multiple waiters 1" {
     (@async.now() - start + 20).to_int() / 200
   }
 
-  let x = @async.lazy_init(() => {
+  let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
     @async.sleep(400) catch {
       err => {
@@ -133,7 +133,7 @@ async test "lazy init multiple waiters 2" {
     (@async.now() - start + 20).to_int() / 200
   }
 
-  let x = @async.lazy_init(() => {
+  let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
     @async.sleep(600) catch {
       err => {

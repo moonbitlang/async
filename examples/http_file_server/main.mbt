@@ -160,7 +160,7 @@ async fn main {
     [] | [_] => "."
     [_, path, ..] => path
   }
-  let server = @http.Server::new(@socket.Addr::parse("0.0.0.0:8000"))
+  let server = @http.Server(@socket.Addr::parse("0.0.0.0:8000"))
   server_main(server, path~) catch {
     err => println("server terminate due to \{err}")
   }
