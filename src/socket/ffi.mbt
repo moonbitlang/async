@@ -93,9 +93,15 @@ extern "C" fn enable_keepalive_ffi(
 extern "C" fn getsockname_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getsockname"
 
 ///|
-fn getsockname(sock : @fd_util.Fd, family : AddrFamily) -> Addr {
+fn getsockname(
+  sock : @fd_util.Fd,
+  family : AddrFamily,
+  context~ : String,
+) -> Addr raise {
   let addr = Addr::empty(family)
-  guard getsockname_ffi(sock, addr) == 0
+  if getsockname_ffi(sock, addr) < 0 {
+    @os_error.check_errno(context)
+  }
   addr
 }
 

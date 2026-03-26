@@ -32,7 +32,7 @@ fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int raise {
       conn.write("\{meth} response part 2\n")
     })
   })
-  server.addr().port()
+  server.addr.port()
 }
 
 ///|

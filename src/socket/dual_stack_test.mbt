@@ -25,7 +25,7 @@ async test "Only_V4 server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let server = @socket.TcpServer(@socket.Addr::parse("0.0.0.0:0"))
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
@@ -76,7 +76,7 @@ async test "Only_V6 server" {
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
@@ -124,7 +124,7 @@ async test "dual stack server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let server = @socket.TcpServer(@socket.Addr::parse("[::]:0"))
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       server.run_forever((conn, addr) => {
         let addr_str = addr.to_string()
@@ -169,7 +169,7 @@ async test "Only_V4 UDP server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let server = @socket.UdpServer(@socket.Addr::parse("0.0.0.0:0"))
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
@@ -219,7 +219,7 @@ async test "Only_V6 UDP server" {
       @socket.Addr::parse("[::]:0"),
       dual_stack=false,
     )
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
@@ -266,7 +266,7 @@ async test "dual stack UDP server" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
-    let port = server.addr().port()
+    let port = server.addr.port()
     root.spawn_bg(no_wait=true, () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')

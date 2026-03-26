@@ -31,11 +31,6 @@ pub impl Eq for Addr
 pub impl Hash for Addr
 pub impl Show for Addr
 
-pub(all) enum AddrFamily {
-  IPv4
-  IPv6
-}
-
 pub(all) enum IpProtocolPreference {
   OnlyV4
   OnlyV6
@@ -45,7 +40,10 @@ pub(all) enum IpProtocolPreference {
 }
 pub impl Show for IpProtocolPreference
 
-type Tcp
+pub struct Tcp {
+  addr : Addr
+  // private fields
+}
 pub fn Tcp::addr(Self) -> Addr
 pub fn Tcp::close(Self) -> Unit
 pub async fn Tcp::connect(Addr) -> Self
@@ -56,12 +54,13 @@ pub impl @io.Reader for Tcp
 pub impl @io.Writer for Tcp
 
 pub struct TcpServer {
-  family : AddrFamily
+  addr : Addr
   // private fields
 
   fn new(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer raise
 }
 pub async fn TcpServer::accept(Self) -> (Tcp, Addr)
+#deprecated
 pub fn TcpServer::addr(Self) -> Addr
 pub fn TcpServer::close(Self) -> Unit
 pub fn TcpServer::fd(Self) -> Int
@@ -69,11 +68,12 @@ pub fn TcpServer::new(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> Self rais
 pub async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
 
 pub struct UdpClient {
-  family : AddrFamily
+  addr : Addr
   // private fields
 
   fn new(Addr) -> UdpClient raise
 }
+#deprecated
 pub fn UdpClient::addr(Self) -> Addr
 pub fn UdpClient::close(Self) -> Unit
 pub fn UdpClient::fd(Self) -> Int
@@ -82,11 +82,12 @@ pub async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : I
 pub async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
 
 pub struct UdpServer {
-  family : AddrFamily
+  addr : Addr
   // private fields
 
   fn new(Addr, dual_stack? : Bool) -> UdpServer raise
 }
+#deprecated
 pub fn UdpServer::addr(Self) -> Addr
 pub fn UdpServer::close(Self) -> Unit
 pub fn UdpServer::fd(UdpClient) -> Int

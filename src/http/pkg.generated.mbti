@@ -105,11 +105,13 @@ pub impl Show for Response
 pub impl ToJson for Response
 
 pub struct Server {
+  addr : @socket.Addr
   // private fields
 
   fn new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String]) -> Server raise
 }
 pub async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)
+#deprecated
 pub fn Server::addr(Self) -> @socket.Addr
 pub fn Server::close(Self) -> Unit
 pub fn Server::new(@socket.Addr, dual_stack? : Bool, reuse_addr? : Bool, headers? : Map[String, String]) -> Self raise

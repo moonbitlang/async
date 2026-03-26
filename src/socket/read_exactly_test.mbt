@@ -22,7 +22,7 @@ async test "read_exactly" {
   @async.with_task_group(root => {
     // server
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     root.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -71,7 +71,7 @@ async test "read_exactly failure" {
   @async.with_task_group(root => {
     // server
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     root.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()

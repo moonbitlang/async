@@ -46,7 +46,7 @@ async test "basic" {
   let client_log = StringBuilder::new()
   @async.with_task_group(root => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     root.spawn_bg(no_wait=true, () => server_main(server, path=".", log~))
     @async.sleep(50)
     client_log.write_string("client: GET /examples/http_file_server\n")
