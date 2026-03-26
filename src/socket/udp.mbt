@@ -19,7 +19,8 @@
 /// the client always send packet to and receive packet from
 /// the specified remote server.
 pub struct UdpClient {
-  family : AddrFamily
+  /// Local address of the client
+  addr : Addr
   priv io : @event_loop.IoHandle
 
   fn new(server : Addr) -> UdpClient raise
@@ -43,7 +44,8 @@ pub fn UdpClient::new(server : Addr) -> UdpClient raise {
       raise err
     }
   }
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
+  let addr = getsockname(sock, family, context~)
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|
@@ -58,14 +60,15 @@ pub fn UdpClient::fd(self : UdpClient) -> @fd_util.Fd {
 
 ///|
 /// Get the local address of a UDP client.
+#deprecated("use `.addr` instead")
 pub fn UdpClient::addr(self : UdpClient) -> Addr {
-  getsockname(self.io.fd(), self.family)
+  self.addr
 }
 
 ///|
 /// A UDP server bound to a listen address and receive packets from clients.
 pub struct UdpServer {
-  family : AddrFamily
+  addr : Addr
   priv io : @event_loop.IoHandle
 
   fn new(addr : Addr, dual_stack? : Bool) -> UdpServer raise
@@ -117,13 +120,18 @@ pub fn UdpServer::new(
       raise err
     }
   }
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|
 /// Get the listen address of a UDP server.
+#deprecated("use `.addr` instead")
 pub fn UdpServer::addr(self : UdpServer) -> Addr {
-  getsockname(self.io.fd(), self.family)
+  self.addr
 }
 
 ///|
@@ -170,7 +178,7 @@ pub async fn UdpServer::recvfrom(
   max_len? : Int = buf.length() - offset,
 ) -> (Int, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
-  let addr = Addr::empty(self.family)
+  let addr = Addr::empty(self.addr.family())
   let n_read = self.io.recvfrom(
     buf,
     offset~,

@@ -17,7 +17,7 @@ async test "UTF8 validation" {
   let log = []
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(no_wait=true, () => {
       defer server.close()
       for ;; {
@@ -89,7 +89,7 @@ async test "UTF8 validation" {
 async test "UTF8 validation large message" {
   @async.with_task_group(group => {
     let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let port = server.addr().port()
+    let port = server.addr.port()
     group.spawn_bg(no_wait=true, () => {
       server.run_forever((req, _, conn) => {
         let ws = @websocket.from_http_server(req, conn)

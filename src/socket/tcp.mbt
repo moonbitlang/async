@@ -14,10 +14,11 @@
 
 ///|
 /// A Tcp connection
-struct Tcp {
-  io : @event_loop.IoHandle
-  family : AddrFamily
-  read_buf : @io.ReaderBuffer
+pub struct Tcp {
+  /// The local address of a TCP connection
+  addr : Addr
+  priv io : @event_loop.IoHandle
+  priv read_buf : @io.ReaderBuffer
 }
 
 ///|
@@ -32,7 +33,8 @@ pub fn Tcp::fd(self : Tcp) -> @fd_util.Fd {
 
 ///|
 pub struct TcpServer {
-  family : AddrFamily
+  /// The actual listen address of the server
+  addr : Addr
   priv io : @event_loop.IoHandle
 
   fn new(addr : Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer raise
@@ -90,13 +92,18 @@ pub fn TcpServer::new(
       raise err
     }
   }
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), family }
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|
 /// Get the address the server is listening on
+#deprecated("use `.addr` instead")
 pub fn TcpServer::addr(server : TcpServer) -> Addr {
-  getsockname(server.io.fd(), server.family)
+  server.addr
 }
 
 ///|
@@ -161,7 +168,7 @@ pub fn TcpServer::fd(self : TcpServer) -> @fd_util.Fd {
 #cfg(not(platform="windows"))
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
-  let addr = Addr::empty(self.family)
+  let addr = Addr::empty(self.addr.family())
   let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept")
   try {
     if disable_nagle(conn.fd()) < 0 {
@@ -174,7 +181,8 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
       raise err
     }
   }
-  ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
+  // The local address of a server connection is the same as the listen address
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
 ///|
@@ -183,14 +191,16 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 #cfg(platform="windows")
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let context = "@socket.TcpServer::accept()"
-  let conn_sock = make_tcp_socket(self.family, context~)
+  let family = self.addr.family()
+  let conn_sock = make_tcp_socket(family, context~)
   let conn = self.io.accept(conn_sock, context~)
   if disable_nagle(conn_sock) < 0 {
     @fd_util.close(conn_sock, kind=Socket, context~)
     @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
-  let addr = getpeername(conn_sock, self.family, context~)
-  ({ io: conn, family: self.family, read_buf: @io.ReaderBuffer::new() }, addr)
+  let addr = getpeername(conn_sock, self.addr.family(), context~)
+  // The local address of a server connection is the same as the listen address
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
 ///|
@@ -238,13 +248,14 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       raise err
     }
   }
-  { io: conn, family, read_buf: @io.ReaderBuffer::new() }
+  let addr = getsockname(sock, family, context~)
+  { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
 /// Get the local address of a TCP connection.
 pub fn Tcp::addr(sock : Tcp) -> Addr {
-  getsockname(sock.io.fd(), sock.family)
+  sock.addr
 }
 
 ///|

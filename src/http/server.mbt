@@ -148,6 +148,7 @@ pub async fn ServerConnection::send_response(
 ///|
 /// A HTTP server
 pub struct Server {
+  addr : @socket.Addr
   priv server : @socket.TcpServer
   priv headers : Map[String, String]
 
@@ -173,7 +174,8 @@ pub fn Server::new(
   reuse_addr? : Bool,
   headers? : Map[String, String] = {},
 ) -> Server raise {
-  { server: @socket.TcpServer::new(addr, dual_stack?, reuse_addr?), headers }
+  let server = @socket.TcpServer::new(addr, dual_stack?, reuse_addr?)
+  { addr: server.addr, server, headers }
 }
 
 ///|
@@ -183,8 +185,9 @@ pub fn Server::close(self : Server) -> Unit {
 
 ///|
 /// Get the listen address of the server
+#deprecated("use `.addr` instead")
 pub fn Server::addr(self : Server) -> @socket.Addr {
-  self.server.addr()
+  self.addr
 }
 
 ///|

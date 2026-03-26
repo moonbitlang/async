@@ -16,14 +16,14 @@
 async test "getsockname TCP" {
   @async.with_task_group(group => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
-    let server_addr = server.addr()
+    let server_addr = server.addr
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")
     }
     let client_addr_from_server = group.spawn(() => {
       defer server.close()
       let (conn, peer_addr) = server.accept()
-      assert_eq(conn.addr(), server_addr)
+      assert_eq(conn.addr, server_addr)
       inspect(conn.read_all().text(), content="abcd")
       peer_addr
     })
@@ -31,7 +31,7 @@ async test "getsockname TCP" {
       let client = @socket.Tcp::connect(server_addr)
       defer client.close()
       client.write("abcd")
-      client.addr()
+      client.addr
     })
     assert_eq(client_addr_from_server.wait(), client_addr.wait())
   })
@@ -41,7 +41,7 @@ async test "getsockname TCP" {
 async test "getsockname UDP" {
   @async.with_task_group(group => {
     let server = @socket.UdpServer(@socket.Addr::parse("127.0.0.1:0"))
-    let server_addr = server.addr()
+    let server_addr = server.addr
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")
     }
@@ -57,7 +57,7 @@ async test "getsockname UDP" {
       let client = @socket.UdpClient::new(server_addr)
       defer client.close()
       client.send(b"abcd")
-      client.addr()
+      client.addr
     })
     assert_eq(client_addr_from_server.wait(), client_addr.wait())
   })
