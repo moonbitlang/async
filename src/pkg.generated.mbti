@@ -37,13 +37,9 @@ pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 // Errors
 pub(all) suberror BreakFromSpawnLoop
 
-pub suberror TimeoutError
-pub impl Show for TimeoutError
-pub impl ToJson for TimeoutError
+pub suberror TimeoutError derive(Show, ToJson)
 
-pub suberror TimerCancelled
-pub impl Show for TimerCancelled
-pub impl @debug.Debug for TimerCancelled
+pub suberror TimerCancelled derive(Show, @debug.Debug)
 
 // Types and methods
 pub struct Lazy[X] {

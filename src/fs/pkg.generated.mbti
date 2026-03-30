@@ -86,9 +86,7 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-}
-pub impl Eq for FileKind
-pub impl Show for FileKind
+} derive(Eq, Show)
 
 pub(all) enum Lock {
   Shared

@@ -4,9 +4,7 @@ package "moonbitlang/async/aqueue"
 // Values
 
 // Errors
-pub suberror QueueAlreadyClosed
-pub impl Show for QueueAlreadyClosed
-pub impl ToJson for QueueAlreadyClosed
+pub suberror QueueAlreadyClosed derive(Show, ToJson)
 
 // Types and methods
 pub(all) enum Kind {
