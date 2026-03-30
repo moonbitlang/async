@@ -3,6 +3,8 @@ import {
   "moonbitlang/async/stdio",
 }
 
+supported_targets = "+native"
+
 options(
   is_main: true,
 )
