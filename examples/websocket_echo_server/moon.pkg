@@ -5,6 +5,8 @@ import {
   "moonbitlang/async",
 }
 
+supported_targets = "+native"
+
 options(
   "is-main": true,
 )

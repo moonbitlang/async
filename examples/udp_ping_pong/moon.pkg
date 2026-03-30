@@ -4,6 +4,8 @@ import {
   "moonbitlang/async/socket",
 }
 
+supported_targets = "+native"
+
 options(
   "is-main": true,
 )
