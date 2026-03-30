@@ -125,6 +125,8 @@ async test "basic" {
       #|  "moonbitlang/async/process",
       #|}
       #|
+      #|supported_targets = "+native"
+      #|
       #|options(
       #|  "is-main": true,
       #|)
