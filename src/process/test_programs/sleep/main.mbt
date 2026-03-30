@@ -31,7 +31,7 @@ async fn main {
     [] => ()
     ["-exit-code", .. rest] => {
       guard rest is [code, .. rest] else { fail("invalid arguments") }
-      exit_code = @strconv.parse_int(code)
+      exit_code = @string.parse_int(code)
       continue rest
     }
     ["-swallow-cancel-signal", ..rest] => {
@@ -45,7 +45,7 @@ async fn main {
     }
     [['-', ..] as flag, ..] => fail("unrecognized argument \{flag}")
     [t, .. rest] => {
-      time = @strconv.parse_int(t)
+      time = @string.parse_int(t)
       continue rest
     }
   }

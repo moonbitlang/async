@@ -1,6 +1,6 @@
 import {
   "moonbitlang/core/env",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/async",
   "moonbitlang/async/process",
   "moonbitlang/async/stdio",

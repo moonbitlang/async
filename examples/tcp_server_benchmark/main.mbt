@@ -80,21 +80,21 @@ async fn main {
       guard rest is [n, .. rest] else {
         fail("expected total connection number")
       }
-      total_conn = @strconv.parse_int(n)
+      total_conn = @string.parse_int(n)
       continue rest
     }
     ["-max-concurrent", .. rest] => {
       guard rest is [n, .. rest] else {
         fail("expected max concurrent connection count")
       }
-      max_concurrent_conn = @strconv.parse_int(n)
+      max_concurrent_conn = @string.parse_int(n)
       continue rest
     }
     ["-conn-duration", .. rest] => {
       guard rest is [n, .. rest] else {
         fail("expected duration of connection in milliseconds")
       }
-      conn_duration = @strconv.parse_int(n)
+      conn_duration = @string.parse_int(n)
       continue rest
     }
     [opt, ..] if opt.has_prefix("-") => fail("unknown option `\{opt}`")

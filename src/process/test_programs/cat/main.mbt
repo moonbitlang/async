@@ -30,7 +30,7 @@ async fn main {
       guard rest is [t, ..rest] else {
         fail("invalid argument")
       }
-      timeout.val = Some(@strconv.parse_int(t))
+      timeout.val = Some(@string.parse_int(t))
       continue rest 
     }
     [] => ()

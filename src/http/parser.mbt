@@ -63,7 +63,7 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       guard self.transport.read_until("\r\n") is Some(len_str) else {
         raise @io.ReaderClosed
       }
-      let next_chunk_len = @strconv.parse_int(len_str, base=16) catch {
+      let next_chunk_len = @string.parse_int(len_str, base=16) catch {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
@@ -131,7 +131,7 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
     match key {
       "content-length" => {
         guard !(self.body is Fixed(_)) else { raise BadRequest }
-        let len = @strconv.parse_int(value, base=10)
+        let len = @string.parse_int(value, base=10)
         if self.body is Empty && len > 0 {
           self.body = Fixed(len)
         }
@@ -245,7 +245,7 @@ async fn Reader::read_response(
   }
   let response_line = response_line[protocol_len + 1:]
   guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
-  let code = @strconv.parse_int(response_line[:code_len], base=10) catch {
+  let code = @string.parse_int(response_line[:code_len], base=10) catch {
     _ => raise BadRequest
   }
   let reason = response_line[code_len + 1:].to_string()
