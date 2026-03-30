@@ -13,8 +13,7 @@ pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-}
-pub impl Show for WebSocketError
+} derive(Show)
 
 // Types and methods
 pub(all) enum CloseCode {
@@ -29,9 +28,7 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-}
-pub impl Eq for CloseCode
-pub impl Show for CloseCode
+} derive(Eq, Show)
 
 type Conn
 pub fn Conn::close(Self) -> Unit
@@ -59,8 +56,7 @@ pub impl @io.Reader for Message
 pub(all) enum MessageKind {
   Binary
   Text
-}
-pub impl Show for MessageKind
+} derive(Show)
 
 // Type aliases
 

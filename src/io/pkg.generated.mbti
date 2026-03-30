@@ -5,13 +5,9 @@ package "moonbitlang/async/io"
 pub fn pipe() -> (PipeRead, PipeWrite)
 
 // Errors
-pub suberror PipeClosed
-pub impl Show for PipeClosed
-pub impl ToJson for PipeClosed
+pub suberror PipeClosed derive(Show, ToJson)
 
-pub(all) suberror ReaderClosed
-pub impl Show for ReaderClosed
-pub impl ToJson for ReaderClosed
+pub(all) suberror ReaderClosed derive(Show, ToJson)
 
 // Types and methods
 type BufferedWriter[W]

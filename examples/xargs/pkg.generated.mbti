@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async_examples/websocket_echo_server"
+package "moonbitlang/async_examples/xargs"
 
 // Values
 

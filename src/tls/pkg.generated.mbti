@@ -11,15 +11,11 @@ pub fn rand_bytes(Int) -> Bytes raise
 pub fn sha1(Bytes) -> Bytes
 
 // Errors
-pub suberror ConnectionClosed
-pub impl Show for ConnectionClosed
-pub impl ToJson for ConnectionClosed
+pub suberror ConnectionClosed derive(Show, ToJson)
 
 pub suberror TlsError {
   TlsError(String)
-}
-pub impl Show for TlsError
-pub impl ToJson for TlsError
+} derive(Show, ToJson)
 
 // Types and methods
 type Tls

@@ -8,27 +8,20 @@ import {
 // Values
 
 // Errors
-pub suberror InvalidAddr
-pub impl Show for InvalidAddr
-pub impl ToJson for InvalidAddr
+pub suberror InvalidAddr derive(Show, ToJson)
 
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
-}
-pub impl Show for ResolveHostnameError
-pub impl ToJson for ResolveHostnameError
+} derive(Show, ToJson)
 
 // Types and methods
-type Addr
+type Addr derive(Compare, Eq, Hash)
 pub fn Addr::ip(Self) -> UInt
 pub fn Addr::is_ipv6(Self) -> Bool
 pub fn Addr::new(UInt, Int) -> Self
 pub fn Addr::parse(String) -> Self raise InvalidAddr
 pub fn Addr::port(Self) -> Int
 pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
-pub impl Compare for Addr
-pub impl Eq for Addr
-pub impl Hash for Addr
 pub impl Show for Addr
 
 pub(all) enum IpProtocolPreference {
@@ -37,8 +30,7 @@ pub(all) enum IpProtocolPreference {
   FavorV4
   FavorV6
   NoPreference
-}
-pub impl Show for IpProtocolPreference
+} derive(Show)
 
 pub struct Tcp {
   addr : Addr

@@ -32,11 +32,9 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-}
+} derive(Eq, Show)
 pub fn FileKind::can_poll(Self) -> Bool
 pub fn FileKind::from_sys_kind(Int64) -> Self
-pub impl Eq for FileKind
-pub impl Show for FileKind
 
 type FileTime
 pub fn FileTime::atime(Self) -> (Int64, Int)
