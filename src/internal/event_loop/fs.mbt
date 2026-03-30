@@ -17,11 +17,6 @@
 pub type Directory
 
 ///|
-fn StringView::escape(self : StringView) -> String {
-  self.to_string().escape()
-}
-
-///|
 pub async fn open_detached(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write

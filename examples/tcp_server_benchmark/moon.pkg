@@ -2,7 +2,7 @@ import {
   "moonbitlang/core/random",
   "moonbitlang/core/env",
   "moonbitlang/core/buffer",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/async",
   "moonbitlang/async/socket",
 }

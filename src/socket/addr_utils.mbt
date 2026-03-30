@@ -181,7 +181,7 @@ fn parse_full_ipv6_to_bytes(
 ///|
 fn parse_ipv6_group(group : StringView) -> UInt raise InvalidAddr {
   guard !group.is_empty() && group.length() <= 4 else { raise InvalidAddr }
-  @strconv.parse_uint(group, base=16) catch {
+  @string.parse_uint(group, base=16) catch {
     _ => raise InvalidAddr
   }
 }
@@ -193,7 +193,7 @@ fn parse_ipv4_to_bytes(
   let parts = ip_str.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }
   fn parse_octal(x : StringView) raise InvalidAddr {
-    let value = @strconv.parse_uint(x.to_string()) catch {
+    let value = @string.parse_uint(x.to_string()) catch {
       _ => raise InvalidAddr
     }
     guard value < 256 else { raise InvalidAddr }
@@ -224,7 +224,7 @@ fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
 ///|
 fn parse_port(port_str : StringView) -> Int raise InvalidAddr {
   guard !port_str.is_empty() else { raise InvalidAddr }
-  let port = @strconv.parse_int(port_str) catch { _ => raise InvalidAddr }
+  let port = @string.parse_int(port_str) catch { _ => raise InvalidAddr }
   guard 0 <= port && port < 65536 else { raise InvalidAddr }
   port
 }

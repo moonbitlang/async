@@ -91,7 +91,7 @@ async fn handle_connect(
   }
   let client = try {
     let host = request.path[:index].to_string()
-    let port = @strconv.parse_int(request.path[index + 1:])
+    let port = @string.parse_int(request.path[index + 1:])
     @socket.Tcp::connect_to_host(host, port~)
   } catch {
     err => {

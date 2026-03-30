@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/env",
   "moonbitlang/async",
   "moonbitlang/async/stdio",

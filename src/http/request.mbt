@@ -47,7 +47,7 @@ fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
     (uri.to_string(), "/")
   }
   let (host, port) = if host lexmatch? (host, ":" ("[0-9]+" as port_str)) {
-    let port = @strconv.parse_int(port_str) catch { _ => raise InvalidFormat }
+    let port = @string.parse_int(port_str) catch { _ => raise InvalidFormat }
     guard port is (1..<65536) else { raise InvalidFormat }
     (host.to_string(), port)
   } else {

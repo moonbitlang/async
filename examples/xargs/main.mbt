@@ -34,7 +34,7 @@ async fn main {
       guard rest is [count, .. rest] else {
         fail("expected max job count after `\{opt}`")
       }
-      let count = @strconv.parse_int(count)
+      let count = @string.parse_int(count)
       // Use a semaphore to limit the max number of parallel jobs
       max_jobs = Some(@async.Semaphore::new(count))
       continue rest
