@@ -50,3 +50,13 @@ pub async fn getaddrinfo(
     Ok(job.get_getaddrinfo_result())
   }
 }
+
+///|
+pub async fn IoHandle::bind(
+  handle : IoHandle,
+  addr : Bytes,
+  context~ : String,
+) -> Unit {
+  @coroutine.check_cancellation()
+  ignore(perform_job_in_worker(Job::bind(handle.fd, addr), context~))
+}

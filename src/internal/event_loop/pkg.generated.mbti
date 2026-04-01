@@ -73,6 +73,7 @@ pub fn Directory::close(Self) -> Int
 
 type IoHandle
 pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self
+pub async fn IoHandle::bind(Self, Bytes, context~ : String) -> Unit
 pub fn IoHandle::close(Self) -> Unit
 pub async fn IoHandle::connect(Self, Bytes, context~ : String) -> Unit
 pub fn IoHandle::detach_from_event_loop(Self) -> Int

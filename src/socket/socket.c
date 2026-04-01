@@ -92,11 +92,6 @@ HANDLE moonbitlang_async_make_udp_socket(int family) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_bind(HANDLE sockfd, struct sockaddr *addr) {
-  return bind((SOCKET)sockfd, (struct sockaddr*)addr, Moonbit_array_length(addr));
-}
-
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_set_ipv6_only(HANDLE sockfd, int ipv6_only) {
   return setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof(int));
 }

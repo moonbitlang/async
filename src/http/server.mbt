@@ -152,12 +152,12 @@ pub struct Server {
   priv server : @socket.TcpServer
   priv headers : Map[String, String]
 
-  fn new(
+  async fn new(
     addr : @socket.Addr,
     dual_stack? : Bool,
     reuse_addr? : Bool,
     headers? : Map[String, String],
-  ) -> Server raise
+  ) -> Server
 }
 
 ///|
@@ -168,12 +168,12 @@ pub struct Server {
 ///
 /// `headers` can be used to specify common headers
 /// shared by all responses sent by this server.
-pub fn Server::new(
+pub async fn Server::new(
   addr : @socket.Addr,
   dual_stack? : Bool,
   reuse_addr? : Bool,
   headers? : Map[String, String] = {},
-) -> Server raise {
+) -> Server {
   let server = @socket.TcpServer::new(addr, dual_stack?, reuse_addr?)
   { addr: server.addr, server, headers }
 }

@@ -50,6 +50,7 @@
 #include <sys/wait.h>
 
 typedef int HANDLE;
+typedef int SOCKET;
 
 #endif
 
@@ -2019,6 +2020,41 @@ struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
 }
 
 #endif
+
+// ===== bind job, bind socket to specific address =====
+struct bind_job {
+  struct job job;
+  HANDLE socket;
+  struct sockaddr *addr;
+};
+
+static
+void free_bind_job(void *obj) {
+  struct bind_job *job = (struct bind_job*)obj;
+  moonbit_decref(job->addr);
+}
+
+static
+void bind_job_worker(struct job *job) {
+  struct bind_job *bind_job = (struct bind_job*)job;
+
+  job->ret = bind((SOCKET)bind_job->socket, bind_job->addr, Moonbit_array_length(bind_job->addr));
+
+  if (job->ret < 0)
+#ifdef _WIN32
+    job->err = GetLastError();
+#else
+    job->err = errno;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+struct bind_job *moonbitlang_async_make_bind_job(HANDLE socket, struct sockaddr *addr) {
+  struct bind_job *job = MAKE_JOB(bind);
+  job->socket = socket;
+  job->addr = addr;
+  return job;
+}
 
 // ===== getaddrinfo job, resolve host name via `getaddrinfo` =====
 

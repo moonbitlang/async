@@ -61,10 +61,6 @@ fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise 
 }
 
 ///|
-#borrow(addr)
-extern "C" fn bind_ffi(sock : @fd_util.Fd, addr : Addr) -> Int = "moonbitlang_async_bind"
-
-///|
 extern "C" fn set_ipv6_only(sock : @fd_util.Fd, dual_stack : Bool) -> Int = "moonbitlang_async_set_ipv6_only"
 
 ///|
