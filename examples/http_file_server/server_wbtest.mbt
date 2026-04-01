@@ -52,8 +52,8 @@ async test "basic" {
     client_log.write_string("client: GET /examples/http_file_server\n")
     client(addr, "/examples/http_file_server", client_log)
     client_log.write_string("\n\n")
-    client_log.write_string("client: GET /examples/http_file_server/moon.pkg\n")
-    client(addr, "/examples/http_file_server/moon.pkg", client_log)
+    client_log.write_string("client: GET /examples/moon.mod.json\n")
+    client(addr, "/examples/moon.mod.json", client_log)
     client_log.write_string("\n\n")
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
@@ -112,24 +112,26 @@ async test "basic" {
       #|<a href="/examples/http_file_server/pkg.generated.mbti">pkg.generated.mbti</a><br/>
       #|</div></body></html>
       #|
-      #|client: GET /examples/http_file_server/moon.pkg
+      #|client: GET /examples/moon.mod.json
       #|HTTP/1.1 200 OK
       #|content-type: appliaction/octet-stream
       #|transfer-encoding: chunked
-      #|import {
-      #|  "moonbitlang/core/env",
-      #|  "moonbitlang/async",
-      #|  "moonbitlang/async/socket",
-      #|  "moonbitlang/async/fs",
-      #|  "moonbitlang/async/http",
-      #|  "moonbitlang/async/process",
+      #|{
+      #|  "name": "moonbitlang/async_examples",
+      #|  "version": "0.3.0",
+      #|  "deps": {
+      #|    "moonbitlang/async": {
+      #|      "path": ".."
+      #|    }
+      #|  },
+      #|  "readme": "README.md",
+      #|  "repository": "https://github.com/moonbitlang/async",
+      #|  "license": "Apache-2.0",
+      #|  "keywords": [],
+      #|  "description": "Examples for `moonbitlang/async`",
+      #|  "source": ".",
+      #|  "preferred-target": "native"
       #|}
-      #|
-      #|supported_targets = "+native"
-      #|
-      #|options(
-      #|  "is-main": true,
-      #|)
       #|
       #|
       #|HTTP/1.1 200 OK
