@@ -14,7 +14,7 @@
 
 ///|
 #cfg(target="native")
-fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int raise {
+async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true, () => {
     server.run_forever((request, body, conn) => {

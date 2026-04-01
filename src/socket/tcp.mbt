@@ -37,7 +37,7 @@ pub struct TcpServer {
   addr : Addr
   priv io : @event_loop.IoHandle
 
-  fn new(addr : Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer raise
+  async fn new(addr : Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer
 }
 
 ///|
@@ -63,14 +63,15 @@ pub struct TcpServer {
 /// This is useful for avoiding "address already in use" error while testing.
 /// WARNING: enabling `reuse_addr` on production is unsafe,
 /// packets from the previous listener of the address may be accidentally received.
-pub fn TcpServer::new(
+pub async fn TcpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
-) -> TcpServer raise {
+) -> TcpServer {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
     if addr.is_ipv6() && addr.is_ipv6_wildcard() {
       if 0 != set_ipv6_only(sock, !dual_stack) {
@@ -80,23 +81,21 @@ pub fn TcpServer::new(
     if reuse_addr {
       guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
     }
-    if bind_ffi(sock, addr) != 0 {
-      @os_error.check_errno(context)
-    }
+    io.bind(addr.0, context~)
     if 0 != listen_ffi(sock) {
       @os_error.check_errno(context)
     }
+    // If `addr` specifies zero as the listen port,
+    // the OS will assign a random port for us,
+    // in this case, we need to retrieve the actual port via `getsockname`.
+    let addr = getsockname(sock, family, context~)
+    { io, addr }
   } catch {
     err => {
-      @fd_util.close(sock, kind=Socket, context~)
+      io.close()
       raise err
     }
   }
-  // If `addr` specifies zero as the listen port,
-  // the OS will assign a random port for us,
-  // in this case, we need to retrieve the actual port via `getsockname`.
-  let addr = getsockname(sock, family, context~)
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|

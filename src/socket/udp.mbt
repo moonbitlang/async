@@ -71,7 +71,7 @@ pub struct UdpServer {
   addr : Addr
   priv io : @event_loop.IoHandle
 
-  fn new(addr : Addr, dual_stack? : Bool) -> UdpServer raise
+  async fn new(addr : Addr, dual_stack? : Bool) -> UdpServer
 }
 
 ///|
@@ -98,33 +98,32 @@ pub fn UdpServer::fd(self : UdpClient) -> @fd_util.Fd {
 /// If the port of `addr` is zero, the server will be bound to a random port,
 /// assigned by the operating system.
 /// The actual listen address can be retrieved via `.addr()`.
-pub fn UdpServer::new(
+pub async fn UdpServer::new(
   addr : Addr,
   dual_stack? : Bool = true,
-) -> UdpServer raise {
+) -> UdpServer {
   let context = "@socket.UdpServer::new()"
   let family = addr.family()
   let sock = make_udp_socket(family, context~)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
     if addr.is_ipv6() && addr.is_ipv6_wildcard() {
       if 0 != set_ipv6_only(sock, !dual_stack) {
         @os_error.check_errno(context)
       }
     }
-    if bind_ffi(sock, addr) != 0 {
-      @os_error.check_errno(context)
-    }
+    io.bind(addr.0, context~)
+    // If `addr` specifies zero as the listen port,
+    // the OS will assign a random port for us,
+    // in this case, we need to retrieve the actual port via `getsockname`.
+    let addr = getsockname(sock, family, context~)
+    { io, addr }
   } catch {
     err => {
       @fd_util.close(sock, kind=Socket, context~)
       raise err
     }
   }
-  // If `addr` specifies zero as the listen port,
-  // the OS will assign a random port for us,
-  // in this case, we need to retrieve the actual port via `getsockname`.
-  let addr = getsockname(sock, family, context~)
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|
