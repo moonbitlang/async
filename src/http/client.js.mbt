@@ -74,6 +74,7 @@ pub struct Client {
     uri : String,
     headers? : Map[String, String],
     proxy? : Client,
+    verify? : Bool,
   ) -> Client
 }
 
@@ -95,8 +96,10 @@ fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
+  verify~ : Bool = true,
 ) -> Client {
   ignore(proxy)
+  ignore(verify)
   { host, headers, protocol, port, request: None, response_body: None }
 }
 
@@ -121,11 +124,12 @@ pub async fn Client::new(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
+  verify~ : Bool = true,
 ) -> Client {
   ignore(proxy)
   let (protocol, port, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?)
+  Client::connect(host, protocol~, port~, headers~, proxy?, verify~)
 }
 
 ///|
