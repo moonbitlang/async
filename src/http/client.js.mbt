@@ -96,7 +96,7 @@ fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
-  verify~ : Bool = true,
+  verify? : Bool = true,
 ) -> Client {
   ignore(proxy)
   ignore(verify)
@@ -124,7 +124,7 @@ pub async fn Client::new(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
-  verify~ : Bool = true,
+  verify? : Bool = true,
 ) -> Client {
   ignore(proxy)
   let (protocol, port, host, path) = resolve_url(uri)

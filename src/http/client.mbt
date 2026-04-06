@@ -48,7 +48,7 @@ async fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
-  verify~ : Bool = true,
+  verify? : Bool = true,
 ) -> Client {
   let transport = if proxy is Some(proxy) {
     let path = "\{host}:\{port}"
@@ -123,7 +123,7 @@ pub async fn Client::new(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
-  verify~ : Bool = true,
+  verify? : Bool = true,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
