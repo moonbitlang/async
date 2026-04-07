@@ -101,6 +101,9 @@ async fn Client::connect(
 /// If `protocol` is `https`, a TLS connection will be established,
 /// and the certificate of the remote peer will be verified.
 ///
+/// If the protocol is `https` and `verify` is `false` (`true` by default), certificate validation will be skipped.
+/// `verify=false` should be used for testing only.
+///
 /// `headers` can be used to specify persistent headers for the client,
 /// i.e. all requests made from this client will share these headers.
 /// The ownership of `headers` will be transferred to the new client,

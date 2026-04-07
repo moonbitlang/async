@@ -96,10 +96,8 @@ fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
-  verify? : Bool = true,
 ) -> Client {
   ignore(proxy)
-  ignore(verify)
   { host, headers, protocol, port, request: None, response_body: None }
 }
 
@@ -119,6 +117,8 @@ fn Client::connect(
 /// The HTTP client make requests using native fetch API.
 ///
 /// The `proxy` argument is not supported on JavaScript backend and has no effect.
+///
+/// `verify` is ignored on JS backend
 #warnings("-unused_async")
 pub async fn Client::new(
   uri : String,
@@ -127,9 +127,10 @@ pub async fn Client::new(
   verify? : Bool = true,
 ) -> Client {
   ignore(proxy)
+  ignore(verify)
   let (protocol, port, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?, verify~)
+  Client::connect(host, protocol~, port~, headers~, proxy?)
 }
 
 ///|
