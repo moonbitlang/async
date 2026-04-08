@@ -31,6 +31,7 @@ pub struct Client {
     uri : String,
     headers? : Map[String, String],
     proxy? : Client,
+    verify? : Bool,
   ) -> Client
 }
 
@@ -47,6 +48,7 @@ async fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
+  verify? : Bool = true,
 ) -> Client {
   let transport = if proxy is Some(proxy) {
     let path = "\{host}:\{port}"
@@ -69,7 +71,7 @@ async fn Client::connect(
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host~) catch {
+      let tls = @tls.Tls::client(conn, host~, verify~) catch {
         err => {
           transport.close()
           raise err
@@ -80,7 +82,7 @@ async fn Client::connect(
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host~) catch {
+      let tls = @tls.Tls::client(proxy, host~, verify~) catch {
         err => {
           transport.close()
           raise err
@@ -98,6 +100,9 @@ async fn Client::connect(
 /// where `protocol` is one of `http` or `https`.
 /// If `protocol` is `https`, a TLS connection will be established,
 /// and the certificate of the remote peer will be verified.
+///
+/// If the protocol is `https` and `verify` is `false` (`true` by default), certificate validation will be skipped.
+/// `verify=false` should be used for testing only.
 ///
 /// `headers` can be used to specify persistent headers for the client,
 /// i.e. all requests made from this client will share these headers.
@@ -121,10 +126,11 @@ pub async fn Client::new(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
+  verify? : Bool = true,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?)
+  Client::connect(host, protocol~, port~, headers~, proxy?, verify~)
 }
 
 ///|

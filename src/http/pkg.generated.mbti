@@ -43,14 +43,14 @@ pub impl Show for URIParseError
 pub struct Client {
   // private fields
 
-  async fn new(String, headers? : Map[String, String], proxy? : Client) -> Client
+  async fn new(String, headers? : Map[String, String], proxy? : Client, verify? : Bool) -> Client
 }
 pub fn Client::close(Self) -> Unit
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit
 pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
-pub async fn Client::new(String, headers? : Map[String, String], proxy? : Self) -> Self
+pub async fn Client::new(String, headers? : Map[String, String], proxy? : Self, verify? : Bool) -> Self
 pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 pub async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit
