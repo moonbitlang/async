@@ -17,24 +17,26 @@
 async fn main {
   let out_channel = Ref::new(@stdio.stdout)
   let timeout = Ref::new(None)
-  loop @env.args()[1:] {
-    ["-stderr", ..rest] => {
-      out_channel.val = @stdio.stderr
-      continue rest
-    }
-    ["-stdout", ..rest] => {
-      out_channel.val = @stdio.stdout
-      continue rest
-    }
-    ["-timeout", ..rest] => {
-      guard rest is [t, ..rest] else {
-        fail("invalid argument")
+  for args = @env.args()[1:] {
+    match args {
+      ["-stderr", ..rest] => {
+        out_channel.val = @stdio.stderr
+        continue rest
       }
-      timeout.val = Some(@string.parse_int(t))
-      continue rest 
+      ["-stdout", ..rest] => {
+        out_channel.val = @stdio.stdout
+        continue rest
+      }
+      ["-timeout", ..rest] => {
+        guard rest is [t, ..rest] else {
+          fail("invalid argument")
+        }
+        timeout.val = Some(@string.parse_int(t))
+        continue rest 
+      }
+      [] => break
+      _ => fail("invalid arguments")
     }
-    [] => ()
-    _ => fail("invalid arguments")
   }
   async fn work() {
     out_channel.val.write_reader(@stdio.stdin)

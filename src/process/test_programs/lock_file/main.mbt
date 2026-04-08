@@ -17,31 +17,33 @@ async fn main {
   let mut duration = 500
   let mut file = None
   let mut kind = None
-  loop @env.args()[1:] {
-    ["-duration", .. rest] => {
-      guard rest is [t, .. rest] else {
-        fail("expected duration value after `-duration`")
+  for args = @env.args()[1:] {
+    match args {
+      ["-duration", .. rest] => {
+        guard rest is [t, .. rest] else {
+          fail("expected duration value after `-duration`")
+        }
+        duration = @string.parse_int(t)
+        continue rest
       }
-      duration = @string.parse_int(t)
-      continue rest
-    }
-    ["-shared", .. rest] => {
-      kind = Some(@fs.Shared)
-      continue rest
-    }
-    ["-exclusive", .. rest] => {
-      kind = Some(@fs.Exclusive)
-      continue rest
-    }
-    [['-', ..] as opt, ..] => fail("unknown argument \{opt}")
-    [f, ..rest] => {
-      guard file is None else {
-        fail("too many files specified")
+      ["-shared", .. rest] => {
+        kind = Some(@fs.Shared)
+        continue rest
       }
-      file = Some(f)
-      continue rest
+      ["-exclusive", .. rest] => {
+        kind = Some(@fs.Exclusive)
+        continue rest
+      }
+      [['-', ..] as opt, ..] => fail("unknown argument \{opt}")
+      [f, ..rest] => {
+        guard file is None else {
+          fail("too many files specified")
+        }
+        file = Some(f)
+        continue rest
+      }
+      [] => break
     }
-    [] => ()
   }
   guard file is Some(file) else { fail("no file specified") }
   guard kind is Some(kind) else { fail("no lock kind specified") }

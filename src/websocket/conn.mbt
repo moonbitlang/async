@@ -477,36 +477,37 @@ pub async fn Conn::recv(self : Conn) -> Message {
       msg.state = Interrupted
     }
   }
-  let kind : MessageKind = loop self.recv_frame_header() {
-    { opcode: Close, .. } as frame => {
-      self.handle_close(frame)
-      continue self.recv_frame_header()
-    }
-    { opcode: Ping, .. } as frame => {
-      self.handle_ping(frame)
-      continue self.recv_frame_header()
-    }
-    { opcode: Pong, .. } as frame => {
-      self.handle_pong(frame)
-      continue self.recv_frame_header()
-    }
-    { opcode: Continuation, .. } =>
-      self.protocol_error("Unexpected continuation frame")
-    { opcode: Text, fin, payload_len } => {
-      if !fin {
-        self.read_opcode = Some(Text)
+  let kind : MessageKind = for frame = self.recv_frame_header() {
+    match frame.opcode {
+      Close => {
+        self.handle_close(frame)
+        continue self.recv_frame_header()
       }
-      self.curr_frame_remaining = payload_len
-      self.utf8_remaining = 0
-      Text
-    }
-    { opcode: Binary, fin, payload_len } => {
-      if !fin {
-        self.read_opcode = Some(Binary)
+      Ping => {
+        self.handle_ping(frame)
+        continue self.recv_frame_header()
       }
-      self.curr_frame_remaining = payload_len
-      self.utf8_remaining = -1
-      Binary
+      Pong => {
+        self.handle_pong(frame)
+        continue self.recv_frame_header()
+      }
+      Continuation => self.protocol_error("Unexpected continuation frame")
+      Text => {
+        if !frame.fin {
+          self.read_opcode = Some(Text)
+        }
+        self.curr_frame_remaining = frame.payload_len
+        self.utf8_remaining = 0
+        break Text
+      }
+      Binary => {
+        if !frame.fin {
+          self.read_opcode = Some(Binary)
+        }
+        self.curr_frame_remaining = frame.payload_len
+        self.utf8_remaining = -1
+        break Binary
+      }
     }
   }
   let message = { kind, conn: self, state: Active }

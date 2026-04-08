@@ -66,12 +66,11 @@ pub async fn Cond::wait(cond : Cond) -> Unit {
 /// waking up the first task waiting for the condition variable.
 /// If no task is waiting for the condition variable, nothing will happen.
 pub fn Cond::signal(cond : Cond) -> Unit {
-  loop cond.waiters.pop_front() {
-    None => ()
-    Some({ coro: None, .. }) => continue cond.waiters.pop_front()
-    Some({ coro: Some(coro), .. } as waiter) => {
+  while cond.waiters.pop_front() is Some(waiter) {
+    if waiter.coro is Some(coro) {
       waiter.woken = true
       coro.wake()
+      break
     }
   }
 }

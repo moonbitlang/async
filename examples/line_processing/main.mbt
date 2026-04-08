@@ -88,24 +88,26 @@ async fn process_input(
 async fn main {
   let options : Options = { contains: None }
   let inputs : Array[String] = []
-  loop @env.args()[1:] {
-    [] => ()
-    ["-h", ..] | ["--help", ..] => {
-      print_usage()
-      return
-    }
-    ["-c", .. rest] | ["--contains", .. rest] => {
-      guard rest is [pattern, .. rest] else {
-        fail("expected PATTERN after --contains")
+  for args = @env.args()[1:] {
+    match args {
+      [] => break
+      ["-h", ..] | ["--help", ..] => {
+        print_usage()
+        return
       }
-      options.contains = Some(pattern)
-      continue rest
-    }
-    [opt, ..] if opt.has_prefix("-") && opt != "-" =>
-      fail("unknown option `\{opt}`")
-    [path, .. rest] => {
-      inputs.push(path)
-      continue rest
+      ["-c", .. rest] | ["--contains", .. rest] => {
+        guard rest is [pattern, .. rest] else {
+          fail("expected PATTERN after --contains")
+        }
+        options.contains = Some(pattern)
+        continue rest
+      }
+      [opt, ..] if opt.has_prefix("-") && opt != "-" =>
+        fail("unknown option `\{opt}`")
+      [path, .. rest] => {
+        inputs.push(path)
+        continue rest
+      }
     }
   }
   if inputs.is_empty() {
