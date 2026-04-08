@@ -43,34 +43,36 @@ async fn main {
   let mut url = None
   let mut output = None
   let mut proxy = None
-  loop @env.args()[1:] {
-    ["-o", .. rest] => {
-      guard rest is [file, .. rest] else {
-        fail("expected output file after `-o`")
+  for args = @env.args()[1:] {
+    match args {
+      ["-o", .. rest] => {
+        guard rest is [file, .. rest] else {
+          fail("expected output file after `-o`")
+        }
+        output = Some(file)
+        continue rest
       }
-      output = Some(file)
-      continue rest
-    }
-    ["--proxy", .. rest] => {
-      guard rest is [url, .. rest] else {
-        fail("expected proxy URL after `--proxy`")
+      ["--proxy", .. rest] => {
+        guard rest is [url, .. rest] else {
+          fail("expected proxy URL after `--proxy`")
+        }
+        proxy = Some(url)
+        continue rest
       }
-      proxy = Some(url)
-      continue rest
-    }
-    ["-h" | "--help", ..] => {
-      println(help_message)
-      return
-    }
-    [['-', ..] as opt, ..] => fail("unknown option `\{opt}`")
-    [url_str, .. rest] => {
-      if url is Some(_) {
-        fail("too many arguments specified")
+      ["-h" | "--help", ..] => {
+        println(help_message)
+        return
       }
-      url = Some(url_str)
-      continue rest
+      [['-', ..] as opt, ..] => fail("unknown option `\{opt}`")
+      [url_str, .. rest] => {
+        if url is Some(_) {
+          fail("too many arguments specified")
+        }
+        url = Some(url_str)
+        continue rest
+      }
+      [] => break
     }
-    [] => ()
   }
   guard url is Some(url) else { fail("no URL specified") }
   match output {

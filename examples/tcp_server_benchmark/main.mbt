@@ -74,36 +74,38 @@ async fn main {
   let mut max_concurrent_conn = 100
   let mut conn_duration = 500
   let mut addr_str = ""
-  loop @env.args()[1:] {
-    [] => ()
-    ["-total-conn", .. rest] => {
-      guard rest is [n, .. rest] else {
-        fail("expected total connection number")
+  for args = @env.args()[1:] {
+    match args {
+      [] => break
+      ["-total-conn", .. rest] => {
+        guard rest is [n, .. rest] else {
+          fail("expected total connection number")
+        }
+        total_conn = @string.parse_int(n)
+        continue rest
       }
-      total_conn = @string.parse_int(n)
-      continue rest
-    }
-    ["-max-concurrent", .. rest] => {
-      guard rest is [n, .. rest] else {
-        fail("expected max concurrent connection count")
+      ["-max-concurrent", .. rest] => {
+        guard rest is [n, .. rest] else {
+          fail("expected max concurrent connection count")
+        }
+        max_concurrent_conn = @string.parse_int(n)
+        continue rest
       }
-      max_concurrent_conn = @string.parse_int(n)
-      continue rest
-    }
-    ["-conn-duration", .. rest] => {
-      guard rest is [n, .. rest] else {
-        fail("expected duration of connection in milliseconds")
+      ["-conn-duration", .. rest] => {
+        guard rest is [n, .. rest] else {
+          fail("expected duration of connection in milliseconds")
+        }
+        conn_duration = @string.parse_int(n)
+        continue rest
       }
-      conn_duration = @string.parse_int(n)
-      continue rest
-    }
-    [opt, ..] if opt.has_prefix("-") => fail("unknown option `\{opt}`")
-    [addr, .. rest] => {
-      guard addr_str == "" else {
-        fail("server addres supplied multiple times")
+      [opt, ..] if opt.has_prefix("-") => fail("unknown option `\{opt}`")
+      [addr, .. rest] => {
+        guard addr_str == "" else {
+          fail("server addres supplied multiple times")
+        }
+        addr_str = addr
+        continue rest
       }
-      addr_str = addr
-      continue rest
     }
   }
   guard addr_str != "" else { fail("server address not supplied") }
@@ -127,10 +129,14 @@ async fn main {
   )
   fn show_size(n : Int64) {
     let units = ["b", "kb", "mb", "gb"]
-    loop (units[:], n.to_double()) {
-      ([], _) => panic()
-      ([_, .. rest], n) if n >= 1024 => continue (rest, n / 1024)
-      ([unit, ..], n) => "\{n} \{unit}"
+    for unit in units; n = n.to_double() {
+      if n < 1024 {
+        break "\{n} \{unit}"
+      } else {
+        continue n / 1024
+      }
+    } nobreak {
+      panic()
     }
   }
 

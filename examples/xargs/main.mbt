@@ -29,23 +29,25 @@ let help_message : String =
 ///|
 async fn main {
   let mut max_jobs = None
-  let command_and_args = loop @env.args()[1:] {
-    ["-j" | "--jobs" as opt, .. rest] => {
-      guard rest is [count, .. rest] else {
-        fail("expected max job count after `\{opt}`")
+  let command_and_args = for args = @env.args()[1:] {
+    match args {
+      ["-j" | "--jobs" as opt, .. rest] => {
+        guard rest is [count, .. rest] else {
+          fail("expected max job count after `\{opt}`")
+        }
+        let count = @string.parse_int(count)
+        // Use a semaphore to limit the max number of parallel jobs
+        max_jobs = Some(@async.Semaphore::new(count))
+        continue rest
       }
-      let count = @string.parse_int(count)
-      // Use a semaphore to limit the max number of parallel jobs
-      max_jobs = Some(@async.Semaphore::new(count))
-      continue rest
+      ["-h" | "--help", ..] => {
+        println(help_message)
+        return
+      }
+      ["--", .. command_and_args] => break command_and_args
+      [['-', ..] as opt, ..] => fail("unknown option: `\{opt}`")
+      command_and_args => break command_and_args
     }
-    ["-h" | "--help", ..] => {
-      println(help_message)
-      return
-    }
-    ["--", .. command_and_args] => command_and_args
-    [['-', ..] as opt, ..] => fail("unknown option: `\{opt}`")
-    command_and_args => command_and_args
   }
   guard command_and_args is [cmd, .. args] else { fail("no command specified") }
   @async.with_task_group(group => {

@@ -168,23 +168,8 @@ pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool raise {
   if self.closed is Some(err) {
     raise err
   }
-  loop self.readers.pop_front() {
-    None =>
-      match self.kind {
-        Unbounded => {
-          self.buffer.push_back(data)
-          true
-        }
-        Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>
-          if self.buffer.length() < n {
-            self.buffer.push_back(data)
-            true
-          } else {
-            false
-          }
-      }
-    Some({ coro: None, .. }) => continue self.readers.pop_front()
-    Some({ coro: Some(coro), .. } as reader) => {
+  while self.readers.pop_front() is Some(reader) {
+    if reader.coro is Some(coro) {
       // after waking the reader, it may not start execution immediately.
       // And a lot of things could happen in the middle.
       // So instead of using `self.buffer`,
@@ -192,7 +177,21 @@ pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool raise {
       // to avoid some edge cases.
       reader.value = Some(data)
       coro.wake()
-      true
+      break true
+    }
+  } nobreak {
+    match self.kind {
+      Unbounded => {
+        self.buffer.push_back(data)
+        true
+      }
+      Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>
+        if self.buffer.length() < n {
+          self.buffer.push_back(data)
+          true
+        } else {
+          false
+        }
     }
   }
 }
@@ -252,26 +251,24 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
 /// If the queue is already closed and there is no buffered elements,
 /// `try_get` will fail immediately.
 pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
-  loop self.writers.pop_front() {
-    None => {
-      let data = self.buffer.pop_front()
-      if data is None && self.closed is Some(err) {
-        raise err
-      }
-      data
-    }
-    Some({ coro: None, .. }) => continue self.writers.pop_front()
-    Some({ coro: Some(coro), value } as writer) => {
+  while self.writers.pop_front() is Some(writer) {
+    if writer.coro is Some(coro) {
       let mut data = self.buffer.pop_front()
       if data is Some(_) {
-        self.buffer.push_back(value)
+        self.buffer.push_back(writer.value)
       } else {
-        data = Some(value)
+        data = Some(writer.value)
       }
       coro.wake()
       writer.coro = None
-      data
+      break data
     }
+  } nobreak {
+    let data = self.buffer.pop_front()
+    if data is None && self.closed is Some(err) {
+      raise err
+    }
+    data
   }
 }
 
