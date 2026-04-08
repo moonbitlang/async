@@ -27,13 +27,21 @@ priv struct Reader {
   mut body : BodyKind
   transport : &@io.Reader
   read_buf : @io.ReaderBuffer
+  mut auto_decompress : Bool
+  mut gzip : @gzip.Decoder?
 }
 
 ///|
 /// Create a new HTTP reader wrapping around existing reader `transport`.
 /// The HTTP reader will read data from `transport`.
 fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
-  { body: Empty, transport, read_buf: @io.ReaderBuffer::new() }
+  {
+    body: Empty,
+    transport,
+    read_buf: @io.ReaderBuffer::new(),
+    auto_decompress: false,
+    gzip: None,
+  }
 }
 
 ///|
@@ -42,6 +50,78 @@ pub suberror HttpProtocolError {
   HttpVersionNotSupported(String)
   NotImplemented
 } derive(Debug, ToJson)
+
+///|
+/// Decode some data from current chunk, perform gzip decompression if necessary.
+/// At most `limit` bytes of data will be read from the underlying transport,
+/// and decoded into `buf[offset:offset+max_len]`.
+async fn Reader::decode_chunk(
+  self : Reader,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  max_len~ : Int,
+  limit~ : Int,
+) -> (Int, Int) {
+  guard self.gzip is Some(gzip) else {
+    let max_len = @cmp.minimum(max_len, limit)
+    let n = self.transport.read(buf, offset~, max_len~)
+    (n, n)
+  }
+  let inner_buf = self.transport._get_internal_buffer().get_repr()
+  for consumed = 0; !gzip.is_finished(); {
+    let limit = limit - consumed
+    let min_len = gzip.minimum_input_size()
+    let target = @cmp.minimum(min_len, limit)
+
+    // Read from underlying transport until we have enough data to make progress
+    inner_buf.enlarge_to(target)
+    let available = for available = @cmp.minimum(inner_buf.len, limit); available <
+                       target; {
+      let end = inner_buf.start + inner_buf.len
+      let delta = self.transport._direct_read(
+        inner_buf.buf,
+        offset=end,
+        max_len=@cmp.minimum(inner_buf.buf.length() - end, target - available),
+      )
+      guard delta > 0 else { raise BadRequest }
+      inner_buf.len += delta
+      continue available + delta
+    } nobreak {
+      available
+    }
+
+    if limit < min_len {
+      gzip.write_partial_data(
+        inner_buf.buf.unsafe_reinterpret_as_bytes(),
+        input_offset=inner_buf.start,
+        input_len=available,
+      )
+      inner_buf.drop(available)
+      let consumed = consumed + available
+      break (consumed, 0)
+    }
+
+    // Perform the decoding
+    let (new_consumed, produced) = gzip.write(
+      inner_buf.buf.unsafe_reinterpret_as_bytes(),
+      input_offset=inner_buf.start,
+      input_len=@cmp.minimum(available, limit),
+      buf,
+      output_offset=offset,
+      output_len=max_len,
+    )
+    inner_buf.drop(new_consumed)
+    let consumed = consumed + new_consumed
+    if produced > 0 {
+      break (consumed, produced)
+    } else {
+      continue consumed
+    }
+  } nobreak {
+    guard consumed > 0 else { raise BadRequest }
+    (consumed, 0)
+  }
+}
 
 ///|
 /// Read from the body of the HTTP request/response
@@ -53,11 +133,23 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
-      let max_len = @cmp.minimum(max_len, remaining)
-      let n = self.transport.read(buf, offset~, max_len~)
-      let remaining = remaining - n
-      self.body = if remaining == 0 { Empty } else { Fixed(remaining) }
-      n
+      let (consumed, produced) = self.decode_chunk(
+        buf,
+        offset~,
+        max_len~,
+        limit=remaining,
+      )
+      let remaining = remaining - consumed
+      self.body = if remaining == 0 {
+        if self.gzip is Some(gzip) {
+          guard gzip.is_finished() else { raise BadRequest }
+          self.gzip = None
+        }
+        Empty
+      } else {
+        Fixed(remaining)
+      }
+      produced
     }
     Chunked(0) => {
       guard self.transport.read_until("\r\n") is Some(len_str) else {
@@ -68,27 +160,47 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       }
       guard next_chunk_len > 0 else {
         guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
+        if self.gzip is Some(gzip) {
+          guard gzip.is_finished() else { raise BadRequest }
+          self.gzip = None
+        }
         self.body = Empty
         return 0
       }
-      let max_len = @cmp.minimum(next_chunk_len, max_len)
-      let n = self.transport.read(buf, offset~, max_len~)
-      let remaining = next_chunk_len - n
+      let (consumed, produced) = self.decode_chunk(
+        buf,
+        offset~,
+        max_len~,
+        limit=next_chunk_len,
+      )
+      let remaining = next_chunk_len - consumed
       if remaining == 0 {
         guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
       }
       self.body = Chunked(remaining)
-      n
+      if produced == 0 {
+        self._direct_read(buf, offset~, max_len~)
+      } else {
+        produced
+      }
     }
-    Chunked(first_chunk_remaining) => {
-      let max_len = @cmp.minimum(first_chunk_remaining, max_len)
-      let n = self.transport.read(buf, offset~, max_len~)
-      let remaining = first_chunk_remaining - n
+    Chunked(curr_chunk_remaining) => {
+      let (consumed, produced) = self.decode_chunk(
+        buf,
+        offset~,
+        max_len~,
+        limit=curr_chunk_remaining,
+      )
+      let remaining = curr_chunk_remaining - consumed
       if remaining == 0 {
         guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
       }
       self.body = Chunked(remaining)
-      n
+      if produced == 0 {
+        self._direct_read(buf, offset~, max_len~)
+      } else {
+        produced
+      }
     }
     PassThrough => self.transport._direct_read(buf, offset~, max_len~)
     WaitConnectionClose => self.transport._direct_read(buf, offset~, max_len~)
@@ -124,10 +236,6 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
       colon_index + 1
     }
     let value = header_line[value_start:].to_string()
-    match headers.get(key) {
-      None => headers[key] = value
-      Some(value0) => headers[key] = "\{value0},\{value}"
-    }
     match key {
       "content-length" => {
         guard !(self.body is Fixed(_)) else { raise BadRequest }
@@ -135,13 +243,29 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
         if self.body is Empty && len > 0 {
           self.body = Fixed(len)
         }
+        // if automatic decompression is enabled, avoid reporting a wrong content-length value
+        if self.gzip is Some(_) {
+          continue
+        }
       }
       "transfer-encoding" => {
         guard !(self.body is Chunked(_)) else { raise BadRequest }
         guard value.to_lower() is "chunked" else { raise NotImplemented }
         self.body = Chunked(0)
       }
+      "content-encoding" if self.auto_decompress => {
+        guard self.gzip is None else { raise BadRequest }
+        guard value.to_lower() is "gzip" else { raise NotImplemented }
+        self.gzip = Some(@gzip.Decoder())
+        // if automatic decompression is enabled, avoid reporting a wrong content-length value
+        headers.remove("content-length")
+        continue
+      }
       _ => ()
+    }
+    match headers.get(key) {
+      None => headers[key] = value
+      Some(value0) => headers[key] = "\{value0},\{value}"
     }
   }
   headers
@@ -232,8 +356,10 @@ fn should_read_body_until_close(
 /// In the result of `read_response`, all header fields will be in lower case.
 async fn Reader::read_response(
   self : Reader,
+  auto_decompress~ : Bool,
   request_method~ : RequestMethod?,
 ) -> Response {
+  self.auto_decompress = auto_decompress
   guard self.body is Empty
   guard self.transport.read_until("\r\n") is Some(response_line) else {
     raise @io.ReaderClosed
