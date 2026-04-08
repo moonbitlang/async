@@ -19,12 +19,11 @@ async test "send_request basic" {
     root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
-      sender
-      ..send_request(Get, "/", extra_headers={
+      let _ = sender.send_request(Get, "/", extra_headers={
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      .end_body()
+      sender.end_body()
     })
     defer r.close()
     inspect(
@@ -33,6 +32,7 @@ async test "send_request basic" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|Accept-Encoding: gzip,identity\r
         #|Content-Length: 0\r
         #|\r
         #|
@@ -50,13 +50,11 @@ async test "send_request stream" {
       let sender = Sender::new(w)
       let file = @fs.open("LICENSE", mode=ReadOnly)
       defer file.close()
-      sender
-      ..send_request(Get, "/", extra_headers={
+      let _ = sender.send_request(Get, "/", extra_headers={
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      ..write_reader(file)
-      .end_body()
+      sender..write_reader(file).end_body()
     })
     defer r.close()
     inspect(
@@ -65,6 +63,7 @@ async test "send_request stream" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|Accept-Encoding: gzip,identity\r
         #|Transfer-Encoding: chunked\r
         #|\r
         #|3f9\r
@@ -308,7 +307,7 @@ async test "send_request stream2" {
     root.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
-      sender.send_request(Get, "/", extra_headers={
+      let _ = sender.send_request(Get, "/", extra_headers={
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
@@ -326,6 +325,7 @@ async test "send_request stream2" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|Accept-Encoding: gzip,identity\r
         #|Transfer-Encoding: chunked\r
         #|\r
         #|4\r
@@ -352,7 +352,7 @@ async test "send invalid header" {
         "Content-Length": "42",
         "Content-Encoding": "chunked",
       })
-      sender.send_request(Get, "/", extra_headers={
+      let _ = sender.send_request(Get, "/", extra_headers={
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
         "Content-Length": "42",
@@ -367,6 +367,7 @@ async test "send invalid header" {
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
+        #|Accept-Encoding: gzip,identity\r
         #|Content-Length: 0\r
         #|\r
         #|

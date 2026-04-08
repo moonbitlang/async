@@ -254,7 +254,10 @@ async test "read_response basic" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
     log.write_string(input.read_all().text())
   })
@@ -285,7 +288,10 @@ async test "read_response passthrough fallback (no length headers)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
 
     // Read body via PassThrough fallback (reads until EOF/connection close)
@@ -318,7 +324,10 @@ async test "read_response 204 No Content (no body)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
     // Body should be Empty, not PassThrough
     let body_text = input.read_all().text()
@@ -352,7 +361,10 @@ async test "read_response 205 Reset Content (no body)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
     let body_text = input.read_all().text()
@@ -386,7 +398,10 @@ async test "read_response 304 Not Modified (no body)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
     let body_text = input.read_all().text()
     log.write_string("body: ")
@@ -418,7 +433,10 @@ async test "read_response 100 Continue (no body)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=None)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
     log_response(response, log)
     let body_text = input.read_all().text()
     log.write_string("body: ")
@@ -448,7 +466,10 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=Some(Connect))
+    let response = input.read_response(
+      request_method=Some(Connect),
+      auto_decompress=true,
+    )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
     let body_text = input.read_all().text()
@@ -481,7 +502,10 @@ async test "read_response HEAD 200 (no body)" {
     })
     defer r.close()
     let input = Reader::new(r)
-    let response = input.read_response(request_method=Some(Head))
+    let response = input.read_response(
+      request_method=Some(Head),
+      auto_decompress=true,
+    )
     log_response(response, log)
     // Body should be Empty, not Fixed(1234)
     let body_text = input.read_all().text()
@@ -701,4 +725,44 @@ test "should_read_body_until_close - false cases (HEAD requests)" {
     should_read_body_until_close(200, headers_with_length, Empty, Some(Head)),
     content="false",
   )
+}
+
+///|
+async test "gzip split between chunks" {
+  let compressed = @async.with_task_group(group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      @gzip_stream.Encoder(w)..write("A simple message to compress").end()
+    })
+    defer r.close()
+    r.read_all().binary()
+  })
+  let (r, w) = @io.pipe()
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Transfer-Encoding: Chunked\r\n")
+      .write("Content-Encoding: gzip\r\n\r\n")
+      for i in 0..<compressed.length() {
+        w..write("1\r\n")..write(compressed[i:i + 1]).write("\r\n")
+      }
+      w.write("0\r\n\r\n")
+    })
+    defer r.close()
+    let r = Reader::new(r)
+    let response = r.read_response(
+      request_method=Some(Get),
+      auto_decompress=true,
+    )
+    inspect(response.code, content="200")
+    inspect(
+      r.read_all().text(),
+      content=(
+        #|A simple message to compress
+      ),
+    )
+  })
 }
