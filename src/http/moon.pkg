@@ -7,6 +7,7 @@ import {
   "moonbitlang/async/tls",
   "moonbitlang/async/internal/io_buffer",
   "moonbitlang/async/js_async",
+  "moonbitlang/async/internal/gzip_internal" @gzip,
 }
 
 import {
@@ -21,6 +22,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/bytes_util",
+  "moonbitlang/async/gzip" @gzip_stream,
 } for "wbtest"
 
 options(

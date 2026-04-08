@@ -35,3 +35,13 @@ async test "request cancel" {
   let end = @async.now()
   assert_true((end - start).to_int() < 250)
 }
+
+///|
+#cfg(target="native")
+async test "manual Accept-Encoding" {
+  let (_, result1) = @http.get("https://www.moonbitlang.com")
+  let (_, result2) = @http.get("https://www.moonbitlang.com", headers={
+    "Accept-Encoding": "gzip",
+  })
+  assert_not_eq(result1.binary().length(), result2.binary().length())
+}

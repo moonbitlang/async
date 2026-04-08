@@ -26,6 +26,8 @@ pub struct Client {
   priv tls : @tls.Tls?
   priv sender : Sender
   priv mut request_method : RequestMethod?
+  /// whether automatic decompression should be enabled for current request
+  priv mut auto_decompress : Bool
 
   async fn new(
     uri : String,
@@ -91,7 +93,14 @@ async fn Client::connect(
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }
-  { transport, tls, reader, sender, request_method: None }
+  {
+    transport,
+    tls,
+    reader,
+    sender,
+    request_method: None,
+    auto_decompress: false,
+  }
 }
 
 ///|
@@ -200,8 +209,12 @@ pub async fn Client::flush(self : Client) -> Unit {
 pub async fn Client::end_request(self : Client) -> Response {
   self.sender.end_body()
   self.reader.skip_body()
-  let response = self.reader.read_response(request_method=self.request_method)
+  let response = self.reader.read_response(
+    request_method=self.request_method,
+    auto_decompress=self.auto_decompress,
+  )
   self.request_method = None
+  self.auto_decompress = false
   response
 }
 
@@ -228,7 +241,7 @@ pub async fn Client::request(
   path : String,
   extra_headers? : Map[String, String] = {},
 ) -> Unit {
-  self.sender.send_request(meth, path, extra_headers~)
+  self.auto_decompress = self.sender.send_request(meth, path, extra_headers~)
   self.request_method = Some(meth)
 }
 

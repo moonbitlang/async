@@ -28,6 +28,7 @@ priv struct Sender {
   mut send_buf : FixedArray[Byte]
   mut send_len : Int
   headers : Bytes
+  has_accept_encoding : Bool
 }
 
 ///|
@@ -41,8 +42,13 @@ fn[W : @io.Writer] Sender::new(
   headers? : Map[String, String] = {},
 ) -> Sender {
   let header_text = @buffer.new()
+  let mut has_accept_encoding = false
   for k, v in headers {
-    if !forbidden_headers.contains(k.to_lower()) {
+    let k_lower = k.to_lower()
+    if !forbidden_headers.contains(k_lower) {
+      if k_lower is "accept-encoding" {
+        has_accept_encoding = true
+      }
       header_text.write_string_utf8("\{k}: \{v}\r\n")
     }
   }
@@ -52,6 +58,7 @@ fn[W : @io.Writer] Sender::new(
     send_buf: FixedArray::make(1024, 0),
     send_len: 0,
     headers: header_text.contents(),
+    has_accept_encoding,
   }
 }
 
@@ -222,12 +229,13 @@ async fn Sender::send_headers(
 }
 
 ///|
+/// Return value indicate if automatic decompression should be enabled for the response of this request
 async fn Sender::send_request(
   self : Sender,
   meth : RequestMethod,
   path : String,
   extra_headers~ : Map[String, String],
-) -> Unit {
+) -> Bool {
   guard self.mode is SendingHeader
   match meth {
     Get => self.write("GET ")
@@ -245,7 +253,14 @@ async fn Sender::send_request(
   ..write(" HTTP/1.1\r\n")
   ..write(self.headers)
   .send_headers(extra_headers)
+  let auto_decompress = !self.has_accept_encoding &&
+    extra_headers.keys().find_first(k => k.to_lower() is "accept-encoding")
+    is None
+  if auto_decompress {
+    self.write("Accept-Encoding: gzip,identity\r\n")
+  }
   self.mode = WaitingBody
+  auto_decompress
 }
 
 ///|
