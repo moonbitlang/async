@@ -10,11 +10,13 @@ import {
 }
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
 } for "test"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
@@ -26,6 +28,7 @@ options(
     "client.js.mbt": [ "js" ],
     "client.mbt": [ "native" ],
     "client_test.mbt": [ "native", "js" ],
+    "deprecated.mbt": [ "native", "js" ],
     "parser.mbt": [ "native" ],
     "parser_wbtest.mbt": [ "native" ],
     "proxy_test.mbt": [ "native" ],

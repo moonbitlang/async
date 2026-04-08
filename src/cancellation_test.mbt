@@ -32,7 +32,7 @@ async test "manual cancel" {
     @async.sleep(200)
     buf.write_string("main task exit\n")
   })
-  buf.write_string(result.to_string())
+  buf.write_string(@debug.to_string(result))
   inspect(
     buf.to_string(),
     content=(
@@ -44,33 +44,36 @@ async test "manual cancel" {
 }
 
 ///|
-suberror Err derive(Show)
+suberror Err derive(Debug)
 
 ///|
 async test "error propagation" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(root => {
-    root.spawn_bg(() => {
-      @async.sleep(300)
-      raise Err
-    })
-    root.spawn_bg(() => {
-      try {
-        @async.sleep(200)
-        buf.write_string("task 2, tick 1\n")
-        @async.sleep(200)
-        buf.write_string("task 2, tick 2\n")
-      } catch {
-        err => {
-          buf.write_string("task 2 cancelled with error \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => buf.write_string("task 2 normal exit\n")
-      }
-    })
-  })
-  buf.write_string(result.to_string())
+  buf.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(300)
+          raise Err
+        })
+        root.spawn_bg(() => {
+          try {
+            @async.sleep(200)
+            buf.write_string("task 2, tick 1\n")
+            @async.sleep(200)
+            buf.write_string("task 2, tick 2\n")
+          } catch {
+            err => {
+              buf.write_string("task 2 cancelled with error \{err}\n")
+              raise err
+            }
+          } noraise {
+            _ => buf.write_string("task 2 normal exit\n")
+          }
+        })
+      }),
+    ),
+  )
   inspect(
     buf.to_string(),
     content=(
@@ -104,7 +107,11 @@ async test "multiple scope" {
           })
         })
       catch {
-        err => buf.write_string("ctx 1 received error \{err}\n")
+        err => {
+          buf.write_string("ctx 1 received error ")
+          buf.write_string(@debug.to_string(err))
+          buf.write_char('\n')
+        }
       } noraise {
         _ => buf.write_string("ctx 1 finished normally\n")
       }
@@ -128,7 +135,11 @@ async test "multiple scope" {
           })
         })
       catch {
-        err => buf.write_string("ctx 2 received error \{err}\n")
+        err => {
+          buf.write_string("ctx 2 received error ")
+          buf.write_string(@debug.to_string(err))
+          buf.write_char('\n')
+        }
       } noraise {
         _ => buf.write_string("ctx 2 finished normally\n")
       }
@@ -188,19 +199,21 @@ async test "recursive cancel" {
 ///|
 async test "spawn directly error" {
   let buf = StringBuilder::new()
-  buf.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.with_task_group(group => {
-          @async.sleep(1)
-          group.spawn_bg(() => raise Err)
-          buf.write_string("after spawn\n")
-          @async.sleep(400)
-          buf.write_string("main task exit\n")
+  buf.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.with_task_group(group => {
+            @async.sleep(1)
+            group.spawn_bg(() => raise Err)
+            buf.write_string("after spawn\n")
+            @async.sleep(400)
+            buf.write_string("main task exit\n")
+          })
         })
-      })
-      @async.sleep(200)
-    }),
+        @async.sleep(200)
+      }),
+    ),
   )
   inspect(
     buf.to_string(),
@@ -214,18 +227,20 @@ async test "spawn directly error" {
 ///|
 async test "error in cancellation" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(no_wait=true, () => {
-        @async.sleep(1000) catch {
-          _ => {
-            log.write_string("causing other error in cancellation handler\n")
-            raise Err
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(no_wait=true, () => {
+          @async.sleep(1000) catch {
+            _ => {
+              log.write_string("causing other error in cancellation handler\n")
+              raise Err
+            }
           }
-        }
-      })
-      @async.sleep(200)
-    }),
+        })
+        @async.sleep(200)
+      }),
+    ),
   )
   inspect(
     log.to_string(),

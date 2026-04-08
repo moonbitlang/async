@@ -1,13 +1,19 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/io"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn pipe() -> (PipeRead, PipeWrite)
 
 // Errors
-pub suberror PipeClosed derive(Show, ToJson)
+pub suberror PipeClosed derive(ToJson, @debug.Debug)
+pub impl Show for PipeClosed
 
-pub(all) suberror ReaderClosed derive(Show, ToJson)
+pub(all) suberror ReaderClosed derive(ToJson, @debug.Debug)
+pub impl Show for ReaderClosed
 
 // Types and methods
 type BufferedWriter[W]

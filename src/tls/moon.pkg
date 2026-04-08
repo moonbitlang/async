@@ -20,6 +20,7 @@ options(
   "native-stub": [ "openssl.c", "schannel.c" ],
   targets: {
     "crypto_util.mbt": [ "native" ],
+    "deprecated.mbt": [ "native" ],
     "openssl.mbt": [ "native" ],
     "openssl_loader.mbt": [ "native" ],
     "schannel.mbt": [ "native" ],

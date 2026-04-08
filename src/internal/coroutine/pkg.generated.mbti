@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/coroutine"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn check_cancellation() -> Unit raise
 
@@ -23,7 +27,8 @@ pub fn spawn(async () -> Unit) -> Coroutine
 pub async fn suspend() -> Unit
 
 // Errors
-pub(all) suberror Cancelled derive(Show)
+pub(all) suberror Cancelled derive(@debug.Debug)
+pub impl Show for Cancelled
 
 // Types and methods
 type Coroutine

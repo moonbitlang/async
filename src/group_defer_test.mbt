@@ -55,29 +55,31 @@ async test "group defer basic" {
 ///|
 async test "group defer error" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(fn(root) {
-      root.add_defer(() => log.write_string("first group defer\n"))
-      root.spawn_bg(() => {
-        defer log.write_string("defer for first task\n")
-        @async.sleep(200)
-        root.add_defer(() => log.write_string("third group defer\n"))
-        @async.sleep(200)
-        log.write_string("first task finished\n")
-      })
-      root.spawn_bg(() => {
-        defer log.write_string("defer for second task\n")
-        @async.sleep(100)
-        root.add_defer(() => log.write_string("second group defer\n"))
-        @async.sleep(200)
-        log.write_string("second task raise error\n")
-        raise Err
-      })
-      root.spawn_bg(no_wait=true, () => {
-        defer log.write_string("defer for cancelled task\n")
-        @async.sleep(1000)
-      })
-    }),
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(fn(root) {
+        root.add_defer(() => log.write_string("first group defer\n"))
+        root.spawn_bg(() => {
+          defer log.write_string("defer for first task\n")
+          @async.sleep(200)
+          root.add_defer(() => log.write_string("third group defer\n"))
+          @async.sleep(200)
+          log.write_string("first task finished\n")
+        })
+        root.spawn_bg(() => {
+          defer log.write_string("defer for second task\n")
+          @async.sleep(100)
+          root.add_defer(() => log.write_string("second group defer\n"))
+          @async.sleep(200)
+          log.write_string("second task raise error\n")
+          raise Err
+        })
+        root.spawn_bg(no_wait=true, () => {
+          defer log.write_string("defer for cancelled task\n")
+          @async.sleep(1000)
+        })
+      }),
+    ),
   )
   inspect(
     log.to_string(),

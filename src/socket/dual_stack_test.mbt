@@ -48,7 +48,7 @@ async test "Only_V4 server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)
@@ -99,7 +99,7 @@ async test "Only_V6 server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)
@@ -143,7 +143,7 @@ async test "dual stack server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)
@@ -192,7 +192,7 @@ async test "Only_V4 UDP server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)
@@ -242,7 +242,7 @@ async test "Only_V6 UDP server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)
@@ -289,7 +289,7 @@ async test "dual stack UDP server" {
     for protocol in all_protocol_preferences {
       let result = try? client(protocol)
       @async.sleep(100)
-      log.write_string("client(\{protocol}): \{result}\n")
+      log.write_string("client(\{@debug.to_string(protocol)}): \{result}\n")
     }
     // give some time for the server to process the last connection
     @async.sleep(300)

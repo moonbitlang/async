@@ -125,7 +125,7 @@ pub impl Reader for PipeRead with _get_internal_buffer(self) {
 ///|
 /// This error will be raised when
 /// writing to a pipe whose read end is already closed.
-pub suberror PipeClosed derive(Show, ToJson)
+pub suberror PipeClosed derive(Debug, ToJson)
 
 ///|
 /// Write data to a pipe. The data can be read from the read end of the pipe.

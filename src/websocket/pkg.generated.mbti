@@ -4,6 +4,7 @@ package "moonbitlang/async/websocket"
 import {
   "moonbitlang/async/http",
   "moonbitlang/async/io",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -13,7 +14,8 @@ pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for WebSocketError
 
 // Types and methods
 pub(all) enum CloseCode {
@@ -28,7 +30,8 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for CloseCode
 
 type Conn
 pub fn Conn::close(Self) -> Unit
@@ -56,7 +59,8 @@ pub impl @io.Reader for Message
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for MessageKind
 
 // Type aliases
 

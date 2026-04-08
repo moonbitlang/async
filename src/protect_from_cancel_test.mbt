@@ -46,7 +46,7 @@ async test "protect_from_cancel" {
     @async.sleep(200)
     raise Err
   }) catch {
-    err => log.write_object(err)
+    err => log.write_string(@debug.to_string(err))
   }
   inspect(
     log.to_string(),
@@ -150,7 +150,7 @@ async test "protect_from_cancel fail" {
       })
     })
   })
-  log.write_object(result)
+  log.write_string(@debug.to_string(result))
   inspect(
     log.to_string(),
     content=(

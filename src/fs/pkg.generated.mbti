@@ -3,6 +3,7 @@ package "moonbitlang/async/fs"
 
 import {
   "moonbitlang/async/io",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -86,7 +87,8 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for FileKind
 
 pub(all) enum Lock {
   Shared

@@ -35,7 +35,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {

@@ -14,47 +14,47 @@
 
 ///|
 test "resolve_url" {
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org"),
     content=(
       #|Ok((Http, 80, "www.example.org", "/"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org/path/to"),
     content=(
       #|Ok((Http, 80, "www.example.org", "/path/to"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("https://www.example.org/path/to?search=q"),
     content=(
       #|Ok((Https, 443, "www.example.org", "/path/to?search=q"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("ftp://www.example.org"),
     content=(
       #|Err(UnsupportedProtocol("ftp"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org:10042"),
     content=(
       #|Ok((Http, 10042, "www.example.org", "/"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org:10042/path"),
     content=(
       #|Ok((Http, 10042, "www.example.org", "/path"))
     ),
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org:0"),
     content="Err(InvalidFormat)",
   )
-  inspect(
+  debug_inspect(
     try? resolve_url("http://www.example.org:100042"),
     content="Err(InvalidFormat)",
   )

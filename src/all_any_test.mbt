@@ -268,7 +268,7 @@ async test "any with allow_failure all fail" {
     allow_failure=true,
   )
   json_inspect(log, content=["task #2 failing", "task #1 failing"])
-  inspect(result, content="Err(Err)")
+  debug_inspect(result, content="Err(Err)")
 }
 
 ///|

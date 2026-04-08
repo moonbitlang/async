@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-suberror ServerTerminate derive(Show)
+suberror ServerTerminate derive(Debug)
 
 ///|
 pub(all) struct Printer((String) -> Unit)

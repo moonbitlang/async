@@ -38,7 +38,7 @@ pub struct Client {
 /// Error raised when the proxy responded with a non-2XX response code
 pub suberror ProxyError {
   ProxyError(Response)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 async fn Client::connect(

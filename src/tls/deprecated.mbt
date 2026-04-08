@@ -13,19 +13,22 @@
 // limitations under the License.
 
 ///|
-async test "test server" {
-  @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => start_echo_server())
-    let client = @websocket.connect("ws://localhost:9001")
-    defer client.close()
-    client.send_binary("abcd")
-    let msg = client.recv()
-    debug_inspect(msg.kind, content="Binary")
-    inspect(msg.read_all().text(), content="abcd")
-    client.send_text("abcd")
-    let msg = client.recv()
-    debug_inspect(msg.kind, content="Text")
-    inspect(msg.read_all().text(), content="abcd")
-    client.send_close()
-  })
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+pub impl Show for TlsError
+
+///|
+pub impl Show for TlsError with output(self, logger) {
+  match self {
+    TlsError(msg) =>
+      logger..write_string("TlsError(")..write_object(msg).write_string(")")
+  }
+}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+pub impl Show for ConnectionClosed
+
+///|
+pub impl Show for ConnectionClosed with output(_self, logger) {
+  logger.write_string("ConnectionClosed")
 }

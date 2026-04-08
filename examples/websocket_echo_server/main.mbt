@@ -64,7 +64,7 @@ async fn start_echo_server() -> Unit {
     } catch {
       @websocket.ConnectionClosed(e, reason) =>
         println(
-          "Client \{client_addr} disconnected with \{e}, reason: \{reason}",
+          "Client \{client_addr} disconnected with \{@debug.to_string(e)}, reason: \{reason}",
         )
       e => println("Error with client \{client_addr}: \{e}")
     }

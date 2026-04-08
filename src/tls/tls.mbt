@@ -15,10 +15,10 @@
 ///|
 pub suberror TlsError {
   TlsError(String)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
-pub suberror ConnectionClosed derive(Show, ToJson)
+pub suberror ConnectionClosed derive(Debug, ToJson)
 
 ///|
 /// Create a TLS client that read from write to `inner`.

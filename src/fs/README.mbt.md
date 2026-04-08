@@ -272,7 +272,7 @@ async test "mkdir - create with custom permissions" {
   @fs.mkdir(dir_path, permission=0o700)
   let kind = @fs.kind(dir_path)
   @fs.rmdir(dir_path)
-  inspect(kind, content="Directory")
+  debug_inspect(kind, content="Directory")
 }
 ```
 
@@ -419,7 +419,7 @@ async test "kind - regular file" {
   @fs.write_file(test_file, b"test", create=0o644)
   let kind = @fs.kind(test_file)
   @fs.remove(test_file)
-  inspect(kind, content="Regular")
+  debug_inspect(kind, content="Regular")
 }
 
 ///|
@@ -429,7 +429,7 @@ async test "kind - directory" {
   @fs.mkdir(dir_path, permission=0o755)
   let kind = @fs.kind(dir_path)
   @fs.rmdir(dir_path)
-  inspect(kind, content="Directory")
+  debug_inspect(kind, content="Directory")
 }
 
 ///|
@@ -441,7 +441,7 @@ async test "File::kind method" {
   let kind = file.kind()
   file.close()
   @fs.remove(test_file)
-  inspect(kind, content="Regular")
+  debug_inspect(kind, content="Regular")
 }
 ```
 

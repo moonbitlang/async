@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/fd_util"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn close(Int, kind~ : FileKind, context~ : String) -> Unit raise
 
@@ -32,9 +36,10 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn FileKind::can_poll(Self) -> Bool
 pub fn FileKind::from_sys_kind(Int64) -> Self
+pub impl Show for FileKind
 
 type FileTime
 pub fn FileTime::atime(Self) -> (Int64, Int)

@@ -136,7 +136,7 @@ pub(all) enum CloseCode {
   MissingExtension // 1010
   InternalError // 1011
   Other(UInt16)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 ```
 
 ### Error Types
@@ -150,5 +150,5 @@ suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String) // Handshake failed with detailed reason
   ProtocolError // Malformed frame
-} derive(Show)
+} derive(Debug)
 ```

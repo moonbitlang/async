@@ -25,6 +25,7 @@ options(
     "access_test.mbt": [ "native" ],
     "constants.mbt": [ "native" ],
     "create_test.mbt": [ "native" ],
+    "deprecated.mbt": [ "native" ],
     "dir.mbt": [ "native" ],
     "dir_test.mbt": [ "native" ],
     "eof_test.mbt": [ "native" ],
