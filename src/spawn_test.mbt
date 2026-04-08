@@ -25,7 +25,7 @@ async test "spawn error1" {
       raise Err
     })
   })
-  buf.write_string(result.to_string())
+  buf.write_string(@debug.to_string(result))
   inspect(buf.to_string(), content="Err(Err)")
 }
 
@@ -42,7 +42,7 @@ async test "spawn error2" {
       buf.write_string("task 1 finished\n")
     })
   })
-  buf.write_string(result.to_string())
+  buf.write_string(@debug.to_string(result))
   inspect(buf.to_string(), content="Err(Err)")
 }
 

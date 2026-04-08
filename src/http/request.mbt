@@ -16,7 +16,7 @@
 pub(all) enum Protocol {
   Http
   Https
-} derive(Show, Eq, Compare, Hash, ToJson)
+} derive(Debug, Eq, Compare, Hash, ToJson)
 
 ///|
 pub fn Protocol::default_port(p : Protocol) -> Int {
@@ -30,7 +30,7 @@ pub fn Protocol::default_port(p : Protocol) -> Int {
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {

@@ -28,7 +28,7 @@ pub(open) trait Reader {
 }
 
 ///|
-pub(all) suberror ReaderClosed derive(Show, ToJson)
+pub(all) suberror ReaderClosed derive(Debug, ToJson)
 
 ///|
 /// `reader.read(dst, offset~, max_len~)` read at most `max_len` bytes from the reader,

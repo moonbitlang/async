@@ -41,7 +41,7 @@ pub fn is_cancellation_error(error : Error) -> Bool {
 }
 
 ///|
-pub suberror TimeoutError derive(Show, ToJson)
+pub suberror TimeoutError derive(Debug, ToJson)
 
 ///|
 /// `with_timeout(timeout, f)` run the async function `f`.

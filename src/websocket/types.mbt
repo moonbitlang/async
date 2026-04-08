@@ -61,7 +61,7 @@ priv struct FrameHeader {
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// WebSocket close status codes
@@ -77,7 +77,7 @@ pub(all) enum CloseCode {
   MissingExtension // 1010
   InternalError // 1011
   Other(UInt16)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 fn CloseCode::to_uint16(self : CloseCode) -> UInt16 {
@@ -118,4 +118,4 @@ pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?) // Connection was closed
   InvalidHandshake(String) // Handshake failed with specific reason
   ProtocolError(String)
-} derive(Show)
+} derive(Debug)

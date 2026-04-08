@@ -32,13 +32,15 @@ async test "allow_failure ignored" {
 ///|
 async test "allow_failure waited" {
   let buf = StringBuilder::new()
-  buf.write_object(
-    try? @async.with_task_group(root => {
-      let task = root.spawn(allow_failure=true, () => raise Err)
-      @async.sleep(100)
-      task.wait()
-      buf.write_string("main task terminate\n")
-    }),
+  buf.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        let task = root.spawn(allow_failure=true, () => raise Err)
+        @async.sleep(100)
+        task.wait()
+        buf.write_string("main task terminate\n")
+      }),
+    ),
   )
   inspect(buf.to_string(), content="Err(Err)")
 }

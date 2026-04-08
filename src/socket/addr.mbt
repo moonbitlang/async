@@ -87,7 +87,7 @@ pub impl Show for Addr with output(self, logger) {
 }
 
 ///|
-pub suberror InvalidAddr derive(Show, ToJson)
+pub suberror InvalidAddr derive(Debug, ToJson)
 
 ///|
 /// Parse a string into IPv4 or IPv6 address, format should be `ip:port` for IPv4 or `[ip]:port` for IPv6
@@ -131,7 +131,7 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "FreeAddrInfoW"
 /// so users should never depend on it.
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub(all) enum IpProtocolPreference {
@@ -140,7 +140,7 @@ pub(all) enum IpProtocolPreference {
   FavorV4
   FavorV6
   NoPreference
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Resolve a IPv4 or IPv6 address by hostname.

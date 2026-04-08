@@ -8,3 +8,7 @@ import {
   "moonbitlang/async/semaphore",
   "moonbitlang/async/cond_var",
 }
+
+import {
+  "moonbitlang/core/debug",
+} for "test"

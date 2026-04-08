@@ -19,7 +19,7 @@ async test "stat" {
   @fs.symlink(link_path, target="../LICENSE")
   @async.with_task_group(group => {
     group.add_defer(() => @fs.remove(link_path))
-    inspect(@fs.kind(link_path), content="Regular")
-    inspect(@fs.kind(link_path, follow_symlink=false), content="SymLink")
+    debug_inspect(@fs.kind(link_path), content="Regular")
+    debug_inspect(@fs.kind(link_path, follow_symlink=false), content="SymLink")
   })
 }

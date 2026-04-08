@@ -24,7 +24,7 @@ async test "passthrough mode" {
       let conn = @http.ServerConnection::new(conn)
       defer conn.close()
       let request = conn.read_request()
-      inspect(request.meth, content="Connect")
+      debug_inspect(request.meth, content="Connect")
       inspect(request.path, content="/path")
       conn..send_response(200, "OK").end_response()
       conn.enter_passthrough_mode()
@@ -61,7 +61,7 @@ async test "passthrough mode remaining data" {
       let conn = @http.ServerConnection::new(conn)
       defer conn.close()
       let request = conn.read_request()
-      inspect(request.meth, content="Get")
+      debug_inspect(request.meth, content="Get")
       inspect(request.path, content="/")
       conn.enter_passthrough_mode()
       inspect(conn.read_all().text(), content="remaining data")
@@ -175,7 +175,7 @@ async test "proxied misc request" {
           let request = conn.read_request()
           let body = conn.read_all().text()
           log.push(
-            "target server: received request \{request.meth} \{request.path} \{body}",
+            "target server: received request \{@debug.to_string(request.meth)} \{request.path} \{body}",
           )
           conn..send_response(200, "OK").end_response()
         }

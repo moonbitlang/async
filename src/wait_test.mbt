@@ -62,7 +62,7 @@ async test "wait cancelled" {
     @async.sleep(20)
     raise Err
   }) catch {
-    err => buf.write_object(err)
+    err => buf.write_string(@debug.to_string(err))
   }
   inspect(
     buf.to_string(),

@@ -31,7 +31,7 @@ async test "UTF8 validation" {
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()
         let msg = ws.recv()
-        inspect(msg.kind, content="Text")
+        debug_inspect(msg.kind, content="Text")
         for i = 0; ; i = i + 1 {
           ignore(msg.read_exactly(1)) catch {
             err if @async.is_being_cancelled() => raise err
@@ -95,7 +95,7 @@ async test "UTF8 validation large message" {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
         let msg = ws.recv()
-        inspect(msg.kind, content="Text")
+        debug_inspect(msg.kind, content="Text")
         ws..start_message(Text)..write_reader(msg).end_message()
       })
     })

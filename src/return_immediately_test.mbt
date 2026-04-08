@@ -57,22 +57,24 @@ async test "return_immediately nested" {
 ///|
 async test "return_immediately error on cancel" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        root.return_immediately(())
-      })
-      root.spawn_bg(() => {
-        @async.sleep(300) catch {
-          _ => {
-            log.write_string("task cancelled, causing other error\n")
-            raise Err
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(200)
+          root.return_immediately(())
+        })
+        root.spawn_bg(() => {
+          @async.sleep(300) catch {
+            _ => {
+              log.write_string("task cancelled, causing other error\n")
+              raise Err
+            }
           }
-        }
-        log.write_string("task finished\n")
-      })
-    }),
+          log.write_string("task finished\n")
+        })
+      }),
+    ),
   )
   inspect(
     log.to_string(),

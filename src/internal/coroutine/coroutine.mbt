@@ -62,7 +62,7 @@ pub fn check_cancellation() -> Unit raise {
 }
 
 ///|
-pub(all) suberror Cancelled derive(Show)
+pub(all) suberror Cancelled derive(Debug)
 
 ///|
 pub fn Coroutine::cancel(self : Coroutine) -> Unit {

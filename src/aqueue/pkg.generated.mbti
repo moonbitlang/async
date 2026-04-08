@@ -1,10 +1,15 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/aqueue"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 
 // Errors
-pub suberror QueueAlreadyClosed derive(Show, ToJson)
+pub suberror QueueAlreadyClosed derive(ToJson, @debug.Debug)
+pub impl Show for QueueAlreadyClosed
 
 // Types and methods
 pub(all) enum Kind {

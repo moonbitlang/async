@@ -22,7 +22,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 // currently we cannot re-export constructors,

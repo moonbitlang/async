@@ -21,7 +21,7 @@ fn log_headers(headers : Map[String, String], logger : &Logger) -> Unit {
 
 ///|
 fn log_request(req : Request, logger : &Logger) -> Unit {
-  logger.write_string("\{req.meth} \{req.path}\n")
+  logger.write_string("\{@debug.to_string(req.meth)} \{req.path}\n")
   log_headers(req.headers, logger)
 }
 

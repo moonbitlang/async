@@ -3,16 +3,19 @@ package "moonbitlang/async/socket"
 
 import {
   "moonbitlang/async/io",
+  "moonbitlang/core/debug",
 }
 
 // Values
 
 // Errors
-pub suberror InvalidAddr derive(Show, ToJson)
+pub suberror InvalidAddr derive(ToJson, @debug.Debug)
+pub impl Show for InvalidAddr
 
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
+pub impl Show for ResolveHostnameError
 
 // Types and methods
 type Addr derive(Compare, Eq, Hash)
@@ -30,7 +33,8 @@ pub(all) enum IpProtocolPreference {
   FavorV4
   FavorV6
   NoPreference
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for IpProtocolPreference
 
 pub struct Tcp {
   addr : Addr
