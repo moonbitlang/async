@@ -120,7 +120,7 @@ async test "proxied https request" {
         handle_connect(log, req, body, conn)
       })
     })
-    let (_, result) = @async.with_timeout(10000, () => {
+    let (_, result) = @async.with_timeout(300000, () => {
       @http.get(
         "https://www.moonbitlang.com",
         proxy=@http.Client("http://localhost:\{port}"),
