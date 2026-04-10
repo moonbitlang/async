@@ -234,7 +234,13 @@ pub async fn Client::end_request(self : Client) -> Response {
 /// and must not be specified in `extra_headers`:
 ///
 /// - Host
-/// - Content-Length, Transfer-Encoding
+/// - Transfer-Encoding
+///
+/// If `Content-Length` is present in `extra_headers`,
+/// it should be the total length of the request body.
+/// The request body can still be sent incrementally,
+/// but if the actual body being sent is shorter and longer than the provided length,
+/// an error will be raised.
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,

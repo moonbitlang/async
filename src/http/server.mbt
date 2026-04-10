@@ -136,6 +136,15 @@ pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 /// The `ServerConnection` can be used as a `@io.Writer` later for sending response body.
 /// After calling `send_response`,
 /// `end_response` must be called before sending the next response.
+///
+/// If `Content-Length` is present in `extra_headers`,
+/// it should be the total length of the request body.
+/// This useful for, for example, file servers to allow
+/// clients to know the progress of download, perform multipart download etc.
+///
+/// The request body can still be sent incrementally,
+/// but if the actual body being sent is shorter and longer than the provided length,
+/// an error will be raised.
 pub async fn ServerConnection::send_response(
   self : ServerConnection,
   code : Int,
