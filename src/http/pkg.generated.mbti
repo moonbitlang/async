@@ -28,6 +28,8 @@ pub suberror HttpProtocolError {
 } derive(ToJson, @debug.Debug)
 pub impl Show for HttpProtocolError
 
+pub suberror IncorrectBodyLength derive(ToJson, @debug.Debug)
+
 pub suberror ProxyError {
   ProxyError(Response)
 } derive(ToJson, @debug.Debug)

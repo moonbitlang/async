@@ -17,6 +17,7 @@ priv enum SenderMode {
   SendingHeader
   WaitingBody
   SendingBody
+  SendingFixed(mut remaining~ : Int64)
   PassThrough
 }
 
@@ -79,6 +80,9 @@ const NON_EMPTY_MESSAGE_HEADER_END : Bytes = "Transfer-Encoding: chunked\r\n\r\n
 const EMPTY_MESSAGE_HEADER_END : Bytes = "Content-Length: 0\r\n\r\n"
 
 ///|
+pub suberror IncorrectBodyLength derive(Debug, ToJson)
+
+///|
 impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
   match self.mode {
     SendingHeader => {
@@ -88,6 +92,17 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
       let len = @cmp.minimum(len, self.send_buf.length() - self.send_len)
       self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
       self.send_len += len
+      len
+    }
+    SendingFixed(remaining~) as mode => {
+      guard len.to_int64() <= remaining else { raise IncorrectBodyLength }
+      if self.send_len >= self.send_buf.length() {
+        self.flush()
+      }
+      let len = @cmp.minimum(self.send_buf.length() - self.send_len, len)
+      self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
+      self.send_len += len
+      mode.remaining -= len.to_int64()
       len
     }
     WaitingBody => {
@@ -144,6 +159,24 @@ impl @io.Writer for Sender with write_reader(self, reader) {
           break
         }
       }
+    SendingFixed(remaining~) as mode =>
+      for remaining = remaining {
+        if self.send_len >= self.send_buf.length() {
+          self.flush()
+        }
+        let n = reader.read(self.send_buf, offset=self.send_len)
+        if n == 0 {
+          mode.remaining = remaining
+          break
+        }
+        let remaining = remaining - n.to_int64()
+        if remaining < 0 {
+          raise IncorrectBodyLength
+        }
+        self.send_len += n
+        self.flush()
+        continue remaining
+      }
     WaitingBody => {
       if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
@@ -188,6 +221,8 @@ async fn Sender::end_body(self : Sender) -> Unit {
   match self.mode {
     SendingHeader | PassThrough =>
       abort("`end_body()` called outside a HTTP message")
+    SendingFixed(remaining=0) => self.flush()
+    SendingFixed(_) => raise IncorrectBodyLength
     WaitingBody =>
       if self.send_len + EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
@@ -220,12 +255,20 @@ async fn Sender::end_body(self : Sender) -> Unit {
 async fn Sender::send_headers(
   self : Sender,
   headers : Map[String, String],
-) -> Unit {
+) -> Int64? {
+  let mut content_length = None
   for pair in headers.to_array() {
     let (k, v) = pair
-    guard !forbidden_headers.contains(k.to_lower()) else {  }
+    let k_lower = k.to_lower()
+    if k_lower is "content-length" {
+      let len = @string.parse_int64(v.trim(), base=10)
+      content_length = Some(len)
+    } else if forbidden_headers.contains(k_lower) {
+      continue
+    }
     self..write(k)..write(": ")..write(v).write("\r\n")
   }
+  content_length
 }
 
 ///|
@@ -248,18 +291,23 @@ async fn Sender::send_request(
     Trace => self.write("TRACE ")
     Patch => self.write("PATCH ")
   }
-  self
-  ..write(path)
-  ..write(" HTTP/1.1\r\n")
-  ..write(self.headers)
-  .send_headers(extra_headers)
+  let content_length = self
+    ..write(path)
+    ..write(" HTTP/1.1\r\n")
+    ..write(self.headers)
+    .send_headers(extra_headers)
   let auto_decompress = !self.has_accept_encoding &&
     extra_headers.keys().find_first(k => k.to_lower() is "accept-encoding")
     is None
   if auto_decompress {
     self.write("Accept-Encoding: gzip,identity\r\n")
   }
-  self.mode = WaitingBody
+  if content_length is Some(len) {
+    self.write("\r\n")
+    self.mode = SendingFixed(remaining=len)
+  } else {
+    self.mode = WaitingBody
+  }
   auto_decompress
 }
 
@@ -271,15 +319,20 @@ async fn Sender::send_response(
   extra_headers~ : Map[String, String],
 ) -> Unit {
   guard self.mode is SendingHeader
-  self
-  ..write("HTTP/1.1 ")
-  ..write(encode_int(code, base=10))
-  ..write(" ")
-  ..write(reason)
-  ..write("\r\n")
-  ..write(self.headers)
-  .send_headers(extra_headers)
-  self.mode = WaitingBody
+  let content_length = self
+    ..write("HTTP/1.1 ")
+    ..write(encode_int(code, base=10))
+    ..write(" ")
+    ..write(reason)
+    ..write("\r\n")
+    ..write(self.headers)
+    .send_headers(extra_headers)
+  if content_length is Some(len) {
+    self.write("\r\n")
+    self.mode = SendingFixed(remaining=len)
+  } else {
+    self.mode = WaitingBody
+  }
 }
 
 ///|
