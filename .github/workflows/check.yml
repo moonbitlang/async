@@ -42,4 +42,6 @@ jobs:
       - name: run test with address sanitizer
         run: |
           export ASAN_OPTIONS=fast_unwind_on_malloc=0
-          moon test src/http
+          time moon test src/http
+          time moon test src/internal/gzip_internal
+          time moon test src/gzip
