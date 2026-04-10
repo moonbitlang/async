@@ -58,7 +58,10 @@ async fn serve_file(
     _ => "appliaction/octet-stream"
   }
   conn
-  ..send_response(200, "OK", extra_headers={ "Content-Type": content_type })
+  ..send_response(200, "OK", extra_headers={
+    "Content-Type": content_type,
+    "Content-Length": file.size().to_string(),
+  })
   ..write_reader(file)
   .end_response()
 }
