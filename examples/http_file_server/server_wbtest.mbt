@@ -115,7 +115,7 @@ async test "basic" {
       #|client: GET /examples/moon.mod.json
       #|HTTP/1.1 200 OK
       #|content-type: appliaction/octet-stream
-      #|transfer-encoding: chunked
+      #|content-length: 362
       #|{
       #|  "name": "moonbitlang/async_examples",
       #|  "version": "0.3.0",
