@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-  l, err := net.Listen("tcp", "0.0.0.0:4202")
+  l, err := net.Listen("tcp", "0.0.0.0:42002")
   if err != nil {
     log.Panicln(err)
   }

@@ -5,4 +5,4 @@ var server = net.createServer(function(socket) {
 	socket.pipe(socket);
 });
 
-server.listen(4201, '127.0.0.1');
+server.listen(42001, '127.0.0.1');
