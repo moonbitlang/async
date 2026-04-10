@@ -120,12 +120,15 @@ async test "proxied https request" {
         handle_connect(log, req, body, conn)
       })
     })
+    let start = @async.now()
     let (_, result) = @async.with_timeout(300000, () => {
       @http.get(
         "https://www.moonbitlang.com",
         proxy=@http.Client("http://localhost:\{port}"),
       )
     })
+    let delta = @async.now() - start
+    println(delta.to_double() * 0.001)
     assert_true(result.text().has_prefix("<!doctype html>"))
   })
   json_inspect(log, content=[
