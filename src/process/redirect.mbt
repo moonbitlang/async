@@ -138,7 +138,7 @@ pub async fn redirect_to_file(
     mode~,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))
+  RedirectToFile(fd, kind)
 }
 
 ///|
@@ -154,7 +154,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     mode=0,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(fd, @fd_util.FileKind::from_sys_kind(kind))
+  RedirectToFile(fd, kind)
 }
 
 ///|

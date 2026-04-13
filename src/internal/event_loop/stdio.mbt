@@ -13,9 +13,24 @@
 // limitations under the License.
 
 ///|
+extern "C" fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_kind_of_fd"
+
+///|
+fn kind_of_fd_sync(
+  fd : @fd_util.Fd,
+  context~ : String,
+) -> @fd_util.FileKind raise {
+  let kind = kind_of_fd_sync_ffi(fd)
+  if kind < 0 {
+    @os_error.check_errno(context)
+  }
+  @fd_util.FileKind::unsafe_from_int(kind)
+}
+
+///|
 #cfg(not(platform="windows"))
 fn setup_stdio(fd : Int, context~ : String) -> IoHandle {
-  let kind = @fd_util.get_fd_kind_sync(fd, context~) catch {
+  let kind = kind_of_fd_sync(fd, context~) catch {
     err => abort("\{context}: \{err}")
   }
   let is_async = try! @fd_util.fd_is_nonblocking(fd, context~)
@@ -47,7 +62,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
     let errno = @os_error.get_errno()
     abort("\{context}: \{@os_error.errno_to_string(errno)}")
   }
-  let kind = @fd_util.get_fd_kind_sync(fd, context~) catch {
+  let kind = kind_of_fd_sync(fd, context~) catch {
     @os_error.OSError(errno, context~) =>
       abort("\{context}: \{@os_error.errno_to_string(errno)}")
     err => abort("\{context}: \{err}")

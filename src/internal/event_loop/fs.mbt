@@ -29,7 +29,7 @@ pub async fn open_detached(
   // permission for file when new file is created
   mode~ : Int,
   context~ : String,
-) -> (@fd_util.Fd, Int64) {
+) -> (@fd_util.Fd, @fd_util.FileKind) {
   let path_bytes = @os_string.encode(path)
   let job = Job::open(
     path_bytes,
@@ -78,7 +78,6 @@ pub async fn open(
     mode~,
     context~,
   )
-  let kind = @fd_util.FileKind::from_sys_kind(kind)
   // On Windows, due to a lot of complexity,
   // we use synchronous IO + thread pool unconditionally for regular files.
   // However, on Windows, overlapped IO must be enabled on file creation time,
@@ -101,7 +100,7 @@ pub async fn file_kind_by_path(
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    _ => @fd_util.FileKind::from_sys_kind(job.get_file_kind_by_path_result())
+    result => @fd_util.FileKind::unsafe_from_int(result)
   }
 }
 
