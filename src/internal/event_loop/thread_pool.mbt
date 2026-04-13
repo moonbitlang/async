@@ -116,7 +116,7 @@ extern "C" fn Job::get_open_job_result(job : Job) -> @fd_util.Fd = "moonbitlang_
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_kind(job : Job) -> Int64 = "moonbitlang_async_get_open_job_kind"
+extern "C" fn Job::get_open_job_kind(job : Job) -> @fd_util.FileKind = "moonbitlang_async_get_open_job_kind"
 
 ///|
 #owned(path)
@@ -124,10 +124,6 @@ extern "C" fn Job::file_kind_by_path(
   path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_file_kind_by_path_result(job : Job) -> Int64 = "moonbitlang_async_get_file_kind_by_path_result"
 
 ///|
 extern "C" fn Job::file_size(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_file_size_job"

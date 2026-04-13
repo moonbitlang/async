@@ -31,6 +31,7 @@ options(
     "io_unix.c",
     "io_windows.c",
     "process.c",
+    "detect_file_kind.c",
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],

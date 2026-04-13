@@ -82,6 +82,14 @@ typedef int SOCKET;
 
 #endif
 
+// defined in `detect_file_kind.c`
+int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
+
+#ifndef _WIN32
+int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
+#endif
+
+
 struct job {
   // the return value of the job.
   // should be set by the worker and read by waiter.
@@ -641,7 +649,7 @@ struct open_job {
   int sync;
   int mode;
   HANDLE result;
-  int64_t kind;
+  int32_t kind;
 };
 
 static
@@ -649,29 +657,6 @@ void free_open_job(void *obj) {
   struct open_job *job = (struct open_job*)obj;
   moonbit_decref(job->filename);
 }
-
-#ifdef _WIN32
-static
-BOOL get_file_kind(HANDLE handle, int64_t *out) {
-  SetLastError(0);
-  DWORD kind = GetFileType(handle);
-  if (kind != FILE_TYPE_DISK) {
-    *out = kind;
-    return TRUE;
-  }
-
-  if (GetLastError())
-    return FALSE;
-
-  BY_HANDLE_FILE_INFORMATION info;
-  if (!GetFileInformationByHandle(handle, &info)) {
-    return FALSE;
-  }
-
-  *out = (((int64_t)info.dwFileAttributes) << 32) | (int64_t)kind;
-  return TRUE;
-}
-#endif
 
 static
 void open_job_worker(struct job *job) {
@@ -707,7 +692,7 @@ void open_job_worker(struct job *job) {
       NULL // template file
     );
 
-    // get the kind of the file
+    // handle error
     if (open_job->result == INVALID_HANDLE_VALUE) {
       job->err = GetLastError();
       if (job->err != ERROR_PIPE_BUSY)
@@ -716,13 +701,17 @@ void open_job_worker(struct job *job) {
       // We are trying to open a named pipe, but no pipe instance is available,
       // so wait until any instance is available.
       // This wait is cancellable via `CancelSynchronousIo`.
-      if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER))
+      if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER)) {
         job->err = GetLastError();
+        return;
+      }
       continue;
     }
   } while (0);
 
-  if (!get_file_kind(open_job->result, &(open_job->kind))) {
+  // get the kind of the file
+  open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
+  if (open_job->kind < 0) {
     job->err = GetLastError();
     CloseHandle(open_job->result);
   }
@@ -743,12 +732,12 @@ void open_job_worker(struct job *job) {
     job->err = errno;
     return;
   }
-  struct stat stat;
-  if (fstat(open_job->result, &stat) < 0) {
+
+  open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
+  if (open_job->kind < 0) {
     job->err = errno;
-    return;
+    close(open_job->result);
   }
-  open_job->kind = stat.st_mode;
 
 #endif
 }
@@ -781,7 +770,7 @@ HANDLE moonbitlang_async_get_open_job_result(struct open_job *job) {
 }
 
 MOONBIT_FFI_EXPORT
-int64_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
+int32_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
   return job->kind;
 }
 
@@ -791,7 +780,6 @@ struct file_kind_by_path_job {
   struct job job;
   char *path;
   int follow_symlink;
-  int64_t result;
 };
 
 static
@@ -823,7 +811,8 @@ void file_kind_by_path_job_worker(struct job *job) {
     return;
   }
 
-  if (!get_file_kind(handle, &(file_kind_by_path_job->result)))
+  job->ret = moonbitlang_async_kind_of_fd(handle);
+  if (job->ret < 0)
     job->err = GetLastError();
 
   CloseHandle(handle);
@@ -831,15 +820,16 @@ void file_kind_by_path_job_worker(struct job *job) {
 #else
 
   struct stat stat_obj;
+  int ret;
   if (file_kind_by_path_job->follow_symlink) {
-    job->ret = stat(file_kind_by_path_job->path, &stat_obj);
+    ret = stat(file_kind_by_path_job->path, &stat_obj);
   } else {
-    job->ret = lstat(file_kind_by_path_job->path, &stat_obj);
+    ret = lstat(file_kind_by_path_job->path, &stat_obj);
   }
-  if (job->ret < 0) {
+  if (ret < 0) {
     job->err = errno;
   } else {
-    file_kind_by_path_job->result = stat_obj.st_mode;
+    job->ret = moonbitlang_async_file_kind_from_stat(&stat_obj);
   }
 
 #endif
@@ -852,12 +842,7 @@ struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
   struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path);
   job->path = path;
   job->follow_symlink = follow_symlink;
-  job->result = 0;
   return job;
-}
-
-int64_t moonbitlang_async_get_file_kind_by_path_result(struct file_kind_by_path_job *job) {
-  return job->result;
 }
 
 // ===== file size job, get size of opened file =====

@@ -13,19 +13,6 @@
 // limitations under the License.
 
 ///|
-#borrow(out)
-extern "C" fn get_fd_kind_sync_ffi(fd : Fd, out : Ref[Int64]) -> Int = "moonbitlang_async_get_fd_kind_sync"
-
-///|
-pub fn get_fd_kind_sync(fd : Fd, context~ : String) -> FileKind raise {
-  let out = Ref::new(0L)
-  if get_fd_kind_sync_ffi(fd, out) < 0 {
-    @os_error.check_errno(context)
-  }
-  FileKind::from_sys_kind(out.val)
-}
-
-///|
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -38,15 +25,15 @@ pub(all) enum FileKind {
 } derive(Eq, Debug)
 
 ///|
+pub fn FileKind::unsafe_from_int(value : Int) -> FileKind = "%identity"
+
+///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {
   match self {
     Socket | Pipe | CharDevice => true
     Unknown | Regular | Directory | SymLink | BlockDevice => false
   }
 }
-
-///|
-pub extern "C" fn FileKind::from_sys_kind(sys_kind : Int64) -> FileKind = "moonbitlang_async_file_kind_from_sys_kind"
 
 ///|
 struct FileTime(FixedArray[Byte])
