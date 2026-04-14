@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/raw_fd"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct RawFd {
+  fd : Int
+  // private fields
+
+  async fn new(Int) -> RawFd
+}
+pub fn RawFd::close(Self) -> Unit
+pub async fn RawFd::new(Int) -> Self
+pub async fn RawFd::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn RawFd::write(Self, Bytes, offset? : Int, len? : Int) -> Int
+
+// Type aliases
+
+// Traits
+
