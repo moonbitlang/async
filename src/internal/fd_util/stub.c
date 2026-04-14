@@ -32,10 +32,6 @@
 
 
 #ifdef _WIN32
-MOONBIT_FFI_EXPORT
-uint64_t moonbitlang_async_fd_as_uint64(HANDLE handle) {
-  return (uint64_t)handle;
-}
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_fd_is_valid(HANDLE handle) {

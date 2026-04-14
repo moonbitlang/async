@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/types"
+
+// Values
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub type Fd = Int
+
+// Traits
+
