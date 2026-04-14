@@ -173,7 +173,12 @@ pub async fn Client::end_request(self : Client) -> Response {
   for entry in js_response.headers().to_array() {
     headers[entry[0].to_lower()] = entry[1]
   }
-  { code: js_response.status(), reason: js_response.status_text(), headers }
+  {
+    code: js_response.status(),
+    reason: js_response.status_text(),
+    headers,
+    cookies: [],
+  }
 }
 
 ///|

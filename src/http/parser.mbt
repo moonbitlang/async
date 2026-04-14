@@ -217,8 +217,11 @@ impl @io.Reader for Reader with _get_internal_buffer(self) {
 }
 
 ///|
-async fn Reader::read_headers(self : Reader) -> Map[String, String] {
+async fn Reader::read_headers(
+  self : Reader,
+) -> (Map[String, String], Array[Cookie]) {
   let headers = {}
+  let cookies = []
   for ;; {
     guard self.transport.read_until("\r\n") is Some(header_line) else {
       raise @io.ReaderClosed
@@ -261,6 +264,10 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
         headers.remove("content-length")
         continue
       }
+      "set-cookie" => {
+        cookies.push(Cookie::parse(value))
+        continue
+      }
       _ => ()
     }
     match headers.get(key) {
@@ -268,7 +275,7 @@ async fn Reader::read_headers(self : Reader) -> Map[String, String] {
       Some(value0) => headers[key] = "\{value0},\{value}"
     }
   }
-  headers
+  (headers, cookies)
 }
 
 ///|
@@ -307,7 +314,8 @@ async fn Reader::read_request(self : Reader) -> Request {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol => raise HttpVersionNotSupported(protocol.to_string())
   }
-  let headers = self.read_headers()
+  let (headers, cookies) = self.read_headers()
+  guard cookies.length() is 0 else { raise BadRequest }
   { meth, path, headers }
 }
 
@@ -375,7 +383,7 @@ async fn Reader::read_response(
     _ => raise BadRequest
   }
   let reason = response_line[code_len + 1:].to_string()
-  let headers = self.read_headers()
+  let (headers, cookies) = self.read_headers()
 
   // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
   // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
@@ -383,7 +391,7 @@ async fn Reader::read_response(
     self.body = WaitConnectionClose // Read until connection close
   }
 
-  { code, reason, headers }
+  { code, reason, headers, cookies }
 }
 
 ///|

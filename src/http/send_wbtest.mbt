@@ -625,7 +625,9 @@ async test "sender write incorrect length" {
     })
     defer w.close()
     let sender = Sender::new(w)
-    sender.send_response(200, "OK", extra_headers={ "Content-Length": "39" })
+    sender.send_response(200, "OK", cookies=[], extra_headers={
+      "Content-Length": "39",
+    })
     let data = Bytes::make(20, b'\x00')
     sender.write(data)
     debug_inspect(
@@ -651,7 +653,9 @@ async test "sender write_reader incorrect length" {
     let sender = Sender::new(w)
     let license_file = @fs.open("LICENSE", mode=ReadOnly)
     defer license_file.close()
-    sender.send_response(200, "OK", extra_headers={ "Content-Length": "2048" })
+    sender.send_response(200, "OK", cookies=[], extra_headers={
+      "Content-Length": "2048",
+    })
     debug_inspect(
       try? sender.write_reader(license_file),
       content=(
@@ -673,11 +677,58 @@ async test "sender end_body incorrect length" {
     })
     defer w.close()
     let sender = Sender::new(w)
-    sender.send_response(200, "OK", extra_headers={ "content-length": "1" })
+    sender.send_response(200, "OK", cookies=[], extra_headers={
+      "content-length": "1",
+    })
     debug_inspect(
       try? sender.end_body(),
       content=(
         #|Err(IncorrectBodyLength)
+      ),
+    )
+  })
+}
+
+///|
+async test "send_response cookies" {
+  let cookies = [
+    Cookie("Cookie1", "value1"),
+    Cookie(
+      "Cookie2",
+      "value2",
+      path="/path/to/xxx",
+      max_age=420000,
+      secure=true,
+    ),
+    Cookie(
+      "Cookie3",
+      "value3",
+      expires_raw="Sun, 06 Nov 1994 08:49:37 GMT",
+      domain="example.moonbitlang.com",
+      http_only=true,
+    ),
+    Cookie("Cookie4", "value four", extensions=["ExtNoArg", "ExtWithArg=xxx"]),
+  ]
+  @async.with_task_group(group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      let sender = Sender::new(w)
+      let _ = sender.send_response(200, "OK", cookies~, extra_headers={})
+      sender.end_body()
+    })
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|HTTP/1.1 200 OK\r
+        #|Set-Cookie: Cookie1=value1\r
+        #|Set-Cookie: Cookie2=value2; Path=/path/to/xxx; Max-Age=420000; Secure\r
+        #|Set-Cookie: Cookie3=value3; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Domain=example.moonbitlang.com; HttpOnly\r
+        #|Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r
+        #|Content-Length: 0\r
+        #|\r
+        #|
       ),
     )
   })
