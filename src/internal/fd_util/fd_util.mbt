@@ -13,27 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(platform="windows")
-#external
-pub type Fd
-
-///|
-#cfg(platform="windows")
-pub impl Eq for Fd with equal(x, y) = "%refeq"
-
-///|
-#cfg(platform="windows")
-extern "C" fn Fd::to_uint64(fd : Fd) -> UInt64 = "moonbitlang_async_fd_as_uint64"
-
-///|
-#cfg(platform="windows")
-pub impl Hash for Fd with hash_combine(self, hasher) {
-  hasher.combine_uint64(self.to_uint64())
-}
-
-///|
-#cfg(not(platform="windows"))
-pub type Fd = Int
+pub type Fd = @types.Fd
 
 ///|
 #cfg(not(platform="windows"))
