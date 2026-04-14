@@ -51,6 +51,7 @@
 
 typedef int HANDLE;
 typedef int SOCKET;
+#define GetLastError() errno;
 
 #endif
 
@@ -772,6 +773,29 @@ HANDLE moonbitlang_async_get_open_job_result(struct open_job *job) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
   return job->kind;
+}
+
+// ===== file kind of fd job, get kind of an existing fd =====
+struct kind_of_fd_job {
+  struct job job;
+  HANDLE fd;
+};
+
+static
+void free_kind_of_fd_job(void *obj) {}
+
+static
+void kind_of_fd_job_worker(struct job *job) {
+  struct kind_of_fd_job *kind_of_fd_job = (struct kind_of_fd_job*)job;
+  job->ret = moonbitlang_async_kind_of_fd(kind_of_fd_job->fd);
+  if (job->ret < 0)
+    job->err = GetLastError();
+}
+
+struct kind_of_fd_job *moonbitlang_async_make_kind_of_fd_job(HANDLE fd) {
+  struct kind_of_fd_job *job = MAKE_JOB(kind_of_fd);
+  job->fd = fd;
+  return job;
 }
 
 // ===== file kind by path job, get kind of path on file system =====

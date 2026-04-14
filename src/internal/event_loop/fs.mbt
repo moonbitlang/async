@@ -88,6 +88,15 @@ pub async fn open(
 }
 
 ///|
+pub async fn kind_of_fd(
+  fd : @fd_util.Fd,
+  context~ : String,
+) -> @fd_util.FileKind {
+  perform_job_in_worker(Job::kind_of_fd(fd), context~)
+  |> @fd_util.FileKind::unsafe_from_int
+}
+
+///|
 pub async fn file_kind_by_path(
   path : StringView,
   follow_symlink~ : Bool,
