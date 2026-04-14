@@ -14,7 +14,7 @@
 
 ///|
 async test "reuse addr" {
-  let port = 4214
+  let mut port = 0
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       for _ in 0..<2 {
@@ -23,6 +23,7 @@ async test "reuse addr" {
           reuse_addr=true,
         )
         defer server.close()
+        port = server.addr.port()
         let (conn, _) = server.accept()
         defer conn.close()
         conn.write("abcd")

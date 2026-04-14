@@ -53,7 +53,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
 #cfg(target="native")
 async test "WebSocket client example" {
   @async.with_task_group(group => {
-    let port = 10080
+    let port = 42080
     let addr = @socket.Addr::parse("127.0.0.1:\{port}")
     group.spawn_bg(no_wait=true, () => websocket_echo_server(addr))
 
