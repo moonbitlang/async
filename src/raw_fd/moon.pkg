@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/async/internal/fd_util",
+  "moonbitlang/async/internal/event_loop",
+}
+
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/os_error",
+} for "test"
+
+supported_targets = "-all+native"
+
+options(
+  "native-stub": [ "stub.c" ],
+)
