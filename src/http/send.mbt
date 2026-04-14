@@ -317,6 +317,7 @@ async fn Sender::send_response(
   code : Int,
   reason : String,
   extra_headers~ : Map[String, String],
+  cookies~ : Array[Cookie],
 ) -> Unit {
   guard self.mode is SendingHeader
   let content_length = self
@@ -327,6 +328,11 @@ async fn Sender::send_response(
     ..write("\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
+  for cookie in cookies {
+    self.write(b"Set-Cookie: ")
+    cookie.write_to(self)
+    self.write("\r\n")
+  }
   if content_length is Some(len) {
     self.write("\r\n")
     self.mode = SendingFixed(remaining=len)

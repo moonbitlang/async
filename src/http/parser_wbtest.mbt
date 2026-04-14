@@ -766,3 +766,81 @@ async test "gzip split between chunks" {
     )
   })
 }
+
+///|
+async test "read_response parse cookie" {
+  @async.with_task_group(group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Set-Cookie: Cookie1=value1\r\n")
+      ..write(
+        "Set-Cookie: Cookie2=value2; Path=/path/to/xxx; Max-Age=420000; Secure\r\n",
+      )
+      ..write(
+        "Set-Cookie: Cookie3=value3; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Domain=example.moonbitlang.com; HttpOnly\r\n",
+      )
+      ..write("Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n")
+      .write("Content-Length: 0\r\n\r\n")
+    })
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
+    debug_inspect(
+      response.cookies,
+      content=(
+        #|[
+        #|  {
+        #|    name: "Cookie1",
+        #|    value: "value1",
+        #|    path: None,
+        #|    expires_raw: None,
+        #|    max_age: None,
+        #|    domain: None,
+        #|    secure: false,
+        #|    http_only: false,
+        #|    extensions: [],
+        #|  },
+        #|  {
+        #|    name: "Cookie2",
+        #|    value: "value2",
+        #|    path: Some("/path/to/xxx"),
+        #|    expires_raw: None,
+        #|    max_age: Some(420000),
+        #|    domain: None,
+        #|    secure: true,
+        #|    http_only: false,
+        #|    extensions: [],
+        #|  },
+        #|  {
+        #|    name: "Cookie3",
+        #|    value: "value3",
+        #|    path: None,
+        #|    expires_raw: Some("Sun, 06 Nov 1994 08:49:37 GMT"),
+        #|    max_age: None,
+        #|    domain: Some("example.moonbitlang.com"),
+        #|    secure: false,
+        #|    http_only: true,
+        #|    extensions: [],
+        #|  },
+        #|  {
+        #|    name: "Cookie4",
+        #|    value: "value four",
+        #|    path: None,
+        #|    expires_raw: None,
+        #|    max_age: None,
+        #|    domain: None,
+        #|    secure: false,
+        #|    http_only: false,
+        #|    extensions: ["ExtNoArg", "ExtWithArg=xxx"],
+        #|  },
+        #|]
+      ),
+    )
+  })
+}

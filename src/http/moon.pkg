@@ -30,6 +30,8 @@ options(
     "client.js.mbt": [ "js" ],
     "client.mbt": [ "native" ],
     "client_test.mbt": [ "native", "js" ],
+    "cookie.mbt": [ "native", "js" ],
+    "cookie_wbtest.mbt": [ "native" ],
     "deprecated.mbt": [ "native", "js" ],
     "parser.mbt": [ "native" ],
     "parser_wbtest.mbt": [ "native" ],
@@ -40,6 +42,7 @@ options(
     "send.mbt": [ "native" ],
     "send_wbtest.mbt": [ "native" ],
     "server.mbt": [ "native" ],
+    "types.mbt": [ "native", "js" ],
     "utils.mbt": [ "native" ],
   },
 )

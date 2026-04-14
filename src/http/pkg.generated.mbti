@@ -60,6 +60,21 @@ pub async fn Client::skip_response_body(Self) -> Unit
 pub impl @io.Reader for Client
 pub impl @io.Writer for Client
 
+pub struct Cookie {
+  name : String
+  value : String
+  path : String?
+  expires_raw : String?
+  max_age : Int64?
+  domain : String?
+  secure : Bool
+  http_only : Bool
+  extensions : Array[String]
+
+  fn new(String, String, path? : String, expires_raw? : String, max_age? : Int64, domain? : String, secure? : Bool, http_only? : Bool, extensions? : Array[String]) -> Cookie
+} derive(ToJson, @debug.Debug)
+pub fn Cookie::new(String, String, path? : String, expires_raw? : String, max_age? : Int64, domain? : String, secure? : Bool, http_only? : Bool, extensions? : Array[String]) -> Self
+
 pub(all) enum Protocol {
   Http
   Https
@@ -91,6 +106,7 @@ pub(all) struct Response {
   code : Int
   reason : String
   headers : Map[String, String]
+  cookies : Array[Cookie]
 } derive(ToJson, @debug.Debug)
 pub impl Show for Response
 
@@ -115,7 +131,7 @@ pub async fn ServerConnection::enter_passthrough_mode(Self) -> Unit
 pub async fn ServerConnection::flush(Self) -> Unit
 pub fn ServerConnection::new(@socket.Tcp, headers? : Map[String, String]) -> Self
 pub async fn ServerConnection::read_request(Self) -> Request
-pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit
+pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String], cookies? : Array[Cookie]) -> Unit
 pub async fn ServerConnection::skip_request_body(Self) -> Unit
 pub impl @io.Reader for ServerConnection
 pub impl @io.Writer for ServerConnection

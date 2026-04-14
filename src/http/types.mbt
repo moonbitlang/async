@@ -37,4 +37,34 @@ pub(all) struct Response {
   code : Int
   reason : String
   headers : Map[String, String]
+  /// The list of cookies specified in `Set-Cookie` headers.
+  ///
+  /// JS backend note: browsers forbid JS code from accessing raw cookie values,
+  /// so this field is always empty on JS backend.
+  cookies : Array[Cookie]
+} derive(Debug, ToJson)
+
+///|
+pub struct Cookie {
+  name : String
+  value : String
+  path : String?
+  expires_raw : String?
+  max_age : Int64?
+  domain : String?
+  secure : Bool
+  http_only : Bool
+  extensions : Array[String]
+
+  fn new(
+    name : String,
+    value : String,
+    path? : String,
+    expires_raw? : String,
+    max_age? : Int64,
+    domain? : String,
+    secure? : Bool,
+    http_only? : Bool,
+    extensions? : Array[String],
+  ) -> Cookie
 } derive(Debug, ToJson)

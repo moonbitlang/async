@@ -137,6 +137,10 @@ pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 /// After calling `send_response`,
 /// `end_response` must be called before sending the next response.
 ///
+/// `cookies`, if present, specify a list of cookies that the server wish the client to set.
+/// They will be transferred to the client via the `Set-Cookie` HTTP header.
+/// Users should always set cookies via `cookies` instead of filling `Set-Cookie` header directly.
+///
 /// If `Content-Length` is present in `extra_headers`,
 /// it should be the total length of the request body.
 /// This useful for, for example, file servers to allow
@@ -150,8 +154,9 @@ pub async fn ServerConnection::send_response(
   code : Int,
   reason : String,
   extra_headers? : Map[String, String] = {},
+  cookies? : Array[Cookie] = [],
 ) -> Unit {
-  self.sender.send_response(code, reason, extra_headers~)
+  self.sender.send_response(code, reason, extra_headers~, cookies~)
 }
 
 ///|
