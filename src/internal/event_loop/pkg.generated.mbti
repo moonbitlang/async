@@ -24,6 +24,8 @@ pub async fn file_time_by_path(StringView, follow_symlink~ : Bool, context~ : St
 
 pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
+pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
+
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle

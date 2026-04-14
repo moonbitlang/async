@@ -119,6 +119,9 @@ extern "C" fn Job::get_open_job_result(job : Job) -> @fd_util.Fd = "moonbitlang_
 extern "C" fn Job::get_open_job_kind(job : Job) -> @fd_util.FileKind = "moonbitlang_async_get_open_job_kind"
 
 ///|
+extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
+
+///|
 #owned(path)
 extern "C" fn Job::file_kind_by_path(
   path : @os_string.OsString,
