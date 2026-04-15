@@ -13,6 +13,7 @@ import {
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
+  HandshakeRejected(String, @http.Response)
   ProtocolError(String)
 } derive(@debug.Debug)
 pub impl Show for WebSocketError

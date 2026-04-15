@@ -117,5 +117,6 @@ fn CloseCode::from_uint(code : UInt) -> CloseCode {
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?) // Connection was closed
   InvalidHandshake(String) // Handshake failed with specific reason
+  HandshakeRejected(String, @http.Response) // Server rejected handshake
   ProtocolError(String)
 } derive(Debug)

@@ -68,6 +68,15 @@ pub impl Show for WebSocketError with output(self, logger) {
       ..write_string("InvalidHandshake(")
       ..write_object(msg)
       .write_string(")")
+    HandshakeRejected(msg, response) =>
+      logger
+      ..write_string("HandshakeRejected(")
+      ..write_object(msg)
+      ..write_string(", ")
+      ..write_object(response.code)
+      ..write_string(", ")
+      ..write_object(response.reason)
+      .write_string(")")
     ProtocolError(msg) =>
       logger
       ..write_string("ProtocolError(")
