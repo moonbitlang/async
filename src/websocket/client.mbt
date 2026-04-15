@@ -52,27 +52,29 @@ pub async fn Conn::from_http_client(
   try {
     let response = conn..request(Get, path, extra_headers~).end_request()
     guard response.code is 101 else {
-      raise InvalidHandshake(
+      raise HandshakeRejected(
         "Server did not respond with 101 Switching Protocols: \{response.code} \{response.reason}",
+        response,
       )
     }
 
     // Validate WebSocket handshake headers
     guard response.headers.get("upgrade") is Some(upgrade) &&
       upgrade.to_lower() == "websocket" else {
-      raise InvalidHandshake("Missing or invalid Upgrade header")
+      raise HandshakeRejected("Missing or invalid Upgrade header", response)
     }
     guard response.headers.get("connection") is Some(connection) &&
       connection.to_lower().contains("upgrade") else {
-      raise InvalidHandshake("Missing or invalid Connection header")
+      raise HandshakeRejected("Missing or invalid Connection header", response)
     }
     guard response.headers.get("sec-websocket-accept") is Some(accept_key) else {
-      raise InvalidHandshake("Missing Sec-WebSocket-Accept header")
+      raise HandshakeRejected("Missing Sec-WebSocket-Accept header", response)
     }
     let expected_accept_key = generate_accept_key(key)
     guard accept_key == expected_accept_key else {
-      raise InvalidHandshake(
+      raise HandshakeRejected(
         "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
+        response,
       )
     }
     conn.enter_passthrough_mode()
