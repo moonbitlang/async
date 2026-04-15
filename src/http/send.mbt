@@ -30,6 +30,7 @@ priv struct Sender {
   mut send_len : Int
   headers : Bytes
   has_accept_encoding : Bool
+  mut should_have_empty_body : Bool
 }
 
 ///|
@@ -60,6 +61,7 @@ fn[W : @io.Writer] Sender::new(
     send_len: 0,
     headers: header_text.contents(),
     has_accept_encoding,
+    should_have_empty_body: false,
   }
 }
 
@@ -223,6 +225,10 @@ async fn Sender::end_body(self : Sender) -> Unit {
       abort("`end_body()` called outside a HTTP message")
     SendingFixed(remaining=0) => self.flush()
     SendingFixed(_) => raise IncorrectBodyLength
+    WaitingBody if self.should_have_empty_body => {
+      self.mode = SendingHeader
+      self..write(b"\r\n").flush()
+    }
     WaitingBody =>
       if self.send_len + EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
@@ -248,6 +254,7 @@ async fn Sender::end_body(self : Sender) -> Unit {
         self.flush()
       }
   }
+  self.should_have_empty_body = false
   self.mode = SendingHeader
 }
 
@@ -280,6 +287,7 @@ async fn Sender::send_request(
   extra_headers~ : Map[String, String],
 ) -> Bool {
   guard self.mode is SendingHeader
+  self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
     Get => self.write("GET ")
     Head => self.write("HEAD ")
@@ -318,8 +326,14 @@ async fn Sender::send_response(
   reason : String,
   extra_headers~ : Map[String, String],
   cookies~ : Array[Cookie],
+  request_method~ : RequestMethod,
 ) -> Unit {
   guard self.mode is SendingHeader
+  match request_method {
+    Head => self.should_have_empty_body = true
+    Connect => self.should_have_empty_body = code is (100..<300 | 304)
+    _ => self.should_have_empty_body = code is (100..<200 | 204 | 205 | 304)
+  }
   let content_length = self
     ..write("HTTP/1.1 ")
     ..write(encode_int(code, base=10))

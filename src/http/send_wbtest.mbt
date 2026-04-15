@@ -33,7 +33,6 @@ async test "send_request basic" {
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
         #|Accept-Encoding: gzip,identity\r
-        #|Content-Length: 0\r
         #|\r
         #|
       ),
@@ -364,7 +363,6 @@ async test "send invalid header" {
         #|Host: x.y.org\r
         #|User-Agent: MoonBit\r
         #|Accept-Encoding: gzip,identity\r
-        #|Content-Length: 0\r
         #|\r
         #|
       ),
@@ -625,7 +623,7 @@ async test "sender write incorrect length" {
     })
     defer w.close()
     let sender = Sender::new(w)
-    sender.send_response(200, "OK", cookies=[], extra_headers={
+    sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
       "Content-Length": "39",
     })
     let data = Bytes::make(20, b'\x00')
@@ -653,7 +651,7 @@ async test "sender write_reader incorrect length" {
     let sender = Sender::new(w)
     let license_file = @fs.open("LICENSE", mode=ReadOnly)
     defer license_file.close()
-    sender.send_response(200, "OK", cookies=[], extra_headers={
+    sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
       "Content-Length": "2048",
     })
     debug_inspect(
@@ -677,7 +675,7 @@ async test "sender end_body incorrect length" {
     })
     defer w.close()
     let sender = Sender::new(w)
-    sender.send_response(200, "OK", cookies=[], extra_headers={
+    sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
       "content-length": "1",
     })
     debug_inspect(
@@ -714,7 +712,7 @@ async test "send_response cookies" {
     group.spawn_bg(() => {
       defer w.close()
       let sender = Sender::new(w)
-      let _ = sender.send_response(200, "OK", cookies~, extra_headers={})
+      let _ = sender.send_response(200, "OK", cookies~, request_method=Get, extra_headers={})
       sender.end_body()
     })
     defer r.close()
@@ -732,4 +730,77 @@ async test "send_response cookies" {
       ),
     )
   })
+}
+
+///|
+async test "send_request empty body" {
+  @async.with_task_group <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      let sender = Sender::new(w)
+      let _ = sender.send_request(Get, "/", extra_headers={})
+      sender..write("").end_body()
+      let _ = sender.send_request(Head, "/", extra_headers={})
+      sender.end_body()
+      let _ = sender.send_request(Post, "/", extra_headers={})
+      sender.end_body()
+    })
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|GET / HTTP/1.1\r
+        #|Accept-Encoding: gzip,identity\r
+        #|\r
+        #|HEAD / HTTP/1.1\r
+        #|Accept-Encoding: gzip,identity\r
+        #|\r
+        #|POST / HTTP/1.1\r
+        #|Accept-Encoding: gzip,identity\r
+        #|Content-Length: 0\r
+        #|\r
+        #|
+      ),
+    )
+  }
+}
+
+///|
+async test "send_response empty body" {
+  @async.with_task_group <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      let sender = Sender::new(w)
+      let _ = sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={})
+      sender.end_body()
+      let _ = sender.send_response(200, "OK", cookies=[], request_method=Head, extra_headers={})
+      sender..write("").end_body()
+      let _ = sender.send_response(102, "OK", cookies=[], request_method=Get, extra_headers={})
+      sender.end_body()
+      let _ = sender.send_response(204, "OK", cookies=[], request_method=Get, extra_headers={})
+      sender..write("").end_body()
+      let _ = sender.send_response(304, "OK", cookies=[], request_method=Get, extra_headers={})
+      sender.end_body()
+    })
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|HTTP/1.1 200 OK\r
+        #|Content-Length: 0\r
+        #|\r
+        #|HTTP/1.1 200 OK\r
+        #|\r
+        #|HTTP/1.1 102 OK\r
+        #|\r
+        #|HTTP/1.1 204 OK\r
+        #|\r
+        #|HTTP/1.1 304 OK\r
+        #|\r
+        #|
+      ),
+    )
+  }
 }

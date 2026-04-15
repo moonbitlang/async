@@ -19,6 +19,7 @@ struct ServerConnection {
   conn : @socket.Tcp
   sender : Sender
   mut closed : Bool
+  mut request_method : RequestMethod
 }
 
 ///|
@@ -39,6 +40,7 @@ pub fn ServerConnection::new(
     conn,
     sender: Sender::new(conn, headers~),
     closed: false,
+    request_method: Get,
   }
 }
 
@@ -84,7 +86,9 @@ pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
 /// as a `@io.Reader`.
 pub async fn ServerConnection::read_request(self : ServerConnection) -> Request {
   self.reader.skip_body()
-  self.reader.read_request()
+  let request = self.reader.read_request()
+  self.request_method = request.meth
+  request
 }
 
 ///|
@@ -156,7 +160,13 @@ pub async fn ServerConnection::send_response(
   extra_headers? : Map[String, String] = {},
   cookies? : Array[Cookie] = [],
 ) -> Unit {
-  self.sender.send_response(code, reason, extra_headers~, cookies~)
+  self.sender.send_response(
+    code,
+    reason,
+    extra_headers~,
+    cookies~,
+    request_method=self.request_method,
+  )
 }
 
 ///|
