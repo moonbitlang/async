@@ -1655,6 +1655,7 @@ struct spawn_job {
   HANDLE stdio[3];
   LPWSTR cwd;
   int32_t is_orphan;
+  HANDLE result;
 };
 
 static
@@ -1665,6 +1666,8 @@ void free_spawn_job(void *obj) {
     moonbit_decref(job->environment);
   if (job->cwd)
     moonbit_decref(job->cwd);
+  if (job->result != INVALID_HANDLE_VALUE)
+    CloseHandle(job->result);
 }
 
 static
@@ -1804,12 +1807,8 @@ void spawn_job_worker(struct job *job) {
     ResumeThread(process_info.hThread);
   }
 
-  // Since process waiting is not performance-critical,
-  // here we discard the handles returned by `CreateProcessW`,
-  // and use `OpenProcess` to obtain another handle later when needed,
-  // so that the API style is closer to UNIX-like systems.
   CloseHandle(process_info.hThread);
-  CloseHandle(process_info.hProcess);
+  spawn_job->result = process_info.hProcess;
 
   job->ret = process_info.dwProcessId;
 }
@@ -1831,7 +1830,14 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[2] = stderr_handle;
   job->cwd = cwd;
   job->is_orphan = is_orphan;
+  job->result = INVALID_HANDLE_VALUE;
   return job;
+}
+
+HANDLE moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
+  HANDLE result = job->result;
+  job->result = INVALID_HANDLE_VALUE;
+  return result;
 }
 
 // For windows, waiting for process is done via one dedicated thread per process,
@@ -1840,7 +1846,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
 
 struct wait_for_process_job {
   struct job job;
-  DWORD pid;
+  HANDLE process;
   HANDLE cancel;
 };
 
@@ -1854,13 +1860,7 @@ static
 void wait_for_process_job_worker(struct job *job) {
   struct wait_for_process_job *wait_for_process_job = (struct wait_for_process_job*)job;
 
-  HANDLE handles[2] = { INVALID_HANDLE_VALUE, wait_for_process_job->cancel };
-
-  handles[0] = OpenProcess(SYNCHRONIZE, FALSE, wait_for_process_job->pid);
-  if (handles[0] == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
-  }
+  HANDLE handles[2] = { wait_for_process_job->process, wait_for_process_job->cancel };
 
   DWORD result = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
   if (result == WAIT_FAILED)
@@ -1870,10 +1870,10 @@ void wait_for_process_job_worker(struct job *job) {
 }
 
 struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
-  DWORD pid
+  HANDLE process
 ) {
   struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
-  job->pid = pid;
+  job->process = process;
   job->cancel = CreateEventA(NULL, FALSE, FALSE, NULL);
   return job;
 }

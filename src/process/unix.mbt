@@ -33,7 +33,7 @@ async fn raw_spawn(
   cwd~ : StringView?,
   is_orphan~ : Bool,
   context~ : String,
-) -> Int {
+) -> @event_loop.Process {
   let cmd = @os_string.encode(cmd)
   let argv = FixedArray::make(args.length() + 2, None)
   let cwd = match cwd {

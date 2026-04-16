@@ -244,7 +244,17 @@ extern "C" fn Job::spawn(
 ) -> Job = "moonbitlang_async_make_spawn_job"
 
 ///|
+#cfg(platform="windows")
+#borrow(job)
+extern "C" fn Job::get_spawn_job_result_handle(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
+
+///|
+#cfg(not(platform="windows"))
 extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
+
+///|
+#cfg(platform="windows")
+extern "C" fn Job::wait_for_process(handle : @fd_util.Fd) -> Job = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
 #cfg(platform="windows")

@@ -14,6 +14,29 @@
 
 ///|
 #cfg(not(platform="windows"))
+struct Process(Int)
+
+///|
+#cfg(not(platform="windows"))
+pub fn Process::pid(self : Process) -> Int {
+  self.0
+}
+
+///|
+#cfg(not(platform="windows"))
+pub fn Process::from_pid(pid : Int, context~ : String) -> Process {
+  ignore(context)
+  Process(pid)
+}
+
+///|
+#cfg(not(platform="windows"))
+pub fn Process::close(_ : Process) -> Unit {
+
+}
+
+///|
+#cfg(not(platform="windows"))
 pub async fn spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
@@ -23,7 +46,7 @@ pub async fn spawn(
   stderr~ : @fd_util.Fd,
   cwd~ : @os_string.OsString?,
   context~ : String,
-) -> Int {
+) -> Process {
   perform_job_in_worker(
     Job::spawn(path, args, env, stdin, stdout, stderr, cwd),
     context~,
@@ -37,7 +60,8 @@ extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlan
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn wait_pid(pid : Int, context~ : String) -> Int {
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+  let Process(pid) = self
   guard curr_loop.val is Some(evloop)
   guard support_wait_pid_via_poll else {
     // pidfd not available, fall back to blocking waitpid in worker thread.
