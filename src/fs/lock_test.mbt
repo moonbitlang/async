@@ -55,7 +55,7 @@ async test "flock exclusive vs exclusive" {
   let log = []
   let file_name = "_build/flock_ex_ex"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
@@ -74,7 +74,7 @@ async test "flock exclusive vs exclusive blocking" {
   let log = []
   let file_name = "_build/flock_ex_ex_blocking"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
@@ -96,7 +96,7 @@ async test "flock shared vs exclusive" {
   let log = []
   let file_name = "_build/flock_sh_ex"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
@@ -115,7 +115,7 @@ async test "flock shared vs exclusive blocking" {
   let log = []
   let file_name = "_build/flock_sh_ex_blocking"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
@@ -137,7 +137,7 @@ async test "flock exclusive vs shared" {
   let log = []
   let file_name = "_build/flock_ex_sh"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
@@ -156,7 +156,7 @@ async test "flock exclusive vs shared blocking" {
   let log = []
   let file_name = "_build/flock_ex_sh_blocking"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
@@ -178,7 +178,7 @@ async test "flock shared vs shared" {
   let log = []
   let file_name = "_build/flock_sh_sh"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
@@ -195,7 +195,7 @@ async test "flock shared vs shared blocking" {
   let log = []
   let file_name = "_build/flock_sh_sh_blocking"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
@@ -216,7 +216,7 @@ async test "flock shared vs shared vs exclusive" {
   let log = []
   let file_name = "_build/flock_sh_sh_ex"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
@@ -241,7 +241,7 @@ async test "flock shared vs shared vs exclusive blocking" {
   let log = []
   let file_name = "_build/flock_sh_sh_ex_blocking"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
@@ -265,7 +265,7 @@ async test "flock cancelled" {
   let log = []
   let file_name = "_build/flock_cancel"
   @async.with_task_group(group => {
-    let file = @fs.open(file_name, create=0o644, mode=ReadWrite)
+    let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
@@ -288,7 +288,7 @@ async test "flock advisory" {
   let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group(group => {
-    @fs.write_file(file_name, create=0o644, "abcd")
+    @fs.write_file(file_name, create_mode=CreateOrTruncate, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))

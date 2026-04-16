@@ -50,12 +50,15 @@ async test "redirect to file" {
     let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
-    @fs.write_file(input_file, "abcd", create=0o644)
+    @fs.write_file(input_file, "abcd", create_mode=CreateOrTruncate)
     let _ = @process.run(
       cat,
       [],
       stdin=@process.redirect_from_file(input_file),
-      stdout=@process.redirect_to_file(output_file, create=0o644),
+      stdout=@process.redirect_to_file(
+        output_file,
+        create_mode=CreateOrTruncate,
+      ),
     )
     inspect(@fs.read_file(output_file).text(), content="abcd")
   })

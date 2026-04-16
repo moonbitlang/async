@@ -15,8 +15,8 @@
 ///|
 async test "mkdir" {
   let path = "_build/mkdir_test"
-  @fs.mkdir(path, permission=0o755)
-  @fs.write_file("\{path}/file", "", create=0o644)
+  @fs.mkdir(path)
+  @fs.write_file("\{path}/file", "", create_mode=CreateOrTruncate)
   let result = @fs.readdir(path, sort=true)
   @fs.remove("\{path}/file")
   @fs.rmdir(path)
@@ -28,9 +28,9 @@ async test "mkdir" {
 async test "rmdir recursive" {
   let path = "_build/rmdir_test"
   @fs.mkdir(path, permission=0o755)
-  @fs.write_file("\{path}/file", "", create=0o644)
-  @fs.mkdir("\{path}/inner", permission=0o755)
-  @fs.write_file("\{path}/inner/file", "", create=0o644)
+  @fs.write_file("\{path}/file", "", create_mode=CreateOrTruncate)
+  @fs.mkdir("\{path}/inner")
+  @fs.write_file("\{path}/inner/file", "", create_mode=CreateOrTruncate)
   @fs.symlink("\{path}/symlink", target="../../target")
   let result = try? @fs.rmdir(path)
   @fs.rmdir(path, recursive=true)
@@ -42,7 +42,7 @@ async test "mkdir recursive" {
   @async.with_task_group(group => {
     let base_path = "_build/recursive_mkdir"
     let path = "\{base_path}/test//directory"
-    @fs.mkdir(path, permission=0o755, recursive=true)
+    @fs.mkdir(path, recursive=true)
     group.add_defer(() => @fs.rmdir(base_path, recursive=true))
     json_inspect(@fs.readdir(base_path), content=["test"])
     json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
@@ -56,7 +56,7 @@ async test "mkdir recursive windows" {
   @async.with_task_group(group => {
     let base_path = "target\\recursive_mkdir_windows"
     let path = "\{base_path}\\test\\\\directory"
-    @fs.mkdir(path, permission=0o755, recursive=true)
+    @fs.mkdir(path, recursive=true)
     group.add_defer(() => @fs.rmdir(base_path, recursive=true))
     json_inspect(@fs.readdir(base_path), content=["test"])
     json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])

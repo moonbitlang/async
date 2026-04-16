@@ -26,7 +26,12 @@ async test "tmpdir" {
     assert_not_eq(t1, t2)
     assert_true(@fs.exists(t1))
     assert_true(@fs.exists(t2))
-    @fs.write_file("\{t1}/file.txt", "abcd", create=0o600)
+    @fs.write_file(
+      "\{t1}/file.txt",
+      "abcd",
+      create_mode=CreateNew,
+      permission=0o600,
+    )
     json_inspect(@fs.readdir(t1), content=["file.txt"])
   })
 }

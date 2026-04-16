@@ -16,7 +16,7 @@
 async test "basic create" {
   let path = "_build/basic_create_test"
   {
-    let w = @fs.create(path, permission=0o644, sync=Full)
+    let w = @fs.create(path, sync=Full)
     defer w.close()
     w.write(b"abcd\n")
   }
@@ -39,7 +39,13 @@ async test "basic create" {
 async test "create or append" {
   let path = "_build/create_append_test"
   async fn add_data(data) {
-    let w = @fs.open(path, mode=WriteOnly, create=0o644, sync=Full, append=true)
+    let w = @fs.open(
+      path,
+      mode=WriteOnly,
+      create_mode=OpenOrCreate,
+      sync=Full,
+      append=true,
+    )
     defer w.close()
     w.write(data)
   }
@@ -58,7 +64,7 @@ async test "create or append" {
 ///|
 async test "wrapper test" {
   let path = "_build/fs_wrapper_test"
-  @fs.write_file(path, b"abcd", create=0o644)
+  @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate)
   let result = @fs.read_file(path).text()
   @fs.remove(path)
   inspect(result, content="abcd")
