@@ -60,9 +60,8 @@ async test "file as raw fd" {
   let (fd, _) = @event_loop.open_detached(
     "LICENSE",
     0,
-    create=false,
+    create=0,
     append=false,
-    truncate=false,
     sync=0,
     mode=0,
     context="file as raw fd test",

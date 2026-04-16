@@ -115,27 +115,44 @@ pub impl @io.Writer for WriteToProcess with write_once(self, buf, offset~, len~)
 }
 
 ///|
+fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
+
+///|
 /// Redirect the output of a process to the file at `path`.
-/// The meaning of `append`, `create` and `truncate` is the same as `@fs.open`,
+/// The meaning of `append`, `create_mode` and `permission` is the same as `@fs.open`,
 /// see the document of `@fs.open` for more details.
+#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
+#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn redirect_to_file(
   path : String,
   append? : Bool = false,
+  create_mode? : @fs.CreateMode,
+  permission? : Int,
   create? : Int,
   truncate? : Bool = false,
 ) -> &ProcessOutput {
-  let (create, mode) = match create {
-    Some(mode) => (true, mode)
-    None => (false, 0)
+  let create_mode = match create_mode {
+    Some(mode) => mode
+    None =>
+      match (create is Some(_), truncate) {
+        (true, true) => CreateOrTruncate
+        (true, false) => OpenOrCreate
+        (false, true) => TruncateExisting
+        (false, false) => OpenExisting
+      }
+  }
+  let permission = match permission {
+    Some(perm) => perm
+    None if create is Some(perm) => perm
+    None => 0o644
   }
   let (fd, kind) = @event_loop.open_detached(
     path,
     1, // write only
-    create~,
+    create=create_mode.to_int(),
     append~,
-    truncate~,
     sync=0,
-    mode~,
+    mode=permission,
     context="@process.redirect_to_file()",
   )
   RedirectToFile(fd, kind)
@@ -147,9 +164,8 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
   let (fd, kind) = @event_loop.open_detached(
     path,
     0, // read only
-    create=false,
+    create=0, // `OpenExisting`
     append=false,
-    truncate=false,
     sync=0,
     mode=0,
     context="@process.redirect_to_file()",

@@ -14,10 +14,16 @@
 
 ///|
 /// Create a directory at `path`.
-/// The permission of the created directory must be set in `permission`.
+///
+/// The Unix-style permission of the created directory can be set in `permission`,
+/// the default value is `0o755` (anyone can read and traverse, only owner can write).
+/// The `permission` parameter is currently ignored on Windows.
+///
+/// If `recursive=true` (`false` by default), non-existing parent directories
+/// of `path` will be recursively created, too.
 pub async fn mkdir(
   path : StringView,
-  permission~ : Int,
+  permission? : Int = 0o755,
   recursive? : Bool = false,
 ) -> Unit {
   let context = "@fs.mkdir()"

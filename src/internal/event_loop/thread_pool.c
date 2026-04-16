@@ -644,9 +644,8 @@ struct open_job {
   struct job job;
   char *filename;
   int access;
-  int create;
+  int create_mode;
   int append;
-  int truncate;
   int sync;
   int mode;
   HANDLE result;
@@ -663,19 +662,22 @@ static
 void open_job_worker(struct job *job) {
 #ifdef _WIN32
   static int access_flags[] = { GENERIC_READ, GENERIC_WRITE, GENERIC_READ | GENERIC_WRITE };
+  static int create_modes[] = { OPEN_EXISTING, TRUNCATE_EXISTING, OPEN_ALWAYS, CREATE_ALWAYS, CREATE_NEW };
 #else
   static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
+  static int create_modes[] = {
+    0,
+    O_TRUNC,
+    O_CREAT,
+    O_CREAT | O_TRUNC,
+    O_CREAT | O_EXCL
+  };
   static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
 #endif
 
   struct open_job *open_job = (struct open_job*)job;
 
 #ifdef _WIN32
-  DWORD create_flags =
-    open_job->create
-    ? (open_job->truncate ? CREATE_ALWAYS : OPEN_ALWAYS)
-    : (open_job->truncate ? TRUNCATE_EXISTING : OPEN_EXISTING);
-
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
 
   DWORD access_flag = access_flags[open_job->access];
@@ -688,7 +690,7 @@ void open_job_worker(struct job *job) {
       access_flag, // desired access
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
       NULL, // security attributes
-      create_flags, // creation
+      create_modes[open_job->create_mode], // creation
       flags, // flags and attributes. Note that we open files in synchronous mode
       NULL // template file
     );
@@ -719,10 +721,11 @@ void open_job_worker(struct job *job) {
 
 #else
 
-  int flags = access_flags[open_job->access] | sync_flags[open_job->sync];
-  if (open_job->create) flags |= O_CREAT;
+  int flags =
+    access_flags[open_job->access]
+    | sync_flags[open_job->sync]
+    | create_modes[open_job->create_mode];
   if (open_job->append) flags |= O_APPEND;
-  if (open_job->truncate) flags |= O_TRUNC;
 
   open_job->result = open(
     open_job->filename,
@@ -747,9 +750,8 @@ MOONBIT_FFI_EXPORT
 struct open_job *moonbitlang_async_make_open_job(
   char *filename,
   int access,
-  int create,
+  int create_mode,
   int append,
-  int truncate,
   int sync,
   int mode
 ) {
@@ -757,9 +759,8 @@ struct open_job *moonbitlang_async_make_open_job(
   struct open_job *job = MAKE_JOB(open);
   job->filename = filename;
   job->access = access;
-  job->create = create;
+  job->create_mode = create_mode;
   job->append = append;
-  job->truncate = truncate;
   job->sync = sync;
   job->mode = mode;
   return job;

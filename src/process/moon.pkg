@@ -7,6 +7,7 @@ import {
   "moonbitlang/async/stdio",
   "moonbitlang/async",
   "moonbitlang/async/io",
+  "moonbitlang/async/fs",
 }
 
 import {
