@@ -42,7 +42,7 @@ pub async fn remove(StringView, context~ : String) -> Unit
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
 
-pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Int
+pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
 pub let stderr : IoHandle
 
@@ -51,8 +51,6 @@ pub let stdin : IoHandle
 pub let stdout : IoHandle
 
 pub async fn symlink(StringView, StringView, context~ : String) -> Unit
-
-pub async fn wait_pid(Int, context~ : String) -> Int
 
 pub fn with_event_loop(async () -> Unit) -> Unit raise
 
@@ -90,6 +88,12 @@ pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : In
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+
+type Process
+pub fn Process::close(Self) -> Unit
+pub fn Process::from_pid(Int, context~ : String) -> Self
+pub fn Process::pid(Self) -> Int
+pub async fn Process::wait_pid(Self, context~ : String) -> Int
 
 type Timer
 pub fn Timer::cancel(Self) -> Unit

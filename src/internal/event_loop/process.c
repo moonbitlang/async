@@ -25,14 +25,14 @@
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_process_result(DWORD pid, DWORD *out) {
-  HANDLE handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-  if (handle == INVALID_HANDLE_VALUE)
-    return -1;
-
+int moonbitlang_async_get_process_result(HANDLE handle, DWORD *out) {
   int result = GetExitCodeProcess(handle, out) ? 0 : -1;
-  CloseHandle(handle);
   return result;
+}
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_open_pid_handle(DWORD pid) {
+  return OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
 }
 
 #else

@@ -52,7 +52,7 @@ pub async fn spawn_orphan(
     cwd~,
     is_orphan=true,
     context="@process.spawn_orphan()",
-  )
+  ).pid()
 }
 
 ///|
@@ -60,7 +60,9 @@ pub async fn spawn_orphan(
 /// and return the exit code of the process.
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
-  @event_loop.wait_pid(pid, context~)
+  let process = @event_loop.Process::from_pid(pid, context~)
+  defer process.close()
+  process.wait_pid(context~)
 }
 
 ///|
@@ -117,7 +119,7 @@ pub async fn run(
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
-  let pid = raw_spawn(
+  let process = raw_spawn(
     cmd,
     args,
     extra_env~,
@@ -129,12 +131,14 @@ pub async fn run(
     is_orphan=false,
     context~,
   )
-  @event_loop.wait_pid(pid, context~) catch {
+  defer process.close()
+  let pid = process.pid()
+  process.wait_pid(context~) catch {
     _ if @coroutine.is_being_cancelled() =>
       @async.protect_from_cancel(() => {
         @async.with_task_group(group => {
           group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          @event_loop.wait_pid(pid, context~)
+          process.wait_pid(context~)
         })
       })
     err => raise err
@@ -198,7 +202,7 @@ pub async fn[X] spawn(
   no_wait? : Bool,
 ) -> Process {
   let context = "@process.spawn()"
-  let pid = raw_spawn(
+  let process = raw_spawn(
     cmd,
     args,
     extra_env~,
@@ -210,13 +214,15 @@ pub async fn[X] spawn(
     is_orphan=false,
     context~,
   )
+  let pid = process.pid()
   let result = group.spawn(no_wait?, () => {
-    @event_loop.wait_pid(pid, context~) catch {
+    defer process.close()
+    process.wait_pid(context~) catch {
       _ if @coroutine.is_being_cancelled() =>
         @async.protect_from_cancel(() => {
           @async.with_task_group(group => {
             group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-            @event_loop.wait_pid(pid, context~)
+            process.wait_pid(context~)
           })
         })
       err => raise err
