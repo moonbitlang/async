@@ -78,7 +78,7 @@ async fn main {
   match output {
     None => download(url, proxy~, output=@stdio.stdout)
     Some(output) => {
-      let file = @fs.open(output, mode=WriteOnly, create=0o644, truncate=true)
+      let file = @fs.open(output, mode=WriteOnly, create_mode=CreateOrTruncate)
       defer file.close()
       download(url, proxy~, output=file)
     }

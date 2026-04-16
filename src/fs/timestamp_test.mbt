@@ -24,7 +24,7 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 async test "timestamp for path" {
   let path = "/tmp/timestamp_test"
   @async.with_task_group(group => {
-    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
@@ -58,7 +58,7 @@ async test "timestamp for path" {
 async test "mtime for path" {
   let path = "_build/timestamp_test"
   @async.with_task_group(group => {
-    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
@@ -76,7 +76,7 @@ async test "mtime for path" {
 async test "timestamp for opened file" {
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group(group => {
-    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
@@ -113,7 +113,7 @@ async test "timestamp for opened file" {
 async test "mtime for opened file" {
   let path = "_build/opened_file_timestamp_test"
   @async.with_task_group(group => {
-    @fs.write_file(path, "abcd", create=0o644, sync=Full)
+    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()

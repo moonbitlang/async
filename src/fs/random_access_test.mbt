@@ -16,7 +16,7 @@
 async test "write_at" {
   let path = "_build/write_at_test"
   // initialize
-  @fs.write_file(path, "abcdef", create=0o644, sync=Full)
+  @fs.write_file(path, "abcdef", create_mode=CreateOrTruncate, sync=Full)
   // first read
   inspect(@fs.read_file(path).text(), content="abcdef")
   // update content
@@ -39,7 +39,7 @@ async test "write_at" {
 ///|
 async test "read_at" {
   let path = "_build/read_at_test"
-  @fs.write_file(path, "abcdef", create=0o644, sync=Full)
+  @fs.write_file(path, "abcdef", create_mode=CreateOrTruncate, sync=Full)
   {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()

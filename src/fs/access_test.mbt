@@ -49,7 +49,7 @@ async test "can_execute" {
 async test "chmod" {
   let path = "_build/chmod_test"
   @async.with_task_group(group => {
-    @fs.write_file(path, "abcd", create=0o444)
+    @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
     group.add_defer(() => @fs.remove(path))
     inspect(@fs.can_read(path), content="true")
     inspect(@fs.can_write(path), content="false")

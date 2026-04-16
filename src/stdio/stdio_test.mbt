@@ -35,7 +35,7 @@ async test "redirect_file" {
     cat,
     [],
     stdin=@process.redirect_from_file("moon.mod.json"),
-    stdout=@process.redirect_to_file(out_file, create=0o644),
+    stdout=@process.redirect_to_file(out_file, create_mode=CreateOrTruncate),
   )
   inspect(code, content="0")
   assert_eq(
