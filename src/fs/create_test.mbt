@@ -69,3 +69,48 @@ async test "wrapper test" {
   @fs.remove(path)
   inspect(result, content="abcd")
 }
+
+///|
+async test "create_mode test" {
+  let path = "_build/create_exclusive_test"
+  @async.with_task_group(group => {
+    for create_mode in [@fs.OpenExisting, @fs.TruncateExisting] {
+      assert_true((try? @fs.open(path, mode=WriteOnly, create_mode~)) is Err(_))
+    }
+    {
+      let file = @fs.create(path, allow_existing=false)
+      defer file.close()
+      group.add_defer(() => @fs.remove(path))
+      file.write("abcd")
+    }
+    inspect(@fs.read_file(path).text(), content="abcd")
+    assert_true((try? @fs.create(path, allow_existing=false)) is Err(_))
+    assert_true(
+      (try? @fs.open(path, mode=WriteOnly, create_mode=CreateNew)) is Err(_),
+    )
+    {
+      let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
+      defer file.close()
+      file.write("AB")
+    }
+    inspect(@fs.read_file(path).text(), content="ABcd")
+    {
+      let file = @fs.open(path, mode=WriteOnly, create_mode=OpenOrCreate)
+      defer file.close()
+      file.write("XY")
+    }
+    inspect(@fs.read_file(path).text(), content="XYcd")
+    {
+      let file = @fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate)
+      defer file.close()
+      file.write("12")
+    }
+    inspect(@fs.read_file(path).text(), content="12")
+    {
+      let file = @fs.open(path, mode=WriteOnly, create_mode=TruncateExisting)
+      defer file.close()
+      file.write("34")
+    }
+    inspect(@fs.read_file(path).text(), content="34")
+  })
+}
