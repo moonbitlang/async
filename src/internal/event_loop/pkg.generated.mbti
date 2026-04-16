@@ -28,9 +28,9 @@ pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-pub async fn open(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
+pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
-pub async fn open_detached(StringView, Int, create~ : Bool, append~ : Bool, truncate~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (Int, @fd_util.FileKind)
+pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (Int, @fd_util.FileKind)
 
 pub async fn opendir(StringView, context~ : String) -> Directory
 

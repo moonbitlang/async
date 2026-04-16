@@ -3,6 +3,7 @@ package "moonbitlang/async/process"
 
 import {
   "moonbitlang/async",
+  "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
@@ -25,7 +26,9 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
 
 pub async fn redirect_from_file(String) -> &ProcessInput
 
-pub async fn redirect_to_file(String, append? : Bool, create? : Int, truncate? : Bool) -> &ProcessOutput
+#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
+#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
+pub async fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int, create? : Int, truncate? : Bool) -> &ProcessOutput
 
 pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
 

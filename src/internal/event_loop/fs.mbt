@@ -21,9 +21,9 @@ pub async fn open_detached(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int,
-  create~ : Bool,
+  // See `@fs.CreateMode` for more details
+  create~ : Int,
   append~ : Bool,
-  truncate~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
   sync~ : Int,
   // permission for file when new file is created
@@ -31,15 +31,7 @@ pub async fn open_detached(
   context~ : String,
 ) -> (@fd_util.Fd, @fd_util.FileKind) {
   let path_bytes = @os_string.encode(path)
-  let job = Job::open(
-    path_bytes,
-    access,
-    create~,
-    append~,
-    truncate~,
-    sync~,
-    mode~,
-  )
+  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
   fn cancel(job_id) raise {
     guard curr_loop.val is Some(evloop)
     evloop.cancel_job_in_worker(job_id, context~)
@@ -59,9 +51,9 @@ pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int,
-  create~ : Bool,
+  // See `@fs.CreateMode` for more details
+  create~ : Int,
   append~ : Bool,
-  truncate~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
   sync~ : Int,
   // permission for file when new file is created
@@ -73,7 +65,6 @@ pub async fn open(
     access,
     create~,
     append~,
-    truncate~,
     sync~,
     mode~,
     context~,

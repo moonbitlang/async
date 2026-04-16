@@ -101,9 +101,9 @@ extern "C" fn Job::open(
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int,
-  create~ : Bool,
+  // See `@fs.CreateMode` for more details
+  create~ : Int,
   append~ : Bool,
-  truncate~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
   sync~ : Int,
   // permission for file when new file is created

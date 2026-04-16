@@ -55,6 +55,30 @@ pub(all) enum SyncMode {
 }
 
 ///|
+/// Specify how to handle file creation in `@fs.open()`.
+///
+/// - `OpenExisting`: open an existing file, fail if the file does not exist
+/// - `TruncateExisting`: open an existing file and truncate it, fail if the file does not exist
+/// - `OpenOrCreate`: if the file exists, open it without truncation. Otherwise create a new file
+/// - `CreateOrTruncate`: if the file exists, open it and truncate it. Otherwise create a new file
+/// - `CreateNew`: create a new file, fail if the file already exists
+pub(all) enum CreateMode {
+  /// open an existing file, fail if the file does not exist
+  OpenExisting = 0
+  /// open an existing file and truncate it, fail if the file does not exist
+  TruncateExisting = 1
+  /// if the file exists, open it without truncation. Otherwise create a new file
+  OpenOrCreate = 2
+  /// if the file exists, open it and truncate it. Otherwise create a new file
+  CreateOrTruncate = 3
+  /// create a new file, fail if the file already exists
+  CreateNew = 4
+}
+
+///|
+fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
+
+///|
 /// Open a file. `filename` will be encoded using UTF8.
 ///
 /// - `mode` determines what operations (read/write) are permitted for the file.
@@ -64,21 +88,30 @@ pub(all) enum SyncMode {
 ///
 /// - if `append` is `true` (`false` by default), the file will be opened in append mode.
 ///
-/// - if `create` is present and the file is not present,
-///   the file will be created, with its user permission set to value of `create`.
-///   User permission is represented as an integer in UNIX permission style.
+/// - `create_mode` specify how to handle file creation, truncation, etc.
+///   See the type `CreateMode` for more details.
+///   The default value is `OpenExisting`.
+///
+/// - `permission` specifies the user permission of the new file,
+///   if a new file is created by `@fs.open`.
+///   The permission is represented as an integer in UNIX permission style.
 ///   For example, `0o640` means:
+///
 ///   - the owner of the file can read and write the file (`6`)
 ///   - users in the owner group of the file can read the file (`4`)
 ///   - other users can do nothing to the file
 ///
-/// - if `truncate` is `true` (`false` by default), and the file exists,
-///   it will be truncated to zero length after opening.
+///   The default value is `0o644` (anyone can read, only owner can write, not executable).
+///   `permission` is currently ignored on Windows.
+#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
+#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn open(
   filename : StringView,
   mode~ : Mode,
   sync? : SyncMode = NoSync,
   append? : Bool = false,
+  create_mode? : CreateMode,
+  permission? : Int,
   create? : Int,
   truncate? : Bool = false,
 ) -> File {
@@ -87,9 +120,20 @@ pub async fn open(
     WriteOnly => 1
     ReadWrite => 2
   }
-  let (create, user_mode) = match create {
-    None => (false, 0)
-    Some(mode) => (true, mode)
+  let create_mode = match create_mode {
+    Some(mode) => mode
+    None =>
+      match (create is Some(_), truncate) {
+        (true, true) => CreateOrTruncate
+        (true, false) => OpenOrCreate
+        (false, true) => TruncateExisting
+        (false, false) => OpenExisting
+      }
+  }
+  let permission = match permission {
+    Some(perm) => perm
+    None if create is Some(perm) => perm
+    None => 0o644
   }
   let sync = match sync {
     NoSync => 0
@@ -99,11 +143,10 @@ pub async fn open(
   let io = @event_loop.open(
     filename,
     access,
-    create~,
+    create=create_mode.to_int(),
     append~,
-    truncate~,
     sync~,
-    mode=user_mode,
+    mode=permission,
     context="@fs.open()",
   )
   { io, read_buf: @io.ReaderBuffer::new() }
@@ -112,20 +155,28 @@ pub async fn open(
 ///|
 /// Create a new file at `pathname`. `pathname` will be encoded using UTF8.
 ///
+/// - If the file already exists and `allow_existing` is `true` (`true` by default),
+///   the existing file will be truncated and opened.
+///   If the file already exists and `allow_existing` is `fale`, this function will fail.
+///
 /// - User permission of the new file would be set to `permission`,
 ///   which is an integer in UNIX style. For example, `0o640` means:
 ///     - the owner of the file can read and write the file (`6`)
 ///     - users in the owner group of the file can read the file (`4`)
 ///     - other users can do nothing to the file
+///   The default value is `0o644` (anyone can read, only owner can write, not executable).
+///   `permission` is currently ignored on Windows.
 ///
 /// - `sync` determines how data will be synchronized to disk after writing,
 ///   see `SyncMode` for more details. The default is `NoSync`
 pub async fn create(
   filename : StringView,
-  permission~ : Int,
+  allow_existing? : Bool = true,
+  permission? : Int = 0o644,
   sync? : SyncMode = NoSync,
 ) -> File {
-  open(filename, mode=WriteOnly, sync~, create=permission, truncate=true)
+  let create_mode = if allow_existing { CreateOrTruncate } else { CreateNew }
+  open(filename, mode=WriteOnly, sync~, create_mode~, permission~)
 }
 
 ///|
@@ -395,18 +446,44 @@ pub async fn read_file(
 
 ///|
 /// Write data to a file located at `path`.
-/// The meaning of `sync`, `append`, `create`, and `truncate`,
+/// The meaning of `sync`, `append`, `create_mode` and `permission`,
 /// is the same as `open`, except that `truncate` is `true` by default.
 /// See `open` for more details.
+#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
+#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn write_file(
   path : StringView,
   content : &@io.Data,
+  create_mode? : CreateMode,
+  permission? : Int,
   sync? : SyncMode = Data,
   append? : Bool = false,
   create? : Int,
   truncate? : Bool = true,
 ) -> Unit {
-  let file = open(path, mode=WriteOnly, sync~, append~, create?, truncate~)
+  let create_mode = match create_mode {
+    Some(mode) => mode
+    None =>
+      match (create is Some(_), truncate) {
+        (true, true) => CreateOrTruncate
+        (true, false) => OpenOrCreate
+        (false, true) => TruncateExisting
+        (false, false) => OpenExisting
+      }
+  }
+  let permission = match permission {
+    Some(perm) => perm
+    None if create is Some(perm) => perm
+    None => 0o644
+  }
+  let file = open(
+    path,
+    mode=WriteOnly,
+    sync~,
+    append~,
+    create_mode~,
+    permission~,
+  )
   defer file.close()
   file.write(content.binary())
 }
