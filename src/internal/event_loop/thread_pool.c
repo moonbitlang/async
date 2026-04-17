@@ -127,9 +127,12 @@ struct {
 
   HANDLE notify_send;
 
+#ifndef _WIN32
+  sigset_t worker_sigmask;
+  sigset_t old_sigmask;
+#endif
 #ifdef WAKEUP_METHOD_SIGNAL
   sigset_t wakeup_signal;
-  sigset_t old_sigmask;
 #endif
 } pool;
 
@@ -320,17 +323,22 @@ void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
   if (pool.initialized)
     abort();
 
-#ifdef WAKEUP_METHOD_SIGNAL
-  sigemptyset(&pool.wakeup_signal);
-  sigaddset(&pool.wakeup_signal, SIGUSR1);
-  pthread_sigmask(SIG_BLOCK, &pool.wakeup_signal, &pool.old_sigmask);
-#endif
-
 #ifndef _WIN32
+  sigfillset(&pool.worker_sigmask); 
+  // used for cancelling blocking IO in worker thread
+  sigdelset(&pool.worker_sigmask, SIGUSR2);
+
   sigset_t signals_to_block;
   sigemptyset(&signals_to_block);
   sigaddset(&signals_to_block, SIGCHLD);
-  pthread_sigmask(SIG_BLOCK, &signals_to_block, 0);
+
+#ifdef WAKEUP_METHOD_SIGNAL
+  sigemptyset(&pool.wakeup_signal);
+  sigaddset(&pool.wakeup_signal, SIGUSR1);
+  sigaddset(&signals_to_block, SIGUSR1);
+#endif
+
+  pthread_sigmask(SIG_BLOCK, &signals_to_block, &pool.old_sigmask);
 
   signal(SIGPIPE, SIG_IGN);
 
@@ -356,7 +364,7 @@ void moonbitlang_async_destroy_thread_pool() {
 
   pool.initialized = 0;
 
-#ifdef WAKEUP_METHOD_SIGNAL
+#ifndef _WIN32
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
 #endif
 }
@@ -389,7 +397,14 @@ struct worker *moonbitlang_async_spawn_worker(
   pthread_attr_setstacksize(&attr, 512);
 #endif
 
+  // make sure the worker thread has correct sigmask immediately
+  sigset_t curr_sigmask;
+  pthread_sigmask(SIG_SETMASK, &pool.worker_sigmask, &curr_sigmask);
+
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
+
+  pthread_sigmask(SIG_SETMASK, &curr_sigmask, 0);
+
   pthread_attr_destroy(&attr);
 #endif
 
@@ -1919,24 +1934,16 @@ void spawn_job_worker(struct job *job) {
 static
 void spawn_job_worker(struct job *job) {
   struct spawn_job *spawn_job = (struct spawn_job *)job;
+
   posix_spawnattr_t attr;
   posix_spawnattr_init(&attr);
-#ifdef WAKEUP_METHOD_SIGNAL
   posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
-  posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
-#else
-  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
-#endif
 
-  sigset_t sigdefault_set;
-  sigemptyset(&sigdefault_set);
-  sigaddset(&sigdefault_set, SIGCHLD);
-  sigaddset(&sigdefault_set, SIGHUP);
-  sigaddset(&sigdefault_set, SIGINT);
-  sigaddset(&sigdefault_set, SIGQUIT);
-  sigaddset(&sigdefault_set, SIGTERM);
-  sigaddset(&sigdefault_set, SIGALRM);
-  posix_spawnattr_setsigdefault(&attr, &sigdefault_set);
+  posix_spawnattr_setsigmask(&attr, &pool.old_sigmask);
+
+  sigset_t all_signals;
+  sigfillset(&all_signals);
+  posix_spawnattr_setsigdefault(&attr, &all_signals);
 
   posix_spawn_file_actions_t file_actions;
   posix_spawn_file_actions_init(&file_actions);
