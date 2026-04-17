@@ -62,6 +62,8 @@ async test "cancel with default signal" {
 }
 
 ///|
+// On Windows, `CTRL_C_EVENT` cannot be sent to a single process
+#cfg(not(platform="windows"))
 async test "cancel with ctrl+c" {
   let test_prog = sleep_prog.wait()
   let log = []
@@ -95,6 +97,8 @@ async test "cancel with ctrl+c" {
 }
 
 ///|
+// On Windows, `CTRL_CLOSE_EVENT` cannot be sent programmatically
+#cfg(not(platform="windows"))
 async test "cancel with SIGHUP" {
   let test_prog = sleep_prog.wait()
   let log = []
