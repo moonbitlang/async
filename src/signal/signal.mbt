@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+/// The set of currently supported signals.
+/// - `SIGINT`: `SIGINT` on Unix, `CTRL_C_EVENT` on Windows
+/// - `SIGTERM`: `SIGTERM` on Unix, unavailable on Windows
+/// - `SIGHUP`: `SIGHUP` on Unix, `CTRL_CLOSE_EVENT` on Windows
+/// - `SIGBREAK`: unavailable on Unix, `CTRL_BREAK_EVENT` on Windows
 pub(all) enum Signal {
   SIGINT = 0
   SIGTERM = 1
@@ -21,6 +26,8 @@ pub(all) enum Signal {
 } derive(Debug)
 
 ///|
+/// Convert a signal to its underlying signal code in the OS.
+/// The result of this function is platform-dependent.
 pub fn Signal::to_int(signal : Signal) -> Int {
   match signal {
     SIGINT => @event_loop._SIGINT
@@ -31,6 +38,13 @@ pub fn Signal::to_int(signal : Signal) -> Int {
 }
 
 ///|
+/// Set the list of signals that are used as global cancellation signal.
+/// When a global cancellation signal is received, the whole program will be cancelled gracefully,
+/// using the native cancellation mechanism of `moonbitlang/async`.
+///
+/// Signals unavailable on current platform will be silently ignored.
+///
+/// The default list is all supported signals.
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Signal]) -> Unit {
   @event_loop.set_global_cancellation_signals(signals.map(sig => sig.to_int()))
 }

@@ -218,6 +218,8 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
 
 ///|
 fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
+  // The thread pool pipe may receive job completion event or signal events.
+  // Here we encode signal events by setting the most significant bit to one.
   guard (job_id & (1 << 31)) == 0 else {
     // signal
     if self.main is Some(main) {

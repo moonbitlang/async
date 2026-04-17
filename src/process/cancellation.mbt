@@ -39,12 +39,16 @@ let default_signal : @signal.Signal = SIGTERM
 /// Graceful process termination is implemented by sendig `signal` to the process.
 /// The default signal is `SIGTERM` on POSIX-like systems
 /// and `SIGBREAK` (aka `CTRL_BREAK_EVENT`) on Windows.
+///
+/// Note that on Windows, `SIGBREAK` is the only signal allowed to be be sent.
 pub fn graceful_cancel(
   timeout~ : Int,
   signal? : @signal.Signal = default_signal,
 ) -> CancellationHandler {
   pid => {
-    terminate_process(pid, signal.to_int())
+    if signal.to_int() is code && code >= 0 {
+      terminate_process(pid, signal.to_int())
+    }
     @async.sleep(timeout)
     kill_process(pid)
   }
