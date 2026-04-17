@@ -10,6 +10,14 @@ import {
 // Values
 pub const IS_WINDOWS : Bool = false
 
+pub let _SIGBREAK : Int
+
+pub let _SIGHUP : Int
+
+pub let _SIGINT : Int
+
+pub let _SIGTERM : Int
+
 pub async fn access(StringView, Access, context~ : String) -> Int
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit
@@ -42,6 +50,8 @@ pub async fn remove(StringView, context~ : String) -> Unit
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
 
+pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
+
 pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
 pub let stderr : IoHandle
@@ -55,6 +65,9 @@ pub async fn symlink(StringView, StringView, context~ : String) -> Unit
 pub fn with_event_loop(async () -> Unit) -> Unit raise
 
 // Errors
+pub suberror KilledBySignal {
+  KilledBySignal(Int)
+}
 
 // Types and methods
 pub(all) enum Access {

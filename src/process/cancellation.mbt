@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-extern "C" fn terminate_process(pid : Int) = "moonbitlang_async_terminate_process"
+extern "C" fn terminate_process(pid : Int, signal : Int) = "moonbitlang_async_terminate_process"
 
 ///|
 extern "C" fn kill_process(pid : Int) = "moonbitlang_async_kill_process"
@@ -24,15 +24,27 @@ extern "C" fn kill_process(pid : Int) = "moonbitlang_async_kill_process"
 pub(all) struct CancellationHandler(async (Int) -> Unit)
 
 ///|
+#cfg(platform="windows")
+let default_signal : @signal.Signal = SIGBREAK
+
+///|
+#cfg(not(platform="windows"))
+let default_signal : @signal.Signal = SIGTERM
+
+///|
 /// A process cancellation handler that first try to gracefully stop the process,
 /// and if the process is still running after `timeout` milliseconds,
 /// forcefully stop the process.
 ///
-/// Graceful process termination is implemented via `SIGTERM` on POSIX-like systems,
-/// and `CTRL_BREAK_EVENT` on Windows.
-pub fn graceful_cancel(timeout~ : Int) -> CancellationHandler {
+/// Graceful process termination is implemented by sendig `signal` to the process.
+/// The default signal is `SIGTERM` on POSIX-like systems
+/// and `SIGBREAK` (aka `CTRL_BREAK_EVENT`) on Windows.
+pub fn graceful_cancel(
+  timeout~ : Int,
+  signal? : @signal.Signal = default_signal,
+) -> CancellationHandler {
   pid => {
-    terminate_process(pid)
+    terminate_process(pid, signal.to_int())
     @async.sleep(timeout)
     kill_process(pid)
   }

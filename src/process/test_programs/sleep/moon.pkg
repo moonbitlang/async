@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/core/env",
   "moonbitlang/async",
+  "moonbitlang/async/signal",
 }
 
 options(

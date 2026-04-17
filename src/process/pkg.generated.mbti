@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/async/pipe",
+  "moonbitlang/async/signal",
   "moonbitlang/async/stdio",
 }
 
@@ -18,7 +19,7 @@ pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[Stri
 
 pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub fn graceful_cancel(timeout~ : Int) -> CancellationHandler
+pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> CancellationHandler
 
 pub fn hard_cancel() -> CancellationHandler
 

@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async/internal/event_loop",
+}
+
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+} for "test"
+
+options(
+  targets: { "signal.mbt": [ "native" ], "signal_test.mbt": [ "native" ] },
+)

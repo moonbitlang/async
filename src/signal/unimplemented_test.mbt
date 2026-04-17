@@ -13,18 +13,9 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
 #cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
+let _ignore_unused_import : Unit = {
+  ignore(@utf8.encode(""))
   ignore(@async.sleep)
-  ignore(@event_loop.Timer::new)
-  ignore(@coroutine.spawn)
-  ignore(@pipe.unimplemented)
-  ignore(@stdio.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@fs.unimplemented)
-  ignore(@signal.unimplemented)
+  ignore(@process.unimplemented)
 }

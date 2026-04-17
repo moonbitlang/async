@@ -36,6 +36,8 @@ priv struct EventLoop {
   completed_jobs_buffer : FixedArray[Int]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
+  mut main : @coroutine.Coroutine?
+  mut killed_by_signal : Int?
 }
 
 ///|
@@ -50,6 +52,8 @@ priv struct EventLoop {
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
+  mut main : @coroutine.Coroutine?
+  mut killed_by_signal : Int?
 }
 
 ///|
@@ -106,6 +110,8 @@ fn EventLoop::new() -> EventLoop raise {
     completed_jobs_buffer: FixedArray::make(1024, 0),
     jobs: {},
     timers: @sorted_set.new(),
+    main: None,
+    killed_by_signal: None,
   }
 }
 
@@ -127,6 +133,8 @@ fn EventLoop::new() -> EventLoop raise {
     running_workers: {},
     jobs: {},
     timers: @sorted_set.new(),
+    main: None,
+    killed_by_signal: None,
   }
 }
 
@@ -168,7 +176,18 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
       init()
     }
   }
-  let main = @coroutine.spawn(f)
+  let signal_handler = setup_signal_handler()
+  let main = @coroutine.spawn(() => {
+    try f() catch {
+      err => {
+        evloop.terminate_signal_handler(signal_handler)
+        raise err
+      }
+    } noraise {
+      _ => evloop.terminate_signal_handler(signal_handler)
+    }
+  })
+  evloop.main = Some(main)
   evloop.run_forever()
   main.unwrap()
 }
@@ -239,7 +258,15 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         }
         let n = bytes_transferred / 4
         for i in 0..<n {
-          self.handle_completed_job(self.completed_jobs_buffer[i])
+          let job_id = self.completed_jobs_buffer[i]
+          if (job_id & (1 << 31)) != 0 {
+            if self.main is Some(main) {
+              main.cancel()
+            }
+            self.killed_by_signal = Some(job_id ^ (1 << 31))
+          } else {
+            self.handle_completed_job(job_id)
+          }
         }
         if n < self.completed_jobs_buffer.length() {
           break
