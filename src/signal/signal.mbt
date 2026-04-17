@@ -13,18 +13,24 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@async.sleep)
-  ignore(@event_loop.Timer::new)
-  ignore(@coroutine.spawn)
-  ignore(@pipe.unimplemented)
-  ignore(@stdio.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@fs.unimplemented)
-  ignore(@signal.unimplemented)
+pub(all) enum Signal {
+  SIGINT = 0
+  SIGTERM = 1
+  SIGHUP = 2
+  SIGBREAK = 3
+} derive(Debug)
+
+///|
+pub fn Signal::to_int(signal : Signal) -> Int {
+  match signal {
+    SIGINT => @event_loop._SIGINT
+    SIGTERM => @event_loop._SIGTERM
+    SIGHUP => @event_loop._SIGHUP
+    SIGBREAK => @event_loop._SIGBREAK
+  }
+}
+
+///|
+pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Signal]) -> Unit {
+  @event_loop.set_global_cancellation_signals(signals.map(sig => sig.to_int()))
 }

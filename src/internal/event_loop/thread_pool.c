@@ -136,7 +136,6 @@ struct {
 #endif
 } pool;
 
-
 // The type for a worker thread
 struct worker {
 #ifdef _WIN32
@@ -2161,3 +2160,52 @@ addrinfo_t *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job
   job->result_fetched = 1;
   return job->result;
 }
+
+#ifndef _WIN32
+// ===== sigwait job, wait for specific signal =====
+struct sigwait_job {
+  struct job job;
+  sigset_t signals;
+};
+
+static
+void free_sigwait_job(void *obj) {}
+
+static
+void sigwait_job_worker(struct job *job) {
+  struct sigwait_job *sigwait_job = (struct sigwait_job*)job;
+
+  siginfo_t info;
+  while (1) {
+    int sig;
+    int err = sigwait(&sigwait_job->signals, &sig);
+    if (err > 0) {
+      job->err = err;
+      return;
+    }
+
+    if (sig == SIGUSR2)
+      break;
+
+    sig |= 1 << 31;
+    do {
+      if (write(pool.notify_send, &sig, sizeof(int)) > 0)
+        break;
+    } while (errno == EINTR);
+  }
+}
+
+MOONBIT_FFI_EXPORT
+struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
+  struct sigwait_job *job = MAKE_JOB(sigwait);
+
+  sigemptyset(&job->signals);
+  for (int i = 0; i < Moonbit_array_length(signals); ++i)
+    sigaddset(&job->signals, signals[i]);
+
+  sigaddset(&job->signals, SIGUSR2);
+
+  return job;
+}
+
+#endif

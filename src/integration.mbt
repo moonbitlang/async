@@ -20,6 +20,7 @@
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
+    @event_loop.KilledBySignal(signal) => exit(128 + signal)
     err => {
       // TODO: output the error to stderr
       println(err)

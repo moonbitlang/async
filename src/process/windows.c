@@ -33,8 +33,8 @@ moonbit_string_t moonbitlang_async_get_curr_env() {
   return result;
 }
 
-void moonbitlang_async_terminate_process(DWORD pid) {
-  GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+void moonbitlang_async_terminate_process(DWORD pid, int signal) {
+  GenerateConsoleCtrlEvent(signal, pid);
 }
 
 void moonbitlang_async_kill_process(DWORD pid) {

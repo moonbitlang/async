@@ -27,6 +27,8 @@ async fn main {
   let mut time = 10_000
   let mut exit_code = 0
   let mut msg_after_sleep = None
+  let mut msg_finally = None
+  let mut use_default_handler = false
   for args = @env.args()[1:] {
     match args {
       [] => break
@@ -44,6 +46,15 @@ async fn main {
         msg_after_sleep = Some(msg)
         continue rest
       }
+      ["-print-finally", ..rest] => {
+        guard rest is [msg, ..rest] else { fail("invalid arguments") }
+        msg_finally = Some(msg)
+        continue rest
+      }
+      ["-use-default-handler", ..rest] => {
+        use_default_handler = true
+        continue rest
+      }
       [['-', ..] as flag, ..] => fail("unrecognized argument \{flag}")
       [t, .. rest] => {
         time = @string.parse_int(t)
@@ -51,8 +62,18 @@ async fn main {
       }
     }
   }
-  register_termination_handler()
-  @async.sleep(time)
+  if !use_default_handler {
+    @signal.set_global_cancellation_signals([])
+    register_termination_handler()
+  }
+  {
+    defer {
+      if msg_finally is Some(msg) {
+        println(msg)
+      }
+    }
+    @async.sleep(time)
+  }
   if msg_after_sleep is Some(msg) {
     println(msg)
   }

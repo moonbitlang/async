@@ -42,8 +42,8 @@ moonbit_bytes_t *moonbitlang_async_get_curr_env() {
   return result;
 }
 
-void moonbitlang_async_terminate_process(pid_t pid) {
-  kill(pid, SIGTERM);
+void moonbitlang_async_terminate_process(pid_t pid, int signal) {
+  kill(pid, signal);
 }
 
 void moonbitlang_async_kill_process(pid_t pid) {

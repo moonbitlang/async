@@ -272,3 +272,8 @@ extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbitlang
 ///|
 #borrow(job)
 extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(signals)
+extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
