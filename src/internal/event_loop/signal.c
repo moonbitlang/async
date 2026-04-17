@@ -18,6 +18,9 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
+#include <string.h>
+
 #else
 
 #include <signal.h>
@@ -26,6 +29,44 @@
 #endif
 
 #ifdef _WIN32
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_signal_by_name(const char *name) {
+  if (0 == strcmp(name, "SIGINT")) {
+    return CTRL_C_EVENT;
+  } else if (0 == strcmp(name, "SIGBREAK")) {
+    return CTRL_BREAK_EVENT;
+  } else if (0 == strcmp(name, "SIGHUP")) {
+    return CTRL_CLOSE_EVENT;
+  } else {
+    return -1;
+  }
+}
+
+// The range of console control events is pretty small
+// according to https://learn.microsoft.com/en-us/windows/console/handlerroutine,
+// and a set of console contron events can easily fix into a single byte.
+// So there is no need for atomic integer here
+extern int interested_console_ctrl_event;
+
+// the actual console control handler is in `thread_pool.c`,
+// because it need to refer to the event loop's IO completion port
+BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type);
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_set_global_cancellation_signals(int *all_signals, int *signals) {
+  int new_mask = 0;
+  for (int i = 0; i < Moonbit_array_length(signals); ++i) {
+    if (signals[i] < 0) continue;
+    new_mask |= 1 << signals[i];
+  }
+  interested_console_ctrl_event = new_mask;
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_set_console_control_handler(int32_t add) {
+  return SetConsoleCtrlHandler(moonbitlang_async_console_control_handler, add);
+}
 
 #else // #ifdef _WIN32
 

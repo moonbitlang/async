@@ -218,6 +218,13 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
 
 ///|
 fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
+  guard (job_id & (1 << 31)) == 0 else {
+    // signal
+    if self.main is Some(main) {
+      main.cancel()
+    }
+    self.killed_by_signal = Some(job_id ^ (1 << 31))
+  }
   guard self.running_workers.get(job_id) is Some(worker)
   self.running_workers.remove(job_id)
   match self.job_queue.pop_front() {
@@ -258,15 +265,7 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         }
         let n = bytes_transferred / 4
         for i in 0..<n {
-          let job_id = self.completed_jobs_buffer[i]
-          if (job_id & (1 << 31)) != 0 {
-            if self.main is Some(main) {
-              main.cancel()
-            }
-            self.killed_by_signal = Some(job_id ^ (1 << 31))
-          } else {
-            self.handle_completed_job(job_id)
-          }
+          self.handle_completed_job(self.completed_jobs_buffer[i])
         }
         if n < self.completed_jobs_buffer.length() {
           break

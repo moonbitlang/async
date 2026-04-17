@@ -83,3 +83,32 @@ async fn EventLoop::terminate_signal_handler(
     raise KilledBySignal(signal)
   }
 }
+
+///|
+#cfg(platform="windows")
+extern "C" fn set_console_control_handler(add : Int) -> Int = "moonbitlang_async_set_console_control_handler"
+
+///|
+#cfg(platform="windows")
+fn setup_signal_handler() -> Unit raise {
+  if !global_signal_handler_initialized.val {
+    set_global_cancellation_signals(all_signals)
+  }
+  if set_console_control_handler(1) is 0 {
+    @os_error.check_errno("setup_signal_handler()")
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn EventLoop::terminate_signal_handler(
+  evloop : EventLoop,
+  _ : Unit,
+) -> Unit raise {
+  if set_console_control_handler(0) is 0 {
+    @os_error.check_errno("terminate_signal_handler()")
+  }
+  if evloop.killed_by_signal is Some(signal) {
+    raise KilledBySignal(signal)
+  }
+}

@@ -2161,7 +2161,26 @@ addrinfo_t *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job
   return job->result;
 }
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+int interested_console_ctrl_event = 0;
+
+BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
+  if (interested_console_ctrl_event & (1 << ctrl_type)) {
+    PostQueuedCompletionStatus(
+      pool.notify_send,
+      ctrl_type | (1 << 31),
+      (ULONG_PTR)INVALID_HANDLE_VALUE,
+      0
+    );
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+#else // #ifdef _WIN32
+
 // ===== sigwait job, wait for specific signal =====
 struct sigwait_job {
   struct job job;
@@ -2208,4 +2227,4 @@ struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
   return job;
 }
 
-#endif
+#endif // #ifndef _WIN32, sigwait job
