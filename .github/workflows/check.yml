@@ -53,20 +53,14 @@ jobs:
       - name: moon check
         run: moon check --deny-warn
 
-      - name: moon check (examples)
-        run: moon check --manifest-path examples/moon.mod.json --deny-warn
+      - name: moon check (test programs)
+        run: moon check --manifest-path src/process/test_programs/moon.mod.json --deny-warn
 
       - name: moon test
         run: moon test
 
       - name: moon test (release)
         run: moon test --release
-
-      - name: test examples
-        run: moon test --manifest-path examples/moon.mod.json
-
-      - name: test examples (release)
-        run: moon test --release --manifest-path examples/moon.mod.json
 
   nightly-build:
     strategy:
@@ -117,20 +111,14 @@ jobs:
       - name: moon check
         run: moon check
 
-      - name: moon check (examples)
-        run: moon check --manifest-path examples/moon.mod.json
+      - name: moon check (test programs)
+        run: moon check --manifest-path src/process/test_programs/moon.mod.json
 
       - name: moon test
         run: moon test
 
       - name: moon test (release)
         run: moon test --release
-
-      - name: test examples
-        run: moon test --manifest-path examples/moon.mod.json
-
-      - name: test examples (release)
-        run: moon test --release --manifest-path examples/moon.mod.json
 
   js-build:
     runs-on: ubuntu-latest
@@ -201,7 +189,7 @@ jobs:
       - name: format diff
         run: |
           moon fmt
-          moon fmt --manifest-path examples/moon.mod.json
+          moon fmt --manifest-path src/process/test_programs/moon.mod.json
           git diff --exit-code
 
   moon-info:
