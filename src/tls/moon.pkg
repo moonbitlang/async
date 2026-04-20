@@ -19,6 +19,7 @@ import {
 options(
   "native-stub": [ "openssl.c", "schannel.c" ],
   targets: {
+    "certificate_test.mbt": [ "native" ],
     "crypto_util.mbt": [ "native" ],
     "deprecated.mbt": [ "native" ],
     "openssl.mbt": [ "native" ],

@@ -79,6 +79,10 @@ extern "C" fn SSL::set_verify(self : SSL, verify : Bool) = "moonbitlang_async_tl
 extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept"
 
 ///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::get_peer_certificate(self : SSL) -> Bytes? = "moonbitlang_async_tls_ssl_get_peer_certificate"
+
+///|
 pub(all) enum X509FileType {
   PEM = 1
   ANS1 = 2
@@ -153,6 +157,10 @@ const SSL_ERROR_SYSCALL = 5
 ///|
 #cfg(not(platform="windows"))
 const SSL_ERROR_ZERO_RETURN = 6
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn err_peek_error_code() -> UInt64 = "moonbitlang_async_tls_peek_error_code"
 
 ///|
 #cfg(not(platform="windows"))
@@ -514,6 +522,23 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
   } nobreak {
     self.transport.flush_write()
   }
+}
+
+///|
+/// Get the certificate of remote peer for a TLS connection in DER format.
+/// Note that even if nothing goes wrong, the certificate may not exist:
+///
+/// - although rare, some TLS algorithm choice does not have a certificate
+/// - for connection without client certificate, the server does not have any peer certificate
+///
+/// Therefore the return type is `Bytes?` instead of `Bytes`.
+#cfg(not(platform="windows"))
+pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
+  let result = self.ssl.get_peer_certificate()
+  if result is None && err_peek_error_code() != 0 {
+    raise TlsError(err_get_error())
+  }
+  result
 }
 
 ///|
