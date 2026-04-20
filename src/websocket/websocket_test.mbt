@@ -42,7 +42,7 @@ async test "websocket basic" {
     })
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
-    client.send_binary("abcd")
+    client.send_binary(b"abcd")
     let msg = client.recv()
     debug_inspect(msg.kind, content="Binary")
     inspect(msg.read_all().text(), content="abcd")

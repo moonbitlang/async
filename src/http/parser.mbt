@@ -159,7 +159,9 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
-        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
+        guard self.transport.read_exactly(2) == b"\r\n" else {
+          raise BadRequest
+        }
         if self.gzip is Some(gzip) {
           guard gzip.is_finished() else { raise BadRequest }
           self.gzip = None
@@ -175,7 +177,9 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       )
       let remaining = next_chunk_len - consumed
       if remaining == 0 {
-        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
+        guard self.transport.read_exactly(2) == b"\r\n" else {
+          raise BadRequest
+        }
       }
       self.body = Chunked(remaining)
       if produced == 0 {
@@ -193,7 +197,9 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
       )
       let remaining = curr_chunk_remaining - consumed
       if remaining == 0 {
-        guard self.transport.read_exactly(2) == "\r\n" else { raise BadRequest }
+        guard self.transport.read_exactly(2) == b"\r\n" else {
+          raise BadRequest
+        }
       }
       self.body = Chunked(remaining)
       if produced == 0 {

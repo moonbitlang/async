@@ -247,10 +247,10 @@ async test "ping cancelled" {
     @async.with_task_group(group => {
       group.spawn_bg(() => inspect(ws.recv().read_all().text(), content="abcd"))
       inspect(
-        @async.with_timeout_opt(100, () => ws.ping(msg="1")),
+        @async.with_timeout_opt(100, () => ws.ping(msg=b"1")),
         content="None",
       )
-      ws.ping(msg="1")
+      ws.ping(msg=b"1")
       ws.send_text("1234")
     })
   })
@@ -277,10 +277,10 @@ async test "duplicated ping" {
     @async.with_task_group(group => {
       group.spawn_bg(() => {
         @async.with_task_group(inner => {
-          inner.spawn_bg(() => ws.ping(msg="1"))
+          inner.spawn_bg(() => ws.ping(msg=b"1"))
           inner.spawn_bg(() => {
             inspect(
-              try? ws.ping(msg="1"),
+              try? ws.ping(msg=b"1"),
               content=(
                 #|Err(Failure("A PING request with the same payload is already pending"))
               ),

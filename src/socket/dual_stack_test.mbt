@@ -186,7 +186,7 @@ async test "Only_V4 UDP server" {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
       let client = @socket.UdpClient(addr)
       defer client.close()
-      client.send("message")
+      client.send(b"message")
     }
 
     for protocol in all_protocol_preferences {
@@ -236,7 +236,7 @@ async test "Only_V6 UDP server" {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
       let client = @socket.UdpClient(addr)
       defer client.close()
-      client.send("message")
+      client.send(b"message")
     }
 
     for protocol in all_protocol_preferences {
@@ -283,7 +283,7 @@ async test "dual stack UDP server" {
       let addr = @socket.Addr::resolve("localhost", port~, protocol~)
       let client = @socket.UdpClient(addr)
       defer client.close()
-      client.send("message")
+      client.send(b"message")
     }
 
     for protocol in all_protocol_preferences {

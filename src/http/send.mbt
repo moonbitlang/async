@@ -76,10 +76,10 @@ async fn Sender::flush(self : Sender) -> Unit {
 }
 
 ///|
-const NON_EMPTY_MESSAGE_HEADER_END : Bytes = "Transfer-Encoding: chunked\r\n\r\n"
+const NON_EMPTY_MESSAGE_HEADER_END : Bytes = b"Transfer-Encoding: chunked\r\n\r\n"
 
 ///|
-const EMPTY_MESSAGE_HEADER_END : Bytes = "Content-Length: 0\r\n\r\n"
+const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 
 ///|
 pub suberror IncorrectBodyLength derive(Debug, ToJson)
@@ -134,13 +134,13 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
       let len_str_len = len_str.length()
       self.send_buf.blit_from_bytes(self.send_len, len_str, 0, len_str_len)
       let curr_len = self.send_len + len_str_len
-      self.send_buf[curr_len] = '\r'
-      self.send_buf[curr_len + 1] = '\n'
+      self.send_buf[curr_len] = b'\r'
+      self.send_buf[curr_len + 1] = b'\n'
       let curr_len = curr_len + 2
       self.send_buf.blit_from_bytes(curr_len, buf, offset, len)
       let curr_len = curr_len + len
-      self.send_buf[curr_len] = '\r'
-      self.send_buf[curr_len + 1] = '\n'
+      self.send_buf[curr_len] = b'\r'
+      self.send_buf[curr_len + 1] = b'\n'
       self.send_len = curr_len + 2
       len
     }
@@ -196,16 +196,16 @@ impl @io.Writer for Sender with write_reader(self, reader) {
     }
     SendingBody => {
       self.flush()
-      self.send_buf[3] = '\r'
-      self.send_buf[4] = '\n'
+      self.send_buf[3] = b'\r'
+      self.send_buf[4] = b'\n'
       let max_len = self.send_buf.length() - 7
       for ;; {
         let len = reader.read(self.send_buf, offset=5, max_len~)
         if len == 0 {
           break
         }
-        self.send_buf[5 + len] = '\r'
-        self.send_buf[6 + len] = '\n'
+        self.send_buf[5 + len] = b'\r'
+        self.send_buf[6 + len] = b'\n'
         let len_str = encode_int(len, base=16)
         let start = 3 - len_str.length()
         self.send_buf.blit_from_bytes(start, len_str, 0, len_str.length())
@@ -247,9 +247,9 @@ async fn Sender::end_body(self : Sender) -> Unit {
     SendingBody =>
       if self.send_len + 5 > self.send_buf.length() {
         self.flush()
-        self.writer.write("0\r\n\r\n")
+        self.writer.write(b"0\r\n\r\n")
       } else {
-        self.send_buf.blit_from_bytes(self.send_len, "0\r\n\r\n", 0, 5)
+        self.send_buf.blit_from_bytes(self.send_len, b"0\r\n\r\n", 0, 5)
         self.send_len += 5
         self.flush()
       }

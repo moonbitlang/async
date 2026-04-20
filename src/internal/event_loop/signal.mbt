@@ -17,16 +17,16 @@
 extern "C" fn get_signal_by_name(name : Bytes) -> Int = "moonbitlang_async_get_signal_by_name"
 
 ///|
-pub let _SIGINT : Int = get_signal_by_name("SIGINT")
+pub let _SIGINT : Int = get_signal_by_name(b"SIGINT")
 
 ///|
-pub let _SIGTERM : Int = get_signal_by_name("SIGTERM")
+pub let _SIGTERM : Int = get_signal_by_name(b"SIGTERM")
 
 ///|
-pub let _SIGHUP : Int = get_signal_by_name("SIGHUP")
+pub let _SIGHUP : Int = get_signal_by_name(b"SIGHUP")
 
 ///|
-pub let _SIGBREAK : Int = get_signal_by_name("SIGBREAK")
+pub let _SIGBREAK : Int = get_signal_by_name(b"SIGBREAK")
 
 ///|
 let all_signals : ReadOnlyArray[Int] = [_SIGINT, _SIGTERM, _SIGHUP, _SIGBREAK]
