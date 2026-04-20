@@ -28,6 +28,7 @@ pub async fn suspend() -> Unit
 
 // Errors
 pub(all) suberror Cancelled derive(@debug.Debug)
+#deprecated
 pub impl Show for Cancelled
 
 // Types and methods

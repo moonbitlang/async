@@ -10,11 +10,13 @@ import {
 
 // Errors
 pub suberror InvalidAddr derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for InvalidAddr
 
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for ResolveHostnameError
 
 // Types and methods
@@ -34,6 +36,7 @@ pub(all) enum IpProtocolPreference {
   FavorV6
   NoPreference
 } derive(@debug.Debug)
+#deprecated
 pub impl Show for IpProtocolPreference
 
 pub struct Tcp {
