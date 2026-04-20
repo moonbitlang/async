@@ -26,6 +26,7 @@ pub suberror HttpProtocolError {
   HttpVersionNotSupported(String)
   NotImplemented
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for HttpProtocolError
 
 pub suberror IncorrectBodyLength derive(ToJson, @debug.Debug)
@@ -33,12 +34,14 @@ pub suberror IncorrectBodyLength derive(ToJson, @debug.Debug)
 pub suberror ProxyError {
   ProxyError(Response)
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for ProxyError
 
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for URIParseError
 
 // Types and methods
@@ -80,6 +83,7 @@ pub(all) enum Protocol {
   Https
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
 pub fn Protocol::default_port(Self) -> Int
+#deprecated
 pub impl Show for Protocol
 
 pub(all) struct Request {
@@ -87,6 +91,7 @@ pub(all) struct Request {
   path : String
   headers : Map[String, String]
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for Request
 
 pub(all) enum RequestMethod {
@@ -100,6 +105,7 @@ pub(all) enum RequestMethod {
   Trace
   Patch
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+#deprecated
 pub impl Show for RequestMethod
 
 pub(all) struct Response {
@@ -108,6 +114,7 @@ pub(all) struct Response {
   headers : Map[String, String]
   cookies : Array[Cookie]
 } derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for Response
 
 pub struct Server {

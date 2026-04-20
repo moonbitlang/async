@@ -16,6 +16,7 @@ pub suberror WebSocketError {
   HandshakeRejected(String, @http.Response)
   ProtocolError(String)
 } derive(@debug.Debug)
+#deprecated
 pub impl Show for WebSocketError
 
 // Types and methods
@@ -32,6 +33,7 @@ pub(all) enum CloseCode {
   InternalError
   Other(UInt16)
 } derive(Eq, @debug.Debug)
+#deprecated
 pub impl Show for CloseCode
 
 type Conn
@@ -61,6 +63,7 @@ pub(all) enum MessageKind {
   Binary
   Text
 } derive(@debug.Debug)
+#deprecated
 pub impl Show for MessageKind
 
 // Type aliases

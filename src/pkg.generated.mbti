@@ -38,9 +38,11 @@ pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 pub(all) suberror BreakFromSpawnLoop
 
 pub suberror TimeoutError derive(ToJson, @debug.Debug)
+#deprecated
 pub impl Show for TimeoutError
 
 pub suberror TimerCancelled derive(@debug.Debug)
+#deprecated
 pub impl Show for TimerCancelled
 
 // Types and methods

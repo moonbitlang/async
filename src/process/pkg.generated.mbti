@@ -45,8 +45,6 @@ pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
 
 // Types and methods
 pub(all) struct CancellationHandler(async (Int) -> Unit)
-#deprecated
-pub fn CancellationHandler::inner(Self) -> async (Int) -> Unit
 
 pub struct Process {
   pid : Int

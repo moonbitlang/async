@@ -13,8 +13,6 @@ type ServerTerminate derive(@debug.Debug)
 
 // Types and methods
 pub(all) struct Printer((String) -> Unit)
-#deprecated
-pub fn Printer::inner(Self) -> (String) -> Unit
 
 // Type aliases
 
