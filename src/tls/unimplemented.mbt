@@ -25,4 +25,5 @@ pub let unimplemented : Unit = {
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
   ignore(@utf8.encode(""))
+  ignore(@fs.unimplemented)
 }

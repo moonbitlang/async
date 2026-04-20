@@ -28,7 +28,7 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 ///|
 #cfg(platform="windows")
 async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
-  @tls.Tls::server_from_pair(r, w)
+  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/cert.pfx")
 }
 
 ///|

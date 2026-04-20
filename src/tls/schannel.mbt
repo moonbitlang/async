@@ -31,7 +31,8 @@ extern "C" fn Schannel::init_client(ch : Schannel, verify~ : Bool) -> Int = "moo
 
 ///|
 #cfg(platform="windows")
-extern "C" fn Schannel::init_server(ch : Schannel) -> Int = "moonbitlang_async_schannel_init_server"
+#borrow(pfx_content)
+extern "C" fn Schannel::init_server(ch : Schannel, pfx_content : Bytes) -> Int = "moonbitlang_async_schannel_init_server"
 
 ///|
 #cfg(platform="windows")
@@ -234,9 +235,11 @@ async fn Tls::accept(self : Tls) -> Unit {
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   reader : R,
   writer : W,
+  pfx_file~ : String,
 ) -> Tls {
   let context = Schannel::new()
-  if context.init_server() is err && err != 0 {
+  let pfx_content = @fs.read_file(pfx_file).binary()
+  if context.init_server(pfx_content) is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))
   }

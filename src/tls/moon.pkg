@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/internal/io_buffer",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/os_error",
+  "moonbitlang/async/fs",
 }
 
 import {

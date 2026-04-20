@@ -547,4 +547,5 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
 let _unused : Unit = {
   ignore(@os_error.check_errno)
   ignore(@os_string.encode)
+  ignore((_ : @fs.File) => ())
 }
