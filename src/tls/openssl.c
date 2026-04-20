@@ -18,6 +18,7 @@
 
 #include <dlfcn.h>
 #include <string.h>
+#include <stdio.h>
 #include <moonbit.h>
 
 // TODO: are these stable?
@@ -35,6 +36,7 @@ typedef struct BIO BIO;
 typedef struct SSL SSL;
 typedef struct SSL_CTX SSL_CTX;
 typedef struct SSL_METHOD SSL_METHOD;
+typedef struct X509 X509;
 
 #define IMPORTED_OPEN_SSL_FUNCTIONS\
   IMPORT_FUNC(BIO_METHOD*, BIO_meth_new, (int type, const char *name))\
@@ -70,13 +72,19 @@ typedef struct SSL_METHOD SSL_METHOD;
   IMPORT_FUNC(void, SSL_CTX_set_verify, (SSL_CTX *ctx, int mode, int (*verify_cb)(int, void*)))\
   IMPORT_FUNC(int, SSL_CTX_set_default_verify_paths, (SSL_CTX *ctx))\
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
+  IMPORT_FUNC(unsigned long, ERR_peek_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
-  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))
+  IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))\
+  IMPORT_FUNC_WITH_ALT_NAMES(X509 *, SSL_get1_peer_certificate, (const SSL *ssl), { "SSL_get_peer_certificate" })\
+  IMPORT_FUNC(void, X509_free, (const X509 *cert))\
+  IMPORT_FUNC(int, i2d_X509_AUX, (X509 *cert, unsigned char **ppout))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
+#define IMPORT_FUNC_WITH_ALT_NAMES(ret, name, params, alt_names) IMPORT_FUNC(ret, name, params)
 IMPORTED_OPEN_SSL_FUNCTIONS
 #undef IMPORT_FUNC
+#undef IMPORT_FUNC_WITH_ALT_NAMES
 
 int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
   void *handle = 0;
@@ -106,10 +114,20 @@ int moonbitlang_async_load_openssl(int *major, int *minor, int *fix) {
 #define IMPORT_FUNC(ret, func, params)\
   func = dlsym(handle, "" #func "");\
   if (!func) return 4;
+#define IMPORT_FUNC_WITH_ALT_NAMES(ret, func, params, alt_names)\
+  func = dlsym(handle, "" #func "");\
+  if (!func) {\
+    const char *names[] = alt_names;\
+    for (int i = 0; !func && i < sizeof(names) / sizeof(const char*); ++i) {\
+      func = dlsym(handle, names[i]);\
+    }\
+    if (!func) return 4;\
+  }
 
   IMPORTED_OPEN_SSL_FUNCTIONS
 
-#undef LOAD_FUNC
+#undef IMPORT_FUNC
+#undef IMPORT_FUNC_WITH_ALT_NAMES
 
   return 0;
 }
@@ -247,8 +265,30 @@ void moonbitlang_async_tls_ssl_free(SSL *ssl) {
   SSL_free(ssl);
 }
 
+moonbit_bytes_t moonbitlang_async_tls_ssl_get_peer_certificate(SSL *ssl) {
+  X509 *cert = SSL_get1_peer_certificate(ssl);
+  if (!cert) return 0;
+
+  int len = i2d_X509_AUX(cert, 0);
+  if (len < 0) goto handle_error;
+
+  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
+  unsigned char *buf = result;
+  i2d_X509_AUX(cert, &buf);
+  X509_free(cert);
+  return result;
+
+handle_error:
+  X509_free(cert);
+  return 0;
+}
+
 int moonbitlang_async_tls_ssl_get_error(SSL *ssl, int ret) {
   return SSL_get_error(ssl, ret);
+}
+
+uint64_t moonbitlang_async_tls_peek_error_code() {
+  return ERR_peek_error();
 }
 
 int moonbitlang_async_tls_get_error(void *buf) {
