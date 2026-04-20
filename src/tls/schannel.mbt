@@ -398,6 +398,24 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 }
 
 ///|
+#cfg(platform="windows")
+#borrow(ch)
+extern "C" fn Schannel::get_peer_certificate(ch : Schannel) -> Bytes? = "moonbitlang_async_schannel_get_peer_certificate"
+
+///|
+#cfg(platform="windows")
+pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
+  let result = self.context.get_peer_certificate()
+  if result is None {
+    let errno = @os_error.get_errno()
+    if errno != 0 {
+      raise TlsError(@os_error.errno_to_string(errno))
+    }
+  }
+  result
+}
+
+///|
 // mute unused warning
 #cfg(platform="windows")
 let _unused : Unit = {
