@@ -23,8 +23,8 @@ async test "write_at" {
   {
     let w = @fs.open(path, mode=WriteOnly)
     defer w.close()
-    w.write_at("56", position=w.size() - 2)
-    w.write_at("34", position=2)
+    w.write_at(b"56", position=w.size() - 2)
+    w.write_at(b"34", position=2)
     w.write("12") // still write from the start
   }
   // read content

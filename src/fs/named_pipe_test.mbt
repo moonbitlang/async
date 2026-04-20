@@ -111,9 +111,9 @@ async test "named pipe" {
       @async.sleep(200)
       let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
       defer w.close()
-      ignore(w.write("abcd\n", offset=0, len=5, context=""))
+      ignore(w.write(b"abcd\n", offset=0, len=5, context=""))
       @async.sleep(500)
-      ignore(w.write("efgh", offset=0, len=4, context=""))
+      ignore(w.write(b"efgh", offset=0, len=4, context=""))
     })
   })
 }

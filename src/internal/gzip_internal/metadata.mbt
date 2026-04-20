@@ -55,8 +55,8 @@ fn Header::to_bytes(self : Header) -> Bytes {
 fn Header::from_bytes(buf : BytesView) -> Header raise {
   guard buf
     is [
-      '\x1f',
-      '\x8b',
+      b'\x1f',
+      b'\x8b',
       compression_method,
       flags,
       u32le(mtime),
@@ -65,10 +65,10 @@ fn Header::from_bytes(buf : BytesView) -> Header raise {
     ] else {
     raise InvalidHeader("invalid gzip magic")
   }
-  guard compression_method is '\x08' else {
+  guard compression_method is b'\x08' else {
     raise InvalidHeader("unsupported compression method")
   }
-  guard flags is '\x00' else {
+  guard flags is b'\x00' else {
     raise InvalidHeader("gzip optional header fields are not supported")
   }
   { mtime, extra_flags, operating_system }

@@ -33,9 +33,9 @@ pub fn ascii_to_string(ascii : BytesView) -> String {
   let builder = StringBuilder::new()
   for byte in ascii {
     match byte {
-      '\n' => builder.write_char('\n')
-      '\r' => builder.write_string("\\r")
-      '\t' => builder.write_string("\\t")
+      b'\n' => builder.write_char('\n')
+      b'\r' => builder.write_string("\\r")
+      b'\t' => builder.write_string("\\t")
       32..=126 => builder.write_char(byte.to_int().unsafe_to_char())
       x =>
         builder

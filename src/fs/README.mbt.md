@@ -228,7 +228,7 @@ async test "write at specific position" {
     let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
     defer file.close()
     file.write("abcdef")
-    file.write_at("CD", position=2)
+    file.write_at(b"CD", position=2)
   }
 
   // read 3 bytes at position 5
