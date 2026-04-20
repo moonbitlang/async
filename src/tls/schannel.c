@@ -489,6 +489,26 @@ int32_t moonbitlang_async_schannel_shutdown(struct Context *ctx) {
 }
 
 MOONBIT_FFI_EXPORT
+moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
+  CERT_CONTEXT *cert = 0;
+  int err = QueryContextAttributes(&ctx->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &cert);
+  if (err != SEC_E_OK && err != SEC_E_NO_CREDENTIALS) {
+    SetLastError(err);
+    return 0;
+  }
+
+  if (!cert) {
+    SetLastError(0);
+    return 0;
+  }
+
+  moonbit_bytes_t result = moonbit_make_bytes_raw(cert->cbCertEncoded);
+  memcpy(result, cert->pbCertEncoded, cert->cbCertEncoded);
+  CertFreeCertificateContext(cert);
+  return result;
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_tls_rand_bytes(void *buf, int32_t num) {
   return BCryptGenRandom(NULL, buf, num, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS;
 }
