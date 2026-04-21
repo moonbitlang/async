@@ -33,7 +33,8 @@ let link_config : String =
 async fn main {
   fn exclude(path : String) {
     match path {
-      "./target" | "./_build" | "./examples/target" | "./examples/_build" => true
+      "./target" | "./_build" | "./examples/target" | "./examples/_build" =>
+        true
       "./src/process/test_programs/dump_env" =>
         // This program may be run in an (almost) empty environment,
         // ASAN will not work with some linking related variables missing
@@ -42,25 +43,27 @@ async fn main {
     }
   }
 
-  @fs.walk(".", exclude~, (path, files) => for file in files {
-    guard file is "moon.pkg" else {  }
-    let full_path = "\{path}/\{file}"
-    let content = @fs.read_file(full_path).text().split("\n")
-    let transformed = StringBuilder::new()
-    let mut found = false
-    for line in content {
-      transformed..write_stringview(line).write_char('\n')
-      if !found && line is "options(" {
-        found = true
-        transformed..write_string(link_config).write_char('\n')
+  @fs.walk(".", exclude~, (path, files) => {
+    for file in files {
+      guard file is "moon.pkg" else {  }
+      let full_path = "\{path}/\{file}"
+      let content = @fs.read_file(full_path).text().split("\n")
+      let transformed = StringBuilder::new()
+      let mut found = false
+      for line in content {
+        transformed..write_stringview(line).write_char('\n')
+        if !found && line is "options(" {
+          found = true
+          transformed..write_string(link_config).write_char('\n')
+        }
       }
+      if !found {
+        transformed
+        ..write_string("\noptions(\n")
+        ..write_string(link_config)
+        .write_string("\n)")
+      }
+      @fs.write_file(full_path, transformed.to_string())
     }
-    if !found {
-      transformed
-      ..write_string("\noptions(\n")
-      ..write_string(link_config)
-      .write_string("\n)")
-    }
-    @fs.write_file(full_path, transformed.to_string())
   })
 }

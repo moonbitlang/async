@@ -15,10 +15,10 @@
 ///|
 async fn main {
   let (is_orphan, args) = match @env.args()[1:] {
-    ["-orphan", ..rest] => (true, rest)
+    ["-orphan", .. rest] => (true, rest)
     args => (false, args)
   }
-  guard args is [cmd, ..args] else { fail("invalid argument") }
+  guard args is [cmd, .. args] else { fail("invalid argument") }
   if is_orphan {
     let pid = @process.spawn_orphan(cmd, args)
     ignore(@process.wait_pid(pid))

@@ -19,20 +19,18 @@ async fn main {
   let timeout = Ref::new(None)
   for args = @env.args()[1:] {
     match args {
-      ["-stderr", ..rest] => {
+      ["-stderr", .. rest] => {
         out_channel.val = @stdio.stderr
         continue rest
       }
-      ["-stdout", ..rest] => {
+      ["-stdout", .. rest] => {
         out_channel.val = @stdio.stdout
         continue rest
       }
-      ["-timeout", ..rest] => {
-        guard rest is [t, ..rest] else {
-          fail("invalid argument")
-        }
+      ["-timeout", .. rest] => {
+        guard rest is [t, .. rest] else { fail("invalid argument") }
         timeout.val = Some(@string.parse_int(t))
-        continue rest 
+        continue rest
       }
       [] => break
       _ => fail("invalid arguments")

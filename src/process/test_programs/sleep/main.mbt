@@ -37,21 +37,21 @@ async fn main {
         exit_code = @string.parse_int(code)
         continue rest
       }
-      ["-swallow-cancel-signal", ..rest] => {
+      ["-swallow-cancel-signal", .. rest] => {
         set_swallow_cancel_signal()
         continue rest
       }
-      ["-print-after-sleep", ..rest] => {
-        guard rest is [msg, ..rest] else { fail("invalid arguments") }
+      ["-print-after-sleep", .. rest] => {
+        guard rest is [msg, .. rest] else { fail("invalid arguments") }
         msg_after_sleep = Some(msg)
         continue rest
       }
-      ["-print-finally", ..rest] => {
-        guard rest is [msg, ..rest] else { fail("invalid arguments") }
+      ["-print-finally", .. rest] => {
+        guard rest is [msg, .. rest] else { fail("invalid arguments") }
         msg_finally = Some(msg)
         continue rest
       }
-      ["-use-default-handler", ..rest] => {
+      ["-use-default-handler", .. rest] => {
         use_default_handler = true
         continue rest
       }
@@ -67,11 +67,7 @@ async fn main {
     register_termination_handler()
   }
   {
-    defer {
-      if msg_finally is Some(msg) {
-        println(msg)
-      }
-    }
+    defer (if msg_finally is Some(msg) { println(msg) })
     @async.sleep(time)
   }
   if msg_after_sleep is Some(msg) {

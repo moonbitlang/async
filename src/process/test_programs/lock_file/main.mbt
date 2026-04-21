@@ -35,10 +35,8 @@ async fn main {
         continue rest
       }
       [['-', ..] as opt, ..] => fail("unknown argument \{opt}")
-      [f, ..rest] => {
-        guard file is None else {
-          fail("too many files specified")
-        }
+      [f, .. rest] => {
+        guard file is None else { fail("too many files specified") }
         file = Some(f)
         continue rest
       }
@@ -47,7 +45,11 @@ async fn main {
   }
   guard file is Some(file) else { fail("no file specified") }
   guard kind is Some(kind) else { fail("no lock kind specified") }
-  let file = @fs.open(file, create_mode=OpenOrCreate, mode=if kind is Shared { ReadOnly } else { ReadWrite })
+  let file = @fs.open(
+    file,
+    create_mode=OpenOrCreate,
+    mode=if kind is Shared { ReadOnly } else { ReadWrite },
+  )
   defer file.close()
   file.lock(kind)
   defer file.unlock()
