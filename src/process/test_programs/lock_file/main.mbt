@@ -47,7 +47,7 @@ async fn main {
   }
   guard file is Some(file) else { fail("no file specified") }
   guard kind is Some(kind) else { fail("no lock kind specified") }
-  let file = @fs.open(file, create=0o644, mode=if kind is Shared { ReadOnly } else { ReadWrite })
+  let file = @fs.open(file, create_mode=OpenOrCreate, mode=if kind is Shared { ReadOnly } else { ReadWrite })
   defer file.close()
   file.lock(kind)
   defer file.unlock()
