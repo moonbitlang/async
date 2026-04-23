@@ -43,6 +43,8 @@ pub async fn realpath(StringView) -> String
 
 pub async fn remove(StringView) -> Unit
 
+pub async fn rename(StringView, StringView) -> Unit
+
 pub async fn rmdir(StringView, recursive? : Bool) -> Unit
 
 pub async fn symlink(target~ : StringView, StringView) -> Unit

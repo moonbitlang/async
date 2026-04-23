@@ -174,6 +174,13 @@ extern "C" fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job = "moonbitla
 extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_async_make_remove_job"
 
 ///|
+#owned(old_path, new_path)
+extern "C" fn Job::rename(
+  old_path : @os_string.OsString,
+  new_path : @os_string.OsString,
+) -> Job = "moonbitlang_async_make_rename_job"
+
+///|
 #owned(target, path)
 extern "C" fn Job::symlink(
   target : @os_string.OsString,

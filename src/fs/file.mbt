@@ -355,6 +355,12 @@ pub async fn remove(path : StringView) -> Unit {
 }
 
 ///|
+/// Rename (move) the file located at `old_path` to `new_path`.
+pub async fn rename(old_path : StringView, new_path : StringView) -> Unit {
+  @event_loop.rename(old_path, new_path, context="@fs.remove()")
+}
+
+///|
 /// Get the size of the file. This method will not change position in the file.
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
