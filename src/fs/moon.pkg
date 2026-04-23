@@ -11,17 +11,20 @@ import {
   "moonbitlang/async/internal/env_util",
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async",
+  "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/c_buffer",
 }
 
 import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
+  "moonbitlang/core/debug",
   "moonbitlang/async/process",
 } for "test"
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "dir.c" ],
+  "native-stub": [ "stub.c", "dir.c", "watch_inotify.c" ],
   targets: {
     "README.mbt.md": [ "native" ],
     "access_test.mbt": [ "native" ],
@@ -47,5 +50,6 @@ options(
     "tmpdir_test.mbt": [ "native" ],
     "utils.mbt": [ "native" ],
     "walk_test.mbt": [ "native" ],
+    "watch_inotify.mbt": [ "native" ],
   },
 )
