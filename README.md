@@ -37,6 +37,7 @@ This library provides the following packages:
     - TLS encrypted WebSocket (`wss://`) support
     - `CONNECT` based HTTP/HTTPS proxy support
     - native integration with `moonbitlang/async/http`
+- `moonbitlang/async/signal`: control signal handling behavior
 
 To use these packages, add them to the `import` field of `moon.pkg.json`.
 
@@ -50,7 +51,9 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] pipe
 - [X] asynchronous file system operations
 - [X] process manipulation
-- [ ] signal handling
+- [X] signal handling
+    - [X] graceful cancellation on receiving `SIGINT` etc.
+    - [ ] custom signal handling logic
 - [ ] file system watching
 - [X] structured concurrency
 - [X] cooperative multi tasking
