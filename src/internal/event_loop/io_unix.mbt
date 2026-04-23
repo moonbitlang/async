@@ -42,7 +42,7 @@ pub fn IoHandle::from_fd(
 
 ///|
 #cfg(not(platform="windows"))
-fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
+pub fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
@@ -60,7 +60,7 @@ fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
 
 ///|
 #cfg(not(platform="windows"))
-async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")

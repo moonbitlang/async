@@ -92,10 +92,12 @@ pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind, is_async? : Bool) -> Se
 pub async fn IoHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
 pub fn IoHandle::kind(Self) -> @fd_util.FileKind
 pub async fn IoHandle::lock(Self, exclusive~ : Bool, context~ : String) -> Unit
+pub fn IoHandle::prepare_read(Self) -> Unit raise
 pub async fn IoHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
 pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IoHandle::wait_read(Self) -> Unit
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 

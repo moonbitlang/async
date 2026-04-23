@@ -76,6 +76,7 @@ pub async fn Directory::read_all(Self, include_hidden? : Bool, include_special? 
 pub struct DirectoryEntry {
   name : String
   is_dir : Bool
+  // private fields
 }
 
 type File
@@ -110,6 +111,14 @@ pub(all) enum FileKind {
 #deprecated
 pub impl Show for FileKind
 
+pub enum FsEvent {
+  Create(String)
+  Remove(String)
+  Rename(old~ : String, new~ : String)
+  Modify(String)
+  Overflow
+} derive(Eq, Hash, @debug.Debug)
+
 pub(all) enum Lock {
   Shared
   Exclusive
@@ -126,6 +135,15 @@ pub(all) enum SyncMode {
   Data
   Full
 }
+
+pub struct Watcher {
+  // private fields
+
+  async fn new(String) -> Watcher
+}
+pub fn Watcher::close(Self) -> Unit
+pub async fn Watcher::new(String) -> Self
+pub async fn Watcher::wait(Self) -> FsEvent
 
 // Type aliases
 
