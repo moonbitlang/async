@@ -447,7 +447,7 @@ pub async fn read_file(
 ///|
 /// Write data to a file located at `path`.
 /// The meaning of `sync`, `append`, `create_mode` and `permission`,
-/// is the same as `open`, except that `truncate` is `true` by default.
+/// is the same as `open`, except that `create_mode` is `TruncateExisting` by default.
 /// See `open` for more details.
 #label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
 #label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
