@@ -357,7 +357,7 @@ pub async fn remove(path : StringView) -> Unit {
 ///|
 /// Rename (move) the file located at `old_path` to `new_path`.
 pub async fn rename(old_path : StringView, new_path : StringView) -> Unit {
-  @event_loop.rename(old_path, new_path, context="@fs.remove()")
+  @event_loop.rename(old_path, new_path, context="@fs.rename()")
 }
 
 ///|
