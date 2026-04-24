@@ -168,10 +168,24 @@ extern "C" fn Directory::entry_is_hidden(
 #valtype
 pub struct DirectoryEntry {
   name : String
+  /// Indicate whether the directory entry is another directory.
+  /// Symbolic links are not treated as directories here.
   is_dir : Bool
 }
 
 ///|
+/// Fetch the next entry in the directory,
+/// including its name and some extra information, see `DirectoryEntry`.
+/// `None` indicates that the directory has no more files.
+///
+/// - If `include_special` is `true` (`false` by default),
+///   `.` (current directory) and `..` (parent directory) will be included too
+///
+/// - If `include_hidden` is `true` (`true` by default),
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
+/// The file name in the returned directory entry is interpreted as UTF8-encoded on Unix-like systems.
 pub async fn Directory::next(
   dir : Directory,
   include_hidden? : Bool = true,
@@ -236,11 +250,15 @@ async fn Directory::next_aux(
 
 ///|
 /// Read all entries in a directory.
+///
 /// - If `include_special` is `true` (`false` by default),
 ///   `.` (current directory) and `..` (parent directory) will be included too
+///
 /// - If `include_hidden` is `true` (`true` by default),
-///   directory entries starting with `.` (except `.` and `..`) will be included
-/// All returned directory entries are encoded using UTF8.
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
+/// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn Directory::read_all(
   dir : Directory,
   include_hidden? : Bool = true,
@@ -256,12 +274,18 @@ pub async fn Directory::read_all(
 
 ///|
 /// Read all entries in the directory located at `path`.
+///
 /// - If `include_special` is `true` (`false` by default),
 ///   `.` (current directory) and `..` (parent directory) will be included too
+///
 /// - If `include_hidden` is `true` (`true` by default),
-///   directory entries starting with `.` (except `.` and `..`) will be included
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
 /// - If `sort` is `true` (`false` by default),
 ///   the result will be sorted using `Array::sort`.
+///
+/// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn readdir(
   path : StringView,
   include_hidden? : Bool = true,
