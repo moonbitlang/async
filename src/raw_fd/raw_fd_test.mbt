@@ -57,7 +57,7 @@ async test "pipe as raw fd" {
 ///|
 async test "file as raw fd" {
   let truth = @fs.read_file("LICENSE").binary()
-  let (fd, _) = @event_loop.open_detached(
+  let fd = @event_loop.open_detached(
     "LICENSE",
     0,
     create=0,
@@ -65,7 +65,7 @@ async test "file as raw fd" {
     sync=0,
     mode=0,
     context="file as raw fd test",
-  )
+  ).fd()
   let file = @raw_fd.RawFd(fd)
   assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
   let buf = FixedArray::make(truth.length() + 1, b'\x00')

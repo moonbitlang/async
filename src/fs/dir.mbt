@@ -91,6 +91,9 @@ pub fn Directory::close(self : Directory) -> Unit {
 }
 
 ///|
+extern "C" fn Directory::min_buffer_size() -> Int = "moonbitlang_async_dir_buffer_min_size"
+
+///|
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
 pub async fn opendir(path : StringView) -> Directory {
@@ -99,7 +102,7 @@ pub async fn opendir(path : StringView) -> Directory {
 
 ///|
 async fn opendir_aux(path : StringView, context~ : String) -> Directory {
-  let (fd, kind) = @event_loop.open_detached(
+  let open_result = @event_loop.open_detached(
     path,
     0,
     create=0,
@@ -108,6 +111,8 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
     mode=0,
     context~,
   )
+  let fd = open_result.fd()
+  let kind = open_result.kind()
   if !(kind is Directory) {
     @fd_util.close(fd, kind~, context~)
     raise @os_error.OSError(
@@ -115,9 +120,15 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
       context="\{context}: \{path.escape()}",
     )
   }
+  // According to https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getdirentries.2.html,
+  // some file systems does not support buffer smaller than block size.
+  let buffer_size = @cmp.maximum(
+    Directory::min_buffer_size(),
+    open_result.block_size(),
+  )
   {
     fd,
-    buf: FixedArray::make(1024, b'\x00'),
+    buf: FixedArray::make(@cmp.maximum(buffer_size, 1024), b'\x00'),
     offset: 0,
     buf_len: 0,
     completed: false,

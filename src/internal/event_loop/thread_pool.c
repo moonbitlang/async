@@ -667,7 +667,11 @@ struct open_job {
   int sync;
   int mode;
   HANDLE result;
+#ifdef _WIN32
   int32_t kind;
+#else
+  struct stat stat;
+#endif
 };
 
 static
@@ -755,6 +759,11 @@ void open_job_worker(struct job *job) {
     return;
   }
 
+  if (fstat(open_job->result, &open_job->stat) < 0) {
+    job->err = errno;
+    return;
+  }
+
   open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
   if (open_job->kind < 0) {
     job->err = errno;
@@ -785,13 +794,22 @@ struct open_job *moonbitlang_async_make_open_job(
 }
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_get_open_job_result(struct open_job *job) {
+HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
   return job->result;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_get_open_job_kind(struct open_job *job) {
-  return job->kind;
+int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
+  return moonbitlang_async_file_kind_from_stat(&job->stat);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_open_job_get_block_size(struct open_job *job) {
+#ifdef _WIN32
+  moonbit_panic();
+#else
+  return job->stat.st_blksize;
+#endif
 }
 
 // ===== file kind of fd job, get kind of an existing fd =====

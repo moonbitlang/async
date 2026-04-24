@@ -25,20 +25,20 @@ pub async fn open_detached(
   // permission for file when new file is created
   mode~ : Int,
   context~ : String,
-) -> (@fd_util.Fd, @fd_util.FileKind) {
+) -> OpenResult {
   let path_bytes = @os_string.encode(path)
-  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
+  let result = Job::open(path_bytes, access, create~, append~, sync~, mode~)
   fn cancel(job_id) raise {
     guard curr_loop.val is Some(evloop)
     evloop.cancel_job_in_worker(job_id, context~)
   }
 
-  try perform_job_in_worker(job, context~, cancel~) catch {
+  try perform_job_in_worker(result.0, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    _ => (job.get_open_job_result(), job.get_open_job_kind())
+    _ => result
   }
 }
 
@@ -56,7 +56,7 @@ pub async fn open(
   mode~ : Int,
   context~ : String,
 ) -> IoHandle {
-  let (fd, kind) = open_detached(
+  let result = open_detached(
     path,
     access,
     create~,
@@ -65,6 +65,8 @@ pub async fn open(
     mode~,
     context~,
   )
+  let fd = result.fd()
+  let kind = result.kind()
   // On Windows, due to a lot of complexity,
   // we use synchronous IO + thread pool unconditionally for regular files.
   // However, on Windows, overlapped IO must be enabled on file creation time,

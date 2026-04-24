@@ -60,6 +60,19 @@ typedef struct {
 #include "moonbit.h"
 
 MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_dir_buffer_min_size() {
+#ifdef _WIN32
+
+  return sizeof(sys_dirent) + MAX_PATH;
+
+#else
+
+  return sizeof(sys_dirent) + NAME_MAX;
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_dir_entry_length(char *buf, int32_t offset, int32_t len) {
   sys_dirent *ent = (sys_dirent *)(buf + offset);
 

@@ -37,7 +37,7 @@ pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
-pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (Int, @fd_util.FileKind)
+pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> OpenResult
 
 pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
 
@@ -96,6 +96,11 @@ pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : In
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+
+type OpenResult
+pub fn OpenResult::block_size(Self) -> Int
+pub fn OpenResult::fd(Self) -> Int
+pub fn OpenResult::kind(Self) -> @fd_util.FileKind
 
 type Process
 pub fn Process::close(Self) -> Unit

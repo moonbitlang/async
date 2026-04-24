@@ -108,15 +108,23 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-) -> Job = "moonbitlang_async_make_open_job"
+) -> OpenResult = "moonbitlang_async_make_open_job"
+
+///|
+struct OpenResult(Job)
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_result(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_open_job_result"
+pub extern "C" fn OpenResult::fd(job : OpenResult) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_kind(job : Job) -> @fd_util.FileKind = "moonbitlang_async_get_open_job_kind"
+pub extern "C" fn OpenResult::kind(job : OpenResult) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
+
+///|
+/// not supported on Windows, will return `-1`
+#borrow(job)
+pub extern "C" fn OpenResult::block_size(job : OpenResult) -> Int = "moonbitlang_async_open_job_get_block_size"
 
 ///|
 extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
