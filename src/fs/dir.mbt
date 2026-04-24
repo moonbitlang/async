@@ -58,14 +58,12 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
     let base = path.to_string()
-    for file in readdir(base) {
-      let child_path = base + "/" + file
-      let kind = @event_loop.file_kind_by_path(
-        child_path,
-        follow_symlink=false,
-        context~,
-      )
-      if kind is Directory {
+    let dir = opendir_aux(path, context~)
+    defer dir.close()
+    while dir.next_aux(include_special=false, include_hidden=true, context~)
+          is Some(ent) {
+      let child_path = base + "/" + ent.name
+      if ent.is_dir {
         rmdir(child_path, recursive=true)
       } else {
         @event_loop.remove(child_path, context~)
@@ -77,28 +75,140 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
 
 ///|
 /// A directory in file system
-struct Directory(@event_loop.Directory)
+struct Directory {
+  fd : @fd_util.Fd
+  buf : FixedArray[Byte]
+  mut offset : Int
+  mut buf_len : Int
+  mut completed : Bool
+}
 
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
-  guard self.0.close() == 0
+  @fd_util.close(self.fd, kind=Directory, context="") catch {
+    _ => ()
+  }
 }
 
 ///|
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
 pub async fn opendir(path : StringView) -> Directory {
-  @event_loop.opendir(path, context="@fs.opendir()")
+  opendir_aux(path, context="@fs.opendir()")
 }
 
 ///|
-async fn Directory::read_next(dir : Directory) -> String? {
-  let name = @event_loop.readdir(dir.0, context="@fs.readdir()")
-  if name.is_null() {
-    None
-  } else {
-    Some(@os_string.decode(name))
+async fn opendir_aux(path : StringView, context~ : String) -> Directory {
+  let (fd, kind) = @event_loop.open_detached(
+    path,
+    0,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context~,
+  )
+  if !(kind is Directory) {
+    @fd_util.close(fd, kind~, context~)
+    raise @os_error.OSError(
+      @os_error.errno_ENOTDIR,
+      context="\{context}: \{path.escape()}",
+    )
   }
+  {
+    fd,
+    buf: FixedArray::make(1024, b'\x00'),
+    offset: 0,
+    buf_len: 0,
+    completed: false,
+  }
+}
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_length(
+  buf : FixedArray[Byte],
+  offset : Int,
+  len : Int,
+) -> Int = "moonbitlang_async_dir_entry_length"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_name(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> @c_buffer.Buffer = "moonbitlang_async_dir_entry_get_name"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_is_dir(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Bool = "moonbitlang_async_dir_entry_is_dir"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_is_hidden(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
+
+///|
+#valtype
+pub struct DirectoryEntry {
+  name : String
+  is_dir : Bool
+}
+
+///|
+pub async fn Directory::next(
+  dir : Directory,
+  include_hidden? : Bool = true,
+  include_special? : Bool = false,
+) -> DirectoryEntry? {
+  dir.next_aux(
+    include_special~,
+    include_hidden~,
+    context="@fs.Directory::next()",
+  )
+}
+
+///|
+async fn Directory::next_aux(
+  dir : Directory,
+  include_hidden~ : Bool,
+  include_special~ : Bool,
+  context~ : String,
+) -> DirectoryEntry? {
+  guard !dir.completed else { None }
+  let entry_len = Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
+  let entry_len = if entry_len is 0 {
+    dir.offset = 0
+    dir.buf_len = @event_loop.readdir(
+      dir.fd,
+      dir.buf,
+      dir.buf.length(),
+      context~,
+    )
+    Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
+  } else {
+    entry_len
+  }
+  guard entry_len > 0 else {
+    dir.completed = true
+    None
+  }
+  let offset = dir.offset
+  dir.offset += entry_len
+  if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
+    return dir.next_aux(include_special~, include_hidden~, context~)
+  }
+  let name = @os_string.decode(Directory::entry_name(dir.buf, offset))
+  if !include_special && name is ("." | "..") {
+    return dir.next_aux(include_special~, include_hidden~, context~)
+  }
+  let is_dir = Directory::entry_is_dir(dir.buf, offset)
+  Some({ name, is_dir })
 }
 
 ///|
@@ -114,14 +224,9 @@ pub async fn Directory::read_all(
   include_special? : Bool = false,
 ) -> Array[String] {
   let result = []
-  while dir.read_next() is Some(entry) {
-    if !include_special && entry is ("." | "..") {
-      continue
-    }
-    if !include_hidden && entry is ['.', ..] {
-      continue
-    }
-    result.push(entry)
+  let context = "@fs.Directory::read_all()"
+  while dir.next_aux(include_hidden~, include_special~, context~) is Some(entry) {
+    result.push(entry.name)
   }
   result
 }
@@ -140,9 +245,13 @@ pub async fn readdir(
   include_special? : Bool = false,
   sort? : Bool = false,
 ) -> Array[String] {
-  let dir : Directory = @event_loop.opendir(path, context="@fs.readdir()")
+  let context = "@fs.readdir()"
+  let dir : Directory = opendir_aux(path, context~)
   defer dir.close()
-  let list = dir.read_all(include_hidden~, include_special~)
+  let list = []
+  while dir.next_aux(include_hidden~, include_special~, context~) is Some(entry) {
+    list.push(entry.name)
+  }
   if sort {
     list.sort()
   }
@@ -176,6 +285,7 @@ pub async fn walk(
   max_concurrency? : Int = 1000,
   allow_failure? : Bool = false,
 ) -> Unit {
+  let context = "@fs.walk()"
   guard max_concurrency > 0
   let sem = @async.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
@@ -184,16 +294,19 @@ pub async fn walk(
       group.spawn_bg(allow_failure~, () => {
         sem.acquire()
         defer sem.release()
-        let files = readdir(path)
-        for file in files {
+        let dir = opendir_aux(path, context~)
+        let files = []
+        while dir.next_aux(include_hidden=true, include_special=false, context~)
+              is Some(ent) {
           let file_path = if path is [.., '/'] {
-            path + file
+            path + ent.name
           } else {
-            "\{path}/\{file}"
+            "\{path}/\{ent.name}"
           }
-          if kind(file_path) is Directory {
+          if ent.is_dir {
             handle_path(file_path)
           }
+          files.push(ent.name)
         }
         f(path, files)
       })

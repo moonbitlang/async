@@ -4,6 +4,8 @@ package "moonbitlang/async/os_error"
 // Values
 pub fn check_errno(String) -> Unit raise OSError
 
+pub let errno_ENOTDIR : Int
+
 pub fn errno_to_string(Int) -> String
 
 pub fn get_errno() -> Int

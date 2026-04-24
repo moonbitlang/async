@@ -49,6 +49,10 @@
 #include <sys/file.h>
 #include <sys/wait.h>
 
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
+
 typedef int HANDLE;
 typedef int SOCKET;
 #define GetLastError() errno;
@@ -1425,108 +1429,20 @@ struct rmdir_job *moonbitlang_async_make_rmdir_job(char *path) {
   return job;
 }
 
-// ===== opendir job, open directory =====
-
-#ifdef _WIN32
-
-typedef struct {
-  HANDLE handle;
-
-  // In Windows, the directory search handle is obtained via `FindFirstFile`,
-  // which, in addition to creating the search handle,
-  // also read the first entry from the directory.
-  // So on the next `readdir` request, we should just return this initial entry.
-  int32_t has_cached_entry;
-  WIN32_FIND_DATAW curr_entry;
-} DIR;
-
-int32_t moonbitlang_async_closedir(DIR *dir) {
-  int32_t ret = FindClose(dir->handle) ? 0 : -1;
-  free(dir);
-  return ret;
-}
-
-#endif
-
-struct opendir_job {
-  struct job job;
-  char *path;
-  DIR *result;
-
-  // if the waiter is cancelled before `opendir` succeed,
-  // we need to call `closedir` to free resource on the result.
-  // however, if the waiter is not cancelled,
-  // the ownership of the result should be transferred to the waiter.
-  // here we use a flag `result_fetched` to determine which case it is.
-  int result_fetched;
-};
-
-static
-void free_opendir_job(void *obj) {
-  struct opendir_job *job = (struct opendir_job*)obj;
-  moonbit_decref(job->path);
-
-  if (job->result && !(job->result_fetched)) {
-#ifdef _WIN32
-    moonbitlang_async_closedir(job->result);
-#else
-    closedir(job->result);
-#endif
-  }
-}
-
-static
-void opendir_job_worker(struct job *job) {
-  struct opendir_job *opendir_job = (struct opendir_job*)job;
-
-#ifdef _WIN32
-
-  DIR *dir = (DIR*)malloc(sizeof(DIR));
-  opendir_job->result = dir;
-
-  dir->handle = FindFirstFileW(
-    (LPCWSTR)opendir_job->path,
-    &(dir->curr_entry)
-  );
-  if (dir->handle == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
-  }
-  dir->has_cached_entry = 1;
-
-#else
-
-  opendir_job->result = opendir(opendir_job->path);
-  if (!(opendir_job->result)) {
-    job->err = errno;
-  }
-
-#endif
-}
-
-struct opendir_job *moonbitlang_async_make_opendir_job(char *path) {
-  struct opendir_job *job = MAKE_JOB(opendir);
-  job->path = path;
-  job->result = 0;
-  job->result_fetched = 0;
-  return job;
-}
-
-DIR *moonbitlang_async_get_opendir_result(struct opendir_job *job) {
-  job->result_fetched = 1;
-  return job->result;
-}
-
 // ===== readdir job, read directory entry =====
 
 struct readdir_job {
   struct job job;
-  DIR *dir;
-  char *result;
+  HANDLE dir;
+  void *out;
+  int32_t len;
 };
 
 static
-void free_readdir_job(void *obj) {}
+void free_readdir_job(void *obj) {
+  struct readdir_job *job = (struct readdir_job*)obj;
+  moonbit_decref(job->out);
+}
 
 static
 void readdir_job_worker(struct job *job) {
@@ -1534,45 +1450,43 @@ void readdir_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
-  if (readdir_job->dir->has_cached_entry) {
-    readdir_job->result = (char*)readdir_job->dir->curr_entry.cFileName;
-    readdir_job->dir->has_cached_entry = 0;
-  } else if (FindNextFileW(readdir_job->dir->handle, &(readdir_job->dir->curr_entry))) {
-    readdir_job->result = (char*)readdir_job->dir->curr_entry.cFileName;
-  } else {
-    int err = GetLastError();
-    if (err == ERROR_NO_MORE_FILES) {
-      readdir_job->result = 0;
-    } else {
-      job->ret = -1;
-      job->err = err;
-    }
+  if (
+    !GetFileInformationByHandleEx(
+      readdir_job->dir,
+      FileIdBothDirectoryInfo,
+      readdir_job->out,
+      readdir_job->len
+    )
+  ) {
+    job->err = GetLastError();
+    return;
   }
+
+#elif defined(__linux__)
+
+  job->ret = syscall(SYS_getdents64, readdir_job->dir, readdir_job->out, readdir_job->len);
+  if (job->ret < 0)
+    job->err = errno;
+
+#elif defined(__MACH__)
+
+  job->ret = getdirentries(readdir_job->dir, readdir_job->out, readdir_job->len, 0);
+  if (job->ret < 0)
+    job->err = errno;
 
 #else
 
-  errno = 0;
-  struct dirent *dirent = readdir(readdir_job->dir);
-  if (dirent) {
-    readdir_job->result = dirent->d_name;
-  } else if (errno) {
-    job->ret = -1;
-    job->err = errno;
-  } else {
-    readdir_job->result = 0;
-  }
+  errno = ENOSYS;
 
 #endif
 }
 
-struct readdir_job *moonbitlang_async_make_readdir_job(DIR *dir) {
+struct readdir_job *moonbitlang_async_make_readdir_job(HANDLE dir, void *out, int32_t len) {
   struct readdir_job *job = MAKE_JOB(readdir);
   job->dir = dir;
+  job->out = out;
+  job->len = len;
   return job;
-}
-
-char *moonbitlang_async_get_readdir_result(struct readdir_job *job) {
-  return job->result;
 }
 
 // ===== realpath job, get canonical representation of a path =====

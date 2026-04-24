@@ -196,19 +196,12 @@ extern "C" fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job = "moonb
 extern "C" fn Job::rmdir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_rmdir_job"
 
 ///|
-#owned(path)
-extern "C" fn Job::opendir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_opendir_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_opendir_result(job : Job) -> Directory = "moonbitlang_async_get_opendir_result"
-
-///|
-extern "C" fn Job::readdir(dir : Directory) -> Job = "moonbitlang_async_make_readdir_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_readdir_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_readdir_result"
+#owned(buf)
+extern "C" fn Job::readdir(
+  dir : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  len : Int,
+) -> Job = "moonbitlang_async_make_readdir_job"
 
 ///|
 #owned(path)
