@@ -800,13 +800,17 @@ HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
+#ifdef _WIN32
+  return job->kind;
+#else
   return moonbitlang_async_file_kind_from_stat(&job->stat);
+#endif
 }
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_open_job_get_block_size(struct open_job *job) {
 #ifdef _WIN32
-  moonbit_panic();
+  return -1;
 #else
   return job->stat.st_blksize;
 #endif
@@ -1470,7 +1474,6 @@ void readdir_job_worker(struct job *job) {
   struct readdir_job *readdir_job = (struct readdir_job*)job;
 
 #ifdef _WIN32
-
   if (
     !GetFileInformationByHandleEx(
       readdir_job->dir,
@@ -1479,9 +1482,15 @@ void readdir_job_worker(struct job *job) {
       readdir_job->len
     )
   ) {
-    job->err = GetLastError();
+    if (GetLastError() == ERROR_NO_MORE_FILES)
+      job->ret = 0;
+    else
+      job->err = GetLastError();
     return;
   }
+
+  // `GetFileInformationByHandleEx` does not support a total length
+  job->ret = 1;
 
 #elif defined(__linux__)
 

@@ -206,8 +206,7 @@ async fn Directory::next_aux(
   context~ : String,
 ) -> DirectoryEntry? {
   guard !dir.completed else { None }
-  let entry_len = Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
-  let entry_len = if entry_len is 0 {
+  if dir.offset >= dir.buf_len {
     dir.offset = 0
     dir.buf_len = @event_loop.readdir(
       dir.fd,
@@ -215,16 +214,21 @@ async fn Directory::next_aux(
       dir.buf.length(),
       context~,
     )
-    Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
-  } else {
-    entry_len
+    if dir.buf_len is 0 {
+      dir.completed = true
+      return None
+    }
   }
-  guard entry_len > 0 else {
-    dir.completed = true
-    None
-  }
+  let entry_len = Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
   let offset = dir.offset
   dir.offset += entry_len
+  if @event_loop.IS_WINDOWS {
+    if entry_len > 0 {
+      dir.buf_len = dir.offset + 1
+    } else {
+      dir.buf_len = dir.offset
+    }
+  }
   if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }

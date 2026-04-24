@@ -125,7 +125,7 @@ int32_t moonbitlang_async_get_ENOTDIR() {
 
   return ERROR_DIRECTORY;
 
-#ese
+#else
 
   return ENOTDIR;
 

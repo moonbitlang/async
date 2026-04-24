@@ -82,7 +82,7 @@ int32_t moonbitlang_async_dir_entry_length(char *buf, int32_t offset, int32_t le
 
 #else
 
-  return offset < len ? ent->d_reclen : 0;
+  return ent->d_reclen;
 
 #endif
 }
@@ -93,7 +93,7 @@ char *moonbitlang_async_dir_entry_get_name(char *buf, int32_t offset) {
 
 #ifdef _WIN32
 
-  return ent->FileName;
+  return (char*)ent->FileName;
 
 #else
 
