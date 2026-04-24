@@ -124,6 +124,7 @@ extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make
 ///|
 #owned(path)
 extern "C" fn Job::file_kind_by_path(
+  parent : @fd_util.Fd,
   path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_file_kind_by_path_job"

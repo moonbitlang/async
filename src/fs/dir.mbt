@@ -144,7 +144,7 @@ extern "C" fn Directory::entry_name(
 extern "C" fn Directory::entry_is_dir(
   buf : FixedArray[Byte],
   offset : Int,
-) -> Bool = "moonbitlang_async_dir_entry_is_dir"
+) -> Int = "moonbitlang_async_dir_entry_is_dir"
 
 ///|
 #borrow(buf)
@@ -207,7 +207,19 @@ async fn Directory::next_aux(
   if !include_special && name is ("." | "..") {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
-  let is_dir = Directory::entry_is_dir(dir.buf, offset)
+  let is_dir = match Directory::entry_is_dir(dir.buf, offset) {
+    0 => false
+    1..<_ => true
+    _..<0 => {
+      let kind = @event_loop.file_kind_by_path(
+        name,
+        parent=dir.fd,
+        follow_symlink=false,
+        context~,
+      )
+      kind is Directory
+    }
+  }
   Some({ name, is_dir })
 }
 

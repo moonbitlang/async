@@ -821,6 +821,7 @@ struct kind_of_fd_job *moonbitlang_async_make_kind_of_fd_job(HANDLE fd) {
 
 struct file_kind_by_path_job {
   struct job job;
+  HANDLE parent;
   char *path;
   int follow_symlink;
 };
@@ -863,12 +864,12 @@ void file_kind_by_path_job_worker(struct job *job) {
 #else
 
   struct stat stat_obj;
-  int ret;
-  if (file_kind_by_path_job->follow_symlink) {
-    ret = stat(file_kind_by_path_job->path, &stat_obj);
-  } else {
-    ret = lstat(file_kind_by_path_job->path, &stat_obj);
-  }
+  int ret = fstatat(
+    file_kind_by_path_job->parent < 0 ? AT_FDCWD : file_kind_by_path_job->parent,
+    file_kind_by_path_job->path,
+    &stat_obj,
+    file_kind_by_path_job->follow_symlink ? 0 : AT_SYMLINK_NOFOLLOW
+  );
   if (ret < 0) {
     job->err = errno;
   } else {
@@ -879,10 +880,12 @@ void file_kind_by_path_job_worker(struct job *job) {
 }
 
 struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
+  HANDLE parent,
   char *path,
   int follow_symlink
 ) {
   struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path);
+  job->parent = parent;
   job->path = path;
   job->follow_symlink = follow_symlink;
   return job;

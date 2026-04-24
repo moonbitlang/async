@@ -21,7 +21,7 @@ pub async fn access(StringView, Access, context~ : String) -> Int
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit
 
-pub async fn file_kind_by_path(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.FileKind
+pub async fn file_kind_by_path(StringView, parent~ : Int, follow_symlink~ : Bool, context~ : String) -> @fd_util.FileKind
 
 pub async fn file_size(Int, context~ : String) -> Int64
 

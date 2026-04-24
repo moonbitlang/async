@@ -84,13 +84,18 @@ pub async fn kind_of_fd(
 }
 
 ///|
+/// If `parent` is a valid fd and `path` is relative,
+/// `path` will be interpreted relative to the directory pointed by `parent`,
+/// see `fstatat` for more details.
+/// `parent` is not supported on Windows.
 pub async fn file_kind_by_path(
   path : StringView,
+  parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
   context~ : String,
 ) -> @fd_util.FileKind {
   let path_bytes = @os_string.encode(path)
-  let job = Job::file_kind_by_path(path_bytes, follow_symlink~)
+  let job = Job::file_kind_by_path(parent, path_bytes, follow_symlink~)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
