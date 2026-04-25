@@ -286,3 +286,7 @@ extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_
 #cfg(not(platform="windows"))
 #borrow(signals)
 extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
+
+///|
+#cfg(platform="windows")
+let _mute_unused_warning : Unit = ignore(@c_buffer.Buffer::get)

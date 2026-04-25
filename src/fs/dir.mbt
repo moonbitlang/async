@@ -145,6 +145,13 @@ extern "C" fn Directory::entry_length(
 
 ///|
 #borrow(buf)
+extern "C" fn Directory::entry_name_len(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Int = "moonbitlang_async_dir_entry_get_name_len"
+
+///|
+#borrow(buf)
 extern "C" fn Directory::entry_name(
   buf : FixedArray[Byte],
   offset : Int,
@@ -222,17 +229,16 @@ async fn Directory::next_aux(
   let entry_len = Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
   let offset = dir.offset
   dir.offset += entry_len
-  if @event_loop.IS_WINDOWS {
-    if entry_len > 0 {
-      dir.buf_len = dir.offset + 1
-    } else {
-      dir.buf_len = dir.offset
-    }
+  if @event_loop.IS_WINDOWS && entry_len is 0 {
+    dir.offset = dir.buf_len
   }
   if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
-  let name = @os_string.decode(Directory::entry_name(dir.buf, offset))
+  let name = @os_string.decode(
+    Directory::entry_name(dir.buf, offset),
+    len=Directory::entry_name_len(dir.buf, offset),
+  )
   if !include_special && name is ("." | "..") {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }

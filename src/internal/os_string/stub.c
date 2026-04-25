@@ -19,8 +19,8 @@
 #include <moonbit.h>
 
 MOONBIT_FFI_EXPORT
-moonbit_string_t moonbitlang_async_c_buffer_as_string(wchar_t *str) {
-  size_t bytes = wcslen(str) * sizeof(wchar_t);
+moonbit_string_t moonbitlang_async_c_buffer_as_string(wchar_t *str, int32_t len) {
+  size_t bytes = len == -1 ? wcslen(str) * sizeof(wchar_t) : len;
   moonbit_string_t result = moonbit_make_string(bytes / 2, 0);
   memcpy(result, str, bytes);
   return result;

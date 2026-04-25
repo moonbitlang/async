@@ -1490,7 +1490,7 @@ void readdir_job_worker(struct job *job) {
   }
 
   // `GetFileInformationByHandleEx` does not support a total length
-  job->ret = 1;
+  job->ret = readdir_job->len;
 
 #elif defined(__linux__)
 

@@ -88,6 +88,29 @@ int32_t moonbitlang_async_dir_entry_length(char *buf, int32_t offset, int32_t le
 }
 
 MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_dir_entry_get_name_len(char *buf, int32_t offset) {
+  sys_dirent *ent = (sys_dirent *)(buf + offset);
+
+#ifdef _WIN32
+
+  return ent->FileNameLength;
+
+#elif defined(__MACH__)
+
+  return ent->d_namelen;
+
+#elif defined(__linux__)
+
+  return strlen(ent->d_name);
+
+#else
+
+  moonbit_panic();
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 char *moonbitlang_async_dir_entry_get_name(char *buf, int32_t offset) {
   sys_dirent *ent = (sys_dirent *)(buf + offset);
 
