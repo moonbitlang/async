@@ -38,6 +38,7 @@ typedef struct {
 
 #include <unistd.h>
 #include <stdint.h>
+#include <string.h>
 #include <dirent.h>
 
 // glibc wrapper for this does not exist until 2.30,

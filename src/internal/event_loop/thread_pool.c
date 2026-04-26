@@ -761,13 +761,8 @@ void open_job_worker(struct job *job) {
 
   if (fstat(open_job->result, &open_job->stat) < 0) {
     job->err = errno;
-    return;
-  }
-
-  open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
-  if (open_job->kind < 0) {
-    job->err = errno;
     close(open_job->result);
+    return;
   }
 
 #endif
