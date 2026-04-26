@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn decode(@c_buffer.Buffer) -> String
+pub fn decode(@c_buffer.Buffer, len? : Int) -> String
 
 pub fn encode(StringView) -> OsString
 
