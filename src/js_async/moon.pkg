@@ -12,9 +12,11 @@ import {
 options(
   targets: {
     "js_async.mbt": [ "js" ],
+    "js_async.wasm-gc.mbt": [ "wasm-gc" ],
     "js_async_test.mbt": [ "js" ],
     "readable_stream.mbt": [ "js" ],
+    "readable_stream.wasm-gc.mbt": [ "wasm-gc" ],
     "readable_stream_test.mbt": [ "js" ],
-    "unimplemented.mbt": [ "native", "wasm", "wasm-gc" ],
+    "unimplemented.mbt": [ "native", "wasm" ],
   },
 )
