@@ -53,6 +53,10 @@
 #include <sys/syscall.h>
 #endif
 
+#ifdef __MACH__
+#include <sys/attr.h>
+#endif
+
 typedef int HANDLE;
 typedef int SOCKET;
 #define GetLastError() errno;
@@ -1495,7 +1499,16 @@ void readdir_job_worker(struct job *job) {
 
 #elif defined(__MACH__)
 
-  job->ret = getdirentries(readdir_job->dir, readdir_job->out, readdir_job->len, 0);
+  struct attrlist attr_spec = {
+    ATTR_BIT_MAP_COUNT,
+    0, // reserved
+    ATTR_CMN_NAME | ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_OBJTYPE, // commonattr
+    0, // volattr
+    0, // dirattr
+    0, // fileattr
+    0 // forkattr
+  };
+  job->ret = getattrlistbulk(readdir_job->dir, &attr_spec, readdir_job->out, readdir_job->len, 0);
   if (job->ret < 0)
     job->err = errno;
 

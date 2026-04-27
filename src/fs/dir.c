@@ -22,16 +22,17 @@ typedef FILE_ID_BOTH_DIR_INFO sys_dirent;
 
 #elif defined(__MACH__)
 
+#include <stdio.h>
 #include <sys/types.h>
-#include <sys/dirent.h>
+#include <sys/attr.h>
+#include <sys/vnode.h>
 
-// https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getdirentries.2.html
+// https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getattrlist.2.html
 typedef struct {
-   u_int32_t d_fileno; /* file number of entry */
-   u_int16_t d_reclen; /* length of this record */
-   u_int8_t  d_type;   /* file type, see below */
-   u_int8_t  d_namlen; /* length of string in d_name */
-   char      d_name[];
+   u_int32_t       d_reclen; /* length of the whole record */
+   attribute_set_t d_attrs;  /* list of supported attributes */
+   attrreference_t d_name;   /* the name of the file */
+   fsobj_type_t    d_type;   /* the type of the file */
 } sys_dirent;
 
 #elif defined(__linux__)
@@ -98,7 +99,7 @@ int32_t moonbitlang_async_dir_entry_get_name_len(char *buf, int32_t offset) {
 
 #elif defined(__MACH__)
 
-  return ent->d_namelen;
+  return ent->d_name.attr_length - 1;
 
 #elif defined(__linux__)
 
@@ -119,9 +120,17 @@ char *moonbitlang_async_dir_entry_get_name(char *buf, int32_t offset) {
 
   return (char*)ent->FileName;
 
-#else
+#elif defined(__MACH__)
+
+  return ((char*)&ent->d_name) + ent->d_name.attr_dataoffset;
+
+#elif defined(__linux__)
 
   return ent->d_name;
+
+#else
+
+  moonbit_panic();
 
 #endif
 }
@@ -138,13 +147,25 @@ int32_t moonbitlang_async_dir_entry_is_dir(char *buf, int32_t offset) {
   return (ent->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0
       && (ent->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
-#else
+#elif defined(__MACH__)
+
+  switch (ent->d_type) {
+    case VNON: return -1;
+    case VDIR: return 1;
+    default:   return 0;
+  }
+
+#elif defined(__linux__)
 
   switch (ent->d_type) {
     case DT_UNKNOWN: return -1;
     case DT_DIR:     return 1;
     default:         return 0;
   }
+
+#else
+
+  moonbit_panic();
 
 #endif
 }
@@ -157,9 +178,14 @@ int32_t moonbitlang_async_dir_entry_is_hidden(char *buf, int32_t offset) {
 
   return (ent->FileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0;
 
-#else
+#elif defined(__MACH__)
+
+  return ((char*)&ent->d_name)[ent->d_name.attr_dataoffset] == '.';
+
+#elif defined(__linux__)
 
   return ent->d_name[0] == '.';
+
 
 #endif
 }
