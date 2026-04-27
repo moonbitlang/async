@@ -108,15 +108,18 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-) -> Job = "moonbitlang_async_make_open_job"
+) -> OpenResult = "moonbitlang_async_make_open_job"
+
+///|
+struct OpenResult(Job)
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_result(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_open_job_result"
+pub extern "C" fn OpenResult::fd(job : OpenResult) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
 
 ///|
 #borrow(job)
-extern "C" fn Job::get_open_job_kind(job : Job) -> @fd_util.FileKind = "moonbitlang_async_get_open_job_kind"
+pub extern "C" fn OpenResult::kind(job : OpenResult) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
 
 ///|
 extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
@@ -124,6 +127,7 @@ extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make
 ///|
 #owned(path)
 extern "C" fn Job::file_kind_by_path(
+  parent : @fd_util.Fd,
   path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
@@ -196,19 +200,12 @@ extern "C" fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job = "moonb
 extern "C" fn Job::rmdir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_rmdir_job"
 
 ///|
-#owned(path)
-extern "C" fn Job::opendir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_opendir_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_opendir_result(job : Job) -> Directory = "moonbitlang_async_get_opendir_result"
-
-///|
-extern "C" fn Job::readdir(dir : Directory) -> Job = "moonbitlang_async_make_readdir_job"
-
-///|
-#borrow(job)
-extern "C" fn Job::get_readdir_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_readdir_result"
+#owned(buf)
+extern "C" fn Job::readdir(
+  dir : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  len : Int,
+) -> Job = "moonbitlang_async_make_readdir_job"
 
 ///|
 #owned(path)
@@ -284,3 +281,7 @@ extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_
 #cfg(not(platform="windows"))
 #borrow(signals)
 extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
+
+///|
+#cfg(platform="windows")
+let _mute_unused_warning : Unit = ignore(@c_buffer.Buffer::get)

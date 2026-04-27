@@ -146,7 +146,7 @@ pub async fn redirect_to_file(
     None if create is Some(perm) => perm
     None => 0o644
   }
-  let (fd, kind) = @event_loop.open_detached(
+  let file = @event_loop.open_detached(
     path,
     1, // write only
     create=create_mode.to_int(),
@@ -155,13 +155,13 @@ pub async fn redirect_to_file(
     mode=permission,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(fd, kind)
+  RedirectToFile(file.fd(), file.kind())
 }
 
 ///|
 /// Redirect the content of a file at `path` to the stdin of a process.
 pub async fn redirect_from_file(path : String) -> &ProcessInput {
-  let (fd, kind) = @event_loop.open_detached(
+  let file = @event_loop.open_detached(
     path,
     0, // read only
     create=0, // `OpenExisting`
@@ -170,7 +170,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     mode=0,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(fd, kind)
+  RedirectToFile(file.fd(), file.kind())
 }
 
 ///|

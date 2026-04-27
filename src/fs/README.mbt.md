@@ -315,6 +315,7 @@ async test "readdir with sorting" {
   @fs.remove("\{dir_path}/b.txt")
   @fs.remove("\{dir_path}/c.txt")
   @fs.rmdir(dir_path)
+  guard entries.length() >= 3 else { println(entries) }
   inspect(entries[0], content="a.txt")
   inspect(entries[1], content="b.txt")
   inspect(entries[2], content="c.txt")

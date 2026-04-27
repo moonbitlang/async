@@ -13,10 +13,6 @@
 // limitations under the License.
 
 ///|
-#external
-pub type Directory
-
-///|
 pub async fn open_detached(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -29,20 +25,20 @@ pub async fn open_detached(
   // permission for file when new file is created
   mode~ : Int,
   context~ : String,
-) -> (@fd_util.Fd, @fd_util.FileKind) {
+) -> OpenResult {
   let path_bytes = @os_string.encode(path)
-  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
+  let result = Job::open(path_bytes, access, create~, append~, sync~, mode~)
   fn cancel(job_id) raise {
     guard curr_loop.val is Some(evloop)
     evloop.cancel_job_in_worker(job_id, context~)
   }
 
-  try perform_job_in_worker(job, context~, cancel~) catch {
+  try perform_job_in_worker(result.0, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    _ => (job.get_open_job_result(), job.get_open_job_kind())
+    _ => result
   }
 }
 
@@ -60,7 +56,7 @@ pub async fn open(
   mode~ : Int,
   context~ : String,
 ) -> IoHandle {
-  let (fd, kind) = open_detached(
+  let result = open_detached(
     path,
     access,
     create~,
@@ -69,6 +65,8 @@ pub async fn open(
     mode~,
     context~,
   )
+  let fd = result.fd()
+  let kind = result.kind()
   // On Windows, due to a lot of complexity,
   // we use synchronous IO + thread pool unconditionally for regular files.
   // However, on Windows, overlapped IO must be enabled on file creation time,
@@ -88,13 +86,18 @@ pub async fn kind_of_fd(
 }
 
 ///|
+/// If `parent` is a valid fd and `path` is relative,
+/// `path` will be interpreted relative to the directory pointed by `parent`,
+/// see `fstatat` for more details.
+/// `parent` is not supported on Windows.
 pub async fn file_kind_by_path(
   path : StringView,
+  parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
   context~ : String,
 ) -> @fd_util.FileKind {
   let path_bytes = @os_string.encode(path)
-  let job = Job::file_kind_by_path(path_bytes, follow_symlink~)
+  let job = Job::file_kind_by_path(parent, path_bytes, follow_symlink~)
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
@@ -268,46 +271,14 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
-#cfg(platform="windows")
-fn prepare_opendir_path(path : StringView) -> StringView {
-  if path is [.., '/' | '\\'] {
-    path + "*"
-  } else {
-    path + "\\*"
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-fn prepare_opendir_path(path : StringView) -> StringView {
-  path
-}
-
-///|
-pub async fn opendir(path : StringView, context~ : String) -> Directory {
-  let path_bytes = @os_string.encode(prepare_opendir_path(path))
-  let job = Job::opendir(path_bytes)
-  let _ = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  }
-  job.get_opendir_result()
-}
-
-///|
-#cfg(not(platform="windows"))
-pub extern "C" fn Directory::close(self : Directory) -> Int = "closedir"
-
-///|
-#cfg(platform="windows")
-pub extern "C" fn Directory::close(self : Directory) -> Int = "moonbitlang_async_closedir"
-
-///|
-pub async fn readdir(dir : Directory, context~ : String) -> @c_buffer.Buffer {
-  let job = Job::readdir(dir)
-  let _ = perform_job_in_worker(job, context~)
-  job.get_readdir_result()
+pub async fn readdir(
+  dir : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  len : Int,
+  context~ : String,
+) -> Int {
+  let job = Job::readdir(dir, buf, len)
+  perform_job_in_worker(job, context~)
 }
 
 ///|

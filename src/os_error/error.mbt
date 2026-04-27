@@ -113,3 +113,9 @@ pub fn check_errno(context : String) -> Unit raise OSError {
     raise OSError(err_code, context~)
   }
 }
+
+///|
+extern "C" fn get_ENOTDIR() -> Int = "moonbitlang_async_get_ENOTDIR"
+
+///|
+pub let errno_ENOTDIR : Int = get_ENOTDIR()

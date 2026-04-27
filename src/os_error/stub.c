@@ -118,3 +118,16 @@ void moonbitlang_async_free_errno_str(void *ptr) {
   LocalFree(ptr);
 #endif
 }
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_ENOTDIR() {
+#ifdef _WIN32
+
+  return ERROR_DIRECTORY;
+
+#else
+
+  return ENOTDIR;
+
+#endif
+}

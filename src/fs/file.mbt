@@ -368,14 +368,6 @@ pub async fn File::size(self : File) -> Int64 {
 }
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn as_dir_ffi(fd : @fd_util.Fd) -> Directory = "fdopendir"
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_dir_is_null"
-
-///|
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 ///
@@ -383,17 +375,15 @@ extern "C" fn Directory::is_null(dir : Directory) -> Bool = "moonbitlang_async_d
 /// The input file will be automatically closed when the
 /// result directory object is closed.
 /// If `as_dir` fails, the input file will be closed automatically.
-#cfg(not(platform="windows"))
-#deprecated("`as_dir` is deprecated because it is not portable, use `opendir` instead.")
 pub fn File::as_dir(self : File) -> Directory raise {
-  let fd = self.io.detach_from_event_loop()
-  let dir = as_dir_ffi(fd)
-  if dir.is_null() {
-    let context = "@fs.File::as_dir()"
-    @fd_util.close(fd, kind=self.io.kind(), context~)
-    @os_error.check_errno(context)
+  guard self.io.kind() is Directory else {
+    self.close()
+    raise @os_error.OSError(
+      @os_error.errno_ENOTDIR,
+      context="@fs.File::as_dir()",
+    )
   }
-  dir
+  Directory::from_fd(self.io.detach_from_event_loop())
 }
 
 ///|

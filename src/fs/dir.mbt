@@ -58,14 +58,12 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
     let base = path.to_string()
-    for file in readdir(base) {
-      let child_path = base + "/" + file
-      let kind = @event_loop.file_kind_by_path(
-        child_path,
-        follow_symlink=false,
-        context~,
-      )
-      if kind is Directory {
+    let dir = opendir_aux(path, context~)
+    defer dir.close()
+    while dir.next_aux(include_special=false, include_hidden=true, context~)
+          is Some(ent) {
+      let child_path = base + "/" + ent.name
+      if ent.is_dir {
         rmdir(child_path, recursive=true)
       } else {
         @event_loop.remove(child_path, context~)
@@ -76,73 +74,269 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
 }
 
 ///|
+priv enum DirectoryState {
+  NoMoreEntry
+  NeedMoreEntry
+  HasBufferedEntry
+}
+
+///|
 /// A directory in file system
-struct Directory(@event_loop.Directory)
+struct Directory {
+  fd : @fd_util.Fd
+  buf : FixedArray[Byte]
+  // The offset of the next entry in the buffer
+  mut offset : Int
+  // The number of entries already consumed
+  mut count : Int
+  // the return value of the corresponding job has different semantic of different platforms.
+  // - Linux: number of bytes read
+  // - MacOS: number on entries
+  // - Windows: nonzero unless EOF
+  mut job_ret : Int
+  mut state : DirectoryState
+}
 
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
-  guard self.0.close() == 0
+  @fd_util.close(self.fd, kind=Directory, context="") catch {
+    _ => ()
+  }
 }
+
+///|
+extern "C" fn Directory::min_buffer_size() -> Int = "moonbitlang_async_dir_buffer_min_size"
 
 ///|
 /// Open the directory at `path`. `path` is encoded UTF8.
 /// If `path` is not a directory, an error will be raised
 pub async fn opendir(path : StringView) -> Directory {
-  @event_loop.opendir(path, context="@fs.opendir()")
+  opendir_aux(path, context="@fs.opendir()")
 }
 
 ///|
-async fn Directory::read_next(dir : Directory) -> String? {
-  let name = @event_loop.readdir(dir.0, context="@fs.readdir()")
-  if name.is_null() {
-    None
-  } else {
-    Some(@os_string.decode(name))
+async fn opendir_aux(path : StringView, context~ : String) -> Directory {
+  let open_result = @event_loop.open_detached(
+    path,
+    0,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context~,
+  )
+  let fd = open_result.fd()
+  let kind = open_result.kind()
+  if !(kind is Directory) {
+    @fd_util.close(fd, kind~, context~)
+    raise @os_error.OSError(
+      @os_error.errno_ENOTDIR,
+      context="\{context}: \{path.escape()}",
+    )
+  }
+  Directory::from_fd(fd)
+}
+
+///|
+fn Directory::from_fd(fd : @fd_util.Fd) -> Directory {
+  {
+    fd,
+    buf: FixedArray::make(
+      @cmp.maximum(Directory::min_buffer_size(), 1024),
+      b'\x00',
+    ),
+    offset: 0,
+    count: 0,
+    job_ret: 0,
+    state: NeedMoreEntry,
   }
 }
 
 ///|
-/// Read all entries in a directory.
+#borrow(buf)
+extern "C" fn Directory::entry_length(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Int = "moonbitlang_async_dir_entry_length"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_name_len(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Int = "moonbitlang_async_dir_entry_get_name_len"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_name(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> @c_buffer.Buffer = "moonbitlang_async_dir_entry_get_name"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_is_dir(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Int = "moonbitlang_async_dir_entry_is_dir"
+
+///|
+#borrow(buf)
+extern "C" fn Directory::entry_is_hidden(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
+
+///|
+#valtype
+pub struct DirectoryEntry {
+  name : String
+  /// Indicate whether the directory entry is another directory.
+  /// Symbolic links are not treated as directories here.
+  is_dir : Bool
+}
+
+///|
+/// Fetch the next entry in the directory,
+/// including its name and some extra information, see `DirectoryEntry`.
+/// `None` indicates that the directory has no more files.
+///
 /// - If `include_special` is `true` (`false` by default),
 ///   `.` (current directory) and `..` (parent directory) will be included too
+///
 /// - If `include_hidden` is `true` (`true` by default),
-///   directory entries starting with `.` (except `.` and `..`) will be included
-/// All returned directory entries are encoded using UTF8.
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
+/// The file name in the returned directory entry is interpreted as UTF8-encoded on Unix-like systems.
+pub async fn Directory::next(
+  dir : Directory,
+  include_hidden? : Bool = true,
+  include_special? : Bool = false,
+) -> DirectoryEntry? {
+  dir.next_aux(
+    include_special~,
+    include_hidden~,
+    context="@fs.Directory::next()",
+  )
+}
+
+///|
+async fn Directory::next_aux(
+  dir : Directory,
+  include_hidden~ : Bool,
+  include_special~ : Bool,
+  context~ : String,
+) -> DirectoryEntry? {
+  match dir.state {
+    NoMoreEntry => return None
+    HasBufferedEntry => ()
+    NeedMoreEntry => {
+      dir.offset = 0
+      dir.count = 0
+      dir.job_ret = @event_loop.readdir(
+        dir.fd,
+        dir.buf,
+        dir.buf.length(),
+        context~,
+      )
+      if dir.job_ret is 0 {
+        dir.state = NoMoreEntry
+        return None
+      } else {
+        dir.state = HasBufferedEntry
+      }
+    }
+  }
+  let entry_len = Directory::entry_length(dir.buf, dir.offset)
+  let offset = dir.offset
+  dir.offset += entry_len
+  dir.count += 1
+  let need_more_entry = match @event_loop.platform {
+    Linux => dir.offset >= dir.job_ret
+    MacOS => dir.count >= dir.job_ret
+    Windows => entry_len is 0
+  }
+  if need_more_entry {
+    dir.state = NeedMoreEntry
+  }
+  if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
+    return dir.next_aux(include_special~, include_hidden~, context~)
+  }
+  let name = @os_string.decode(
+    Directory::entry_name(dir.buf, offset),
+    len=Directory::entry_name_len(dir.buf, offset),
+  )
+  if !include_special && name is ("." | "..") {
+    return dir.next_aux(include_special~, include_hidden~, context~)
+  }
+  let is_dir = match Directory::entry_is_dir(dir.buf, offset) {
+    0 => false
+    1..<_ => true
+    _..<0 => {
+      let kind = @event_loop.file_kind_by_path(
+        name,
+        parent=dir.fd,
+        follow_symlink=false,
+        context~,
+      )
+      kind is Directory
+    }
+  }
+  Some({ name, is_dir })
+}
+
+///|
+/// Read all entries in a directory.
+///
+/// - If `include_special` is `true` (`false` by default),
+///   `.` (current directory) and `..` (parent directory) will be included too
+///
+/// - If `include_hidden` is `true` (`true` by default),
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
+/// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn Directory::read_all(
   dir : Directory,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
 ) -> Array[String] {
   let result = []
-  while dir.read_next() is Some(entry) {
-    if !include_special && entry is ("." | "..") {
-      continue
-    }
-    if !include_hidden && entry is ['.', ..] {
-      continue
-    }
-    result.push(entry)
+  let context = "@fs.Directory::read_all()"
+  while dir.next_aux(include_hidden~, include_special~, context~) is Some(entry) {
+    result.push(entry.name)
   }
   result
 }
 
 ///|
 /// Read all entries in the directory located at `path`.
+///
 /// - If `include_special` is `true` (`false` by default),
 ///   `.` (current directory) and `..` (parent directory) will be included too
+///
 /// - If `include_hidden` is `true` (`true` by default),
-///   directory entries starting with `.` (except `.` and `..`) will be included
+///   hidden files (on Unix: file name starts with `.`, on Windows: has the hidden attribute)
+///   will be included
+///
 /// - If `sort` is `true` (`false` by default),
 ///   the result will be sorted using `Array::sort`.
+///
+/// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn readdir(
   path : StringView,
   include_hidden? : Bool = true,
   include_special? : Bool = false,
   sort? : Bool = false,
 ) -> Array[String] {
-  let dir : Directory = @event_loop.opendir(path, context="@fs.readdir()")
+  let context = "@fs.readdir()"
+  let dir : Directory = opendir_aux(path, context~)
   defer dir.close()
-  let list = dir.read_all(include_hidden~, include_special~)
+  let list = []
+  while dir.next_aux(include_hidden~, include_special~, context~) is Some(entry) {
+    list.push(entry.name)
+  }
   if sort {
     list.sort()
   }
@@ -176,6 +370,7 @@ pub async fn walk(
   max_concurrency? : Int = 1000,
   allow_failure? : Bool = false,
 ) -> Unit {
+  let context = "@fs.walk()"
   guard max_concurrency > 0
   let sem = @async.Semaphore::new(max_concurrency)
   @async.with_task_group(fn(group) {
@@ -184,16 +379,19 @@ pub async fn walk(
       group.spawn_bg(allow_failure~, () => {
         sem.acquire()
         defer sem.release()
-        let files = readdir(path)
-        for file in files {
+        let dir = opendir_aux(path, context~)
+        let files = []
+        while dir.next_aux(include_hidden=true, include_special=false, context~)
+              is Some(ent) {
           let file_path = if path is [.., '/'] {
-            path + file
+            path + ent.name
           } else {
-            "\{path}/\{file}"
+            "\{path}/\{ent.name}"
           }
-          if kind(file_path) is Directory {
+          if ent.is_dir {
             handle_path(file_path)
           }
+          files.push(ent.name)
         }
         f(path, files)
       })

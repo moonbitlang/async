@@ -51,9 +51,13 @@ pub impl Show for OsString with to_string(self) {
 }
 
 ///|
+/// `len`, if present, is the number of bytes to decode in `os_str`.
+/// The default value is determined using `strlen` or `wcslen`.
 #cfg(not(platform="windows"))
-pub fn decode(os_str : @c_buffer.Buffer) -> String {
-  let len = os_str.strlen()
+pub fn decode(
+  os_str : @c_buffer.Buffer,
+  len? : Int = os_str.strlen(),
+) -> String {
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, offset=0, len~)
   @utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
@@ -61,7 +65,7 @@ pub fn decode(os_str : @c_buffer.Buffer) -> String {
 
 ///|
 #cfg(platform="windows")
-pub extern "C" fn decode(os_str : @c_buffer.Buffer) -> String = "moonbitlang_async_c_buffer_as_string"
+pub extern "C" fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String = "moonbitlang_async_c_buffer_as_string"
 
 ///|
 #cfg(platform="windows")

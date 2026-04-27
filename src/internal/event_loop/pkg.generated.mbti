@@ -2,7 +2,6 @@
 package "moonbitlang/async/internal/event_loop"
 
 import {
-  "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
 }
@@ -22,7 +21,7 @@ pub async fn access(StringView, Access, context~ : String) -> Int
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit
 
-pub async fn file_kind_by_path(StringView, follow_symlink~ : Bool, context~ : String) -> @fd_util.FileKind
+pub async fn file_kind_by_path(StringView, parent~ : Int, follow_symlink~ : Bool, context~ : String) -> @fd_util.FileKind
 
 pub async fn file_size(Int, context~ : String) -> Int64
 
@@ -38,11 +37,11 @@ pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
 pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
 
-pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (Int, @fd_util.FileKind)
+pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> OpenResult
 
-pub async fn opendir(StringView, context~ : String) -> Directory
+pub let platform : Platform
 
-pub async fn readdir(Directory, context~ : String) -> @c_buffer.Buffer
+pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
 
 pub async fn realpath(StringView, context~ : String) -> String
 
@@ -82,10 +81,6 @@ pub(all) enum Access {
 #external
 pub type AddrInfo
 
-#external
-pub type Directory
-pub fn Directory::close(Self) -> Int
-
 type IoHandle
 pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self
 pub async fn IoHandle::bind(Self, Bytes, context~ : String) -> Unit
@@ -103,6 +98,16 @@ pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : In
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
+
+type OpenResult
+pub fn OpenResult::fd(Self) -> Int
+pub fn OpenResult::kind(Self) -> @fd_util.FileKind
+
+pub(all) enum Platform {
+  Linux
+  MacOS
+  Windows
+}
 
 type Process
 pub fn Process::close(Self) -> Unit

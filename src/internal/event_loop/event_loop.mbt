@@ -21,6 +21,19 @@ pub const IS_WINDOWS : Bool = false
 pub const IS_WINDOWS : Bool = true
 
 ///|
+pub(all) enum Platform {
+  Linux = 0
+  MacOS = 1
+  Windows = 2
+}
+
+///|
+extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
+
+///|
+pub let platform : Platform = get_platform()
+
+///|
 #cfg(not(platform="windows"))
 priv struct EventLoop {
   poll : Instance

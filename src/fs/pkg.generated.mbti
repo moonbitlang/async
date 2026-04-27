@@ -70,10 +70,15 @@ pub(all) enum CreateMode {
 
 type Directory
 pub fn Directory::close(Self) -> Unit
+pub async fn Directory::next(Self, include_hidden? : Bool, include_special? : Bool) -> DirectoryEntry?
 pub async fn Directory::read_all(Self, include_hidden? : Bool, include_special? : Bool) -> Array[String]
 
+pub struct DirectoryEntry {
+  name : String
+  is_dir : Bool
+}
+
 type File
-#deprecated
 pub fn File::as_dir(Self) -> Directory raise
 pub async fn File::atime(Self) -> (Int64, Int)
 pub fn File::close(Self) -> Unit

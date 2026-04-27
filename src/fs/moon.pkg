@@ -2,12 +2,14 @@ import {
   "moonbitlang/core/random",
   "moonbitlang/core/buffer",
   "moonbitlang/core/int",
+  "moonbitlang/core/cmp",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/env_util",
+  "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async",
 }
 
@@ -19,7 +21,7 @@ import {
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c" ],
+  "native-stub": [ "stub.c", "dir.c" ],
   targets: {
     "README.mbt.md": [ "native" ],
     "access_test.mbt": [ "native" ],
