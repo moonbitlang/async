@@ -383,14 +383,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
       context="@fs.File::as_dir()",
     )
   }
-  let fd = self.io.detach_from_event_loop()
-  {
-    fd,
-    buf: FixedArray::make(1024, b'\x00'),
-    offset: 0,
-    buf_len: 0,
-    completed: false,
-  }
+  Directory::from_fd(self.io.detach_from_event_loop())
 }
 
 ///|

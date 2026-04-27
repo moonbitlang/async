@@ -75,7 +75,7 @@ int32_t moonbitlang_async_dir_buffer_min_size() {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_dir_entry_length(char *buf, int32_t offset, int32_t len) {
+int32_t moonbitlang_async_dir_entry_length(char *buf, int32_t offset) {
   sys_dirent *ent = (sys_dirent *)(buf + offset);
 
 #ifdef _WIN32

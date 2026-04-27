@@ -74,13 +74,27 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
 }
 
 ///|
+priv enum DirectoryState {
+  NoMoreEntry
+  NeedMoreEntry
+  HasBufferedEntry
+}
+
+///|
 /// A directory in file system
 struct Directory {
   fd : @fd_util.Fd
   buf : FixedArray[Byte]
+  // The offset of the next entry in the buffer
   mut offset : Int
-  mut buf_len : Int
-  mut completed : Bool
+  // The number of entries already consumed
+  mut count : Int
+  // the return value of the corresponding job has different semantic of different platforms.
+  // - Linux: number of bytes read
+  // - MacOS: number on entries
+  // - Windows: nonzero unless EOF
+  mut job_ret : Int
+  mut state : DirectoryState
 }
 
 ///|
@@ -120,18 +134,21 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
       context="\{context}: \{path.escape()}",
     )
   }
-  // According to https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getdirentries.2.html,
-  // some file systems does not support buffer smaller than block size.
-  let buffer_size = @cmp.maximum(
-    Directory::min_buffer_size(),
-    open_result.block_size(),
-  )
+  Directory::from_fd(fd)
+}
+
+///|
+fn Directory::from_fd(fd : @fd_util.Fd) -> Directory {
   {
     fd,
-    buf: FixedArray::make(@cmp.maximum(buffer_size, 1024), b'\x00'),
+    buf: FixedArray::make(
+      @cmp.maximum(Directory::min_buffer_size(), 1024),
+      b'\x00',
+    ),
     offset: 0,
-    buf_len: 0,
-    completed: false,
+    count: 0,
+    job_ret: 0,
+    state: NeedMoreEntry,
   }
 }
 
@@ -140,7 +157,6 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
 extern "C" fn Directory::entry_length(
   buf : FixedArray[Byte],
   offset : Int,
-  len : Int,
 ) -> Int = "moonbitlang_async_dir_entry_length"
 
 ///|
@@ -212,25 +228,36 @@ async fn Directory::next_aux(
   include_special~ : Bool,
   context~ : String,
 ) -> DirectoryEntry? {
-  guard !dir.completed else { None }
-  if dir.offset >= dir.buf_len {
-    dir.offset = 0
-    dir.buf_len = @event_loop.readdir(
-      dir.fd,
-      dir.buf,
-      dir.buf.length(),
-      context~,
-    )
-    if dir.buf_len is 0 {
-      dir.completed = true
-      return None
+  match dir.state {
+    NoMoreEntry => return None
+    HasBufferedEntry => ()
+    NeedMoreEntry => {
+      dir.offset = 0
+      dir.job_ret = @event_loop.readdir(
+        dir.fd,
+        dir.buf,
+        dir.buf.length(),
+        context~,
+      )
+      if dir.job_ret is 0 {
+        dir.state = NoMoreEntry
+        return None
+      } else {
+        dir.state = HasBufferedEntry
+      }
     }
   }
-  let entry_len = Directory::entry_length(dir.buf, dir.offset, dir.buf_len)
+  let entry_len = Directory::entry_length(dir.buf, dir.offset)
   let offset = dir.offset
   dir.offset += entry_len
-  if @event_loop.IS_WINDOWS && entry_len is 0 {
-    dir.offset = dir.buf_len
+  dir.count += 1
+  let need_more_entry = match @event_loop.platform {
+    Linux => dir.offset >= dir.job_ret
+    MacOS => dir.count >= dir.job_ret
+    Windows => entry_len is 0
+  }
+  if need_more_entry {
+    dir.state = NeedMoreEntry
   }
   if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
     return dir.next_aux(include_special~, include_hidden~, context~)
