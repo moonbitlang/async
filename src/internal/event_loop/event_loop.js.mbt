@@ -28,7 +28,7 @@ pub fn reschedule() -> Unit {
   // Instead of looping blockingly until there is no ready task,
   // we only perform one round of scheduling here
   // (i.e., only those tasks already ready when `reschedule` is called are run).
-  // Remaining tasks are delayed untin the next js event loop,
+  // Remaining tasks are delayed until the next event loop iteration,
   // so that those blocking jobs got a chance to execute instead of starving.
   if @coroutine.has_immediately_ready_task() {
     ignore(set_timeout(0, reschedule))

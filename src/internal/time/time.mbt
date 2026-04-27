@@ -62,7 +62,34 @@ pub fn ms_since_epoch() -> Int64 {
 }
 
 ///|
-#cfg(any(target="wasm", target="wasm-gc"))
+#cfg(target="wasm-gc")
+fn wasm_gc_date_now() -> Double = "moonbitlang_async_time" "date_now"
+
+///|
+/// Get the current wall-clock time in milliseconds.
+///
+/// This is the time source used by the async runtime. It is intended for
+/// computing elapsed time by subtraction. The value can jump forwards or
+/// backwards if the system clock is adjusted, so do not assume monotonicity.
+///
+/// Platform notes:
+/// - Unix/macOS: `gettimeofday()` (Unix epoch)
+/// - Windows: `GetSystemTimeAsFileTime()` (FILETIME epoch, 1601)
+/// - JavaScript/wasm-gc: `Date.now()` (Unix epoch)
+///
+/// # Example
+/// ```mbt check
+/// test {
+///   let _ : Int64 = ms_since_epoch()
+/// }
+/// ```
+#cfg(target="wasm-gc")
+pub fn ms_since_epoch() -> Int64 {
+  wasm_gc_date_now().to_int64()
+}
+
+///|
+#cfg(target="wasm")
 pub fn ms_since_epoch() -> Int64 {
   abort("unimplemented")
 }
