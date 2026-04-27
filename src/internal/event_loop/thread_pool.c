@@ -98,6 +98,18 @@ int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
 int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
 #endif
 
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_platform() {
+#ifdef __linux__
+  return 0;
+#elif defined(__MACH__)
+  return 1;
+#elif defined(_WIN32)
+  return 2;
+#else
+  abort();
+#endif
+}
 
 struct job {
   // the return value of the job.

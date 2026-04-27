@@ -39,6 +39,8 @@ pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, m
 
 pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> OpenResult
 
+pub let platform : Platform
+
 pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
 
 pub async fn realpath(StringView, context~ : String) -> String
@@ -101,6 +103,12 @@ type OpenResult
 pub fn OpenResult::block_size(Self) -> Int
 pub fn OpenResult::fd(Self) -> Int
 pub fn OpenResult::kind(Self) -> @fd_util.FileKind
+
+pub(all) enum Platform {
+  Linux
+  MacOS
+  Windows
+}
 
 type Process
 pub fn Process::close(Self) -> Unit
