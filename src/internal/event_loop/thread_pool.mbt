@@ -122,11 +122,6 @@ pub extern "C" fn OpenResult::fd(job : OpenResult) -> @fd_util.Fd = "moonbitlang
 pub extern "C" fn OpenResult::kind(job : OpenResult) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
 
 ///|
-/// not supported on Windows, will return `-1`
-#borrow(job)
-pub extern "C" fn OpenResult::block_size(job : OpenResult) -> Int = "moonbitlang_async_open_job_get_block_size"
-
-///|
 extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
 
 ///|

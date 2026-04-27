@@ -100,7 +100,6 @@ pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : 
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 
 type OpenResult
-pub fn OpenResult::block_size(Self) -> Int
 pub fn OpenResult::fd(Self) -> Int
 pub fn OpenResult::kind(Self) -> @fd_util.FileKind
 

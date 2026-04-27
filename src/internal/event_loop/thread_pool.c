@@ -818,15 +818,6 @@ int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
 #endif
 }
 
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_open_job_get_block_size(struct open_job *job) {
-#ifdef _WIN32
-  return -1;
-#else
-  return job->stat.st_blksize;
-#endif
-}
-
 // ===== file kind of fd job, get kind of an existing fd =====
 struct kind_of_fd_job {
   struct job job;
