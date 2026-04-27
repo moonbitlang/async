@@ -23,7 +23,6 @@ typedef FILE_ID_BOTH_DIR_INFO sys_dirent;
 #elif defined(__MACH__)
 
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/attr.h>
 #include <sys/vnode.h>
 
@@ -148,6 +147,9 @@ int32_t moonbitlang_async_dir_entry_is_dir(char *buf, int32_t offset) {
       && (ent->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
 #elif defined(__MACH__)
+
+  if ((ent->d_attrs.commonattr & ATTR_CMN_OBJTYPE) == 0)
+    return -1;
 
   switch (ent->d_type) {
     case VNON: return -1;

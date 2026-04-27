@@ -233,6 +233,7 @@ async fn Directory::next_aux(
     HasBufferedEntry => ()
     NeedMoreEntry => {
       dir.offset = 0
+      dir.count = 0
       dir.job_ret = @event_loop.readdir(
         dir.fd,
         dir.buf,
