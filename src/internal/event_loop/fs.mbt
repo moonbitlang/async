@@ -275,9 +275,10 @@ pub async fn readdir(
   dir : @fd_util.Fd,
   buf : FixedArray[Byte],
   len : Int,
+  restart~ : Bool,
   context~ : String,
 ) -> Int {
-  let job = Job::readdir(dir, buf, len)
+  let job = Job::readdir(dir, buf, len, restart)
   perform_job_in_worker(job, context~)
 }
 

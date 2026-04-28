@@ -32,6 +32,11 @@ async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
 }
 
 ///|
+fn init {
+  @signal.set_global_cancellation_signals([])
+}
+
+///|
 async test "watch basic" {
   let log = []
   @async.with_task_group(group => {

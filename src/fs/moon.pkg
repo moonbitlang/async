@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/buffer",
   "moonbitlang/core/int",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/deque",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",
@@ -20,11 +21,12 @@ import {
   "moonbitlang/core/env",
   "moonbitlang/core/debug",
   "moonbitlang/async/process",
+  "moonbitlang/async/signal",
 } for "test"
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "dir.c", "watch_inotify.c" ],
+  "native-stub": [ "stub.c", "dir.c", "watch_inotify.c", "watch_kqueue.c" ],
   targets: {
     "README.mbt.md": [ "native" ],
     "access_test.mbt": [ "native" ],
