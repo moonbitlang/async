@@ -32,7 +32,7 @@ pub fn IoHandle::from_fd(
 ) -> IoHandle raise {
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
-  if is_async {
+  if is_async && !(kind is Unknown) {
     @fd_util.set_nonblocking(fd, context="@event_loop.IoHandle::from_fd()")
   }
   let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }

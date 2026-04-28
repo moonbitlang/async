@@ -819,6 +819,26 @@ int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
 #endif
 }
 
+MOONBIT_FFI_EXPORT
+uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
+#ifdef _WIN32
+  // TODO
+  moonbit_panic();
+#else
+  return job->stat.st_dev;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
+#ifdef _WIN32
+  // TODO
+  moonbit_panic();
+#else
+  return job->stat.st_ino;
+#endif
+}
+
 // ===== file kind of fd job, get kind of an existing fd =====
 struct kind_of_fd_job {
   struct job job;
@@ -1535,6 +1555,7 @@ struct readdir_job {
   HANDLE dir;
   void *out;
   int32_t len;
+  int32_t restart;
 };
 
 static
@@ -1551,7 +1572,7 @@ void readdir_job_worker(struct job *job) {
   if (
     !GetFileInformationByHandleEx(
       readdir_job->dir,
-      FileIdBothDirectoryInfo,
+      readdir_job->restart ?  FileIdBothDirectoryRestartInfo : FileIdBothDirectoryInfo,
       readdir_job->out,
       readdir_job->len
     )
@@ -1568,16 +1589,26 @@ void readdir_job_worker(struct job *job) {
 
 #elif defined(__linux__)
 
+  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
+    job->err = errno;
+    return;
+  }
+
   job->ret = syscall(SYS_getdents64, readdir_job->dir, readdir_job->out, readdir_job->len);
   if (job->ret < 0)
     job->err = errno;
 
 #elif defined(__MACH__)
 
+  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
+    job->err = errno;
+    return;
+  }
+
   struct attrlist attr_spec = {
     ATTR_BIT_MAP_COUNT,
     0, // reserved
-    ATTR_CMN_NAME | ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_OBJTYPE, // commonattr
+    ATTR_CMN_NAME | ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_OBJTYPE | ATTR_CMN_FILEID, // commonattr
     0, // volattr
     0, // dirattr
     0, // fileattr
@@ -1594,11 +1625,17 @@ void readdir_job_worker(struct job *job) {
 #endif
 }
 
-struct readdir_job *moonbitlang_async_make_readdir_job(HANDLE dir, void *out, int32_t len) {
+struct readdir_job *moonbitlang_async_make_readdir_job(
+  HANDLE dir,
+  void *out,
+  int32_t len,
+  int32_t restart
+) {
   struct readdir_job *job = MAKE_JOB(readdir);
   job->dir = dir;
   job->out = out;
   job->len = len;
+  job->restart = restart;
   return job;
 }
 
