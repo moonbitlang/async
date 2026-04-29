@@ -26,12 +26,10 @@ priv enum LazyValueState[X] {
 /// the result will be cached, so the initialization process will run only once.
 /// If no one is waiting for the result anymore before initialization completes,
 /// the initialization process will be cancelled automatically.
-pub struct Lazy[X] {
-  priv worker : async () -> X
-  priv waiters : Set[@coroutine.Coroutine]
-  priv mut state : LazyValueState[X]
-
-  fn[X] new(f : async () -> X) -> Lazy[X]
+struct Lazy[X] {
+  worker : async () -> X
+  waiters : Set[@coroutine.Coroutine]
+  mut state : LazyValueState[X]
 }
 
 ///|
@@ -98,6 +96,7 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 /// the result will be cached, and subsequent `.wait()` on the lazy value
 /// always complete immediately.
 #as_free_fn(lazy_init, deprecated="use `@async.Lazy(..)` instead")
-pub fn[X] Lazy::new(f : async () -> X) -> Lazy[X] {
+#alias(new, deprecated)
+pub fn[X] Lazy::Lazy(f : async () -> X) -> Lazy[X] {
   { worker: f, waiters: @set.new(), state: Uninitialized }
 }

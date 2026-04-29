@@ -55,16 +55,4 @@ pub struct Cookie {
   secure : Bool
   http_only : Bool
   extensions : Array[String]
-
-  fn new(
-    name : String,
-    value : String,
-    path? : String,
-    expires_raw? : String,
-    max_age? : Int64,
-    domain? : String,
-    secure? : Bool,
-    http_only? : Bool,
-    extensions? : Array[String],
-  ) -> Cookie
 } derive(Debug, ToJson)

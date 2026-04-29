@@ -38,23 +38,29 @@ fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
   let protocol = match uri[:protocol_len] {
     "http" => Http
     "https" => Https
-    protocol => raise UnsupportedProtocol(protocol.to_string())
+    protocol => raise UnsupportedProtocol(protocol.to_owned())
   }
   let uri = uri[protocol_len + 3:]
   let (host, path) = if uri.find("/") is Some(i) {
-    (uri[:i].to_string(), uri[i:].to_string())
+    (uri[:i], uri[i:])
   } else {
-    (uri.to_string(), "/")
+    (uri, "/")
   }
-  let (host, port) = if host lexmatch? (host, ":" ("[0-9]+" as port_str)) {
+  let (host, port) = if host =~ (
+      re"^" +
+      (re".*" as host) +
+      re":" +
+      (re"[0-9]+" as port_str) +
+      re"$"
+    ) {
     let port = @string.parse_int(port_str) catch { _ => raise InvalidFormat }
     guard port is (1..<65536) else { raise InvalidFormat }
-    (host.to_string(), port)
+    (host, port)
   } else {
     (host, protocol.default_port())
   }
-  let path = if path == "" { "/" } else { path }
-  (protocol, port, host, path)
+  let path = if path == "" { "/" } else { path.to_owned() }
+  (protocol, port, host.to_owned(), path)
 }
 
 ///|

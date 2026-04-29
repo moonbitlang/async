@@ -9,11 +9,10 @@ package "moonbitlang/async/semaphore"
 pub struct Semaphore {
   size : Int
   // private fields
-
-  fn new(Int, initial_value? : Int) -> Semaphore
 }
+#alias(new, deprecated)
+pub fn Semaphore::Semaphore(Int, initial_value? : Int) -> Self
 pub async fn Semaphore::acquire(Self) -> Unit
-pub fn Semaphore::new(Int, initial_value? : Int) -> Self
 pub fn Semaphore::release(Self) -> Unit
 pub fn Semaphore::try_acquire(Self) -> Bool
 

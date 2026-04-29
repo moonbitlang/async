@@ -15,8 +15,7 @@
 ///|
 let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
   let code = @process.run("moon", [
-    "build", "--manifest-path", "src/process/test_programs/moon.mod.json", "src/process/test_programs/lock_file",
-    "--debug",
+    "-C", "src/process/test_programs", "build", "lock_file", "--debug",
   ])
   if code != 0 {
     fail("failed to build test program `lock_file`: \{code}")
@@ -272,7 +271,7 @@ async test "flock cancelled" {
     @async.sleep(250)
     log.push("attempting to acquire lock")
     let result = @async.with_timeout_opt(100, () => file.lock(Exclusive))
-    log.push("lock() with timeout: \{result}")
+    log.push("lock() with timeout: \{@debug.to_string(result)}")
     if result is Some(_) {
       file.unlock()
     }

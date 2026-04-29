@@ -283,7 +283,7 @@ async fn Sender::send_headers(
 async fn Sender::send_request(
   self : Sender,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers~ : Map[String, String],
 ) -> Bool {
   guard self.mode is SendingHeader

@@ -31,7 +31,7 @@
 #as_free_fn
 pub async fn Conn::from_http_client(
   conn : @http.Client,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String] = {},
 ) -> Conn {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
@@ -124,11 +124,11 @@ pub async fn Conn::connect(
   }
   let url = url[protocol_len + 3:]
   let (host, path) = if url.find("/") is Some(i) {
-    (url[:i].to_string(), url[i:].to_string())
+    (url[:i], url[i:])
   } else {
-    (url.to_string(), "/")
+    (url, "/")
   }
-  let path = if path == "" { "/" } else { path }
-  let conn = @http.Client::new("\{http_protocol}://\{host}", proxy?)
+  let path : StringView = if path == "" { "/" } else { path }
+  let conn = @http.Client("\{http_protocol}://\{host}", proxy?)
   Conn::from_http_client(conn, path, extra_headers=headers)
 }

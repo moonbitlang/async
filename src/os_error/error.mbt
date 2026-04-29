@@ -49,7 +49,7 @@ extern "C" fn free_errno_str(str : @c_buffer.Buffer) = "moonbitlang_async_free_e
 pub fn errno_to_string(errno : Int) -> String {
   let c_str = strerror(errno)
   defer free_errno_str(c_str)
-  @os_string.decode(c_str).trim_end(chars="\r\n").to_string()
+  @os_string.decode(c_str).trim_end(chars="\r\n").to_owned()
 }
 
 ///|

@@ -36,8 +36,6 @@ pub struct TcpServer {
   /// The actual listen address of the server
   addr : Addr
   priv io : @event_loop.IoHandle
-
-  async fn new(addr : Addr, dual_stack? : Bool, reuse_addr? : Bool) -> TcpServer
 }
 
 ///|
@@ -63,7 +61,8 @@ pub struct TcpServer {
 /// This is useful for avoiding "address already in use" error while testing.
 /// WARNING: enabling `reuse_addr` on production is unsafe,
 /// packets from the previous listener of the address may be accidentally received.
-pub async fn TcpServer::new(
+#alias(new, deprecated)
+pub async fn TcpServer::TcpServer(
   addr : Addr,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
@@ -130,7 +129,7 @@ pub async fn TcpServer::run_forever(
   defer self.close()
   let conn_limit = match max_connections {
     None => None
-    Some(n) => Some(@async.Semaphore::new(n))
+    Some(n) => Some(@async.Semaphore(n))
   }
   @async.with_task_group(group => {
     for ;; {

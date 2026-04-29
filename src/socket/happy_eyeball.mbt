@@ -27,7 +27,7 @@
 /// - if `protocol` is `OnlyV6`,
 ///   `connect_to_host` will fail if no IPv4 address is available
 pub async fn Tcp::connect_to_host(
-  host : String,
+  host : StringView,
   port~ : Int,
   protocol? : IpProtocolPreference = NoPreference,
 ) -> Tcp {

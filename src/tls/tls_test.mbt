@@ -199,7 +199,7 @@ async test "`read` already closed" {
         verify=false,
       )
       defer client.close()
-      inspect(try? client.read_some(), content="Ok(None)")
+      debug_inspect(try? client.read_some(), content="Ok(None)")
     })
   })
 }

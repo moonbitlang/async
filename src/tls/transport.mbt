@@ -41,10 +41,10 @@ fn Transport::new(reader : &@io.Reader, writer : &@io.Writer) -> Transport {
   {
     state: Normal,
     reader,
-    read_lock: @semaphore.Semaphore::new(1),
+    read_lock: @semaphore.Semaphore(1),
     write_buf: @io_buffer.new(BUFFER_SIZE),
     writer,
-    write_lock: @semaphore.Semaphore::new(1),
+    write_lock: @semaphore.Semaphore(1),
   }
 }
 

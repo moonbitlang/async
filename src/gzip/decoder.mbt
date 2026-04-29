@@ -19,19 +19,18 @@ let decoder_buffer_size = 4096
 fn @io.ReaderBuffer::repr(buf : Self) -> @io_buffer.Buffer = "%identity"
 
 ///|
-pub struct Decoder[R] {
-  priv inner : R
-  priv core : @gzip_internal.Decoder
-  priv read_buf : @io.ReaderBuffer
-
-  fn[R : @io.Reader] new(inner : R) -> Decoder[R]
+struct Decoder[R] {
+  inner : R
+  core : @gzip_internal.Decoder
+  read_buf : @io.ReaderBuffer
 }
 
 ///|
-pub fn[R : @io.Reader] Decoder::new(inner : R) -> Decoder[R] {
+#alias(new, deprecated)
+pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
   let decoder = {
     inner,
-    core: @gzip_internal.Decoder::new(),
+    core: @gzip_internal.Decoder(),
     read_buf: @io.ReaderBuffer::new(),
   }
   decoder.inner._get_internal_buffer().repr().enlarge_to(decoder_buffer_size)

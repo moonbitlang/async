@@ -79,7 +79,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   let full_path = @fs.realpath(path)
   let path_sep = if is_windows { "\\" } else { "/" }
   let base_name = if full_path.rev_find(path_sep) is Some(i) {
-    full_path[i + 1:].to_string()
+    full_path[i + 1:]
   } else {
     path
   }
@@ -133,7 +133,7 @@ pub async fn server_main(
   let base_path = path
   server.run_forever((request, _body, conn) => {
     let (path, download_zip) = match request.path {
-      [.. path, .. "?download_zip"] => (path.to_string(), true)
+      [.. path, .. "?download_zip"] => (path.to_owned(), true)
       path => (path, false)
     }
     log("serving \{path}")

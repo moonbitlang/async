@@ -14,7 +14,7 @@
 
 ///|
 async test "discard oldest basic" {
-  let q = @async.Queue::new(kind=DiscardOldest(2))
+  let q = @async.Queue(kind=DiscardOldest(2))
   for i in 1..<=3 {
     q.put(i)
   }
@@ -27,7 +27,7 @@ async test "discard oldest basic" {
 
 ///|
 async test "discard oldest try_put" {
-  let q = @async.Queue::new(kind=DiscardOldest(2))
+  let q = @async.Queue(kind=DiscardOldest(2))
   inspect(q.try_put(1), content="true")
   inspect(q.try_put(2), content="true")
   inspect(q.try_put(3), content="false")
@@ -41,7 +41,7 @@ async test "discard oldest try_put" {
 
 ///|
 async test "discard latest basic" {
-  let q = @async.Queue::new(kind=DiscardLatest(2))
+  let q = @async.Queue(kind=DiscardLatest(2))
   for i in 1..<=3 {
     q.put(i)
   }
@@ -54,7 +54,7 @@ async test "discard latest basic" {
 
 ///|
 async test "discard latest try_put" {
-  let q = @async.Queue::new(kind=DiscardLatest(2))
+  let q = @async.Queue(kind=DiscardLatest(2))
   inspect(q.try_put(1), content="true")
   inspect(q.try_put(2), content="true")
   inspect(q.try_put(3), content="false")
@@ -68,7 +68,7 @@ async test "discard latest try_put" {
 
 ///|
 async test "discard oldest zero buffered" {
-  let q = @async.Queue::new(kind=DiscardOldest(0))
+  let q = @async.Queue(kind=DiscardOldest(0))
   // all `put` should have no effect
   inspect(q.try_put(1), content="false")
   inspect(q.try_put(2), content="false")
@@ -81,7 +81,7 @@ async test "discard oldest zero buffered" {
 
 ///|
 async test "discard latest zero buffered" {
-  let q = @async.Queue::new(kind=DiscardLatest(0))
+  let q = @async.Queue(kind=DiscardLatest(0))
   // all `put` should have no effect
   inspect(q.try_put(1), content="false")
   inspect(q.try_put(2), content="false")

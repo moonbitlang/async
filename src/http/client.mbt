@@ -20,21 +20,14 @@ priv enum ClientTransport {
 
 ///|
 /// Simple HTTP client which connect to a remote host via TCP
-pub struct Client {
-  priv reader : Reader
-  priv transport : ClientTransport
-  priv tls : @tls.Tls?
-  priv sender : Sender
-  priv mut request_method : RequestMethod?
+struct Client {
+  reader : Reader
+  transport : ClientTransport
+  tls : @tls.Tls?
+  sender : Sender
+  mut request_method : RequestMethod?
   /// whether automatic decompression should be enabled for current request
-  priv mut auto_decompress : Bool
-
-  async fn new(
-    uri : String,
-    headers? : Map[String, String],
-    proxy? : Client,
-    verify? : Bool,
-  ) -> Client
+  mut auto_decompress : Bool
 }
 
 ///|
@@ -131,7 +124,8 @@ async fn Client::connect(
 /// so it must not be used nor closed anymore by the caller.
 /// Using another HTTP client as proxy allows advanced features such as
 /// proxy authentication and https `CONNECT` proxy.
-pub async fn Client::new(
+#alias(new, deprecated)
+pub async fn Client::Client(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
@@ -244,7 +238,7 @@ pub async fn Client::end_request(self : Client) -> Response {
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String] = {},
 ) -> Unit {
   self.auto_decompress = self.sender.send_request(meth, path, extra_headers~)

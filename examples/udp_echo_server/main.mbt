@@ -22,7 +22,7 @@ async fn main {
       let (n, addr) = server.recvfrom(buf)
       root.spawn_bg(() => {
         let buf = buf.unsafe_reinterpret_as_bytes()
-        server.sendto(buf[0:n].to_bytes(), addr)
+        server.sendto(buf[0:n].to_owned(), addr)
       })
     }
   })

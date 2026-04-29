@@ -83,9 +83,9 @@ async test "try_wait" {
     })
     root.spawn_bg(() => {
       @async.sleep(300)
-      log.write_string("300ms: \{task.try_wait()}\n")
+      log.write_string("300ms: \{@debug.to_string(task.try_wait())}\n")
       @async.sleep(300)
-      log.write_string("600ms: \{task.try_wait()}\n")
+      log.write_string("600ms: \{@debug.to_string(task.try_wait())}\n")
     })
     log.write_string("task finished with \{task.wait()}\n")
   })

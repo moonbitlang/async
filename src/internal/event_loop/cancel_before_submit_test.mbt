@@ -22,5 +22,5 @@ async test "cancel before submit" {
 
     }
   })
-  inspect(result, content="None")
+  debug_inspect(result, content="None")
 }

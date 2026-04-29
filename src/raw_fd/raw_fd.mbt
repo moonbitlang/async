@@ -20,14 +20,6 @@
 pub struct RawFd {
   fd : @fd_util.Fd
   priv io : @event_loop.IoHandle
-
-  /// Create a new `RawFd` object from the underlying file descriptor.
-  /// The ownership of the file descriptor will be transferred to this function,
-  /// so the file descriptor must not be used or closed directly later,
-  /// even if creation of `RawFd` object failed.
-  ///
-  /// Windows note: the file descriptor (`HANDLE`) MUST NOT be overlapped.
-  async fn new(@fd_util.Fd) -> RawFd
 }
 
 ///|
@@ -36,7 +28,8 @@ pub struct RawFd {
 /// so the file descriptor must not be used or closed directly later,
 /// even if creation of `RawFd` object failed.
 #cfg(not(platform="windows"))
-pub async fn RawFd::new(fd : @fd_util.Fd) -> RawFd {
+#alias(new, deprecated)
+pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
   try {
@@ -58,7 +51,8 @@ pub async fn RawFd::new(fd : @fd_util.Fd) -> RawFd {
 ///
 /// The file descriptor (`HANDLE`) MUST NOT be overlapped.
 #cfg(platform="windows")
-pub async fn RawFd::new(fd : @fd_util.Fd) -> RawFd {
+#alias(new, deprecated)
+pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
   { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false) } catch {

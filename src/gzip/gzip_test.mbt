@@ -38,7 +38,7 @@ async fn encode_with_moonbit(input : Bytes) -> Bytes {
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       defer w.close()
-      Encoder::new(w)..write(input).end()
+      @gzip.Encoder(w)..write(input).end()
     })
     defer r.close()
     r.read_all().binary()
@@ -55,7 +55,7 @@ async fn decode_with_moonbit(input : Bytes) -> Bytes {
       w.write(input)
     })
     defer r.close()
-    Decoder::new(r).read_all().binary()
+    @gzip.Decoder(r).read_all().binary()
   })
 }
 
@@ -76,7 +76,7 @@ async test "encode decode roundtrip" {
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg(() => {
       defer compressed_w.close()
-      let encoder = Encoder::new(
+      let encoder = @gzip.Encoder(
         compressed_w,
         mtime=123456789U,
         operating_system=b'\x03',
@@ -88,7 +88,7 @@ async test "encode decode roundtrip" {
       encoder.end()
     })
 
-    let decoder = Decoder::new(compressed_r)
+    let decoder = @gzip.Decoder(compressed_r)
     inspect(decoder.read_all().text(), content="hello gzip world")
     compressed_r.close()
   })
@@ -101,12 +101,12 @@ async test "encoder uses valid blocks across large writes" {
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg(() => {
       defer compressed_w.close()
-      let encoder = Encoder::new(compressed_w)
+      let encoder = @gzip.Encoder(compressed_w)
       encoder.write(payload)
       encoder.end()
     })
 
-    let decoder = Decoder::new(compressed_r)
+    let decoder = @gzip.Decoder(compressed_r)
     inspect(decoder.read_all().binary() == payload, content="true")
     compressed_r.close()
   })
@@ -120,7 +120,7 @@ async test "encoder emits output when flushed" {
     root.spawn_bg(() => {
       defer w.close()
       log.push("start init")
-      let encoder = Encoder::new(w)
+      let encoder = @gzip.Encoder(w)
       log.push("encoder ready")
       log.push("write plain ab")
       encoder.write("ab")
@@ -168,7 +168,7 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
       compressed_w.write(b"\x01\x00\x00\xff\xff")
       compressed_w.write(b"\xef\x39\x8e\x4b\x06\x00\x00\x00")
     })
-    let decoder = Decoder::new(compressed_r)
+    let decoder = @gzip.Decoder(compressed_r)
     match decoder.read_some(max_len=2) {
       Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
       None => assert_true(false)
@@ -181,7 +181,7 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
       Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
       None => assert_true(false)
     }
-    inspect(decoder.read_some(max_len=2), content="None")
+    debug_inspect(decoder.read_some(max_len=2), content="None")
   })
   json_inspect(log, content=[
     "write plain ab", "read plain ab", "write plain cd", "read plain cd", "write plain ef",
@@ -202,12 +202,32 @@ async test "decoder supports reads smaller than writer chunks" {
       compressed_w.write(b"\x01\x00\x00\xff\xff")
       compressed_w.write(b"\x50\x2a\xef\xae\x08\x00\x00\x00")
     })
-    let decoder = Decoder::new(compressed_r)
-    inspect(decoder.read_some(max_len=2), content="Some(b\"ab\")")
-    inspect(decoder.read_some(max_len=2), content="Some(b\"cd\")")
-    inspect(decoder.read_some(max_len=2), content="Some(b\"ef\")")
-    inspect(decoder.read_some(max_len=2), content="Some(b\"gh\")")
-    inspect(decoder.read_some(max_len=2), content="None")
+    let decoder = @gzip.Decoder(compressed_r)
+    debug_inspect(
+      decoder.read_some(max_len=2),
+      content=(
+        #|Some(<Bytes: [0x61, 0x62]>)
+      ),
+    )
+    debug_inspect(
+      decoder.read_some(max_len=2),
+      content=(
+        #|Some(<Bytes: [0x63, 0x64]>)
+      ),
+    )
+    debug_inspect(
+      decoder.read_some(max_len=2),
+      content=(
+        #|Some(<Bytes: [0x65, 0x66]>)
+      ),
+    )
+    debug_inspect(
+      decoder.read_some(max_len=2),
+      content=(
+        #|Some(<Bytes: [0x67, 0x68]>)
+      ),
+    )
+    debug_inspect(decoder.read_some(max_len=2), content="None")
   })
 }
 

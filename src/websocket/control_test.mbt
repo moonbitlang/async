@@ -15,7 +15,7 @@
 ///|
 async test "ping auto-reply" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -26,7 +26,7 @@ async test "ping auto-reply" {
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
     })
-    let http_client = @http.Client::new("http://localhost:\{port}")
+    let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
@@ -40,7 +40,7 @@ async test "ping auto-reply" {
 ///|
 async test "pong ignored" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -52,7 +52,7 @@ async test "pong ignored" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("1234")
     })
-    let http_client = @http.Client::new("http://localhost:\{port}")
+    let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
@@ -65,7 +65,7 @@ async test "pong ignored" {
 ///|
 async test "ping auto-reply race-with-write" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -83,7 +83,7 @@ async test "ping auto-reply race-with-write" {
         ws.end_message()
       })
     })
-    let http_client = @http.Client::new("http://localhost:\{port}")
+    let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     @async.sleep(200)
@@ -102,7 +102,7 @@ async test "ping auto-reply race-with-write" {
 ///|
 async test "close test" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -127,7 +127,7 @@ async test "close test" {
         ws.end_message()
       })
     })
-    let http_client = @http.Client::new("http://localhost:\{port}")
+    let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     @async.sleep(200)
@@ -145,7 +145,7 @@ async test "close test" {
 ///|
 async test "send ping" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -172,7 +172,7 @@ async test "send ping" {
 ///|
 async test "ping inside message" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -198,7 +198,7 @@ async test "ping inside message" {
 ///|
 async test "multiple ping" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -229,7 +229,7 @@ async test "multiple ping" {
 ///|
 async test "ping cancelled" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()
@@ -246,7 +246,7 @@ async test "ping cancelled" {
     defer ws.close()
     @async.with_task_group(group => {
       group.spawn_bg(() => inspect(ws.recv().read_all().text(), content="abcd"))
-      inspect(
+      debug_inspect(
         @async.with_timeout_opt(100, () => ws.ping(msg=b"1")),
         content="None",
       )
@@ -259,7 +259,7 @@ async test "ping cancelled" {
 ///|
 async test "duplicated ping" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(() => {
       defer server.close()

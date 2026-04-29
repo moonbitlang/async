@@ -145,7 +145,7 @@ async test "all cancelled" {
   let result = @async.with_timeout_opt(300, () => {
     @async.all([() => task(1, 450), () => task(2, 150)])
   })
-  inspect(result, content="None")
+  debug_inspect(result, content="None")
   json_inspect(log, content=[
     "task #2 completed", "task #1 cancelled with Cancelled",
   ])
@@ -303,7 +303,7 @@ async test "any cancelled" {
   let result = @async.with_timeout_opt(200, () => {
     @async.any([() => task(1, 400), () => task(2, 400)])
   })
-  inspect(result, content="None")
+  debug_inspect(result, content="None")
   json_inspect(log, content=[
     "task #1 cancelled with Cancelled", "task #2 cancelled with Cancelled",
   ])

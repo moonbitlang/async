@@ -25,7 +25,7 @@ fn encode(
   output_step? : Step = Max,
 ) -> Bytes raise {
   let output = FixedArray::make(data.length() * 4 + 256, b'\x00')
-  let encoder = Encoder::new()
+  let encoder = @gzip_internal.Encoder()
   let mut input_offset = 0
   let mut output_offset = 0
   let mut step = 0
@@ -61,7 +61,7 @@ fn encode(
     output_offset~,
     output_len=output.length() - output_offset,
   )
-  output.unsafe_reinterpret_as_bytes()[:output_offset].to_bytes()
+  output.unsafe_reinterpret_as_bytes()[:output_offset].to_owned()
 }
 
 ///|
@@ -79,7 +79,7 @@ fn decode(
     },
     b'\x00',
   )
-  let decoder = Decoder::new()
+  let decoder = @gzip_internal.Decoder()
   let mut input_offset = 0
   let mut output_offset = 0
   let mut step = 0
@@ -112,7 +112,7 @@ fn decode(
     }
   }
   guard input_offset == compressed.length()
-  output.unsafe_reinterpret_as_bytes()[:output_offset].to_bytes()
+  output.unsafe_reinterpret_as_bytes()[:output_offset].to_owned()
 }
 
 ///|
@@ -120,7 +120,7 @@ test "gzip decode one byte partial chunks" {
   let data = b"A simple message to compress"
   let compressed = encode(data)
   let output = FixedArray::make(data.length() * 2, b'\x00')
-  let decoder = Decoder::new()
+  let decoder = @gzip_internal.Decoder()
   let mut input_offset = 0
   let mut output_offset = 0
   while !decoder.is_finished() {

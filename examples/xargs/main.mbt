@@ -37,7 +37,7 @@ async fn main {
         }
         let count = @string.parse_int(count)
         // Use a semaphore to limit the max number of parallel jobs
-        max_jobs = Some(@async.Semaphore::new(count))
+        max_jobs = Some(@async.Semaphore(count))
         continue rest
       }
       ["-h" | "--help", ..] => {

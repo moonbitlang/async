@@ -4,5 +4,6 @@ import {
 }
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/async",
 } for "test"

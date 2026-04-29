@@ -16,22 +16,16 @@
 let encoder_buffer_size = 4096
 
 ///|
-pub struct Encoder[W] {
-  priv inner : W
-  priv buf : FixedArray[Byte]
-  priv mut buf_len : Int
-  priv core : @gzip_internal.Encoder
-
-  fn[W] new(
-    inner : W,
-    mtime? : UInt,
-    extra_flags? : Byte,
-    operating_system? : Byte,
-  ) -> Encoder[W]
+struct Encoder[W] {
+  inner : W
+  buf : FixedArray[Byte]
+  mut buf_len : Int
+  core : @gzip_internal.Encoder
 }
 
 ///|
-pub fn[W] Encoder::new(
+#alias(new, deprecated)
+pub fn[W] Encoder::Encoder(
   inner : W,
   mtime? : UInt = 0U,
   extra_flags? : Byte = b'\x00',
@@ -42,7 +36,7 @@ pub fn[W] Encoder::new(
     inner,
     buf,
     buf_len: 0,
-    core: @gzip_internal.Encoder::new(mtime~, extra_flags~, operating_system~),
+    core: @gzip_internal.Encoder(mtime~, extra_flags~, operating_system~),
   }
 }
 

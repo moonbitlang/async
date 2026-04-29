@@ -68,9 +68,9 @@ async test "Process::try_wait" {
   @async.with_task_group(group => {
     let child = @process.spawn(group, sleep, ["450", "-exit-code", "42"])
     @async.sleep(300)
-    inspect(child.try_wait(), content="None")
+    debug_inspect(child.try_wait(), content="None")
     @async.sleep(300)
-    inspect(child.try_wait(), content="Some(42)")
+    debug_inspect(child.try_wait(), content="Some(42)")
   })
 }
 

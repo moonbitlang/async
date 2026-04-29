@@ -34,15 +34,17 @@ pub struct Semaphore {
   size : Int
   priv mut value : Int
   priv waiters : @deque.Deque[Waiter]
-
-  fn new(size : Int, initial_value? : Int) -> Semaphore
 }
 
 ///|
 /// Create a semaphore of size `size`,
 /// the initial value of the semaphore
 /// will be set to `initial_value` (`size` by default)
-pub fn Semaphore::new(size : Int, initial_value? : Int = size) -> Semaphore {
+#alias(new, deprecated)
+pub fn Semaphore::Semaphore(
+  size : Int,
+  initial_value? : Int = size,
+) -> Semaphore {
   guard initial_value >= 0 && initial_value <= size
   { value: initial_value, size, waiters: @deque.new() }
 }

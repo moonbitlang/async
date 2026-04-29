@@ -15,7 +15,7 @@
 ///|
 #cfg(not(target="native"))
 fn _ignore_unused_import() -> Unit {
-  let _ : (&@io.Reader) -> _ = @gzip_stream.Decoder::new
+  let _ : (@gzip_stream.Decoder[&@io.Reader]) -> Unit = ignore
   ignore(@async.sleep)
   ignore(@fs.unimplemented)
   ignore(@bytes_util.ascii_to_string)

@@ -46,26 +46,25 @@ priv enum DecodeMode {
 }
 
 ///|
-pub struct Decoder {
-  priv trailer_state : TrailerState
-  priv mut mode : DecodeMode
-  priv mut bit_buffer : UInt
-  priv mut bit_count : Int
-  priv mut copy_remaining : Int
-  priv mut copy_distance : Int
-  priv mut pending_buf : FixedArray[Byte]
-  priv mut pending_len : Int
-  priv history : FixedArray[Byte]
-  priv mut history_pos : Int
-  priv mut history_len : Int
-
-  fn new() -> Decoder
+struct Decoder {
+  trailer_state : TrailerState
+  mut mode : DecodeMode
+  mut bit_buffer : UInt
+  mut bit_count : Int
+  mut copy_remaining : Int
+  mut copy_distance : Int
+  mut pending_buf : FixedArray[Byte]
+  mut pending_len : Int
+  history : FixedArray[Byte]
+  mut history_pos : Int
+  mut history_len : Int
 }
 
 ///|
 /// Create a decoder state machine.
 /// The gzip header is consumed by the first successful `write` call.
-pub fn Decoder::new() -> Decoder {
+#alias(new, deprecated)
+pub fn Decoder::Decoder() -> Decoder {
   {
     trailer_state: TrailerState::new(),
     mode: Header,
