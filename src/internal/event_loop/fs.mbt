@@ -206,12 +206,16 @@ pub async fn remove(path : StringView, context~ : String) -> Unit {
 pub async fn rename(
   old_path : StringView,
   new_path : StringView,
+  replace~ : Bool,
   context~ : String,
 ) -> Unit {
   let old_path_bytes = @os_string.encode(old_path)
   let new_path_bytes = @os_string.encode(new_path)
   try
-    perform_job_in_worker(Job::rename(old_path_bytes, new_path_bytes), context~)
+    perform_job_in_worker(
+      Job::rename(old_path_bytes, new_path_bytes, replace~),
+      context~,
+    )
   catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(

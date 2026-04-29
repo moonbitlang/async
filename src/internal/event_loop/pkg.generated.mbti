@@ -47,7 +47,7 @@ pub async fn realpath(StringView, context~ : String) -> String
 
 pub async fn remove(StringView, context~ : String) -> Unit
 
-pub async fn rename(StringView, StringView, context~ : String) -> Unit
+pub async fn rename(StringView, StringView, replace~ : Bool, context~ : String) -> Unit
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
 

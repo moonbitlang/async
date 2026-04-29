@@ -182,6 +182,7 @@ extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_asyn
 extern "C" fn Job::rename(
   old_path : @os_string.OsString,
   new_path : @os_string.OsString,
+  replace~ : Bool,
 ) -> Job = "moonbitlang_async_make_rename_job"
 
 ///|

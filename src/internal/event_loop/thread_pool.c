@@ -51,6 +51,7 @@
 
 #ifdef __linux__
 #include <sys/syscall.h>
+#include <linux/fs.h>
 #endif
 
 #ifdef __MACH__
@@ -1292,6 +1293,7 @@ struct rename_job {
   struct job job;
   char *old_path;
   char *new_path;
+  int32_t replace;
 };
 
 static
@@ -1307,22 +1309,92 @@ void rename_job_worker(struct job *job) {
 
 #ifdef _WIN32
 
-  if (!MoveFileW((LPCWSTR)rename_job->old_path, (LPCWSTR)rename_job->new_path))
+  HANDLE handle = CreateFileW(
+    (LPCWSTR)rename_job->old_path,
+    DELETE,
+    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS,
+    NULL
+  );
+
+  if (handle == INVALID_HANDLE_VALUE) {
     job->err = GetLastError();
+    return;
+  }
+
+  int new_path_len = Moonbit_array_length(rename_job->new_path);
+  int buffer_size = sizeof(FILE_RENAME_INFO) + new_path_len * 2 + 2;
+  FILE_RENAME_INFO *info = (FILE_RENAME_INFO*)malloc(buffer_size);
+
+  // 3 = FILE_RENAME_REPLACE_IF_EXISTS | FILE_RENAME_POSIX_SEMANTICS 
+  info->Flags = rename_job->replace ? 3 : 0;
+  info->RootDirectory = NULL;
+  info->FileNameLength = new_path_len * 2;
+  memcpy(info->FileName, rename_job->new_path, new_path_len * 2);
+  info->FileName[new_path_len] = 0;
+
+  BOOL ret = SetFileInformationByHandle(handle, FileRenameInfoEx, info, buffer_size);
+
+  CloseHandle(handle);
+  free(info);
+
+  if (ret)
+    return;
+
+  if (GetLastError() != ERROR_INVALID_PARAMETER) {
+    job->err = GetLastError();
+    return;
+  }
+
+  // fallback on older systems
+
+  ret = MoveFileExW(
+    (LPCWSTR)rename_job->old_path,
+    (LPCWSTR)rename_job->new_path,
+    MOVEFILE_COPY_ALLOWED | (rename_job->replace ? MOVEFILE_REPLACE_EXISTING : 0)
+  );
+  if (!ret)
+    job->err = GetLastError();
+
+#elif defined(__MACH__)
+
+  job->ret = renameatx_np(
+    AT_FDCWD, rename_job->old_path,
+    AT_FDCWD, rename_job->new_path,
+    rename_job->replace ? 0 : RENAME_EXCL
+  );
+  if (job->ret < 0)
+    job->err = errno;
+
+#elif defined(__linux__)
+
+  job->ret = syscall(
+    SYS_renameat2,
+    AT_FDCWD, rename_job->old_path,
+    AT_FDCWD, rename_job->new_path,
+    rename_job->replace ? 0 : RENAME_NOREPLACE
+  );
+  if (job->ret < 0)
+    job->err = errno;
 
 #else
 
-  job->ret = rename(rename_job->old_path, rename_job->new_path);
-  if (job->ret < 0)
-    job->err = errno;
+  job->err = ENOSYS;
 
 #endif
 }
 
-struct rename_job *moonbitlang_async_make_rename_job(char *old_path, char *new_path) {
+struct rename_job *moonbitlang_async_make_rename_job(
+  char *old_path,
+  char *new_path,
+  int32_t replace
+) {
   struct rename_job *job = MAKE_JOB(rename);
   job->old_path = old_path;
   job->new_path = new_path;
+  job->replace = replace;
   return job;
 }
 
