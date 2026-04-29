@@ -22,15 +22,14 @@ pub struct UdpClient {
   /// Local address of the client
   addr : Addr
   priv io : @event_loop.IoHandle
-
-  fn new(server : Addr) -> UdpClient raise
 }
 
 ///|
 /// Create a new UDP client connected to server at `addr`.
 /// The client always send packet to and receive packet from
 /// the specified remote server.
-pub fn UdpClient::new(server : Addr) -> UdpClient raise {
+#alias(new, deprecated)
+pub fn UdpClient::UdpClient(server : Addr) -> UdpClient raise {
   let context = "@socket.UdpClient::new()"
   let family = server.family()
   let sock = make_udp_socket(family, context~)
@@ -70,8 +69,6 @@ pub fn UdpClient::addr(self : UdpClient) -> Addr {
 pub struct UdpServer {
   addr : Addr
   priv io : @event_loop.IoHandle
-
-  async fn new(addr : Addr, dual_stack? : Bool) -> UdpServer
 }
 
 ///|
@@ -98,7 +95,8 @@ pub fn UdpServer::fd(self : UdpClient) -> @fd_util.Fd {
 /// If the port of `addr` is zero, the server will be bound to a random port,
 /// assigned by the operating system.
 /// The actual listen address can be retrieved via `.addr()`.
-pub async fn UdpServer::new(
+#alias(new, deprecated)
+pub async fn UdpServer::UdpServer(
   addr : Addr,
   dual_stack? : Bool = true,
 ) -> UdpServer {

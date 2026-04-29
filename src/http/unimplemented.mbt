@@ -21,7 +21,7 @@ pub let unimplemented : Unit = {
   ignore(@socket.unimplemented)
   ignore(@tls.unimplemented)
   ignore(@io_buffer.new)
-  ignore(@gzip.Decoder::new)
+  ignore(@gzip.Decoder::is_finished)
 }
 
 ///|

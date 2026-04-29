@@ -56,6 +56,7 @@ pub impl Show for CloseCode with output(self, logger) {
 pub impl Show for WebSocketError
 
 ///|
+#warnings("-deprecated")
 pub impl Show for WebSocketError with output(self, logger) {
   match self {
     ConnectionClosed(close_code, msg) => {

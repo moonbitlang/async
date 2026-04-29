@@ -42,7 +42,7 @@ pub fn Conn::close(Self) -> Unit
 pub async fn Conn::connect(String, headers? : Map[String, String], proxy? : @http.Client) -> Self
 pub async fn Conn::end_message(Self) -> Unit
 #as_free_fn
-pub async fn Conn::from_http_client(@http.Client, String, extra_headers? : Map[String, String]) -> Self
+pub async fn Conn::from_http_client(@http.Client, StringView, extra_headers? : Map[String, String]) -> Self
 #as_free_fn
 pub async fn Conn::from_http_server(@http.Request, @http.ServerConnection) -> Self
 pub async fn Conn::ping(Self, msg? : BytesView) -> Unit

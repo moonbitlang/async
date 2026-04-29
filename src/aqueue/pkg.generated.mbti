@@ -23,13 +23,12 @@ pub(all) enum Kind {
 pub struct Queue[X] {
   kind : Kind
   // private fields
-
-  fn[X] new(kind~ : Kind) -> Queue[X]
 }
+#alias(new, deprecated)
+#as_free_fn(new, deprecated)
+pub fn[X] Queue::Queue(kind~ : Kind) -> Self[X]
 pub fn[X] Queue::close(Self[X], error? : Error, clear? : Bool) -> Unit
 pub async fn[X] Queue::get(Self[X]) -> X
-#as_free_fn
-pub fn[X] Queue::new(kind~ : Kind) -> Self[X]
 pub async fn[X] Queue::put(Self[X], X) -> Unit
 pub fn[X] Queue::try_get(Self[X]) -> X? raise
 pub fn[X] Queue::try_put(Self[X], X) -> Bool raise

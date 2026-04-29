@@ -193,9 +193,7 @@ fn parse_ipv4_to_bytes(
   let parts = ip_str.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }
   fn parse_octal(x : StringView) raise InvalidAddr {
-    let value = @string.parse_uint(x.to_string()) catch {
-      _ => raise InvalidAddr
-    }
+    let value = @string.parse_uint(x) catch { _ => raise InvalidAddr }
     guard value < 256 else { raise InvalidAddr }
     value
   }

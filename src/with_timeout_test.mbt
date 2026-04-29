@@ -14,29 +14,21 @@
 
 ///|
 async test "with_timeout normal exit" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(300)
-        log.write_string("300ms tick\n")
-      })
-      @async.with_timeout(400, () => {
-        @async.sleep(200)
-        log.write_string("task finished after 200ms\n")
-      })
-      log.write_string("main task finished\n")
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|task finished after 200ms
-      #|main task finished
-      #|300ms tick
-      #|Ok(())
-    ),
-  )
+  let log = []
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
+      @async.sleep(300)
+      log.push("300ms tick")
+    })
+    @async.with_timeout(400, () => {
+      @async.sleep(200)
+      log.push("task finished after 200ms")
+    })
+    log.push("main task finished")
+  })
+  json_inspect(log, content=[
+    "task finished after 200ms", "main task finished", "300ms tick",
+  ])
 }
 
 ///|
@@ -255,32 +247,22 @@ async test "with_timeout error-on-timeout" {
 
 ///|
 async test "with_timeout_opt normal exit" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-      })
-      log.write_object(
-        @async.with_timeout_opt(1000, () => {
-          @async.sleep(100)
-          log.write_string("task finished after 100ms\n")
-          42
-        }),
-      )
-      log.write_char('\n')
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|task finished after 100ms
-      #|Some(42)
-      #|200ms tick
-      #|Ok(())
-    ),
-  )
+  let log = []
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
+      @async.sleep(200)
+      log.push("200ms tick")
+    })
+    let result = @async.with_timeout_opt(1000, () => {
+      @async.sleep(100)
+      log.push("task finished after 100ms")
+      42
+    })
+    log.push(@debug.to_string(result))
+  })
+  json_inspect(log, content=[
+    "task finished after 100ms", "Some(42)", "200ms tick",
+  ])
 }
 
 ///|
@@ -314,38 +296,26 @@ async test "with_timeout_opt failure" {
 
 ///|
 async test "with_timeout_opt timeout" {
-  let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-      })
-      log.write_object(
-        @async.with_timeout_opt(100, () => {
-          try @async.sleep(2000) catch {
-            err => {
-              log.write_string("task cancelled\n")
-              raise err
-            }
-          } noraise {
-            _ => {
-              log.write_string("task finished after 2s\n")
-              42
-            }
-          }
-        }),
-      )
-      log.write_char('\n')
-    }),
-  )
-  inspect(
-    log.to_string(),
-    content=(
-      #|task cancelled
-      #|None
-      #|200ms tick
-      #|Ok(())
-    ),
-  )
+  let log = []
+  @async.with_task_group(root => {
+    root.spawn_bg(() => {
+      @async.sleep(200)
+      log.push("200ms tick")
+    })
+    let result = @async.with_timeout_opt(100, () => {
+      try @async.sleep(2000) catch {
+        err => {
+          log.push("task cancelled")
+          raise err
+        }
+      } noraise {
+        _ => {
+          log.push("task finished after 2s")
+          42
+        }
+      }
+    })
+    log.push(@debug.to_string(result))
+  })
+  json_inspect(log, content=["task cancelled", "None", "200ms tick"])
 }

@@ -114,7 +114,7 @@ async test "aqueue cancellation no_swallow" {
     q.put(42)
     get_task.cancel()
     @async.sleep(100)
-    inspect(q.try_get(), content="None")
+    debug_inspect(q.try_get(), content="None")
   })
   inspect(
     log.to_string(),
@@ -200,13 +200,13 @@ async test "aqueue fairness2" {
 ///|
 test "try_get" {
   let q = @aqueue.Queue(kind=Unbounded)
-  inspect(q.try_get(), content="None")
+  debug_inspect(q.try_get(), content="None")
   assert_true(q.try_put(42))
-  inspect(q.try_get(), content="Some(42)")
-  inspect(q.try_get(), content="None")
+  debug_inspect(q.try_get(), content="Some(42)")
+  debug_inspect(q.try_get(), content="None")
   assert_true(q.try_put(1))
   assert_true(q.try_put(2))
-  inspect(q.try_get(), content="Some(1)")
-  inspect(q.try_get(), content="Some(2)")
-  inspect(q.try_get(), content="None")
+  debug_inspect(q.try_get(), content="Some(1)")
+  debug_inspect(q.try_get(), content="Some(2)")
+  debug_inspect(q.try_get(), content="None")
 }

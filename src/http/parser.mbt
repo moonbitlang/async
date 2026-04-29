@@ -237,14 +237,14 @@ async fn Reader::read_headers(
       break
     }
     guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
-    let key = header_line[:colon_index].to_lower().to_string()
+    let key = header_line[:colon_index].to_lower().to_owned()
     guard colon_index + 1 < header_line.length() else { raise BadRequest }
     let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
       colon_index + 2
     } else {
       colon_index + 1
     }
-    let value = header_line[value_start:].to_string()
+    let value = header_line[value_start:].to_owned()
     match key {
       "content-length" => {
         guard !(self.body is Fixed(_)) else { raise BadRequest }
@@ -315,10 +315,10 @@ async fn Reader::read_request(self : Reader) -> Request {
   }
   let request_line = request_line[meth_len + 1:]
   guard request_line.find(" ") is Some(path_len) else { raise BadRequest }
-  let path = request_line[:path_len].to_string()
+  let path = request_line[:path_len].to_owned()
   match request_line[path_len + 1:] {
     "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol => raise HttpVersionNotSupported(protocol.to_string())
+    protocol => raise HttpVersionNotSupported(protocol.to_owned())
   }
   let (headers, cookies) = self.read_headers()
   guard cookies.length() is 0 else { raise BadRequest }
@@ -381,14 +381,14 @@ async fn Reader::read_response(
   guard response_line.find(" ") is Some(protocol_len) else { raise BadRequest }
   match response_line[:protocol_len] {
     "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol => raise HttpVersionNotSupported(protocol.to_string())
+    protocol => raise HttpVersionNotSupported(protocol.to_owned())
   }
   let response_line = response_line[protocol_len + 1:]
   guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
   let code = @string.parse_int(response_line[:code_len], base=10) catch {
     _ => raise BadRequest
   }
-  let reason = response_line[code_len + 1:].to_string()
+  let reason = response_line[code_len + 1:].to_owned()
   let (headers, cookies) = self.read_headers()
 
   // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination

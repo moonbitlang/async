@@ -25,28 +25,23 @@ let encoder_max_match_len = 64
 let encoder_min_match_len = 3
 
 ///|
-pub struct Encoder {
-  priv header : Header
-  priv trailer_state : TrailerState
-  priv mut bit_buffer : UInt
-  priv mut bit_count : Int
-  priv mut finished : Bool
-  priv mut started : Bool
-  priv history : FixedArray[Byte]
-  priv mut history_pos : Int
-  priv mut history_len : Int
-
-  fn new(
-    mtime? : UInt,
-    extra_flags? : Byte,
-    operating_system? : Byte,
-  ) -> Encoder
+struct Encoder {
+  header : Header
+  trailer_state : TrailerState
+  mut bit_buffer : UInt
+  mut bit_count : Int
+  mut finished : Bool
+  mut started : Bool
+  history : FixedArray[Byte]
+  mut history_pos : Int
+  mut history_len : Int
 }
 
 ///|
 /// Create an encoder state machine.
 /// The gzip header is written by the first successful `write` or `end` call.
-pub fn Encoder::new(
+#alias(new, deprecated)
+pub fn Encoder::Encoder(
   mtime? : UInt = 0U,
   extra_flags? : Byte = b'\x00',
   operating_system? : Byte = b'\xff',

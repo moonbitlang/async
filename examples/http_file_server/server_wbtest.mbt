@@ -75,7 +75,7 @@ async test "basic" {
       if is_windows {
         guard from_unzip.read_until("\r\n") is Some(line) else { break }
         let name = if line is [.. "./", .. name] {
-          name.to_string()
+          name.to_owned()
         } else {
           line
         }
@@ -87,7 +87,7 @@ async test "basic" {
         }
         let last_word = line[i + 1:]
         if last_word.has_prefix("examples/http_file_server") {
-          zip_content.push(last_word.to_string())
+          zip_content.push(last_word.to_owned())
         }
       }
     }

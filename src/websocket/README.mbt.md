@@ -17,7 +17,7 @@ This module provides RFC 6455 compilant WebSocket client & server support for `m
 ///|
 #cfg(target="native")
 async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
-  let server = @http.Server::new(addr)
+  let server = @http.Server(addr)
   // WebSocket server are built on top of a HTTP server.
   // This allows mixing WebSocket and HTTP in a single server.
   server.run_forever((request, _, conn) => {

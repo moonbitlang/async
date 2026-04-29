@@ -30,7 +30,7 @@ pub fn encode(str : StringView) -> OsString {
 ///|
 #cfg(platform="windows")
 pub fn encode(str : StringView) -> OsString {
-  str.to_string()
+  str.to_owned()
 }
 
 ///|

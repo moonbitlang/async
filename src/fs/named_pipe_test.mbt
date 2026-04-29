@@ -29,7 +29,7 @@ async test "cancel named fifo open" {
     let result = @async.with_timeout_opt(500, () => {
       @fs.open(path, mode=ReadOnly).close()
     })
-    inspect(result, content="None")
+    debug_inspect(result, content="None")
   })
 }
 
@@ -51,7 +51,7 @@ async test "cancel named pipe open" {
   let result = @async.with_timeout_opt(500, () => {
     @fs.open(path, mode=ReadOnly).close()
   })
-  inspect(result, content="None")
+  debug_inspect(result, content="None")
 }
 
 ///|
@@ -67,7 +67,7 @@ async test "named fifo" {
       let r = @fs.open(path, mode=ReadOnly)
       defer r.close()
       inspect(r.read_until("\n").unwrap_or(""), content="abcd")
-      inspect(
+      debug_inspect(
         @async.with_timeout_opt(250, () => r.read_all().text()),
         content="None",
       )
@@ -100,7 +100,7 @@ async test "named pipe" {
       let r = @fs.open(path, mode=ReadOnly)
       defer r.close()
       inspect(r.read_until("\n").unwrap_or(""), content="abcd")
-      inspect(
+      debug_inspect(
         @async.with_timeout_opt(250, () => r.read_all().text()),
         content="None",
       )

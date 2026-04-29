@@ -62,16 +62,15 @@ pub struct Queue[X] {
   priv buffer : @deque.Deque[X]
   /// `Some(err)` if the queue is already closed
   priv mut closed : Error?
-
-  fn[X] new(kind~ : Kind) -> Queue[X]
 }
 
 ///|
 /// Create an empty queue.
 /// The behavior of `put` is determined by the `kind` argument,
 /// see the type `@aqueue.Kind` for more details.
-#as_free_fn
-pub fn[X] Queue::new(kind~ : Kind) -> Queue[X] {
+#as_free_fn(new, deprecated)
+#alias(new, deprecated)
+pub fn[X] Queue::Queue(kind~ : Kind) -> Queue[X] {
   match kind {
     Unbounded => ()
     Blocking(n) | DiscardOldest(n) | DiscardLatest(n) =>

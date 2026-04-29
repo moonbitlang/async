@@ -54,7 +54,7 @@ async test "mkdir recursive" {
 #cfg(platform="windows")
 async test "mkdir recursive windows" {
   @async.with_task_group(group => {
-    let base_path = "target\\recursive_mkdir_windows"
+    let base_path = "_build\\recursive_mkdir_windows"
     let path = "\{base_path}\\test\\\\directory"
     @fs.mkdir(path, recursive=true)
     group.add_defer(() => @fs.rmdir(base_path, recursive=true))

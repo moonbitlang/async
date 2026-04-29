@@ -57,12 +57,16 @@ pub async fn mkdir(
 pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
-    let base = path.to_string()
+    let base = if @event_loop.IS_WINDOWS {
+      path.trim_end(chars="/\\")
+    } else {
+      path.trim_end(chars="/")
+    }
     let dir = opendir_aux(path, context~)
     defer dir.close()
     while dir.next_aux(include_special=false, include_hidden=true, context~)
           is Some(ent) {
-      let child_path = base + "/" + ent.name
+      let child_path = "\{base}/\{ent.name}"
       if ent.is_dir {
         rmdir(child_path, recursive=true)
       } else {
@@ -372,7 +376,7 @@ pub async fn walk(
 ) -> Unit {
   let context = "@fs.walk()"
   guard max_concurrency > 0
-  let sem = @async.Semaphore::new(max_concurrency)
+  let sem = @async.Semaphore(max_concurrency)
   @async.with_task_group(fn(group) {
     fn handle_path(path : String) {
       guard !exclude(path) else {  }
@@ -397,6 +401,6 @@ pub async fn walk(
       })
     }
 
-    handle_path(path.to_string())
+    handle_path(path.to_owned())
   })
 }

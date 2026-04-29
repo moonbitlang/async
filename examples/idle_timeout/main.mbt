@@ -15,7 +15,7 @@
 ///|
 async fn main {
   @async.with_task_group(group => {
-    let idle_timer = @async.Timer::new(5000)
+    let idle_timer = @async.Timer(5000)
     group.spawn_bg(no_wait=true, () => {
       idle_timer.wait()
       println("You have not type anything for 5 seconds, exit now...")

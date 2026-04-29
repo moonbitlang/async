@@ -24,7 +24,7 @@ test "decoder rejects invalid gzip header" {
 ///|
 test "decoder verifies trailer automatically" {
   let encoded = encode(b"\x00")
-  let corrupted = encoded[:encoded.length() - 8].to_bytes() +
+  let corrupted = encoded[:encoded.length() - 8].to_owned() +
     b"\x00\x00\x00\x00\x01\x00\x00\x00"
   let result = try? decode(corrupted, expected_len=1)
   assert_true(result is Err(_))

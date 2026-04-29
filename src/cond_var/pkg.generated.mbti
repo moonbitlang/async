@@ -8,11 +8,10 @@ package "moonbitlang/async/cond_var"
 // Types and methods
 pub struct Cond {
   // private fields
-
-  fn new() -> Cond
 }
+#alias(new, deprecated)
+pub fn Cond::Cond() -> Self
 pub fn Cond::broadcast(Self) -> Unit
-pub fn Cond::new() -> Self
 pub fn Cond::signal(Self) -> Unit
 pub async fn Cond::wait(Self) -> Unit
 

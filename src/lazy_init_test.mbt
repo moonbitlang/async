@@ -83,7 +83,7 @@ async test "lazy init cancelled" {
     }
     log.push("lazy init completed at tick \{current_tick()}")
   })
-  inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
+  debug_inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
   @async.sleep(100)
   // the previous attempt is already cancelled,
   // this `wait` will trigger a new attempt
@@ -119,7 +119,7 @@ async test "lazy init multiple waiters 1" {
     })
     @async.with_timeout_opt(200, () => x.wait())
   })
-  inspect(result, content="None")
+  debug_inspect(result, content="None")
   json_inspect(log, content=[
     "lazy init started at tick 0", "lazy init completed at tick 2", "got lazy init value at tick 2",
   ])
@@ -145,10 +145,16 @@ async test "lazy init multiple waiters 2" {
   })
   @async.with_task_group(group => {
     group.spawn_bg(() => {
-      inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
+      debug_inspect(
+        @async.with_timeout_opt(200, () => x.wait()),
+        content="None",
+      )
     })
     group.spawn_bg(() => {
-      inspect(@async.with_timeout_opt(400, () => x.wait()), content="None")
+      debug_inspect(
+        @async.with_timeout_opt(400, () => x.wait()),
+        content="None",
+      )
     })
   })
   json_inspect(log, content=[

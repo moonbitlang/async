@@ -16,7 +16,7 @@
 async test "blocking unbuffered" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(1))
+    let q = @async.Queue(kind=Blocking(1))
     group.spawn_bg(() => {
       for i in 0..<3 {
         q.put(i)
@@ -40,7 +40,7 @@ async test "blocking unbuffered" {
 async test "blocking buffered" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(2))
+    let q = @async.Queue(kind=Blocking(2))
     group.spawn_bg(() => {
       for i in 0..<4 {
         q.put(i)
@@ -65,7 +65,7 @@ async test "blocking buffered" {
 async test "blocking fairness" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(1))
+    let q = @async.Queue(kind=Blocking(1))
     q.put(0)
     group.spawn_bg(() => {
       for i in 0..<3 {
@@ -96,7 +96,7 @@ async test "blocking fairness" {
 async test "blocking cancellation" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(1))
+    let q = @async.Queue(kind=Blocking(1))
     q.put(0)
     group.spawn_bg(no_wait=true, () => {
       @async.sleep(250)
@@ -124,7 +124,7 @@ async test "blocking cancellation" {
 async test "blocking fairness2" {
   let log = []
   @async.with_task_group(root => {
-    let queue = @aqueue.Queue::new(kind=Blocking(1))
+    let queue = @async.Queue(kind=Blocking(1))
     queue.put(0)
     root.spawn_bg(() => {
       for i in 0..<2 {
@@ -158,7 +158,7 @@ async test "blocking fairness2" {
 async test "blocking immediate cancellation" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(1))
+    let q = @async.Queue(kind=Blocking(1))
     q.put(0)
     let put_task = group.spawn(() => {
       q.put(1) catch {
@@ -173,7 +173,7 @@ async test "blocking immediate cancellation" {
     let _ = q.get()
     put_task.cancel()
     @async.sleep(100)
-    inspect(q.try_get(), content="Some(1)")
+    debug_inspect(q.try_get(), content="Some(1)")
   })
   json_inspect(log, content=["put() completed"])
 }
@@ -182,7 +182,7 @@ async test "blocking immediate cancellation" {
 async test "blocking zero buffered" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(0))
+    let q = @async.Queue(kind=Blocking(0))
     group.spawn_bg(() => {
       for i in 0..<4 {
         q.put(i)
@@ -205,39 +205,39 @@ async test "blocking zero buffered" {
 
 ///|
 async test "zero buffered try_put" {
-  let q = @aqueue.Queue::new(kind=Blocking(0))
-  inspect(q.try_put(0), content="false")
-  inspect(q.try_get(), content="None")
+  let q = @async.Queue(kind=Blocking(0))
+  debug_inspect(q.try_put(0), content="false")
+  debug_inspect(q.try_get(), content="None")
 }
 
 ///|
 test "blocking try_put" {
-  let q = @aqueue.Queue::new(kind=Blocking(3))
-  inspect(q.try_put(0), content="true")
-  inspect(q.try_put(1), content="true")
-  inspect(q.try_put(2), content="true")
-  inspect(q.try_put(3), content="false")
+  let q = @async.Queue(kind=Blocking(3))
+  debug_inspect(q.try_put(0), content="true")
+  debug_inspect(q.try_put(1), content="true")
+  debug_inspect(q.try_put(2), content="true")
+  debug_inspect(q.try_put(3), content="false")
   // the last `put` should have no effect
   for i in 0..<3 {
-    assert_eq(q.try_get(), Some(i))
+    @debug.assert_eq(q.try_get(), Some(i))
   }
-  inspect(q.try_get(), content="None")
+  debug_inspect(q.try_get(), content="None")
   // `put` again
-  inspect(q.try_put(0), content="true")
-  inspect(q.try_put(1), content="true")
-  inspect(q.try_put(2), content="true")
-  inspect(q.try_put(3), content="false")
-  inspect(q.try_get(), content="Some(0)")
-  inspect(q.try_put(3), content="true")
-  inspect(q.try_put(4), content="false")
+  debug_inspect(q.try_put(0), content="true")
+  debug_inspect(q.try_put(1), content="true")
+  debug_inspect(q.try_put(2), content="true")
+  debug_inspect(q.try_put(3), content="false")
+  debug_inspect(q.try_get(), content="Some(0)")
+  debug_inspect(q.try_put(3), content="true")
+  debug_inspect(q.try_put(4), content="false")
 }
 
 ///|
 async test "blocked zero buffered try_get" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(0))
-    assert_eq(None, q.try_get())
+    let q = @async.Queue(kind=Blocking(0))
+    @debug.assert_eq(None, q.try_get())
     for i in 0..<3 {
       group.spawn_bg(() => {
         q.put(i)
@@ -249,7 +249,7 @@ async test "blocked zero buffered try_get" {
         log.push("try_get() => \{x}")
       }
     })
-    assert_eq(None, q.try_get())
+    @debug.assert_eq(None, q.try_get())
   })
   json_inspect(log, content=[
     "try_get() => 0", "try_get() => 1", "try_get() => 2", "put(0)", "put(1)", "put(2)",
@@ -260,7 +260,7 @@ async test "blocked zero buffered try_get" {
 async test "blocked zero buffered try_put" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=Blocking(0))
+    let q = @async.Queue(kind=Blocking(0))
     assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
       group.spawn_bg(() => {
@@ -288,8 +288,8 @@ async test "blocked zero buffered try_put" {
 async test "blocked zero buffered discard oldest try_get" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=DiscardOldest(0))
-    assert_eq(None, q.try_get())
+    let q = @async.Queue(kind=DiscardOldest(0))
+    @debug.assert_eq(None, q.try_get())
     for i in 0..<3 {
       group.spawn_bg(() => {
         q.put(i) // will be discarded since the buffer size is 0 and no waiting readers
@@ -301,7 +301,7 @@ async test "blocked zero buffered discard oldest try_get" {
         log.push("try_get() => \{x}")
       }
     })
-    assert_eq(None, q.try_get())
+    @debug.assert_eq(None, q.try_get())
   })
   json_inspect(log, content=["put(0)", "put(1)", "put(2)"])
 }
@@ -310,8 +310,8 @@ async test "blocked zero buffered discard oldest try_get" {
 async test "blocked zero buffered discard oldest try_put" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=DiscardOldest(0))
-    assert_eq(false, q.try_put(-1))
+    let q = @async.Queue(kind=DiscardOldest(0))
+    @debug.assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
       group.spawn_bg(() => {
         let x = q.get()
@@ -327,7 +327,7 @@ async test "blocked zero buffered discard oldest try_put" {
         }
       }
     })
-    assert_eq(false, q.try_put(-1))
+    @debug.assert_eq(false, q.try_put(-1))
   })
   json_inspect(log, content=[
     "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
@@ -338,8 +338,8 @@ async test "blocked zero buffered discard oldest try_put" {
 async test "blocked zero buffered discard latest try_put" {
   let log = []
   @async.with_task_group(group => {
-    let q = @async.Queue::new(kind=DiscardLatest(0))
-    assert_eq(false, q.try_put(-1))
+    let q = @async.Queue(kind=DiscardLatest(0))
+    @debug.assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
       group.spawn_bg(() => {
         let x = q.get()
@@ -355,7 +355,7 @@ async test "blocked zero buffered discard latest try_put" {
         }
       }
     })
-    assert_eq(false, q.try_put(-1))
+    @debug.assert_eq(false, q.try_put(-1))
   })
   json_inspect(log, content=[
     "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",

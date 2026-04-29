@@ -15,9 +15,9 @@
 ///|
 async test "bad client" {
   @async.with_task_group(group => {
-    let server = @http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    let server_result_queue = @async.Queue::new(kind=Unbounded)
+    let server_result_queue = @async.Queue(kind=Unbounded)
     group.spawn_bg(no_wait=true, () => {
       server.run_forever((req, _, conn) => {
         let ws = @websocket.from_http_server(req, conn)
@@ -34,7 +34,7 @@ async test "bad client" {
       })
     })
     async fn test_bad_frames(frames : Array[Bytes]) {
-      let http_client = @http.Client::new("http://localhost:\{port}")
+      let http_client = @http.Client("http://localhost:\{port}")
       defer http_client.close()
       let ws_client = @websocket.from_http_client(http_client, "/")
       defer ws_client.close()

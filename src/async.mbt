@@ -224,7 +224,7 @@ pub async fn[X] all(
   max_concurrent? : Int,
 ) -> Array[X] {
   let semaphore = if max_concurrent is Some(p) {
-    Some(@semaphore.Semaphore::new(p))
+    Some(Semaphore(p))
   } else {
     None
   }
@@ -268,7 +268,7 @@ pub async fn[X] any(
   loc~ : SourceLoc,
 ) -> X {
   let semaphore = if max_concurrent is Some(p) {
-    Some(@semaphore.Semaphore::new(p))
+    Some(Semaphore(p))
   } else {
     None
   }

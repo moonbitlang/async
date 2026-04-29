@@ -62,20 +62,13 @@ priv struct OngoingRequest {
 }
 
 ///|
-pub struct Client {
-  priv host : String
-  priv port : Int
-  priv protocol : Protocol
-  priv headers : Map[String, String]
-  priv mut request : OngoingRequest?
-  priv mut response_body : @js_async.ReadableStream?
-
-  async fn new(
-    uri : String,
-    headers? : Map[String, String],
-    proxy? : Client,
-    verify? : Bool,
-  ) -> Client
+struct Client {
+  host : String
+  port : Int
+  protocol : Protocol
+  headers : Map[String, String]
+  mut request : OngoingRequest?
+  mut response_body : @js_async.ReadableStream?
 }
 
 ///|
@@ -120,7 +113,8 @@ fn Client::connect(
 ///
 /// `verify` is ignored on JS backend
 #warnings("-unused_async")
-pub async fn Client::new(
+#alias(new, deprecated)
+pub async fn Client::Client(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,

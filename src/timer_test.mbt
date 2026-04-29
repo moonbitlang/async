@@ -71,7 +71,8 @@ async test "Timer basic" {
         })
       }
     })
-    log.push("wait again: \{@async.with_timeout_opt(0, () => timer.wait())}")
+    let result = @async.with_timeout_opt(0, () => timer.wait())
+    log.push("wait again: \{@debug.to_string(result)}")
   })
   json_inspect(log, content=[
     "sleep: tick #1", "creating timer", "sleep: tick #2", "timer completed", "timer completed",
@@ -83,7 +84,7 @@ async test "Timer basic" {
 async test "Timer no waiter" {
   let timer = @async.Timer(200)
   @async.sleep(400)
-  inspect(
+  debug_inspect(
     @async.with_timeout_opt(0, () => timer.wait()),
     content=(
       #|Some(())
@@ -213,7 +214,7 @@ async test "Timer::refresh already cancelled" {
   let timer = @async.Timer(300)
   timer.cancel()
   timer.refresh()
-  inspect(
+  debug_inspect(
     @async.with_timeout_opt(0, () => try? timer.wait()),
     content=(
       #|Some(Err(TimerCancelled))

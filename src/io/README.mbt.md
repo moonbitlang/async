@@ -180,34 +180,34 @@ async test "read_some - read next chunk of data" {
       @async.sleep(200)
       w.write("ijkl")
     })
-    inspect(
+    debug_inspect(
       r.read_some(),
       content=(
-        #|Some(b"abcd")
+        #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),
     )
     // `read_some` can optionally accept a length limit
-    inspect(
+    debug_inspect(
       r.read_some(max_len=2),
       content=(
-        #|Some(b"ef")
+        #|Some(<Bytes: [0x65, 0x66]>)
       ),
     )
     // the amount of data returned may be smaller than `max_len`
-    inspect(
+    debug_inspect(
       r.read_some(max_len=4),
       content=(
-        #|Some(b"gh")
+        #|Some(<Bytes: [0x67, 0x68]>)
       ),
     )
-    inspect(
+    debug_inspect(
       r.read_some(),
       content=(
-        #|Some(b"ijkl")
+        #|Some(<Bytes: [0x69, 0x6a, 0x6b, 0x6c]>)
       ),
     )
     // on EOF, `None` is returned
-    inspect(r.read_some(), content="None")
+    debug_inspect(r.read_some(), content="None")
   })
 }
 
@@ -269,21 +269,21 @@ async test "read_until - read text from stream until a separator is found" {
       w.write("defg")
     })
     // read until the separator "|" is met. The separator will be consumed as well
-    inspect(
+    debug_inspect(
       r.read_until("|"),
       content=(
         #|Some("abcd")
       ),
     )
     // .. or read until EOF is reached
-    inspect(
+    debug_inspect(
       r.read_until("|"),
       content=(
         #|Some("defg")
       ),
     )
     // `None` will be returned when no more data is available
-    inspect(r.read_until("|"), content="None")
+    debug_inspect(r.read_until("|"), content="None")
   })
 }
 

@@ -30,15 +30,14 @@ priv struct Waiter {
 
 ///|
 /// A condition variable that can be used for synchronization between tasks.
-pub struct Cond {
-  priv waiters : @deque.Deque[Waiter]
-
-  fn new() -> Cond
+struct Cond {
+  waiters : @deque.Deque[Waiter]
 }
 
 ///|
 /// Create a new condition variable.
-pub fn Cond::new() -> Cond {
+#alias(new, deprecated)
+pub fn Cond::Cond() -> Cond {
   { waiters: @deque.new() }
 }
 

@@ -54,7 +54,7 @@ async test "getsockname UDP" {
       peer_addr
     })
     let client_addr = group.spawn(() => {
-      let client = @socket.UdpClient::new(server_addr)
+      let client = @socket.UdpClient(server_addr)
       defer client.close()
       client.send(b"abcd")
       client.addr

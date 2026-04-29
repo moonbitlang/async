@@ -161,7 +161,7 @@ fn Conn::new(
     read_mask: None,
     mask_offset: 0,
     utf8_remaining: -1,
-    write_lock: @semaphore.Semaphore::new(1),
+    write_lock: @semaphore.Semaphore(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
       MAX_HEADER_SIZE + MASK_SIZE
@@ -736,7 +736,7 @@ pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
     defer self.write_lock.release()
     self.transport.write(frame.unsafe_reinterpret_as_bytes())
   }
-  let msg = msg.to_bytes()
+  let msg = msg.to_owned()
   guard !self.pings.contains(msg) else {
     raise Failure::Failure(
       "A PING request with the same payload is already pending",

@@ -51,14 +51,13 @@ pub struct Timer {
   priv mut expire_time : Int64
   // invariant: `waiters` is non-empty iff `state` is `Running`
   priv waiters : Set[@coroutine.Coroutine]
-
-  fn new(duration : Int) -> Timer
 }
 
 ///|
 /// Create a new timer that expires after `duration` milliseconds.
 /// The timer will start immediately, and expire after the duration elapsed.
-pub fn Timer::new(duration : Int) -> Timer {
+#alias(new, deprecated)
+pub fn Timer::Timer(duration : Int) -> Timer {
   let expire_time = @time.ms_since_epoch() + duration.to_int64()
   { state: Detached, duration, expire_time, waiters: Set::new() }
 }
