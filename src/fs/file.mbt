@@ -356,8 +356,17 @@ pub async fn remove(path : StringView) -> Unit {
 
 ///|
 /// Rename (move) the file located at `old_path` to `new_path`.
-pub async fn rename(old_path : StringView, new_path : StringView) -> Unit {
-  @event_loop.rename(old_path, new_path, context="@fs.rename()")
+///
+/// If `replace` is `true` (`true` by default),
+/// and a file already exist on `new_path`, that file will be replaced.
+/// In this case, open handles to the existing file remain valid,
+/// and still point to the old file.
+pub async fn rename(
+  old_path : StringView,
+  new_path : StringView,
+  replace? : Bool = true,
+) -> Unit {
+  @event_loop.rename(old_path, new_path, replace~, context="@fs.rename()")
 }
 
 ///|
