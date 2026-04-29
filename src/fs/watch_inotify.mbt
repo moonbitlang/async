@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 priv struct InotifyWatchedDirectory {
   mut rel_path : String
   mut full_path : String
@@ -20,6 +21,7 @@ priv struct InotifyWatchedDirectory {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatchedDirectory::child_rel_path(
   dir : InotifyWatchedDirectory,
   name : String,
@@ -32,6 +34,7 @@ fn InotifyWatchedDirectory::child_rel_path(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatchedDirectory::child_full_path(
   dir : InotifyWatchedDirectory,
   name : String,
@@ -40,6 +43,7 @@ fn InotifyWatchedDirectory::child_full_path(
 }
 
 ///|
+#cfg(not(platform="windows"))
 priv struct InotifyWatcher {
   root_path : String
   watcher : @event_loop.IoHandle
@@ -51,9 +55,11 @@ priv struct InotifyWatcher {
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang_async_inotify_create"
 
 ///|
+#cfg(not(platform="windows"))
 async fn InotifyWatcher::InotifyWatcher(path : String) -> InotifyWatcher {
   let watcher = InotifyWatcher::new_ffi()
   if !@fd_util.fd_is_valid(watcher) {
@@ -97,6 +103,7 @@ async fn InotifyWatcher::InotifyWatcher(path : String) -> InotifyWatcher {
 }
 
 ///|
+#cfg(not(platform="windows"))
 impl WatcherImpl for InotifyWatcher with close(self) {
   if self.event_processor is Some(coro) {
     coro.cancel()
@@ -108,6 +115,7 @@ impl WatcherImpl for InotifyWatcher with close(self) {
 }
 
 ///|
+#cfg(not(platform="windows"))
 impl WatcherImpl for InotifyWatcher with wait(self) {
   if self.err is Some(err) {
     raise err
@@ -130,6 +138,7 @@ impl WatcherImpl for InotifyWatcher with wait(self) {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatcher::emit_event(self : InotifyWatcher, event : FsEvent) -> Unit {
   self.pending_events.add(event)
   if self.waiter is Some(coro) {
@@ -138,6 +147,7 @@ fn InotifyWatcher::emit_event(self : InotifyWatcher, event : FsEvent) -> Unit {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(path)
 extern "C" fn InotifyWatcher::add_dir_ffi(
   watcher : @fd_util.Fd,
@@ -145,6 +155,7 @@ extern "C" fn InotifyWatcher::add_dir_ffi(
 ) -> Int = "moonbitlang_async_inotify_add_dir"
 
 ///|
+#cfg(not(platform="windows"))
 async fn InotifyWatcher::scan_dir(
   self : InotifyWatcher,
   dir : InotifyWatchedDirectory,
@@ -161,6 +172,7 @@ async fn InotifyWatcher::scan_dir(
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn InotifyWatcher::emit_create(
   self : InotifyWatcher,
   parent : InotifyWatchedDirectory,
@@ -175,6 +187,7 @@ async fn InotifyWatcher::emit_create(
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn InotifyWatcher::add_file(
   self : InotifyWatcher,
   parent : InotifyWatchedDirectory,
@@ -217,12 +230,14 @@ async fn InotifyWatcher::add_file(
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyWatcher::remove_dir_ffi(
   watcher : @fd_util.Fd,
   wd : @fd_util.Fd,
 ) -> Unit = "moonbitlang_async_inotify_remove_dir"
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatcher::emit_remove(
   self : InotifyWatcher,
   parent : InotifyWatchedDirectory,
@@ -234,6 +249,7 @@ fn InotifyWatcher::emit_remove(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatcher::remove_file(
   self : InotifyWatcher,
   parent : InotifyWatchedDirectory,
@@ -252,6 +268,7 @@ fn InotifyWatcher::remove_file(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatcher::rename(
   self : InotifyWatcher,
   src_dir : InotifyWatchedDirectory,
@@ -278,6 +295,7 @@ fn InotifyWatcher::rename(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn InotifyWatcher::update_path(
   self : InotifyWatcher,
   wd : @fd_util.Fd,
@@ -299,13 +317,16 @@ fn InotifyWatcher::update_path(
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyWatcher::event_buffer_size() -> Int = "moonbitlang_async_inotify_event_buffer_size"
 
 ///|
+#cfg(not(platform="windows"))
 #external
 priv type InotifyEvent
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn InotifyWatcher::get_os_event(
   buf : FixedArray[Byte],
@@ -317,6 +338,7 @@ extern "C" fn InotifyWatcher::get_os_event(
 /// - positive => number of bytes written
 /// - zero => no more event available currently
 /// - negative => error
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn InotifyWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
@@ -324,42 +346,55 @@ extern "C" fn InotifyWatcher::fetch_os_event(
 ) -> Int = "moonbitlang_async_inotify_fetch_event"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::get_size(event : InotifyEvent) -> Int = "moonbitlang_async_inotify_event_get_size"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::get_wd(event : InotifyEvent) -> @fd_util.Fd = "moonbitlang_async_inotify_event_get_wd"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::get_name_len(event : InotifyEvent) -> Int = "moonbitlang_async_inotify_event_get_name_len"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::get_name(event : InotifyEvent) -> @c_buffer.Buffer = "moonbitlang_async_inotify_event_get_name"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::get_cookie(event : InotifyEvent) -> UInt = "moonbitlang_async_inotify_event_get_cookie"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_create(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_create"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_remove(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_remove"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_modify(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_modify"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_rename_from(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_rename_from"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_rename_to(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_rename_to"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_overflow(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_overflow"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn InotifyEvent::has_ignore(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_ignore"
 
 ///|
+#cfg(not(platform="windows"))
 async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
   let context = "@fs.Watcher::wait()"
   let buf = FixedArray::make(InotifyWatcher::event_buffer_size(), b'\x00')

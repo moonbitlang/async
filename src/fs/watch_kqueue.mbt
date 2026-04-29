@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 #valtype
 priv struct FileIdentity {
   dev_id : UInt64
@@ -20,6 +21,7 @@ priv struct FileIdentity {
 } derive(Eq, Hash)
 
 ///|
+#cfg(not(platform="windows"))
 priv struct KqueueWatchedFile {
   fd : @fd_util.Fd
   kind : @fd_util.FileKind
@@ -30,6 +32,7 @@ priv struct KqueueWatchedFile {
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatchedFile::child_rel_path(
   dir : KqueueWatchedFile,
   name : String,
@@ -42,6 +45,7 @@ fn KqueueWatchedFile::child_rel_path(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatchedFile::child_full_path(
   dir : KqueueWatchedFile,
   name : String,
@@ -50,6 +54,7 @@ fn KqueueWatchedFile::child_full_path(
 }
 
 ///|
+#cfg(not(platform="windows"))
 priv enum KqueueInternalEvent {
   Create(parent~ : KqueueWatchedFile, name~ : String, file_id~ : FileIdentity?)
   Remove(parent~ : KqueueWatchedFile, name~ : String, file_id~ : FileIdentity?)
@@ -63,6 +68,7 @@ priv enum KqueueInternalEvent {
 }
 
 ///|
+#cfg(not(platform="windows"))
 priv struct KqueueWatcher {
   watcher : @event_loop.IoHandle
   watched : Map[@fd_util.Fd, KqueueWatchedFile]
@@ -73,12 +79,15 @@ priv struct KqueueWatcher {
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn KqueueWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_create"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn KqueueWatcher::event_buffer_size() -> Int = "moonbitlang_async_kqueue_watcher_buffer_size"
 
 ///|
+#cfg(not(platform="windows"))
 async fn KqueueWatcher::KqueueWatcher(path : String) -> KqueueWatcher {
   let context = "@fs.Watcher::new()"
   let watcher = KqueueWatcher::new_ffi()
@@ -110,6 +119,7 @@ async fn KqueueWatcher::KqueueWatcher(path : String) -> KqueueWatcher {
 }
 
 ///|
+#cfg(not(platform="windows"))
 impl WatcherImpl for KqueueWatcher with close(self) {
   self.watcher.close()
   for _, file in self.watched {
@@ -120,10 +130,12 @@ impl WatcherImpl for KqueueWatcher with close(self) {
 }
 
 ///|
+#cfg(not(platform="windows"))
 #external
 priv type KqueueEvent
 
 ///|
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn KqueueWatcher::get_os_event(
   buf : FixedArray[Byte],
@@ -135,6 +147,7 @@ extern "C" fn KqueueWatcher::get_os_event(
 /// - positive => number of bytes written
 /// - zero => no more event available currently
 /// - negative => error
+#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn KqueueWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
@@ -142,12 +155,15 @@ extern "C" fn KqueueWatcher::fetch_os_event(
 ) -> Int = "moonbitlang_async_kqueue_watcher_fetch_event"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn KqueueEvent::fd(event : KqueueEvent) -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_event_get_fd"
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn KqueueEvent::has_modify(event : KqueueEvent) -> Bool = "moonbitlang_async_kqueue_watcher_event_has_modify"
 
 ///|
+#cfg(not(platform="windows"))
 impl WatcherImpl for KqueueWatcher with wait(self) {
   let context = "@fs.Watcher::wait()"
   self.watcher.prepare_read()
@@ -173,6 +189,7 @@ impl WatcherImpl for KqueueWatcher with wait(self) {
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn KqueueWatcher::process_event(
   self : KqueueWatcher,
   event : KqueueInternalEvent,
@@ -200,6 +217,7 @@ async fn KqueueWatcher::process_event(
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn KqueueWatcher::try_fetch_events(
   self : KqueueWatcher,
   context~ : String,
@@ -228,6 +246,7 @@ async fn KqueueWatcher::try_fetch_events(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::emit_event(
   self : KqueueWatcher,
   event : KqueueInternalEvent,
@@ -236,6 +255,7 @@ fn KqueueWatcher::emit_event(
 }
 
 ///|
+#cfg(not(platform="windows"))
 async fn KqueueWatcher::scan_dir(
   self : KqueueWatcher,
   dir : KqueueWatchedFile,
@@ -271,6 +291,7 @@ async fn KqueueWatcher::scan_dir(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::emit_remove(
   self : KqueueWatcher,
   id : FileIdentity,
@@ -297,6 +318,7 @@ fn KqueueWatcher::emit_remove(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::emit_create(
   self : KqueueWatcher,
   id : FileIdentity,
@@ -323,12 +345,14 @@ fn KqueueWatcher::emit_create(
 }
 
 ///|
+#cfg(not(platform="windows"))
 extern "C" fn KqueueWatcher::add_file_ffi(
   watcher : @fd_util.Fd,
   fd : @fd_util.Fd,
 ) -> Int = "moonbitlang_async_kqueue_watcher_add_file"
 
 ///|
+#cfg(not(platform="windows"))
 async fn KqueueWatcher::add_file(
   self : KqueueWatcher,
   path : String,
@@ -368,6 +392,7 @@ async fn KqueueWatcher::add_file(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::remove_file(
   self : KqueueWatcher,
   dir : KqueueWatchedFile,
@@ -389,6 +414,7 @@ fn KqueueWatcher::remove_file(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::rename(
   self : KqueueWatcher,
   src_dir : KqueueWatchedFile,
@@ -403,6 +429,7 @@ fn KqueueWatcher::rename(
 }
 
 ///|
+#cfg(not(platform="windows"))
 fn KqueueWatcher::update_path(
   self : KqueueWatcher,
   file : KqueueWatchedFile,

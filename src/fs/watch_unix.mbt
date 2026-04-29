@@ -13,17 +13,20 @@
 // limitations under the License.
 
 ///|
+#cfg(not(platform="windows"))
 priv trait WatcherImpl {
   close(Self) -> Unit
   async wait(Self) -> FsEvent
 }
 
 ///|
+#cfg(not(platform="windows"))
 struct Watcher {
   impl_ : &WatcherImpl
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn Watcher::Watcher(path : String) -> Watcher {
   match @event_loop.platform {
     Linux => { impl_: InotifyWatcher(path) }
@@ -33,11 +36,13 @@ pub async fn Watcher::Watcher(path : String) -> Watcher {
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub fn Watcher::close(self : Watcher) -> Unit {
   self.impl_.close()
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn Watcher::wait(self : Watcher) -> FsEvent {
   self.impl_.wait()
 }
