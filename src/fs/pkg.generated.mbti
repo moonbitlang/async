@@ -111,7 +111,7 @@ pub(all) enum FileKind {
 #deprecated
 pub impl Show for FileKind
 
-pub enum FsEvent {
+pub(all) enum FsEvent {
   Create(String)
   Remove(String)
   Rename(old~ : String, new~ : String)
@@ -138,11 +138,9 @@ pub(all) enum SyncMode {
 
 pub struct Watcher {
   // private fields
-
-  async fn new(String) -> Watcher
 }
+pub async fn Watcher::Watcher(String) -> Self
 pub fn Watcher::close(Self) -> Unit
-pub async fn Watcher::new(String) -> Self
 pub async fn Watcher::wait(Self) -> FsEvent
 
 // Type aliases

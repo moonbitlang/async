@@ -20,12 +20,25 @@ priv trait WatcherImpl {
 }
 
 ///|
+/// A file system watcher for monitoring file system changes.
 #cfg(not(platform="windows"))
 struct Watcher {
   impl_ : &WatcherImpl
 }
 
 ///|
+/// Create a new file system watcher that watches 
+/// the directory at `path` recursively.
+/// Currently only directory watching is supported.
+///
+/// New files in the directory and its sub directories
+/// will be watched automatically after reported.
+/// Files will also be automatically unwatched
+/// when they are moved out of the watched directory.
+///
+/// When the root directory is renamed or deleted,
+/// currently no event will be generated,
+/// due to limitation of Windows API.
 #cfg(not(platform="windows"))
 pub async fn Watcher::Watcher(path : String) -> Watcher {
   match @event_loop.platform {
@@ -42,6 +55,7 @@ pub fn Watcher::close(self : Watcher) -> Unit {
 }
 
 ///|
+/// Wait for and return the next file system event in a watcher.
 #cfg(not(platform="windows"))
 pub async fn Watcher::wait(self : Watcher) -> FsEvent {
   self.impl_.wait()

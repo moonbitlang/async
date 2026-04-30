@@ -41,7 +41,7 @@ pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~
 
 pub let platform : Platform
 
-pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
+pub async fn readdir(Int, FixedArray[Byte], Int, restart~ : Bool, context~ : String) -> Int
 
 pub async fn realpath(StringView, context~ : String) -> String
 
@@ -102,7 +102,9 @@ pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : 
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 
 type OpenResult
+pub fn OpenResult::dev_id(Self) -> UInt64
 pub fn OpenResult::fd(Self) -> Int
+pub fn OpenResult::file_id(Self) -> UInt64
 pub fn OpenResult::kind(Self) -> @fd_util.FileKind
 
 pub(all) enum Platform {

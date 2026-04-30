@@ -54,7 +54,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] signal handling
     - [X] graceful cancellation on receiving `SIGINT` etc.
     - [ ] custom signal handling logic
-- [ ] file system watching
+- [X] file system watching
 - [X] structured concurrency
 - [X] cooperative multi tasking
 - [X] IO worker thread
