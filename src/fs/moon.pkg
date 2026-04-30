@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/buffer",
   "moonbitlang/core/int",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/deque",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",
@@ -11,6 +12,8 @@ import {
   "moonbitlang/async/internal/env_util",
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async",
+  "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/c_buffer",
 }
 
 import {
@@ -22,7 +25,13 @@ import {
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "dir.c" ],
+  "native-stub": [
+    "stub.c",
+    "dir.c",
+    "watch_inotify.c",
+    "watch_kqueue.c",
+    "watch_windows.c",
+  ],
   targets: {
     "README.mbt.md": [ "native" ],
     "access_test.mbt": [ "native" ],
@@ -48,5 +57,11 @@ options(
     "tmpdir_test.mbt": [ "native" ],
     "utils.mbt": [ "native" ],
     "walk_test.mbt": [ "native" ],
+    "watch.mbt": [ "native" ],
+    "watch_inotify.mbt": [ "native" ],
+    "watch_kqueue.mbt": [ "native" ],
+    "watch_test.mbt": [ "native" ],
+    "watch_unix.mbt": [ "native" ],
+    "watch_windows.mbt": [ "native" ],
   },
 )

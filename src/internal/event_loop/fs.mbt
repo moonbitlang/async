@@ -15,7 +15,7 @@
 ///|
 pub async fn open_detached(
   path : StringView,
-  // 0 => read only, 1 => write only, 2 => read write
+  // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
   access : Int,
   // See `@fs.CreateMode` for more details
   create~ : Int,
@@ -279,9 +279,10 @@ pub async fn readdir(
   dir : @fd_util.Fd,
   buf : FixedArray[Byte],
   len : Int,
+  restart~ : Bool,
   context~ : String,
 ) -> Int {
-  let job = Job::readdir(dir, buf, len)
+  let job = Job::readdir(dir, buf, len, restart)
   perform_job_in_worker(job, context~)
 }
 
@@ -311,4 +312,43 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
     err => raise err
   }
   job.get_realpath_result()
+}
+
+///|
+#cfg(platform="windows")
+extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read_dir_changes"
+
+///|
+/// zero return value indicates overflow
+#cfg(platform="windows")
+pub async fn IoHandle::read_dir_changes(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  context~ : String,
+) -> Int {
+  @coroutine.check_cancellation()
+  guard curr_loop.val is Some(evloop)
+  guard handle.kind is Directory
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  let result = IoResult::for_read_dir_changes(
+    job_id,
+    buf.unsafe_reinterpret_as_bytes(),
+    len=buf.length(),
+  )
+  defer result.free()
+  let n = read_dir_changes_ffi(handle.fd, result)
+  if n >= 0 {
+    @coroutine.pause()
+    n
+  } else if @os_error.is_nonblocking_io_error() {
+    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    result.status(handle.fd, context~) catch {
+      @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
+      err => raise err
+    }
+  } else {
+    @os_error.check_errno(context)
+    panic()
+  }
 }

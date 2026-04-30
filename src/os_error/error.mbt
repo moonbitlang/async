@@ -34,6 +34,9 @@ extern "C" fn errno_is_EACCES(errno : Int) -> Bool = "moonbitlang_async_is_EACCE
 extern "C" fn errno_is_ECONNREFUSED(errno : Int) -> Bool = "moonbitlang_async_is_ECONNREFUSED"
 
 ///|
+extern "C" fn errno_is_ERROR_NOTIFY_ENUM_DIR(errno : Int) -> Bool = "moonbitlang_async_is_ERROR_NOTIFY_ENUM_DIR"
+
+///|
 pub fn is_nonblocking_io_error() -> Bool {
   errno_is_nonblocking_io_error(get_errno())
 }
@@ -104,6 +107,13 @@ pub fn OSError::is_EACCES(err : OSError) -> Bool {
 pub fn OSError::is_ECONNREFUSED(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno_is_ECONNREFUSED(errno)
+}
+
+///|
+/// Detect whether the error is the `ECONNREFUSED` (connection refused) error.
+pub fn OSError::is_ERROR_NOTIFY_ENUM_DIR(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno_is_ERROR_NOTIFY_ENUM_DIR(errno)
 }
 
 ///|

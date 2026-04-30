@@ -192,12 +192,20 @@ extern "C" fn Directory::entry_is_hidden(
 ) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
 
 ///|
+#borrow(buf)
+extern "C" fn Directory::entry_file_id(
+  buf : FixedArray[Byte],
+  offset : Int,
+) -> UInt64 = "moonbitlang_async_dir_entry_get_file_id"
+
+///|
 #valtype
 pub struct DirectoryEntry {
   name : String
   /// Indicate whether the directory entry is another directory.
   /// Symbolic links are not treated as directories here.
   is_dir : Bool
+  priv file_id : UInt64
 }
 
 ///|
@@ -230,6 +238,7 @@ async fn Directory::next_aux(
   dir : Directory,
   include_hidden~ : Bool,
   include_special~ : Bool,
+  restart? : Bool = false,
   context~ : String,
 ) -> DirectoryEntry? {
   match dir.state {
@@ -242,6 +251,7 @@ async fn Directory::next_aux(
         dir.fd,
         dir.buf,
         dir.buf.length(),
+        restart~,
         context~,
       )
       if dir.job_ret is 0 {
@@ -287,7 +297,8 @@ async fn Directory::next_aux(
       kind is Directory
     }
   }
-  Some({ name, is_dir })
+  let file_id = Directory::entry_file_id(dir.buf, offset)
+  Some({ name, is_dir, file_id })
 }
 
 ///|

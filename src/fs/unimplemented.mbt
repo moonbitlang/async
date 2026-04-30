@@ -25,4 +25,5 @@ pub let unimplemented : Unit = {
   ignore(@os_string.unimplemented)
   ignore(@env_util.unimplemented)
   ignore(@c_buffer.unimplemented)
+  ignore(@coroutine.pause)
 }

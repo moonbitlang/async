@@ -39,7 +39,8 @@ enum IoResultKind {
   Socket,
   SocketWithAddr,
   Connect,
-  Accept
+  Accept,
+  ReadDirChanges
 };
 
 struct IoResult {
@@ -102,6 +103,13 @@ struct AcceptIoResult {
   // output buffer used for `AcceptEx`
   DWORD bytes_received;
   char accept_buffer[sizeof(struct sockaddr_storage) * 2];
+};
+
+struct ReadDirChangesIoResult {
+  struct IoResult header;
+
+  char *buf;
+  int32_t len;
 };
 
 static inline
@@ -186,6 +194,18 @@ struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t job_id) {
 }
 
 MOONBIT_FFI_EXPORT
+struct ReadDirChangesIoResult *moonbitlang_async_make_read_dir_changes_io_result(
+  int32_t job_id,
+  char *buf,
+  int32_t len
+) {
+  struct ReadDirChangesIoResult *result = MAKE_IO_RESULT(job_id, ReadDirChanges);
+  result->buf = buf;
+  result->len = len;
+  return result;
+}
+
+MOONBIT_FFI_EXPORT
 void moonbitlang_async_free_io_result(struct IoResult *obj) {
   switch (obj->kind) {
   case File:
@@ -202,6 +222,9 @@ void moonbitlang_async_free_io_result(struct IoResult *obj) {
     moonbit_decref(((struct ConnectIoResult*)obj)->addr);
     break;
   case Accept:
+    break;
+  case ReadDirChanges:
+    moonbit_decref(((struct ReadDirChangesIoResult*)obj)->buf);
     break;
   }
   free(obj);
@@ -479,6 +502,38 @@ int32_t moonbitlang_async_setup_accepted_socket(HANDLE listen_sock, HANDLE accep
 MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_get_std_handle(int32_t id) {
   return GetStdHandle(id);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_read_dir_changes(HANDLE dir, struct ReadDirChangesIoResult *result) {
+  DWORD bytes_returned;
+  BOOL ret = ReadDirectoryChangesW(
+    dir,
+    result->buf,
+    result->len,
+    TRUE,
+    FILE_NOTIFY_CHANGE_FILE_NAME
+    | FILE_NOTIFY_CHANGE_DIR_NAME
+    | FILE_NOTIFY_CHANGE_SIZE
+    | FILE_NOTIFY_CHANGE_LAST_WRITE,
+    &bytes_returned,
+    (LPOVERLAPPED)result,
+    NULL
+  );
+  if (!ret)
+    return -1;
+
+  // According to https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw,
+  // `ReadDirectoryChangesW` return `TRUE` when the completion packet is succesfully queued,
+  // which contradicts with general overlapped IO practice,
+  // where the operation should fail with `ERROR_IO_PENDING`.
+  // So `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` probably just isn't supported by `ReadDirectoryChangesW`.
+  // HOPEFULLY Microsoft won't suddenly decide that this should work someday,
+  // because that will break the code here.
+  // Also funny enough: `bytes_returned` will actually be written to some meaningful value immediately.
+  // So we cannot use that to decide if the operation has completed immediately (it probably just never will).
+  SetLastError(ERROR_IO_PENDING);
+  return -1;
 }
 
 #endif // #ifdef _WIN32

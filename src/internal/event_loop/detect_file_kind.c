@@ -50,6 +50,16 @@ BOOL handle_is_socket(HANDLE handle) {
 }
 
 MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_kind_from_attr(DWORD attrs) {
+  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+    return SymLink;
+  else if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+    return Directory;
+  else
+    return Regular;
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_kind_of_fd(HANDLE handle) {
   SetLastError(0);
   DWORD kind = GetFileType(handle);
@@ -66,12 +76,7 @@ int32_t moonbitlang_async_kind_of_fd(HANDLE handle) {
       ) {
         return -1;
       }
-      if (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        return Directory;
-      else if (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
-        return SymLink;
-      else
-        return Regular;
+      return moonbitlang_async_kind_from_attr(info.FileAttributes);
     }
     case FILE_TYPE_CHAR:    return CharDevice;
     case FILE_TYPE_PIPE:    return handle_is_socket(handle) > 0 ? Socket : Pipe;
