@@ -58,3 +58,151 @@ pub(all) enum FsEvent {
   Modify(String)
   Overflow
 } derive(Eq, Hash, Debug)
+
+///|
+#valtype
+priv struct FileIdentity {
+  dev_id : UInt64
+  file_id : UInt64
+} derive(Eq, Hash)
+
+///|
+priv struct WatchedFile {
+  fd : @fd_util.Fd
+  paths : Set[String]
+  kind : @fd_util.FileKind
+  children : Map[String, FileIdentity]
+}
+
+///|
+priv struct PendingChange {
+  link : Array[(FileIdentity, String)]
+  unlink : Array[(FileIdentity, String)]
+  mut modified : Bool
+}
+
+///|
+priv trait WatcherBackend {
+  close(Self) -> Unit
+  async wait(Self) -> Unit
+}
+
+///|
+struct Watcher {
+  mut backend : &WatcherBackend?
+  root : WatchedFile
+  /// The status of `watched` is the status the user has currently retrieved.
+  /// Assume `pending` is up-to-date, applying `pending` on `watched`
+  /// should result in the current state of the watched tree
+  watched : Map[FileIdentity, WatchedFile]
+  pending : Map[FileIdentity, PendingChange]
+}
+
+///|
+fn[X : Eq + Hash] Set::pop(self : Set[X]) -> X? {
+  let result = self.iter().next()
+  if result is Some(elem) {
+    self.remove(elem)
+  }
+  result
+}
+
+///|
+fn WatchedFile::child_path(self : WatchedFile, name : String) -> String {
+  guard self.paths.iter().next() is Some(path)
+  if path is "" {
+    name
+  } else {
+    "\{path}/\{name}"
+  }
+}
+
+///|
+pub async fn Watcher::wait(self : Watcher) -> Array[FsEvent] {
+  ...
+  let events = []
+  while self.pending.keys().next() is Some(id) {
+    self.emit_changes_for(id, into=events)
+  }
+  events
+}
+
+///|
+fn Watcher::emit_changes_for(
+  self : Watcher,
+  id : FileIdentity,
+  into~ : Array[FsEvent],
+) -> Unit {
+  guard self.pending.get(id) is Some(changes) else { return }
+  self.pending.remove(id)
+  let file = self.watched[id]
+  if file.kind is Directory {
+    for child_id in file.children.values() {
+      self.emit_changes_for(child_id, into~)
+    }
+  }
+  for link = changes.link[:], unlink = changes.unlink[:] {
+    match (link, unlink) {
+      ([], []) => break
+      ([(dir, name), .. link], []) => {
+        let dir = self.watched[dir]
+        let path = dir.child_path(name)
+        if dir.children.get(name) is Some(existing) {
+          self.emit_changes_for(existing, into~)
+        }
+        into.push(Create(path))
+        dir.children[name] = id
+        file.paths.add(path)
+        continue link, unlink
+      }
+      ([], [(dir, name), .. unlink]) => {
+        let dir = self.watched[dir]
+        let path = dir.child_path(name)
+        into.push(Remove(path))
+        dir.children.remove(name)
+        file.paths.remove(path)
+        continue link, unlink
+      }
+      ([(dst, dst_name), .. link], [(src, src_name), .. unlink]) => {
+        let src = self.watched[src]
+        let dst = self.watched[dst]
+        let old = src.child_path(src_name)
+        let new = dst.child_path(dst_name)
+        into.push(Remove(old))
+        src.children.remove(src_name)
+        file.paths.remove(old)
+        let curr_len = into.length()
+        if dst.children.get(dst_name) is Some(existing) {
+          self.emit_changes_for(existing, into~)
+        }
+        if curr_len == into.length() {
+          let _ = into.pop()
+          into.push(Rename(old~, new~))
+        } else {
+          into.push(Create(new))
+        }
+        dst.children[dst_name] = id
+        file.paths.add(new)
+        continue link, unlink
+      }
+    }
+  }
+  if changes.modified {
+    for path in file.paths {
+      into.push(Modify(path))
+    }
+  }
+  if file.paths.is_empty() {
+    self.watched.remove(id)
+  }
+}
+
+///|
+fn Watcher::get_changes_for(self : Watcher, id : FileIdentity) -> PendingChange {
+  if self.pending.get(id) is Some(changes) {
+    return changes
+  }
+  let changes = { link: [], unlink: [], modified: false }
+  self.pending[id] = changes
+  changes
+}
