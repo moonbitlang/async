@@ -25,7 +25,13 @@ import {
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "dir.c", "watch_inotify.c", "watch_kqueue.c" ],
+  "native-stub": [
+    "stub.c",
+    "dir.c",
+    "watch_inotify.c",
+    "watch_kqueue.c",
+    "watch_windows.c",
+  ],
   targets: {
     "README.mbt.md": [ "native" ],
     "access_test.mbt": [ "native" ],
@@ -56,5 +62,6 @@ options(
     "watch_kqueue.mbt": [ "native" ],
     "watch_test.mbt": [ "native" ],
     "watch_unix.mbt": [ "native" ],
+    "watch_windows.mbt": [ "native" ],
   },
 )

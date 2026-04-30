@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub enum FsEvent {
+pub(all) enum FsEvent {
   Create(String)
   Remove(String)
   Rename(old~ : String, new~ : String)

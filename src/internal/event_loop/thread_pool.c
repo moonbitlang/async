@@ -95,7 +95,9 @@ typedef int SOCKET;
 // defined in `detect_file_kind.c`
 int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
 
-#ifndef _WIN32
+#ifdef _WIN32
+int32_t moonbitlang_async_file_kind_from_attr(DWORD attrs);
+#else
 int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
 #endif
 
@@ -685,7 +687,7 @@ struct open_job {
   int mode;
   HANDLE result;
 #ifdef _WIN32
-  int32_t kind;
+  BY_HANDLE_FILE_INFORMATION stat;
 #else
   struct stat stat;
 #endif
@@ -700,10 +702,15 @@ void free_open_job(void *obj) {
 static
 void open_job_worker(struct job *job) {
 #ifdef _WIN32
-  static int access_flags[] = { GENERIC_READ, GENERIC_WRITE, GENERIC_READ | GENERIC_WRITE };
+  static int access_flags[] = {
+    GENERIC_READ,
+    GENERIC_WRITE,
+    GENERIC_READ | GENERIC_WRITE,
+    FILE_LIST_DIRECTORY
+  };
   static int create_modes[] = { OPEN_EXISTING, TRUNCATE_EXISTING, OPEN_ALWAYS, CREATE_ALWAYS, CREATE_NEW };
 #else
-  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
+  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY };
   static int create_modes[] = {
     0,
     O_TRUNC,
@@ -718,6 +725,8 @@ void open_job_worker(struct job *job) {
 
 #ifdef _WIN32
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
+  if (open_job->access == 3)
+    flags |= FILE_FLAG_OVERLAPPED;
 
   DWORD access_flag = access_flags[open_job->access];
   if (open_job->append)
@@ -751,9 +760,12 @@ void open_job_worker(struct job *job) {
     }
   } while (0);
 
+  if (open_job->access == 4) {
+    printf("open() => %lx\n", open_job->result);
+  }
+
   // get the kind of the file
-  open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
-  if (open_job->kind < 0) {
+  if (!GetFileInformationByHandle(open_job->result, &open_job->stat)) {
     job->err = GetLastError();
     CloseHandle(open_job->result);
   }
@@ -813,7 +825,7 @@ HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
 #ifdef _WIN32
-  return job->kind;
+  return moonbitlang_async_kind_from_attr(job->stat.dwFileAttributes);
 #else
   return moonbitlang_async_file_kind_from_stat(&job->stat);
 #endif
@@ -822,8 +834,7 @@ int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
 MOONBIT_FFI_EXPORT
 uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
 #ifdef _WIN32
-  // TODO
-  moonbit_panic();
+  return job->stat.dwVolumeSerialNumber;
 #else
   return job->stat.st_dev;
 #endif
@@ -832,8 +843,7 @@ uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
 MOONBIT_FFI_EXPORT
 uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
 #ifdef _WIN32
-  // TODO
-  moonbit_panic();
+  return ((uint64_t)(job->stat.nFileIndexHigh) << 32) | (uint64_t)(job->stat.nFileIndexLow);
 #else
   return job->stat.st_ino;
 #endif

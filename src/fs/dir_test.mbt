@@ -25,10 +25,10 @@ async test "read_all" {
     "watch.mbt", "tmpdir.mbt", "dir_test.mbt", "eof_test.mbt", "README.mbt.md", "constants.mbt",
     "lock_test.mbt", "stat_test.mbt", "walk_test.mbt", "deprecated.mbt", "mkdir_test.mbt",
     "watch_kqueue.c", "watch_test.mbt", "watch_unix.mbt", "access_test.mbt", "create_test.mbt",
-    "rename_test.mbt", "tmpdir_test.mbt", "watch_inotify.c", "watch_kqueue.mbt",
+    "rename_test.mbt", "tmpdir_test.mbt", "watch_inotify.c", "watch_windows.c", "watch_kqueue.mbt",
     "read_all_test.mbt", "realpath_test.mbt", "unimplemented.mbt", "watch_inotify.mbt",
-    "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt", "named_pipe_test.mbt",
-    "random_access_test.mbt", "unimplemented_test.mbt",
+    "watch_windows.mbt", "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt",
+    "named_pipe_test.mbt", "random_access_test.mbt", "unimplemented_test.mbt",
   ])
 }
 
@@ -44,10 +44,10 @@ async test "as_dir" {
     "watch.mbt", "tmpdir.mbt", "dir_test.mbt", "eof_test.mbt", "README.mbt.md", "constants.mbt",
     "lock_test.mbt", "stat_test.mbt", "walk_test.mbt", "deprecated.mbt", "mkdir_test.mbt",
     "watch_kqueue.c", "watch_test.mbt", "watch_unix.mbt", "access_test.mbt", "create_test.mbt",
-    "rename_test.mbt", "tmpdir_test.mbt", "watch_inotify.c", "watch_kqueue.mbt",
+    "rename_test.mbt", "tmpdir_test.mbt", "watch_inotify.c", "watch_windows.c", "watch_kqueue.mbt",
     "read_all_test.mbt", "realpath_test.mbt", "unimplemented.mbt", "watch_inotify.mbt",
-    "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt", "named_pipe_test.mbt",
-    "random_access_test.mbt", "unimplemented_test.mbt",
+    "watch_windows.mbt", "pkg.generated.mbti", "text_file_test.mbt", "timestamp_test.mbt",
+    "named_pipe_test.mbt", "random_access_test.mbt", "unimplemented_test.mbt",
   ])
 }
 
@@ -66,7 +66,7 @@ test "readdir clear errno" {
     inspect(
       list.length(),
       content=(
-        #|37
+        #|39
       ),
     )
   })

@@ -32,6 +32,21 @@ async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
 }
 
 ///|
+fn @fs.FsEvent::normalize_path_style(event : @fs.FsEvent) -> @fs.FsEvent {
+  match event {
+    Create(path) => Create(path.replace_all(old="\\", new="/"))
+    Remove(path) => Remove(path.replace_all(old="\\", new="/"))
+    Modify(path) => Modify(path.replace_all(old="\\", new="/"))
+    Rename(old~, new~) =>
+      Rename(
+        old=old.replace_all(old="\\", new="/"),
+        new=new.replace_all(old="\\", new="/"),
+      )
+    Overflow => Overflow
+  }
+}
+
+///|
 async test "watch basic" {
   let log = []
   @async.with_task_group(group => {
@@ -49,7 +64,7 @@ async test "watch basic" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        let event = watcher.wait()
+        let event = watcher.wait().normalize_path_style()
         log.push("watcher received: \{@debug.to_string(event)}")
       }
     })
@@ -176,7 +191,7 @@ async test "watch rename within" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        let event = watcher.wait()
+        let event = watcher.wait().normalize_path_style()
         log.push("watcher received: \{@debug.to_string(event)}")
       }
     })
@@ -266,7 +281,7 @@ async test "watch rename inout test" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        let event = watcher.wait()
+        let event = watcher.wait().normalize_path_style()
         log.push("watcher received: \{@debug.to_string(event)}")
       }
     })
