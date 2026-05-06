@@ -203,3 +203,98 @@ async test "`read` already closed" {
     })
   })
 }
+
+///|
+#cfg(not(platform="windows"))
+async fn valid_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/valid_root_key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/valid_root_cert.pem",
+    certificate_type=PEM,
+  )
+}
+
+///|
+#cfg(not(platform="windows"))
+async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/other_root_key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/other_root_cert.pem",
+    certificate_type=PEM,
+  )
+}
+
+///|
+#cfg(not(platform="windows"))
+async test "client custom root certificate" {
+  @async.with_task_group(root => {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    root.spawn_bg(() => {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let server = valid_root_test_server(
+        server_read_from_client, server_write_to_client,
+      )
+      defer server.close()
+      assert_eq(server.read_exactly(2), b"ok")
+      server.shutdown()
+    })
+    root.spawn_bg(() => {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      let client = @tls.Tls::client_from_pair(
+        client_read_from_server,
+        client_write_to_server,
+        host="whatever",
+        root_cert="test_keys/valid_root_cert.pem",
+      )
+      defer client.close()
+      client.write(b"ok")
+      client.shutdown()
+      inspect(client.read_all().text(), content="")
+    })
+  })
+}
+
+///|
+#cfg(not(platform="windows"))
+async test "client custom root certificate rejects different root" {
+  @async.with_task_group(root => {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    root.spawn_bg(() => {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let server = try? other_root_test_server(
+        server_read_from_client, server_write_to_client,
+      )
+      assert_true(server is Err(_))
+    })
+    root.spawn_bg(() => {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      let client = try? @tls.Tls::client_from_pair(
+        client_read_from_server,
+        client_write_to_server,
+        host="whatever",
+        root_cert="test_keys/valid_root_cert.pem",
+      )
+      assert_true(client is Err(_))
+    })
+  })
+}

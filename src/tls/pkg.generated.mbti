@@ -24,8 +24,8 @@ pub impl Show for TlsError
 
 // Types and methods
 type Tls
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(Inner, verify? : Bool, host? : String, sni? : Bool) -> Self
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool) -> Self
+pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(Inner, verify? : Bool, host? : String, sni? : Bool, root_cert? : String) -> Self
+pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool, root_cert? : String) -> Self
 pub fn Tls::close(Self) -> Unit
 pub fn Tls::get_peer_certificate(Self) -> Bytes? raise
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(Inner, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
