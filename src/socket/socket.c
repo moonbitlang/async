@@ -283,6 +283,15 @@ typedef ADDRINFOW addrinfo_t;
 typedef struct addrinfo addrinfo_t;
 #endif
 
+#ifdef _WIN32
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_freeaddrinfo(addrinfo_t *addr) {
+  FreeAddrInfoW(addr);
+}
+
+#endif
+
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_addrinfo_is_null(addrinfo_t *addrinfo) {
   return addrinfo == 0;

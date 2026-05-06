@@ -123,7 +123,7 @@ extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 
 ///|
 #cfg(platfrom="windows")
-extern "C" fn AddrInfo::free(self : AddrInfo) = "FreeAddrInfoW"
+extern "C" fn AddrInfo::free(self : AddrInfo) = "moonbitlang_async_freeaddrinfo"
 
 ///|
 /// Error message from failure in resolving a network hostname.
