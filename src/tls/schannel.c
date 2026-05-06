@@ -47,10 +47,16 @@ struct Context {
   int32_t bytes_to_write;
   int32_t msg_trailer;
   SecPkgContext_StreamSizes stream_sizes;
+  HCERTSTORE custom_root_store;
+  HCERTCHAINENGINE custom_root_chain_engine;
 };
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_schannel_free(struct Context *ctx) {
+  if (ctx->custom_root_chain_engine)
+    CertFreeCertificateChainEngine(ctx->custom_root_chain_engine);
+  if (ctx->custom_root_store)
+    CertCloseStore(ctx->custom_root_store, 0);
   switch (ctx->state) {
     case ContextInitialized:
       DeleteSecurityContext(&ctx->context);
@@ -68,7 +74,41 @@ struct Context *moonbitlang_async_schannel_new() {
   result->state = Uninitialized;
   result->context.dwUpper = 0;
   result->context.dwLower = 0;
+  result->custom_root_store = 0;
+  result->custom_root_chain_engine = 0;
   return result;
+}
+
+static
+HCERTSTORE get_or_create_custom_root_store(struct Context *ctx) {
+  if (ctx->custom_root_store)
+    return ctx->custom_root_store;
+
+  ctx->custom_root_store = CertOpenStore(
+    CERT_STORE_PROV_MEMORY,
+    0,
+    0,
+    CERT_STORE_CREATE_NEW_FLAG,
+    NULL
+  );
+  return ctx->custom_root_store;
+}
+
+static
+HCERTCHAINENGINE get_or_create_custom_root_chain_engine(struct Context *ctx) {
+  if (ctx->custom_root_chain_engine)
+    return ctx->custom_root_chain_engine;
+
+  CERT_CHAIN_ENGINE_CONFIG config;
+  memset(&config, 0, sizeof(CERT_CHAIN_ENGINE_CONFIG));
+  config.cbSize = sizeof(CERT_CHAIN_ENGINE_CONFIG);
+  config.hExclusiveRoot = ctx->custom_root_store;
+  config.dwExclusiveFlags = CERT_CHAIN_EXCLUSIVE_ENABLE_CA_FLAG;
+
+  if (!CertCreateCertificateChainEngine(&config, &ctx->custom_root_chain_engine))
+    return 0;
+
+  return ctx->custom_root_chain_engine;
 }
 
 MOONBIT_FFI_EXPORT
@@ -131,6 +171,45 @@ int32_t moonbitlang_async_schannel_init_client(
   } else {
     return ret;
   }
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_schannel_add_root_certificate(
+  struct Context *ctx,
+  unsigned char *der
+) {
+  PCCERT_CONTEXT cert = CertCreateCertificateContext(
+    X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+    der,
+    Moonbit_array_length(der)
+  );
+  if (!cert)
+    return GetLastError();
+
+  HCERTSTORE store = get_or_create_custom_root_store(ctx);
+  if (!store) {
+    CertFreeCertificateContext(cert);
+    return GetLastError();
+  }
+
+  if (ctx->custom_root_chain_engine) {
+    CertFreeCertificateChainEngine(ctx->custom_root_chain_engine);
+    ctx->custom_root_chain_engine = 0;
+  }
+
+  if (!CertAddCertificateContextToStore(
+    store,
+    cert,
+    CERT_STORE_ADD_USE_EXISTING,
+    NULL
+  )) {
+    int32_t err = GetLastError();
+    CertFreeCertificateContext(cert);
+    return err;
+  }
+
+  CertFreeCertificateContext(cert);
+  return 0;
 }
 
 MOONBIT_FFI_EXPORT
@@ -508,6 +587,80 @@ moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *
   memcpy(result, cert->pbCertEncoded, cert->cbCertEncoded);
   CertFreeCertificateContext(cert);
   return result;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_schannel_verify_peer_certificate(
+  struct Context *ctx,
+  LPWSTR host_name
+) {
+  PCCERT_CONTEXT cert = 0;
+  PCCERT_CHAIN_CONTEXT chain = 0;
+  HCERTCHAINENGINE chain_engine;
+  CERT_CHAIN_PARA chain_para;
+  CERT_CHAIN_POLICY_PARA policy_para;
+  CERT_CHAIN_POLICY_STATUS policy_status;
+  SSL_EXTRA_CERT_CHAIN_POLICY_PARA ssl_policy_para;
+
+  int32_t err = QueryContextAttributes(
+    &ctx->context,
+    SECPKG_ATTR_REMOTE_CERT_CONTEXT,
+    &cert
+  );
+  if (err != SEC_E_OK)
+    return err;
+
+  chain_engine = get_or_create_custom_root_chain_engine(ctx);
+  if (!chain_engine) {
+    CertFreeCertificateContext(cert);
+    return GetLastError();
+  }
+
+  memset(&chain_para, 0, sizeof(CERT_CHAIN_PARA));
+  chain_para.cbSize = sizeof(CERT_CHAIN_PARA);
+  if (!CertGetCertificateChain(
+    chain_engine,
+    cert,
+    NULL,
+    NULL,
+    &chain_para,
+    0,
+    NULL,
+    &chain
+  )) {
+    err = GetLastError();
+    CertFreeCertificateContext(cert);
+    return err;
+  }
+
+  memset(&ssl_policy_para, 0, sizeof(SSL_EXTRA_CERT_CHAIN_POLICY_PARA));
+  ssl_policy_para.cbSize = sizeof(SSL_EXTRA_CERT_CHAIN_POLICY_PARA);
+  ssl_policy_para.dwAuthType = AUTHTYPE_SERVER;
+  ssl_policy_para.fdwChecks = 0;
+  ssl_policy_para.pwszServerName = host_name;
+
+  memset(&policy_para, 0, sizeof(CERT_CHAIN_POLICY_PARA));
+  policy_para.cbSize = sizeof(CERT_CHAIN_POLICY_PARA);
+  policy_para.pvExtraPolicyPara = &ssl_policy_para;
+
+  memset(&policy_status, 0, sizeof(CERT_CHAIN_POLICY_STATUS));
+  policy_status.cbSize = sizeof(CERT_CHAIN_POLICY_STATUS);
+
+  if (!CertVerifyCertificateChainPolicy(
+    CERT_CHAIN_POLICY_SSL,
+    chain,
+    &policy_para,
+    &policy_status
+  )) {
+    err = GetLastError();
+    CertFreeCertificateChain(chain);
+    CertFreeCertificateContext(cert);
+    return err;
+  }
+
+  CertFreeCertificateChain(chain);
+  CertFreeCertificateContext(cert);
+  return policy_status.dwError;
 }
 
 MOONBIT_FFI_EXPORT

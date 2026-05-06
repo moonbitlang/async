@@ -21,6 +21,35 @@ pub suberror TlsError {
 pub suberror ConnectionClosed derive(Debug, ToJson)
 
 ///|
+const PEM_BEGIN = "-----BEGIN CERTIFICATE-----"
+
+///|
+const PEM_END = "-----END CERTIFICATE-----"
+
+///|
+fn decode_pem_certificates(pem : String) -> Array[Bytes] raise TlsError {
+  let certs = []
+  for chunk in pem.split(PEM_BEGIN) {
+    match chunk.split_once(PEM_END) {
+      None => ()
+      Some((base64_body, _)) => {
+        let cert = @base64.decode(base64_body.trim(), ignore_whitespace=true) catch {
+          _ =>
+            raise TlsError(
+              "invalid PEM certificate in custom root certificate file",
+            )
+        }
+        certs.push(cert)
+      }
+    }
+  }
+  guard !certs.is_empty() else {
+    raise TlsError("no PEM certificate found in custom root certificate file")
+  }
+  certs
+}
+
+///|
 /// Create a TLS client that read from write to `inner`.
 /// `client` will block until TLS handshake to remote server completed.
 ///
