@@ -31,6 +31,11 @@ extern "C" fn Schannel::init_client(ch : Schannel, verify~ : Bool) -> Int = "moo
 
 ///|
 #cfg(platform="windows")
+#borrow(der)
+extern "C" fn Schannel::add_root_certificate(ch : Schannel, der : Bytes) -> Int = "moonbitlang_async_schannel_add_root_certificate"
+
+///|
+#cfg(platform="windows")
 #borrow(pfx_content)
 extern "C" fn Schannel::init_server(ch : Schannel, pfx_content : Bytes) -> Int = "moonbitlang_async_schannel_init_server"
 
@@ -80,6 +85,14 @@ extern "C" fn Schannel::connect(
   out_buffer_offset~ : Int,
   out_buffer_len~ : Int,
 ) -> TlsState = "moonbitlang_async_schannel_connect"
+
+///|
+#cfg(platform="windows")
+#borrow(ch, host)
+extern "C" fn Schannel::verify_peer_certificate(
+  ch : Schannel,
+  host : @os_string.OsString?,
+) -> Int = "moonbitlang_async_schannel_verify_peer_certificate"
 
 ///|
 #cfg(platform="windows")
@@ -172,11 +185,28 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   root_cert? : String,
 ) -> Tls {
   ignore(sni)
-  ignore(root_cert)
+  let manual_verify = verify && root_cert is Some(_)
   let context = Schannel::new()
-  if context.init_client(verify~) is err && err != 0 {
+  if context.init_client(verify=verify && !manual_verify) is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))
+  }
+  if manual_verify {
+    if root_cert is Some(root_cert) {
+      try {
+        let pem = @fs.read_file(root_cert).text()
+        for cert in decode_pem_certificates(pem) {
+          if context.add_root_certificate(cert) is err && err != 0 {
+            raise TlsError(@os_error.errno_to_string(err))
+          }
+        }
+      } catch {
+        err => {
+          context.free()
+          raise err
+        }
+      }
+    }
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -194,6 +224,16 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     err => {
       tls.close()
       raise err
+    }
+  }
+  if manual_verify {
+    let host = match host {
+      None => None
+      Some(str) => Some(@os_string.encode(str))
+    }
+    if tls.context.verify_peer_certificate(host) is err && err != 0 {
+      tls.close()
+      raise TlsError(@os_error.errno_to_string(err))
     }
   }
   tls

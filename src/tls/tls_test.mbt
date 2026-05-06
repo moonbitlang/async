@@ -231,7 +231,18 @@ async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(platform="windows")
+async fn valid_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/valid_root_cert.pfx")
+}
+
+///|
+#cfg(platform="windows")
+async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/other_root_cert.pfx")
+}
+
+///|
 async test "client custom root certificate" {
   @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
@@ -268,7 +279,6 @@ async test "client custom root certificate" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "client custom root certificate rejects different root" {
   @async.with_task_group(root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
