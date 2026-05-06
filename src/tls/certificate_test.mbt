@@ -39,7 +39,7 @@ async test "get_peer_certificate" {
       let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
-        verify=false,
+        trust=NoVerification,
       )
       defer client.close()
       debug_inspect(

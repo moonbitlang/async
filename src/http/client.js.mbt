@@ -114,6 +114,7 @@ fn Client::connect(
 /// `verify` is ignored on JS backend
 #warnings("-unused_async")
 #alias(new, deprecated)
+#label_migration(verify, fill=false, msg="verify is unsupported on Windows")
 pub async fn Client::Client(
   uri : String,
   headers? : Map[String, String] = {},

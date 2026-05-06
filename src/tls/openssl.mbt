@@ -302,28 +302,23 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 
 ///|
 #cfg(not(platform="windows"))
-async fn create_client_ctx(root_cert : String?) -> SSL_CTX {
-  match root_cert {
-    None => client_ctx
-    Some(root_cert) => {
-      let ctx = SSL_CTX::client(load_default_verify_path=false)
-      guard !ctx.is_null() else {
-        raise TlsError("failed to initialize SSL client context")
+async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
+  let ctx = SSL_CTX::client(load_default_verify_path=false)
+  guard !ctx.is_null() else {
+    raise TlsError("failed to initialize SSL client context")
+  }
+  try {
+    let pem = @fs.read_file(root_cert).text()
+    for cert in decode_pem_certificates(pem) {
+      if ctx.add_root_certificate(cert) != 1 {
+        raise TlsError(err_get_error())
       }
-      try {
-        let pem = @fs.read_file(root_cert).text()
-        for cert in decode_pem_certificates(pem) {
-          if ctx.add_root_certificate(cert) != 1 {
-            raise TlsError(err_get_error())
-          }
-        }
-        ctx
-      } catch {
-        err => {
-          ctx.free()
-          raise err
-        }
-      }
+    }
+    ctx
+  } catch {
+    err => {
+      ctx.free()
+      raise err
     }
   }
 }
@@ -350,27 +345,34 @@ async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
 /// Create a TLS client that read from `r` and write to `w`.
 /// `client_from_pair` will block until TLS handshake to remote server completed.
 ///
-/// If `verify` is `true` (`true` by default),
-/// `client_from_pair` will perform verification on server's certificate,
-/// using the default verification setting of the OpenSSL library.
+/// `trust` specifies which servers are trusted and how certificate validation is performed.
+/// See `TrustedRoot` for more details. The default is `SystemRoot`.
 ///
 /// If `host` is present, it will be used to verify the peer's certificate.
 ///
 /// If `host` is present and `sni` is `true` (`true` by default),
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
 #cfg(not(platform="windows"))
+#label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   r : R,
   w : W,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
-  root_cert? : String,
+  trust? : TrustedRoot,
 ) -> Tls {
-  let ctx = create_client_ctx(root_cert)
+  let trust = match trust {
+    Some(trust) => trust
+    None => if verify { SystemRoot } else { NoVerification }
+  }
+  let ctx = match trust {
+    NoVerification | SystemRoot => client_ctx
+    CustomPemFile(root_cert) => SSL_CTX::client_with_custom_root(root_cert)
+  }
   let self = Tls::from_pair(ctx, r, w, host~)
   try {
-    if !verify {
+    if trust is NoVerification {
       self.ssl.set_verify(false)
     }
     if host is Some(host) {

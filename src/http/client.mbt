@@ -43,7 +43,7 @@ async fn Client::connect(
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
-  verify? : Bool = true,
+  trust? : @tls.TrustedRoot = SystemRoot,
 ) -> Client {
   let transport = if proxy is Some(proxy) {
     let path = "\{host}:\{port}"
@@ -66,7 +66,7 @@ async fn Client::connect(
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host~, verify~) catch {
+      let tls = @tls.Tls::client(conn, host~, trust~) catch {
         err => {
           transport.close()
           raise err
@@ -77,7 +77,7 @@ async fn Client::connect(
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host~, verify~) catch {
+      let tls = @tls.Tls::client(proxy, host~, trust~) catch {
         err => {
           transport.close()
           raise err
@@ -103,8 +103,8 @@ async fn Client::connect(
 /// If `protocol` is `https`, a TLS connection will be established,
 /// and the certificate of the remote peer will be verified.
 ///
-/// If the protocol is `https` and `verify` is `false` (`true` by default), certificate validation will be skipped.
-/// `verify=false` should be used for testing only.
+/// If the protocol is `https`, `trust` will determine the trusted root for cert validation.
+/// See `@tls.TrustedRoot` for more details.
 ///
 /// `headers` can be used to specify persistent headers for the client,
 /// i.e. all requests made from this client will share these headers.
@@ -125,15 +125,21 @@ async fn Client::connect(
 /// Using another HTTP client as proxy allows advanced features such as
 /// proxy authentication and https `CONNECT` proxy.
 #alias(new, deprecated)
+#label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn Client::Client(
   uri : String,
   headers? : Map[String, String] = {},
   proxy? : Client,
   verify? : Bool = true,
+  trust? : @tls.TrustedRoot,
 ) -> Client {
   let (protocol, port, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?, verify~)
+  let trust = match trust {
+    Some(trust) => trust
+    None => if verify { SystemRoot } else { NoVerification }
+  }
+  Client::connect(host, protocol~, port~, headers~, proxy?, trust~)
 }
 
 ///|

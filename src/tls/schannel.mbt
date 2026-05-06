@@ -175,36 +175,49 @@ async fn Tls::connect(self : Tls) -> Unit {
 }
 
 ///|
+/// Create a TLS client that read from `r` and write to `w`.
+/// `client_from_pair` will block until TLS handshake to remote server completed.
+///
+/// `trust` specifies which servers are trusted and how certificate validation is performed.
+/// See `TrustedRoot` for more details. The default is `SystemRoot`.
+///
+/// If `host` is present, it will be used to verify the peer's certificate.
+///
+/// If `host` is present and `sni` is `true` (`true` by default),
+/// Server Name Indication (SNI) field of TLS will be set to `host`.
+/// `sni=false` is currently unsupported on Windows.
 #cfg(platform="windows")
+#label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   reader : R,
   writer : W,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
-  root_cert? : String,
+  trust? : TrustedRoot,
 ) -> Tls {
   ignore(sni)
-  let manual_verify = verify && root_cert is Some(_)
+  let trust = match trust {
+    Some(trust) => trust
+    None => if verify { SystemRoot } else { NoVerification }
+  }
   let context = Schannel::new()
-  if context.init_client(verify=verify && !manual_verify) is err && err != 0 {
+  if context.init_client(verify=trust is SystemRoot) is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))
   }
-  if manual_verify {
-    if root_cert is Some(root_cert) {
-      try {
-        let pem = @fs.read_file(root_cert).text()
-        for cert in decode_pem_certificates(pem) {
-          if context.add_root_certificate(cert) is err && err != 0 {
-            raise TlsError(@os_error.errno_to_string(err))
-          }
+  if trust is CustomPemFile(root_cert) {
+    try {
+      let pem = @fs.read_file(root_cert).text()
+      for cert in decode_pem_certificates(pem) {
+        if context.add_root_certificate(cert) is err && err != 0 {
+          raise TlsError(@os_error.errno_to_string(err))
         }
-      } catch {
-        err => {
-          context.free()
-          raise err
-        }
+      }
+    } catch {
+      err => {
+        context.free()
+        raise err
       }
     }
   }
@@ -226,7 +239,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       raise err
     }
   }
-  if manual_verify {
+  if trust is CustomPemFile(_) {
     let host = match host {
       None => None
       Some(str) => Some(@os_string.encode(str))
