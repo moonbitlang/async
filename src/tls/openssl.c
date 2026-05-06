@@ -37,6 +37,7 @@ typedef struct SSL SSL;
 typedef struct SSL_CTX SSL_CTX;
 typedef struct SSL_METHOD SSL_METHOD;
 typedef struct X509 X509;
+typedef struct X509_STORE X509_STORE;
 
 #define IMPORTED_OPEN_SSL_FUNCTIONS\
   IMPORT_FUNC(BIO_METHOD*, BIO_meth_new, (int type, const char *name))\
@@ -66,6 +67,7 @@ typedef struct X509 X509;
   IMPORT_FUNC(void, SSL_free, (SSL *ssl))\
   IMPORT_FUNC(SSL_CTX *, SSL_CTX_new, (const SSL_METHOD*))\
   IMPORT_FUNC(void, SSL_CTX_free, (SSL_CTX *))\
+  IMPORT_FUNC(X509_STORE *, SSL_CTX_get_cert_store, (const SSL_CTX *ctx))\
   IMPORT_FUNC(SSL_METHOD *, TLS_client_method, (void))\
   IMPORT_FUNC(SSL_METHOD *, TLS_server_method, (void))\
   IMPORT_FUNC(long, SSL_CTX_ctrl, (SSL_CTX *ctx, int cmd, long larg, void *parg))\
@@ -77,7 +79,9 @@ typedef struct X509 X509;
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
   IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))\
   IMPORT_FUNC_WITH_ALT_NAMES(X509 *, SSL_get1_peer_certificate, (const SSL *ssl), { "SSL_get_peer_certificate" })\
+  IMPORT_FUNC(X509 *, d2i_X509, (X509 **px, const unsigned char **in, long len))\
   IMPORT_FUNC(void, X509_free, (const X509 *cert))\
+  IMPORT_FUNC(int, X509_STORE_add_cert, (X509_STORE *xs, X509 *x))\
   IMPORT_FUNC(int, i2d_X509_AUX, (X509 *cert, unsigned char **ppout))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
@@ -186,11 +190,12 @@ int moonbitlang_async_tls_ssl_ctx_is_null(SSL_CTX *ctx) {
   return ctx == 0;
 }
 
-SSL_CTX *moonbitlang_async_tls_client_ctx() {
+SSL_CTX *moonbitlang_async_tls_client_ctx(int32_t load_default_verify_path) {
   SSL_CTX *client_ctx = SSL_CTX_new(TLS_client_method());
+  if (!client_ctx) return 0;
 
   SSL_CTX_set_verify(client_ctx, SSL_VERIFY_PEER, 0);
-  if (!SSL_CTX_set_default_verify_paths(client_ctx)) {
+  if (load_default_verify_path && !SSL_CTX_set_default_verify_paths(client_ctx)) {
     SSL_CTX_free(client_ctx);
     return 0;
   }
@@ -203,6 +208,29 @@ SSL_CTX *moonbitlang_async_tls_server_ctx() {
   SSL_CTX *server_ctx = SSL_CTX_new(TLS_server_method());
   SSL_CTX_ctrl(server_ctx, SSL_CTRL_MODE, SSL_MODE_ENABLE_PARTIAL_WRITE, 0);
   return server_ctx;
+}
+
+void moonbitlang_async_tls_ssl_ctx_free(SSL_CTX *ctx) {
+  SSL_CTX_free(ctx);
+}
+
+int moonbitlang_async_tls_ssl_ctx_add_root_certificate(
+  SSL_CTX *ctx,
+  const unsigned char *der
+) {
+  const unsigned char *p = der;
+  X509 *cert = d2i_X509(0, &p, Moonbit_array_length(der));
+  if (!cert) return 0;
+
+  X509_STORE *store = SSL_CTX_get_cert_store(ctx);
+  if (!store) {
+    X509_free(cert);
+    return 0;
+  }
+
+  int ret = X509_STORE_add_cert(store, cert);
+  X509_free(cert);
+  return ret;
 }
 
 SSL *moonbitlang_async_tls_ssl_new(SSL_CTX *ctx, BIO *rbio, BIO *wbio) {

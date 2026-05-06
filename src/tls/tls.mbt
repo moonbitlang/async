@@ -37,6 +37,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
+  root_cert? : String,
 ) -> Tls {
-  Tls::client_from_pair(inner, inner, verify~, host?, sni~)
+  Tls::client_from_pair(inner, inner, verify~, host?, sni~, root_cert?)
 }

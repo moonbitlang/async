@@ -23,7 +23,7 @@ extern "C" fn SSL_CTX::is_null(self : SSL_CTX) -> Bool = "moonbitlang_async_tls_
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL_CTX::client() -> SSL_CTX = "moonbitlang_async_tls_client_ctx"
+extern "C" fn SSL_CTX::client(load_default_verify_path~ : Bool) -> SSL_CTX = "moonbitlang_async_tls_client_ctx"
 
 ///|
 #cfg(not(platform="windows"))
@@ -31,9 +31,18 @@ extern "C" fn SSL_CTX::server() -> SSL_CTX = "moonbitlang_async_tls_server_ctx"
 
 ///|
 #cfg(not(platform="windows"))
+extern "C" fn SSL_CTX::free_ffi(self : SSL_CTX) = "moonbitlang_async_tls_ssl_ctx_free"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(der)
+extern "C" fn SSL_CTX::add_root_certificate(self : SSL_CTX, der : Bytes) -> Int = "moonbitlang_async_tls_ssl_ctx_add_root_certificate"
+
+///|
+#cfg(not(platform="windows"))
 let client_ctx : SSL_CTX = {
   load_openssl()
-  let ctx = SSL_CTX::client()
+  let ctx = SSL_CTX::client(load_default_verify_path=true)
   guard !ctx.is_null() else { abort("failed to initialize SSL client context") }
   ctx
 }
@@ -45,6 +54,15 @@ let server_ctx : SSL_CTX = {
   let ctx = SSL_CTX::server()
   guard !ctx.is_null() else { abort("failed to initialize SSL server context") }
   ctx
+}
+
+///|
+#cfg(not(platform="windows"))
+fn SSL_CTX::free(self : SSL_CTX) -> Unit {
+  if physical_equal(self, client_ctx) || physical_equal(self, server_ctx) {
+    return
+  }
+  self.free_ffi()
 }
 
 ///|
@@ -251,6 +269,7 @@ fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
 #cfg(not(platform="windows"))
 struct Tls {
   ssl : SSL
+  ctx : SSL_CTX
   host : String?
   transport : Transport
   read_buf : @io.ReaderBuffer
@@ -272,11 +291,72 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   let ssl = SSL::new(ctx, rbio, wbio)
   {
     ssl,
+    ctx,
     host,
     transport,
     read_buf: @io.ReaderBuffer::new(),
     shutdown: false,
     closed: false,
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+const PEM_BEGIN = "-----BEGIN CERTIFICATE-----"
+
+///|
+#cfg(not(platform="windows"))
+const PEM_END = "-----END CERTIFICATE-----"
+
+///|
+#cfg(not(platform="windows"))
+fn decode_pem_certificates(pem : String) -> Array[Bytes] raise TlsError {
+  let certs = []
+  for chunk in pem.split(PEM_BEGIN) {
+    match chunk.split_once(PEM_END) {
+      None => ()
+      Some((base64_body, _)) => {
+        let cert = @base64.decode(base64_body.trim(), ignore_whitespace=true) catch {
+          _ =>
+            raise TlsError(
+              "invalid PEM certificate in custom root certificate file",
+            )
+        }
+        certs.push(cert)
+      }
+    }
+  }
+  guard !certs.is_empty() else {
+    raise TlsError("no PEM certificate found in custom root certificate file")
+  }
+  certs
+}
+
+///|
+#cfg(not(platform="windows"))
+async fn create_client_ctx(root_cert : String?) -> SSL_CTX {
+  match root_cert {
+    None => client_ctx
+    Some(root_cert) => {
+      let ctx = SSL_CTX::client(load_default_verify_path=false)
+      guard !ctx.is_null() else {
+        raise TlsError("failed to initialize SSL client context")
+      }
+      try {
+        let pem = @fs.read_file(root_cert).text()
+        for cert in decode_pem_certificates(pem) {
+          if ctx.add_root_certificate(cert) != 1 {
+            raise TlsError(err_get_error())
+          }
+        }
+        ctx
+      } catch {
+        err => {
+          ctx.free()
+          raise err
+        }
+      }
+    }
   }
 }
 
@@ -317,8 +397,10 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
+  root_cert? : String,
 ) -> Tls {
-  let self = Tls::from_pair(client_ctx, r, w, host~)
+  let ctx = create_client_ctx(root_cert)
+  let self = Tls::from_pair(ctx, r, w, host~)
   try {
     if !verify {
       self.ssl.set_verify(false)
@@ -485,6 +567,7 @@ pub fn Tls::close(self : Tls) -> Unit {
     self.transport.state = Closed
   }
   self.ssl.free()
+  self.ctx.free()
   // We must make sure the host string lives longer than `self.ssl`
   ignore(self.host)
 }

@@ -169,8 +169,10 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
+  root_cert? : String,
 ) -> Tls {
   ignore(sni)
+  ignore(root_cert)
   let context = Schannel::new()
   if context.init_client(verify~) is err && err != 0 {
     context.free()
