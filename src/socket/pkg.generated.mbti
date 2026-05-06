@@ -87,7 +87,7 @@ pub async fn UdpServer::UdpServer(Addr, dual_stack? : Bool) -> Self
 #deprecated
 pub fn UdpServer::addr(Self) -> Addr
 pub fn UdpServer::close(Self) -> Unit
-pub fn UdpServer::fd(UdpClient) -> Int
+pub fn UdpServer::fd(Self) -> Int
 pub async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
 pub async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
 

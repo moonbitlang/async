@@ -77,7 +77,7 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 }
 
 ///|
-pub fn UdpServer::fd(self : UdpClient) -> @fd_util.Fd {
+pub fn UdpServer::fd(self : UdpServer) -> @fd_util.Fd {
   self.io.fd()
 }
 
