@@ -4,6 +4,7 @@ package "moonbitlang/async/http"
 import {
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
+  "moonbitlang/async/tls",
   "moonbitlang/core/debug",
 }
 
@@ -49,7 +50,8 @@ pub struct Client {
   // private fields
 }
 #alias(new, deprecated)
-pub async fn Client::Client(String, headers? : Map[String, String], proxy? : Self, verify? : Bool) -> Self
+#label_migration(verify, fill=false, msg="use `trust` instead")
+pub async fn Client::Client(String, headers? : Map[String, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self
 pub fn Client::close(Self) -> Unit
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit

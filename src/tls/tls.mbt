@@ -50,23 +50,44 @@ fn decode_pem_certificates(pem : String) -> Array[Bytes] raise TlsError {
 }
 
 ///|
+/// Specify the trusted root when performing TLS certificate validation.
+///
+/// - `NoVerification`: disable certificate validation.
+///   This destroys the whole purpose of using TLS and should only be used for testing purpose.
+///
+/// - `SystemRoot`: use the default trusted root of the system
+///
+/// - `CustomPemFile(name)`: use the certificates in the PEM file `name` exclusively as trusted root.
+///   Useful for connecting via a pre-shared self-signed certificate
+pub(all) enum TrustedRoot {
+  NoVerification
+  SystemRoot
+  CustomPemFile(String)
+}
+
+///|
 /// Create a TLS client that read from write to `inner`.
 /// `client` will block until TLS handshake to remote server completed.
 ///
-/// If `verify` is `true` (`true` by default),
-/// `client` will perform verification on server's certificate,
-/// using the default verification setting of the OpenSSL library.
+/// `trust` specifies which servers are trusted and how certificate validation is performed.
+/// See `TrustedRoot` for more details. The default is `SystemRoot`.
 ///
 /// If `host` is present, it will be used to verify the peer's certificate.
 ///
 /// If `host` is present and `sni` is `true` (`true` by default),
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
+/// `sni=false` is currently unsupported on Windows.
+#label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   inner : Inner,
   verify? : Bool = true,
   host? : String,
   sni? : Bool = true,
-  root_cert? : String,
+  trust? : TrustedRoot,
 ) -> Tls {
-  Tls::client_from_pair(inner, inner, verify~, host?, sni~, root_cert?)
+  let trust = match trust {
+    Some(trust) => trust
+    None => if verify { SystemRoot } else { NoVerification }
+  }
+  Tls::client_from_pair(inner, inner, host?, sni~, trust~)
 }

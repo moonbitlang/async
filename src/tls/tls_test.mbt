@@ -61,7 +61,7 @@ async test "one way" {
       let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
-        verify=false,
+        trust=NoVerification,
       )
       defer client.close()
       client.write(b"abcd")
@@ -114,7 +114,7 @@ async test "echo" {
       let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
-        verify=false,
+        trust=NoVerification,
       )
       defer client.close()
       for data in [b"abcd", b"efgh", b"ijkl"] {
@@ -160,7 +160,7 @@ async test "`connect` accidental close" {
       let client = try? @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
-        verify=false,
+        trust=NoVerification,
       )
       match client {
         Ok(client) => {
@@ -196,7 +196,7 @@ async test "`read` already closed" {
       let client = @tls.Tls::client_from_pair(
         client_read_from_server,
         client_write_to_server,
-        verify=false,
+        trust=NoVerification,
       )
       defer client.close()
       debug_inspect(try? client.read_some(), content="Ok(None)")
@@ -268,7 +268,7 @@ async test "client custom root certificate" {
         client_read_from_server,
         client_write_to_server,
         host="whatever",
-        root_cert="test_keys/valid_root_cert.pem",
+        trust=CustomPemFile("test_keys/valid_root_cert.pem"),
       )
       defer client.close()
       client.write(b"ok")
@@ -302,7 +302,7 @@ async test "client custom root certificate rejects different root" {
         client_read_from_server,
         client_write_to_server,
         host="whatever",
-        root_cert="test_keys/valid_root_cert.pem",
+        trust=CustomPemFile("test_keys/valid_root_cert.pem"),
       )
       assert_true(client is Err(_))
     })
