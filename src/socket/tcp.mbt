@@ -56,11 +56,18 @@ pub struct TcpServer {
 ///
 /// If `reuse_addr` is `true` (`false` by default),
 /// the `SO_REUSEADDR` option will be enabled on the server,
-/// allowing in currently-in-use socket address
-/// (as long as there is no one else currently listening on the same address).
-/// This is useful for avoiding "address already in use" error while testing.
-/// WARNING: enabling `reuse_addr` on production is unsafe,
-/// packets from the previous listener of the address may be accidentally received.
+/// allowing binding to `addr` even if there are still
+/// dead-ish `TIME_WAIT` sockets on that address.
+///
+/// On Windows, `TIME_WAIT` sockets are always ignored,
+/// so the behavior is always `reuse_addr=true` and `reuse_addr` will be ignored.
+///
+/// On MacOS (BSD), `reuse_addr` has the extra side effect that
+/// a server binding to a specific address may "steal" the specific interface
+/// from a previous wildcard bind (`0.0.0.0`),
+/// and similarly a server binding to a wildcard address can bind to
+/// the remaining interfaces if a bind to a specific interface already exists.
+/// This side effect cannot be isolated, so `reuse_addr` should be used with this in mind.
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
