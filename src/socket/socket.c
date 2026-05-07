@@ -55,6 +55,21 @@ HANDLE moonbitlang_async_make_tcp_socket(int family) {
   );
   if (sock == INVALID_SOCKET)
     return INVALID_HANDLE_VALUE;
+
+  int exclusive_addruse = 0;
+  if (
+    setsockopt(
+      sock,
+      SOL_SOCKET,
+      SO_EXCLUSIVEADDRUSE,
+      (char*)&exclusive_addruse,
+      sizeof(int)
+    ) < 0
+  ) {
+    closesocket(sock);
+    return INVALID_HANDLE_VALUE;
+  }
+
   return (HANDLE)sock;
 #else
   return socket(family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, 0);
@@ -67,6 +82,7 @@ int moonbitlang_async_disable_nagle(HANDLE sock) {
   return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
 }
 
+MOONBIT_FFI_EXPORT
 int moonbitlang_async_allow_reuse_addr(HANDLE sock) {
   int reuse_addr = 1;
   return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
@@ -85,6 +101,21 @@ HANDLE moonbitlang_async_make_udp_socket(int family) {
   );
   if (sock == INVALID_SOCKET)
     return INVALID_HANDLE_VALUE;
+
+  int exclusive_addruse = 0;
+  if (
+    setsockopt(
+      sock,
+      SOL_SOCKET,
+      SO_EXCLUSIVEADDRUSE,
+      (char*)&exclusive_addruse,
+      sizeof(int)
+    ) < 0
+  ) {
+    closesocket(sock);
+    return INVALID_HANDLE_VALUE;
+  }
+
   return (HANDLE)sock;
 #else
   return socket(family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);

@@ -77,7 +77,7 @@ pub async fn TcpServer::TcpServer(
         @os_error.check_errno(context)
       }
     }
-    if reuse_addr {
+    if !@event_loop.IS_WINDOWS && reuse_addr {
       guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
     }
     io.bind(addr.0, context~)
