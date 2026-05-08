@@ -18,33 +18,54 @@
 /// UDP is a connectionless protocol, here "connected" means
 /// the client always send packet to and receive packet from
 /// the specified remote server.
+///
+/// UDP does not really have a clear client/server distinction,
+/// especially when multicast is involved.
+/// The essence of `UdpClient` is a UDP socket without a fixed/well-known port.
 pub struct UdpClient {
   /// Local address of the client
   addr : Addr
   priv io : @event_loop.IoHandle
+  priv mut dst_addr : Addr
 }
 
 ///|
 /// Create a new UDP client connected to server at `addr`.
 /// The client always send packet to and receive packet from
 /// the specified remote server.
+///
+/// If `addr` is a multicast address,
+/// `connect` will not be called under the hood,
+/// and the client may receive packets from arbitrary peer.
+/// However, since the port of the client is random,
+/// the client effectively can only receive packets
+/// from multicast servers that have received packets from this client.
 #alias(new, deprecated)
-pub fn UdpClient::UdpClient(server : Addr) -> UdpClient raise {
+pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let context = "@socket.UdpClient::new()"
-  let family = server.family()
-  let sock = make_udp_socket(family, context~)
+  let family = addr.family()
+  let sock = make_udp_socket(family, multicast=false, context~)
   try {
-    if 0 != connect_ffi(sock, server) {
+    let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
+    if addr.is_multicast() {
+      if @event_loop.IS_WINDOWS {
+        let local_addr = match family {
+          IPv4 => ipv4_any
+          IPv6 => ipv6_any
+        }
+        io.bind(local_addr.0, context~)
+      }
+    } else if 0 != connect_ffi(sock, addr) {
       @os_error.check_errno(context)
     }
+    let local_addr = getsockname(sock, family, context~)
+    { io, addr: local_addr, dst_addr: addr }
   } catch {
     err => {
       @fd_util.close(sock, kind=Socket, context~)
       raise err
     }
   }
-  let addr = getsockname(sock, family, context~)
-  { io: @event_loop.IoHandle::from_fd(sock, kind=Socket), addr }
 }
 
 ///|
@@ -65,7 +86,93 @@ pub fn UdpClient::addr(self : UdpClient) -> Addr {
 }
 
 ///|
+/// Set the outgoing interface used for sending multicast packets with this client.
+///
+/// This function is IPv4-only. For IPv6, use `set_multicast_interface_v6` instead.
+pub fn UdpClient::set_multicast_interface(
+  self : UdpClient,
+  addr : Addr,
+) -> Unit raise {
+  let context = "@socket.UdpClient::set_multicast_interface()"
+  guard self.addr.family() is IPv4
+  guard addr.family() is IPv4 else {
+    raise Failure::Failure("\{context}: expected IPv4 address")
+  }
+  set_multicast_interface(self.io.fd(), addr, context~)
+}
+
+///|
+/// Set the outgoing interface used for sending multicast packets with this client.
+///
+/// This function is IPv6-only. For IPv4, use `set_multicast_interface` instead.
+pub fn UdpClient::set_multicast_interface_v6(
+  self : UdpClient,
+  interface_index : Int,
+) -> Unit raise {
+  guard self.addr.family() is IPv6
+  set_multicast_interface_v6(
+    self.io.fd(),
+    interface_index,
+    context="@socket.UdpClient::set_multicast_interface_v6()",
+  )
+}
+
+///|
+/// Set the multicast TTL (or hop limit for IPv6) for this client.
+/// `ttl=0` means packet never goes out of local machine.
+/// `ttl=1` means packet never goes out of local subnet.
+pub fn UdpClient::set_multicast_ttl(self : UdpClient, ttl : Int) -> Unit raise {
+  set_multicast_ttl(
+    self.io.fd(),
+    ttl,
+    family=self.addr.family(),
+    context="@socket.UdpClient::set_multicast_ttl()",
+  )
+}
+
+///|
+/// Set the multicast loopback option for this client.
+/// On Windows: make sure multicast packets sent from local machine is not received by this client.
+/// On other systems: make sure multicast packets sent by this client are not routed back to local machine
+///
+/// Note that the loopback setting does not apply for localhost traffic.
+pub fn UdpClient::set_multicast_loopback(
+  self : UdpClient,
+  loopback : Bool,
+) -> Unit raise {
+  set_multicast_loopback(
+    self.io.fd(),
+    loopback,
+    family=self.addr.family(),
+    context="@socket.UdpClient::set_multicast_loopback()",
+  )
+}
+
+///|
+/// Connect the client to a remote address,
+/// subsequently the client will send packets to this address,
+/// and only receive packets from this address.
+///
+/// Unicast UDP clients are connected automatically,
+/// so `connect` is mainly useful for turning a multicast client into a unicast one.
+/// The typical workflow is to create the client as a multicast client,
+/// send multicast packets, and wait for response from servers listening on the multicast address.
+/// Once a responding server is found, use `connect` to turn the client into a unicast one,
+/// and start point-to-point communication with the discovered server.
+pub fn UdpClient::connect(self : UdpClient, addr : Addr) -> Unit raise {
+  let context = "@socket.UdpClient::connect()"
+  if 0 != connect_ffi(self.io.fd(), addr) {
+    @os_error.check_errno(context)
+  }
+  self.dst_addr = addr
+}
+
+///|
 /// A UDP server bound to a listen address and receive packets from clients.
+///
+/// UDP does not really have a clear client/server distinction,
+/// especially when multicast is involved.
+/// The essence of `UdpServer` is a UDP socket with a fixed/well-known port.
 pub struct UdpServer {
   addr : Addr
   priv io : @event_loop.IoHandle
@@ -95,6 +202,12 @@ pub fn UdpServer::fd(self : UdpServer) -> @fd_util.Fd {
 /// If the port of `addr` is zero, the server will be bound to a random port,
 /// assigned by the operating system.
 /// The actual listen address can be retrieved via `.addr()`.
+///
+/// The server will only receive packets whose destination address matches `addr`.
+/// So if you want to receive multicast traffic,
+/// the server should be bound to `0.0.0.0` or `[::]`.
+/// DO NOT bind the server to a multicast address: this is not supported on Windows.
+/// For multicast-only servers, use `UdpServer::multicast()` instead.
 #alias(new, deprecated)
 pub async fn UdpServer::UdpServer(
   addr : Addr,
@@ -102,7 +215,7 @@ pub async fn UdpServer::UdpServer(
 ) -> UdpServer {
   let context = "@socket.UdpServer::new()"
   let family = addr.family()
-  let sock = make_udp_socket(family, context~)
+  let sock = make_udp_socket(family, multicast=false, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
     if addr.is_ipv6() && addr.is_ipv6_wildcard() {
@@ -125,10 +238,191 @@ pub async fn UdpServer::UdpServer(
 }
 
 ///|
+/// Create a multicast-only UDP server listening for multicast packets towards `multi_addr`. 
+/// The server will only receive packets towards `multi_addr`,
+/// no unicast traffic will be received.
+///
+/// Multicast only servers created via `UdpServer::multicast` are shared.
+/// There can be multiple such server listening on the same address at the same time.
+///
+/// The server will automatically join the IP multicast group at `multi_addr`,
+/// using interface `interface_addr` (defaults to a random interface chosen by the OS).
+/// Only the IP part of `interface_addr` matters, the port is irrelevant.
+///
+/// Due to OS limitation, currently every multicast-only server
+/// can listen for only one multicast IP.
+/// Calling `join_multicast_group` on server created by `UdpServer::multicast`
+/// with different address simply does not work.
+/// Users can join the same IP with a different interface using `join_multicast_group`, though.
+///
+/// Currently this function is IPv4 only.
+/// There is no simple way to implement multicast-only IPv6 socket on Linux/MacOS.
+pub async fn UdpServer::multicast(
+  multi_addr : Addr,
+  interface_addr? : Addr = Addr::new(0, 0),
+) -> UdpServer {
+  let context = "@socket.UdpServer::multicast()"
+  let family = multi_addr.family()
+  guard family is IPv4 else {
+    abort("@socket.UdpServer::multicast() is IPv4 only")
+  }
+  let sock = make_udp_socket(family, multicast=true, context~)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
+  try {
+    if @event_loop.IS_WINDOWS {
+      let local_addr = match family {
+        IPv4 => Addr::new(0, multi_addr.port())
+        IPv6 => Addr::new_ipv6(FixedArray::make(16, 0), multi_addr.port())
+      }
+      io.bind(local_addr.0, context~)
+    } else {
+      io.bind(multi_addr.0, context~)
+    }
+    join_multicast_group(sock, multi_addr, interface_addr, context~)
+    // If `addr` specifies zero as the listen port,
+    // the OS will assign a random port for us,
+    // in this case, we need to retrieve the actual port via `getsockname`.
+    let addr = getsockname(sock, family, context~)
+    { io, addr }
+  } catch {
+    err => {
+      @fd_util.close(sock, kind=Socket, context~)
+      raise err
+    }
+  }
+}
+
+///|
 /// Get the listen address of a UDP server.
 #deprecated("use `.addr` instead")
 pub fn UdpServer::addr(self : UdpServer) -> Addr {
   self.addr
+}
+
+///|
+/// Set the outgoing interface used for sending multicast packets with this server.
+///
+/// This function is IPv4-only. For IPv6, use `set_multicast_interface_v6` instead.
+pub fn UdpServer::set_multicast_interface(
+  self : UdpServer,
+  addr : Addr,
+) -> Unit raise {
+  guard self.addr.family() is IPv4
+  set_multicast_interface(
+    self.io.fd(),
+    addr,
+    context="@socket.UdpServer::set_multicast_interface()",
+  )
+}
+
+///|
+/// Set the outgoing interface used for sending multicast packets with this client.
+///
+/// This function is IPv6-only. For IPv4, use `set_multicast_interface` instead.
+pub fn UdpServer::set_multicast_interface_v6(
+  self : UdpServer,
+  interface_index : Int,
+) -> Unit raise {
+  guard self.addr.family() is IPv6
+  set_multicast_interface_v6(
+    self.io.fd(),
+    interface_index,
+    context="@socket.UdpServer::set_multicast_interface_v6()",
+  )
+}
+
+///|
+/// Set the multicast TTL (or hop limit for IPv6) for this client.
+/// `ttl=0` means packet never goes out of local machine.
+/// `ttl=1` means packet never goes out of local subnet.
+pub fn UdpServer::set_multicast_ttl(self : UdpServer, ttl : Int) -> Unit raise {
+  set_multicast_ttl(
+    self.io.fd(),
+    ttl,
+    family=self.addr.family(),
+    context="@socket.UdpServer::set_multicast_ttl()",
+  )
+}
+
+///|
+/// Set the multicast loopback option for this server.
+/// On Windows: make sure multicast packets sent from local machine is not received by this server.
+/// On other systems: make sure multicast packets sent by this server are not routed back to local machine
+///
+/// Note that the loopback setting does not apply for localhost traffic.
+pub fn UdpServer::set_multicast_loopback(
+  self : UdpServer,
+  loopback : Bool,
+) -> Unit raise {
+  set_multicast_loopback(
+    self.io.fd(),
+    loopback,
+    family=self.addr.family(),
+    context="@socket.UdpServer::set_multicast_loopback()",
+  )
+}
+
+///|
+/// Let the server join multicast group at address `multi_addr`, via interface `interface_addr`.
+/// `interface_addr` defaults to a random interface chosen by the OS.
+/// Only the IP part of `multi_addr` and `interface_addr` matters, the port is irrelevant.
+///
+/// Note that `join_multicast_group` is mainly about IGMP related stuff,
+/// it does not serve as a packet filter.
+/// A UDP server can receive all packets whose destination match the server's address.
+/// Some consquence of this:
+///
+/// - The port to receive multicast traffic is determined on server creation
+///
+/// - if the server is bound to a specific interface, it will not receive any multicast traffic,
+///   because multicast traffic has special destination IP
+///
+/// - multicast-only server created by `UdpServer::multicast` cannot join
+///   multiple multicast groups with different IP address.
+///
+/// This function is IPv4 only. For IPv6 multicast, use `join_multicast_group_v6` instead.
+pub fn UdpServer::join_multicast_group(
+  self : UdpServer,
+  multi_addr : Addr,
+  interface_addr? : Addr = Addr::new(0, 0),
+) -> Unit raise {
+  let context = "@socket.UdpServer::join_multicast_group()"
+  guard self.addr.family() is IPv4 else { abort("\{context} is IPv4 only") }
+  guard multi_addr.family() is IPv4 && interface_addr.family() is IPv4 else {
+    raise Failure::Failure("\{context}: expected IPv4 address")
+  }
+  join_multicast_group(self.io.fd(), multi_addr, interface_addr, context~)
+}
+
+///|
+/// Let the server join multicast group at address `multi_addr`, via interface `interface_index`.
+/// `interface_index` defaults to a 0, which assigns a default output interface
+/// for site-local/global multicast packets.
+/// For link-local multicast packets, an interface index must be explicitly specified.
+/// Only the IP part of `multi_addr` matters, the port is irrelevant.
+///
+/// Note that `join_multicast_group` is mainly about IGMP related stuff,
+/// it does not serve as a packet filter.
+/// A UDP server can receive all packets whose destination match the server's address.
+/// Some consquence of this:
+///
+/// - The port to receive multicast traffic is determined on server creation
+///
+/// - if the server is bound to a specific interface, it will not receive any multicast traffic,
+///   because multicast traffic has special destination IP
+///
+/// This function is IPv6 only. For IPv4 multicast, use `join_multicast_group` instead.
+pub fn UdpServer::join_multicast_group_v6(
+  self : UdpServer,
+  multi_addr : Addr,
+  interface_index? : Int = 0,
+) -> Unit raise {
+  let context = "@socket.UdpServer::join_multicast_group_v6()"
+  guard self.addr.family() is IPv6 else { abort("\{context} is IPv6 only") }
+  guard multi_addr.family() is IPv6 else {
+    raise Failure::Failure("\{context}: expected IPv6 address")
+  }
+  join_multicast_group_v6(self.io.fd(), multi_addr, interface_index, context~)
 }
 
 ///|
@@ -152,6 +446,28 @@ pub async fn UdpClient::recv(
   max_len? : Int = buf.length() - offset,
 ) -> Int {
   self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
+}
+
+///|
+/// Similar to `recv`, but additionally return the address of the packet's sender.
+/// Unicast `UdpClient` can only receive traffic from the target server,
+/// so this is mainly useful for multicast clients.
+pub async fn UdpClient::recvfrom(
+  self : UdpClient,
+  buf : FixedArray[Byte],
+  offset? : Int = 0,
+  max_len? : Int = buf.length() - offset,
+) -> (Int, Addr) {
+  // Create a big enough Addr to hold both IPv4 and IPv6 address
+  let addr = Addr::empty(self.addr.family())
+  let n_read = self.io.recvfrom(
+    buf,
+    offset~,
+    len=max_len,
+    addr=addr.0,
+    context="@socket.UdpClient::recvfrom",
+  )
+  (n_read, addr)
 }
 
 ///|
@@ -200,7 +516,14 @@ pub async fn UdpClient::send(
   offset? : Int = 0,
   len? : Int = buf.length() - offset,
 ) -> Unit {
-  self.io.write(buf, offset~, len~, context="@socket.UdpClient::send") |> ignore
+  self.io.sendto(
+    buf,
+    offset~,
+    len~,
+    addr=self.dst_addr.0,
+    context="@socket.UdpClient::send",
+  )
+  |> ignore
 }
 
 ///|

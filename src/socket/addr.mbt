@@ -1,4 +1,4 @@
-// Copyright 2025 International Digital Economy Academy
+/// Copyright 2025 International Digital Economy Academy
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,10 @@ pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_ge
 pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
 
 ///|
+#borrow(addr)
+pub extern "C" fn Addr::is_multicast(addr : Addr) -> Bool = "moonbitlang_async_addr_is_multicast"
+
+///|
 fn Addr::family(self : Addr) -> AddrFamily {
   if self.is_ipv6() {
     IPv6
@@ -57,6 +61,12 @@ fn Addr::family(self : Addr) -> AddrFamily {
     IPv4
   }
 }
+
+///|
+let ipv4_any : Addr = Addr::new(0, 0)
+
+///|
+let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0)
 
 ///|
 #borrow(addr)
