@@ -462,6 +462,18 @@ extern "C" fn Schannel::get_peer_certificate(ch : Schannel) -> Bytes? = "moonbit
 
 ///|
 #cfg(platform="windows")
+#borrow(ch)
+extern "C" fn Schannel::unique_channel_binding(ch : Schannel) -> Bytes? = "moonbitlang_async_schannel_unique_channel_binding"
+
+///|
+#cfg(platform="windows")
+#borrow(ch)
+extern "C" fn Schannel::server_endpoint_channel_binding(
+  ch : Schannel,
+) -> Bytes? = "moonbitlang_async_schannel_server_endpoint_channel_binding"
+
+///|
+#cfg(platform="windows")
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
   let result = self.context.get_peer_certificate()
   if result is None {
@@ -471,6 +483,38 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
     }
   }
   result
+}
+
+///|
+#cfg(platform="windows")
+pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
+  match self.context.unique_channel_binding() {
+    Some(binding) => binding
+    None => {
+      let errno = @os_error.get_errno()
+      if errno != 0 {
+        raise TlsError(@os_error.errno_to_string(errno))
+      } else {
+        raise TlsError("tls-unique channel binding unavailable")
+      }
+    }
+  }
+}
+
+///|
+#cfg(platform="windows")
+pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
+  match self.context.server_endpoint_channel_binding() {
+    Some(binding) => binding
+    None => {
+      let errno = @os_error.get_errno()
+      if errno != 0 {
+        raise TlsError(@os_error.errno_to_string(errno))
+      } else {
+        raise TlsError("tls-server-endpoint channel binding unavailable")
+      }
+    }
+  }
 }
 
 ///|
