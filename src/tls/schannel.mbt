@@ -486,6 +486,8 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
 }
 
 ///|
+/// Return `tls-unique` type of channel binding data for this TLS connection,
+/// according to RFC 5929
 #cfg(platform="windows")
 pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
   match self.context.unique_channel_binding() {
@@ -502,6 +504,10 @@ pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
 }
 
 ///|
+/// Return `tls-server-endpoint` type of channel binding data for this TLS connection,
+/// according to RFC 5929.
+/// Not all TLS connection has such thing as a server certificate,
+/// so `tls-unique` is the more recommended approach when available.
 #cfg(platform="windows")
 pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
   match self.context.server_endpoint_channel_binding() {
