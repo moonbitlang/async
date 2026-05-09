@@ -101,6 +101,20 @@ extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept
 extern "C" fn SSL::get_peer_certificate(self : SSL) -> Bytes? = "moonbitlang_async_tls_ssl_get_peer_certificate"
 
 ///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::unique_channel_binding(
+  self : SSL,
+  is_client~ : Bool,
+) -> Bytes? = "moonbitlang_async_tls_ssl_unique_channel_binding"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::server_endpoint_channel_binding(
+  self : SSL,
+  is_client~ : Bool,
+) -> Bytes? = "moonbitlang_async_tls_ssl_server_endpoint_channel_binding"
+
+///|
 pub(all) enum X509FileType {
   PEM = 1
   ANS1 = 2
@@ -271,6 +285,7 @@ struct Tls {
   ssl : SSL
   ctx : SSL_CTX
   host : String?
+  is_client : Bool
   transport : Transport
   read_buf : @io.ReaderBuffer
   mut shutdown : Bool
@@ -283,6 +298,7 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   ctx : SSL_CTX,
   r : R,
   w : W,
+  is_client~ : Bool,
   host~ : String?,
 ) -> Tls {
   let transport = Transport::new(r, w)
@@ -293,6 +309,7 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
     ssl,
     ctx,
     host,
+    is_client,
     transport,
     read_buf: @io.ReaderBuffer::new(),
     shutdown: false,
@@ -370,7 +387,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     NoVerification | SystemRoot => client_ctx
     CustomPemFile(root_cert) => SSL_CTX::client_with_custom_root(root_cert)
   }
-  let self = Tls::from_pair(ctx, r, w, host~)
+  let self = Tls::from_pair(ctx, r, w, is_client=true, host~)
   try {
     if trust is NoVerification {
       self.ssl.set_verify(false)
@@ -420,7 +437,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 ) -> Tls {
   let private_key_file = @utf8.encode(private_key_file)
   let certificate_file = @utf8.encode(certificate_file)
-  let self = Tls::from_pair(server_ctx, r, w, host=None)
+  let self = Tls::from_pair(server_ctx, r, w, is_client=false, host=None)
   try {
     if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
       raise TlsError(err_get_error())
@@ -592,6 +609,34 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
     raise TlsError(err_get_error())
   }
   result
+}
+
+///|
+#cfg(not(platform="windows"))
+pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
+  match self.ssl.unique_channel_binding(is_client=self.is_client) {
+    Some(binding) => binding
+    None =>
+      if err_peek_error_code() != 0 {
+        raise TlsError(err_get_error())
+      } else {
+        raise TlsError("tls-unique channel binding unavailable")
+      }
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
+  match self.ssl.server_endpoint_channel_binding(is_client=self.is_client) {
+    Some(binding) => binding
+    None =>
+      if err_peek_error_code() != 0 {
+        raise TlsError(err_get_error())
+      } else {
+        raise TlsError("tls-server-endpoint channel binding unavailable")
+      }
+  }
 }
 
 ///|

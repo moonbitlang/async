@@ -30,12 +30,14 @@
 #define SSL_MODE_ENABLE_PARTIAL_WRITE 0x00000001U
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
 #define TLSEXT_NAMETYPE_host_name 0
+#define MAX_DIGEST_LEN 64
 
 typedef struct BIO_METHOD BIO_METHOD;
 typedef struct BIO BIO;
 typedef struct SSL SSL;
 typedef struct SSL_CTX SSL_CTX;
 typedef struct SSL_METHOD SSL_METHOD;
+typedef struct EVP_MD EVP_MD;
 typedef struct X509 X509;
 typedef struct X509_STORE X509_STORE;
 
@@ -63,8 +65,11 @@ typedef struct X509_STORE X509_STORE;
   IMPORT_FUNC(int, SSL_read, (SSL *ssl, void *buf, int num))\
   IMPORT_FUNC(int, SSL_write, (SSL *ssl, void *buf, int num))\
   IMPORT_FUNC(int, SSL_get_error, (SSL *ssl, int ret))\
+  IMPORT_FUNC(size_t, SSL_get_finished, (const SSL *ssl, void *buf, size_t count))\
+  IMPORT_FUNC(size_t, SSL_get_peer_finished, (const SSL *ssl, void *buf, size_t count))\
   IMPORT_FUNC(int, SSL_shutdown, (SSL *ssl))\
   IMPORT_FUNC(void, SSL_free, (SSL *ssl))\
+  IMPORT_FUNC(X509 *, SSL_get_certificate, (const SSL *ssl))\
   IMPORT_FUNC(SSL_CTX *, SSL_CTX_new, (const SSL_METHOD*))\
   IMPORT_FUNC(void, SSL_CTX_free, (SSL_CTX *))\
   IMPORT_FUNC(X509_STORE *, SSL_CTX_get_cert_store, (const SSL_CTX *ctx))\
@@ -76,12 +81,18 @@ typedef struct X509_STORE X509_STORE;
   IMPORT_FUNC(unsigned long, ERR_get_error, (void))\
   IMPORT_FUNC(unsigned long, ERR_peek_error, (void))\
   IMPORT_FUNC(char *, ERR_error_string, (unsigned long e, char *buf))\
+  IMPORT_FUNC(const char *, OBJ_nid2sn, (int n))\
+  IMPORT_FUNC(int, OBJ_find_sigid_algs, (int signid, int *pdig_nid, int *ppkey_nid))\
+  IMPORT_FUNC(const EVP_MD *, EVP_get_digestbyname, (const char *name))\
+  IMPORT_FUNC(const EVP_MD *, EVP_sha256, (void))\
   IMPORT_FUNC(int, RAND_bytes, (unsigned char *buf, int num))\
   IMPORT_FUNC(unsigned char *, SHA1, (const unsigned char *d, size_t n, unsigned char *md))\
   IMPORT_FUNC_WITH_ALT_NAMES(X509 *, SSL_get1_peer_certificate, (const SSL *ssl), { "SSL_get_peer_certificate" })\
   IMPORT_FUNC(X509 *, d2i_X509, (X509 **px, const unsigned char **in, long len))\
+  IMPORT_FUNC(int, X509_get_signature_nid, (const X509 *x))\
   IMPORT_FUNC(void, X509_free, (const X509 *cert))\
   IMPORT_FUNC(int, X509_STORE_add_cert, (X509_STORE *xs, X509 *x))\
+  IMPORT_FUNC(int, X509_digest, (const X509 *data, const EVP_MD *type, unsigned char *md, unsigned int *len))\
   IMPORT_FUNC(int, i2d_X509_AUX, (X509 *cert, unsigned char **ppout))
 
 #define IMPORT_FUNC(ret, name, params) static ret (*name) params;
@@ -309,6 +320,72 @@ moonbit_bytes_t moonbitlang_async_tls_ssl_get_peer_certificate(SSL *ssl) {
 handle_error:
   X509_free(cert);
   return 0;
+}
+
+static
+moonbit_bytes_t hash_server_endpoint_certificate(X509 *cert) {
+  int signature_nid = X509_get_signature_nid(cert);
+  int digest_nid = 0;
+  int public_key_nid = 0;
+  const EVP_MD *digest = 0;
+  const char *digest_name = 0;
+  unsigned int digest_len = 0;
+  unsigned char digest_buf[MAX_DIGEST_LEN];
+
+  if (!OBJ_find_sigid_algs(signature_nid, &digest_nid, &public_key_nid))
+    return 0;
+
+  digest_name = OBJ_nid2sn(digest_nid);
+  if (!digest_name)
+    return 0;
+
+  if (strcmp(digest_name, "MD5") == 0 || strcmp(digest_name, "SHA1") == 0) {
+    digest = EVP_sha256();
+  } else {
+    digest = EVP_get_digestbyname(digest_name);
+  }
+
+  if (!digest)
+    return 0;
+
+  if (!X509_digest(cert, digest, digest_buf, &digest_len))
+    return 0;
+
+  moonbit_bytes_t result = moonbit_make_bytes_raw(digest_len);
+  memcpy(result, digest_buf, digest_len);
+  return result;
+}
+
+moonbit_bytes_t moonbitlang_async_tls_ssl_unique_channel_binding(SSL *ssl, int32_t is_client) {
+  size_t len = is_client ?
+    SSL_get_finished(ssl, 0, 0) :
+    SSL_get_peer_finished(ssl, 0, 0);
+  if (len == 0)
+    return 0;
+
+  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
+  size_t copied = is_client ?
+    SSL_get_finished(ssl, result, len) :
+    SSL_get_peer_finished(ssl, result, len);
+  if (copied != len)
+    return 0;
+  return result;
+}
+
+moonbit_bytes_t moonbitlang_async_tls_ssl_server_endpoint_channel_binding(SSL *ssl, int32_t is_client) {
+  if (is_client) {
+    X509 *cert = SSL_get1_peer_certificate(ssl);
+    if (!cert)
+      return 0;
+    moonbit_bytes_t result = hash_server_endpoint_certificate(cert);
+    X509_free(cert);
+    return result;
+  } else {
+    X509 *cert = SSL_get_certificate(ssl);
+    if (!cert)
+      return 0;
+    return hash_server_endpoint_certificate(cert);
+  }
 }
 
 int moonbitlang_async_tls_ssl_get_error(SSL *ssl, int ret) {

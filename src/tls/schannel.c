@@ -569,6 +569,41 @@ int32_t moonbitlang_async_schannel_shutdown(struct Context *ctx) {
   return ApplyControlToken(&ctx->context, &buf_desc);
 }
 
+static
+moonbit_bytes_t get_channel_binding(struct Context *ctx, int attribute) {
+  SecPkgContext_Bindings bindings;
+  int32_t err = QueryContextAttributes(&ctx->context, attribute, &bindings);
+  if (err != SEC_E_OK) {
+    SetLastError(err);
+    return 0;
+  }
+
+  if (!bindings.Bindings) {
+    FreeContextBuffer(bindings.Bindings);
+    return 0;
+  }
+
+  unsigned long data_offset = bindings.Bindings->dwApplicationDataOffset;
+  unsigned long data_len = bindings.Bindings->cbApplicationDataLength;
+  if (
+    data_offset > bindings.BindingsLength ||
+    data_len > bindings.BindingsLength - data_offset
+  ) {
+    SetLastError(ERROR_INVALID_DATA);
+    FreeContextBuffer(bindings.Bindings);
+    return 0;
+  }
+
+  moonbit_bytes_t result = moonbit_make_bytes_raw(data_len);
+  memcpy(
+    result,
+    ((unsigned char *)bindings.Bindings) + data_offset,
+    data_len
+  );
+  FreeContextBuffer(bindings.Bindings);
+  return result;
+}
+
 MOONBIT_FFI_EXPORT
 moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
   CERT_CONTEXT *cert = 0;
@@ -587,6 +622,16 @@ moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *
   memcpy(result, cert->pbCertEncoded, cert->cbCertEncoded);
   CertFreeCertificateContext(cert);
   return result;
+}
+
+MOONBIT_FFI_EXPORT
+moonbit_bytes_t moonbitlang_async_schannel_unique_channel_binding(struct Context *ctx) {
+  return get_channel_binding(ctx, SECPKG_ATTR_UNIQUE_BINDINGS);
+}
+
+MOONBIT_FFI_EXPORT
+moonbit_bytes_t moonbitlang_async_schannel_server_endpoint_channel_binding(struct Context *ctx) {
+  return get_channel_binding(ctx, SECPKG_ATTR_ENDPOINT_BINDINGS);
 }
 
 MOONBIT_FFI_EXPORT
