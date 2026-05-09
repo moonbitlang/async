@@ -45,8 +45,8 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let context = "@socket.UdpClient::new()"
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
-    let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
     if addr.is_multicast() {
       if @event_loop.IS_WINDOWS {
         let local_addr = match family {
@@ -62,7 +62,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
     { io, addr: local_addr, dst_addr: addr }
   } catch {
     err => {
-      @fd_util.close(sock, kind=Socket, context~)
+      io.close()
       raise err
     }
   }
@@ -231,7 +231,7 @@ pub async fn UdpServer::UdpServer(
     { io, addr }
   } catch {
     err => {
-      @fd_util.close(sock, kind=Socket, context~)
+      io.close()
       raise err
     }
   }
@@ -286,7 +286,7 @@ pub async fn UdpServer::multicast(
     { io, addr }
   } catch {
     err => {
-      @fd_util.close(sock, kind=Socket, context~)
+      io.close()
       raise err
     }
   }
