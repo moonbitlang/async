@@ -31,7 +31,11 @@ extern "C" fn Addr::empty(family : AddrFamily) -> Addr = "moonbitlang_async_make
 
 ///|
 #borrow(ip)
-extern "C" fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int) -> Addr = "moonbitlang_async_make_ipv6_addr"
+extern "C" fn Addr::new_ipv6(
+  ip : FixedArray[Byte],
+  port : Int,
+  scope_id~ : UInt,
+) -> Addr = "moonbitlang_async_make_ipv6_addr"
 
 ///|
 #borrow(addr)
@@ -60,6 +64,10 @@ extern "C" fn Addr::get_ipv6_bytes(addr : Addr) -> @c_buffer.Buffer = "moonbitla
 
 ///|
 #borrow(addr)
+extern "C" fn Addr::scope_id(addr : Addr) -> UInt = "moonbitlang_async_addr_get_ipv6_scope_id"
+
+///|
+#borrow(addr)
 extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6_wildcard"
 
 ///|
@@ -68,6 +76,13 @@ pub impl Show for Addr with output(self, logger) {
     // IPv6 address format
     logger.write_char('[')
     write_ipv6_str(self.get_ipv6_bytes(), logger)
+    let scope_id = self.scope_id()
+    if scope_id > 0 {
+      let interface = if_indextoname(scope_id, context="") catch {
+        _ => scope_id.to_string()
+      }
+      logger..write_char('%').write_string(interface)
+    }
     logger..write_char(']')..write_char(':').write_object(self.port())
   } else {
     // IPv4 address format
@@ -92,10 +107,19 @@ pub suberror InvalidAddr derive(Debug, ToJson)
 ///|
 /// Parse a string into IPv4 or IPv6 address, format should be `ip:port` for IPv4 or `[ip]:port` for IPv6
 // TODO: faster implementation
-pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
+pub fn Addr::parse(src : String) -> Addr raise {
   if src.has_prefix("[") {
-    let (ip_bytes, port, _, _) = try_parse_ipv6(src)
-    Addr::new_ipv6(ip_bytes, port)
+    let (ip_bytes, port, interface) = try_parse_ipv6(src)
+    let scope_id = if interface is Some(interface) {
+      try @string.parse_uint(interface) catch {
+        _ => if_nametoindex(interface, context="@socket.Addr::parse()")
+      } noraise {
+        index => index
+      }
+    } else {
+      0
+    }
+    Addr::new_ipv6(ip_bytes, port, scope_id~)
   } else {
     // IPv4 format: ip:port
     let (ip, port) = try_parse_ipv4(src) catch { _ => raise InvalidAddr }

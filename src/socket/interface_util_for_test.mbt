@@ -13,15 +13,21 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@event_loop.Timer::new)
-  ignore(@async.sleep)
-  ignore(@os_error.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@c_buffer.unimplemented)
-  ignore(@os_string.unimplemented)
+extern "C" fn find_ipv6_localhost() -> UInt = "moonbitlang_async_find_ipv6_localhost"
+
+///|
+let localhost_index : UInt = {
+  let index = find_ipv6_localhost()
+  if index is 0 {
+    abort("cannot find localhost adaptor, or localhost does not support IPv6")
+  }
+  index
+}
+
+///|
+let localhost_interface : String = @socket.if_indextoname(
+  localhost_index,
+  context="fetch name of localhost adaptor",
+) catch {
+  err => abort(err.to_string())
 }

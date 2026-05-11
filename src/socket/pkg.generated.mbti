@@ -24,7 +24,7 @@ type Addr derive(Compare, Eq, Hash)
 pub fn Addr::ip(Self) -> UInt
 pub fn Addr::is_ipv6(Self) -> Bool
 pub fn Addr::new(UInt, Int) -> Self
-pub fn Addr::parse(String) -> Self raise InvalidAddr
+pub fn Addr::parse(String) -> Self raise
 pub fn Addr::port(Self) -> Int
 pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
 pub impl Show for Addr

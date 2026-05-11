@@ -45,6 +45,8 @@ pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
 
 pub async fn realpath(StringView, context~ : String) -> String
 
+pub fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit
+
 pub async fn remove(StringView, context~ : String) -> Unit
 
 pub async fn rename(StringView, StringView, replace~ : Bool, context~ : String) -> Unit

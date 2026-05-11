@@ -15,7 +15,7 @@
 ///|
 fn try_parse_ipv6(
   input : String,
-) -> (FixedArray[Byte], Int, Int, Int) raise InvalidAddr {
+) -> (FixedArray[Byte], Int, String?) raise InvalidAddr {
   // Make sure the format is [addr]:port
   guard input.has_prefix("[") else {
     // IPv6 address must start with '['
@@ -39,10 +39,21 @@ fn try_parse_ipv6(
   let ip_str = input[1:bracket_end]
   let port_str = remaining[1:]
 
+  // Extract optional zone suffix
+  let (ip_str, interface) = if ip_str.find("%") is Some(ip_end) {
+    let interface = ip_str[ip_end + 1:]
+    guard interface.length() > 0 else { raise InvalidAddr }
+    (ip_str[:ip_end], Some(interface.to_owned()))
+  } else {
+    (ip_str, None)
+  }
+
   // Parse the IPv6 address into a byte array
   let ip_bytes = parse_ipv6_to_bytes(ip_str)
+
   let port = parse_port(port_str)
-  (ip_bytes, port, 0, 0)
+
+  (ip_bytes, port, interface)
 }
 
 ///|
