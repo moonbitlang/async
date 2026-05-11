@@ -66,7 +66,7 @@ fn Addr::family(self : Addr) -> AddrFamily {
 let ipv4_any : Addr = Addr::new(0, 0)
 
 ///|
-let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0)
+let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
 
 ///|
 #borrow(addr)

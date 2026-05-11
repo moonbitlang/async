@@ -96,14 +96,14 @@ fn join_multicast_group(
 extern "C" fn join_multicast_group_v6_ffi(
   sock : @fd_util.Fd,
   multi_addr : Addr,
-  interface_index : Int,
+  interface_index : UInt,
 ) -> Int = "moonbitlang_async_join_multicast_group_v6"
 
 ///|
 fn join_multicast_group_v6(
   sock : @fd_util.Fd,
   multi_addr : Addr,
-  interface_index : Int,
+  interface_index : UInt,
   context~ : String,
 ) -> Unit raise {
   if join_multicast_group_v6_ffi(sock, multi_addr, interface_index) < 0 {
@@ -132,13 +132,13 @@ fn set_multicast_interface(
 ///|
 extern "C" fn set_multicast_interface_v6_ffi(
   sock : @fd_util.Fd,
-  interface_index : Int,
+  interface_index : UInt,
 ) -> Int = "moonbitlang_async_set_multicast_interface_v6"
 
 ///|
 fn set_multicast_interface_v6(
   sock : @fd_util.Fd,
-  interface_index : Int,
+  interface_index : UInt,
   context~ : String,
 ) -> Unit raise {
   if set_multicast_interface_v6_ffi(sock, interface_index) < 0 {

@@ -35,6 +35,7 @@ async test "multicast basic" {
       for ;; {
         let (n, _) = server2.recvfrom(buf)
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
+        @async.sleep(50) // make the result stable
         log.push("server 2 received: \{@utf8.decode(data)}")
       }
     }
@@ -48,37 +49,6 @@ async test "multicast basic" {
   }
   json_inspect(log, content=[
     "client sending: abcd", "server 1 received: abcd", "server 2 received: abcd",
-  ])
-}
-
-///|
-async test "multicast server send reply" {
-  let log = []
-  @async.with_task_group <| group => {
-    let addr = @socket.Addr::parse("239.0.0.1:4201")
-    let interface_addr = @socket.Addr::parse("127.0.0.1:0")
-    group.spawn_bg() <| () => {
-      let server1 = @socket.UdpServer::multicast(addr, interface_addr~)
-      defer server1.close()
-      let buf = FixedArray::make(1024, b'\x00')
-      let (n, peer_addr) = server1.recvfrom(buf)
-      let data = buf.unsafe_reinterpret_as_bytes()[:n]
-      log.push("server received: \{@utf8.decode(data)}, sending it back...")
-      ignore <| server1.sendto(data.to_owned(), peer_addr)
-    }
-    let client = @socket.UdpClient(addr)
-    defer client.close()
-    client.set_multicast_interface(interface_addr)
-    @async.sleep(200)
-    log.push("client sending: abcd")
-    let _ = client.send(b"abcd")
-    let buf = FixedArray::make(1024, b'\x00')
-    let (n, server_addr) = client.recvfrom(buf)
-    let data = buf.unsafe_reinterpret_as_bytes()[:n]
-    log.push("client received: \{@utf8.decode(data)} from \{server_addr}")
-  }
-  json_inspect(log, content=[
-    "client sending: abcd", "server received: abcd, sending it back...", "client received: abcd from 127.0.0.1:4201",
   ])
 }
 
@@ -128,52 +98,6 @@ async test "multicast discovery then unicast" {
 }
 
 ///|
-async test "multicast peer group" {
-  let log = []
-  @async.with_task_group <| group => {
-    let interface_addr = @socket.Addr::parse("127.0.0.1:0")
-    let mut port = 0
-    for server_index in 0..<3 {
-      let server = @socket.UdpServer::multicast(
-        @socket.Addr::parse("239.0.0.1:\{port}"),
-        interface_addr~,
-      )
-      port = server.addr.port()
-      group.add_defer(() => server.close())
-      server.set_multicast_interface(interface_addr)
-      server.set_multicast_ttl(0)
-      group.spawn_bg() <| () => {
-        let buf = FixedArray::make(1024, b'\x00')
-        for i in 0..<3 {
-          if i == server_index {
-            @async.sleep(100)
-            let msg = "message from server \{server_index}"
-            log.push("server \{server_index} sending: \{msg}")
-            ignore <| server.sendto(
-              @utf8.encode(msg),
-              @socket.Addr::parse("239.0.0.1:\{port}"),
-            )
-          }
-          let (n, _) = server.recvfrom(buf)
-          let data = buf.unsafe_reinterpret_as_bytes()[:n]
-          // to make the output stable
-          @async.sleep(server_index * 20)
-          log.push("server \{server_index} received: \{@utf8.decode(data)}")
-        }
-      }
-    }
-  }
-  json_inspect(log, content=[
-    "server 0 sending: message from server 0", "server 0 received: message from server 0",
-    "server 1 received: message from server 0", "server 2 received: message from server 0",
-    "server 1 sending: message from server 1", "server 0 received: message from server 1",
-    "server 1 received: message from server 1", "server 2 received: message from server 1",
-    "server 2 sending: message from server 2", "server 0 received: message from server 2",
-    "server 1 received: message from server 2", "server 2 received: message from server 2",
-  ])
-}
-
-///|
 async test "multicast no loopback" {
   let log = []
   @async.with_task_group() <| group => {
@@ -217,25 +141,20 @@ async test "multicast no loopback" {
 }
 
 ///|
-extern "C" fn find_first_public_ipv6_interface() -> Int = "moonbitlang_async_find_first_public_ipv6_interface"
-
-///|
-let interface_index : Int = find_first_public_ipv6_interface()
-
-///|
 async test "multicast discovery then unicast v6" {
   let log = []
   @async.with_task_group <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     defer server.close()
-    let multicast_addr = @socket.Addr::parse("[ff0e::1]:\{server.addr.port()}")
-    server.join_multicast_group_v6(multicast_addr, interface_index~)
+    let port = server.addr.port()
+    let multicast_addr = @socket.Addr::parse("[ff02::1]:\{server.addr.port()}")
+    server.join_multicast_group_v6(multicast_addr, interface_index=localhost_index)
     server.set_multicast_ttl(0)
     group.spawn_bg(() => {
-      let client = @socket.UdpClient(multicast_addr)
+      let client = @socket.UdpClient(@socket.Addr::parse("[ff02::1%\{localhost_interface}]:\{port}"))
       defer client.close()
       client.set_multicast_ttl(0)
-      client.set_multicast_interface_v6(interface_index)
+      client.set_multicast_interface_v6(localhost_index)
       @async.sleep(150)
       log.push("client sending discovery packet")
       let _ = client.send(b"anybody here?")
@@ -274,10 +193,10 @@ async test "multicast no loopback v6" {
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()
-    let multicast_addr = @socket.Addr::parse("[ff0e::1]:\{port}")
+    let multicast_addr = @socket.Addr::parse("[ff02::1]:\{port}")
     group.spawn_bg(no_wait=true, () => {
       defer server.close()
-      server.join_multicast_group_v6(multicast_addr, interface_index~)
+      server.join_multicast_group_v6(multicast_addr, interface_index=localhost_index)
       let buf = FixedArray::make(1024, b'\x00')
       for ;; {
         let (n, _) = server.recvfrom(buf)
@@ -285,10 +204,10 @@ async test "multicast no loopback v6" {
         log.push("server received: \{@utf8.decode(data)}")
       }
     })
-    let client = @socket.UdpClient(multicast_addr)
+    let client = @socket.UdpClient(@socket.Addr::parse("[ff02::1%\{localhost_interface}]:\{port}"))
     defer client.close()
     @async.sleep(200)
-    client.set_multicast_interface_v6(interface_index)
+    client.set_multicast_interface_v6(localhost_index)
     client.set_multicast_ttl(0)
     if @event_loop.IS_WINDOWS {
       server.set_multicast_loopback(false)

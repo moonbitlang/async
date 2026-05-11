@@ -186,7 +186,7 @@ MOONBIT_FFI_EXPORT
 int moonbitlang_async_join_multicast_group_v6(
   HANDLE sock,
   struct sockaddr_in6 *multi_addr,
-  int32_t if_index
+  uint32_t if_index
 ) {
   struct ipv6_mreq mreq;
   mreq.ipv6mr_multiaddr = multi_addr->sin6_addr;
@@ -211,7 +211,7 @@ int moonbitlang_async_set_multicast_interface(
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_set_multicast_interface_v6(
   HANDLE sock,
-  int32_t interface_index
+  uint32_t interface_index
 ) {
   return setsockopt(
     sock,
