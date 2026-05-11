@@ -646,7 +646,6 @@ int32_t moonbitlang_async_find_ipv6_test_interface() {
   int32_t result = 0;
   for (IP_ADAPTER_ADDRESSES *adapter = addrs; adapter; adapter = adapter->Next) {
     if (adapter->OperStatus != IfOperStatusUp) continue;
-    if (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK) continue;
     if (adapter->Ipv6IfIndex == 0) continue;
     if (adapter->Flags & IP_ADAPTER_NO_MULTICAST) continue;
 
