@@ -54,6 +54,14 @@ test "Parse IPv6 address" {
     "[::1]:8080",
   )
   assert_eq(@socket.Addr::parse("[::1]:8080").to_string(), "[::1]:8080")
+  assert_eq(
+    @socket.Addr::parse("[::1%\{localhost_interface}]:8080").to_string(),
+    "[::1%\{localhost_interface}]:8080",
+  )
+  assert_eq(
+    @socket.Addr::parse("[::1%\{localhost_index}]:8080").to_string(),
+    "[::1%\{localhost_interface}]:8080",
+  )
 }
 
 ///|

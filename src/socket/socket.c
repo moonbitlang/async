@@ -22,10 +22,13 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h>
 #include <windows.h>
 
 #define setsockopt(sock, level, opt, optval, len)\
   setsockopt((SOCKET)sock, level, opt, (const char*)(optval), len)
+
+#pragma comment(lib, "Iphlpapi.lib")
 
 #else
 
@@ -36,6 +39,13 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+#include <errno.h>
+
+#ifdef __linux__
+#include <sys/ioctl.h>
+#endif
 
 typedef int HANDLE;
 typedef int SOCKET;
@@ -265,7 +275,7 @@ void *moonbitlang_async_make_empty_addr(int family) {
 }
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port) {
+void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t scope_id) {
   // For IPv6, create sockaddr_in6 structure directly
   struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
     sizeof(struct sockaddr_in6),
@@ -275,7 +285,7 @@ void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port) {
   addr->sin6_flowinfo = 0;
   addr->sin6_port = htons(port);
   memcpy(&addr->sin6_addr, ip, 16);
-  addr->sin6_scope_id = 0;
+  addr->sin6_scope_id = scope_id;
   return addr;
 }
 
@@ -300,6 +310,10 @@ int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
 MOONBIT_FFI_EXPORT
 uint8_t *moonbitlang_async_addr_get_ipv6_bytes(struct sockaddr_in6 *addr) {
   return addr->sin6_addr.s6_addr;
+}
+MOONBIT_FFI_EXPORT
+uint32_t moonbitlang_async_addr_get_ipv6_scope_id(struct sockaddr_in6 *addr) {
+  return addr->sin6_scope_id;
 }
 
 MOONBIT_FFI_EXPORT
@@ -372,4 +386,171 @@ MOONBIT_FFI_EXPORT
 int moonbitlang_async_getpeername(HANDLE sock, struct sockaddr *addr_out) {
   socklen_t len = Moonbit_array_length(addr_out);
   return getpeername((SOCKET)sock, addr_out, &len);
+}
+
+MOONBIT_FFI_EXPORT
+uint32_t moonbitlang_async_if_nametoindex(HANDLE sock, const char *name) {
+#ifdef _WIN32
+
+  NET_LUID luid;
+  int err = ConvertInterfaceAliasToLuid((const WCHAR*)name, &luid);
+  if (err) {
+    SetLastError(err);
+    return 0;
+  }
+
+  NET_IFINDEX index;
+  err = ConvertInterfaceLuidToIndex(&luid, &index);
+  if (err) {
+    SetLastError(err);
+    return 0;
+  }
+
+  return index;
+
+#elif defined(__linux__)
+
+  int name_len = Moonbit_array_length(name);
+  if (name_len >= IFNAMSIZ) {
+    errno = ENAMETOOLONG;
+    return 0;
+  }
+
+  struct ifreq ifreq;
+  // also copy the null terminator
+  memcpy(ifreq.ifr_name, name, name_len + 1);
+
+  if (ioctl(sock, SIOCGIFINDEX, &ifreq) < 0)
+    return 0;
+
+  return ifreq.ifr_ifindex;
+
+#else
+
+  return if_nametoindex(name);
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
+#ifdef _WIN32
+
+  WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
+  NET_LUID luid;
+
+  int err = ConvertInterfaceIndexToLuid(index, &luid);
+  if (err) {
+    SetLastError(err);
+    return 0;
+  }
+
+  err = ConvertInterfaceLuidToAlias(&luid, buf, NDIS_IF_MAX_STRING_SIZE + 1);
+  if (err) {
+    SetLastError(err);
+    return 0;
+  }
+
+  int len = wcslen(buf);
+  moonbit_string_t str = moonbit_make_string_raw(len);
+  memcpy(str, buf, len * sizeof(WCHAR));
+
+  return str;
+
+#elif defined(__linux__)
+
+  struct ifreq ifreq;
+  ifreq.ifr_ifindex = index;
+
+  if (ioctl(sock, SIOCGIFNAME, &ifreq) < 0)
+    return 0;
+
+  int len = strlen(ifreq.ifr_name);
+  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
+  memcpy(str, ifreq.ifr_name, len);
+
+  return str;
+
+#else
+
+  char buf[IF_NAMESIZE];
+  if (!if_indextoname(index, buf))
+    return 0;
+
+  int len = strlen(buf);
+  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
+  memcpy(str, buf, len);
+
+  return str;
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_find_ipv6_localhost() {
+#ifdef _WIN32
+  ULONG flags =
+    GAA_FLAG_SKIP_ANYCAST |
+    GAA_FLAG_SKIP_MULTICAST |
+    GAA_FLAG_SKIP_DNS_SERVER;
+  ULONG buf_len = 16 * 1024;
+  IP_ADAPTER_ADDRESSES *addrs = 0;
+  ULONG err = ERROR_BUFFER_OVERFLOW;
+
+  for (int i = 0; i < 3 && err == ERROR_BUFFER_OVERFLOW; i++) {
+    if (addrs != 0) {
+      HeapFree(GetProcessHeap(), 0, addrs);
+      addrs = 0;
+    }
+    addrs = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, buf_len);
+    if (addrs == 0) {
+      return 0;
+    }
+    err = GetAdaptersAddresses(AF_INET6, flags, NULL, addrs, &buf_len);
+  }
+
+  if (err != NO_ERROR) {
+    if (addrs != 0) {
+      HeapFree(GetProcessHeap(), 0, addrs);
+    }
+    return 0;
+  }
+
+  int32_t result = 0;
+  for (IP_ADAPTER_ADDRESSES *adapter = addrs; adapter; adapter = adapter->Next) {
+    if (adapter->OperStatus != IfOperStatusUp) continue;
+    if (adapter->IfType != IF_TYPE_SOFTWARE_LOOPBACK) continue;
+    if (adapter->Ipv6IfIndex == 0) continue;
+    if (adapter->Flags & IP_ADAPTER_NO_MULTICAST) continue;
+
+    result = adapter->Ipv6IfIndex;
+    break;
+  }
+
+  HeapFree(GetProcessHeap(), 0, addrs);
+  return result;
+
+#else
+
+  int32_t result = 0;
+  struct ifaddrs *ifs0 = 0;
+  if (getifaddrs(&ifs0) < 0)
+    return 0;
+
+  for (struct ifaddrs *ifs = ifs0; ifs; ifs = ifs->ifa_next) {
+    if (
+      ifs->ifa_addr
+      && ifs->ifa_addr->sa_family == AF_INET6
+      && (ifs->ifa_flags & IFF_LOOPBACK)
+      && (ifs->ifa_flags & IFF_UP)
+      && (ifs->ifa_flags & IFF_RUNNING)
+    ) {
+      result = if_nametoindex(ifs->ifa_name);
+      if (result) break;
+    }
+  }
+  freeifaddrs(ifs0);
+  return result;
+
+#endif
 }

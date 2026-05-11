@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/io",
   "moonbitlang/async",
+  "moonbitlang/async/internal/os_string",
 }
 
 import {
@@ -25,6 +26,8 @@ options(
     "ffi.mbt": [ "native" ],
     "getsockname_test.mbt": [ "native" ],
     "happy_eyeball.mbt": [ "native" ],
+    "ifname.mbt": [ "native" ],
+    "interface_util_for_test.mbt": [ "native" ],
     "read_exactly_test.mbt": [ "native" ],
     "resolve_host_test.mbt": [ "native" ],
     "reuse_addr_test.mbt": [ "native" ],

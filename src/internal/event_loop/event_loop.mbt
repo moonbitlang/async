@@ -88,7 +88,10 @@ priv struct EventLoopHook {
 let hooks : Array[EventLoopHook] = []
 
 ///|
-fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit {
+pub fn register_hook(
+  init? : () -> Unit raise,
+  exit? : () -> Unit raise,
+) -> Unit {
   hooks.push({ init, exit })
 }
 
