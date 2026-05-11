@@ -148,10 +148,7 @@ async test "multicast discovery then unicast v6" {
     defer server.close()
     let port = server.addr.port()
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{server.addr.port()}")
-    server.join_multicast_group_v6(
-      multicast_addr,
-      interface_index=test_interface_index,
-    )
+    server.join_multicast_group_v6(multicast_addr, interface=test_interface)
     server.set_multicast_ttl(0)
     group.spawn_bg(() => {
       let client = @socket.UdpClient(
@@ -159,7 +156,7 @@ async test "multicast discovery then unicast v6" {
       )
       defer client.close()
       client.set_multicast_ttl(0)
-      client.set_multicast_interface_v6(test_interface_index)
+      client.set_multicast_interface_v6(test_interface)
       @async.sleep(150)
       log.push("client sending discovery packet")
       let _ = client.send(b"anybody here?")
@@ -201,10 +198,7 @@ async test "multicast no loopback v6" {
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{port}")
     group.spawn_bg(no_wait=true, () => {
       defer server.close()
-      server.join_multicast_group_v6(
-        multicast_addr,
-        interface_index=test_interface_index,
-      )
+      server.join_multicast_group_v6(multicast_addr, interface=test_interface)
       let buf = FixedArray::make(1024, b'\x00')
       for ;; {
         let (n, _) = server.recvfrom(buf)
@@ -217,7 +211,7 @@ async test "multicast no loopback v6" {
     )
     defer client.close()
     @async.sleep(200)
-    client.set_multicast_interface_v6(test_interface_index)
+    client.set_multicast_interface_v6(test_interface)
     client.set_multicast_ttl(0)
     if @event_loop.IS_WINDOWS {
       server.set_multicast_loopback(false)

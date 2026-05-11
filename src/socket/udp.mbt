@@ -107,17 +107,21 @@ pub fn UdpClient::set_multicast_interface(
 
 ///|
 /// Set the outgoing interface used for sending multicast packets with this client.
+/// The interface is provided via IPv6 zone suffix index.
+/// It can either be a decimal string for a raw interface index,
+/// or a network interface name.
 ///
 /// This function is IPv6-only. For IPv4, use `set_multicast_interface` instead.
 pub fn UdpClient::set_multicast_interface_v6(
   self : UdpClient,
-  interface_index : UInt,
+  interface : String,
 ) -> Unit raise {
   guard self.addr.family() is IPv6
+  let context = "@socket.UdpClient::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),
-    interface_index,
-    context="@socket.UdpClient::set_multicast_interface_v6()",
+    parse_ipv6_zone_suffix(interface, context~),
+    context~,
   )
 }
 
@@ -319,17 +323,21 @@ pub fn UdpServer::set_multicast_interface(
 
 ///|
 /// Set the outgoing interface used for sending multicast packets with this client.
+/// The interface is provided via IPv6 zone suffix index.
+/// It can either be a decimal string for a raw interface index,
+/// or a network interface name.
 ///
 /// This function is IPv6-only. For IPv4, use `set_multicast_interface` instead.
 pub fn UdpServer::set_multicast_interface_v6(
   self : UdpServer,
-  interface_index : UInt,
+  interface : String,
 ) -> Unit raise {
   guard self.addr.family() is IPv6
+  let context = "@socket.UdpServer::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),
-    interface_index,
-    context="@socket.UdpServer::set_multicast_interface_v6()",
+    parse_ipv6_zone_suffix(interface, context~),
+    context~,
   )
 }
 
@@ -397,10 +405,11 @@ pub fn UdpServer::join_multicast_group(
 }
 
 ///|
-/// Let the server join multicast group at address `multi_addr`, via interface `interface_index`.
-/// `interface_index` defaults to a 0, which assigns a default output interface
-/// for site-local/global multicast packets.
-/// For link-local multicast packets, an interface index must be explicitly specified.
+/// Let the server join multicast group at address `multi_addr`, via interface `interface`.
+/// `interface`, if provided, should use IPv6 zone suffix syntax,
+/// meaning it can either be a decimal string for raw interface index, or a network interface name.
+/// `interface` defaults to "0", meaning a default output interface chosen by the OS.
+/// For interface-local/link-local multicast packets, the interface must be explicitly specified.
 /// Only the IP part of `multi_addr` matters, the port is irrelevant.
 ///
 /// Note that `join_multicast_group` is mainly about IGMP related stuff,
@@ -417,14 +426,19 @@ pub fn UdpServer::join_multicast_group(
 pub fn UdpServer::join_multicast_group_v6(
   self : UdpServer,
   multi_addr : Addr,
-  interface_index? : UInt = 0,
+  interface? : String = "0",
 ) -> Unit raise {
   let context = "@socket.UdpServer::join_multicast_group_v6()"
   guard self.addr.family() is IPv6 else { abort("\{context} is IPv6 only") }
   guard multi_addr.family() is IPv6 else {
     raise Failure::Failure("\{context}: expected IPv6 address")
   }
-  join_multicast_group_v6(self.io.fd(), multi_addr, interface_index, context~)
+  join_multicast_group_v6(
+    self.io.fd(),
+    multi_addr,
+    parse_ipv6_zone_suffix(interface, context~),
+    context~,
+  )
 }
 
 ///|

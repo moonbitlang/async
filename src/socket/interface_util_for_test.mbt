@@ -19,7 +19,7 @@ extern "C" fn find_ipv6_test_interface() -> UInt = "moonbitlang_async_find_ipv6_
 let test_interface_index : UInt = {
   let index = find_ipv6_test_interface()
   if index is 0 {
-    abort("cannot find localhost adaptor, or localhost does not support IPv6")
+    abort("cannot find suitable network interface for testing")
   }
   index
 }
@@ -27,7 +27,7 @@ let test_interface_index : UInt = {
 ///|
 let test_interface : String = @socket.if_indextoname(
   test_interface_index,
-  context="fetch name of localhost adaptor",
+  context="fetch name of test network interface",
 ) catch {
   err => abort(err.to_string())
 }
