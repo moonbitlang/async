@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-extern "C" fn find_ipv6_localhost() -> UInt = "moonbitlang_async_find_ipv6_localhost"
+extern "C" fn find_ipv6_test_interface() -> UInt = "moonbitlang_async_find_ipv6_test_interface"
 
 ///|
-let localhost_index : UInt = {
-  let index = find_ipv6_localhost()
+let test_interface_index : UInt = {
+  let index = find_ipv6_test_interface()
   if index is 0 {
     abort("cannot find localhost adaptor, or localhost does not support IPv6")
   }
@@ -25,8 +25,8 @@ let localhost_index : UInt = {
 }
 
 ///|
-let localhost_interface : String = @socket.if_indextoname(
-  localhost_index,
+let test_interface : String = @socket.if_indextoname(
+  test_interface_index,
   context="fetch name of localhost adaptor",
 ) catch {
   err => abort(err.to_string())

@@ -614,7 +614,7 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_find_ipv6_localhost() {
+int32_t moonbitlang_async_find_ipv6_test_interface() {
 #ifdef _WIN32
   ULONG flags =
     GAA_FLAG_SKIP_ANYCAST |
@@ -646,12 +646,26 @@ int32_t moonbitlang_async_find_ipv6_localhost() {
   int32_t result = 0;
   for (IP_ADAPTER_ADDRESSES *adapter = addrs; adapter; adapter = adapter->Next) {
     if (adapter->OperStatus != IfOperStatusUp) continue;
-    if (adapter->IfType != IF_TYPE_SOFTWARE_LOOPBACK) continue;
+    if (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK) continue;
     if (adapter->Ipv6IfIndex == 0) continue;
     if (adapter->Flags & IP_ADAPTER_NO_MULTICAST) continue;
 
-    result = adapter->Ipv6IfIndex;
-    break;
+    for (
+      IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress;
+      unicast;
+      unicast = unicast->Next
+    ) {
+      struct sockaddr *sa = unicast->Address.lpSockaddr;
+      if (sa == NULL || sa->sa_family != AF_INET6) continue;
+
+      struct sockaddr_in6 *sa6 = (struct sockaddr_in6*)sa;
+      if (!IN6_IS_ADDR_LINKLOCAL(&sa6->sin6_addr)) continue;
+
+      result = adapter->Ipv6IfIndex;
+      break;
+    }
+
+    if (result != 0) break;
   }
 
   HeapFree(GetProcessHeap(), 0, addrs);
@@ -668,9 +682,13 @@ int32_t moonbitlang_async_find_ipv6_localhost() {
     if (
       ifs->ifa_addr
       && ifs->ifa_addr->sa_family == AF_INET6
-      && (ifs->ifa_flags & IFF_LOOPBACK)
+#   ifdef __linux__
+      && !(ifs->ifa_flags & IFF_LOOPBACK)
+#   endif
       && (ifs->ifa_flags & IFF_UP)
       && (ifs->ifa_flags & IFF_RUNNING)
+      && (ifs->ifa_flags & IFF_MULTICAST)
+      && IN6_IS_ADDR_LINKLOCAL(&(((struct sockaddr_in6*)ifs->ifa_addr)->sin6_addr))
     ) {
       result = if_nametoindex(ifs->ifa_name);
       if (result) break;
