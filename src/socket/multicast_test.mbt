@@ -99,6 +99,10 @@ async test "multicast discovery then unicast" {
 
 ///|
 async test "multicast no loopback" {
+  if @event_loop.platform is MacOS {
+    // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
+    return
+  }
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer::multicast(
@@ -142,6 +146,10 @@ async test "multicast no loopback" {
 
 ///|
 async test "multicast discovery then unicast v6" {
+  if @event_loop.platform is MacOS {
+    // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
+    return
+  }
   let log = []
   @async.with_task_group <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
@@ -191,8 +199,11 @@ async test "multicast discovery then unicast v6" {
 
 ///|
 async test "multicast no loopback v6" {
+  if @event_loop.platform is MacOS {
+    // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
+    return
+  }
   let log = []
-  println(test_interface)
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()
