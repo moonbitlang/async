@@ -192,6 +192,7 @@ async test "multicast discovery then unicast v6" {
 ///|
 async test "multicast no loopback v6" {
   let log = []
+  println(test_interface)
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()

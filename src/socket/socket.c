@@ -681,8 +681,12 @@ int32_t moonbitlang_async_find_ipv6_test_interface() {
     if (
       ifs->ifa_addr
       && ifs->ifa_addr->sa_family == AF_INET6
+    // on Linux: loopback cannot do multicast
+    // on MacOS: a lot of non-localhost non-routable interface
 #   ifdef __linux__
       && !(ifs->ifa_flags & IFF_LOOPBACK)
+#else
+      && (ifs->ifa_flags & IFF_LOOPBACK)
 #   endif
       && (ifs->ifa_flags & IFF_UP)
       && (ifs->ifa_flags & IFF_RUNNING)
