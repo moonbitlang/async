@@ -39,6 +39,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <errno.h>
@@ -49,6 +50,10 @@
 
 typedef int HANDLE;
 typedef int SOCKET;
+
+#ifdef __MACH__
+#define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
+#endif
 
 #endif
 
@@ -99,7 +104,7 @@ int moonbitlang_async_allow_reuse_addr(HANDLE sock) {
 }
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_make_udp_socket(int family) {
+HANDLE moonbitlang_async_make_udp_socket(int family, int32_t multicast) {
 #ifdef _WIN32
   SOCKET sock = WSASocket(
     family == 4 ? AF_INET : AF_INET6,
@@ -112,24 +117,131 @@ HANDLE moonbitlang_async_make_udp_socket(int family) {
   if (sock == INVALID_SOCKET)
     return INVALID_HANDLE_VALUE;
 
-  int exclusive_addruse = 0;
-  if (
-    setsockopt(
-      sock,
-      SOL_SOCKET,
-      SO_EXCLUSIVEADDRUSE,
-      (char*)&exclusive_addruse,
-      sizeof(int)
-    ) < 0
-  ) {
-    closesocket(sock);
-    return INVALID_HANDLE_VALUE;
+  if (multicast) {
+    int reuse_multicastport = 1;
+    if (
+      setsockopt(
+        sock,
+        SOL_SOCKET,
+        SO_REUSE_MULTICASTPORT,
+        &reuse_multicastport,
+        sizeof(int)
+      ) < 0
+    ) {
+      closesocket(sock);
+      return INVALID_HANDLE_VALUE;
+    }
+  } else {
+    int exclusive_addruse = 0;
+    if (
+      setsockopt(
+        sock,
+        SOL_SOCKET,
+        SO_EXCLUSIVEADDRUSE,
+        &exclusive_addruse,
+        sizeof(int)
+      ) < 0
+    ) {
+      closesocket(sock);
+      return INVALID_HANDLE_VALUE;
+    }
   }
 
   return (HANDLE)sock;
 #else
-  return socket(family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);
+  int sock = socket(family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);
+  if (multicast) {
+    int enable = 1;
+# ifdef __linux__
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+      close(sock);
+      return -1;
+    }
+# elif defined(__MACH__)
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0) {
+      close(sock);
+      return -1;
+    }
+# else
+    moonbit_panic();
+# endif
+  }
+  return sock;
 #endif
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_join_multicast_group(
+  HANDLE sock,
+  struct sockaddr_in *multi_addr,
+  struct sockaddr_in *local_addr
+) {
+  struct ip_mreq mreq;
+  mreq.imr_multiaddr = multi_addr->sin_addr;
+  mreq.imr_interface = local_addr->sin_addr;
+  return setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(struct ip_mreq));
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_join_multicast_group_v6(
+  HANDLE sock,
+  struct sockaddr_in6 *multi_addr,
+  uint32_t if_index
+) {
+  struct ipv6_mreq mreq;
+  mreq.ipv6mr_multiaddr = multi_addr->sin6_addr;
+  mreq.ipv6mr_interface = if_index;
+  return setsockopt(sock, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq, sizeof(struct ipv6_mreq));
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_set_multicast_interface(
+  HANDLE sock,
+  struct sockaddr_in *local_addr
+) {
+  return setsockopt(
+    sock,
+    IPPROTO_IP,
+    IP_MULTICAST_IF,
+    &local_addr->sin_addr,
+    sizeof(struct in_addr)
+  );
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_set_multicast_interface_v6(
+  HANDLE sock,
+  uint32_t interface_index
+) {
+  return setsockopt(
+    sock,
+    IPPROTO_IPV6,
+    IPV6_MULTICAST_IF,
+    &interface_index,
+    sizeof(interface_index)
+  );
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_set_multicast_ttl(HANDLE sock, int32_t ttl, int32_t family) {
+  return setsockopt(
+    sock,
+    family == 4 ? IPPROTO_IP : IPPROTO_IPV6,
+    family == 4 ? IP_MULTICAST_TTL : IPV6_MULTICAST_HOPS,
+    (char*)&ttl,
+    sizeof(ttl)
+  );
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_set_multicast_loopback(HANDLE sock, int32_t enable, int32_t family) {
+  return setsockopt(
+    sock,
+    family == 4 ? IPPROTO_IP : IPPROTO_IPV6,
+    family == 4 ? IP_MULTICAST_LOOP : IPV6_MULTICAST_LOOP,
+    (char*)&enable,
+    sizeof(enable)
+  );
 }
 
 MOONBIT_FFI_EXPORT
@@ -305,6 +417,21 @@ int32_t moonbitlang_async_addr_is_ipv6(void *addr_bytes) {
   // use sa_family to be compatible with more platforms(BSD, Linux)
   struct sockaddr *sa = (struct sockaddr *)addr_bytes;
   return sa->sa_family == AF_INET6;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_addr_is_multicast(void *addr_bytes) {
+  struct sockaddr *sa = (struct sockaddr *)addr_bytes;
+  switch (sa->sa_family) {
+    case AF_INET: {
+      int first_octet = ntohl(((struct sockaddr_in*)sa)->sin_addr.s_addr) >> 24;
+      return 224 <= first_octet && first_octet < 240;
+    }
+    case AF_INET6: {
+      return ((struct sockaddr_in6*)sa)->sin6_addr.s6_addr[0] == 0xff;
+    };
+    default: return 0;
+  };
 }
 
 MOONBIT_FFI_EXPORT
@@ -487,7 +614,7 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_find_ipv6_localhost() {
+int32_t moonbitlang_async_find_ipv6_test_interface() {
 #ifdef _WIN32
   ULONG flags =
     GAA_FLAG_SKIP_ANYCAST |
@@ -519,12 +646,25 @@ int32_t moonbitlang_async_find_ipv6_localhost() {
   int32_t result = 0;
   for (IP_ADAPTER_ADDRESSES *adapter = addrs; adapter; adapter = adapter->Next) {
     if (adapter->OperStatus != IfOperStatusUp) continue;
-    if (adapter->IfType != IF_TYPE_SOFTWARE_LOOPBACK) continue;
     if (adapter->Ipv6IfIndex == 0) continue;
     if (adapter->Flags & IP_ADAPTER_NO_MULTICAST) continue;
 
-    result = adapter->Ipv6IfIndex;
-    break;
+    for (
+      IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress;
+      unicast;
+      unicast = unicast->Next
+    ) {
+      struct sockaddr *sa = unicast->Address.lpSockaddr;
+      if (sa == NULL || sa->sa_family != AF_INET6) continue;
+
+      struct sockaddr_in6 *sa6 = (struct sockaddr_in6*)sa;
+      if (!IN6_IS_ADDR_LINKLOCAL(&sa6->sin6_addr)) continue;
+
+      result = adapter->Ipv6IfIndex;
+      break;
+    }
+
+    if (result != 0) break;
   }
 
   HeapFree(GetProcessHeap(), 0, addrs);
@@ -541,9 +681,17 @@ int32_t moonbitlang_async_find_ipv6_localhost() {
     if (
       ifs->ifa_addr
       && ifs->ifa_addr->sa_family == AF_INET6
+    // on Linux: loopback cannot do multicast
+    // on MacOS: a lot of non-localhost non-routable interface
+#   ifdef __linux__
+      && !(ifs->ifa_flags & IFF_LOOPBACK)
+#else
       && (ifs->ifa_flags & IFF_LOOPBACK)
+#   endif
       && (ifs->ifa_flags & IFF_UP)
       && (ifs->ifa_flags & IFF_RUNNING)
+      && (ifs->ifa_flags & IFF_MULTICAST)
+      && IN6_IS_ADDR_LINKLOCAL(&(((struct sockaddr_in6*)ifs->ifa_addr)->sin6_addr))
     ) {
       result = if_nametoindex(ifs->ifa_name);
       if (result) break;

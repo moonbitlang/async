@@ -198,6 +198,15 @@ fn parse_ipv6_group(group : StringView) -> UInt raise InvalidAddr {
 }
 
 ///|
+fn parse_ipv6_zone_suffix(zone : StringView, context~ : String) -> UInt raise {
+  try @string.parse_uint(zone) catch {
+    _ => if_nametoindex(zone, context~)
+  } noraise {
+    index => index
+  }
+}
+
+///|
 fn parse_ipv4_to_bytes(
   ip_str : StringView,
 ) -> (UInt, UInt, UInt, UInt) raise InvalidAddr {

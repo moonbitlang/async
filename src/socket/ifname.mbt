@@ -17,7 +17,7 @@ let global_ifname_socket : Ref[@fd_util.Fd] = {
   let context = "creating global socket object for interface name lookup"
   let sock = Ref(
     if @event_loop.platform is Linux {
-      make_udp_socket(IPv4, context~) catch {
+      make_udp_socket(IPv4, multicast=false, context~) catch {
         err => abort(err.to_string())
       }
     } else {
@@ -29,7 +29,7 @@ let global_ifname_socket : Ref[@fd_util.Fd] = {
       // In some tests there may be multiple event loops spawned in a single program run,
       // ensure the global socket object is valid after the last event loop disposed it
       if @event_loop.platform is Linux && !@fd_util.fd_is_valid(sock.val) {
-        sock.val = make_udp_socket(IPv4, context~)
+        sock.val = make_udp_socket(IPv4, multicast=false, context~)
       }
     },
     exit=() => {

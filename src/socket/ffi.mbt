@@ -37,12 +37,19 @@ fn make_tcp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise 
 }
 
 ///|
-extern "C" fn make_udp_socket_ffi(family : AddrFamily) -> @fd_util.Fd = "moonbitlang_async_make_udp_socket"
+extern "C" fn make_udp_socket_ffi(
+  family : AddrFamily,
+  multicast~ : Bool,
+) -> @fd_util.Fd = "moonbitlang_async_make_udp_socket"
 
 ///|
 #cfg(not(platform="windows"))
-fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
-  let sock = make_udp_socket_ffi(family)
+fn make_udp_socket(
+  family : AddrFamily,
+  multicast~ : Bool,
+  context~ : String,
+) -> @fd_util.Fd raise {
+  let sock = make_udp_socket_ffi(family, multicast~)
   if sock < 0 {
     @os_error.check_errno(context)
   }
@@ -52,12 +59,129 @@ fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise 
 
 ///|
 #cfg(platform="windows")
-fn make_udp_socket(family : AddrFamily, context~ : String) -> @fd_util.Fd raise {
-  let sock = make_udp_socket_ffi(family)
+fn make_udp_socket(
+  family : AddrFamily,
+  multicast~ : Bool,
+  context~ : String,
+) -> @fd_util.Fd raise {
+  let sock = make_udp_socket_ffi(family, multicast~)
   if !@fd_util.fd_is_valid(sock) {
     @os_error.check_errno(context)
   }
   sock
+}
+
+///|
+#borrow(multi_addr, local_addr)
+extern "C" fn join_multicast_group_ffi(
+  sock : @fd_util.Fd,
+  multi_addr : Addr,
+  local_addr : Addr,
+) -> Int = "moonbitlang_async_join_multicast_group"
+
+///|
+fn join_multicast_group(
+  sock : @fd_util.Fd,
+  multi_addr : Addr,
+  local_addr : Addr,
+  context~ : String,
+) -> Unit raise {
+  if join_multicast_group_ffi(sock, multi_addr, local_addr) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+#borrow(multi_addr)
+extern "C" fn join_multicast_group_v6_ffi(
+  sock : @fd_util.Fd,
+  multi_addr : Addr,
+  interface_index : UInt,
+) -> Int = "moonbitlang_async_join_multicast_group_v6"
+
+///|
+fn join_multicast_group_v6(
+  sock : @fd_util.Fd,
+  multi_addr : Addr,
+  interface_index : UInt,
+  context~ : String,
+) -> Unit raise {
+  if join_multicast_group_v6_ffi(sock, multi_addr, interface_index) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+#borrow(local_addr)
+extern "C" fn set_multicast_interface_ffi(
+  sock : @fd_util.Fd,
+  local_addr : Addr,
+) -> Int = "moonbitlang_async_set_multicast_interface"
+
+///|
+fn set_multicast_interface(
+  sock : @fd_util.Fd,
+  local_addr : Addr,
+  context~ : String,
+) -> Unit raise {
+  if set_multicast_interface_ffi(sock, local_addr) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+extern "C" fn set_multicast_interface_v6_ffi(
+  sock : @fd_util.Fd,
+  interface_index : UInt,
+) -> Int = "moonbitlang_async_set_multicast_interface_v6"
+
+///|
+fn set_multicast_interface_v6(
+  sock : @fd_util.Fd,
+  interface_index : UInt,
+  context~ : String,
+) -> Unit raise {
+  if set_multicast_interface_v6_ffi(sock, interface_index) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+extern "C" fn set_multicast_ttl_ffi(
+  sock : @fd_util.Fd,
+  ttl : Int,
+  family~ : AddrFamily,
+) -> Int = "moonbitlang_async_set_multicast_ttl"
+
+///|
+fn set_multicast_ttl(
+  sock : @fd_util.Fd,
+  ttl : Int,
+  family~ : AddrFamily,
+  context~ : String,
+) -> Unit raise {
+  if set_multicast_ttl_ffi(sock, ttl, family~) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+extern "C" fn set_multicast_loopback_ffi(
+  sock : @fd_util.Fd,
+  loopback : Bool,
+  family~ : AddrFamily,
+) -> Int = "moonbitlang_async_set_multicast_loopback"
+
+///|
+fn set_multicast_loopback(
+  sock : @fd_util.Fd,
+  loopback : Bool,
+  family~ : AddrFamily,
+  context~ : String,
+) -> Unit raise {
+  if set_multicast_loopback_ffi(sock, loopback, family~) < 0 {
+    @os_error.check_errno(context)
+  }
 }
 
 ///|
