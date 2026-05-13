@@ -45,7 +45,7 @@ fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
     } else {
       logger <+ ", "
     }
-    logger <+ "\{to_repr(key)}: \{to_repr(value)}"
+    logger <+ "\{key.escape()}: \{value.escape()}"
   }
   logger <+ "}"
 }
@@ -54,14 +54,14 @@ fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
 fn Request::write_show(self : Request, logger : &Logger) -> Unit {
   logger <+ "{meth: "
   self.meth.write_show(logger)
-  logger <+ ", path: \{to_repr(self.path)}, headers: "
+  logger <+ ", path: \{self.path.escape()}, headers: "
   write_headers_show(self.headers, logger)
   logger <+ "}"
 }
 
 ///|
 fn Response::write_show(self : Response, logger : &Logger) -> Unit {
-  logger <+ "{code: \{self.code}, reason: \{to_repr(self.reason)}, headers: "
+  logger <+ "{code: \{self.code}, reason: \{self.reason.escape()}, headers: "
   write_headers_show(self.headers, logger)
   logger <+ "}"
 }
