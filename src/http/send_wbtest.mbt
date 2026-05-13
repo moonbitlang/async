@@ -804,3 +804,31 @@ async test "send_response empty body" {
     )
   }
 }
+
+///|
+async test "sender persistent header" {
+  @async.with_task_group(root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg(() => {
+      defer w.close()
+      let sender = Sender::new(w, headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
+      let _ = sender.send_request(Get, "/", extra_headers={})
+      sender.end_body()
+    })
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|GET / HTTP/1.1\r
+        #|Host: x.y.org\r
+        #|User-Agent: MoonBit\r
+        #|Accept-Encoding: gzip,identity\r
+        #|\r
+        #|
+      ),
+    )
+  })
+}

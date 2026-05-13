@@ -51,7 +51,11 @@ fn[W : @io.Writer] Sender::new(
       if k_lower is "accept-encoding" {
         has_accept_encoding = true
       }
-      header_text.write_string_utf8("\{k}: \{v}\r\n")
+      header_text
+      ..write_string_utf8(k)
+      ..write_bytes(b": ")
+      ..write_string_utf8(v)
+      .write_bytes(b"\r\n")
     }
   }
   {
@@ -273,7 +277,7 @@ async fn Sender::send_headers(
     } else if forbidden_headers.contains(k_lower) {
       continue
     }
-    self..write(k)..write(": ")..write(v).write("\r\n")
+    self..write(k)..write(b": ")..write(v).write(b"\r\n")
   }
   content_length
 }
@@ -289,29 +293,29 @@ async fn Sender::send_request(
   guard self.mode is SendingHeader
   self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
-    Get => self.write("GET ")
-    Head => self.write("HEAD ")
-    Post => self.write("POST ")
-    Put => self.write("PUT ")
-    Delete => self.write("DELETE ")
-    Connect => self.write("CONNECT ")
-    Options => self.write("OPTIONS ")
-    Trace => self.write("TRACE ")
-    Patch => self.write("PATCH ")
+    Get => self.write(b"GET ")
+    Head => self.write(b"HEAD ")
+    Post => self.write(b"POST ")
+    Put => self.write(b"PUT ")
+    Delete => self.write(b"DELETE ")
+    Connect => self.write(b"CONNECT ")
+    Options => self.write(b"OPTIONS ")
+    Trace => self.write(b"TRACE ")
+    Patch => self.write(b"PATCH ")
   }
   let content_length = self
     ..write(path)
-    ..write(" HTTP/1.1\r\n")
+    ..write(b" HTTP/1.1\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
   let auto_decompress = !self.has_accept_encoding &&
     extra_headers.keys().find_first(k => k.to_lower() is "accept-encoding")
     is None
   if auto_decompress {
-    self.write("Accept-Encoding: gzip,identity\r\n")
+    self.write(b"Accept-Encoding: gzip,identity\r\n")
   }
   if content_length is Some(len) {
-    self.write("\r\n")
+    self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
     self.mode = WaitingBody
@@ -335,20 +339,20 @@ async fn Sender::send_response(
     _ => self.should_have_empty_body = code is (100..<200 | 204 | 205 | 304)
   }
   let content_length = self
-    ..write("HTTP/1.1 ")
+    ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
-    ..write(" ")
+    ..write(b" ")
     ..write(reason)
-    ..write("\r\n")
+    ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
   for cookie in cookies {
     self.write(b"Set-Cookie: ")
     cookie.write_to(self)
-    self.write("\r\n")
+    self.write(b"\r\n")
   }
   if content_length is Some(len) {
-    self.write("\r\n")
+    self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
     self.mode = WaitingBody
