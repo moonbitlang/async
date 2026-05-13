@@ -49,7 +49,9 @@ async test "UTF8 validation" {
       defer client.close()
       client..start_message(Text)..write(msg).end_message()
       let result = try? client.recv().read_all().binary()
-      log.push("client: \{msg.to_array()} => \{result}")
+      log.push(
+        "client: \{@debug.to_string(msg.to_array())} => \{@debug.to_string(result)}",
+      )
       @async.sleep(100)
     }
 
@@ -64,24 +66,24 @@ async test "UTF8 validation" {
     send_bad_message([0xf0, 0x79, 0x80, 0x80])
   })
   json_inspect(log, content=[
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 0",
-    "client: [b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 1",
-    "client: [b'\\x79', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 2",
-    "client: [b'\\xC0', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 1",
-    "client: [b'\\xC0', b'\\x79'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 3",
-    "client: [b'\\xE0', b'\\x80', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 2",
-    "client: [b'\\xE0', b'\\x80', b'\\x79'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 4",
-    "client: [b'\\xF0', b'\\x80', b'\\x80', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 3",
-    "client: [b'\\xF0', b'\\x80', b'\\x80', b'\\x79'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
-    "server failed with ProtocolError(\"Text message is not valid UTF8\") at byte 1",
-    "client: [b'\\xF0', b'\\x79', b'\\x80', b'\\x80'] => Err(ConnectionClosed(InvalidFramePayload, Some(\"Text message is not valid UTF8\")))",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 0",
+    "client: [0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 1",
+    "client: [0x79, 0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 2",
+    "client: [0xc0, 0x80, 0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 1",
+    "client: [0xc0, 0x79] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 3",
+    "client: [0xe0, 0x80, 0x80, 0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 2",
+    "client: [0xe0, 0x80, 0x79] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 4",
+    "client: [0xf0, 0x80, 0x80, 0x80, 0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 3",
+    "client: [0xf0, 0x80, 0x80, 0x79] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
+    "server failed with ProtocolError(Text message is not valid UTF8) at byte 1",
+    "client: [0xf0, 0x79, 0x80, 0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
   ])
 }
 
