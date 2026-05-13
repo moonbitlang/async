@@ -36,27 +36,42 @@ fn Protocol::write_show(self : Protocol, logger : &Logger) -> Unit {
 }
 
 ///|
+fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
+  logger.write_char('{')
+  let mut first = true
+  for key, value in headers {
+    if first {
+      first = false
+    } else {
+      logger.write_string(", ")
+    }
+    logger.write_string(key.escape())
+    logger.write_string(": ")
+    logger.write_string(value.escape())
+  }
+  logger.write_char('}')
+}
+
+///|
 fn Request::write_show(self : Request, logger : &Logger) -> Unit {
   logger.write_string("{meth: ")
   self.meth.write_show(logger)
-  logger
-  ..write_string(", path: ")
-  ..write_object(self.path)
-  ..write_string(", headers: ")
-  ..write_object(self.headers)
-  .write_string("}")
+  logger.write_string(", path: ")
+  logger.write_string(self.path.escape())
+  logger.write_string(", headers: ")
+  write_headers_show(self.headers, logger)
+  logger.write_string("}")
 }
 
 ///|
 fn Response::write_show(self : Response, logger : &Logger) -> Unit {
-  logger
-  ..write_string("{code: ")
-  ..write_object(self.code)
-  ..write_string(", reason: ")
-  ..write_object(self.reason)
-  ..write_string(", headers: ")
-  ..write_object(self.headers)
-  .write_string("}")
+  logger.write_string("{code: ")
+  logger.write_object(self.code)
+  logger.write_string(", reason: ")
+  logger.write_string(self.reason.escape())
+  logger.write_string(", headers: ")
+  write_headers_show(self.headers, logger)
+  logger.write_string("}")
 }
 
 ///|
