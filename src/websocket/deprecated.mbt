@@ -58,29 +58,13 @@ pub impl Show for WebSocketError
 #warnings("-deprecated")
 pub impl Show for WebSocketError with output(self, logger) {
   match self {
-    ConnectionClosed(close_code, msg) => {
-      logger <+ "ConnectionClosed("
-      close_code.write_show(logger)
-      logger <+ ", "
-      logger <+ "\{msg}"
-      logger <+ ")"
-    }
-    InvalidHandshake(msg) => {
-      logger <+ "InvalidHandshake("
-      logger <+ "\{msg}"
-      logger <+ ")"
-    }
-    HandshakeRejected(msg, response) => {
-      logger <+ "HandshakeRejected("
-      logger <+ "\{msg}"
-      logger <+ ", \{response.code}, "
-      logger <+ "\{to_repr(response.reason)}"
-      logger <+ ")"
-    }
-    ProtocolError(msg) => {
-      logger <+ "ProtocolError("
-      logger <+ "\{msg}"
-      logger <+ ")"
-    }
+    ConnectionClosed(close_code, msg) =>
+      logger <+ "ConnectionClosed(\{close_code}, \{msg})"
+    InvalidHandshake(msg) => logger <+ "InvalidHandshake(\{msg})"
+    HandshakeRejected(msg, response) =>
+      logger
+        <+
+        "HandshakeRejected(\{msg}, \{response.code}, \{to_repr(response.reason)})"
+    ProtocolError(msg) => logger <+ "ProtocolError(\{msg})"
   }
 }
