@@ -98,5 +98,5 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 #as_free_fn(lazy_init, deprecated="use `@async.Lazy(..)` instead")
 #alias(new, deprecated)
 pub fn[X] Lazy::Lazy(f : async () -> X) -> Lazy[X] {
-  { worker: f, waiters: @set.new(), state: Uninitialized }
+  { worker: f, waiters: @set.Set([]), state: Uninitialized }
 }

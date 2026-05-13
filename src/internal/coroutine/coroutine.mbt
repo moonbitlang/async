@@ -109,7 +109,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
     state: Running,
     ready: true,
     shielded: true,
-    downstream: Set::new(),
+    downstream: Set([]),
     coro_id: scheduler.coro_id,
     cancelled: false,
   }

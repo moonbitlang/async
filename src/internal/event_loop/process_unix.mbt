@@ -85,7 +85,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     }
     Stopped => ()
   }
-  let out = Ref::new(0)
+  let out = Ref(0)
   let ret = get_process_result(pid, out)
   if ret < 0 {
     @os_error.check_errno(context)
