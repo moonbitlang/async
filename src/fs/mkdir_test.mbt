@@ -20,7 +20,7 @@ async test "mkdir" {
   let result = @fs.readdir(path, sort=true)
   @fs.remove("\{path}/file")
   @fs.rmdir(path)
-  inspect(result, content="[\"file\"]")
+  debug_inspect(result, content="[\"file\"]")
 }
 
 ///|

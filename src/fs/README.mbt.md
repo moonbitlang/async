@@ -315,7 +315,7 @@ async test "readdir with sorting" {
   @fs.remove("\{dir_path}/b.txt")
   @fs.remove("\{dir_path}/c.txt")
   @fs.rmdir(dir_path)
-  guard entries.length() >= 3 else { println(entries) }
+  guard entries.length() >= 3 else { println(@debug.to_string(entries)) }
   inspect(entries[0], content="a.txt")
   inspect(entries[1], content="b.txt")
   inspect(entries[2], content="c.txt")
@@ -354,7 +354,7 @@ async test "walk directory tree" {
   @fs.mkdir("\{base}/sub2")
   @fs.write_file("\{base}/file.txt", b"", create_mode=CreateOrTruncate)
   @fs.write_file("\{base}/sub1/file1.txt", b"", create_mode=CreateOrTruncate)
-  let visited : Ref[Int] = Ref::new(0)
+  let visited : Ref[Int] = Ref(0)
   @fs.walk(base, fn(_path, _files) { visited.val = visited.val + 1 })
   @fs.remove("\{base}/file.txt")
   @fs.remove("\{base}/sub1/file1.txt")
@@ -371,7 +371,7 @@ async test "walk with max_concurrency" {
   @fs.mkdir(base, permission=0o755)
   @fs.mkdir("\{base}/dir1", permission=0o755)
   @fs.mkdir("\{base}/dir2", permission=0o755)
-  let count : Ref[Int] = Ref::new(0)
+  let count : Ref[Int] = Ref(0)
   @fs.walk(
     base,
     fn(_path, _files) { count.val = count.val + 1 },
