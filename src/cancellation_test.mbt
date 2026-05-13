@@ -160,27 +160,29 @@ async test "multiple scope" {
 ///|
 async test "recursive cancel" {
   let buf = StringBuilder::new()
-  buf.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        for _ in 0..<2 {
-          @async.sleep(400)
-          buf.write_string("tick\n")
-        }
-      })
-      let task = root.spawn(() => {
-        @async.sleep(1000) catch {
-          err => buf.write_string("first sleep cancelled with \{err}\n")
-        }
-        @async.sleep(1000) catch {
-          err => buf.write_string("second sleep cancelled with \{err}\n")
-        }
-        buf.write_string("task finished\n")
-      })
-      @async.sleep(600)
-      task.cancel()
-      buf.write_string("main task exit\n")
-    }),
+  buf.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          for _ in 0..<2 {
+            @async.sleep(400)
+            buf.write_string("tick\n")
+          }
+        })
+        let task = root.spawn(() => {
+          @async.sleep(1000) catch {
+            err => buf.write_string("first sleep cancelled with \{err}\n")
+          }
+          @async.sleep(1000) catch {
+            err => buf.write_string("second sleep cancelled with \{err}\n")
+          }
+          buf.write_string("task finished\n")
+        })
+        @async.sleep(600)
+        task.cancel()
+        buf.write_string("main task exit\n")
+      }),
+    ),
   )
   inspect(
     buf.to_string(),
@@ -281,7 +283,7 @@ async test "immediate failure" {
     group.spawn_bg(() => raise Failure::Failure("failure"))
     group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
   })
-  inspect(
+  debug_inspect(
     result,
     content=(
       #|Err(Failure("failure"))

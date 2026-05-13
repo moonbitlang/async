@@ -90,7 +90,7 @@ async test "semaphore cancellation" {
       @async.sleep(500)
       semaphore.release()
     })
-    inspect(
+    debug_inspect(
       try? @async.with_timeout(250, () => semaphore.acquire()),
       content="Err(TimeoutError)",
     )

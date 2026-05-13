@@ -33,7 +33,7 @@ async test "basic sleep" {
       buf.write_string("task 2, tick 3\n")
     })
   })
-  inspect(result, content="Ok(())")
+  debug_inspect(result, content="Ok(())")
   inspect(
     buf.to_string(),
     content=(
@@ -127,13 +127,17 @@ async test "Timer::cancel" {
     group.spawn_bg(() => {
       let result = try? timer.wait()
       let tick = (@async.now() - start + 50).to_int() / 150
-      log.push("Timer::wait(): \{result} at tick #\{tick}")
+      log.push("Timer::wait(): \{@debug.to_string(result)} at tick #\{tick}")
     })
     @async.sleep(600)
     let tick = (@async.now() - start + 50).to_int() / 150
-    log.push("at tick #\{tick}: Timer::wait(): \{try? timer.wait()}")
+    log.push(
+      "at tick #\{tick}: Timer::wait(): \{@debug.to_string(try? timer.wait())}",
+    )
     timer.cancel()
-    log.push("at tick #\{tick}: Timer::wait(): \{try? timer.wait()}")
+    log.push(
+      "at tick #\{tick}: Timer::wait(): \{@debug.to_string(try? timer.wait())}",
+    )
   })
   json_inspect(log, content=[
     "Timer::wait(): Err(TimerCancelled) at tick #1", "at tick #4: Timer::wait(): Err(TimerCancelled)",
