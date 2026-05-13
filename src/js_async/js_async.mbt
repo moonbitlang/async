@@ -100,6 +100,13 @@ extern "js" fn JsValue::new_promise(
   #| (f) => new Promise(f)
 
 ///|
+priv struct PromiseWaiter[X] {
+  mut coro : @coroutine.Coroutine?
+  mut ret : X?
+  mut err : Error?
+}
+
+///|
 /// Wait for a JavaScript promise to resolve and return the fulfilled value,
 /// or raise an error if the promise is rejected.
 ///
@@ -113,12 +120,7 @@ pub async fn[X] Promise::wait(
   promise : Promise[X],
   abort_controller? : AbortController,
 ) -> X {
-  struct Waiter {
-    mut coro : @coroutine.Coroutine?
-    mut ret : X?
-    mut err : Error?
-  }
-  let waiter = {
+  let waiter : PromiseWaiter[X] = {
     coro: Some(@coroutine.current_coroutine()),
     ret: None,
     err: None,
