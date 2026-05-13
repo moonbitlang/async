@@ -18,5 +18,5 @@ impl Show for ServerTerminate
 
 ///|
 impl Show for ServerTerminate with output(_self, logger) {
-  logger.write_string("ServerTerminate")
+  logger <+ "ServerTerminate"
 }

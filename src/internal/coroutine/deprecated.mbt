@@ -18,5 +18,5 @@ pub impl Show for Cancelled
 
 ///|
 pub impl Show for Cancelled with output(_self, logger) {
-  logger.write_string("Cancelled")
+  logger <+ "Cancelled"
 }

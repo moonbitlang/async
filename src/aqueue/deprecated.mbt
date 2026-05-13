@@ -18,5 +18,5 @@ pub impl Show for QueueAlreadyClosed
 
 ///|
 pub impl Show for QueueAlreadyClosed with output(_self, logger) {
-  logger.write_string("QueueAlreadyClosed")
+  logger <+ "QueueAlreadyClosed"
 }

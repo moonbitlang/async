@@ -84,30 +84,23 @@ extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_a
 pub impl Show for Addr with output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
-    logger.write_char('[')
+    logger <+ "["
     write_ipv6_str(self.get_ipv6_bytes(), logger)
     let scope_id = self.scope_id()
     if scope_id > 0 {
       let interface = if_indextoname(scope_id, context="") catch {
         _ => scope_id.to_string()
       }
-      logger..write_char('%').write_string(interface)
+      logger <+ "%\{interface}"
     }
-    logger..write_char(']')..write_char(':').write_object(self.port())
+    logger <+ "]:\{self.port()}"
   } else {
     // IPv4 address format
     let ip = self.ip()
     let port = self.port()
     logger
-    ..write_object(ip >> 24)
-    ..write_char('.')
-    ..write_object((ip >> 16) & 255)
-    ..write_char('.')
-    ..write_object((ip >> 8) & 255)
-    ..write_char('.')
-    ..write_object(ip & 255)
-    ..write_char(':')
-    .write_object(port)
+      <+
+      "\{ip >> 24}.\{(ip >> 16) & 255}.\{(ip >> 8) & 255}.\{ip & 255}:\{port}"
   }
 }
 

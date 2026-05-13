@@ -15,18 +15,17 @@
 ///|
 fn CloseCode::write_show(self : CloseCode, logger : &Logger) -> Unit {
   match self {
-    Normal => logger.write_string("Normal")
-    GoingAway => logger.write_string("GoingAway")
-    ProtocolError => logger.write_string("ProtocolError")
-    UnsupportedData => logger.write_string("UnsupportedData")
-    Abnormal => logger.write_string("Abnormal")
-    InvalidFramePayload => logger.write_string("InvalidFramePayload")
-    PolicyViolation => logger.write_string("PolicyViolation")
-    MessageTooBig => logger.write_string("MessageTooBig")
-    MissingExtension => logger.write_string("MissingExtension")
-    InternalError => logger.write_string("InternalError")
-    Other(code) =>
-      logger..write_string("Other(")..write_object(code).write_string(")")
+    Normal => logger <+ "Normal"
+    GoingAway => logger <+ "GoingAway"
+    ProtocolError => logger <+ "ProtocolError"
+    UnsupportedData => logger <+ "UnsupportedData"
+    Abnormal => logger <+ "Abnormal"
+    InvalidFramePayload => logger <+ "InvalidFramePayload"
+    PolicyViolation => logger <+ "PolicyViolation"
+    MessageTooBig => logger <+ "MessageTooBig"
+    MissingExtension => logger <+ "MissingExtension"
+    InternalError => logger <+ "InternalError"
+    Other(code) => logger <+ "Other(\{code})"
   }
 }
 
@@ -37,8 +36,8 @@ pub impl Show for MessageKind
 ///|
 pub impl Show for MessageKind with output(self, logger) {
   match self {
-    Binary => logger.write_string("Binary")
-    Text => logger.write_string("Text")
+    Binary => logger <+ "Binary"
+    Text => logger <+ "Text"
   }
 }
 
@@ -60,28 +59,28 @@ pub impl Show for WebSocketError
 pub impl Show for WebSocketError with output(self, logger) {
   match self {
     ConnectionClosed(close_code, msg) => {
-      logger.write_string("ConnectionClosed(")
+      logger <+ "ConnectionClosed("
       close_code.write_show(logger)
-      logger..write_string(", ")..write_object(msg).write_string(")")
+      logger <+ ", "
+      logger <+ "\{msg}"
+      logger <+ ")"
     }
-    InvalidHandshake(msg) =>
-      logger
-      ..write_string("InvalidHandshake(")
-      ..write_object(msg)
-      .write_string(")")
-    HandshakeRejected(msg, response) =>
-      logger
-      ..write_string("HandshakeRejected(")
-      ..write_object(msg)
-      ..write_string(", ")
-      ..write_object(response.code)
-      ..write_string(", ")
-      ..write_object(response.reason)
-      .write_string(")")
-    ProtocolError(msg) =>
-      logger
-      ..write_string("ProtocolError(")
-      ..write_object(msg)
-      .write_string(")")
+    InvalidHandshake(msg) => {
+      logger <+ "InvalidHandshake("
+      logger <+ "\{msg}"
+      logger <+ ")"
+    }
+    HandshakeRejected(msg, response) => {
+      logger <+ "HandshakeRejected("
+      logger <+ "\{msg}"
+      logger <+ ", \{response.code}, "
+      logger <+ "\{to_repr(response.reason)}"
+      logger <+ ")"
+    }
+    ProtocolError(msg) => {
+      logger <+ "ProtocolError("
+      logger <+ "\{msg}"
+      logger <+ ")"
+    }
   }
 }

@@ -15,19 +15,19 @@
 ///|
 fn log_headers(headers : Map[String, String], logger : &Logger) -> Unit {
   for k, v in headers {
-    logger.write_string("\{k}: \{v}\n")
+    logger <+ "\{k}: \{v}\n"
   }
 }
 
 ///|
 fn log_request(req : Request, logger : &Logger) -> Unit {
-  logger.write_string("\{@debug.to_string(req.meth)} \{req.path}\n")
+  logger <+ "\{@debug.to_string(req.meth)} \{req.path}\n"
   log_headers(req.headers, logger)
 }
 
 ///|
 fn log_response(req : Response, logger : &Logger) -> Unit {
-  logger.write_string("\{req.code} \{req.reason}\n")
+  logger <+ "\{req.code} \{req.reason}\n"
   log_headers(req.headers, logger)
 }
 

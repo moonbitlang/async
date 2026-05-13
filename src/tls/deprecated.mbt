@@ -19,8 +19,7 @@ pub impl Show for TlsError
 ///|
 pub impl Show for TlsError with output(self, logger) {
   match self {
-    TlsError(msg) =>
-      logger..write_string("TlsError(")..write_object(msg).write_string(")")
+    TlsError(msg) => logger <+ "TlsError(\{to_repr(msg)})"
   }
 }
 
@@ -30,5 +29,5 @@ pub impl Show for ConnectionClosed
 
 ///|
 pub impl Show for ConnectionClosed with output(_self, logger) {
-  logger.write_string("ConnectionClosed")
+  logger <+ "ConnectionClosed"
 }

@@ -18,7 +18,7 @@ pub impl Show for TimeoutError
 
 ///|
 pub impl Show for TimeoutError with output(_self, logger) {
-  logger.write_string("TimeoutError")
+  logger <+ "TimeoutError"
 }
 
 ///|
@@ -27,5 +27,5 @@ pub impl Show for TimerCancelled
 
 ///|
 pub impl Show for TimerCancelled with output(_self, logger) {
-  logger.write_string("TimerCancelled")
+  logger <+ "TimerCancelled"
 }

@@ -15,63 +15,55 @@
 ///|
 fn RequestMethod::write_show(self : RequestMethod, logger : &Logger) -> Unit {
   match self {
-    Get => logger.write_string("Get")
-    Head => logger.write_string("Head")
-    Post => logger.write_string("Post")
-    Put => logger.write_string("Put")
-    Delete => logger.write_string("Delete")
-    Connect => logger.write_string("Connect")
-    Options => logger.write_string("Options")
-    Trace => logger.write_string("Trace")
-    Patch => logger.write_string("Patch")
+    Get => logger <+ "Get"
+    Head => logger <+ "Head"
+    Post => logger <+ "Post"
+    Put => logger <+ "Put"
+    Delete => logger <+ "Delete"
+    Connect => logger <+ "Connect"
+    Options => logger <+ "Options"
+    Trace => logger <+ "Trace"
+    Patch => logger <+ "Patch"
   }
 }
 
 ///|
 fn Protocol::write_show(self : Protocol, logger : &Logger) -> Unit {
   match self {
-    Http => logger.write_string("Http")
-    Https => logger.write_string("Https")
+    Http => logger <+ "Http"
+    Https => logger <+ "Https"
   }
 }
 
 ///|
 fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
-  logger.write_char('{')
+  logger <+ "{"
   let mut first = true
   for key, value in headers {
     if first {
       first = false
     } else {
-      logger.write_string(", ")
+      logger <+ ", "
     }
-    logger.write_string(key.escape())
-    logger.write_string(": ")
-    logger.write_string(value.escape())
+    logger <+ "\{to_repr(key)}: \{to_repr(value)}"
   }
-  logger.write_char('}')
+  logger <+ "}"
 }
 
 ///|
 fn Request::write_show(self : Request, logger : &Logger) -> Unit {
-  logger.write_string("{meth: ")
+  logger <+ "{meth: "
   self.meth.write_show(logger)
-  logger.write_string(", path: ")
-  logger.write_string(self.path.escape())
-  logger.write_string(", headers: ")
+  logger <+ ", path: \{to_repr(self.path)}, headers: "
   write_headers_show(self.headers, logger)
-  logger.write_string("}")
+  logger <+ "}"
 }
 
 ///|
 fn Response::write_show(self : Response, logger : &Logger) -> Unit {
-  logger.write_string("{code: ")
-  logger.write_object(self.code)
-  logger.write_string(", reason: ")
-  logger.write_string(self.reason.escape())
-  logger.write_string(", headers: ")
+  logger <+ "{code: \{self.code}, reason: \{to_repr(self.reason)}, headers: "
   write_headers_show(self.headers, logger)
-  logger.write_string("}")
+  logger <+ "}"
 }
 
 ///|
@@ -117,12 +109,9 @@ pub impl Show for URIParseError
 ///|
 pub impl Show for URIParseError with output(self, logger) {
   match self {
-    InvalidFormat => logger.write_string("InvalidFormat")
+    InvalidFormat => logger <+ "InvalidFormat"
     UnsupportedProtocol(protocol) =>
-      logger
-      ..write_string("UnsupportedProtocol(")
-      ..write_object(protocol)
-      .write_string(")")
+      logger <+ "UnsupportedProtocol(\{to_repr(protocol)})"
   }
 }
 
@@ -136,9 +125,9 @@ pub impl Show for ProxyError
 pub impl Show for ProxyError with output(self, logger) {
   match self {
     ProxyError(response) => {
-      logger.write_string("ProxyError(")
+      logger <+ "ProxyError("
       response.write_show(logger)
-      logger.write_string(")")
+      logger <+ ")"
     }
   }
 }
@@ -152,12 +141,9 @@ pub impl Show for HttpProtocolError
 #cfg(target="native")
 pub impl Show for HttpProtocolError with output(self, logger) {
   match self {
-    BadRequest => logger.write_string("BadRequest")
+    BadRequest => logger <+ "BadRequest"
     HttpVersionNotSupported(version) =>
-      logger
-      ..write_string("HttpVersionNotSupported(")
-      ..write_object(version)
-      .write_string(")")
-    NotImplemented => logger.write_string("NotImplemented")
+      logger <+ "HttpVersionNotSupported(\{to_repr(version)})"
+    NotImplemented => logger <+ "NotImplemented"
   }
 }
