@@ -145,7 +145,7 @@ async test "retry fatal_error" {
     }
   }
 
-  inspect(
+  debug_inspect(
     try? @async.retry(Immediate, fatal_error~, worker),
     content=(
       #|Err(Failure("fatal error"))

@@ -34,7 +34,7 @@ async test "Promise::from_async cancellation" {
       })
     })
   })
-  inspect(result, content="Err(TimeoutError)")
+  debug_inspect(result, content="Err(TimeoutError)")
   assert_false(worker_finished)
 }
 
@@ -46,7 +46,12 @@ async test "Promise::from_async cancellation 2" {
   })
   @async.sleep(100)
   controller.abort()
-  inspect(try? p.wait(), content="Err(AbortError)")
+  debug_inspect(
+    try? p.wait(),
+    content=(
+      #|Err(<moonbitlang/async/js_async.JsError.JsError: ...>)
+    ),
+  )
 }
 
 ///|
@@ -57,7 +62,7 @@ async test "Promise::from_async cancellation 3" {
   })
   @async.sleep(200)
   controller.abort()
-  inspect(try? p.wait(), content="Ok(())")
+  debug_inspect(try? p.wait(), content="Ok(())")
 }
 
 ///|

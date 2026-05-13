@@ -63,25 +63,27 @@ async test "with_timeout failure" {
 ///|
 async test "with_timeout timeout" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(300)
-        log.write_string("300ms tick\n")
-      })
-      @async.with_timeout(200, () => {
-        @async.sleep(400) catch {
-          err => {
-            log.write_string("task cancelled\n")
-            raise err
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(300)
+          log.write_string("300ms tick\n")
+        })
+        @async.with_timeout(200, () => {
+          @async.sleep(400) catch {
+            err => {
+              log.write_string("task cancelled\n")
+              raise err
+            }
           }
+          log.write_string("task finished\n")
+        }) catch {
+          err => log.write_string("`with_timeout` fail with \{err}\n")
         }
-        log.write_string("task finished\n")
-      }) catch {
-        err => log.write_string("`with_timeout` fail with \{err}\n")
-      }
-      log.write_string("main task finished\n")
-    }),
+        log.write_string("main task finished\n")
+      }),
+    ),
   )
   inspect(
     log.to_string(),
@@ -98,31 +100,33 @@ async test "with_timeout timeout" {
 ///|
 async test "with_timeout nested1" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        log.write_string("200ms tick\n")
-        @async.sleep(200)
-        log.write_string("400ms tick\n")
-      })
-      @async.with_timeout(300, () => {
-        @async.with_timeout(500, () => {
-          @async.sleep(2000) catch {
-            err => {
-              log.write_string("task cancelled\n")
-              raise err
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(200)
+          log.write_string("200ms tick\n")
+          @async.sleep(200)
+          log.write_string("400ms tick\n")
+        })
+        @async.with_timeout(300, () => {
+          @async.with_timeout(500, () => {
+            @async.sleep(2000) catch {
+              err => {
+                log.write_string("task cancelled\n")
+                raise err
+              }
             }
+            log.write_string("task finished after 2s\n")
+          }) catch {
+            err => log.write_string("inner `with_timeout` fail with \{err}\n")
           }
-          log.write_string("task finished after 2s\n")
         }) catch {
-          err => log.write_string("inner `with_timeout` fail with \{err}\n")
+          err => log.write_string("outer `with_timeout` fail with \{err}\n")
         }
-      }) catch {
-        err => log.write_string("outer `with_timeout` fail with \{err}\n")
-      }
-      log.write_string("main task finished\n")
-    }),
+        log.write_string("main task finished\n")
+      }),
+    ),
   )
   inspect(
     log.to_string(),
@@ -141,31 +145,33 @@ async test "with_timeout nested1" {
 ///|
 async test "with_timeout nested2" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(300)
-        log.write_string("300ms tick\n")
-        @async.sleep(300)
-        log.write_string("600ms tick\n")
-      })
-      @async.with_timeout(750, () => {
-        @async.with_timeout(450, () => {
-          @async.sleep(2000) catch {
-            err => {
-              log.write_string("task cancelled\n")
-              raise err
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(300)
+          log.write_string("300ms tick\n")
+          @async.sleep(300)
+          log.write_string("600ms tick\n")
+        })
+        @async.with_timeout(750, () => {
+          @async.with_timeout(450, () => {
+            @async.sleep(2000) catch {
+              err => {
+                log.write_string("task cancelled\n")
+                raise err
+              }
             }
+            log.write_string("task finished after 2s\n")
+          }) catch {
+            err => log.write_string("inner `with_timeout` fail with \{err}\n")
           }
-          log.write_string("task finished after 2s\n")
         }) catch {
-          err => log.write_string("inner `with_timeout` fail with \{err}\n")
+          err => log.write_string("outer `with_timeout` fail with \{err}\n")
         }
-      }) catch {
-        err => log.write_string("outer `with_timeout` fail with \{err}\n")
-      }
-      log.write_string("main task finished\n")
-    }),
+        log.write_string("main task finished\n")
+      }),
+    ),
   )
   inspect(
     log.to_string(),

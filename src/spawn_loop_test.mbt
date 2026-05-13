@@ -15,17 +15,19 @@
 ///|
 async test "spawn_loop basic" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      let mut i = 0
-      root.spawn_loop(() => {
-        log.write_string("tick \{i}\n")
-        i = i + 1
-        if i >= 3 {
-          raise @async.BreakFromSpawnLoop
-        }
-      })
-    }),
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        let mut i = 0
+        root.spawn_loop(() => {
+          log.write_string("tick \{i}\n")
+          i = i + 1
+          if i >= 3 {
+            raise @async.BreakFromSpawnLoop
+          }
+        })
+      }),
+    ),
   )
   inspect(
     log.to_string(),

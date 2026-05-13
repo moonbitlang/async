@@ -16,8 +16,8 @@
 async test "put after closed" {
   let q = @async.Queue(kind=Unbounded)
   q.close()
-  inspect(try? q.put(42), content="Err(QueueAlreadyClosed)")
-  inspect(try? q.try_put(42), content="Err(QueueAlreadyClosed)")
+  debug_inspect(try? q.put(42), content="Err(QueueAlreadyClosed)")
+  debug_inspect(try? q.try_put(42), content="Err(QueueAlreadyClosed)")
 }
 
 ///|
@@ -25,8 +25,8 @@ async test "get after closed" {
   let q = @async.Queue(kind=Unbounded)
   q.put(42)
   q.close()
-  inspect(try? q.get(), content="Ok(42)")
-  inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(try? q.get(), content="Ok(42)")
+  debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
 }
 
 ///|
@@ -64,7 +64,7 @@ async test "close with blocking put" {
       @async.sleep(300)
       q.close()
     })
-    inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
@@ -80,7 +80,7 @@ async test "close zero buffered with blocking put" {
       @async.sleep(300)
       q.close()
     })
-    inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
@@ -96,7 +96,7 @@ async test "close with blocking get" {
       @async.sleep(300)
       q.close()
     })
-    inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+    debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")

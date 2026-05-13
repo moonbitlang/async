@@ -15,17 +15,19 @@
 ///|
 async test "return_immediately basic" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        root.return_immediately(())
-      })
-      root.spawn_bg(() => {
-        @async.sleep(300)
-        log.write_string("task finished\n")
-      })
-    }),
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(200)
+          root.return_immediately(())
+        })
+        root.spawn_bg(() => {
+          @async.sleep(300)
+          log.write_string("task finished\n")
+        })
+      }),
+    ),
   )
   inspect(log.to_string(), content="Ok(())")
 }
@@ -33,23 +35,25 @@ async test "return_immediately basic" {
 ///|
 async test "return_immediately nested" {
   let log = StringBuilder::new()
-  log.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(300)
-        log.write_string("outer task finished\n")
-      })
-      @async.with_task_group(fn(group) {
-        group.spawn_bg(() => {
-          @async.sleep(200)
-          root.return_immediately(())
-        })
-        group.spawn_bg(() => {
+  log.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
           @async.sleep(300)
-          log.write_string("inner task finished\n")
+          log.write_string("outer task finished\n")
         })
-      })
-    }),
+        @async.with_task_group(fn(group) {
+          group.spawn_bg(() => {
+            @async.sleep(200)
+            root.return_immediately(())
+          })
+          group.spawn_bg(() => {
+            @async.sleep(300)
+            log.write_string("inner task finished\n")
+          })
+        })
+      }),
+    ),
   )
   inspect(log.to_string(), content="Ok(())")
 }

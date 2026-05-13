@@ -15,21 +15,23 @@
 ///|
 async test "wait basic" {
   let buf = StringBuilder::new()
-  buf.write_object(
-    try? @async.with_task_group(root => {
-      root.spawn_bg(() => {
-        @async.sleep(200)
-        buf.write_string("200ms tick\n")
-        @async.sleep(200)
-        buf.write_string("400ms tick\n")
-      })
-      let task = root.spawn(no_wait=true, () => {
-        @async.sleep(300)
-        buf.write_string("task finished\n")
-      })
-      task.wait()
-      buf.write_string("main task exit\n")
-    }),
+  buf.write_string(
+    @debug.to_string(
+      try? @async.with_task_group(root => {
+        root.spawn_bg(() => {
+          @async.sleep(200)
+          buf.write_string("200ms tick\n")
+          @async.sleep(200)
+          buf.write_string("400ms tick\n")
+        })
+        let task = root.spawn(no_wait=true, () => {
+          @async.sleep(300)
+          buf.write_string("task finished\n")
+        })
+        task.wait()
+        buf.write_string("main task exit\n")
+      }),
+    ),
   )
   inspect(
     buf.to_string(),

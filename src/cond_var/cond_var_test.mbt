@@ -20,7 +20,7 @@ async test "cond var cancellation" {
       @async.sleep(500)
       cond.signal()
     })
-    inspect(
+    debug_inspect(
       try? @async.with_timeout(250, () => cond.wait()),
       content="Err(TimeoutError)",
     )
