@@ -20,7 +20,7 @@ async test "main" {
   }
 
   let result = try? main_prog(println)
-  log.write_string(result.to_string())
+  log.write_string(@debug.to_string(result))
   inspect(
     log.to_string(),
     content=(
