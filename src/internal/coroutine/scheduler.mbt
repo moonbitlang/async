@@ -25,7 +25,7 @@ let scheduler : Scheduler = {
   coro_id: 0,
   curr_coro: None,
   blocking: 0,
-  run_later: @deque.new(),
+  run_later: @deque.Deque([]),
 }
 
 ///|

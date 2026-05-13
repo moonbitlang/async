@@ -76,7 +76,7 @@ priv struct QueuedJob {
 }
 
 ///|
-let curr_loop : Ref[EventLoop?] = Ref::new(None)
+let curr_loop : Ref[EventLoop?] = Ref(None)
 
 ///|
 priv struct EventLoopHook {
@@ -120,12 +120,12 @@ fn EventLoop::new() -> EventLoop raise {
     notify_send,
     max_worker_count: 1024,
     job_id: 0,
-    job_queue: @deque.new(),
-    idle_workers: @deque.new(),
+    job_queue: @deque.Deque([]),
+    idle_workers: @deque.Deque([]),
     running_workers: {},
     completed_jobs_buffer: FixedArray::make(1024, 0),
     jobs: {},
-    timers: @sorted_set.new(),
+    timers: @sorted_set.SortedSet([]),
     main: None,
     killed_by_signal: None,
   }
@@ -144,11 +144,11 @@ fn EventLoop::new() -> EventLoop raise {
     fds: {},
     max_worker_count: 1024,
     job_id: 0,
-    job_queue: @deque.new(),
-    idle_workers: @deque.new(),
+    job_queue: @deque.Deque([]),
+    idle_workers: @deque.Deque([]),
     running_workers: {},
     jobs: {},
-    timers: @sorted_set.new(),
+    timers: @sorted_set.SortedSet([]),
     main: None,
     killed_by_signal: None,
   }

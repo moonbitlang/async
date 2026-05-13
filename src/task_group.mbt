@@ -177,7 +177,7 @@ pub fn[G, X] TaskGroup::spawn(
   no_wait? : Bool = false,
   allow_failure? : Bool = false,
 ) -> Task[X] {
-  let value = Ref::new(None)
+  let value = Ref(None)
   let coro = self.spawn_coroutine(
     () => value.val = Some(f()),
     no_wait~,
@@ -222,7 +222,7 @@ pub fn[X] TaskGroup::add_defer(
 /// `with_task_group` will return the result of `f`.
 pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X) -> X {
   let tg = {
-    children: Set::new(),
+    children: Set([]),
     parent: @coroutine.current_coroutine(),
     waiting: 0,
     state: Running,

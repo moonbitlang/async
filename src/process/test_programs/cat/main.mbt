@@ -15,8 +15,8 @@
 
 ///|
 async fn main {
-  let out_channel = Ref::new(@stdio.stdout)
-  let timeout = Ref::new(None)
+  let out_channel = Ref(@stdio.stdout)
+  let timeout = Ref(None)
   for args = @env.args()[1:] {
     match args {
       ["-stderr", .. rest] => {

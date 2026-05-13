@@ -59,7 +59,7 @@ pub struct Timer {
 #alias(new, deprecated)
 pub fn Timer::Timer(duration : Int) -> Timer {
   let expire_time = @time.ms_since_epoch() + duration.to_int64()
-  { state: Detached, duration, expire_time, waiters: Set::new() }
+  { state: Detached, duration, expire_time, waiters: Set([]) }
 }
 
 ///|

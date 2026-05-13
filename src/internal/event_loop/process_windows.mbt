@@ -18,7 +18,7 @@ extern "C" fn init_global_job_object_ffi() -> Bool = "moonbitlang_async_init_glo
 
 ///|
 #cfg(platform="windows")
-let global_job_object_initialized : Ref[Bool] = Ref::new(false)
+let global_job_object_initialized : Ref[Bool] = Ref(false)
 
 ///|
 #cfg(platform="windows")
@@ -105,7 +105,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     NeedWait
   })
   |> ignore
-  let out = Ref::new(0)
+  let out = Ref(0)
   let ret = get_process_result(self.handle, out)
   if ret < 0 {
     @os_error.check_errno(context)

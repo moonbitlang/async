@@ -46,7 +46,7 @@ pub fn Semaphore::Semaphore(
   initial_value? : Int = size,
 ) -> Semaphore {
   guard initial_value >= 0 && initial_value <= size
-  { value: initial_value, size, waiters: @deque.new() }
+  { value: initial_value, size, waiters: @deque.Deque([]) }
 }
 
 ///|
