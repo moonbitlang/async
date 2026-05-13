@@ -48,7 +48,7 @@ suberror JsError {
 ///|
 pub impl Show for JsError with output(self, logger) {
   let JsError(value) = self
-  logger.write_string(value.to_string())
+  logger <+ "\{value.to_string()}"
 }
 
 ///|

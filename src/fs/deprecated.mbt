@@ -19,13 +19,13 @@ pub impl Show for FileKind
 ///|
 pub impl Show for FileKind with output(self, logger) {
   match self {
-    Unknown => logger.write_string("Unknown")
-    Regular => logger.write_string("Regular")
-    Directory => logger.write_string("Directory")
-    SymLink => logger.write_string("SymLink")
-    Socket => logger.write_string("Socket")
-    Pipe => logger.write_string("Pipe")
-    BlockDevice => logger.write_string("BlockDevice")
-    CharDevice => logger.write_string("CharDevice")
+    Unknown => logger <+ "Unknown"
+    Regular => logger <+ "Regular"
+    Directory => logger <+ "Directory"
+    SymLink => logger <+ "SymLink"
+    Socket => logger <+ "Socket"
+    Pipe => logger <+ "Pipe"
+    BlockDevice => logger <+ "BlockDevice"
+    CharDevice => logger <+ "CharDevice"
   }
 }

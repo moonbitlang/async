@@ -14,9 +14,9 @@
 
 ///|
 fn output_response(response : @http.Response, logger : &Logger) -> Unit {
-  logger.write_string("HTTP/1.1 \{response.code} \{response.reason}\n")
+  logger <+ "HTTP/1.1 \{response.code} \{response.reason}\n"
   for k, v in response.headers {
-    logger.write_string("\{k}: \{v}\n")
+    logger <+ "\{k}: \{v}\n"
   }
 }
 
@@ -32,7 +32,7 @@ async fn client(
   let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger.write_string(conn.read_all().text())
+    None => logger <+ "\{conn.read_all().text()}"
     Some(f) => f(conn)
   }
 }

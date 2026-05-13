@@ -279,28 +279,23 @@ fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
     match longest_zero_group {
       Some((start, end)) if i == start => {
         if i == 0 {
-          logger.write_string("::")
+          logger <+ "::"
         } else {
-          logger.write_string(":")
+          logger <+ ":"
         }
         continue end
       }
       _ => ()
     }
     let value = (addr[i * 2].to_int() << 8) | addr[i * 2 + 1].to_int()
-    logger.write_string(value.to_string(radix=16))
+    logger <+ "\{value.to_string(radix=16)}"
     if i < 7 {
-      logger.write_string(":")
+      logger <+ ":"
     }
   }
   if is_v4_mapped {
     logger
-    ..write_object(addr[12].to_int())
-    ..write_string(".")
-    ..write_object(addr[13].to_int())
-    ..write_string(".")
-    ..write_object(addr[14].to_int())
-    ..write_string(".")
-    .write_object(addr[15].to_int())
+      <+
+      "\{addr[12].to_int()}.\{addr[13].to_int()}.\{addr[14].to_int()}.\{addr[15].to_int()}"
   }
 }

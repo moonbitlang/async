@@ -18,7 +18,7 @@ pub impl Show for ReaderClosed
 
 ///|
 pub impl Show for ReaderClosed with output(_self, logger) {
-  logger.write_string("ReaderClosed")
+  logger <+ "ReaderClosed"
 }
 
 ///|
@@ -27,5 +27,5 @@ pub impl Show for PipeClosed
 
 ///|
 pub impl Show for PipeClosed with output(_self, logger) {
-  logger.write_string("PipeClosed")
+  logger <+ "PipeClosed"
 }
