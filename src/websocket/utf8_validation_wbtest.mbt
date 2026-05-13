@@ -14,56 +14,74 @@
 
 ///|
 test "validate utf8 single byte" {
-  inspect(try? verify_utf8([0x79], remaining=0), content="Ok(0)")
+  debug_inspect(try? verify_utf8([0x79], remaining=0), content="Ok(0)")
 }
 
 ///|
 test "validate utf8 two bytes" {
-  inspect(try? verify_utf8([0xc0], remaining=0), content="Ok(1)")
-  inspect(try? verify_utf8([0xc0, 0x80], remaining=0), content="Ok(0)")
-  inspect(
+  debug_inspect(try? verify_utf8([0xc0], remaining=0), content="Ok(1)")
+  debug_inspect(try? verify_utf8([0xc0, 0x80], remaining=0), content="Ok(0)")
+  debug_inspect(
     try? verify_utf8([0xc0, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
 }
 
 ///|
 test "validate utf8 three bytes" {
-  inspect(try? verify_utf8([0xe0], remaining=0), content="Ok(2)")
-  inspect(try? verify_utf8([0xe0, 0x80], remaining=0), content="Ok(1)")
-  inspect(try? verify_utf8([0xe0, 0x80, 0x80], remaining=0), content="Ok(0)")
-  inspect(
-    try? verify_utf8([0xe0, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+  debug_inspect(try? verify_utf8([0xe0], remaining=0), content="Ok(2)")
+  debug_inspect(try? verify_utf8([0xe0, 0x80], remaining=0), content="Ok(1)")
+  debug_inspect(
+    try? verify_utf8([0xe0, 0x80, 0x80], remaining=0),
+    content="Ok(0)",
   )
-  inspect(
+  debug_inspect(
+    try? verify_utf8([0xe0, 0x79], remaining=0),
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
+  )
+  debug_inspect(
     try? verify_utf8([0xe0, 0x80, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
 }
 
 ///|
 test "validate utf8 four bytes" {
-  inspect(try? verify_utf8([0xf0], remaining=0), content="Ok(3)")
-  inspect(try? verify_utf8([0xf0, 0x80], remaining=0), content="Ok(2)")
-  inspect(try? verify_utf8([0xf0, 0x80, 0x80], remaining=0), content="Ok(1)")
-  inspect(
+  debug_inspect(try? verify_utf8([0xf0], remaining=0), content="Ok(3)")
+  debug_inspect(try? verify_utf8([0xf0, 0x80], remaining=0), content="Ok(2)")
+  debug_inspect(
+    try? verify_utf8([0xf0, 0x80, 0x80], remaining=0),
+    content="Ok(1)",
+  )
+  debug_inspect(
     try? verify_utf8([0xf0, 0x80, 0x80, 0x80], remaining=0),
     content="Ok(0)",
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xf0, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xf0, 0x80, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xf0, 0x80, 0x80, 0x79], remaining=0),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xf0, 0x80, 0x80, 0x80, 0x79], remaining=0),
     content="Ok(0)",
   )
@@ -71,28 +89,41 @@ test "validate utf8 four bytes" {
 
 ///|
 test "validate utf8 in the middle" {
-  inspect(
+  debug_inspect(
     try? verify_utf8([0x79], remaining=1),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0x79]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xc0], remaining=1),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0xc0]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xe0], remaining=1),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0xe0]>))
+    ),
   )
-  inspect(
+  debug_inspect(
     try? verify_utf8([0xf0], remaining=1),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0xc0, 0xf0]>))
+    ),
   )
-  inspect(try? verify_utf8([0x80], remaining=1), content="Ok(0)")
-  inspect(try? verify_utf8([0x80], remaining=2), content="Ok(1)")
-  inspect(try? verify_utf8([0x80, 0x80], remaining=3), content="Ok(1)")
-  inspect(try? verify_utf8([0x80, 0x80, 0x79], remaining=2), content="Ok(0)")
-  inspect(
+  debug_inspect(try? verify_utf8([0x80], remaining=1), content="Ok(0)")
+  debug_inspect(try? verify_utf8([0x80], remaining=2), content="Ok(1)")
+  debug_inspect(try? verify_utf8([0x80, 0x80], remaining=3), content="Ok(1)")
+  debug_inspect(
+    try? verify_utf8([0x80, 0x80, 0x79], remaining=2),
+    content="Ok(0)",
+  )
+  debug_inspect(
     try? verify_utf8([0x80, 0x80, 0x80], remaining=2),
-    content="Err(moonbitlang/core/encoding/utf8.Malformed.Malformed)",
+    content=(
+      #|Err(Malformed(<BytesView: [0x80]>))
+    ),
   )
 }
