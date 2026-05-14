@@ -58,7 +58,7 @@ fn StringBuilder::write_arg_with_windows_escape(
     match arg.code_unit_at(index) {
       '"' => {
         flush(1)
-        builder.write_string("\\\"")
+        builder <+ "\\\""
       }
       '\\' => trailing_backslash += 1
       _ => trailing_backslash = 0
@@ -135,7 +135,7 @@ async fn raw_spawn(
       if inherit_env {
         env.write_string(curr_env)
       } else {
-        env.write_string("\u{0}")
+        env <+ "\u{0}"
       }
       Some(@os_string.encode(env.to_string()))
     }

@@ -23,11 +23,11 @@ async test "no_wait cancelled" {
           raise err
         }
       } noraise {
-        _ => buf.write_string("`no_wait` task finished successfully\n")
+        _ => buf <+ "`no_wait` task finished successfully\n"
       }
     })
     @async.sleep(100)
-    buf.write_string("main task terminate\n")
+    buf <+ "main task terminate\n"
   })
   inspect(
     buf.to_string(),
@@ -50,11 +50,11 @@ async test "no_wait normal exit" {
           raise err
         }
       } noraise {
-        _ => buf.write_string("`no_wait` task finished successfully\n")
+        _ => buf <+ "`no_wait` task finished successfully\n"
       }
     })
     @async.sleep(200)
-    buf.write_string("main task terminate\n")
+    buf <+ "main task terminate\n"
   })
   inspect(
     buf.to_string(),

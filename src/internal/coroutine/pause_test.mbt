@@ -18,18 +18,18 @@ test "coroutine ping-pong" {
   let coro = @coroutine.spawn(() => {
     @async.with_task_group(group => {
       group.spawn_bg(() => {
-        log.write_string("ping\n")
+        log <+ "ping\n"
         @async.pause()
-        log.write_string("ping\n")
+        log <+ "ping\n"
         @async.pause()
-        log.write_string("ping\n")
+        log <+ "ping\n"
       })
       group.spawn_bg(() => {
-        log.write_string("pong\n")
+        log <+ "pong\n"
         @async.pause()
-        log.write_string("pong\n")
+        log <+ "pong\n"
         @async.pause()
-        log.write_string("pong\n")
+        log <+ "pong\n"
       })
     })
   })

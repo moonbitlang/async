@@ -102,35 +102,35 @@ async test "request streaming" {
     }
 
     {
-      log.write_string("client sending GET request\n")
+      log <+ "client sending GET request\n"
       let (response, client) = @http.get_stream("http://localhost:\{port}/get")
       defer client.close()
       inspect(response.code, content="200")
       fetch_response(client)
     }
     {
-      log.write_string("client sending PUT request\n")
+      log <+ "client sending PUT request\n"
       let client = @http.put_stream("http://localhost:\{port}/put")
       defer client.close()
       @async.sleep(100)
-      log.write_string("client: sending PUT data part 1\n")
+      log <+ "client: sending PUT data part 1\n"
       client..write("PUT data part 1\n").flush()
       @async.sleep(100)
-      log.write_string("client: sending PUT data part 2\n")
+      log <+ "client: sending PUT data part 2\n"
       client.write("PUT data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       fetch_response(client)
     }
     {
-      log.write_string("client sending POST request\n")
+      log <+ "client sending POST request\n"
       let client = @http.post_stream("http://localhost:\{port}/post")
       defer client.close()
       @async.sleep(100)
-      log.write_string("client: sending POST data part 1\n")
+      log <+ "client: sending POST data part 1\n"
       client..write("POST data part 1\n").flush()
       @async.sleep(100)
-      log.write_string("client: sending POST data part 2\n")
+      log <+ "client: sending POST data part 2\n"
       client.write("POST data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")

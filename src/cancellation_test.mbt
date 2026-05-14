@@ -19,7 +19,7 @@ async test "manual cancel" {
     let task = root.spawn(() => {
       try {
         @async.sleep(300)
-        buf.write_string("task finished\n")
+        buf <+ "task finished\n"
       } catch {
         err => {
           buf.write_string("cancelled by error \{err}\n")
@@ -30,7 +30,7 @@ async test "manual cancel" {
     @async.sleep(100)
     task.cancel()
     @async.sleep(200)
-    buf.write_string("main task exit\n")
+    buf <+ "main task exit\n"
   })
   buf.write_string(@debug.to_string(result))
   inspect(
@@ -59,16 +59,16 @@ async test "error propagation" {
         root.spawn_bg(() => {
           try {
             @async.sleep(200)
-            buf.write_string("task 2, tick 1\n")
+            buf <+ "task 2, tick 1\n"
             @async.sleep(200)
-            buf.write_string("task 2, tick 2\n")
+            buf <+ "task 2, tick 2\n"
           } catch {
             err => {
               buf.write_string("task 2 cancelled with error \{err}\n")
               raise err
             }
           } noraise {
-            _ => buf.write_string("task 2 normal exit\n")
+            _ => buf <+ "task 2 normal exit\n"
           }
         })
       }),
@@ -102,18 +102,18 @@ async test "multiple scope" {
                 raise err
               }
             } noraise {
-              _ => buf.write_string("ctx 1 task 2 finished\n")
+              _ => buf <+ "ctx 1 task 2 finished\n"
             }
           })
         })
       catch {
         err => {
-          buf.write_string("ctx 1 received error ")
+          buf <+ "ctx 1 received error "
           buf.write_string(@debug.to_string(err))
           buf.write_char('\n')
         }
       } noraise {
-        _ => buf.write_string("ctx 1 finished normally\n")
+        _ => buf <+ "ctx 1 finished normally\n"
       }
     })
     root.spawn_bg(() => {
@@ -130,18 +130,18 @@ async test "multiple scope" {
                 raise err
               }
             } noraise {
-              _ => buf.write_string("ctx 2 task 2 finished\n")
+              _ => buf <+ "ctx 2 task 2 finished\n"
             }
           })
         })
       catch {
         err => {
-          buf.write_string("ctx 2 received error ")
+          buf <+ "ctx 2 received error "
           buf.write_string(@debug.to_string(err))
           buf.write_char('\n')
         }
       } noraise {
-        _ => buf.write_string("ctx 2 finished normally\n")
+        _ => buf <+ "ctx 2 finished normally\n"
       }
     })
   })
@@ -166,7 +166,7 @@ async test "recursive cancel" {
         root.spawn_bg(() => {
           for _ in 0..<2 {
             @async.sleep(400)
-            buf.write_string("tick\n")
+            buf <+ "tick\n"
           }
         })
         let task = root.spawn(() => {
@@ -176,11 +176,11 @@ async test "recursive cancel" {
           @async.sleep(1000) catch {
             err => buf.write_string("second sleep cancelled with \{err}\n")
           }
-          buf.write_string("task finished\n")
+          buf <+ "task finished\n"
         })
         @async.sleep(600)
         task.cancel()
-        buf.write_string("main task exit\n")
+        buf <+ "main task exit\n"
       }),
     ),
   )
@@ -208,9 +208,9 @@ async test "spawn directly error" {
           @async.with_task_group(group => {
             @async.sleep(1)
             group.spawn_bg(() => raise Err)
-            buf.write_string("after spawn\n")
+            buf <+ "after spawn\n"
             @async.sleep(400)
-            buf.write_string("main task exit\n")
+            buf <+ "main task exit\n"
           })
         })
         @async.sleep(200)
@@ -235,7 +235,7 @@ async test "error in cancellation" {
         root.spawn_bg(no_wait=true, () => {
           @async.sleep(1000) catch {
             _ => {
-              log.write_string("causing other error in cancellation handler\n")
+              log <+ "causing other error in cancellation handler\n"
               raise Err
             }
           }
@@ -259,11 +259,11 @@ async test "immediately cancelled" {
   @async.with_task_group(root => {
     let task = root.spawn(() => {
       defer log.write_string("task terminated\n")
-      log.write_string("task started\n")
+      log <+ "task started\n"
       @async.sleep(100)
-      log.write_string("task finished\n")
+      log <+ "task finished\n"
     })
-    log.write_string("task spawned\n")
+    log <+ "task spawned\n"
     task.cancel()
   })
   inspect(

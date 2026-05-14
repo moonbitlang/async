@@ -18,7 +18,7 @@ async test "spawn error1" {
   let result = try? @async.with_task_group(root => {
     root.spawn_bg(() => {
       @async.sleep(1000)
-      buf.write_string("task 1 finished\n")
+      buf <+ "task 1 finished\n"
     })
     root.spawn_bg(() => {
       @async.sleep(200)
@@ -39,7 +39,7 @@ async test "spawn error2" {
     })
     root.spawn_bg(() => {
       @async.sleep(1000)
-      buf.write_string("task 1 finished\n")
+      buf <+ "task 1 finished\n"
     })
   })
   buf.write_string(@debug.to_string(result))

@@ -141,13 +141,13 @@ async test "read_request stream" {
       ..write("User-Agent: MoonBit\r\n")
       .write("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nabcd\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nefgh\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nijkl\r\n")
       w.write("0\r\n\r\n")
     })
@@ -191,13 +191,13 @@ async test "multiple request" {
       ..write("User-Agent: MoonBit\r\n")
       .write("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nabcd\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nefgh\r\n")
       @async.sleep(50)
-      log.write_string("writing data...\n")
+      log <+ "writing data...\n"
       w.write("4\r\nijkl\r\n")
       w.write("0\r\n\r\n")
       @async.sleep(50)
@@ -331,7 +331,7 @@ async test "read_response 204 No Content (no body)" {
     log_response(response, log)
     // Body should be Empty, not PassThrough
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(
@@ -368,7 +368,7 @@ async test "read_response 205 Reset Content (no body)" {
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(
@@ -404,7 +404,7 @@ async test "read_response 304 Not Modified (no body)" {
     )
     log_response(response, log)
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(
@@ -439,7 +439,7 @@ async test "read_response 100 Continue (no body)" {
     )
     log_response(response, log)
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(
@@ -473,7 +473,7 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(
@@ -509,7 +509,7 @@ async test "read_response HEAD 200 (no body)" {
     log_response(response, log)
     // Body should be Empty, not Fixed(1234)
     let body_text = input.read_all().text()
-    log.write_string("body: ")
+    log <+ "body: "
     log.write_string(body_text)
   })
   inspect(

@@ -34,8 +34,8 @@ pub fn ascii_to_string(ascii : BytesView) -> String {
   for byte in ascii {
     match byte {
       b'\n' => builder.write_char('\n')
-      b'\r' => builder.write_string("\\r")
-      b'\t' => builder.write_string("\\t")
+      b'\r' => builder <+ "\\r"
+      b'\t' => builder <+ "\\t"
       32..=126 => builder.write_char(byte.to_int().unsafe_to_char())
       x =>
         builder

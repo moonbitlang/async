@@ -52,7 +52,7 @@ async test "wait_pid" {
     group.spawn_bg(() => {
       for _ in 0..<2 {
         @async.sleep(800)
-        log.write_string("tick\n")
+        log <+ "tick\n"
       }
     })
     let pid = @process.spawn_orphan(test_prog, ["1000", "-exit-code", "42"])

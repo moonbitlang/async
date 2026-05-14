@@ -387,13 +387,13 @@ async test "write_reader - copy from reader to writer" {
     root.spawn_bg(() => {
       defer w2.close()
       // Simulate a producer that emits three frames with pauses in between.
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"abcd")
       @async.sleep(300)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"efgh")
       @async.sleep(300)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"ijkl")
     })
   })
@@ -441,13 +441,13 @@ async test "BufferedWriter - basic buffering" {
     root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
-      log.write_string("2 bytes written\n")
+      log <+ "2 bytes written\n"
       w.write("ab")
       @async.sleep(20)
-      log.write_string("2 bytes written\n")
+      log <+ "2 bytes written\n"
       w.write("cd")
       @async.sleep(20)
-      log.write_string("2 bytes written\n")
+      log <+ "2 bytes written\n"
       w.write("ef")
       // Force the remaining bytes out of the buffer.
       w.flush()
@@ -532,13 +532,13 @@ async test "BufferedWriter::write_reader - buffered copy" {
     })
     root.spawn_bg(() => {
       defer w2.close()
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"abcd")
       @async.sleep(100)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"efgh")
       @async.sleep(100)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"ijkl")
     })
   })

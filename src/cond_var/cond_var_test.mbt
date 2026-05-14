@@ -34,11 +34,11 @@ async test "cond var cancellation no_swallow" {
     let cond = @cond_var.Cond()
     let wait_task = root.spawn(() => {
       cond.wait()
-      log.write_string("waiter 1 succeed\n")
+      log <+ "waiter 1 succeed\n"
     })
     root.spawn_bg(no_wait=true, () => {
       cond.wait()
-      log.write_string("waiter 2 succeed\n")
+      log <+ "waiter 2 succeed\n"
     })
     @async.sleep(100)
     cond.signal()
@@ -62,14 +62,14 @@ async test "cond var fairness" {
     root.spawn_bg(() => {
       for _ in 0..<3 {
         cond.wait()
-        log.write_string("task 1 received signal\n")
+        log <+ "task 1 received signal\n"
       }
     })
     root.spawn_bg(() => {
       @async.sleep(100)
       for _ in 0..<3 {
         cond.wait()
-        log.write_string("task 2 received signal\n")
+        log <+ "task 2 received signal\n"
       }
     })
     @async.sleep(200)

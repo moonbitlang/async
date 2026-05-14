@@ -48,13 +48,13 @@ async test "write reader" {
     })
     root.spawn_bg(() => {
       defer w2.close()
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"abcd")
       @async.sleep(300)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"efgh")
       @async.sleep(300)
-      log.write_string("sending 4 bytes\n")
+      log <+ "sending 4 bytes\n"
       w2.write(b"ijkl")
     })
   })
