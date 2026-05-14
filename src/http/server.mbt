@@ -117,6 +117,25 @@ pub impl @io.Writer for ServerConnection with write_once(
 }
 
 ///|
+/// Introduced so that the sugar `writer <+ "hello \{world}"` can work on `ServerConnection`.
+/// Performance will be improved in the future
+pub async fn ServerConnection::write_string(
+  self : ServerConnection,
+  s : String,
+) -> Unit {
+  @io.Writer::write(self, s)
+}
+
+///|
+/// TODO: using = @io.Writer::write in the future do more checking
+pub async fn ServerConnection::write(
+  self : ServerConnection,
+  data : &@io.Data,
+) -> Unit {
+  @io.Writer::write(self, data)
+}
+
+///|
 pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
   guard !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
