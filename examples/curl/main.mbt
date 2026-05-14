@@ -14,16 +14,6 @@
 // limitations under the License.
 
 ///|
-let help_message : String =
-  #|Usage: curl OPTION URL
-  #|Download content of URL
-  #|
-  #|Options:
-  #|  -o FILE       write output to FILE instead of standard output
-  #|  --proxy URL   download via HTTP proxy PROXY
-  #|  -h, --help    show this message
-
-///|
 async fn download(
   url : String,
   proxy~ : String?,
@@ -40,41 +30,35 @@ async fn download(
 
 ///|
 async fn main {
-  let mut url = None
-  let mut output = None
-  let mut proxy = None
-  for args = @env.args()[1:] {
-    match args {
-      ["-o", .. rest] => {
-        guard rest is [file, .. rest] else {
-          fail("expected output file after `-o`")
-        }
-        output = Some(file)
-        continue rest
-      }
-      ["--proxy", .. rest] => {
-        guard rest is [url, .. rest] else {
-          fail("expected proxy URL after `--proxy`")
-        }
-        proxy = Some(url)
-        continue rest
-      }
-      ["-h" | "--help", ..] => {
-        println(help_message)
-        return
-      }
-      [['-', ..] as opt, ..] => fail("unknown option `\{opt}`")
-      [url_str, .. rest] => {
-        if url is Some(_) {
-          fail("too many arguments specified")
-        }
-        url = Some(url_str)
-        continue rest
-      }
-      [] => break
-    }
+  let matches = @argparse.Command(
+    "curl",
+    about="Download content of URL",
+    options=[
+      OptionArg(
+        "output",
+        short='o',
+        long="",
+        about="write output to FILE instead of standard output",
+      ),
+      OptionArg("proxy", long="proxy", about="download via HTTP proxy URL"),
+    ],
+    positionals=[
+      PositionArg(
+        "url",
+        about="URL to download",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ],
+  ).parse()
+  guard matches.values is { "url": [url], .. } else { fail("no URL specified") }
+  let output = match matches.values {
+    { "output": [file], .. } => Some(file)
+    _ => None
   }
-  guard url is Some(url) else { fail("no URL specified") }
+  let proxy = match matches.values {
+    { "proxy": [proxy_url], .. } => Some(proxy_url)
+    _ => None
+  }
   match output {
     None => download(url, proxy~, output=@stdio.stdout)
     Some(output) => {
