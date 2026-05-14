@@ -103,9 +103,10 @@ async test "basic" {
       #|HTTP/1.1 200 OK
       #|content-type: text/html
       #|transfer-encoding: chunked
-      #|<!DOCTYPE html><html><head></head><body><h1>/examples/http_file_server</h1>
-      #|<div style="margin: 1em; font-size: 15pt"><a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/>
-      #|<a href="/examples">..</a><br/><br/>
+      #|<!DOCTYPE html><html><head></head><body>
+      #|<h1>/examples/http_file_server</h1>
+      #|<div style="margin: 1em; font-size: 15pt">
+      #|<a href="/examples/http_file_server?download_zip">download as zip</a><br/><br/><a href="/examples">..</a><br/><br/>
       #|<a href="/examples/http_file_server/main.mbt">main.mbt</a><br/>
       #|<a href="/examples/http_file_server/moon.pkg">moon.pkg</a><br/>
       #|<a href="/examples/http_file_server/server_wbtest.mbt">server_wbtest.mbt</a><br/>
