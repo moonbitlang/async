@@ -127,15 +127,6 @@ pub async fn ServerConnection::write_string(
 }
 
 ///|
-/// TODO: using = @io.Writer::write in the future do more checking
-pub async fn ServerConnection::write(
-  self : ServerConnection,
-  data : &@io.Data,
-) -> Unit {
-  @io.Writer::write(self, data)
-}
-
-///|
 pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
   guard !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)

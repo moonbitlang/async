@@ -139,7 +139,6 @@ pub fn ServerConnection::new(@socket.Tcp, headers? : Map[String, String]) -> Sel
 pub async fn ServerConnection::read_request(Self) -> Request
 pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String], cookies? : Array[Cookie]) -> Unit
 pub async fn ServerConnection::skip_request_body(Self) -> Unit
-pub async fn ServerConnection::write(Self, &@io.Data) -> Unit
 pub async fn ServerConnection::write_string(Self, String) -> Unit
 pub impl @io.Reader for ServerConnection
 pub impl @io.Writer for ServerConnection
