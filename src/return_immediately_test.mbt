@@ -24,7 +24,7 @@ async test "return_immediately basic" {
         })
         root.spawn_bg(() => {
           @async.sleep(300)
-          log.write_string("task finished\n")
+          log <+ "task finished\n"
         })
       }),
     ),
@@ -40,7 +40,7 @@ async test "return_immediately nested" {
       try? @async.with_task_group(root => {
         root.spawn_bg(() => {
           @async.sleep(300)
-          log.write_string("outer task finished\n")
+          log <+ "outer task finished\n"
         })
         @async.with_task_group(fn(group) {
           group.spawn_bg(() => {
@@ -49,7 +49,7 @@ async test "return_immediately nested" {
           })
           group.spawn_bg(() => {
             @async.sleep(300)
-            log.write_string("inner task finished\n")
+            log <+ "inner task finished\n"
           })
         })
       }),
@@ -71,11 +71,11 @@ async test "return_immediately error on cancel" {
         root.spawn_bg(() => {
           @async.sleep(300) catch {
             _ => {
-              log.write_string("task cancelled, causing other error\n")
+              log <+ "task cancelled, causing other error\n"
               raise Err
             }
           }
-          log.write_string("task finished\n")
+          log <+ "task finished\n"
         })
       }),
     ),

@@ -35,11 +35,11 @@ async test "worker basic" {
     root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(400)
-        log.write_string("tick\n")
+        log <+ "tick\n"
       }
     })
     perform_sleep_job(1000)
-    log.write_string("done\n")
+    log <+ "done\n"
   })
   inspect(
     log.to_string(),
@@ -60,7 +60,7 @@ async test "worker multiple" {
     root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(200)
-        log.write_string("tick\n")
+        log <+ "tick\n"
       }
     })
     for i in 0..<3 {
@@ -91,7 +91,7 @@ async test "worker cancel1" {
     root.spawn_bg(() => {
       for _ in 0..<4 {
         @async.sleep(200)
-        log.write_string("tick\n")
+        log <+ "tick\n"
       }
     })
     let task = root.spawn(() => {
@@ -101,11 +101,11 @@ async test "worker cancel1" {
           raise err
         }
       } noraise {
-        _ => log.write_string("done\n")
+        _ => log <+ "done\n"
       }
     })
     @async.sleep(500)
-    log.write_string("trying to cancel\n")
+    log <+ "trying to cancel\n"
     task.cancel()
   })
   inspect(
@@ -129,7 +129,7 @@ async test "worker cancel2" {
     root.spawn_bg(() => {
       for _ in 0..<3 {
         @async.sleep(400)
-        log.write_string("tick\n")
+        log <+ "tick\n"
       }
     })
     root.spawn_bg(allow_failure=true, () => {
@@ -139,11 +139,11 @@ async test "worker cancel2" {
           raise err
         }
       } noraise {
-        _ => log.write_string("done\n")
+        _ => log <+ "done\n"
       }
     })
     @async.sleep(600)
-    log.write_string("trying to terminate now\n")
+    log <+ "trying to terminate now\n"
     root.return_immediately(())
   })
   inspect(

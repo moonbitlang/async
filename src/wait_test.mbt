@@ -20,16 +20,16 @@ async test "wait basic" {
       try? @async.with_task_group(root => {
         root.spawn_bg(() => {
           @async.sleep(200)
-          buf.write_string("200ms tick\n")
+          buf <+ "200ms tick\n"
           @async.sleep(200)
-          buf.write_string("400ms tick\n")
+          buf <+ "400ms tick\n"
         })
         let task = root.spawn(no_wait=true, () => {
           @async.sleep(300)
-          buf.write_string("task finished\n")
+          buf <+ "task finished\n"
         })
         task.wait()
-        buf.write_string("main task exit\n")
+        buf <+ "main task exit\n"
       }),
     ),
   )
@@ -51,7 +51,7 @@ async test "wait cancelled" {
   @async.with_task_group(root => {
     let task = root.spawn(() => {
       @async.sleep(1000)
-      buf.write_string("task finished\n")
+      buf <+ "task finished\n"
     })
     root.spawn_bg(() => {
       task.wait() catch {

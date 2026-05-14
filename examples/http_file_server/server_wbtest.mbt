@@ -49,12 +49,12 @@ async test "basic" {
     let addr = server.addr
     root.spawn_bg(no_wait=true, () => server_main(server, path=".", log~))
     @async.sleep(50)
-    client_log.write_string("client: GET /examples/http_file_server\n")
+    client_log <+ "client: GET /examples/http_file_server\n"
     client(addr, "/examples/http_file_server", client_log)
-    client_log.write_string("\n\n")
-    client_log.write_string("client: GET /examples/moon.mod.json\n")
+    client_log <+ "\n\n"
+    client_log <+ "client: GET /examples/moon.mod.json\n"
     client(addr, "/examples/moon.mod.json", client_log)
-    client_log.write_string("\n\n")
+    client_log <+ "\n\n"
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
     root.add_defer(() => @fs.remove(tmp_file_name))

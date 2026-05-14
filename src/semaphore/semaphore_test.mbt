@@ -27,7 +27,7 @@ async test "semaphore mutex" {
     }
     @async.sleep(150)
     for _ in 0..<3 {
-      log.write_string("tick\n")
+      log <+ "tick\n"
       @async.sleep(300)
     }
   })
@@ -60,7 +60,7 @@ async test "semaphore multiple value" {
     }
     @async.sleep(150)
     for _ in 0..<3 {
-      log.write_string("tick\n")
+      log <+ "tick\n"
       @async.sleep(300)
     }
   })
@@ -107,7 +107,7 @@ async test "semaphore cancellation no_swallow" {
     semaphore.acquire()
     let acquire_taskire_task = root.spawn(() => {
       semaphore.acquire()
-      log.write_string("acquire() succeed\n")
+      log <+ "acquire() succeed\n"
     })
     @async.sleep(100)
     semaphore.release()
@@ -132,7 +132,7 @@ async test "semaphore fairness" {
     root.spawn_bg(() => {
       for _ in 0..<3 {
         semaphore.acquire()
-        log.write_string("task 1 acquired resource\n")
+        log <+ "task 1 acquired resource\n"
         @async.sleep(200)
         semaphore.release()
       }
@@ -141,7 +141,7 @@ async test "semaphore fairness" {
       @async.sleep(100)
       for _ in 0..<3 {
         semaphore.acquire()
-        log.write_string("task 2 acquired resource\n")
+        log <+ "task 2 acquired resource\n"
         @async.sleep(200)
         semaphore.release()
       }

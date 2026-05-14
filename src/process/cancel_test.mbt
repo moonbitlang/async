@@ -32,7 +32,7 @@ async test "cancel process" {
     })
     @async.sleep(500)
     task.cancel()
-    log.write_string("cancelling task running process\n")
+    log <+ "cancelling task running process\n"
   })
   inspect(
     log.to_string(),
@@ -121,7 +121,7 @@ async test "orphan process" {
     defer r.close()
     inspect(@utf8.decode(r.read_exactly(5)), content="first")
     task.cancel()
-    log.write_string("cancelling task running process\n")
+    log <+ "cancelling task running process\n"
     inspect(r.read_all().text(), content="second")
   })
   inspect(

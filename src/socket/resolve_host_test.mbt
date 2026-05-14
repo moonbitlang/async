@@ -31,7 +31,7 @@ async test "resolve cancel" {
     })
     lock.acquire() // make sure the task already started
     task.cancel()
-    log.write_string("host resolution cancelled\n")
+    log <+ "host resolution cancelled\n"
   })
   inspect(
     log.to_string(),

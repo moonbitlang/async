@@ -18,19 +18,19 @@ async test "basic sleep" {
   let result = try? @async.with_task_group(root => {
     root.spawn_bg(() => {
       @async.sleep(100)
-      buf.write_string("task 1, tick 1\n")
+      buf <+ "task 1, tick 1\n"
       @async.sleep(200)
-      buf.write_string("task 1, tick 2\n")
+      buf <+ "task 1, tick 2\n"
       @async.sleep(200)
-      buf.write_string("task 1, tick 3\n")
+      buf <+ "task 1, tick 3\n"
     })
     root.spawn_bg(() => {
       @async.sleep(200)
-      buf.write_string("task 2, tick 1\n")
+      buf <+ "task 2, tick 1\n"
       @async.sleep(200)
-      buf.write_string("task 2, tick 2\n")
+      buf <+ "task 2, tick 2\n"
       @async.sleep(200)
-      buf.write_string("task 2, tick 3\n")
+      buf <+ "task 2, tick 3\n"
     })
   })
   debug_inspect(result, content="Ok(())")

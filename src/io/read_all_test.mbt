@@ -16,13 +16,13 @@
 async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
   defer w.close()
   @async.sleep(20)
-  log.write_string("writing 4 bytes of data\n")
+  log <+ "writing 4 bytes of data\n"
   w.write(b"abcd")
   @async.sleep(20)
-  log.write_string("writing 4 bytes of data\n")
+  log <+ "writing 4 bytes of data\n"
   w.write(b"efgh")
   @async.sleep(20)
-  log.write_string("writing 4 bytes of data\n")
+  log <+ "writing 4 bytes of data\n"
   w.write(b"ijkl")
 }
 
