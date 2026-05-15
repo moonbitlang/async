@@ -500,7 +500,7 @@ async fn perform_job_in_worker(
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.length() > evloop.max_worker_count =>
+    None if evloop.running_workers.length() >= evloop.max_worker_count =>
       evloop.job_queue.push_back({ job_id, job })
     None => {
       let worker = Worker::spawn(job_id, job)
