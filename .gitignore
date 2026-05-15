@@ -7,3 +7,4 @@ examples/_target/
 examples/.mooncakes/
 .moonagent
 .codex
+.envrc
