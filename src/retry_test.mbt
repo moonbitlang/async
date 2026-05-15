@@ -16,13 +16,13 @@
 async test "retry immediate" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.retry(Immediate, () => {
+  @async.retry(Immediate) <| () => {
     log.write_string("tick \{i}\n")
     i = i + 1
     if i < 3 {
       raise Err
     }
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -42,13 +42,13 @@ async test "retry fixed" {
     (@async.now() - start + 50).to_int() / 200
   }
   let mut i = 0
-  @async.retry(FixedDelay(200), () => {
+  @async.retry(FixedDelay(200)) <| () => {
     log.push("loop \{i} at tick #\{tick()}")
     i = i + 1
     if i < 3 {
       raise Err
     }
-  })
+  }
   log.push("retry completed at tick #\{tick()}")
   json_inspect(log, content=[
     "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #2", "retry completed at tick #2",
@@ -63,13 +63,13 @@ async test "retry exponential" {
     (@async.now() - start + 50).to_int() / 200
   }
   let mut i = 0
-  @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600), () => {
+  @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600)) <| () => {
     log.push("loop \{i} at tick #\{tick()}")
     i = i + 1
     if i < 4 {
       raise Err
     }
-  })
+  }
   log.push("retry completed at tick #\{tick()}")
   json_inspect(log, content=[
     "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #3", "loop 3 at tick #6",
@@ -81,13 +81,13 @@ async test "retry exponential" {
 async test "retry cancelled1" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.with_timeout(500, () => {
-    @async.retry(Immediate, () => {
+  (@async.with_timeout(500) <| () => {
+    @async.retry(Immediate) <| () => {
       @async.sleep(200)
       log.write_string("loop \{i}\n")
       i = i + 1
       raise Err
-    })
+    }
   }) catch {
     @async.TimeoutError => ()
     err => raise err
@@ -106,12 +106,12 @@ async test "retry cancelled1" {
 async test "retry cancelled2" {
   let log = StringBuilder::new()
   let mut i = 0
-  @async.with_timeout(500, () => {
-    @async.retry(FixedDelay(200), () => {
+  (@async.with_timeout(500) <| () => {
+    @async.retry(FixedDelay(200)) <| () => {
       log.write_string("loop \{i}\n")
       i = i + 1
       raise Err
-    })
+    }
   }) catch {
     @async.TimeoutError => ()
     err => raise err
@@ -139,7 +139,7 @@ async test "retry fatal_error" {
     log.write_string("worker run #\{i}\n")
     i = i + 1
     if i < 3 {
-      @async.with_timeout(100, () => @async.sleep(1000))
+      @async.with_timeout(100) <| () => { @async.sleep(1000) }
     } else {
       raise Failure::Failure("fatal error")
     }

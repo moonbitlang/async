@@ -16,8 +16,8 @@
 #cfg(target="native")
 async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
-  group.spawn_bg(no_wait=true, () => {
-    server.run_forever((request, body, conn) => {
+  group.spawn_bg(no_wait=true) <| () => {
+    server.run_forever() <| ((request, body, conn) => {
       let meth = @debug.to_string(request.meth).to_upper()
       log.write_string("server received request: \{meth} \{request.path}\n")
       while body.read_some() is Some(data) {
@@ -31,7 +31,7 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
       log.write_string("server: sending \{meth} response part 2\n")
       conn.write("\{meth} response part 2\n")
     })
-  })
+  }
   server.addr.port()
 }
 
@@ -84,15 +84,15 @@ extern "js" fn Server::create(
 ///|
 #cfg(target="js")
 async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
-  let server = Server::create(msg => log.write_string(msg)).wait()
-  group.add_defer(() => server.close())
+  let server = (Server::create() <| msg => { log.write_string(msg) }).wait()
+  group.add_defer() <| () => { server.close() }
   server.port()
 }
 
 ///|
 async test "request streaming" {
   let log = StringBuilder::new()
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
       while client.read_some() is Some(data) {
@@ -139,7 +139,7 @@ async test "request streaming" {
     // give some time for the client to close,
     // so that the port occupied by the server can be reused immediately.
     @async.sleep(200)
-  })
+  }
   inspect(
     log,
     content=(

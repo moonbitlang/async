@@ -14,39 +14,39 @@
 
 ///|
 async test "write large data" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
       w.write(data)
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer r.close()
       inspect(r.read_all().binary().length(), content="16384")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "write reader" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer r2.close()
       defer w1.close()
       w1.write_reader(r2)
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer r1.close()
       while r1.read_some() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer w2.close()
       log <+ "sending 4 bytes\n"
       w2.write(b"abcd")
@@ -56,8 +56,8 @@ async test "write reader" {
       @async.sleep(300)
       log <+ "sending 4 bytes\n"
       w2.write(b"ijkl")
-    })
-  })
+    }
+  }
   inspect(
     log.to_string(),
     content=(
@@ -90,7 +90,7 @@ impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
 async test "write cancel" {
   let log = StringBuilder::new()
   let writer = { logger: log, base_timeout: 300 }
-  @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
+  (@async.with_timeout_opt(450) <| () => { writer.write(b"abcd") }) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang
   inspect(
@@ -104,13 +104,13 @@ async test "write cancel" {
 
 ///|
 async test "write_string" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w.write("abcd中文☺")
-    })
+    }
     inspect(r.read_all().text(), content="abcd中文☺")
-  })
+  }
 }

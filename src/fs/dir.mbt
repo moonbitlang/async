@@ -377,10 +377,10 @@ pub async fn walk(
   let context = "@fs.walk()"
   guard max_concurrency > 0
   let sem = @async.Semaphore(max_concurrency)
-  @async.with_task_group(fn(group) {
+  @async.with_task_group() <| fn(group) {
     fn handle_path(path : String) {
       guard !exclude(path) else {  }
-      group.spawn_bg(allow_failure~, () => {
+      group.spawn_bg(allow_failure~) <| () => {
         sem.acquire()
         defer sem.release()
         let dir = opendir_aux(path, context~)
@@ -398,9 +398,9 @@ pub async fn walk(
           files.push(ent.name)
         }
         f(path, files)
-      })
+      }
     }
 
     handle_path(path.to_owned())
-  })
+  }
 }

@@ -92,7 +92,7 @@ fn build_huffman_tree_or_abort(lengths : FixedArray[Int]) -> HuffmanTree {
 
 ///|
 let fixed_literal_tree : HuffmanTree = build_huffman_tree_or_abort(
-  FixedArray::makei(288, i => {
+  FixedArray::makei(288) <| i => {
     if i < 144 {
       8
     } else if i < 256 {
@@ -102,7 +102,7 @@ let fixed_literal_tree : HuffmanTree = build_huffman_tree_or_abort(
     } else {
       8
     }
-  }),
+  },
 )
 
 ///|

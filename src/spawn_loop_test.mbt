@@ -17,15 +17,15 @@ async test "spawn_loop basic" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
+      try? (@async.with_task_group() <| root => {
         let mut i = 0
-        root.spawn_loop(() => {
+        root.spawn_loop() <| () => {
           log.write_string("tick \{i}\n")
           i = i + 1
           if i >= 3 {
             raise @async.BreakFromSpawnLoop
           }
-        })
+        }
       }),
     ),
   )
@@ -45,15 +45,15 @@ async test "spawn_loop basic-error" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
+      try? (@async.with_task_group() <| root => {
         let mut i = 0
-        root.spawn_loop(() => {
+        root.spawn_loop() <| () => {
           log.write_string("tick \{i}\n")
           i = i + 1
           if i >= 3 {
             raise Err
           }
-        })
+        }
       }),
     ),
   )
@@ -71,7 +71,7 @@ async test "spawn_loop basic-error" {
 ///|
 async test "spawn_loop retry-exponential" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let mut i = 0
     let start = @async.now()
     fn tick() {
@@ -90,7 +90,7 @@ async test "spawn_loop retry-exponential" {
         }
       },
     )
-  })
+  }
   json_inspect(log, content=[
     "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #3", "loop 3 at tick #6",
     "loop 4 at tick #6", "loop 5 at tick #7", "loop 6 at tick #9",

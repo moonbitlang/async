@@ -19,11 +19,11 @@ async test "read_exactly" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     // server
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -36,9 +36,9 @@ async test "read_exactly" {
       let msg3 = conn.read_exactly(4) |> @utf8.decode
       @async.sleep(10)
       log("third message: \{msg3}")
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       conn.write("abcdef")
@@ -46,8 +46,8 @@ async test "read_exactly" {
       @async.sleep(100)
       conn.write("ghijkl")
       log("second message sent")
-    })
-  })
+    }
+  }
   inspect(
     buf.to_string(),
     content=(
@@ -68,11 +68,11 @@ async test "read_exactly failure" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(root => {
+  (@async.with_task_group() <| root => {
     // server
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -88,14 +88,14 @@ async test "read_exactly failure" {
       // let the client close first to avoid socket entering `TIME_WAIT` state,
       // occupying the address.
       @async.sleep(20)
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       conn.write("abcdef")
       log("first message sent")
-    })
+    }
   }) catch {
     err => log(err.to_string())
   }

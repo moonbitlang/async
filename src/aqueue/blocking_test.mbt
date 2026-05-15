@@ -15,22 +15,22 @@
 ///|
 async test "blocking unbuffered" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(1))
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<3 {
         let x = q.get()
         log.push("get() => \{x}")
         @async.sleep(100)
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "put(0)", "get() => 0", "put(1)", "get() => 1", "put(2)", "get() => 2",
   ])
@@ -39,22 +39,22 @@ async test "blocking unbuffered" {
 ///|
 async test "blocking buffered" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(2))
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<4 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<4 {
         let x = q.get()
         log.push("get() => \{x}")
         @async.sleep(100)
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "put(0)", "put(1)", "get() => 0", "put(2)", "get() => 1", "put(3)", "get() => 2",
     "get() => 3",
@@ -64,28 +64,28 @@ async test "blocking buffered" {
 ///|
 async test "blocking fairness" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(1))
     q.put(0)
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("task 1 put(\{i})")
       }
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("task 2 put(\{i})")
       }
-    })
-    group.spawn_bg(no_wait=true, () => {
+    }
+    group.spawn_bg(no_wait=true) <| () => {
       for ;; {
         @async.sleep(100)
         ignore(q.get())
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "task 1 put(0)", "task 2 put(0)", "task 1 put(1)", "task 2 put(1)", "task 1 put(2)",
     "task 2 put(2)",
@@ -95,14 +95,14 @@ async test "blocking fairness" {
 ///|
 async test "blocking cancellation" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(1))
     q.put(0)
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       @async.sleep(250)
       ignore(q.get())
-    })
-    @async.with_timeout(500, () => {
+    }
+    (@async.with_timeout(500) <| () => {
       for ;; {
         q.put(0) catch {
           err => {
@@ -116,17 +116,17 @@ async test "blocking cancellation" {
       @async.TimeoutError => ()
       err => raise err
     }
-  })
+  }
   json_inspect(log, content=["put() completed", "put() cancelled"])
 }
 
 ///|
 async test "blocking fairness2" {
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let queue = @async.Queue(kind=Blocking(1))
     queue.put(0)
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       for i in 0..<2 {
         queue.put(i)
         log.push("task 1: put() completed")
@@ -134,8 +134,8 @@ async test "blocking fairness2" {
         let x = queue.get()
         log.push("task 1: get() => \{x}")
       }
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       @async.sleep(100)
       for i in 0..<2 {
         queue.put(i)
@@ -144,10 +144,10 @@ async test "blocking fairness2" {
         let x = queue.get()
         log.push("task 2: get() => \{x}")
       }
-    })
+    }
     @async.sleep(200)
     inspect(queue.get(), content="0")
-  })
+  }
   json_inspect(log, content=[
     "task 1: put() completed", "task 1: get() => 0", "task 2: put() completed", "task 2: get() => 0",
     "task 1: put() completed", "task 1: get() => 1", "task 2: put() completed", "task 2: get() => 1",
@@ -157,46 +157,46 @@ async test "blocking fairness2" {
 ///|
 async test "blocking immediate cancellation" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(1))
     q.put(0)
-    let put_task = group.spawn(() => {
-      q.put(1) catch {
-        err => {
-          log.push("put() cancelled")
-          raise err
+    let put_task = group.spawn() <| () => {
+        q.put(1) catch {
+          err => {
+            log.push("put() cancelled")
+            raise err
+          }
         }
+        log.push("put() completed")
       }
-      log.push("put() completed")
-    })
     @async.sleep(100)
     let _ = q.get()
     put_task.cancel()
     @async.sleep(100)
     debug_inspect(q.try_get(), content="Some(1)")
-  })
+  }
   json_inspect(log, content=["put() completed"])
 }
 
 ///|
 async test "blocking zero buffered" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(0))
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<4 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<4 {
         let x = q.get()
         log.push("get() => \{x}")
         @async.sleep(100)
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "get() => 0", "put(0)", "get() => 1", "put(1)", "get() => 2", "put(2)", "get() => 3",
     "put(3)",
@@ -235,22 +235,22 @@ test "blocking try_put" {
 ///|
 async test "blocked zero buffered try_get" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(0))
     @debug.assert_eq(None, q.try_get())
     for i in 0..<3 {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         q.put(i)
         log.push("put(\{i})")
-      })
+      }
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       while q.try_get() is Some(x) {
         log.push("try_get() => \{x}")
       }
-    })
+    }
     @debug.assert_eq(None, q.try_get())
-  })
+  }
   json_inspect(log, content=[
     "try_get() => 0", "try_get() => 1", "try_get() => 2", "put(0)", "put(1)", "put(2)",
   ])
@@ -259,16 +259,16 @@ async test "blocked zero buffered try_get" {
 ///|
 async test "blocked zero buffered try_put" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(0))
     assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         let x = q.get()
         log.push("get() => \{x}")
-      })
+      }
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         if q.try_put(i) {
           log.push("try_put(\{i})")
@@ -276,9 +276,9 @@ async test "blocked zero buffered try_put" {
           log.push("try_put(\{i}) => false")
         }
       }
-    })
+    }
     assert_eq(false, q.try_put(-1))
-  })
+  }
   json_inspect(log, content=[
     "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
   ])
@@ -287,38 +287,38 @@ async test "blocked zero buffered try_put" {
 ///|
 async test "blocked zero buffered discard oldest try_get" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=DiscardOldest(0))
     @debug.assert_eq(None, q.try_get())
     for i in 0..<3 {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         q.put(i) // will be discarded since the buffer size is 0 and no waiting readers
         log.push("put(\{i})")
-      })
+      }
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       while q.try_get() is Some(x) {
         log.push("try_get() => \{x}")
       }
-    })
+    }
     @debug.assert_eq(None, q.try_get())
-  })
+  }
   json_inspect(log, content=["put(0)", "put(1)", "put(2)"])
 }
 
 ///|
 async test "blocked zero buffered discard oldest try_put" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=DiscardOldest(0))
     @debug.assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         let x = q.get()
         log.push("get() => \{x}")
-      })
+      }
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         if q.try_put(i) {
           log.push("try_put(\{i})")
@@ -326,9 +326,9 @@ async test "blocked zero buffered discard oldest try_put" {
           log.push("try_put(\{i}) => false")
         }
       }
-    })
+    }
     @debug.assert_eq(false, q.try_put(-1))
-  })
+  }
   json_inspect(log, content=[
     "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
   ])
@@ -337,16 +337,16 @@ async test "blocked zero buffered discard oldest try_put" {
 ///|
 async test "blocked zero buffered discard latest try_put" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let q = @async.Queue(kind=DiscardLatest(0))
     @debug.assert_eq(false, q.try_put(-1))
     for _ in 0..<3 {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         let x = q.get()
         log.push("get() => \{x}")
-      })
+      }
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         if q.try_put(i) {
           log.push("try_put(\{i})")
@@ -354,9 +354,9 @@ async test "blocked zero buffered discard latest try_put" {
           log.push("try_put(\{i}) => false")
         }
       }
-    })
+    }
     @debug.assert_eq(false, q.try_put(-1))
-  })
+  }
   json_inspect(log, content=[
     "try_put(0)", "try_put(1)", "try_put(2)", "get() => 0", "get() => 1", "get() => 2",
   ])

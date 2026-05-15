@@ -15,8 +15,8 @@
 ///|
 async test "reuse addr" {
   let mut port = 0
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       for _ in 0..<2 {
         let server = @socket.TcpServer(
           @socket.Addr::parse("127.0.0.1:\{port}"),
@@ -28,12 +28,12 @@ async test "reuse addr" {
         defer conn.close()
         conn.write("abcd")
       }
-    })
+    }
     for _ in 0..<2 {
       @async.sleep(100)
       let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
       inspect(conn.read_all().text(), content="abcd")
     }
-  })
+  }
 }

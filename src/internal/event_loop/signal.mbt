@@ -58,14 +58,14 @@ fn setup_signal_handler() -> @coroutine.Coroutine {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
-  @coroutine.spawn(() => {
+  @coroutine.spawn() <| () => {
     let context = "sigwait thread"
     fn cancel(job_id) raise {
       guard curr_loop.val is Some(evloop)
       evloop.cancel_job_in_worker(job_id, context~)
     }
     let _ = perform_job_in_worker(Job::sigwait(all_signals), context~, cancel~)
-  })
+  }
 }
 
 ///|
@@ -75,7 +75,7 @@ async fn EventLoop::terminate_signal_handler(
   sigwait_task : @coroutine.Coroutine,
 ) -> Unit {
   sigwait_task.cancel()
-  @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
+  (@coroutine.protect_from_cancel() <| () => { sigwait_task.wait() }) catch {
     @coroutine.Cancelled => ()
     err => raise err
   }

@@ -15,22 +15,22 @@
 ///|
 async test "semaphore mutex" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(1)
     for i in 0..<3 {
-      root.spawn_bg(() => {
+      root.spawn_bg() <| () => {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
         @async.sleep(300)
         semaphore.release()
-      })
+      }
     }
     @async.sleep(150)
     for _ in 0..<3 {
       log <+ "tick\n"
       @async.sleep(300)
     }
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -48,22 +48,22 @@ async test "semaphore mutex" {
 ///|
 async test "semaphore multiple value" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(2)
     for i in 0..<6 {
-      root.spawn_bg(() => {
+      root.spawn_bg() <| () => {
         semaphore.acquire()
         log.write_string("task \{i} obtained resource\n")
         @async.sleep(300)
         semaphore.release()
-      })
+      }
     }
     @async.sleep(150)
     for _ in 0..<3 {
       log <+ "tick\n"
       @async.sleep(300)
     }
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -83,38 +83,38 @@ async test "semaphore multiple value" {
 
 ///|
 async test "semaphore cancellation" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(1)
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       semaphore.acquire()
       @async.sleep(500)
       semaphore.release()
-    })
+    }
     debug_inspect(
-      try? @async.with_timeout(250, () => semaphore.acquire()),
+      try? (@async.with_timeout(250) <| () => { semaphore.acquire() }),
       content="Err(TimeoutError)",
     )
     @async.sleep(500)
     inspect(semaphore.try_acquire(), content="true")
-  })
+  }
 }
 
 ///|
 async test "semaphore cancellation no_swallow" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(1)
     semaphore.acquire()
-    let acquire_taskire_task = root.spawn(() => {
-      semaphore.acquire()
-      log <+ "acquire() succeed\n"
-    })
+    let acquire_taskire_task = root.spawn() <| () => {
+        semaphore.acquire()
+        log <+ "acquire() succeed\n"
+      }
     @async.sleep(100)
     semaphore.release()
     acquire_taskire_task.cancel()
     @async.sleep(100)
     inspect(semaphore.try_acquire(), content="false")
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -127,17 +127,17 @@ async test "semaphore cancellation no_swallow" {
 ///|
 async test "semaphore fairness" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(1)
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       for _ in 0..<3 {
         semaphore.acquire()
         log <+ "task 1 acquired resource\n"
         @async.sleep(200)
         semaphore.release()
       }
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       @async.sleep(100)
       for _ in 0..<3 {
         semaphore.acquire()
@@ -145,8 +145,8 @@ async test "semaphore fairness" {
         @async.sleep(200)
         semaphore.release()
       }
-    })
-  })
+    }
+  }
   inspect(
     log.to_string(),
     content=(

@@ -14,10 +14,10 @@
 
 ///|
 async test "websocket basic" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -39,7 +39,7 @@ async test "websocket basic" {
       } noraise {
         _ => raise Failure::Failure("expected error, but nothing happens")
       }
-    })
+    }
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client.send_binary(b"abcd")
@@ -51,15 +51,15 @@ async test "websocket basic" {
     debug_inspect(msg.kind, content="Text")
     inspect(msg.read_all().text(), content="abcd")
     client.send_close()
-  })
+  }
 }
 
 ///|
 async test "single frame multiple read" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -73,22 +73,22 @@ async test "single frame multiple read" {
       debug_inspect(msg.kind, content="Text")
       json_inspect(msg.read_exactly(2), content="ab")
       json_inspect(msg.read_exactly(2), content="cd")
-    })
+    }
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client.send_text("abc")
     @async.sleep(200)
     client.send_text("abcd")
     client.send_close()
-  })
+  }
 }
 
 ///|
 async test "ignored message" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -102,23 +102,23 @@ async test "ignored message" {
       // trying to read from `msg1` here should result in panic
       debug_inspect(msg2.kind, content="Text")
       inspect(msg2.read_all().text(), content="1234")
-    })
+    }
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client.send_text("abcd")
     @async.sleep(200)
     client.send_text("1234")
     client.send_close()
-  })
+  }
 }
 
 ///|
 async test "write buffering" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -136,7 +136,7 @@ async test "write buffering" {
           log.push("server received: \{chunk}")
         }
       }
-    })
+    }
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client..start_message(Text).write("ab")
@@ -146,7 +146,7 @@ async test "write buffering" {
 
     // close the channel
     client.send_close()
-  })
+  }
   json_inspect(log, content=[
     "server received new message: Text", "server received: abcd",
   ])
@@ -154,30 +154,30 @@ async test "write buffering" {
 
 ///|
 async test "large message" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    let server_checksum = group.spawn(() => {
-      defer server.close()
-      let (conn, _) = server.accept()
-      defer conn.close()
-      let request = conn.read_request()
-      let ws = @websocket.from_http_server(request, conn)
-      defer ws.close()
-      let msg = ws.recv()
-      debug_inspect(msg.kind, content="Binary")
-      let mut checksum = 0
-      while msg.read_some() is Some(chunk) {
-        for byte in chunk {
-          checksum += byte.to_int()
+    let server_checksum = group.spawn() <| () => {
+        defer server.close()
+        let (conn, _) = server.accept()
+        defer conn.close()
+        let request = conn.read_request()
+        let ws = @websocket.from_http_server(request, conn)
+        defer ws.close()
+        let msg = ws.recv()
+        debug_inspect(msg.kind, content="Binary")
+        let mut checksum = 0
+        while msg.read_some() is Some(chunk) {
+          for byte in chunk {
+            checksum += byte.to_int()
+          }
         }
+        checksum
       }
-      checksum
-    })
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
     client.start_message(Binary)
-    let chunk = Bytes::makei(1500, i => (i % 0x100).to_byte())
+    let chunk = Bytes::makei(1500) <| i => { (i % 0x100).to_byte() }
     let mut checksum = 0
     for _ in 0..<20 {
       for byte in chunk {
@@ -188,5 +188,5 @@ async test "large message" {
     client.end_message()
     inspect(checksum, content="3745800")
     inspect(server_checksum.wait(), content="3745800")
-  })
+  }
 }

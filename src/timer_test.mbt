@@ -15,23 +15,23 @@
 ///|
 async test "basic sleep" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(root => {
-    root.spawn_bg(() => {
+  let result = try? (@async.with_task_group() <| root => {
+    root.spawn_bg() <| () => {
       @async.sleep(100)
       buf <+ "task 1, tick 1\n"
       @async.sleep(200)
       buf <+ "task 1, tick 2\n"
       @async.sleep(200)
       buf <+ "task 1, tick 3\n"
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       @async.sleep(200)
       buf <+ "task 2, tick 1\n"
       @async.sleep(200)
       buf <+ "task 2, tick 2\n"
       @async.sleep(200)
       buf <+ "task 2, tick 3\n"
-    })
+    }
   })
   debug_inspect(result, content="Ok(())")
   inspect(
@@ -51,29 +51,29 @@ async test "basic sleep" {
 ///|
 async test "Timer basic" {
   let log = []
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       @async.sleep(150)
       log.push("sleep: tick #1")
       @async.sleep(300)
       log.push("sleep: tick #2")
       @async.sleep(300)
       log.push("sleep: tick #3")
-    })
+    }
     @async.sleep(300)
     log.push("creating timer")
     let timer = @async.Timer(300)
-    @async.with_task_group(group => {
+    @async.with_task_group() <| group => {
       for _ in 0..<3 {
-        group.spawn_bg(() => {
+        group.spawn_bg() <| () => {
           timer.wait()
           log.push("timer completed")
-        })
+        }
       }
-    })
-    let result = @async.with_timeout_opt(0, () => timer.wait())
+    }
+    let result = @async.with_timeout_opt(0) <| () => { timer.wait() }
     log.push("wait again: \{@debug.to_string(result)}")
-  })
+  }
   json_inspect(log, content=[
     "sleep: tick #1", "creating timer", "sleep: tick #2", "timer completed", "timer completed",
     "timer completed", "wait again: Some(())", "sleep: tick #3",
@@ -85,7 +85,7 @@ async test "Timer no waiter" {
   let timer = @async.Timer(200)
   @async.sleep(400)
   debug_inspect(
-    @async.with_timeout_opt(0, () => timer.wait()),
+    @async.with_timeout_opt(0) <| () => { timer.wait() },
     content=(
       #|Some(())
     ),
@@ -101,17 +101,17 @@ async test "Timer no one waiting" {
 ///|
 async test "Timer waiter cancelled 1" {
   let timer = @async.Timer(600)
-  assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
+  assert_true((@async.with_timeout_opt(200) <| () => { timer.wait() }) is None)
   @async.sleep(200)
-  assert_false(@async.with_timeout_opt(300, () => timer.wait()) is None)
+  assert_false((@async.with_timeout_opt(300) <| () => { timer.wait() }) is None)
 }
 
 ///|
 async test "Timer waiter cancelled 2" {
   let timer = @async.Timer(300)
-  assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
+  assert_true((@async.with_timeout_opt(200) <| () => { timer.wait() }) is None)
   @async.sleep(200)
-  assert_false(@async.with_timeout_opt(0, () => timer.wait()) is None)
+  assert_false((@async.with_timeout_opt(0) <| () => { timer.wait() }) is None)
 }
 
 ///|
@@ -119,16 +119,16 @@ async test "Timer::cancel" {
   let log = []
   let start = @async.now()
   let timer = @async.Timer(450)
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       @async.sleep(150)
       timer.cancel()
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       let result = try? timer.wait()
       let tick = (@async.now() - start + 50).to_int() / 150
       log.push("Timer::wait(): \{@debug.to_string(result)} at tick #\{tick}")
-    })
+    }
     @async.sleep(600)
     let tick = (@async.now() - start + 50).to_int() / 150
     log.push(
@@ -138,7 +138,7 @@ async test "Timer::cancel" {
     log.push(
       "at tick #\{tick}: Timer::wait(): \{@debug.to_string(try? timer.wait())}",
     )
-  })
+  }
   json_inspect(log, content=[
     "Timer::wait(): Err(TimerCancelled) at tick #1", "at tick #4: Timer::wait(): Err(TimerCancelled)",
     "at tick #4: Timer::wait(): Err(TimerCancelled)",
@@ -154,22 +154,22 @@ async test "Timer::refresh has waiter" {
   }
 
   let timer = @async.Timer(300)
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       timer.wait()
       log.push("Timer::wait() completed at tick #\{tick()}")
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       @async.sleep(150)
       log.push("refresh timer at #\{tick()}")
       timer.refresh()
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       @async.sleep(300)
       log.push("refresh timer at #\{tick()}")
       timer.refresh()
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "refresh timer at #1", "refresh timer at #2", "Timer::wait() completed at tick #4",
   ])
@@ -219,7 +219,7 @@ async test "Timer::refresh already cancelled" {
   timer.cancel()
   timer.refresh()
   debug_inspect(
-    @async.with_timeout_opt(0, () => try? timer.wait()),
+    @async.with_timeout_opt(0) <| () => { try? timer.wait() },
     content=(
       #|Some(Err(TimerCancelled))
     ),

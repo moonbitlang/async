@@ -46,5 +46,7 @@ pub fn Signal::to_int(signal : Signal) -> Int {
 ///
 /// The default list is all supported signals.
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Signal]) -> Unit {
-  @event_loop.set_global_cancellation_signals(signals.map(sig => sig.to_int()))
+  @event_loop.set_global_cancellation_signals(
+    signals.map() <| sig => { sig.to_int() },
+  )
 }

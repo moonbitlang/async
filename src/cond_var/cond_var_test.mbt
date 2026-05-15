@@ -14,37 +14,37 @@
 
 ///|
 async test "cond var cancellation" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cond = @cond_var.Cond()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       @async.sleep(500)
       cond.signal()
-    })
+    }
     debug_inspect(
-      try? @async.with_timeout(250, () => cond.wait()),
+      try? (@async.with_timeout(250) <| () => { cond.wait() }),
       content="Err(TimeoutError)",
     )
-  })
+  }
 }
 
 ///|
 async test "cond var cancellation no_swallow" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cond = @cond_var.Cond()
-    let wait_task = root.spawn(() => {
-      cond.wait()
-      log <+ "waiter 1 succeed\n"
-    })
-    root.spawn_bg(no_wait=true, () => {
+    let wait_task = root.spawn() <| () => {
+        cond.wait()
+        log <+ "waiter 1 succeed\n"
+      }
+    root.spawn_bg(no_wait=true) <| () => {
       cond.wait()
       log <+ "waiter 2 succeed\n"
-    })
+    }
     @async.sleep(100)
     cond.signal()
     wait_task.cancel()
     @async.sleep(100)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -57,27 +57,27 @@ async test "cond var cancellation no_swallow" {
 ///|
 async test "cond var fairness" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cond = @cond_var.Cond()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       for _ in 0..<3 {
         cond.wait()
         log <+ "task 1 received signal\n"
       }
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       @async.sleep(100)
       for _ in 0..<3 {
         cond.wait()
         log <+ "task 2 received signal\n"
       }
-    })
+    }
     @async.sleep(200)
     for _ in 0..<6 {
       cond.signal()
       @async.sleep(50)
     }
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -95,17 +95,17 @@ async test "cond var fairness" {
 ///|
 async test "cond var broadcast" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cond = @cond_var.Cond()
     for i in 0..<3 {
-      root.spawn_bg(() => {
+      root.spawn_bg() <| () => {
         cond.wait()
         log.write_string("task \{i} received signal\n")
-      })
+      }
     }
     @async.sleep(100)
     cond.broadcast()
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -120,17 +120,17 @@ async test "cond var broadcast" {
 ///|
 async test "cond var broadcast cancellation" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cond = @cond_var.Cond()
     for i in 0..<3 {
-      root.spawn_bg(allow_failure=true, () => {
-        @async.with_timeout(200 * (i + 1), () => cond.wait())
+      root.spawn_bg(allow_failure=true) <| () => {
+        @async.with_timeout(200 * (i + 1)) <| () => { cond.wait() }
         log.write_string("task \{i} received signal\n")
-      })
+      }
     }
     @async.sleep(500)
     cond.broadcast()
-  })
+  }
   inspect(
     log.to_string(),
     content=(

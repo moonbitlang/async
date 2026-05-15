@@ -43,7 +43,7 @@ async fn main {
     }
   }
 
-  @fs.walk(".", exclude~, (path, files) => {
+  @fs.walk(".", exclude~) <| ((path, files) => {
     for file in files {
       guard file is "moon.pkg" else {  }
       let full_path = "\{path}/\{file}"

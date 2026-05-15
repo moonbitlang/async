@@ -14,11 +14,11 @@
 
 ///|
 async test "peer close connection" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     // server
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -26,7 +26,7 @@ async test "peer close connection" {
       defer server.close()
       server.write("1234")
       inspect(server.read_all().text(), content="abcd")
-    })
+    }
     // client
     let conn = @socket.Tcp::connect(addr)
     defer conn.close()
@@ -43,5 +43,5 @@ async test "peer close connection" {
     inspect(@utf8.decode(client.read_exactly(4)), content="1234")
     client.write("abcd")
     // close the underlying connection directly
-  })
+  }
 }

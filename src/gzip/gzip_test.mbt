@@ -15,48 +15,48 @@
 ///|
 #cfg(target="native")
 async fn node_gzip(mode : String, input : Bytes) -> Bytes {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (stdin, we_write) = @process.write_to_process()
-    let runner = group.spawn(() => {
-      @process.collect_output("node", ["src/gzip/node_gzip.js", mode], stdin~)
-    })
-    group.spawn_bg(() => {
+    let runner = group.spawn() <| () => {
+        @process.collect_output("node", ["src/gzip/node_gzip.js", mode], stdin~)
+      }
+    group.spawn_bg() <| () => {
       defer we_write.close()
       we_write.write(input)
-    })
+    }
     let (code, stdout, stderr) = runner.wait()
     assert_eq(code, 0)
     assert_eq(stderr.binary().length(), 0)
     stdout.binary()
-  })
+  }
 }
 
 ///|
 #cfg(target="native")
 async fn encode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       defer w.close()
       @gzip.Encoder(w)..write(input).end()
-    })
+    }
     defer r.close()
     r.read_all().binary()
-  })
+  }
 }
 
 ///|
 #cfg(target="native")
 async fn decode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       defer w.close()
       w.write(input)
-    })
+    }
     defer r.close()
     @gzip.Decoder(r).read_all().binary()
-  })
+  }
 }
 
 ///|
@@ -71,10 +71,10 @@ async fn assert_node_compatibility(input : Bytes) -> Unit {
 
 ///|
 async test "encode decode roundtrip" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let source_chunks = ["hello ", "gzip ", "world"]
     let (compressed_r, compressed_w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(
         compressed_w,
@@ -86,38 +86,38 @@ async test "encode decode roundtrip" {
         @async.sleep(10)
       }
       encoder.end()
-    })
+    }
 
     let decoder = @gzip.Decoder(compressed_r)
     inspect(decoder.read_all().text(), content="hello gzip world")
     compressed_r.close()
-  })
+  }
 }
 
 ///|
 async test "encoder uses valid blocks across large writes" {
-  @async.with_task_group(root => {
-    let payload = Bytes::makei(70000, i => (i % 251).to_byte())
+  @async.with_task_group() <| root => {
+    let payload = Bytes::makei(70000) <| i => { (i % 251).to_byte() }
     let (compressed_r, compressed_w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(compressed_w)
       encoder.write(payload)
       encoder.end()
-    })
+    }
 
     let decoder = @gzip.Decoder(compressed_r)
     inspect(decoder.read_all().binary() == payload, content="true")
     compressed_r.close()
-  })
+  }
 }
 
 ///|
 async test "encoder emits output when flushed" {
   let log : Array[String] = []
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       log.push("start init")
       let encoder = @gzip.Encoder(w)
@@ -132,14 +132,14 @@ async test "encoder emits output when flushed" {
       @async.sleep(60)
       log.push("end")
       encoder.end()
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer r.close()
       while r.read_some() is Some(chunk) {
         log.push("receive compressed \{chunk.length()}")
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "start init", "encoder ready", "write plain ab", "receive compressed 13", "write plain cd",
     "receive compressed 3", "end", "receive compressed 10",
@@ -149,9 +149,9 @@ async test "encoder emits output when flushed" {
 ///|
 async test "decoder yields plain chunks lazily across delayed chunks" {
   let log : Array[String] = []
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (compressed_r, compressed_w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer compressed_w.close()
       compressed_w.write(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
       @async.sleep(20)
@@ -167,7 +167,7 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
       log.push("finish")
       compressed_w.write(b"\x01\x00\x00\xff\xff")
       compressed_w.write(b"\xef\x39\x8e\x4b\x06\x00\x00\x00")
-    })
+    }
     let decoder = @gzip.Decoder(compressed_r)
     match decoder.read_some(max_len=2) {
       Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
@@ -182,7 +182,7 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
       None => assert_true(false)
     }
     debug_inspect(decoder.read_some(max_len=2), content="None")
-  })
+  }
   json_inspect(log, content=[
     "write plain ab", "read plain ab", "write plain cd", "read plain cd", "write plain ef",
     "read plain ef", "finish",
@@ -191,9 +191,9 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
 
 ///|
 async test "decoder supports reads smaller than writer chunks" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (compressed_r, compressed_w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer compressed_w.close()
       compressed_w.write(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
       compressed_w.write(b"\x00\x04\x00\xfb\xffabcd")
@@ -201,7 +201,7 @@ async test "decoder supports reads smaller than writer chunks" {
       compressed_w.write(b"\x00\x04\x00\xfb\xffefgh")
       compressed_w.write(b"\x01\x00\x00\xff\xff")
       compressed_w.write(b"\x50\x2a\xef\xae\x08\x00\x00\x00")
-    })
+    }
     let decoder = @gzip.Decoder(compressed_r)
     debug_inspect(
       decoder.read_some(max_len=2),
@@ -228,7 +228,7 @@ async test "decoder supports reads smaller than writer chunks" {
       ),
     )
     debug_inspect(decoder.read_some(max_len=2), content="None")
-  })
+  }
 }
 
 ///|
@@ -241,7 +241,9 @@ async test "node compatibility on source text file" {
 ///|
 #cfg(target="native")
 async test "node compatibility on generated binary data" {
-  let input = Bytes::makei(65536 + 257, i => ((i * 73 + 19) & 0xff).to_byte())
+  let input = Bytes::makei(65536 + 257) <| i => {
+      ((i * 73 + 19) & 0xff).to_byte()
+    }
   assert_node_compatibility(input)
 }
 

@@ -14,10 +14,10 @@
 
 ///|
 async test "ping auto-reply" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -25,7 +25,7 @@ async test "ping auto-reply" {
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
-    })
+    }
     let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
@@ -34,15 +34,15 @@ async test "ping auto-reply" {
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
     ws_client.send_text("1234")
-  })
+  }
 }
 
 ///|
 async test "pong ignored" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -51,7 +51,7 @@ async test "pong ignored" {
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("1234")
-    })
+    }
     let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
@@ -59,30 +59,30 @@ async test "pong ignored" {
     http_client.write(ping_frame)
     ws_client.send_text("1234")
     inspect(ws_client.recv().read_all().text(), content="1234")
-  })
+  }
 }
 
 ///|
 async test "ping auto-reply race-with-write" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
       let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
-      @async.with_task_group(group => {
+      @async.with_task_group() <| group => {
         // currently, auto-reply is only triggered when the user is actually reading.
-        group.spawn_bg(no_wait=true, () => ignore(ws.recv().read_all()))
+        group.spawn_bg(no_wait=true) <| () => { ignore(ws.recv().read_all()) }
         ws.start_message(Text)
         ws.write("1234")
         @async.sleep(400)
         ws.end_message()
-      })
-    })
+      }
+    }
     let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
@@ -96,37 +96,37 @@ async test "ping auto-reply race-with-write" {
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x81, 0x04])
     inspect(@utf8.decode(http_client.read_exactly(4)), content="1234")
-  })
+  }
 }
 
 ///|
 async test "close test" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
       let request = conn.read_request()
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
-      @async.with_task_group(group => {
+      @async.with_task_group() <| group => {
         // currently, auto-reply is only triggered when the user is actually reading.
-        group.spawn_bg(() => {
+        group.spawn_bg() <| () => {
           debug_inspect(
             try? ws.recv().read_all().text(),
             content=(
               #|Err(ConnectionClosed(Normal, Some("abcd")))
             ),
           )
-        })
+        }
         ws.start_message(Text)
         ws.write("1234")
         @async.sleep(400)
         ws.end_message()
-      })
-    })
+      }
+    }
     let http_client = @http.Client("http://localhost:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
@@ -139,15 +139,15 @@ async test "close test" {
     guard http_client.read_exactly(2) is [u16be(code)]
     inspect(code, content="1000")
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
-  })
+  }
 }
 
 ///|
 async test "send ping" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -156,25 +156,25 @@ async test "send ping" {
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
-    })
+    }
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
-    @async.with_task_group(group => {
-      group.spawn_bg(() => {
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
         ws.ping()
         ws.send_text("1234")
-      })
+      }
       inspect(ws.recv().read_all().text(), content="abcd")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "ping inside message" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -183,24 +183,24 @@ async test "ping inside message" {
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
-    })
+    }
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
-    @async.with_task_group(group => {
-      group.spawn_bg(() => {
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
         ws..start_message(Text)..ping()..write("1234").end_message()
-      })
+      }
       inspect(ws.recv().read_all().text(), content="abcd")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "multiple ping" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -210,28 +210,28 @@ async test "multiple ping" {
       @async.sleep(100)
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
-    })
+    }
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
-    @async.with_task_group(group => {
-      group.spawn_bg(() => {
-        @async.with_task_group(inner => {
-          inner.spawn_bg(() => ws.ping())
-          inner.spawn_bg(() => ws.ping())
-        })
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
+        @async.with_task_group() <| inner => {
+          inner.spawn_bg() <| () => { ws.ping() }
+          inner.spawn_bg() <| () => { ws.ping() }
+        }
         ws.send_text("1234")
-      })
+      }
       inspect(ws.recv().read_all().text(), content="abcd")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "ping cancelled" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -241,27 +241,29 @@ async test "ping cancelled" {
       @async.sleep(200)
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
-    })
+    }
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
-    @async.with_task_group(group => {
-      group.spawn_bg(() => inspect(ws.recv().read_all().text(), content="abcd"))
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
+        inspect(ws.recv().read_all().text(), content="abcd")
+      }
       debug_inspect(
-        @async.with_timeout_opt(100, () => ws.ping(msg=b"1")),
+        @async.with_timeout_opt(100) <| () => { ws.ping(msg=b"1") },
         content="None",
       )
       ws.ping(msg=b"1")
       ws.send_text("1234")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "duplicated ping" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       defer conn.close()
@@ -271,25 +273,25 @@ async test "duplicated ping" {
       @async.sleep(100)
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
-    })
+    }
     let ws = @websocket.connect("ws://localhost:\{port}")
     defer ws.close()
-    @async.with_task_group(group => {
-      group.spawn_bg(() => {
-        @async.with_task_group(inner => {
-          inner.spawn_bg(() => ws.ping(msg=b"1"))
-          inner.spawn_bg(() => {
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
+        @async.with_task_group() <| inner => {
+          inner.spawn_bg() <| () => { ws.ping(msg=b"1") }
+          inner.spawn_bg() <| () => {
             debug_inspect(
               try? ws.ping(msg=b"1"),
               content=(
                 #|Err(Failure("A PING request with the same payload is already pending"))
               ),
             )
-          })
-        })
+          }
+        }
         ws.send_text("1234")
-      })
+      }
       inspect(ws.recv().read_all().text(), content="abcd")
-    })
-  })
+    }
+  }
 }

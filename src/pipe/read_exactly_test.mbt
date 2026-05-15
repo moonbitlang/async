@@ -19,10 +19,10 @@ async test "read_exactly" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @pipe.pipe()
     // reader
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
@@ -30,17 +30,17 @@ async test "read_exactly" {
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4) |> @utf8.decode
       log("third message: \{msg3}")
-    })
+    }
     // writer
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       log("first message sent")
       w.write("abcdef")
       @async.sleep(100)
       log("second message sent")
       w.write("ghijkl")
-    })
-  })
+    }
+  }
   inspect(
     buf.to_string(),
     content=(
@@ -61,10 +61,10 @@ async test "read_exactly failure" {
     buf..write_string(msg).write_char('\n')
   }
 
-  @async.with_task_group(root => {
+  (@async.with_task_group() <| root => {
     let (r, w) = @pipe.pipe()
     // reader
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
       log("first message: \{msg1}")
@@ -72,13 +72,13 @@ async test "read_exactly failure" {
       log("second message: \{msg2}")
       let msg3 = r.read_exactly(4) |> @utf8.decode
       log("third message: \{msg3}")
-    })
+    }
     // writer
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       log("first message sent")
       w.write("abcdef")
-    })
+    }
   }) catch {
     err => log(err.to_string())
   }

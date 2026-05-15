@@ -14,9 +14,9 @@
 
 ///|
 async test "send_request basic" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers={
@@ -24,7 +24,7 @@ async test "send_request basic" {
         "User-Agent": "MoonBit",
       })
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -37,14 +37,14 @@ async test "send_request basic" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "send_request stream" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let file = @fs.open("LICENSE", mode=ReadOnly)
@@ -54,7 +54,7 @@ async test "send_request stream" {
         "User-Agent": "MoonBit",
       })
       sender..write_reader(file).end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -296,14 +296,14 @@ async test "send_request stream" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "send_request stream2" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers={
@@ -316,7 +316,7 @@ async test "send_request stream2" {
       @async.sleep(50)
       sender.write("ijkl")
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -338,14 +338,14 @@ async test "send_request stream2" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "send invalid header" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w, headers={ "Content-Encoding": "chunked" })
       let _ = sender.send_request(Get, "/", extra_headers={
@@ -354,7 +354,7 @@ async test "send invalid header" {
         "Content-Encoding": "chunked",
       })
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -367,14 +367,14 @@ async test "send invalid header" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "send fixed length" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let license_file = @fs.open("LICENSE", mode=ReadOnly)
@@ -392,7 +392,7 @@ async test "send fixed length" {
       ..write_reader(license_file)
       ..write(trailer)
       .end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -608,19 +608,19 @@ async test "send fixed length" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "sender write incorrect length" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       while r.read_some() is Some(_) {
 
       }
-    })
+    }
     defer w.close()
     let sender = Sender::new(w)
     sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
@@ -634,19 +634,19 @@ async test "sender write incorrect length" {
         #|Err(IncorrectBodyLength)
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "sender write_reader incorrect length" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       while r.read_some() is Some(_) {
 
       }
-    })
+    }
     defer w.close()
     let sender = Sender::new(w)
     let license_file = @fs.open("LICENSE", mode=ReadOnly)
@@ -660,19 +660,19 @@ async test "sender write_reader incorrect length" {
         #|Err(IncorrectBodyLength)
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "sender end_body incorrect length" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       while r.read_some() is Some(_) {
 
       }
-    })
+    }
     defer w.close()
     let sender = Sender::new(w)
     sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
@@ -684,7 +684,7 @@ async test "sender end_body incorrect length" {
         #|Err(IncorrectBodyLength)
       ),
     )
-  })
+  }
 }
 
 ///|
@@ -707,14 +707,14 @@ async test "send_response cookies" {
     ),
     Cookie("Cookie4", "value four", extensions=["ExtNoArg", "ExtWithArg=xxx"]),
   ]
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_response(200, "OK", cookies~, request_method=Get, extra_headers={})
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -729,14 +729,14 @@ async test "send_response cookies" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "send_request empty body" {
   @async.with_task_group <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers={})
@@ -745,7 +745,7 @@ async test "send_request empty body" {
       sender.end_body()
       let _ = sender.send_request(Post, "/", extra_headers={})
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -770,7 +770,7 @@ async test "send_request empty body" {
 async test "send_response empty body" {
   @async.with_task_group <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={})
@@ -783,7 +783,7 @@ async test "send_response empty body" {
       sender..write("").end_body()
       let _ = sender.send_response(304, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -807,9 +807,9 @@ async test "send_response empty body" {
 
 ///|
 async test "sender persistent header" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w, headers={
         "Host": "x.y.org",
@@ -817,7 +817,7 @@ async test "sender persistent header" {
       })
       let _ = sender.send_request(Get, "/", extra_headers={})
       sender.end_body()
-    })
+    }
     defer r.close()
     inspect(
       r.read_all().binary() |> @bytes_util.ascii_to_string,
@@ -830,5 +830,5 @@ async test "sender persistent header" {
         #|
       ),
     )
-  })
+  }
 }

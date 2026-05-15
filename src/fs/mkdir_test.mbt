@@ -39,27 +39,27 @@ async test "rmdir recursive" {
 
 ///|
 async test "mkdir recursive" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let base_path = "_build/recursive_mkdir"
     let path = "\{base_path}/test//directory"
     @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    group.add_defer() <| () => { @fs.rmdir(base_path, recursive=true) }
     json_inspect(@fs.readdir(base_path), content=["test"])
     json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
     json_inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
-  })
+  }
 }
 
 ///|
 #cfg(platform="windows")
 async test "mkdir recursive windows" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let base_path = "_build\\recursive_mkdir_windows"
     let path = "\{base_path}\\test\\\\directory"
     @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    group.add_defer() <| () => { @fs.rmdir(base_path, recursive=true) }
     json_inspect(@fs.readdir(base_path), content=["test"])
     json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
     json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
-  })
+  }
 }

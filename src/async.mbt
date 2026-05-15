@@ -59,13 +59,13 @@ pub async fn[X] with_timeout(
   f : async () -> X,
   error? : Error = TimeoutError,
 ) -> X {
-  with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => {
+  with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
       sleep(time)
       raise error
-    })
+    }
     f()
-  })
+  }
 }
 
 ///|
@@ -79,13 +79,13 @@ pub async fn[X] with_timeout(
 /// - If `f` is still running after `timeout` milliseconds,
 /// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
 pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
-  with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => {
+  with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
       sleep(time)
       group.return_immediately(None)
-    })
+    }
     Some(f())
-  })
+  }
 }
 
 ///|
@@ -229,21 +229,21 @@ pub async fn[X] all(
     None
   }
   let results = Array::make(tasks.length(), None)
-  with_task_group(tg => {
+  with_task_group() <| tg => {
     for i, task in tasks {
       if semaphore is Some(sem) {
         sem.acquire()
       }
-      tg.spawn_bg(() => {
+      tg.spawn_bg() <| () => {
         // We rely on the assumption that the task spawned will 100% executed
         // even if it is cancelled, so that we can release the semaphore properly.
         defer (if semaphore is Some(sem) { sem.release() })
         let result = task()
         results[i] = Some(result)
-      })
+      }
     }
-  })
-  results.map(r => r.unwrap())
+  }
+  results.map() <| r => { r.unwrap() }
 }
 
 ///|
@@ -277,12 +277,12 @@ pub async fn[X] any(
   }
   let mut result = None
   let mut last_err = None
-  with_task_group(tg => {
+  with_task_group() <| tg => {
     for task in tasks {
       if semaphore is Some(sem) {
         sem.acquire()
       }
-      tg.spawn_bg(allow_failure~, () => {
+      tg.spawn_bg(allow_failure~) <| () => {
         // We rely on the assumption that the task spawned will 100% executed
         // even if it is cancelled, so that we can release the semaphore properly.
         defer (if semaphore is Some(sem) { sem.release() })
@@ -293,9 +293,9 @@ pub async fn[X] any(
           }
         }
         tg.return_immediately(())
-      })
+      }
     }
-  })
+  }
   if result is Some(result) {
     result
   } else {

@@ -17,12 +17,12 @@ async test "ReadableStream roundtrip" {
   let log = []
   let (r, w) = @js_async.JsReadableStream::new_pipe()
   let r = @js_async.ReadableStream::from_js(r)
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let start = @async.now()
     fn tick() {
       ((@async.now() - start).to_int() + 50) / 200
     }
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       async fn write(msg : String) {
         w.write(msg)
@@ -34,15 +34,15 @@ async test "ReadableStream roundtrip" {
       write("message3")
       @async.sleep(400)
       write("message4")
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       defer r.close()
       @async.sleep(200)
       while r.read_some() is Some(data) {
         log.push("reader: \{@utf8.decode(data)} at tick #\{tick()}")
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "writer: message1 at tick #0", "writer: message2 at tick #0", "reader: message1 at tick #1",
     "writer: message3 at tick #1", "reader: message2 at tick #1", "reader: message3 at tick #1",
@@ -56,9 +56,12 @@ async test "ReadableStream read cancelled" {
   let r = @js_async.ReadableStream::from_js(r)
   defer w.close()
   defer r.close()
-  json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=null)
+  json_inspect(
+    @async.with_timeout_opt(300) <| () => { r.read_some() },
+    content=null,
+  )
   w.write("message")
-  json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=[
+  json_inspect(@async.with_timeout_opt(300) <| () => { r.read_some() }, content=[
     ["message"],
   ])
 }
@@ -73,17 +76,18 @@ async test "ReadableStream write cancelled" {
   w.write("message1")
   w.write("message2")
   json_inspect(
-    @async.with_timeout_opt(300, () => w.write("message3")),
+    @async.with_timeout_opt(300) <| () => { w.write("message3") },
     content=null,
   )
   for _ in 0..<2 {
     msgs.push(r.read_some())
   }
-  @async.with_task_group(group => {
-    group.spawn_bg(() => msgs.push(r.read_some()))
-    json_inspect(@async.with_timeout_opt(300, () => w.write("message4")), content=[
-      null,
-    ])
-  })
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => { msgs.push(r.read_some()) }
+    json_inspect(
+      @async.with_timeout_opt(300) <| () => { w.write("message4") },
+      content=[null],
+    )
+  }
   json_inspect(msgs, content=[["message1"], ["message2"], ["message4"]])
 }

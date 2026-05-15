@@ -15,18 +15,18 @@
 ///|
 async test "starvation" {
   let log = []
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       @async.sleep(50)
       log.push("sleep completed")
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       let start = @async.now()
       while @async.now() - start < 100 {
         @async.pause()
       }
       log.push("busy wait completed")
-    })
-  })
+    }
+  }
   json_inspect(log, content=["sleep completed", "busy wait completed"])
 }

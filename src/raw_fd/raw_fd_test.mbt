@@ -23,7 +23,7 @@ async test "pipe as raw fd" {
   assert_true(@event_loop.kind_of_fd(r, context="kind_of_fd") is Pipe)
   assert_true(@event_loop.kind_of_fd(w, context="kind_of_fd") is Pipe)
   @async.with_task_group <| group => {
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       let r = @raw_fd.RawFd(r)
       defer r.close()
       let buf = FixedArray::make(1024, b'\x00')
@@ -34,8 +34,8 @@ async test "pipe as raw fd" {
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         log.push("read() => \{@utf8.decode(data).escape()}")
       }
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       let w = @raw_fd.RawFd(w)
       defer w.close()
       for data in [b"abcd", b"1234", b"ABCD"] {
@@ -46,7 +46,7 @@ async test "pipe as raw fd" {
         }
         log.push("write(\{@utf8.decode(data).escape()})")
       }
-    })
+    }
   }
   json_inspect(log, content=[
     "write(\"abcd\")", "read() => \"abcd\"", "write(\"1234\")", "read() => \"1234\"",
@@ -94,7 +94,7 @@ async test "socket as raw fd" {
   let server = @socket.UdpServer(@socket.Addr::parse("127.0.0.1:0"))
   let port = server.addr.port()
   @async.with_task_group <| group => {
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for ;; {
@@ -105,7 +105,7 @@ async test "socket as raw fd" {
         log.push("server received \{@utf8.decode(data).escape()}")
         server.sendto(buf_bytes, addr, len=n)
       }
-    })
+    }
     let sock = make_udp_socket()
     guard @fd_util.fd_is_valid(sock) else {
       @os_error.check_errno("make_udp_socket()")

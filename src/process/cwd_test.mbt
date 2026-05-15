@@ -15,18 +15,18 @@
 
 ///|
 async test "set cwd" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     // FIXME(upstram): missing codelens here
     guard @env.current_dir() is Some(prev_cwd)
     let (r, w) = @process.read_from_process()
     defer r.close()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="src/process", extra_env={
         "LC_ALL": "C",
       })
       guard @env.current_dir() is Some(new_cwd)
       guard prev_cwd == new_cwd
-    })
+    }
     let files = r
       .read_all()
       .text()
@@ -43,5 +43,5 @@ async test "set cwd" {
       "commands_for_test.mbt", "unimplemented_test.mbt", "spawn_in_group_test.mbt",
       "windows_escape_wbtest.mbt",
     ])
-  })
+  }
 }

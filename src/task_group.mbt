@@ -229,12 +229,12 @@ pub async fn[X] with_task_group(f : async (TaskGroup[X]) -> X) -> X {
     result: None,
     group_defer: [],
   }
-  tg.spawn_bg(() => {
+  tg.spawn_bg() <| () => {
     let value = f(tg)
     if tg.result is None {
       tg.result = Some(value)
     }
-  })
+  }
   @coroutine.suspend() catch {
     err => {
       if tg.state is Running {
@@ -306,7 +306,7 @@ pub fn[X] TaskGroup::spawn_loop(
   max_retry? : Int,
   fatal_error? : (Error) -> Bool,
 ) -> Unit {
-  self.spawn_bg(no_wait~, allow_failure~, () => {
+  self.spawn_bg(no_wait~, allow_failure~) <| () => {
     try {
       match retry {
         None =>
@@ -326,7 +326,7 @@ pub fn[X] TaskGroup::spawn_loop(
       BreakFromSpawnLoop => ()
       err => raise err
     }
-  })
+  }
 }
 
 ///|

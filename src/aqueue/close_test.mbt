@@ -58,47 +58,47 @@ async test "try_get after hard close" {
 async test "close with blocking put" {
   let q = @async.Queue(kind=Blocking(1))
   q.put(1)
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let start = @async.now()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
-    })
+    }
     debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
-  })
+  }
 }
 
 ///|
 async test "close zero buffered with blocking put" {
   let q = @async.Queue(kind=Blocking(0))
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let start = @async.now()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
-    })
+    }
     debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
-  })
+  }
 }
 
 ///|
 async test "close with blocking get" {
   let q : @aqueue.Queue[Int] = @async.Queue(kind=Unbounded)
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let start = @async.now()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
-    })
+    }
     debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
-  })
+  }
 }
