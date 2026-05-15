@@ -81,7 +81,7 @@ async test "retry exponential" {
 async test "retry cancelled1" {
   let log = StringBuilder::new()
   let mut i = 0
-  (@async.with_timeout(500) <| () => {
+  @async.with_timeout(500, () => {
     @async.retry(Immediate) <| () => {
       @async.sleep(200)
       log.write_string("loop \{i}\n")
@@ -106,7 +106,7 @@ async test "retry cancelled1" {
 async test "retry cancelled2" {
   let log = StringBuilder::new()
   let mut i = 0
-  (@async.with_timeout(500) <| () => {
+  @async.with_timeout(500, () => {
     @async.retry(FixedDelay(200)) <| () => {
       log.write_string("loop \{i}\n")
       i = i + 1
@@ -139,7 +139,7 @@ async test "retry fatal_error" {
     log.write_string("worker run #\{i}\n")
     i = i + 1
     if i < 3 {
-      @async.with_timeout(100) <| () => { @async.sleep(1000) }
+      @async.with_timeout(100, () => @async.sleep(1000))
     } else {
       raise Failure::Failure("fatal error")
     }

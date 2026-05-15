@@ -104,8 +104,8 @@ async fn handle_connect(
   conn..send_response(200, "OK").end_response()
   conn.enter_passthrough_mode()
   @async.with_task_group() <| group => {
-    group.spawn_bg() <| () => { conn.write_reader(client) }
-    group.spawn_bg() <| () => { client.write_reader(conn) }
+    group.spawn_bg(() => conn.write_reader(client))
+    group.spawn_bg(() => client.write_reader(conn))
   }
 }
 
@@ -120,12 +120,12 @@ async test "proxied https request" {
         handle_connect(log, req, body, conn)
       })
     }
-    let (_, result) = @async.with_timeout(10000) <| () => {
-        @http.get(
-          "https://www.moonbitlang.com",
-          proxy=@http.Client("http://localhost:\{port}"),
-        )
-      }
+    let (_, result) = @async.with_timeout(10000, () => {
+      @http.get(
+        "https://www.moonbitlang.com",
+        proxy=@http.Client("http://localhost:\{port}"),
+      )
+    })
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
   json_inspect(log, content=[

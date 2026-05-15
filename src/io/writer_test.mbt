@@ -90,7 +90,7 @@ impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
 async test "write cancel" {
   let log = StringBuilder::new()
   let writer = { logger: log, base_timeout: 300 }
-  (@async.with_timeout_opt(450) <| () => { writer.write(b"abcd") }) |> ignore
+  @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang
   inspect(

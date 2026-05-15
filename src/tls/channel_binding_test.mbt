@@ -18,39 +18,37 @@ async test "channel binding" {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    let server_task = group.spawn() <| () => {
-        defer {
-          server_read_from_client.close()
-          server_write_to_client.close()
-        }
-        let server = test_server(
-          server_read_from_client, server_write_to_client,
-        )
-        defer server.close()
-        (
-          server.unique_channel_binding(),
-          server.server_endpoint_channel_binding(),
-        )
+    let server_task = group.spawn(() => {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
       }
+      let server = test_server(server_read_from_client, server_write_to_client)
+      defer server.close()
+      (
+        server.unique_channel_binding(),
+        server.server_endpoint_channel_binding(),
+      )
+    })
     // client
-    let client_task = group.spawn() <| () => {
-        defer {
-          client_read_from_server.close()
-          client_write_to_server.close()
-        }
-        let client = @tls.Tls::client_from_pair(
-          client_read_from_server,
-          client_write_to_server,
-          trust=NoVerification,
-        )
-        defer client.close()
-        let binding = (
-          client.unique_channel_binding(),
-          client.server_endpoint_channel_binding(),
-        )
-        client.shutdown()
-        binding
+    let client_task = group.spawn(() => {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
       }
+      let client = @tls.Tls::client_from_pair(
+        client_read_from_server,
+        client_write_to_server,
+        trust=NoVerification,
+      )
+      defer client.close()
+      let binding = (
+        client.unique_channel_binding(),
+        client.server_endpoint_channel_binding(),
+      )
+      client.shutdown()
+      binding
+    })
     let (unique_binding_for_server, endpoint_binding_for_server) = server_task.wait()
     let (unique_binding_for_client, endpoint_binding_for_client) = client_task.wait()
     assert_eq(unique_binding_for_client, unique_binding_for_server)

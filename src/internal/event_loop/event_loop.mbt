@@ -193,16 +193,16 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     }
   }
   let signal_handler = setup_signal_handler()
-  let main = @coroutine.spawn() <| () => {
-      try f() catch {
-        err => {
-          evloop.terminate_signal_handler(signal_handler)
-          raise err
-        }
-      } noraise {
-        _ => evloop.terminate_signal_handler(signal_handler)
+  let main = @coroutine.spawn(() => {
+    try f() catch {
+      err => {
+        evloop.terminate_signal_handler(signal_handler)
+        raise err
       }
+    } noraise {
+      _ => evloop.terminate_signal_handler(signal_handler)
     }
+  })
   evloop.main = Some(main)
   evloop.run_forever()
   main.unwrap()

@@ -25,10 +25,10 @@ async test "cancel named fifo open" {
     if mkfifo(@os_string.encode(path), 0o644) < 0 {
       @os_error.check_errno("mkfifo")
     }
-    group.add_defer() <| () => { @fs.remove(path) }
-    let result = @async.with_timeout_opt(500) <| () => {
-        @fs.open(path, mode=ReadOnly).close()
-      }
+    group.add_defer(() => @fs.remove(path))
+    let result = @async.with_timeout_opt(500, () => {
+      @fs.open(path, mode=ReadOnly).close()
+    })
     debug_inspect(result, content="None")
   }
 }
@@ -48,9 +48,9 @@ async test "cancel named pipe open" {
   defer (try! @fd_util.close(server, kind=Pipe, context~))
   let client1 = @fs.open(path, mode=ReadOnly)
   defer client1.close()
-  let result = @async.with_timeout_opt(500) <| () => {
-      @fs.open(path, mode=ReadOnly).close()
-    }
+  let result = @async.with_timeout_opt(500, () => {
+    @fs.open(path, mode=ReadOnly).close()
+  })
   debug_inspect(result, content="None")
 }
 
@@ -62,13 +62,13 @@ async test "named fifo" {
     if mkfifo(@os_string.encode(path), 0o644) < 0 {
       @os_error.check_errno("mkfifo")
     }
-    group.add_defer() <| () => { @fs.remove(path) }
+    group.add_defer(() => @fs.remove(path))
     group.spawn_bg() <| () => {
       let r = @fs.open(path, mode=ReadOnly)
       defer r.close()
       inspect(r.read_until("\n").unwrap_or(""), content="abcd")
       debug_inspect(
-        @async.with_timeout_opt(250) <| () => { r.read_all().text() },
+        @async.with_timeout_opt(250, () => r.read_all().text()),
         content="None",
       )
       inspect(r.read_all().text(), content="efgh")
@@ -101,7 +101,7 @@ async test "named pipe" {
       defer r.close()
       inspect(r.read_until("\n").unwrap_or(""), content="abcd")
       debug_inspect(
-        @async.with_timeout_opt(250) <| () => { r.read_all().text() },
+        @async.with_timeout_opt(250, () => r.read_all().text()),
         content="None",
       )
       inspect(r.read_all().text(), content="efgh")

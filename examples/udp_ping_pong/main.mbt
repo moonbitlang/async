@@ -20,7 +20,7 @@ pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
-  (@async.with_task_group <| group => {
+  @async.with_task_group(group => {
     defer server.close()
     let buf = FixedArray::make(1024, b'0')
     while server.recvfrom(buf) is (n, addr) && n > 0 {
@@ -70,19 +70,19 @@ async fn client(
 
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
-  (@async.with_task_group <| root => {
+  @async.with_task_group(root => {
     let server = @socket.UdpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg() <| () => { server_main(server, println) }
+    root.spawn_bg(() => server_main(server, println))
     root.spawn_bg() <| () => {
       @async.with_task_group <| ctx => {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
-          ctx.spawn_bg() <| () => { client(addr, println, i, msg) }
+          ctx.spawn_bg(() => client(addr, println, i, msg))
           @async.sleep(100)
         }
       }
-      root.spawn_bg() <| () => { client(addr, println, 6, "exit") }
+      root.spawn_bg(() => client(addr, println, 6, "exit"))
     }
   }) catch {
     ServerTerminate => ()

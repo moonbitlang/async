@@ -32,7 +32,7 @@ async test "read_all basic" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg() <| () => { writer(log, w) }
+    root.spawn_bg(() => writer(log, w))
     inspect(r.read_all().text(), content="abcdefghijkl")
   }
 }

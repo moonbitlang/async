@@ -25,7 +25,7 @@ async test "timestamp for path" {
   let path = "/tmp/timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
-    group.add_defer() <| () => { @fs.remove(path) }
+    group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
@@ -59,7 +59,7 @@ async test "mtime for path" {
   let path = "_build/timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
-    group.add_defer() <| () => { @fs.remove(path) }
+    group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
@@ -77,7 +77,7 @@ async test "timestamp for opened file" {
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
-    group.add_defer() <| () => { @fs.remove(path) }
+    group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
     let mtime_1 = file.mtime()
@@ -114,7 +114,7 @@ async test "mtime for opened file" {
   let path = "_build/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
-    group.add_defer() <| () => { @fs.remove(path) }
+    group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
     let mtime_1 = file.mtime()

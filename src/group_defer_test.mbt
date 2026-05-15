@@ -16,18 +16,18 @@
 async test "group defer basic" {
   let log = StringBuilder::new()
   @async.with_task_group() <| fn(root) {
-    root.add_defer() <| () => { log <+ "first group defer\n" }
+    root.add_defer(() => log <+ "first group defer\n")
     root.spawn_bg() <| () => {
       defer log.write_string("defer for first task\n")
       @async.sleep(200)
-      root.add_defer() <| () => { log <+ "third group defer\n" }
+      root.add_defer(() => log <+ "third group defer\n")
       @async.sleep(200)
       log <+ "first task finished\n"
     }
     root.spawn_bg() <| () => {
       defer log.write_string("defer for second task\n")
       @async.sleep(100)
-      root.add_defer() <| () => { log <+ "second group defer\n" }
+      root.add_defer(() => log <+ "second group defer\n")
       @async.sleep(200)
       log <+ "second task finished\n"
     }
@@ -57,19 +57,19 @@ async test "group defer error" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| fn(root) {
-        root.add_defer() <| () => { log <+ "first group defer\n" }
+      try? @async.with_task_group(fn(root) {
+        root.add_defer(() => log <+ "first group defer\n")
         root.spawn_bg() <| () => {
           defer log.write_string("defer for first task\n")
           @async.sleep(200)
-          root.add_defer() <| () => { log <+ "third group defer\n" }
+          root.add_defer(() => log <+ "third group defer\n")
           @async.sleep(200)
           log <+ "first task finished\n"
         }
         root.spawn_bg() <| () => {
           defer log.write_string("defer for second task\n")
           @async.sleep(100)
-          root.add_defer() <| () => { log <+ "second group defer\n" }
+          root.add_defer(() => log <+ "second group defer\n")
           @async.sleep(200)
           log <+ "second task raise error\n"
           raise Err
@@ -106,15 +106,15 @@ async test "group defer cancelled" {
         log <+ "tick\n"
       }
     }
-    (@async.with_timeout_opt(500) <| () => {
-      @async.with_task_group() <| group => {
-        group.add_defer() <| () => {
+    @async.with_timeout_opt(500, () => {
+      @async.with_task_group(group => {
+        group.add_defer(() => {
           @async.protect_from_cancel() <| () => {
             @async.sleep(200)
             log <+ "protected async defer completed\n"
           }
-        }
-        group.add_defer() <| () => {
+        })
+        group.add_defer(() => {
           try @async.sleep(200) catch {
             err => {
               log.write_string("normal async defer cancelled with \{err}\n")
@@ -123,10 +123,10 @@ async test "group defer cancelled" {
           } noraise {
             _ => log <+ "normal async defer completed\n"
           }
-        }
+        })
         defer log.write_string("start group termination\n")
         @async.sleep(2000)
-      }
+      })
     })
     |> ignore
     log <+ "group terminated\n"

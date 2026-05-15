@@ -38,13 +38,13 @@ async test "cancel with default signal" {
   let log = []
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
-    let task = group.spawn() <| () => {
-        defer log.push("process terminates")
-        @process.run(test_prog, stdout=w, [
-          "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
-          "before exit",
-        ])
-      }
+    let task = group.spawn(() => {
+      defer log.push("process terminates")
+      @process.run(test_prog, stdout=w, [
+        "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
+        "before exit",
+      ])
+    })
     group.spawn_bg() <| () => {
       defer r.close()
       while r.read_some() is Some(data) {
@@ -69,17 +69,17 @@ async test "cancel with ctrl+c" {
   let log = []
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
-    let task = group.spawn() <| () => {
-        defer log.push("process terminates")
-        let cancel_handler = @process.graceful_cancel(
-          timeout=5000,
-          signal=@signal.SIGINT,
-        )
-        @process.run(test_prog, stdout=w, cancel_handler~, [
-          "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
-          "before exit",
-        ])
-      }
+    let task = group.spawn(() => {
+      defer log.push("process terminates")
+      let cancel_handler = @process.graceful_cancel(
+        timeout=5000,
+        signal=@signal.SIGINT,
+      )
+      @process.run(test_prog, stdout=w, cancel_handler~, [
+        "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
+        "before exit",
+      ])
+    })
     group.spawn_bg() <| () => {
       defer r.close()
       while r.read_some() is Some(data) {
@@ -104,17 +104,17 @@ async test "cancel with SIGHUP" {
   let log = []
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
-    let task = group.spawn() <| () => {
-        defer log.push("process terminates")
-        let cancel_handler = @process.graceful_cancel(
-          timeout=5000,
-          signal=@signal.SIGHUP,
-        )
-        @process.run(test_prog, stdout=w, cancel_handler~, [
-          "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
-          "before exit",
-        ])
-      }
+    let task = group.spawn(() => {
+      defer log.push("process terminates")
+      let cancel_handler = @process.graceful_cancel(
+        timeout=5000,
+        signal=@signal.SIGHUP,
+      )
+      @process.run(test_prog, stdout=w, cancel_handler~, [
+        "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
+        "before exit",
+      ])
+    })
     group.spawn_bg() <| () => {
       defer r.close()
       while r.read_some() is Some(data) {

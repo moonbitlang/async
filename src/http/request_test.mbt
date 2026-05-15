@@ -27,11 +27,11 @@ async test "http request" {
 ///|
 async test "request cancel" {
   let start = @async.now()
-  let _ = @async.with_timeout_opt(200) <| () => {
-      @http.get(
-        "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
-      )
-    }
+  let _ = @async.with_timeout_opt(200, () => {
+    @http.get(
+      "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
+    )
+  })
   let end = @async.now()
   assert_true((end - start).to_int() < 250)
 }

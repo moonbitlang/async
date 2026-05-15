@@ -71,7 +71,7 @@ async test "Timer basic" {
         }
       }
     }
-    let result = @async.with_timeout_opt(0) <| () => { timer.wait() }
+    let result = @async.with_timeout_opt(0, () => timer.wait())
     log.push("wait again: \{@debug.to_string(result)}")
   }
   json_inspect(log, content=[
@@ -85,7 +85,7 @@ async test "Timer no waiter" {
   let timer = @async.Timer(200)
   @async.sleep(400)
   debug_inspect(
-    @async.with_timeout_opt(0) <| () => { timer.wait() },
+    @async.with_timeout_opt(0, () => timer.wait()),
     content=(
       #|Some(())
     ),
@@ -101,17 +101,17 @@ async test "Timer no one waiting" {
 ///|
 async test "Timer waiter cancelled 1" {
   let timer = @async.Timer(600)
-  assert_true((@async.with_timeout_opt(200) <| () => { timer.wait() }) is None)
+  assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
   @async.sleep(200)
-  assert_false((@async.with_timeout_opt(300) <| () => { timer.wait() }) is None)
+  assert_false(@async.with_timeout_opt(300, () => timer.wait()) is None)
 }
 
 ///|
 async test "Timer waiter cancelled 2" {
   let timer = @async.Timer(300)
-  assert_true((@async.with_timeout_opt(200) <| () => { timer.wait() }) is None)
+  assert_true(@async.with_timeout_opt(200, () => timer.wait()) is None)
   @async.sleep(200)
-  assert_false((@async.with_timeout_opt(0) <| () => { timer.wait() }) is None)
+  assert_false(@async.with_timeout_opt(0, () => timer.wait()) is None)
 }
 
 ///|
@@ -219,7 +219,7 @@ async test "Timer::refresh already cancelled" {
   timer.cancel()
   timer.refresh()
   debug_inspect(
-    @async.with_timeout_opt(0) <| () => { try? timer.wait() },
+    @async.with_timeout_opt(0, () => try? timer.wait()),
     content=(
       #|Some(Err(TimerCancelled))
     ),

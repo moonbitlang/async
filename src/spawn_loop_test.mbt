@@ -17,7 +17,7 @@ async test "spawn_loop basic" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         let mut i = 0
         root.spawn_loop() <| () => {
           log.write_string("tick \{i}\n")
@@ -45,7 +45,7 @@ async test "spawn_loop basic-error" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         let mut i = 0
         root.spawn_loop() <| () => {
           log.write_string("tick \{i}\n")

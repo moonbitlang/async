@@ -243,7 +243,7 @@ pub async fn[X] all(
       }
     }
   }
-  results.map() <| r => { r.unwrap() }
+  results.map(r => r.unwrap())
 }
 
 ///|

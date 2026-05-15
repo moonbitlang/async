@@ -15,18 +15,18 @@
 ///|
 async test "manual cancel" {
   let buf = StringBuilder::new()
-  let result = try? (@async.with_task_group() <| root => {
-    let task = root.spawn() <| () => {
-        try {
-          @async.sleep(300)
-          buf <+ "task finished\n"
-        } catch {
-          err => {
-            buf.write_string("cancelled by error \{err}\n")
-            raise err
-          }
+  let result = try? @async.with_task_group(root => {
+    let task = root.spawn(() => {
+      try {
+        @async.sleep(300)
+        buf <+ "task finished\n"
+      } catch {
+        err => {
+          buf.write_string("cancelled by error \{err}\n")
+          raise err
         }
       }
+    })
     @async.sleep(100)
     task.cancel()
     @async.sleep(200)
@@ -51,7 +51,7 @@ async test "error propagation" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         root.spawn_bg() <| () => {
           @async.sleep(300)
           raise Err
@@ -162,22 +162,22 @@ async test "recursive cancel" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         root.spawn_bg() <| () => {
           for _ in 0..<2 {
             @async.sleep(400)
             buf <+ "tick\n"
           }
         }
-        let task = root.spawn() <| () => {
-            @async.sleep(1000) catch {
-              err => buf.write_string("first sleep cancelled with \{err}\n")
-            }
-            @async.sleep(1000) catch {
-              err => buf.write_string("second sleep cancelled with \{err}\n")
-            }
-            buf <+ "task finished\n"
+        let task = root.spawn(() => {
+          @async.sleep(1000) catch {
+            err => buf.write_string("first sleep cancelled with \{err}\n")
           }
+          @async.sleep(1000) catch {
+            err => buf.write_string("second sleep cancelled with \{err}\n")
+          }
+          buf <+ "task finished\n"
+        })
         @async.sleep(600)
         task.cancel()
         buf <+ "main task exit\n"
@@ -203,11 +203,11 @@ async test "spawn directly error" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         root.spawn_bg() <| () => {
           @async.with_task_group() <| group => {
             @async.sleep(1)
-            group.spawn_bg() <| () => { raise Err }
+            group.spawn_bg(() => raise Err)
             buf <+ "after spawn\n"
             @async.sleep(400)
             buf <+ "main task exit\n"
@@ -231,7 +231,7 @@ async test "error in cancellation" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         root.spawn_bg(no_wait=true) <| () => {
           @async.sleep(1000) catch {
             _ => {
@@ -257,12 +257,12 @@ async test "error in cancellation" {
 async test "immediately cancelled" {
   let log = StringBuilder::new()
   @async.with_task_group() <| root => {
-    let task = root.spawn() <| () => {
-        defer log.write_string("task terminated\n")
-        log <+ "task started\n"
-        @async.sleep(100)
-        log <+ "task finished\n"
-      }
+    let task = root.spawn(() => {
+      defer log.write_string("task terminated\n")
+      log <+ "task started\n"
+      @async.sleep(100)
+      log <+ "task finished\n"
+    })
     log <+ "task spawned\n"
     task.cancel()
   }
@@ -279,11 +279,9 @@ async test "immediately cancelled" {
 
 ///|
 async test "immediate failure" {
-  let result = try? (@async.with_task_group() <| group => {
-    group.spawn_bg() <| () => { raise Failure::Failure("failure") }
-    group.spawn_bg() <| () => {
-      group.spawn_bg() <| () => { @async.sleep(100) }
-    }
+  let result = try? @async.with_task_group(group => {
+    group.spawn_bg(() => raise Failure::Failure("failure"))
+    group.spawn_bg(() => group.spawn_bg(() => @async.sleep(100)))
   })
   debug_inspect(
     result,
@@ -313,8 +311,8 @@ async test "task group cancel & complete at the same time" {
       // - `task1` starts and completes, waking the main task of `inner`
       // So here we will have `.cancer()` and `.wake()` called on the same coroutine,
       // but the coroutine should be woken only once in this case.
-      inner.spawn_bg() <| () => { inner.return_immediately(()) }
-      let task1 = inner.spawn() <| () => { () }
+      inner.spawn_bg(() => inner.return_immediately(()))
+      let task1 = inner.spawn(() => ())
       task1.wait() catch {
         err => {
           log.push("inner group main task cancelled")

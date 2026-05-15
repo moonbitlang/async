@@ -26,7 +26,7 @@ async test "get_peer_certificate" {
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       debug_inspect(
-        server.get_peer_certificate().map() <| cert => { cert.length() },
+        server.get_peer_certificate().map(cert => cert.length()),
         content="None",
       )
     }
@@ -43,7 +43,7 @@ async test "get_peer_certificate" {
       )
       defer client.close()
       debug_inspect(
-        client.get_peer_certificate().map() <| cert => { cert.length() },
+        client.get_peer_certificate().map(cert => cert.length()),
         content=(
           #|Some(1447)
         ),

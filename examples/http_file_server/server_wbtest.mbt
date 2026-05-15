@@ -47,7 +47,7 @@ async test "basic" {
   @async.with_task_group <| root => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(no_wait=true) <| () => { server_main(server, path=".", log~) }
+    root.spawn_bg(no_wait=true, () => server_main(server, path=".", log~))
     @async.sleep(50)
     client_log <+ "client: GET /examples/http_file_server\n"
     client(addr, "/examples/http_file_server", client_log)
@@ -57,7 +57,7 @@ async test "basic" {
     client_log <+ "\n\n"
     let tmp_file_name = "examples/test.zip"
     let tmp_file = @fs.create(tmp_file_name, permission=0o644)
-    root.add_defer() <| () => { @fs.remove(tmp_file_name) }
+    root.add_defer(() => @fs.remove(tmp_file_name))
     client(addr, "/examples/http_file_server?download_zip", client_log, handle_response=body => {
       tmp_file.write_reader(body)
     })

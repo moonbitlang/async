@@ -15,7 +15,7 @@
 ///|
 async test "spawn error1" {
   let buf = StringBuilder::new()
-  let result = try? (@async.with_task_group() <| root => {
+  let result = try? @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(1000)
       buf <+ "task 1 finished\n"
@@ -32,7 +32,7 @@ async test "spawn error1" {
 ///|
 async test "spawn error2" {
   let buf = StringBuilder::new()
-  let result = try? (@async.with_task_group() <| root => {
+  let result = try? @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
       raise Err
@@ -49,7 +49,7 @@ async test "spawn error2" {
 ///|
 async test "spawn after cancelled" {
   let log = []
-  let _ : Result[Unit, _] = try? (@async.with_task_group() <| group => {
+  let _ : Result[Unit, _] = try? @async.with_task_group(group => {
     group.spawn_bg() <| () => {
       // emulate a non-cancellable job,
       // or a job that happens to be completed on cancellation,

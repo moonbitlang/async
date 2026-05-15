@@ -14,19 +14,19 @@
 
 ///|
 async test "Promise::from_async" {
-  let result = @js_async.run_promise() <| abort_signal => {
-      @js_async.Promise::from_async(abort_signal~) <| () => {
-        @async.sleep(100)
-        42
-      }
+  let result = @js_async.run_promise(abort_signal => {
+    @js_async.Promise::from_async(abort_signal~) <| () => {
+      @async.sleep(100)
+      42
     }
+  })
   inspect(result, content="42")
 }
 
 ///|
 async test "Promise::from_async cancellation" {
   let mut worker_finished = false
-  let result = try? (@async.with_timeout(100) <| () => {
+  let result = try? @async.with_timeout(100, () => {
     @js_async.run_promise() <| abort_signal => {
       @js_async.Promise::from_async(abort_signal~) <| () => {
         @async.sleep(200)
@@ -41,9 +41,9 @@ async test "Promise::from_async cancellation" {
 ///|
 async test "Promise::from_async cancellation 2" {
   let controller = @js_async.AbortController::new()
-  let p = @js_async.Promise::from_async(abort_signal=controller.signal()) <| () => {
-      @async.sleep(200)
-    }
+  let p = @js_async.Promise::from_async(abort_signal=controller.signal(), () => {
+    @async.sleep(200)
+  })
   @async.sleep(100)
   controller.abort()
   debug_inspect(
@@ -57,9 +57,9 @@ async test "Promise::from_async cancellation 2" {
 ///|
 async test "Promise::from_async cancellation 3" {
   let controller = @js_async.AbortController::new()
-  let p = @js_async.Promise::from_async(abort_signal=controller.signal()) <| () => {
-      @async.sleep(100)
-    }
+  let p = @js_async.Promise::from_async(abort_signal=controller.signal(), () => {
+    @async.sleep(100)
+  })
   @async.sleep(200)
   controller.abort()
   debug_inspect(try? p.wait(), content="Ok(())")
@@ -79,9 +79,9 @@ async test "read dir" {
 
 ///|
 async test "read file" {
-  let content = @js_async.run_promise() <| signal => {
-      (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal })
-    }
+  let content = @js_async.run_promise(signal => {
+    (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal })
+  })
   inspect(
     content,
     content=(

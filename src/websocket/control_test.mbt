@@ -76,7 +76,7 @@ async test "ping auto-reply race-with-write" {
       defer ws.close()
       @async.with_task_group() <| group => {
         // currently, auto-reply is only triggered when the user is actually reading.
-        group.spawn_bg(no_wait=true) <| () => { ignore(ws.recv().read_all()) }
+        group.spawn_bg(no_wait=true, () => ignore(ws.recv().read_all()))
         ws.start_message(Text)
         ws.write("1234")
         @async.sleep(400)
@@ -216,8 +216,8 @@ async test "multiple ping" {
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
         @async.with_task_group() <| inner => {
-          inner.spawn_bg() <| () => { ws.ping() }
-          inner.spawn_bg() <| () => { ws.ping() }
+          inner.spawn_bg(() => ws.ping())
+          inner.spawn_bg(() => ws.ping())
         }
         ws.send_text("1234")
       }
@@ -249,7 +249,7 @@ async test "ping cancelled" {
         inspect(ws.recv().read_all().text(), content="abcd")
       }
       debug_inspect(
-        @async.with_timeout_opt(100) <| () => { ws.ping(msg=b"1") },
+        @async.with_timeout_opt(100, () => ws.ping(msg=b"1")),
         content="None",
       )
       ws.ping(msg=b"1")
@@ -279,7 +279,7 @@ async test "duplicated ping" {
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
         @async.with_task_group() <| inner => {
-          inner.spawn_bg() <| () => { ws.ping(msg=b"1") }
+          inner.spawn_bg(() => ws.ping(msg=b"1"))
           inner.spawn_bg() <| () => {
             debug_inspect(
               try? ws.ping(msg=b"1"),
