@@ -45,6 +45,9 @@ pub fn Semaphore::Semaphore(
   size : Int,
   initial_value? : Int = size,
 ) -> Semaphore {
+  if size <= 0 {
+    abort("size of semaphore must be positive")
+  }
   guard initial_value >= 0 && initial_value <= size
   { value: initial_value, size, waiters: @deque.Deque([]) }
 }
