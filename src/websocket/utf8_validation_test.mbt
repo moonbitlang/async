@@ -15,10 +15,10 @@
 ///|
 async test "UTF8 validation" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer server.close()
       for ;; {
         let (conn, _) = server.accept()
@@ -43,7 +43,7 @@ async test "UTF8 validation" {
           }
         }
       }
-    })
+    }
     async fn send_bad_message(msg : Bytes) {
       let client = @websocket.connect("ws://localhost:\{addr.port()}")
       defer client.close()
@@ -64,7 +64,7 @@ async test "UTF8 validation" {
     send_bad_message([0xf0, 0x80, 0x80, 0x80, 0x80])
     send_bad_message([0xf0, 0x80, 0x80, 0x79])
     send_bad_message([0xf0, 0x79, 0x80, 0x80])
-  })
+  }
   json_inspect(log, content=[
     "server failed with ProtocolError(Text message is not valid UTF8) at byte 0",
     "client: [0x80] => Err(\n  ConnectionClosed(\n    InvalidFramePayload,\n    Some(\"Text message is not valid UTF8\"),\n  ),\n)",
@@ -89,31 +89,31 @@ async test "UTF8 validation" {
 
 ///|
 async test "UTF8 validation large message" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((req, _, conn) => {
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((req, _, conn) => {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
         let msg = ws.recv()
         debug_inspect(msg.kind, content="Text")
         ws..start_message(Text)..write_reader(msg).end_message()
       })
-    })
+    }
     let client = @websocket.connect("ws://localhost:\{port}")
     defer client.close()
-    @async.with_task_group(group => {
+    @async.with_task_group() <| group => {
       let chunk_text = String::make(1024, '☺')
       let chunk_bin = @utf8.encode(chunk_text)
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         client.start_message(Text)
         client.write("a")
         for n = 0; n < 10240; n = n + chunk_bin.length() {
           client.write(chunk_bin)
         }
         client.end_message()
-      })
+      }
       let reply = client.recv()
       inspect(@utf8.decode(reply.read_exactly(1)), content="a")
       for n = 0; n < 10240; n = n + chunk_bin.length() {
@@ -121,6 +121,6 @@ async test "UTF8 validation large message" {
         assert_eq(@utf8.decode(reply_chunk), chunk_text)
       }
       debug_inspect(reply.read_some(), content="None")
-    })
-  })
+    }
+  }
 }

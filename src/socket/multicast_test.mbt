@@ -61,7 +61,7 @@ async test "multicast discovery then unicast" {
     defer server.close()
     let multicast_addr = @socket.Addr::parse("239.0.0.1:\{server.addr.port()}")
     server.join_multicast_group(multicast_addr, interface_addr~)
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       let client = @socket.UdpClient(multicast_addr)
       defer client.close()
       client.set_multicast_interface(interface_addr)
@@ -78,7 +78,7 @@ async test "multicast discovery then unicast" {
       let n = client.recv(buf)
       let data = buf.unsafe_reinterpret_as_bytes()[:n]
       log.push("client received \{@utf8.decode(data)} from server")
-    })
+    }
     let buf = FixedArray::make(1024, b'\x00')
     let (n, peer_addr) = server.recvfrom(buf)
     let data = buf.unsafe_reinterpret_as_bytes()[:n]
@@ -108,7 +108,7 @@ async test "multicast no loopback" {
     let server = @socket.UdpServer::multicast(
       @socket.Addr::parse("239.0.0.1:0"),
     )
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer server.close()
       let buf = FixedArray::make(1024, b'\x00')
       for ;; {
@@ -116,7 +116,7 @@ async test "multicast no loopback" {
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         log.push("server received: \{@utf8.decode(data)}")
       }
-    })
+    }
     let client = @socket.UdpClient(
       @socket.Addr::parse("239.0.0.1:\{server.addr.port()}"),
     )
@@ -158,7 +158,7 @@ async test "multicast discovery then unicast v6" {
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{server.addr.port()}")
     server.join_multicast_group_v6(multicast_addr, interface=test_interface)
     server.set_multicast_ttl(0)
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       let client = @socket.UdpClient(
         @socket.Addr::parse("[ff02::1%\{test_interface}]:\{port}"),
       )
@@ -178,7 +178,7 @@ async test "multicast discovery then unicast v6" {
       let n = client.recv(buf)
       let data = buf.unsafe_reinterpret_as_bytes()[:n]
       log.push("client received \{@utf8.decode(data)} from server")
-    })
+    }
     let buf = FixedArray::make(1024, b'\x00')
     let (n, peer_addr) = server.recvfrom(buf)
     let data = buf.unsafe_reinterpret_as_bytes()[:n]
@@ -208,7 +208,7 @@ async test "multicast no loopback v6" {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{port}")
-    group.spawn_bg(no_wait=true, () => {
+    group.spawn_bg(no_wait=true) <| () => {
       defer server.close()
       server.join_multicast_group_v6(multicast_addr, interface=test_interface)
       let buf = FixedArray::make(1024, b'\x00')
@@ -217,7 +217,7 @@ async test "multicast no loopback v6" {
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         log.push("server received: \{@utf8.decode(data)}")
       }
-    })
+    }
     let client = @socket.UdpClient(
       @socket.Addr::parse("[ff02::1%\{test_interface}]:\{port}"),
     )

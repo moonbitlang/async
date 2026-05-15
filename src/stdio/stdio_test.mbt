@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-let cat : @async.Lazy[String] = @async.Lazy(() => {
-  // Note: the `cat` example program lies in another MoonBit module.
-  // Currently, dependencies of a module is built locally in that module,
-  // so there will be no build lock conflict between this test and the `cat` program.
-  let exit_code = @process.run("moon", [
-    "-C", "src/process/test_programs", "build", "--debug", "cat",
-  ])
-  guard exit_code is 0 else {
-    fail("failed to build `cat` program: \{exit_code}")
+let cat : @async.Lazy[String] = @async.Lazy() <| () => {
+    // Note: the `cat` example program lies in another MoonBit module.
+    // Currently, dependencies of a module is built locally in that module,
+    // so there will be no build lock conflict between this test and the `cat` program.
+    let exit_code = @process.run("moon", [
+      "-C", "src/process/test_programs", "build", "--debug", "cat",
+    ])
+    guard exit_code is 0 else {
+      fail("failed to build `cat` program: \{exit_code}")
+    }
+    "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
   }
-  "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
-})
 
 ///|
 async test "redirect_file" {
@@ -45,20 +45,20 @@ async test "redirect_file" {
 
 ///|
 async test "redirect pipe" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let cat = cat.wait()
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       let code = @process.run(cat, [], stdin=cat_read, stdout=cat_write)
       inspect(code, content="0")
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer we_write.close()
       we_write.write(b"abcd\n")
       @async.sleep(50)
       we_write.write(b"defg\n")
-    })
+    }
     defer we_read.close()
     inspect(
       we_read.read_all().text(),
@@ -68,16 +68,16 @@ async test "redirect pipe" {
         #|
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "stdio cancel" {
   let cat = cat.wait()
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       let code = @process.run(
         cat,
         ["-timeout", "500"],
@@ -85,7 +85,7 @@ async test "stdio cancel" {
         stdout=cat_write,
       )
       inspect(code, content="1")
-    })
+    }
     defer we_write.close()
     defer we_read.close()
     we_write.write("abcd")
@@ -100,5 +100,5 @@ async test "stdio cancel" {
       we_read.read_all().text().trim(chars="\r\n"),
       content="TimeoutError",
     )
-  })
+  }
 }

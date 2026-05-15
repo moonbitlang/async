@@ -15,7 +15,7 @@
 
 ///|
 async test "set_env" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
     let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
@@ -27,13 +27,13 @@ async test "set_env" {
       extra_env={ "MAGIC_VAR": "MAGIC_VALUE" },
     )
     inspect(r.read_all().text(), content="MAGIC_VALUE")
-  })
+  }
 }
 
 ///|
 async test "set_env no inherit" {
   let test_prog = dump_env_prog.wait()
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
     let _ = @process.spawn(
@@ -59,5 +59,5 @@ async test "set_env no inherit" {
         #|
       ),
     )
-  })
+  }
 }

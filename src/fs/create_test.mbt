@@ -73,14 +73,14 @@ async test "wrapper test" {
 ///|
 async test "create_mode test" {
   let path = "_build/create_exclusive_test"
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     for create_mode in [@fs.OpenExisting, @fs.TruncateExisting] {
       assert_true((try? @fs.open(path, mode=WriteOnly, create_mode~)) is Err(_))
     }
     {
       let file = @fs.create(path, allow_existing=false)
       defer file.close()
-      group.add_defer(() => @fs.remove(path))
+      group.add_defer() <| () => { @fs.remove(path) }
       file.write("abcd")
     }
     inspect(@fs.read_file(path).text(), content="abcd")
@@ -112,5 +112,5 @@ async test "create_mode test" {
       file.write("34")
     }
     inspect(@fs.read_file(path).text(), content="34")
-  })
+  }
 }

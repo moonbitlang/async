@@ -15,11 +15,11 @@
 ///|
 async test "external client" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((request, _, conn) => {
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((request, _, conn) => {
         log.push("new client to \{request.path}")
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()
@@ -30,7 +30,7 @@ async test "external client" {
           ws..start_message(msg.kind)..write(data).end_message()
         }
       })
-    })
+    }
     let (_, output) = @process.collect_stdout("node", [
       "src/websocket/client.ts",
       "ws://localhost:\{port}",
@@ -44,6 +44,6 @@ async test "external client" {
         #|
       ),
     )
-  })
+  }
   json_inspect(log, content=["new client to /", "Text: Hello, Server!"])
 }

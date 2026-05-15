@@ -34,11 +34,11 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 ///|
 async test "one way" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -51,9 +51,9 @@ async test "one way" {
       } nobreak {
         server.shutdown()
       }
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -71,8 +71,8 @@ async test "one way" {
       client.write(b"ijkl")
       client.shutdown()
       inspect(client.read_all().text(), content="")
-    })
-  })
+    }
+  }
   inspect(
     log.to_string(),
     content=(
@@ -87,11 +87,11 @@ async test "one way" {
 ///|
 async test "echo" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -104,9 +104,9 @@ async test "echo" {
       } nobreak {
         server.shutdown()
       }
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -124,8 +124,8 @@ async test "echo" {
       }
       client.shutdown()
       inspect(client.read_all().text(), content="")
-    })
-  })
+    }
+  }
   inspect(
     log.to_string(),
     content=(
@@ -139,20 +139,20 @@ async test "echo" {
 
 ///|
 async test "`connect` accidental close" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
       }
       let _ = server_read_from_client.read_some()
       @async.sleep(100)
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -169,26 +169,26 @@ async test "`connect` accidental close" {
         }
         Err(err) => inspect(err, content="ConnectionClosed")
       }
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "`read` already closed" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
       }
       let server = test_server(server_read_from_client, server_write_to_client)
       server.close()
-    })
+    }
     // client
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -200,8 +200,8 @@ async test "`read` already closed" {
       )
       defer client.close()
       debug_inspect(try? client.read_some(), content="Ok(None)")
-    })
-  })
+    }
+  }
 }
 
 ///|
@@ -244,10 +244,10 @@ async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 
 ///|
 async test "client custom root certificate" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -258,8 +258,8 @@ async test "client custom root certificate" {
       defer server.close()
       assert_eq(server.read_exactly(2), b"ok")
       server.shutdown()
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -274,16 +274,16 @@ async test "client custom root certificate" {
       client.write(b"ok")
       client.shutdown()
       inspect(client.read_all().text(), content="")
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "client custom root certificate rejects different root" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -292,8 +292,8 @@ async test "client custom root certificate rejects different root" {
         server_read_from_client, server_write_to_client,
       )
       assert_true(server is Err(_))
-    })
-    root.spawn_bg(() => {
+    }
+    root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -305,6 +305,6 @@ async test "client custom root certificate rejects different root" {
         trust=CustomPemFile("test_keys/valid_root_cert.pem"),
       )
       assert_true(client is Err(_))
-    })
-  })
+    }
+  }
 }

@@ -15,9 +15,9 @@
 
 ///|
 async test "merge multiple" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @pipe.pipe()
-    root.spawn_bg(no_wait=true, () => {
+    root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       inspect(
         r.read_all().text(),
@@ -27,9 +27,9 @@ async test "merge multiple" {
           #|
         ),
       )
-    })
+    }
     defer w.close()
-    @async.with_task_group(group => {
+    @async.with_task_group() <| group => {
       @process.spawn(group, shell, ["-c", "echo abcd"], stdout=w, extra_env={
         "LANG": "en_US.UTF-8",
       })
@@ -38,18 +38,18 @@ async test "merge multiple" {
         "LANG": "en_US.UTF-8",
       })
       |> ignore
-    })
-  })
+    }
+  }
 }
 
 ///|
 async test "redirect to file" {
   let cat = cat.wait()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let input_file = "_build/process_redirect_test_in.txt"
     let output_file = "_build/process_redirect_test_out.txt"
-    root.add_defer(() => @fs.remove(input_file))
-    root.add_defer(() => @fs.remove(output_file))
+    root.add_defer() <| () => { @fs.remove(input_file) }
+    root.add_defer() <| () => { @fs.remove(output_file) }
     @fs.write_file(input_file, "abcd", create_mode=CreateOrTruncate)
     let _ = @process.run(
       cat,
@@ -61,12 +61,12 @@ async test "redirect to file" {
       ),
     )
     inspect(@fs.read_file(output_file).text(), content="abcd")
-  })
+  }
 }
 
 ///|
 async test "merge stdout and stderr" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
     let _ = @process.spawn(
@@ -77,5 +77,5 @@ async test "merge stdout and stderr" {
       stderr=w,
     )
     inspect(r.read_all().text(), content="abcdefgh")
-  })
+  }
 }

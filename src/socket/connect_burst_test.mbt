@@ -18,7 +18,7 @@ suberror ServerTerminate
 ///|
 async fn server_main(server : @socket.TcpServer) -> Int {
   let mut num_connection = 0
-  server.run_forever(allow_failure=false, (conn, _) => {
+  (server.run_forever(allow_failure=false) <| ((conn, _) => {
     num_connection += 1
     while conn.read_some() is Some(msg) {
       if msg == b"exit" {
@@ -26,7 +26,7 @@ async fn server_main(server : @socket.TcpServer) -> Int {
         raise ServerTerminate
       }
     }
-  }) catch {
+  })) catch {
     ServerTerminate => return num_connection
     err => raise err
   }
@@ -43,40 +43,40 @@ async fn client(msg : Bytes, addr : @socket.Addr) -> Unit {
 ///|
 async test "connection burst" {
   let mut result = 0
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(() => result = server_main(server))
-    root.spawn_bg(() => {
-      @async.with_task_group(fn(ctx) {
+    root.spawn_bg() <| () => { result = server_main(server) }
+    root.spawn_bg() <| () => {
+      @async.with_task_group() <| fn(ctx) {
         for _ in 0..<6 {
-          ctx.spawn_bg(() => client(b"ping", addr))
+          ctx.spawn_bg() <| () => { client(b"ping", addr) }
         }
-      })
-      root.spawn_bg(() => client(b"exit", addr))
-    })
-  })
+      }
+      root.spawn_bg() <| () => { client(b"exit", addr) }
+    }
+  }
   inspect(result, content="7")
 }
 
 ///|
 async test "connection burst with ipv6" {
   let mut result = 0
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let server = @socket.TcpServer(
       @socket.Addr::parse("[::1]:0"),
       dual_stack=false,
     )
     let addr = server.addr
-    root.spawn_bg(() => result = server_main(server))
-    root.spawn_bg(() => {
-      @async.with_task_group(fn(ctx) {
+    root.spawn_bg() <| () => { result = server_main(server) }
+    root.spawn_bg() <| () => {
+      @async.with_task_group() <| fn(ctx) {
         for _ in 0..<6 {
-          ctx.spawn_bg(() => client(b"ping", addr))
+          ctx.spawn_bg() <| () => { client(b"ping", addr) }
         }
-      })
-      root.spawn_bg(() => client(b"exit", addr))
-    })
-  })
+      }
+      root.spawn_bg() <| () => { client(b"exit", addr) }
+    }
+  }
   inspect(result, content="7")
 }

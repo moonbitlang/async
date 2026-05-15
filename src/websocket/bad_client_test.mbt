@@ -14,12 +14,12 @@
 
 ///|
 async test "bad client" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     let server_result_queue = @async.Queue(kind=Unbounded)
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((req, _, conn) => {
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((req, _, conn) => {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
         let result = try? ({
@@ -32,20 +32,20 @@ async test "bad client" {
         // so that the client has enough time to react to the CLOSE frame
         @async.sleep(50)
       })
-    })
+    }
     async fn test_bad_frames(frames : Array[Bytes]) {
       let http_client = @http.Client("http://localhost:\{port}")
       defer http_client.close()
       let ws_client = @websocket.from_http_client(http_client, "/")
       defer ws_client.close()
-      @async.with_task_group(group => {
-        group.spawn_bg(() => {
+      @async.with_task_group() <| group => {
+        group.spawn_bg() <| () => {
           for frame in frames {
             http_client.write(frame)
           }
-        })
+        }
         try? ws_client.recv().read_all().text()
-      })
+      }
     }
 
     async fn test_bad_frame(frame) {
@@ -279,5 +279,5 @@ async test "bad client" {
         #|Err(ConnectionClosed(ProtocolError, Some("Invalid payload length format")))
       ),
     )
-  })
+  }
 }

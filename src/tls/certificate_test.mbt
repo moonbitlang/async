@@ -14,11 +14,11 @@
 
 ///|
 async test "get_peer_certificate" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
     // server
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer {
         server_read_from_client.close()
         server_write_to_client.close()
@@ -26,12 +26,12 @@ async test "get_peer_certificate" {
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
       debug_inspect(
-        server.get_peer_certificate().map(cert => cert.length()),
+        server.get_peer_certificate().map() <| cert => { cert.length() },
         content="None",
       )
-    })
+    }
     // client
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
@@ -43,12 +43,12 @@ async test "get_peer_certificate" {
       )
       defer client.close()
       debug_inspect(
-        client.get_peer_certificate().map(cert => cert.length()),
+        client.get_peer_certificate().map() <| cert => { cert.length() },
         content=(
           #|Some(1447)
         ),
       )
       client.shutdown()
-    })
-  })
+    }
+  }
 }

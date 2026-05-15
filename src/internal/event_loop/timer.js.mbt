@@ -22,10 +22,10 @@ extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
 
 ///|
 pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
-  set_timeout(duration, () => {
+  set_timeout(duration) <| () => {
     f()
     reschedule()
-  })
+  }
 }
 
 ///|

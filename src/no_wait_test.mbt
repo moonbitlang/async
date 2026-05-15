@@ -15,8 +15,8 @@
 ///|
 async test "no_wait cancelled" {
   let buf = StringBuilder::new()
-  @async.with_task_group(root => {
-    root.spawn_bg(no_wait=true, () => {
+  @async.with_task_group() <| root => {
+    root.spawn_bg(no_wait=true) <| () => {
       try @async.sleep(1000) catch {
         err => {
           buf.write_string("`no_wait` task cancelled with \{err}\n")
@@ -25,10 +25,10 @@ async test "no_wait cancelled" {
       } noraise {
         _ => buf <+ "`no_wait` task finished successfully\n"
       }
-    })
+    }
     @async.sleep(100)
     buf <+ "main task terminate\n"
-  })
+  }
   inspect(
     buf.to_string(),
     content=(
@@ -42,8 +42,8 @@ async test "no_wait cancelled" {
 ///|
 async test "no_wait normal exit" {
   let buf = StringBuilder::new()
-  @async.with_task_group(root => {
-    root.spawn_bg(no_wait=true, () => {
+  @async.with_task_group() <| root => {
+    root.spawn_bg(no_wait=true) <| () => {
       try @async.sleep(100) catch {
         err => {
           buf.write_string("`no_wait` task cancelled with \{err}\n")
@@ -52,10 +52,10 @@ async test "no_wait normal exit" {
       } noraise {
         _ => buf <+ "`no_wait` task finished successfully\n"
       }
-    })
+    }
     @async.sleep(200)
     buf <+ "main task terminate\n"
-  })
+  }
   inspect(
     buf.to_string(),
     content=(

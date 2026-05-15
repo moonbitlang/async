@@ -38,7 +38,7 @@ let ls : String = if is_windows { "Get-ChildItem -Name" } else { "ls" }
 
 ///|
 fn make_test_prog(name : String) -> @async.Lazy[String] {
-  @async.Lazy(() => {
+  @async.Lazy() <| () => {
     let code = @process.run("moon", [
       "-C",
       "src/process/test_programs",
@@ -50,7 +50,7 @@ fn make_test_prog(name : String) -> @async.Lazy[String] {
       fail("failed to build test program `\{name}`: \{code}")
     }
     "src/process/test_programs/_build/native/debug/build/\{name}/\{name}.exe"
-  })
+  }
 }
 
 ///|

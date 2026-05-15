@@ -18,7 +18,7 @@
 /// If current task is cancelled, `sleep` will return early with an error.
 pub async fn sleep(duration : Int) -> Unit {
   let coro = @coroutine.current_coroutine()
-  let timer = @event_loop.Timer::new(duration, () => coro.wake())
+  let timer = @event_loop.Timer::new(duration) <| () => { coro.wake() }
   defer timer.cancel()
   @coroutine.suspend()
 }
@@ -100,7 +100,9 @@ pub async fn Timer::wait(timer : Timer) -> Unit {
       let duration = timer.expire_time - @time.ms_since_epoch()
       guard duration > 0 else { return }
       timer.state = Running(
-        @event_loop.Timer::new(duration.to_int(), () => timer.wake(Terminated)),
+        @event_loop.Timer::new(duration.to_int()) <| () => {
+          timer.wake(Terminated)
+        },
       )
     }
     Terminated => return
@@ -134,7 +136,7 @@ pub fn Timer::refresh(timer : Timer) -> Unit {
     timer.state = Detached
   } else {
     timer.state = Running(
-      @event_loop.Timer::new(timer.duration, () => timer.wake(Terminated)),
+      @event_loop.Timer::new(timer.duration) <| () => { timer.wake(Terminated) },
     )
   }
 }

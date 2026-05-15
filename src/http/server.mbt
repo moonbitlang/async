@@ -263,7 +263,7 @@ pub async fn Server::run_forever(
   allow_failure? : Bool,
   max_connections? : Int,
 ) -> Unit {
-  self.server.run_forever(allow_failure?, max_connections?, (conn, _) => {
+  self.server.run_forever(allow_failure?, max_connections?) <| ((conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)
     defer conn.close()
     for ;; {

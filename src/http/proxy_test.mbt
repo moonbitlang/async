@@ -15,10 +15,10 @@
 ///|
 async test "passthrough mode" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       let conn = @http.ServerConnection::new(conn)
@@ -32,7 +32,7 @@ async test "passthrough mode" {
         let packet = @utf8.decode(packet)
         log.push("server received: \{packet}")
       }
-    })
+    }
     let client = @http.Client("http://localhost:\{server_addr.port()}")
     defer client.close()
     let response = client..request(Connect, "/path").end_request()
@@ -43,7 +43,7 @@ async test "passthrough mode" {
       client.write(packet)
       @async.sleep(200)
     }
-  })
+  }
   json_inspect(log, content=[
     "client sending: abcd", "server received: abcd", "client sending: efgh", "server received: efgh",
     "client sending: ijkl", "server received: ijkl",
@@ -52,10 +52,10 @@ async test "passthrough mode" {
 
 ///|
 async test "passthrough mode remaining data" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer server.close()
       let (conn, _) = server.accept()
       let conn = @http.ServerConnection::new(conn)
@@ -65,13 +65,13 @@ async test "passthrough mode remaining data" {
       inspect(request.path, content="/")
       conn.enter_passthrough_mode()
       inspect(conn.read_all().text(), content="remaining data")
-    })
+    }
     let client = @socket.Tcp::connect(
       @socket.Addr::parse("127.0.0.1:\{server_addr.port()}"),
     )
     defer client.close()
     client.write("GET / HTTP/1.1\r\n\r\nremaining data")
-  })
+  }
 }
 
 ///|
@@ -103,31 +103,31 @@ async fn handle_connect(
   log.push("proxy server: connected to \{request.path} successfully")
   conn..send_response(200, "OK").end_response()
   conn.enter_passthrough_mode()
-  @async.with_task_group(group => {
-    group.spawn_bg(() => conn.write_reader(client))
-    group.spawn_bg(() => client.write_reader(conn))
-  })
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => { conn.write_reader(client) }
+    group.spawn_bg() <| () => { client.write_reader(conn) }
+  }
 }
 
 ///|
 async test "proxied https request" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((req, body, conn) => {
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((req, body, conn) => {
         handle_connect(log, req, body, conn)
       })
-    })
-    let (_, result) = @async.with_timeout(10000, () => {
-      @http.get(
-        "https://www.moonbitlang.com",
-        proxy=@http.Client("http://localhost:\{port}"),
-      )
-    })
+    }
+    let (_, result) = @async.with_timeout(10000) <| () => {
+        @http.get(
+          "https://www.moonbitlang.com",
+          proxy=@http.Client("http://localhost:\{port}"),
+        )
+      }
     assert_true(result.text().has_prefix("<!doctype html>"))
-  })
+  }
   json_inspect(log, content=[
     "proxy server: connected to www.moonbitlang.com:443 successfully",
   ])
@@ -136,20 +136,20 @@ async test "proxied https request" {
 ///|
 async test "proxied http request" {
   let log = []
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((req, body, conn) => {
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((req, body, conn) => {
         handle_connect(log, req, body, conn)
       })
-    })
+    }
     let (_, result) = @http.get(
       "http://www.example.org",
       proxy=@http.Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
-  })
+  }
   json_inspect(log, content=[
     "proxy server: connected to www.example.org:80 successfully",
   ])
@@ -162,14 +162,14 @@ async test "proxied misc request" {
   let proxy_server_addr = proxy_server.addr
   let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
   let port = server.addr.port()
-  @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => {
-      proxy_server.run_forever((req, body, conn) => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
+      proxy_server.run_forever() <| ((req, body, conn) => {
         handle_connect(log, req, body, conn)
       })
-    })
-    group.spawn_bg(no_wait=true, () => {
-      server.run_forever((conn, _) => {
+    }
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((conn, _) => {
         let conn = @http.ServerConnection::new(conn)
         for ;; {
           let request = conn.read_request()
@@ -180,7 +180,7 @@ async test "proxied misc request" {
           conn..send_response(200, "OK").end_response()
         }
       })
-    })
+    }
     async fn proxy() {
       @http.Client("http://localhost:\{proxy_server_addr.port()}")
     }
@@ -188,7 +188,7 @@ async test "proxied misc request" {
     let _ = @http.get("http://localhost:\{port}", proxy=proxy())
     let _ = @http.put("http://localhost:\{port}", "abcd", proxy=proxy())
     let _ = @http.post("http://localhost:\{port}", "efgh", proxy=proxy())
-  })
+  }
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")
   }
@@ -203,13 +203,13 @@ async test "proxied misc request" {
 async test "proxy error" {
   let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let port = proxy_server.addr.port()
-  @async.with_task_group(group => {
-    group.spawn_bg(no_wait=true, () => {
-      proxy_server.run_forever((_, _, conn) => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
+      proxy_server.run_forever() <| ((_, _, conn) => {
         conn.send_response(407, "ProxyAuthenticationRequired")
         conn.end_response()
       })
-    })
+    }
     try
       @http.get(
         "https://www.moonbitlang.com",
@@ -226,5 +226,5 @@ async test "proxy error" {
     } noraise {
       _ => raise Failure::Failure("expected error, but nothing happens")
     }
-  })
+  }
 }

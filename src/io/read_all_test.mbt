@@ -29,23 +29,23 @@ async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
 ///|
 async test "read_all basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(() => writer(log, w))
+    root.spawn_bg() <| () => { writer(log, w) }
     inspect(r.read_all().text(), content="abcdefghijkl")
-  })
+  }
 }
 
 ///|
 async test "read_all large data" {
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w.write(Bytes::make(4097, 0))
-    })
+    }
     inspect(r.read_all().binary().length(), content="4097")
-  })
+  }
 }

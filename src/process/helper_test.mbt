@@ -57,15 +57,15 @@ async test "collect_output_merged" {
 ///|
 async test "collect_output blocked" {
   let test_prog = cat.wait()
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer we_write.close()
       let chunk = Bytes::make(1024, 0)
       for _ in 0..<1024 {
         we_write.write(chunk)
       }
-    })
+    }
     let (code, stdout, stderr) = @process.collect_output(
       test_prog,
       ["-stderr"],
@@ -74,5 +74,5 @@ async test "collect_output blocked" {
     inspect(code, content="0")
     inspect(stdout.text(), content="")
     inspect(stderr.binary().length(), content="1048576")
-  })
+  }
 }

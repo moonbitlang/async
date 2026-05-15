@@ -34,21 +34,21 @@ fn log_response(req : Response, logger : &Logger) -> Unit {
 ///|
 async test "read_request basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
       ..write("Host: x.y.org\r\n")
       .write("User-Agent: MoonBit\r\n\r\n")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -63,9 +63,9 @@ async test "read_request basic" {
 ///|
 async test "read_request fixed body" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -73,13 +73,13 @@ async test "read_request fixed body" {
       ..write("User-Agent: MoonBit\r\n")
       ..write("Content-Length: 7\r\n\r\n")
       .write("message")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -95,9 +95,9 @@ async test "read_request fixed body" {
 ///|
 async test "read_request chunked" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -109,13 +109,13 @@ async test "read_request chunked" {
       ..write("10\r\n")
       ..write("abcdefghijklmnop\r\n")
       .write("0\r\n\r\n")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -131,9 +131,9 @@ async test "read_request chunked" {
 ///|
 async test "read_request stream" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -150,7 +150,7 @@ async test "read_request stream" {
       log <+ "writing data...\n"
       w.write("4\r\nijkl\r\n")
       w.write("0\r\n\r\n")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
@@ -159,7 +159,7 @@ async test "read_request stream" {
       let data = @utf8.decode(data)
       log.write_string("received \{data} from body\n")
     }
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -181,9 +181,9 @@ async test "read_request stream" {
 ///|
 async test "multiple request" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("GET / HTTP/1.1\r\n")
@@ -207,7 +207,7 @@ async test "multiple request" {
       ..write("User-Agent: MoonBit\r\n")
       ..write("Content-Length: 8\r\n\r\n")
       .write("message2")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
@@ -216,7 +216,7 @@ async test "multiple request" {
     let request = input.read_request()
     log_request(request, log)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -243,15 +243,15 @@ async test "multiple request" {
 ///|
 async test "read_response basic" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")
       ..write("Content-Length: 7\r\n\r\n")
       .write("message")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -260,7 +260,7 @@ async test "read_response basic" {
     )
     log_response(response, log)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -274,9 +274,9 @@ async test "read_response basic" {
 ///|
 async test "read_response passthrough fallback (no length headers)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")
@@ -285,7 +285,7 @@ async test "read_response passthrough fallback (no length headers)" {
       // No Content-Length or Transfer-Encoding
       // Body ends when connection closes
       .write("Hello, World!")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -296,7 +296,7 @@ async test "read_response passthrough fallback (no length headers)" {
 
     // Read body via PassThrough fallback (reads until EOF/connection close)
     log.write_string(input.read_all().text())
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -311,9 +311,9 @@ async test "read_response passthrough fallback (no length headers)" {
 ///|
 async test "read_response 204 No Content (no body)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 204 No Content\r\n")
@@ -321,7 +321,7 @@ async test "read_response 204 No Content (no body)" {
       .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 204 responses MUST NOT contain a message body
       // Connection remains open for next request
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -333,7 +333,7 @@ async test "read_response 204 No Content (no body)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -348,9 +348,9 @@ async test "read_response 204 No Content (no body)" {
 ///|
 async test "read_response 205 Reset Content (no body)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 205 Reset Content\r\n")
@@ -358,7 +358,7 @@ async test "read_response 205 Reset Content (no body)" {
       .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 205 responses MUST NOT contain a message body
       // Connection remains open for next request
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -370,7 +370,7 @@ async test "read_response 205 Reset Content (no body)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -385,9 +385,9 @@ async test "read_response 205 Reset Content (no body)" {
 ///|
 async test "read_response 304 Not Modified (no body)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 304 Not Modified\r\n")
@@ -395,7 +395,7 @@ async test "read_response 304 Not Modified (no body)" {
       ..write("ETag: \"abc123\"\r\n")
       .write("Cache-Control: max-age=3600\r\n\r\n")
       // 304 responses MUST NOT contain a message body
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -406,7 +406,7 @@ async test "read_response 304 Not Modified (no body)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -422,15 +422,15 @@ async test "read_response 304 Not Modified (no body)" {
 ///|
 async test "read_response 100 Continue (no body)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 100 Continue\r\n")
       .write("\r\n")
       // 1xx responses MUST NOT contain a message body
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -441,7 +441,7 @@ async test "read_response 100 Continue (no body)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -454,16 +454,16 @@ async test "read_response 100 Continue (no body)" {
 ///|
 async test "read_response CONNECT 200 (no body, tunnel mode)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 Connection Established\r\n")
       .write("\r\n")
       // Successful CONNECT responses switch to tunnel mode
       // Connection remains open for tunneled traffic
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -475,7 +475,7 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -488,9 +488,9 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
 ///|
 async test "read_response HEAD 200 (no body)" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
+  @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
+    root.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")
@@ -499,7 +499,7 @@ async test "read_response HEAD 200 (no body)" {
       .write("\r\n")
       // HEAD responses never have a body, even with Content-Length
       // Connection remains open for next request
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -511,7 +511,7 @@ async test "read_response HEAD 200 (no body)" {
     let body_text = input.read_all().text()
     log <+ "body: "
     log.write_string(body_text)
-  })
+  }
   inspect(
     log.to_string(),
     content=(
@@ -729,18 +729,18 @@ test "should_read_body_until_close - false cases (HEAD requests)" {
 
 ///|
 async test "gzip split between chunks" {
-  let compressed = @async.with_task_group(group => {
-    let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
-      defer w.close()
-      @gzip_stream.Encoder(w)..write("A simple message to compress").end()
-    })
-    defer r.close()
-    r.read_all().binary()
-  })
+  let compressed = @async.with_task_group() <| group => {
+      let (r, w) = @io.pipe()
+      group.spawn_bg() <| () => {
+        defer w.close()
+        @gzip_stream.Encoder(w)..write("A simple message to compress").end()
+      }
+      defer r.close()
+      r.read_all().binary()
+    }
   let (r, w) = @io.pipe()
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")
@@ -750,7 +750,7 @@ async test "gzip split between chunks" {
         w..write("1\r\n")..write(compressed[i:i + 1]).write("\r\n")
       }
       w.write("0\r\n\r\n")
-    })
+    }
     defer r.close()
     let r = Reader::new(r)
     let response = r.read_response(
@@ -764,14 +764,14 @@ async test "gzip split between chunks" {
         #|A simple message to compress
       ),
     )
-  })
+  }
 }
 
 ///|
 async test "read_response parse cookie" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer w.close()
       w
       ..write("HTTP/1.1 200 OK\r\n")
@@ -784,7 +784,7 @@ async test "read_response parse cookie" {
       )
       ..write("Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n")
       .write("Content-Length: 0\r\n\r\n")
-    })
+    }
     defer r.close()
     let input = Reader::new(r)
     let response = input.read_response(
@@ -842,5 +842,5 @@ async test "read_response parse cookie" {
         #|]
       ),
     )
-  })
+  }
 }

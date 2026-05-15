@@ -17,17 +17,17 @@ async test "wait basic" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg(() => {
+      try? (@async.with_task_group() <| root => {
+        root.spawn_bg() <| () => {
           @async.sleep(200)
           buf <+ "200ms tick\n"
           @async.sleep(200)
           buf <+ "400ms tick\n"
-        })
-        let task = root.spawn(no_wait=true, () => {
-          @async.sleep(300)
-          buf <+ "task finished\n"
-        })
+        }
+        let task = root.spawn(no_wait=true) <| () => {
+            @async.sleep(300)
+            buf <+ "task finished\n"
+          }
         task.wait()
         buf <+ "main task exit\n"
       }),
@@ -48,19 +48,19 @@ async test "wait basic" {
 ///|
 async test "wait cancelled" {
   let buf = StringBuilder::new()
-  @async.with_task_group(root => {
-    let task = root.spawn(() => {
-      @async.sleep(1000)
-      buf <+ "task finished\n"
-    })
-    root.spawn_bg(() => {
+  (@async.with_task_group() <| root => {
+    let task = root.spawn() <| () => {
+        @async.sleep(1000)
+        buf <+ "task finished\n"
+      }
+    root.spawn_bg() <| () => {
       task.wait() catch {
         err => {
           buf.write_string("`wait` cancelled with \{err}\n")
           raise err
         }
       }
-    })
+    }
     @async.sleep(20)
     raise Err
   }) catch {
@@ -78,19 +78,19 @@ async test "wait cancelled" {
 ///|
 async test "try_wait" {
   let log = StringBuilder::new()
-  @async.with_task_group(root => {
-    let task = root.spawn(no_wait=true, () => {
-      @async.sleep(450)
-      42
-    })
-    root.spawn_bg(() => {
+  @async.with_task_group() <| root => {
+    let task = root.spawn(no_wait=true) <| () => {
+        @async.sleep(450)
+        42
+      }
+    root.spawn_bg() <| () => {
       @async.sleep(300)
       log.write_string("300ms: \{@debug.to_string(task.try_wait())}\n")
       @async.sleep(300)
       log.write_string("600ms: \{@debug.to_string(task.try_wait())}\n")
-    })
+    }
     log.write_string("task finished with \{task.wait()}\n")
-  })
+  }
   inspect(
     log.to_string(),
     content=(

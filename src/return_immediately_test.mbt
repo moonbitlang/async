@@ -17,15 +17,15 @@ async test "return_immediately basic" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg(() => {
+      try? (@async.with_task_group() <| root => {
+        root.spawn_bg() <| () => {
           @async.sleep(200)
           root.return_immediately(())
-        })
-        root.spawn_bg(() => {
+        }
+        root.spawn_bg() <| () => {
           @async.sleep(300)
           log <+ "task finished\n"
-        })
+        }
       }),
     ),
   )
@@ -37,21 +37,21 @@ async test "return_immediately nested" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg(() => {
+      try? (@async.with_task_group() <| root => {
+        root.spawn_bg() <| () => {
           @async.sleep(300)
           log <+ "outer task finished\n"
-        })
-        @async.with_task_group(fn(group) {
-          group.spawn_bg(() => {
+        }
+        @async.with_task_group() <| fn(group) {
+          group.spawn_bg() <| () => {
             @async.sleep(200)
             root.return_immediately(())
-          })
-          group.spawn_bg(() => {
+          }
+          group.spawn_bg() <| () => {
             @async.sleep(300)
             log <+ "inner task finished\n"
-          })
-        })
+          }
+        }
       }),
     ),
   )
@@ -63,12 +63,12 @@ async test "return_immediately error on cancel" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg(() => {
+      try? (@async.with_task_group() <| root => {
+        root.spawn_bg() <| () => {
           @async.sleep(200)
           root.return_immediately(())
-        })
-        root.spawn_bg(() => {
+        }
+        root.spawn_bg() <| () => {
           @async.sleep(300) catch {
             _ => {
               log <+ "task cancelled, causing other error\n"
@@ -76,7 +76,7 @@ async test "return_immediately error on cancel" {
             }
           }
           log <+ "task finished\n"
-        })
+        }
       }),
     ),
   )
@@ -92,12 +92,12 @@ async test "return_immediately error on cancel" {
 ///|
 async test "return_immediately recursive cancel" {
   let log = []
-  @async.with_task_group(group => {
-    group.spawn_bg(() => {
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
       @async.sleep(100)
       log.push("100ms tick")
-    })
-    @async.with_task_group(group => {
+    }
+    (@async.with_task_group() <| group => {
       group.return_immediately(()) catch {
         _ => @async.sleep(200)
       }
@@ -105,22 +105,22 @@ async test "return_immediately recursive cancel" {
       _ => ()
     }
     log.push("inner group finished")
-  })
+  }
   json_inspect(log, content=["inner group finished", "100ms tick"])
 }
 
 ///|
 async test "return_immediately called outside" {
   let log = []
-  @async.with_task_group(outer => {
-    outer.spawn_bg(() => {
+  @async.with_task_group() <| outer => {
+    outer.spawn_bg() <| () => {
       @async.sleep(100)
       log.push("100ms tick")
-    })
-    @async.with_task_group(inner => {
-      outer.spawn_bg(() => inner.return_immediately(()))
-    })
+    }
+    @async.with_task_group() <| inner => {
+      outer.spawn_bg() <| () => { inner.return_immediately(()) }
+    }
     log.push("inner group finished")
-  })
+  }
   json_inspect(log, content=["inner group finished", "100ms tick"])
 }

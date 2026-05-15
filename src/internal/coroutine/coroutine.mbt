@@ -78,12 +78,12 @@ pub async fn pause() -> Unit {
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
-  async_suspend(fn(ok_cont, err_cont) {
+  async_suspend() <| fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
     coro.ready = true
     scheduler.run_later.push_back(coro)
-  })
+  }
 }
 
 ///|
@@ -96,10 +96,10 @@ pub async fn suspend() -> Unit {
   defer {
     scheduler.blocking -= 1
   }
-  async_suspend(fn(ok_cont, err_cont) {
+  async_suspend() <| fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
-  })
+  }
 }
 
 ///|
@@ -114,7 +114,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
     cancelled: false,
   }
   fn run(_) {
-    run_async(() => {
+    run_async() <| () => {
       coro.shielded = false
       try f() catch {
         err => coro.state = Fail(err)
@@ -125,7 +125,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
         coro.wake()
       }
       coro.downstream.clear()
-    })
+    }
   }
 
   coro.state = Suspend(ok_cont=run, err_cont=_ => ())

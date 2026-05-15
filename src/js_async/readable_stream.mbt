@@ -103,15 +103,15 @@ pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
   // because the `.read()` method of `StreamReader` is NOT cancellable.
   // It can only be cancelled by cancelling the whole stream.
   // So we use a `@io.pipe` in the middle to provide proper cancellation support.
-  let worker = @coroutine.spawn(() => {
-    defer w.close()
-    defer stream.cancel()
-    let reader = stream.get_reader()
-    defer reader.release_lock()
-    while reader.read() is Some(chunk) {
-      w.write(chunk)
+  let worker = @coroutine.spawn() <| () => {
+      defer w.close()
+      defer stream.cancel()
+      let reader = stream.get_reader()
+      defer reader.release_lock()
+      while reader.read() is Some(chunk) {
+        w.write(chunk)
+      }
     }
-  })
   { read_end: r, worker }
 }
 
@@ -152,12 +152,12 @@ pub fn JsReadableStream::new_pipe() -> (JsReadableStream, @io.PipeWrite) {
   let abort_signal = abort_controller.signal()
   let (pipe_r, pipe_w) = @io.pipe()
   fn pull(controller : ReadableStreamController) {
-    Promise::from_async(abort_signal~, () => {
+    Promise::from_async(abort_signal~) <| () => {
       guard pipe_r.read_some(max_len=1024) is Some(chunk) else {
         controller.close()
       }
       controller.enqueue(chunk)
-    })
+    }
   }
   fn cancel(_reason) {
     pipe_r.close()

@@ -15,7 +15,7 @@
 
 ///|
 async test "basic_ls" {
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
     @process.spawn(group, shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
@@ -38,25 +38,25 @@ async test "basic_ls" {
       "commands_for_test.mbt", "unimplemented_test.mbt", "spawn_in_group_test.mbt",
       "windows_escape_wbtest.mbt",
     ])
-  })
+  }
 }
 
 ///|
 async test "basic_cat" {
   let cat = cat.wait()
-  @async.with_task_group(group => {
+  @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
     @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
-    group.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       defer we_write.close()
       we_write.write(b"abcd")
       @async.sleep(50)
       we_write.write(b"efgh")
-    })
-    group.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       defer we_read.close()
       inspect(we_read.read_all().text(), content="abcdefgh")
-    })
-  })
+    }
+  }
 }

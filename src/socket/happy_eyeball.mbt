@@ -40,7 +40,7 @@ pub async fn Tcp::connect_to_host(
   let mut result = None
   let mut conn_err = None
   async fn connect_with_protocol(protocol : IpProtocolPreference) {
-    @async.with_task_group(group => {
+    @async.with_task_group() <| group => {
       for ai = ai; !ai.is_null(); ai = ai.next() {
         let addr = ai.to_addr(port)
         match (protocol, addr.is_ipv6()) {
@@ -48,7 +48,7 @@ pub async fn Tcp::connect_to_host(
           (OnlyV6 | FavorV6, false) => continue
           _ => ()
         }
-        group.spawn_bg(allow_failure=true, () => {
+        group.spawn_bg(allow_failure=true) <| () => {
           let conn = Tcp::connect(addr) catch {
             err => {
               if conn_err is None {
@@ -59,10 +59,10 @@ pub async fn Tcp::connect_to_host(
           }
           result = Some(conn)
           group.return_immediately(())
-        })
+        }
         @async.sleep(250)
       }
-    })
+    }
   }
 
   match protocol {
