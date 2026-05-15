@@ -4,6 +4,7 @@ package "moonbitlang/async/internal/event_loop"
 import {
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
+  "moonbitlang/core/ref",
 }
 
 // Values
@@ -18,6 +19,8 @@ pub let _SIGINT : Int
 pub let _SIGTERM : Int
 
 pub async fn access(StringView, Access, context~ : String) -> Int
+
+pub let check_fd_leak : @ref.Ref[Bool]
 
 pub async fn chmod(StringView, Int, context~ : String) -> Unit
 
