@@ -25,43 +25,43 @@ async fn client(
 ) -> (Int64, Double) {
   let mut throughput_sum : Int64 = 0
   let mut latency_sum : Int64 = 0
-  @async.with_task_group(group => {
+  @async.with_task_group <| group => {
     let mut remaining = total_conn
     for _ in 0..<max_concurrent_conn {
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         let buf = FixedArray::make(1024, b'0')
         while remaining > 0 {
           remaining -= 1
           @async.sleep(rand.int(limit=conn_duration / 10))
           let conn = @socket.Tcp::connect(dst)
           defer conn.close()
-          @async.with_task_group(conn_group => {
+          @async.with_task_group <| conn_group => {
             let mut send_count : Int64 = 0
             let mut recv_count : Int64 = 0
             let mut before : Int64 = 0
-            conn_group.spawn_loop(no_wait=true, () => {
+            conn_group.spawn_loop(no_wait=true) <| () => {
               if send_count == 0 {
                 before = @async.now()
               }
               conn.write(data)
               send_count += data.length().to_int64()
-            })
-            conn_group.spawn_loop(no_wait=true, () => {
+            }
+            conn_group.spawn_loop(no_wait=true) <| () => {
               let n = conn.read(buf)
               if recv_count == 0 {
                 latency_sum += @async.now() - before
               }
               recv_count += n.to_int64()
-            })
+            }
             @async.sleep(conn_duration)
             throughput_sum += (send_count + recv_count) *
               1000 /
               conn_duration.to_int64()
-          })
+          }
         }
-      })
+      }
     }
-  })
+  }
   (
     throughput_sum / total_conn.to_int64(),
     latency_sum.to_double() / total_conn.to_double(),

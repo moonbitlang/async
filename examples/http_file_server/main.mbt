@@ -85,7 +85,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
   } else {
     path
   }
-  @async.with_task_group(group => {
+  @async.with_task_group <| group => {
     let (we_read_from_zip, zip_write_to_us) = @process.read_from_process()
     defer we_read_from_zip.close()
     if is_windows {
@@ -112,7 +112,7 @@ async fn serve_zip(conn : @http.ServerConnection, path : String) -> Unit {
     })
     ..write_reader(we_read_from_zip)
     .end_response()
-  })
+  }
 }
 
 ///|
@@ -133,7 +133,7 @@ pub async fn server_main(
   log? : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
-  server.run_forever((request, _body, conn) => {
+  server.run_forever() <| ((request, _body, conn) => {
     let (path, download_zip) = match request.path {
       [.. path, .. "?download_zip"] => (path.to_owned(), true)
       path => (path, false)

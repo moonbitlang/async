@@ -20,7 +20,7 @@ pub(all) struct Printer((String) -> Unit)
 
 ///|
 async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
-  server.run_forever(allow_failure=false, (conn, _) => {
+  (server.run_forever(allow_failure=false) <| ((conn, _) => {
     println("received new connection")
     while conn.read_some() is Some(msg) {
       @async.sleep(10)
@@ -36,7 +36,7 @@ async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
     } nobreak {
       println("server: connection closed by peer")
     }
-  }) catch {
+  })) catch {
     err => {
       println("server terminate: \{err}")
       raise err
@@ -71,20 +71,20 @@ async fn client(
 
 ///|
 pub async fn main_prog(println : Printer) -> Unit {
-  @async.with_task_group(root => {
+  (@async.with_task_group <| root => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
-    root.spawn_bg(() => server_main(server, println))
-    root.spawn_bg(() => {
-      @async.with_task_group(ctx => {
+    root.spawn_bg() <| () => { server_main(server, println) }
+    root.spawn_bg() <| () => {
+      @async.with_task_group <| ctx => {
         for i in 0..<6 {
           let msg = if i % 3 == 1 { "pong" } else { "ping" }
-          ctx.spawn_bg(() => client(addr, println, i, msg))
+          ctx.spawn_bg() <| () => { client(addr, println, i, msg) }
           @async.sleep(100)
         }
-      })
-      root.spawn_bg(() => client(addr, println, 6, "exit"))
-    })
+      }
+      root.spawn_bg() <| () => { client(addr, println, 6, "exit") }
+    }
   }) catch {
     ServerTerminate => ()
     err => raise err

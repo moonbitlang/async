@@ -53,15 +53,15 @@ async fn main {
     { "args": args, .. } => args
     _ => []
   }
-  @async.with_task_group(group => {
+  @async.with_task_group <| group => {
     while @stdio.stdin.read_until("\n") is Some(line) {
       if max_jobs is Some(limit) {
         limit.acquire()
       }
-      group.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         defer (if max_jobs is Some(limit) { limit.release() })
         ignore(@process.run(cmd, [..args, line]))
-      })
+      }
     }
-  })
+  }
 }
