@@ -87,7 +87,7 @@ priv enum DirectoryState {
 ///|
 /// A directory in file system
 struct Directory {
-  fd : @fd_util.Fd
+  io : @event_loop.IoHandle
   buf : FixedArray[Byte]
   // The offset of the next entry in the buffer
   mut offset : Int
@@ -103,9 +103,7 @@ struct Directory {
 
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
-  @fd_util.close(self.fd, kind=Directory, context="") catch {
-    _ => ()
-  }
+  self.io.close()
 }
 
 ///|
@@ -120,7 +118,7 @@ pub async fn opendir(path : StringView) -> Directory {
 
 ///|
 async fn opendir_aux(path : StringView, context~ : String) -> Directory {
-  let open_result = @event_loop.open_detached(
+  let (io, _) = @event_loop.open(
     path,
     0,
     create=0,
@@ -129,22 +127,20 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
     mode=0,
     context~,
   )
-  let fd = open_result.fd()
-  let kind = open_result.kind()
-  if !(kind is Directory) {
-    @fd_util.close(fd, kind~, context~)
+  if !(io.kind() is Directory) {
+    io.close()
     raise @os_error.OSError(
       @os_error.errno_ENOTDIR,
       context="\{context}: \{path.escape()}",
     )
   }
-  Directory::from_fd(fd)
+  Directory::from_io_handle(io)
 }
 
 ///|
-fn Directory::from_fd(fd : @fd_util.Fd) -> Directory {
+fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
   {
-    fd,
+    io,
     buf: FixedArray::make(
       @cmp.maximum(Directory::min_buffer_size(), 1024),
       b'\x00',
@@ -238,12 +234,7 @@ async fn Directory::next_aux(
     NeedMoreEntry => {
       dir.offset = 0
       dir.count = 0
-      dir.job_ret = @event_loop.readdir(
-        dir.fd,
-        dir.buf,
-        dir.buf.length(),
-        context~,
-      )
+      dir.job_ret = dir.io.readdir(dir.buf, dir.buf.length(), context~)
       if dir.job_ret is 0 {
         dir.state = NoMoreEntry
         return None
@@ -280,7 +271,7 @@ async fn Directory::next_aux(
     _..<0 => {
       let kind = @event_loop.file_kind_by_path(
         name,
-        parent=dir.fd,
+        parent=dir.io.fd(),
         follow_symlink=false,
         context~,
       )

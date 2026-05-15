@@ -13,36 +13,6 @@
 // limitations under the License.
 
 ///|
-pub async fn open_detached(
-  path : StringView,
-  // 0 => read only, 1 => write only, 2 => read write
-  access : Int,
-  // See `@fs.CreateMode` for more details
-  create~ : Int,
-  append~ : Bool,
-  // 0 => no sync, 1 => data sync, 2 => full sync
-  sync~ : Int,
-  // permission for file when new file is created
-  mode~ : Int,
-  context~ : String,
-) -> OpenResult {
-  let path_bytes = @os_string.encode(path)
-  let result = Job::open(path_bytes, access, create~, append~, sync~, mode~)
-  fn cancel(job_id) raise {
-    guard curr_loop.val is Some(evloop)
-    evloop.cancel_job_in_worker(job_id, context~)
-  }
-
-  try perform_job_in_worker(result.0, context~, cancel~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    _ => result
-  }
-}
-
-///|
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write
@@ -55,25 +25,30 @@ pub async fn open(
   // permission for file when new file is created
   mode~ : Int,
   context~ : String,
-) -> IoHandle {
-  let result = open_detached(
-    path,
-    access,
-    create~,
-    append~,
-    sync~,
-    mode~,
-    context~,
-  )
-  let fd = result.fd()
-  let kind = result.kind()
-  // On Windows, due to a lot of complexity,
-  // we use synchronous IO + thread pool unconditionally for regular files.
-  // However, on Windows, overlapped IO must be enabled on file creation time,
-  // but we cannot know the kind of a file before opening it.
-  // So, we use synchronous IO unconditionally for everything opened by path,
-  // including named pipes.
-  IoHandle::from_fd(fd, kind~, is_async=!IS_WINDOWS && kind.can_poll())
+) -> (IoHandle, OpenResult) {
+  let path_bytes = @os_string.encode(path)
+  let result = Job::open(path_bytes, access, create~, append~, sync~, mode~)
+  fn cancel(job_id) raise {
+    guard curr_loop.val is Some(evloop)
+    evloop.cancel_job_in_worker(job_id, context~)
+  }
+
+  try perform_job_in_worker(result.0, context~, cancel~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  } noraise {
+    _ => {
+      let fd = result.fd()
+      let kind = result.kind()
+      let io = IoHandle::from_fd(
+        fd,
+        kind~,
+        is_async=!IS_WINDOWS && kind.can_poll(),
+      )
+      (io, result)
+    }
+  }
 }
 
 ///|
@@ -275,13 +250,13 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 }
 
 ///|
-pub async fn readdir(
-  dir : @fd_util.Fd,
+pub async fn IoHandle::readdir(
+  dir : IoHandle,
   buf : FixedArray[Byte],
   len : Int,
   context~ : String,
 ) -> Int {
-  let job = Job::readdir(dir, buf, len)
+  let job = Job::readdir(dir.fd, buf, len)
   perform_job_in_worker(job, context~)
 }
 

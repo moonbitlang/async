@@ -38,19 +38,12 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
     write_end_is_async=false,
     context~,
   )
-  try {
-    let io = @event_loop.IoHandle::from_fd(r, kind=Pipe)
-    (
-      { io, read_buf: @io.ReaderBuffer::new() },
-      TempPipeWrite::{ pipe: w, closed: false },
-    )
-  } catch {
-    err => {
-      @fd_util.close(r, kind=Pipe, context~)
-      @fd_util.close(w, kind=Pipe, context~)
-      raise err
-    }
-  }
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
+  (
+    { io: r, read_buf: @io.ReaderBuffer::new() },
+    TempPipeWrite::{ pipe: w, closed: false },
+  )
 }
 
 ///|
@@ -65,16 +58,9 @@ pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
     write_end_is_async=true,
     context~,
   )
-  try {
-    let io = @event_loop.IoHandle::from_fd(w, kind=Pipe)
-    (TempPipeRead::{ pipe: r, closed: false }, io)
-  } catch {
-    err => {
-      @fd_util.close(r, kind=Pipe, context~)
-      @fd_util.close(w, kind=Pipe, context~)
-      raise err
-    }
-  }
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+  (TempPipeRead::{ pipe: r, closed: false }, w)
 }
 
 ///|
@@ -146,7 +132,7 @@ pub async fn redirect_to_file(
     None if create is Some(perm) => perm
     None => 0o644
   }
-  let file = @event_loop.open_detached(
+  let (file, _) = @event_loop.open(
     path,
     1, // write only
     create=create_mode.to_int(),
@@ -155,13 +141,13 @@ pub async fn redirect_to_file(
     mode=permission,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(file.fd(), file.kind())
+  RedirectToFile(file)
 }
 
 ///|
 /// Redirect the content of a file at `path` to the stdin of a process.
 pub async fn redirect_from_file(path : String) -> &ProcessInput {
-  let file = @event_loop.open_detached(
+  let (file, _) = @event_loop.open(
     path,
     0, // read only
     create=0, // `OpenExisting`
@@ -170,7 +156,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     mode=0,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(file.fd(), file.kind())
+  RedirectToFile(file)
 }
 
 ///|
@@ -219,69 +205,61 @@ pub impl ProcessOutput for @stdio.Output with fd(self) {
 
 ///|
 priv struct TempPipeRead {
-  pipe : @fd_util.Fd
+  pipe : @event_loop.IoHandle
   mut closed : Bool
 }
 
 ///|
 priv struct TempPipeWrite {
-  pipe : @fd_util.Fd
+  pipe : @event_loop.IoHandle
   mut closed : Bool
 }
 
 ///|
 impl ProcessOutput for TempPipeWrite with fd(self) {
-  self.pipe
+  self.pipe.fd()
 }
 
 ///|
 impl ProcessOutput for TempPipeWrite with after_spawn(self) {
   if !self.closed {
     self.closed = true
-    @fd_util.close(self.pipe, kind=Pipe, context="") catch {
-      _ => ()
-    }
+    self.pipe.close()
   }
 }
 
 ///|
 impl ProcessInput for TempPipeRead with fd(self) {
-  self.pipe
+  self.pipe.fd()
 }
 
 ///|
 impl ProcessInput for TempPipeRead with after_spawn(self) {
   if !self.closed {
     self.closed = true
-    @fd_util.close(self.pipe, kind=Pipe, context="") catch {
-      _ => ()
-    }
+    self.pipe.close()
   }
 }
 
 ///|
-priv struct RedirectToFile(@fd_util.Fd, @fd_util.FileKind)
+priv struct RedirectToFile(@event_loop.IoHandle)
 
 ///|
 impl ProcessOutput for RedirectToFile with fd(self) {
-  self.0
+  self.0.fd()
 }
 
 ///|
 impl ProcessOutput for RedirectToFile with after_spawn(self) {
-  @fd_util.close(self.0, kind=self.1, context="") catch {
-    _ => ()
-  }
+  self.0.close()
 }
 
 ///|
 impl ProcessInput for RedirectToFile with fd(self) {
-  self.0
+  self.0.fd()
 }
 
 ///|
 impl ProcessInput for RedirectToFile with after_spawn(self) {
-  @fd_util.close(self.0, kind=self.1, context="") catch {
-    _ => ()
-  }
+  self.0.close()
 }
