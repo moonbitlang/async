@@ -87,7 +87,7 @@ async test "named fifo" {
 #cfg(platform="windows")
 async test "named pipe" {
   @async.with_task_group() <| group => {
-    let context = "cancel named pipe open test"
+    let context = "named pipe test"
     let path = "\\\\.\\pipe\\moonbitlang_async_named_pipe_test"
     let w = @fd_util.create_named_pipe_server(
       @os_string.encode(path),
