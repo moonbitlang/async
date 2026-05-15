@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+env:
+  MOONBIT_ASYNC_CHECK_FD_LEAK: 1
+
 jobs:
   stable-build:
     strategy:
