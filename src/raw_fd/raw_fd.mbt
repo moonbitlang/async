@@ -32,15 +32,8 @@ pub struct RawFd {
 pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
-  try {
-    let is_async = @fd_util.fd_is_nonblocking(fd, context~)
-    { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~) }
-  } catch {
-    err => {
-      @fd_util.close(fd, kind~, context~)
-      raise err
-    }
-  }
+  let is_async = @fd_util.fd_is_nonblocking(fd, context~)
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~) }
 }
 
 ///|
@@ -55,12 +48,7 @@ pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
 pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false) } catch {
-    err => {
-      @fd_util.close(fd, kind~, context~)
-      raise err
-    }
-  }
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false) }
 }
 
 ///|

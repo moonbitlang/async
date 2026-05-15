@@ -68,6 +68,7 @@ async test "file as raw fd" {
   )
   let fd = io.detach_from_event_loop()
   let file = @raw_fd.RawFd(fd)
+  defer file.close()
   assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
   let buf = FixedArray::make(truth.length() + 1, b'\x00')
   let len = for n = 0; n < buf.length(); {
@@ -112,8 +113,8 @@ async test "socket as raw fd" {
       @os_error.check_errno("make_udp_socket()")
     }
     let client = @raw_fd.RawFd(sock)
-    assert_true(@event_loop.kind_of_fd(sock, context="kind_of_fd") is Socket)
     defer client.close()
+    assert_true(@event_loop.kind_of_fd(sock, context="kind_of_fd") is Socket)
     let server_addr = @socket.Addr::parse("127.0.0.1:\{port}")
     if connect(sock, server_addr) < 0 {
       @os_error.check_errno("connect()")

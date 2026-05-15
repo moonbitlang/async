@@ -15,6 +15,7 @@
 ///|
 async test "reader closed" {
   let (r, w) = @pipe.pipe()
+  defer w.close()
   r.close()
   @async.sleep(100)
   assert_true((try? w.write("abcd")) is Err(_))
