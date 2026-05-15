@@ -70,45 +70,43 @@ async fn client(
 
 ///|
 async fn main {
-  let mut total_conn = 1000
-  let mut max_concurrent_conn = 100
-  let mut conn_duration = 500
-  let mut addr_str = ""
-  for args = @env.args()[1:] {
-    match args {
-      [] => break
-      ["-total-conn", .. rest] => {
-        guard rest is [n, .. rest] else {
-          fail("expected total connection number")
-        }
-        total_conn = @string.parse_int(n)
-        continue rest
-      }
-      ["-max-concurrent", .. rest] => {
-        guard rest is [n, .. rest] else {
-          fail("expected max concurrent connection count")
-        }
-        max_concurrent_conn = @string.parse_int(n)
-        continue rest
-      }
-      ["-conn-duration", .. rest] => {
-        guard rest is [n, .. rest] else {
-          fail("expected duration of connection in milliseconds")
-        }
-        conn_duration = @string.parse_int(n)
-        continue rest
-      }
-      [opt, ..] if opt.has_prefix("-") => fail("unknown option `\{opt}`")
-      [addr, .. rest] => {
-        guard addr_str == "" else {
-          fail("server addres supplied multiple times")
-        }
-        addr_str = addr
-        continue rest
-      }
-    }
+  let matches = @argparse.Command(
+    "tcp_server_benchmark",
+    about="Measure TCP echo server throughput and latency.",
+    options=[
+      OptionArg("total-conn", about="total connection count", default_values=[
+        "1000",
+      ]),
+      OptionArg("max-concurrent", about="max concurrent connection count", default_values=[
+        "100",
+      ]),
+      OptionArg(
+        "conn-duration",
+        about="duration of each connection in milliseconds",
+        default_values=["500"],
+      ),
+    ],
+    positionals=[
+      PositionArg(
+        "addr",
+        about="server address",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ],
+  ).parse()
+  guard matches.values
+    is {
+      "addr": [addr_str],
+      "total-conn": [total_conn_str],
+      "max-concurrent": [max_concurrent_conn_str],
+      "conn-duration": [conn_duration_str],
+      ..
+    } else {
+    fail("invalid arguments")
   }
-  guard addr_str != "" else { fail("server address not supplied") }
+  let total_conn = @string.parse_int(total_conn_str)
+  let max_concurrent_conn = @string.parse_int(max_concurrent_conn_str)
+  let conn_duration = @string.parse_int(conn_duration_str)
   let addr = @socket.Addr::parse(addr_str)
   let rand = {
     let seed = @buffer.new()

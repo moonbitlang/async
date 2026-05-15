@@ -14,28 +14,7 @@
 
 ///|
 struct Options {
-  mut contains : String?
-}
-
-///|
-async fn print_usage() -> Unit {
-  @stdio.stdout.write(
-    (
-      #|Line-based stream processing example.
-      #|
-      #|Usage:
-      #|  moon -C examples run line_processing -- [OPTIONS] [FILE...]
-      #|
-      #|Options:
-      #|  -c, --contains PATTERN    Only output lines that contain PATTERN
-      #|  -h, --help                Show this help text
-      #|
-      #|Notes:
-      #|  - Use "-" to read from stdin.
-      #|  - Input is processed incrementally via `read_until("\\n")`.
-      #|
-    ),
-  )
+  contains : String?
 }
 
 ///|
@@ -86,32 +65,37 @@ async fn process_input(
 
 ///|
 async fn main {
-  let options : Options = { contains: None }
-  let inputs : Array[String] = []
-  for args = @env.args()[1:] {
-    match args {
-      [] => break
-      ["-h", ..] | ["--help", ..] => {
-        print_usage()
-        return
-      }
-      ["-c", .. rest] | ["--contains", .. rest] => {
-        guard rest is [pattern, .. rest] else {
-          fail("expected PATTERN after --contains")
-        }
-        options.contains = Some(pattern)
-        continue rest
-      }
-      [opt, ..] if opt.has_prefix("-") && opt != "-" =>
-        fail("unknown option `\{opt}`")
-      [path, .. rest] => {
-        inputs.push(path)
-        continue rest
-      }
-    }
+  let matches = @argparse.Command(
+    "line_processing",
+    about=(
+      #|Line-based stream processing example.
+      #|Use "-" to read from stdin.
+      #|Input is processed incrementally via read_until("\\n").
+    ),
+    options=[
+      OptionArg(
+        "contains",
+        short='c',
+        about="only output lines that contain PATTERN",
+      ),
+    ],
+    positionals=[
+      PositionArg(
+        "file",
+        about="file to process",
+        num_args=@argparse.ValueRange(lower=0),
+      ),
+    ],
+  ).parse()
+  let options : Options = {
+    contains: match matches.values {
+      { "contains": [pattern], .. } => Some(pattern)
+      _ => None
+    },
   }
-  if inputs.is_empty() {
-    inputs.push("-")
+  let inputs = match matches.values {
+    { "file": files, .. } if !files.is_empty() => files
+    _ => ["-"]
   }
   let show_name = inputs.length() > 1
   let out = @io.BufferedWriter::new(@stdio.stdout, size=16 * 1024)

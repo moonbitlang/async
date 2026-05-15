@@ -14,42 +14,45 @@
 // limitations under the License.
 
 ///|
-let help_message : String =
-  #|Usage: xargs OPTIONS COMMAND ..ARGS
-  #|Run COMMAND with initial arguments ARGS and more arguments read from stdin.
-  #|  COMMAND will be run once for every line in the input.
-  #|
-  #|Options:
-  #|   -j COUNT,
-  #|   --jobs COUNT    limit the max number of parallel jobs to `COUNT`
-  #|
-  #|   -h, --help      show this help message
-  #|   --              treat all remaining arguments as the command line to run
-
-///|
 async fn main {
-  let mut max_jobs = None
-  let command_and_args = for args = @env.args()[1:] {
-    match args {
-      ["-j" | "--jobs" as opt, .. rest] => {
-        guard rest is [count, .. rest] else {
-          fail("expected max job count after `\{opt}`")
-        }
-        let count = @string.parse_int(count)
-        // Use a semaphore to limit the max number of parallel jobs
-        max_jobs = Some(@async.Semaphore(count))
-        continue rest
-      }
-      ["-h" | "--help", ..] => {
-        println(help_message)
-        return
-      }
-      ["--", .. command_and_args] => break command_and_args
-      [['-', ..] as opt, ..] => fail("unknown option: `\{opt}`")
-      command_and_args => break command_and_args
-    }
+  let matches = @argparse.Command(
+    "xargs",
+    about=(
+      #|Run COMMAND with initial arguments ARGS and more arguments read from stdin.
+      #|COMMAND will be run once for every line in the input.
+    ),
+    options=[
+      OptionArg(
+        "jobs",
+        short='j',
+        about="limit the max number of parallel jobs to COUNT",
+      ),
+    ],
+    positionals=[
+      PositionArg(
+        "cmd",
+        about="command to run",
+        num_args=@argparse.ValueRange::single(),
+      ),
+      PositionArg(
+        "args",
+        about="initial arguments for the command",
+        num_args=@argparse.ValueRange(lower=0),
+        allow_hyphen_values=true,
+      ),
+    ],
+  ).parse()
+  let max_jobs = match matches.values {
+    { "jobs": [count], .. } => Some(@async.Semaphore(@string.parse_int(count)))
+    _ => None
   }
-  guard command_and_args is [cmd, .. args] else { fail("no command specified") }
+  guard matches.values is { "cmd": [cmd], .. } else {
+    fail("no command specified")
+  }
+  let args = match matches.values {
+    { "args": args, .. } => args
+    _ => []
+  }
   @async.with_task_group(group => {
     while @stdio.stdin.read_until("\n") is Some(line) {
       if max_jobs is Some(limit) {
