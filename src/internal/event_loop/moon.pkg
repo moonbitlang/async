@@ -2,6 +2,8 @@ import {
   "moonbitlang/core/deque",
   "moonbitlang/core/sorted_set",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/env",
+  "moonbitlang/core/debug",
   "moonbitlang/async/os_error",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",

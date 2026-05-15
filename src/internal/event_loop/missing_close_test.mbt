@@ -15,6 +15,7 @@
 ///|
 test "missing_close" {
   let log = StringBuilder::new()
+  @event_loop.check_fd_leak.val = false
   @event_loop.with_event_loop() <| () => {
     @async.with_task_group() <| root => {
       let (r, w) = @pipe.pipe()

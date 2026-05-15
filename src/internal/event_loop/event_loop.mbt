@@ -325,6 +325,21 @@ fn EventLoop::poll(self : Self) -> Unit raise {
 }
 
 ///|
+pub let check_fd_leak : Ref[Bool] = Ref(
+  @env.get_env_var("MOONBIT_ASYNC_CHECK_FD_LEAK") is Some(_),
+)
+
+///|
+fn EventLoop::check_fd_leak(self : Self) -> Unit {
+  if check_fd_leak.val && !self.fds.is_empty() {
+    let leaked_handles = [
+      for handle in self.fds.values() => @debug.to_string(handle.kind)
+    ].join(", ")
+    abort("file descriptor leak detected: \{leaked_handles}")
+  }
+}
+
+///|
 #cfg(not(platform="windows"))
 fn EventLoop::cleanup(self : Self) -> Unit raise {
   for hook in hooks {
@@ -351,6 +366,7 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
       context="runtime internal: close leaking fd",
     )
   }
+  self.check_fd_leak()
   self.fds.clear()
   for _, coro in self.jobs {
     coro.cancel()
@@ -380,6 +396,7 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
       context="runtime internal: close leaking fd",
     )
   }
+  self.check_fd_leak()
   self.fds.clear()
   for _, coro in self.jobs {
     coro.cancel()
@@ -402,7 +419,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     }
   } catch {
     err => {
-      self.cleanup()
+      Ref::protect(check_fd_leak, false, () => self.cleanup())
       // In case the event loop has encountered some fatal error,
       // propagate the error to relevant coroutines.
       while !@coroutine.no_more_work() {
@@ -410,6 +427,8 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       }
       raise err
     }
+  } noraise {
+    _ => self.cleanup()
   }
 }
 
