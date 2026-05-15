@@ -15,24 +15,24 @@
 ///|
 test "coroutine ping-pong" {
   let log = StringBuilder::new()
-  let coro = @coroutine.spawn() <| () => {
-      @async.with_task_group() <| group => {
-        group.spawn_bg() <| () => {
-          log <+ "ping\n"
-          @async.pause()
-          log <+ "ping\n"
-          @async.pause()
-          log <+ "ping\n"
-        }
-        group.spawn_bg() <| () => {
-          log <+ "pong\n"
-          @async.pause()
-          log <+ "pong\n"
-          @async.pause()
-          log <+ "pong\n"
-        }
+  let coro = @coroutine.spawn(() => {
+    @async.with_task_group(group => {
+      group.spawn_bg() <| () => {
+        log <+ "ping\n"
+        @async.pause()
+        log <+ "ping\n"
+        @async.pause()
+        log <+ "ping\n"
       }
-    }
+      group.spawn_bg() <| () => {
+        log <+ "pong\n"
+        @async.pause()
+        log <+ "pong\n"
+        @async.pause()
+        log <+ "pong\n"
+      }
+    })
+  })
   while !@coroutine.no_more_work() {
     @coroutine.reschedule()
   }

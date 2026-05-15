@@ -20,19 +20,19 @@ async test "getsockname TCP" {
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")
     }
-    let client_addr_from_server = group.spawn() <| () => {
-        defer server.close()
-        let (conn, peer_addr) = server.accept()
-        assert_eq(conn.addr, server_addr)
-        inspect(conn.read_all().text(), content="abcd")
-        peer_addr
-      }
-    let client_addr = group.spawn() <| () => {
-        let client = @socket.Tcp::connect(server_addr)
-        defer client.close()
-        client.write("abcd")
-        client.addr
-      }
+    let client_addr_from_server = group.spawn(() => {
+      defer server.close()
+      let (conn, peer_addr) = server.accept()
+      assert_eq(conn.addr, server_addr)
+      inspect(conn.read_all().text(), content="abcd")
+      peer_addr
+    })
+    let client_addr = group.spawn(() => {
+      let client = @socket.Tcp::connect(server_addr)
+      defer client.close()
+      client.write("abcd")
+      client.addr
+    })
     assert_eq(client_addr_from_server.wait(), client_addr.wait())
   }
 }
@@ -45,20 +45,20 @@ async test "getsockname UDP" {
     guard server_addr.to_string() is [.. "127.0.0.1:", ..] else {
       raise Failure::Failure("incorrect server address \{server_addr}")
     }
-    let client_addr_from_server = group.spawn() <| () => {
-        defer server.close()
-        let buf = FixedArray::make(1024, b'\x00')
-        let (n, peer_addr) = server.recvfrom(buf)
-        let data = buf.unsafe_reinterpret_as_bytes()[:n]
-        inspect(@utf8.decode(data), content="abcd")
-        peer_addr
-      }
-    let client_addr = group.spawn() <| () => {
-        let client = @socket.UdpClient(server_addr)
-        defer client.close()
-        client.send(b"abcd")
-        client.addr
-      }
+    let client_addr_from_server = group.spawn(() => {
+      defer server.close()
+      let buf = FixedArray::make(1024, b'\x00')
+      let (n, peer_addr) = server.recvfrom(buf)
+      let data = buf.unsafe_reinterpret_as_bytes()[:n]
+      inspect(@utf8.decode(data), content="abcd")
+      peer_addr
+    })
+    let client_addr = group.spawn(() => {
+      let client = @socket.UdpClient(server_addr)
+      defer client.close()
+      client.send(b"abcd")
+      client.addr
+    })
     assert_eq(client_addr_from_server.wait(), client_addr.wait())
   }
 }

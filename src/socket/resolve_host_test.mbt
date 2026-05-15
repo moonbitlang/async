@@ -25,10 +25,10 @@ async test "resolve cancel" {
   let log = StringBuilder::new()
   @async.with_task_group() <| root => {
     let lock = @async.Semaphore(1, initial_value=1)
-    let task = root.spawn() <| () => {
-        lock.release()
-        log.write_object(@socket.Addr::resolve("does.not.exist", port=443))
-      }
+    let task = root.spawn(() => {
+      lock.release()
+      log.write_object(@socket.Addr::resolve("does.not.exist", port=443))
+    })
     lock.acquire() // make sure the task already started
     task.cancel()
     log <+ "host resolution cancelled\n"

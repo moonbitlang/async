@@ -16,7 +16,7 @@
 async test "allow_failure ignored" {
   let buf = StringBuilder::new()
   @async.with_task_group() <| root => {
-    root.spawn_bg(allow_failure=true) <| () => { raise Err }
+    root.spawn_bg(allow_failure=true, () => raise Err)
     @async.sleep(100)
     buf <+ "main task terminate\n"
   }
@@ -34,8 +34,8 @@ async test "allow_failure waited" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
-        let task = root.spawn(allow_failure=true) <| () => { raise Err }
+      try? @async.with_task_group(root => {
+        let task = root.spawn(allow_failure=true, () => raise Err)
         @async.sleep(100)
         task.wait()
         buf <+ "main task terminate\n"
@@ -50,7 +50,7 @@ async test "allow_failure no error" {
   let buf = StringBuilder::new()
   buf.write_string(
     @debug.to_string(
-      try? (@async.with_task_group() <| root => {
+      try? @async.with_task_group(root => {
         root.spawn_bg(allow_failure=true) <| () => {
           @async.sleep(1000)
           buf <+ "`allow_failure` task terminate\n"

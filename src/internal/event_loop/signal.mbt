@@ -75,7 +75,7 @@ async fn EventLoop::terminate_signal_handler(
   sigwait_task : @coroutine.Coroutine,
 ) -> Unit {
   sigwait_task.cancel()
-  (@coroutine.protect_from_cancel() <| () => { sigwait_task.wait() }) catch {
+  @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
     @coroutine.Cancelled => ()
     err => raise err
   }

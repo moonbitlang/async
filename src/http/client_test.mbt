@@ -84,8 +84,8 @@ extern "js" fn Server::create(
 ///|
 #cfg(target="js")
 async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
-  let server = (Server::create() <| msg => { log.write_string(msg) }).wait()
-  group.add_defer() <| () => { server.close() }
+  let server = Server::create(msg => log.write_string(msg)).wait()
+  group.add_defer(() => server.close())
   server.port()
 }
 

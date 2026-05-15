@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-let crc32_table : FixedArray[UInt] = FixedArray::makei(256) <| i => {
-    let mut crc = i.reinterpret_as_uint()
-    for _ in 0..<8 {
-      crc = if (crc & 1U) == 0U { crc >> 1 } else { (crc >> 1) ^ 0xedb88320U }
-    }
-    crc
+let crc32_table : FixedArray[UInt] = FixedArray::makei(256, i => {
+  let mut crc = i.reinterpret_as_uint()
+  for _ in 0..<8 {
+    crc = if (crc & 1U) == 0U { crc >> 1 } else { (crc >> 1) ^ 0xedb88320U }
   }
+  crc
+})
 
 ///|
 fn crc32_update(current : UInt, chunk : BytesView) -> UInt {

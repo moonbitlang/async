@@ -102,7 +102,7 @@ async test "blocking cancellation" {
       @async.sleep(250)
       ignore(q.get())
     }
-    (@async.with_timeout(500) <| () => {
+    @async.with_timeout(500, () => {
       for ;; {
         q.put(0) catch {
           err => {
@@ -160,15 +160,15 @@ async test "blocking immediate cancellation" {
   @async.with_task_group() <| group => {
     let q = @async.Queue(kind=Blocking(1))
     q.put(0)
-    let put_task = group.spawn() <| () => {
-        q.put(1) catch {
-          err => {
-            log.push("put() cancelled")
-            raise err
-          }
+    let put_task = group.spawn(() => {
+      q.put(1) catch {
+        err => {
+          log.push("put() cancelled")
+          raise err
         }
-        log.push("put() completed")
       }
+      log.push("put() completed")
+    })
     @async.sleep(100)
     let _ = q.get()
     put_task.cancel()

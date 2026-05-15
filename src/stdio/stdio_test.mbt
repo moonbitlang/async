@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-let cat : @async.Lazy[String] = @async.Lazy() <| () => {
-    // Note: the `cat` example program lies in another MoonBit module.
-    // Currently, dependencies of a module is built locally in that module,
-    // so there will be no build lock conflict between this test and the `cat` program.
-    let exit_code = @process.run("moon", [
-      "-C", "src/process/test_programs", "build", "--debug", "cat",
-    ])
-    guard exit_code is 0 else {
-      fail("failed to build `cat` program: \{exit_code}")
-    }
-    "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
+let cat : @async.Lazy[String] = @async.Lazy(() => {
+  // Note: the `cat` example program lies in another MoonBit module.
+  // Currently, dependencies of a module is built locally in that module,
+  // so there will be no build lock conflict between this test and the `cat` program.
+  let exit_code = @process.run("moon", [
+    "-C", "src/process/test_programs", "build", "--debug", "cat",
+  ])
+  guard exit_code is 0 else {
+    fail("failed to build `cat` program: \{exit_code}")
   }
+  "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
+})
 
 ///|
 async test "redirect_file" {

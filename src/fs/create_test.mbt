@@ -80,7 +80,7 @@ async test "create_mode test" {
     {
       let file = @fs.create(path, allow_existing=false)
       defer file.close()
-      group.add_defer() <| () => { @fs.remove(path) }
+      group.add_defer(() => @fs.remove(path))
       file.write("abcd")
     }
     inspect(@fs.read_file(path).text(), content="abcd")

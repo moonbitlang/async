@@ -13,15 +13,15 @@
 // limitations under the License.
 
 ///|
-let lock_file_prog : @async.Lazy[String] = @async.Lazy() <| () => {
-    let code = @process.run("moon", [
-      "-C", "src/process/test_programs", "build", "lock_file", "--debug",
-    ])
-    if code != 0 {
-      fail("failed to build test program `lock_file`: \{code}")
-    }
-    "src/process/test_programs/_build/native/debug/build/lock_file/lock_file.exe"
+let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
+  let code = @process.run("moon", [
+    "-C", "src/process/test_programs", "build", "lock_file", "--debug",
+  ])
+  if code != 0 {
+    fail("failed to build test program `lock_file`: \{code}")
   }
+  "src/process/test_programs/_build/native/debug/build/lock_file/lock_file.exe"
+})
 
 ///|
 async fn run_lock_file_prog(
@@ -56,7 +56,7 @@ async test "flock exclusive vs exclusive" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
     @async.sleep(250)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
@@ -75,7 +75,7 @@ async test "flock exclusive vs exclusive blocking" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to acquire lock")
@@ -97,7 +97,7 @@ async test "flock shared vs exclusive" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
     @async.sleep(250)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
@@ -116,7 +116,7 @@ async test "flock shared vs exclusive blocking" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to acquire lock")
@@ -138,7 +138,7 @@ async test "flock exclusive vs shared" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
     @async.sleep(250)
     log.push("try_lock() => \{file.try_lock(Shared)}")
@@ -157,7 +157,7 @@ async test "flock exclusive vs shared blocking" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to acquire lock")
@@ -179,7 +179,7 @@ async test "flock shared vs shared" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
     @async.sleep(250)
     log.push("try_lock() => \{file.try_lock(Shared)}")
@@ -196,7 +196,7 @@ async test "flock shared vs shared blocking" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to acquire lock")
@@ -217,7 +217,7 @@ async test "flock shared vs shared vs exclusive" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
     @async.sleep(250)
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #2: ")
@@ -242,7 +242,7 @@ async test "flock shared vs shared vs exclusive blocking" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
     @async.sleep(250)
     run_lock_file_prog(group, file_name, Shared, log, prefix="child #2: ")
@@ -266,11 +266,11 @@ async test "flock cancelled" {
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to acquire lock")
-    let result = @async.with_timeout_opt(100) <| () => { file.lock(Exclusive) }
+    let result = @async.with_timeout_opt(100, () => file.lock(Exclusive))
     log.push("lock() with timeout: \{@debug.to_string(result)}")
     if result is Some(_) {
       file.unlock()
@@ -290,7 +290,7 @@ async test "flock advisory" {
     @fs.write_file(file_name, create_mode=CreateOrTruncate, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
-    group.add_defer() <| () => { @fs.remove(file_name) }
+    group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
     @async.sleep(250)
     log.push("attempting to read")

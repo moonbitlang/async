@@ -651,5 +651,5 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
 let _unused : Unit = {
   ignore(@os_error.check_errno)
   ignore(@os_string.encode)
-  ignore() <| ((_ : @fs.File) => ())
+  ignore((_ : @fs.File) => ())
 }

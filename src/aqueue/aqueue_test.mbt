@@ -82,7 +82,7 @@ async test "aqueue multi-reader" {
 async test "aqueue cancellation" {
   let log = StringBuilder::new()
   let queue : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
-  (@async.with_timeout(350) <| () => {
+  @async.with_timeout(350, () => {
     let x = queue.get() catch {
       err => {
         log.write_string("`queue.get()` cancelled with \{err}\n")
@@ -109,9 +109,7 @@ async test "aqueue cancellation no_swallow" {
   let log = StringBuilder::new()
   @async.with_task_group() <| group => {
     let q = @aqueue.Queue(kind=Unbounded)
-    let get_task = group.spawn() <| () => {
-        log.write_string("get() => \{q.get()}\n")
-      }
+    let get_task = group.spawn(() => log.write_string("get() => \{q.get()}\n"))
     @async.sleep(100)
     q.put(42)
     get_task.cancel()

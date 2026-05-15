@@ -91,7 +91,7 @@ async test "semaphore cancellation" {
       semaphore.release()
     }
     debug_inspect(
-      try? (@async.with_timeout(250) <| () => { semaphore.acquire() }),
+      try? @async.with_timeout(250, () => semaphore.acquire()),
       content="Err(TimeoutError)",
     )
     @async.sleep(500)
@@ -105,10 +105,10 @@ async test "semaphore cancellation no_swallow" {
   @async.with_task_group() <| root => {
     let semaphore = @semaphore.Semaphore(1)
     semaphore.acquire()
-    let acquire_taskire_task = root.spawn() <| () => {
-        semaphore.acquire()
-        log <+ "acquire() succeed\n"
-      }
+    let acquire_taskire_task = root.spawn(() => {
+      semaphore.acquire()
+      log <+ "acquire() succeed\n"
+    })
     @async.sleep(100)
     semaphore.release()
     acquire_taskire_task.cancel()

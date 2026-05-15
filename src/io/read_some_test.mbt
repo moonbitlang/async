@@ -18,7 +18,7 @@ async test "read_some basic" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg() <| () => { writer(log, w) }
+    root.spawn_bg(() => writer(log, w))
     while r.read_some() is Some(chunk) {
       log.write_string("received chunk: \{@utf8.decode(chunk)}\n")
     }
@@ -43,7 +43,7 @@ async test "read_some length limit 1" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg() <| () => { writer(log, w) }
+    root.spawn_bg(() => writer(log, w))
     while r.read_some(max_len=2) is Some(chunk) {
       log.write_string("received chunk: \{@utf8.decode(chunk)}\n")
     }
@@ -71,7 +71,7 @@ async test "read_some length limit 2" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
-    root.spawn_bg() <| () => { writer(log, w) }
+    root.spawn_bg(() => writer(log, w))
     for max_len = 2; ; max_len = max_len * 2 {
       guard r.read_some(max_len~) is Some(chunk) else { break }
       log.write_string("received chunk: \{@utf8.decode(chunk)}\n")

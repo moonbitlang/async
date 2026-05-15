@@ -17,9 +17,9 @@
 async fn node_gzip(mode : String, input : Bytes) -> Bytes {
   @async.with_task_group() <| group => {
     let (stdin, we_write) = @process.write_to_process()
-    let runner = group.spawn() <| () => {
-        @process.collect_output("node", ["src/gzip/node_gzip.js", mode], stdin~)
-      }
+    let runner = group.spawn(() => {
+      @process.collect_output("node", ["src/gzip/node_gzip.js", mode], stdin~)
+    })
     group.spawn_bg() <| () => {
       defer we_write.close()
       we_write.write(input)
@@ -97,7 +97,7 @@ async test "encode decode roundtrip" {
 ///|
 async test "encoder uses valid blocks across large writes" {
   @async.with_task_group() <| root => {
-    let payload = Bytes::makei(70000) <| i => { (i % 251).to_byte() }
+    let payload = Bytes::makei(70000, i => (i % 251).to_byte())
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg() <| () => {
       defer compressed_w.close()
@@ -241,9 +241,7 @@ async test "node compatibility on source text file" {
 ///|
 #cfg(target="native")
 async test "node compatibility on generated binary data" {
-  let input = Bytes::makei(65536 + 257) <| i => {
-      ((i * 73 + 19) & 0xff).to_byte()
-    }
+  let input = Bytes::makei(65536 + 257, i => ((i * 73 + 19) & 0xff).to_byte())
   assert_node_compatibility(input)
 }
 

@@ -16,13 +16,9 @@
 async test "read_all" {
   let dir = @fs.opendir("src/fs")
   defer dir.close()
-  let list = dir.read_all().filter_map() <| x => {
-      if x is "target" {
-        None
-      } else {
-        Some(x)
-      }
-    }
+  let list = dir
+    .read_all()
+    .filter_map(x => if x is "target" { None } else { Some(x) })
   list.sort()
   json_inspect(list, content=[
     "dir.c", "stub.c", "dir.mbt", "file.mbt", "moon.pkg", "README.md", "utils.mbt",
