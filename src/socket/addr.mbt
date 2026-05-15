@@ -141,11 +141,11 @@ extern "C" fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr = "moonbitl
 extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
 
 ///|
-#cfg(not(platfrom="windows"))
+#cfg(not(platform="windows"))
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 
 ///|
-#cfg(platfrom="windows")
+#cfg(platform="windows")
 extern "C" fn AddrInfo::free(self : AddrInfo) = "moonbitlang_async_freeaddrinfo"
 
 ///|
