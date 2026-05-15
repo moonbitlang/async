@@ -14,10 +14,20 @@
 
 ///|
 async fn main {
-  let args = @env.args()
-  match args {
-    [] | [_] => @stdio.stdout.write_reader(@stdio.stdin)
-    [_, .. files] =>
+  let matches = @argparse.Command(
+    "cat",
+    about="Concatenate files to standard output.",
+    positionals=[
+      PositionArg(
+        "file",
+        about="file to read",
+        num_args=@argparse.ValueRange(lower=0),
+        allow_hyphen_values=true,
+      ),
+    ],
+  ).parse()
+  match matches.values {
+    { "file": files, .. } if !files.is_empty() =>
       for file in files {
         if file == "-" {
           @stdio.stdout.write_reader(@stdio.stdin)
@@ -27,5 +37,6 @@ async fn main {
           @stdio.stdout.write_reader(file)
         }
       }
+    _ => @stdio.stdout.write_reader(@stdio.stdin)
   }
 }

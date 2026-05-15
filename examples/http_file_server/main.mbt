@@ -161,9 +161,16 @@ pub async fn server_main(
 
 ///|
 async fn main {
-  let path = match @env.args() {
-    [] | [_] => "."
-    [_, path, ..] => path
+  let matches = @argparse.Command(
+    "http_file_server",
+    about="Serve a directory over HTTP.",
+    positionals=[
+      PositionArg("path", about="directory to serve", default_values=["."]),
+    ],
+  ).parse()
+  let path = match matches.values {
+    { "path": [path], .. } => path
+    _ => "."
   }
   let server = @http.Server(@socket.Addr::parse("0.0.0.0:8000"))
   server_main(server, path~) catch {
