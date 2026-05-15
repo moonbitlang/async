@@ -140,10 +140,14 @@ pub async fn TcpServer::run_forever(
   }
   @async.with_task_group() <| group => {
     for ;; {
-      let (conn, addr) = self.accept()
+      // only accept the connection if we have enough
+      // concurrency budget.
       if conn_limit is Some(limit) {
         limit.acquire()
       }
+      // if `accept` failed, the whole group will fail anyway,
+      // so no need to release the semaphore here.
+      let (conn, addr) = self.accept()
       group.spawn_bg(allow_failure~) <| () => {
         defer conn.close()
         if conn_limit is Some(limit) {
