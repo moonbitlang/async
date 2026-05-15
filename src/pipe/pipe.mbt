@@ -44,19 +44,11 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
     write_end_is_async=true,
     context~,
   )
-  try {
-    let r = {
-      io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
-      read_buf: @io.ReaderBuffer::new(),
-    }
-    (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
-  } catch {
-    err => {
-      @fd_util.close(r, kind=Pipe, context~)
-      @fd_util.close(w, kind=Pipe, context~)
-      raise err
-    }
+  let r = {
+    io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
+    read_buf: @io.ReaderBuffer::new(),
   }
+  (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
 }
 
 ///|

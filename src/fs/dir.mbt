@@ -375,6 +375,7 @@ pub async fn walk(
         sem.acquire()
         defer sem.release()
         let dir = opendir_aux(path, context~)
+        defer dir.close()
         let files = []
         while dir.next_aux(include_hidden=true, include_special=false, context~)
               is Some(ent) {
