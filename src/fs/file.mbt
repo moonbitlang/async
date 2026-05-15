@@ -140,7 +140,7 @@ pub async fn open(
     Data => 1
     Full => 2
   }
-  let io = @event_loop.open(
+  let (io, _) = @event_loop.open(
     filename,
     access,
     create=create_mode.to_int(),
@@ -392,7 +392,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
       context="@fs.File::as_dir()",
     )
   }
-  Directory::from_fd(self.io.detach_from_event_loop())
+  Directory::from_io_handle(self.io)
 }
 
 ///|

@@ -38,13 +38,9 @@ pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> IoHandle
-
-pub async fn open_detached(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> OpenResult
+pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (IoHandle, OpenResult)
 
 pub let platform : Platform
-
-pub async fn readdir(Int, FixedArray[Byte], Int, context~ : String) -> Int
 
 pub async fn realpath(StringView, context~ : String) -> String
 
@@ -99,6 +95,7 @@ pub fn IoHandle::kind(Self) -> @fd_util.FileKind
 pub async fn IoHandle::lock(Self, exclusive~ : Bool, context~ : String) -> Unit
 pub async fn IoHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
+pub async fn IoHandle::readdir(Self, FixedArray[Byte], Int, context~ : String) -> Int
 pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int

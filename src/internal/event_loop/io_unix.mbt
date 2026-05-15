@@ -24,16 +24,25 @@ struct IoHandle {
 }
 
 ///|
+/// Create a IO handle from a raw file descriptor.
+/// The ownership of the file descriptor would be transferred to this function,
+/// so the caller must not close the file descriptor manually in any circumstances.
 #cfg(not(platform="windows"))
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
   is_async? : Bool = true,
 ) -> IoHandle raise {
+  let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   if is_async {
-    @fd_util.set_nonblocking(fd, context="@event_loop.IoHandle::from_fd()")
+    @fd_util.set_nonblocking(fd, context~) catch {
+      err => {
+        @fd_util.close(fd, kind~, context~)
+        raise err
+      }
+    }
   }
   let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
   evloop.fds[fd] = handle

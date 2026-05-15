@@ -247,14 +247,14 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
     }
     conn.connect(addr.0, context~)
+    let addr = getsockname(sock, family, context~)
+    { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
   } catch {
     err => {
       conn.close()
       raise err
     }
   }
-  let addr = getsockname(sock, family, context~)
-  { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|
