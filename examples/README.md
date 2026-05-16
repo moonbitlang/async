@@ -64,3 +64,31 @@ You can learn about the basic structure of a UDP server in MoonBit from this exa
 A simple toy program that exit automatically if the user have not type anything in the terminal for 5 seconds.
 
 You can learn about the pattern of setting up a idle timeout system in MoonBit from this example.
+
+## `wc`
+A simple MoonBit version of the unix `wc` utility: counts lines, words, and
+bytes in a file and prints `<lines> <words> <bytes> <path>`.
+
+You can learn about reading a whole file via `@fs.read_file`, character-level
+iteration via `String::fold`, and computing UTF-8 byte counts via
+`@utf8.encode` from this example.
+
+## `agent`
+A tiny LLM agent that drives a small loop of tool calls against the DeepSeek
+chat API. The model is asked to reply with one JSON object per turn, and the
+program dispatches to one of three tools: `shell` (run a command via `sh -c`),
+`read` (read a file), or `write` (overwrite a file). The loop ends when the
+model replies with `finish`.
+
+Set the `DEEPSEEK` environment variable to your DeepSeek API key, then run e.g.
+
+```bash
+moon run agent -- "create /tmp/hello.txt with the text 'hi', then cat it"
+```
+
+From this example, you can learn about:
+
+- combining `@http.post` with `@process.spawn` and `@fs` in one program
+- using a task group to drain a process pipe concurrently with `proc.wait()`
+  to capture combined stdout+stderr along with the exit code
+- parsing JSON responses with `@json` and the `Json` enum's variant patterns
