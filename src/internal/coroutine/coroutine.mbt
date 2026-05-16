@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv enum State {
+enum State {
   Done
   Fail(Error)
   Running
@@ -21,7 +21,7 @@ priv enum State {
 }
 
 ///|
-struct Coroutine {
+pub struct Coroutine {
   coro_id : Int
   mut state : State
   mut shielded : Bool

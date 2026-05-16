@@ -3,6 +3,7 @@ package "moonbitlang/async/internal/coroutine"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/set",
 }
 
 // Values
@@ -32,7 +33,14 @@ pub(all) suberror Cancelled derive(@debug.Debug)
 pub impl Show for Cancelled
 
 // Types and methods
-type Coroutine
+pub struct Coroutine {
+  coro_id : Int
+  mut state : State
+  mut shielded : Bool
+  mut cancelled : Bool
+  mut ready : Bool
+  downstream : @set.Set[Coroutine]
+}
 pub fn Coroutine::cancel(Self) -> Unit
 pub fn Coroutine::check_error(Self) -> Unit raise
 pub fn Coroutine::unwrap(Self) -> Unit raise
@@ -40,6 +48,8 @@ pub async fn Coroutine::wait(Self) -> Unit
 pub fn Coroutine::wake(Self) -> Unit
 pub impl Eq for Coroutine
 pub impl Hash for Coroutine
+
+type State
 
 // Type aliases
 
