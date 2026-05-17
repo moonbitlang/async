@@ -39,6 +39,7 @@ pub suberror ProxyError {
 ///|
 async fn Client::connect(
   host : String,
+  authority? : String = host,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
@@ -61,7 +62,7 @@ async fn Client::connect(
   } else {
     Plain(@socket.Tcp::connect_to_host(host, port~))
   }
-  headers["Host"] = host
+  headers["Host"] = authority
   let (tls, reader, sender) = match (protocol, transport) {
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
@@ -133,13 +134,13 @@ pub async fn Client::Client(
   verify? : Bool = true,
   trust? : @tls.TrustedRoot,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri)
+  let (protocol, authority, host, port, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
   let trust = match trust {
     Some(trust) => trust
     None => if verify { SystemRoot } else { NoVerification }
   }
-  Client::connect(host, protocol~, port~, headers~, proxy?, trust~)
+  Client::connect(host, authority~, protocol~, port~, headers~, proxy?, trust~)
 }
 
 ///|

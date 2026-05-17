@@ -63,8 +63,7 @@ priv struct OngoingRequest {
 
 ///|
 struct Client {
-  host : String
-  port : Int
+  authority : String
   protocol : Protocol
   headers : Map[String, String]
   mut request : OngoingRequest?
@@ -85,13 +84,16 @@ pub fn Client::close(self : Client) -> Unit {
 ///|
 fn Client::connect(
   host : String,
+  authority? : String = host,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
   port? : Int = protocol.default_port(),
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
-  { host, headers, protocol, port, request: None, response_body: None }
+  ignore(host)
+  ignore(port)
+  { authority, headers, protocol, request: None, response_body: None }
 }
 
 ///|
@@ -123,9 +125,9 @@ pub async fn Client::Client(
 ) -> Client {
   ignore(proxy)
   ignore(verify)
-  let (protocol, port, host, path) = resolve_url(uri)
+  let (protocol, authority, host, port, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?)
+  Client::connect(host, authority~, protocol~, port~, headers~, proxy?)
 }
 
 ///|
@@ -226,12 +228,7 @@ pub async fn Client::request(
     Https => "https://"
   }
   let path = if path is ['/', ..] { path } else { "/\{path}" }
-  let port = if self.port == self.protocol.default_port() {
-    ""
-  } else {
-    ":\{self.port}"
-  }
-  let uri = "\{protocol}\{self.host}\{port}\{path}"
+  let uri = "\{protocol}\{self.authority}\{path}"
   let meth = match meth {
     Get => "GET"
     Head => "HEAD"

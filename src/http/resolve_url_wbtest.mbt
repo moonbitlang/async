@@ -17,19 +17,27 @@ test "resolve_url" {
   debug_inspect(
     try? resolve_url("http://www.example.org"),
     content=(
-      #|Ok((Http, 80, "www.example.org", "/"))
+      #|Ok((Http, "www.example.org", "www.example.org", 80, "/"))
     ),
   )
   debug_inspect(
     try? resolve_url("http://www.example.org/path/to"),
     content=(
-      #|Ok((Http, 80, "www.example.org", "/path/to"))
+      #|Ok((Http, "www.example.org", "www.example.org", 80, "/path/to"))
     ),
   )
   debug_inspect(
     try? resolve_url("https://www.example.org/path/to?search=q"),
     content=(
-      #|Ok((Https, 443, "www.example.org", "/path/to?search=q"))
+      #|Ok(
+      #|  (
+      #|    Https,
+      #|    "www.example.org",
+      #|    "www.example.org",
+      #|    443,
+      #|    "/path/to?search=q",
+      #|  ),
+      #|)
     ),
   )
   debug_inspect(
@@ -41,13 +49,25 @@ test "resolve_url" {
   debug_inspect(
     try? resolve_url("http://www.example.org:10042"),
     content=(
-      #|Ok((Http, 10042, "www.example.org", "/"))
+      #|Ok((Http, "www.example.org:10042", "www.example.org", 10042, "/"))
     ),
   )
   debug_inspect(
     try? resolve_url("http://www.example.org:10042/path"),
     content=(
-      #|Ok((Http, 10042, "www.example.org", "/path"))
+      #|Ok((Http, "www.example.org:10042", "www.example.org", 10042, "/path"))
+    ),
+  )
+  debug_inspect(
+    try? resolve_url("http://www.example.org:80"),
+    content=(
+      #|Ok((Http, "www.example.org:80", "www.example.org", 80, "/"))
+    ),
+  )
+  debug_inspect(
+    try? resolve_url("https://www.example.org:443"),
+    content=(
+      #|Ok((Https, "www.example.org:443", "www.example.org", 443, "/"))
     ),
   )
   debug_inspect(
