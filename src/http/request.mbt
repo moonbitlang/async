@@ -33,7 +33,7 @@ pub suberror URIParseError {
 } derive(Debug, ToJson)
 
 ///|
-fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
+fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {
   guard uri.find("://") is Some(protocol_len) else { raise InvalidFormat }
   let protocol = match uri[:protocol_len] {
     "http" => Http
@@ -46,7 +46,17 @@ fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
   } else {
     (uri, "/")
   }
-  let (host, port) = if host =~ (
+  let path : StringView = if path == "" { "/" } else { path }
+  (protocol, host.to_owned(), path)
+}
+
+///|
+#cfg(target="native")
+fn resolve_host(
+  host : StringView,
+  protocol~ : Protocol,
+) -> (StringView, Int) raise {
+  if host =~ (
       re"^" +
       (re".*" as host) +
       re":" +
@@ -59,8 +69,6 @@ fn resolve_url(uri : String) -> (Protocol, Int, String, String) raise {
   } else {
     (host, protocol.default_port())
   }
-  let path = if path == "" { "/" } else { path.to_owned() }
-  (protocol, port, host.to_owned(), path)
 }
 
 ///|
@@ -71,8 +79,8 @@ async fn perform_request(
   body : &@io.Data,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  let (protocol, port, host, path) = resolve_url(uri)
-  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, headers~, protocol~, proxy?)
   defer client.close()
   let response = client..request(meth, path)..write(body).end_request()
   (response, client.read_all())
@@ -135,8 +143,8 @@ pub async fn get_stream(
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, Client) {
-  let (protocol, port, host, path) = resolve_url(uri)
-  let client = Client::connect(host, headers~, protocol~, port~, proxy?)
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, headers~, protocol~, proxy?)
   try {
     let response = client..request(Get, path)..write(body).end_request()
     (response, client)
@@ -166,8 +174,8 @@ pub async fn put_stream(
   headers? : Map[String, String] = {},
   proxy? : Client,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, port~, proxy?)
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, protocol~, proxy?)
   try client.request(Put, path, extra_headers=headers) catch {
     err => {
       client.close()
@@ -196,8 +204,8 @@ pub async fn post_stream(
   headers? : Map[String, String] = {},
   proxy? : Client,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, port~, proxy?)
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, protocol~, proxy?)
   try client.request(Post, path, extra_headers=headers) catch {
     err => {
       client.close()
