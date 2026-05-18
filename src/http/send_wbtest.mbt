@@ -347,11 +347,11 @@ async test "send invalid header" {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
       defer w.close()
-      let sender = Sender::new(w, headers={ "Content-Encoding": "chunked" })
+      let sender = Sender::new(w, headers={ "Transfer-Encoding": "chunked" })
       let _ = sender.send_request(Get, "/", extra_headers={
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
-        "Content-Encoding": "chunked",
+        "Transfer-Encoding": "chunked",
       })
       sender.end_body()
     }

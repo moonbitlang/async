@@ -35,7 +35,7 @@ priv struct Sender {
 
 ///|
 let forbidden_headers : Set[String] = Set::from_array([
-  "content-length", "content-encoding",
+  "content-length", "transfer-encoding",
 ])
 
 ///|
