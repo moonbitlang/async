@@ -64,7 +64,6 @@ priv struct OngoingRequest {
 ///|
 struct Client {
   host : String
-  port : Int
   protocol : Protocol
   headers : Map[String, String]
   mut request : OngoingRequest?
@@ -87,11 +86,10 @@ fn Client::connect(
   host : String,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
-  { host, headers, protocol, port, request: None, response_body: None }
+  { host, headers, protocol, request: None, response_body: None }
 }
 
 ///|
@@ -123,9 +121,9 @@ pub async fn Client::Client(
 ) -> Client {
   ignore(proxy)
   ignore(verify)
-  let (protocol, port, host, path) = resolve_url(uri)
+  let (protocol, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
-  Client::connect(host, protocol~, port~, headers~, proxy?)
+  Client::connect(host, protocol~, headers~, proxy?)
 }
 
 ///|
@@ -217,7 +215,7 @@ extern "js" fn Client::request_ffi(
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String] = {},
 ) -> Unit {
   guard self.request is None
@@ -226,12 +224,7 @@ pub async fn Client::request(
     Https => "https://"
   }
   let path = if path is ['/', ..] { path } else { "/\{path}" }
-  let port = if self.port == self.protocol.default_port() {
-    ""
-  } else {
-    ":\{self.port}"
-  }
-  let uri = "\{protocol}\{self.host}\{port}\{path}"
+  let uri = "\{protocol}\{self.host}\{path}"
   let meth = match meth {
     Get => "GET"
     Head => "HEAD"

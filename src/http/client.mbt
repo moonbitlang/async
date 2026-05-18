@@ -38,17 +38,18 @@ pub suberror ProxyError {
 
 ///|
 async fn Client::connect(
-  host : String,
+  host : StringView,
   headers? : Map[String, String] = {},
   protocol? : Protocol = Https,
-  port? : Int = protocol.default_port(),
   proxy? : Client,
   trust? : @tls.TrustedRoot = SystemRoot,
 ) -> Client {
+  let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
-    let path = "\{host}:\{port}"
     try {
-      let response = proxy..request(Connect, path).end_request()
+      let response = proxy
+        ..request(Connect, "\{hostname}:\{port}")
+        .end_request()
       guard response.code is (200..<300) else { raise ProxyError(response) }
       proxy..skip_response_body().enter_passthrough_mode()
     } catch {
@@ -59,14 +60,14 @@ async fn Client::connect(
     }
     Proxy(proxy)
   } else {
-    Plain(@socket.Tcp::connect_to_host(host, port~))
+    Plain(@socket.Tcp::connect_to_host(hostname, port~))
   }
-  headers["Host"] = host
+  headers["Host"] = host.to_owned()
   let (tls, reader, sender) = match (protocol, transport) {
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host~, trust~) catch {
+      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~) catch {
         err => {
           transport.close()
           raise err
@@ -77,7 +78,7 @@ async fn Client::connect(
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host~, trust~) catch {
+      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~) catch {
         err => {
           transport.close()
           raise err
@@ -133,13 +134,13 @@ pub async fn Client::Client(
   verify? : Bool = true,
   trust? : @tls.TrustedRoot,
 ) -> Client {
-  let (protocol, port, host, path) = resolve_url(uri)
+  let (protocol, host, path) = resolve_url(uri)
   guard path is "/" else { raise InvalidFormat }
   let trust = match trust {
     Some(trust) => trust
     None => if verify { SystemRoot } else { NoVerification }
   }
-  Client::connect(host, protocol~, port~, headers~, proxy?, trust~)
+  Client::connect(host, protocol~, headers~, proxy?, trust~)
 }
 
 ///|
