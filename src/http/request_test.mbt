@@ -39,9 +39,29 @@ async test "request cancel" {
 ///|
 #cfg(target="native")
 async test "manual Accept-Encoding" {
-  let (_, result1) = @http.get("https://www.moonbitlang.com")
-  let (_, result2) = @http.get("https://www.moonbitlang.com", headers={
-    "Accept-Encoding": "gzip",
-  })
-  assert_not_eq(result1.binary().length(), result2.binary().length())
+  let log = []
+  let test_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+  @async.with_task_group <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
+      test_server.run_forever() <| ((req, _body, conn) => {
+        let accept_encoding = req.headers.get("accept-encoding")
+        log.push("server received: \{to_repr(accept_encoding)}")
+        let file = @fs.open("LICENSE", mode=ReadOnly)
+        defer file.close()
+        conn.send_response(200, "OK", extra_headers={
+          "Content-Encoding": "gzip",
+        })
+        @gzip_stream.Encoder(conn)..write_reader(file).end()
+        conn.end_response()
+      })
+    }
+    let (_, result1) = @http.get("http://\{test_server.addr}")
+    let (_, result2) = @http.get("http://\{test_server.addr}", headers={
+      "Accept-Encoding": "gzip",
+    })
+    assert_not_eq(result1.binary().length(), result2.binary().length())
+    json_inspect(log, content=[
+      "server received: Some(\"gzip,identity\")", "server received: Some(\"gzip\")",
+    ])
+  }
 }
