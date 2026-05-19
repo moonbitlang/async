@@ -282,7 +282,7 @@ async test "close as end-of-stream signal" {
       q.close()
     })
     while true {
-      let v = try q.get() catch { _ => break }
+      let v = q.get() catch { _ => break }
       received.push(v)
     }
   })
@@ -467,9 +467,7 @@ async test "readers are woken FIFO" {
   @async.with_task_group(root => {
     let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
     // Reader 1 starts waiting at ~0 ms.
-    root.spawn_bg(() => {
-      log.push("r1 got \{q.get()}")
-    })
+    root.spawn_bg(() => log.push("r1 got \{q.get()}"))
     // Reader 2 starts waiting at ~50 ms.
     root.spawn_bg(() => {
       @async.sleep(50)
@@ -499,12 +497,10 @@ async test "get does not swallow a delivered value on cancel" {
   let log = []
   @async.with_task_group(root => {
     let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
-    let reader = root.spawn(() => {
-      log.push("got \{q.get()}")
-    })
+    let reader = root.spawn(() => log.push("got \{q.get()}"))
     @async.sleep(50)
-    q.put(42)         // value is handed to the suspended reader
-    reader.cancel()   // cancellation arrives after the hand-off
+    q.put(42) // value is handed to the suspended reader
+    reader.cancel() // cancellation arrives after the hand-off
     @async.sleep(50)
     // No leftover value in the queue.
     debug_inspect(q.try_get(), content="None")
