@@ -1014,19 +1014,51 @@ pub fn Decoder::write(
       output_len~,
     )
   }
-  let needed = self.raw_minimum_input_size()
-  let copied = @cmp.maximum(0, needed - self.pending_len)
-  if copied > 0 {
-    self.copy_to_pending(input, input_offset, copied)
+  let mut copied = 0
+  let mut remaining_input_len = input_len
+  let mut produced = 0
+  let mut old_pending_len = self.pending_len
+
+  while old_pending_len > 0 && produced < output_len {
+    let needed = self.raw_minimum_input_size()
+    let copied_now = @cmp.minimum(
+      @cmp.maximum(0, needed - self.pending_len),
+      remaining_input_len,
+    )
+    if copied_now > 0 {
+      self.copy_to_pending(input, input_offset + copied, copied_now)
+      copied += copied_now
+      remaining_input_len -= copied_now
+    }
+    let (pending_consumed, pending_produced) = self.write_direct(
+      self.pending_buf.unsafe_reinterpret_as_bytes(),
+      output,
+      input_offset=0,
+      input_len=self.pending_len,
+      output_offset=output_offset + produced,
+      output_len=output_len - produced,
+    )
+    if pending_consumed == 0 && pending_produced == 0 {
+      break
+    }
+    self.drop_pending(pending_consumed)
+    old_pending_len = @cmp.maximum(0, old_pending_len - pending_consumed)
+    produced += pending_produced
   }
-  let (pending_consumed, produced) = self.write_direct(
-    self.pending_buf.unsafe_reinterpret_as_bytes(),
+
+  if old_pending_len > 0 || produced == output_len {
+    return (copied, produced)
+  }
+  let consumed = copied - self.pending_len
+  self.pending_len = 0
+
+  let (direct_consumed, direct_produced) = self.write_direct(
+    input,
     output,
-    input_offset=0,
-    input_len=self.pending_len,
-    output_offset~,
-    output_len~,
+    input_offset=input_offset + consumed,
+    input_len=input_len - consumed,
+    output_offset=output_offset + produced,
+    output_len=output_len - produced,
   )
-  self.drop_pending(pending_consumed)
-  (copied, produced)
+  (consumed + direct_consumed, produced + direct_produced)
 }
