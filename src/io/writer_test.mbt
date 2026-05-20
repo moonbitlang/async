@@ -82,7 +82,8 @@ struct DummyWriter {
 impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
   guard offset + len <= buf.length()
   @async.sleep(self.base_timeout)
-  self.logger <+ "writing byte \{buf[offset]}\n"
+  let logger = self.logger
+  logger <+ "writing byte \{buf[offset]}\n"
   1
 }
 
