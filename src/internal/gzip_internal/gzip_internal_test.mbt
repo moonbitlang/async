@@ -152,6 +152,38 @@ test "gzip decode one byte partial chunks" {
 }
 
 ///|
+test "gzip decode partial resume copied bytes" {
+  let data = b"A simple message to compress"
+  let compressed = encode(data)
+  let expected = decode(compressed, expected_len=data.length())
+  let output = FixedArray::make(data.length() * 2, b'\x00')
+  let decoder = @gzip_internal.Decoder()
+
+  let (prefix_consumed, prefix_produced) = decoder.write(
+    compressed,
+    input_len=11,
+    output,
+    output_len=output.length(),
+  )
+  guard prefix_consumed == 11
+  decoder.write_partial_data(compressed, input_offset=11, input_len=5)
+  let (consumed, produced) = decoder.write(
+    compressed,
+    input_offset=16,
+    input_len=compressed.length() - 16,
+    output,
+    output_offset=prefix_produced,
+    output_len=output.length() - prefix_produced,
+  )
+  guard 16 + consumed == compressed.length()
+  guard decoder.is_finished()
+  assert_eq(
+    output.unsafe_reinterpret_as_bytes()[:prefix_produced + produced].to_owned(),
+    expected,
+  )
+}
+
+///|
 test "gzip encode min input 1" {
   let data = b"hello_gzip_world"
   let compressed = encode(data, input_step=Min)
