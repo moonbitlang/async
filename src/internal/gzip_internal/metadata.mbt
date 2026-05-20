@@ -17,6 +17,7 @@ priv suberror FormatError {
   InvalidHeader(String)
   InvalidTrailer(String)
   InvalidBlock(String)
+  NeedMoreInput(String)
 } derive(Debug, ToJson)
 
 ///|
