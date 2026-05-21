@@ -237,10 +237,12 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
       raise err
     }
   }
-  if self.closed is Some(err) {
+  if reader.value is Some(value) {
+    value
+  } else {
+    guard self.closed is Some(err)
     raise err
   }
-  reader.value.unwrap()
 }
 
 ///|
