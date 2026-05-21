@@ -102,3 +102,31 @@ async test "close with blocking get" {
     inspect(duration, content="1")
   }
 }
+
+///|
+async test "close with completed get" {
+  let q : @aqueue.Queue[Int] = @async.Queue(kind=Unbounded)
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
+      debug_inspect(
+        try? q.get(),
+        content=(
+          #|Err(QueueAlreadyClosed)
+        ),
+      )
+    }
+    // let the `get` fire first
+    @async.pause()
+    q.put(42)
+    // here the value we just put is already delivered to `get`
+    q.close()
+    // one of `get` above and `try_get` here should suceed,
+    // the value should not get swallowed.
+    debug_inspect(
+      try? q.try_get(),
+      content=(
+        #|Err(QueueAlreadyClosed)
+      ),
+    )
+  }
+}
