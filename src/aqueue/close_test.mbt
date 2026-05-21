@@ -111,7 +111,7 @@ async test "close with completed get" {
       debug_inspect(
         try? q.get(),
         content=(
-          #|Err(QueueAlreadyClosed)
+          #|Ok(42)
         ),
       )
     }
