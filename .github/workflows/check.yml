@@ -254,6 +254,7 @@ jobs:
 
       - name: run test with address sanitizer
         run: |
+          export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           moon test
 
   sanitizer-check-windows:
@@ -297,4 +298,5 @@ jobs:
       - name: run test with address sanitizer
         run: |
           $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
+          $env:MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           moon test
