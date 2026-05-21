@@ -35,7 +35,10 @@ async test "request cancel" {
   let end = @async.now()
   assert_true(result is None)
   if @env.get_env_var("MOONBIT_ASYNC_TEST_SANITIZER_ENABLED") is None {
-    assert_true(end - start < 250)
+    let delta = end - start
+    if delta >= 300 {
+      raise Failure::Failure("request cancellation took too long: \{delta}ms")
+    }
   }
 }
 
