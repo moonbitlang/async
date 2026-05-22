@@ -34,19 +34,19 @@ pub fn encode(str : StringView) -> OsString {
 }
 
 ///|
-pub impl Show for OsString with output(self, logger) {
+pub impl Show for OsString with fn output(self, logger) {
   self.to_string().output(logger)
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub impl Show for OsString with to_string(self) {
+pub impl Show for OsString with fn to_string(self) {
   @utf8.decode_lossy(self.0)
 }
 
 ///|
 #cfg(platform="windows")
-pub impl Show for OsString with to_string(self) {
+pub impl Show for OsString with fn to_string(self) {
   self.0
 }
 

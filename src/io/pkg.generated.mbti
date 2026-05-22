@@ -53,19 +53,19 @@ pub fn &Data::json(Self) -> Json raise
 pub fn &Data::text(Self) -> String raise
 
 pub(open) trait Reader {
-  _get_internal_buffer(Self) -> ReaderBuffer
-  async _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
-  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
-  async drop(Self, Int) -> Int = _
-  async read_exactly(Self, Int) -> Bytes = _
-  async read_some(Self, max_len? : Int) -> Bytes? = _
-  async read_all(Self) -> &Data = _
-  async read_until(Self, StringView) -> String? = _
+  fn _get_internal_buffer(Self) -> ReaderBuffer
+  async fn _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+  async fn read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
+  async fn drop(Self, Int) -> Int = _
+  async fn read_exactly(Self, Int) -> Bytes = _
+  async fn read_some(Self, max_len? : Int) -> Bytes? = _
+  async fn read_all(Self) -> &Data = _
+  async fn read_until(Self, StringView) -> String? = _
 }
 
 pub(open) trait Writer {
-  async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async write(Self, &Data) -> Unit = _
-  async write_reader(Self, &Reader) -> Unit = _
+  async fn write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+  async fn write(Self, &Data) -> Unit = _
+  async fn write_reader(Self, &Reader) -> Unit = _
 }
 

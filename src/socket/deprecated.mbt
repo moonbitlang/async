@@ -17,7 +17,7 @@
 pub impl Show for InvalidAddr
 
 ///|
-pub impl Show for InvalidAddr with output(_self, logger) {
+pub impl Show for InvalidAddr with fn output(_self, logger) {
   logger <+ "InvalidAddr"
 }
 
@@ -26,7 +26,7 @@ pub impl Show for InvalidAddr with output(_self, logger) {
 pub impl Show for ResolveHostnameError
 
 ///|
-pub impl Show for ResolveHostnameError with output(self, logger) {
+pub impl Show for ResolveHostnameError with fn output(self, logger) {
   match self {
     ResolveHostnameError(msg) =>
       logger <+ "ResolveHostnameError(\{to_repr(msg)})"
@@ -38,7 +38,7 @@ pub impl Show for ResolveHostnameError with output(self, logger) {
 pub impl Show for IpProtocolPreference
 
 ///|
-pub impl Show for IpProtocolPreference with output(self, logger) {
+pub impl Show for IpProtocolPreference with fn output(self, logger) {
   match self {
     OnlyV4 => logger <+ "OnlyV4"
     OnlyV6 => logger <+ "OnlyV6"

@@ -127,7 +127,7 @@ pub async fn Client::Client(
 }
 
 ///|
-pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
   guard self.request is Some(request)
   request.body_writer.write_once(buf, offset~, len~)
 }
@@ -140,13 +140,18 @@ pub async fn Client::flush(_ : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with _get_internal_buffer(self) {
+pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
   guard self.response_body is Some(stream)
   stream._get_internal_buffer()
 }
 
 ///|
-pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   guard self.response_body is Some(stream)
   stream._direct_read(buf, offset~, max_len~)
 }

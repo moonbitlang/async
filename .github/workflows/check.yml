@@ -192,7 +192,7 @@ jobs:
       - name: format diff
         run: |
           moon fmt
-          moon fmt --manifest-path src/process/test_programs/moon.mod.json
+          moon fmt --manifest-path src/process/test_programs/moon.mod
           git diff --exit-code
 
   moon-info:

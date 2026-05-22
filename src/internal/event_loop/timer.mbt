@@ -39,12 +39,12 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
 }
 
 ///|
-impl Eq for Timer with equal(t1, t2) {
+impl Eq for Timer with fn equal(t1, t2) {
   t1.timer_id == t2.timer_id
 }
 
 ///|
-impl Compare for Timer with compare(t1, t2) {
+impl Compare for Timer with fn compare(t1, t2) {
   match t1.expire_time.compare(t2.expire_time) {
     0 => t1.timer_id.compare(t2.timer_id)
     o => o
