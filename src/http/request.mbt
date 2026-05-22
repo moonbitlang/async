@@ -82,7 +82,7 @@ async fn perform_request(
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
   defer client.close()
-  let response = client..request(meth, path)..write(body).end_request()
+  let response = client..request(meth, path)..write_data(body).end_request()
   (response, client.read_all())
 }
 
@@ -146,7 +146,7 @@ pub async fn get_stream(
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
   try {
-    let response = client..request(Get, path)..write(body).end_request()
+    let response = client..request(Get, path)..write_data(body).end_request()
     (response, client)
   } catch {
     err => {

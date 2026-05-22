@@ -23,7 +23,7 @@ async test "rename basic" {
     sync=Full,
   )
   defer file.close()
-  file.write("abcd")
+  file.write_data("abcd")
   inspect(@fs.read_file(old_path).text(), content="abcd")
   @fs.rename(old_path, new_path)
   inspect(@fs.read_file(new_path).text(), content="abcd")
@@ -47,7 +47,7 @@ async test "rename replace" {
   defer old_file.close()
   let new_file = @fs.open(new_path, mode=ReadOnly, create_mode=OpenExisting)
   defer new_file.close()
-  old_file.write("abcd")
+  old_file.write_data("abcd")
   inspect(@fs.read_file(old_path).text(), content="abcd")
   inspect(@fs.read_file(new_path).text(), content="xyzw")
   assert_true((try? @fs.rename(old_path, new_path, replace=false)) is Err(_))

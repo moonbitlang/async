@@ -47,6 +47,12 @@ pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
 }
 
 ///|
+/// Introduced so that the sugar `writer <+ "hello \{world}"` can work on `Output`.
+pub async fn Output::write_string(self : Output, s : String) -> Unit {
+  @io.Writer::write_data(self, s)
+}
+
+///|
 /// The standard input channel.
 /// Using this value will result in standard input being set to non-blocking mode.
 /// The standard input will be reset to its original state after the program exits.

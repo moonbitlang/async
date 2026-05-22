@@ -35,10 +35,10 @@ async test "read_exactly" {
     root.spawn_bg() <| () => {
       defer w.close()
       log("first message sent")
-      w.write("abcdef")
+      w.write_data("abcdef")
       @async.sleep(100)
       log("second message sent")
-      w.write("ghijkl")
+      w.write_data("ghijkl")
     }
   }
   inspect(
@@ -77,7 +77,7 @@ async test "read_exactly failure" {
     root.spawn_bg() <| () => {
       defer w.close()
       log("first message sent")
-      w.write("abcdef")
+      w.write_data("abcdef")
     }
   }) catch {
     err => log(err.to_string())

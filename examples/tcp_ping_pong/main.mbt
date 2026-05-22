@@ -26,7 +26,7 @@ async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
       @async.sleep(10)
       println("server received: \{@utf8.decode(msg)}")
       let reply = "pong"
-      conn.write(reply)
+      conn.write_data(reply)
       println("server sent: \{reply}")
       if msg == b"exit" {
         println("server initiate terminate")
@@ -58,7 +58,7 @@ async fn client(
   // with server side "received connection" message
   @async.sleep(10)
   println("client \{id}: connection established")
-  conn.write(msg)
+  conn.write_data(msg)
   println("client \{id} sent: \{msg}")
   if conn.read_some() is Some(msg) {
     @async.sleep(10)

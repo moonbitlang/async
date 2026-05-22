@@ -41,10 +41,10 @@ async test "read_exactly" {
     root.spawn_bg() <| () => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
-      conn.write("abcdef")
+      conn.write_data("abcdef")
       log("first message sent")
       @async.sleep(100)
-      conn.write("ghijkl")
+      conn.write_data("ghijkl")
       log("second message sent")
     }
   }
@@ -93,7 +93,7 @@ async test "read_exactly failure" {
     root.spawn_bg() <| () => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
-      conn.write("abcdef")
+      conn.write_data("abcdef")
       log("first message sent")
     }
   }) catch {

@@ -55,9 +55,9 @@ async test "redirect pipe" {
     }
     root.spawn_bg() <| () => {
       defer we_write.close()
-      we_write.write(b"abcd\n")
+      we_write.write_data(b"abcd\n")
       @async.sleep(50)
-      we_write.write(b"defg\n")
+      we_write.write_data(b"defg\n")
     }
     defer we_read.close()
     inspect(
@@ -88,7 +88,7 @@ async test "stdio cancel" {
     }
     defer we_write.close()
     defer we_read.close()
-    we_write.write("abcd")
+    we_write.write_data("abcd")
     debug_inspect(
       we_read.read_some(),
       content=(

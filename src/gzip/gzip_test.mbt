@@ -22,7 +22,7 @@ async fn node_gzip(mode : String, input : Bytes) -> Bytes {
     })
     group.spawn_bg() <| () => {
       defer we_write.close()
-      we_write.write(input)
+      we_write.write_data(input)
     }
     let (code, stdout, stderr) = runner.wait()
     assert_eq(code, 0)
@@ -38,7 +38,7 @@ async fn encode_with_moonbit(input : Bytes) -> Bytes {
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       defer w.close()
-      @gzip.Encoder(w)..write(input).end()
+      @gzip.Encoder(w)..write_data(input).end()
     }
     defer r.close()
     r.read_all().binary()
@@ -52,7 +52,7 @@ async fn decode_with_moonbit(input : Bytes) -> Bytes {
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       defer w.close()
-      w.write(input)
+      w.write_data(input)
     }
     defer r.close()
     @gzip.Decoder(r).read_all().binary()
@@ -82,7 +82,7 @@ async test "encode decode roundtrip" {
         operating_system=b'\x03',
       )
       for chunk in source_chunks {
-        encoder.write(chunk)
+        encoder.write_data(chunk)
         @async.sleep(10)
       }
       encoder.end()
@@ -102,7 +102,7 @@ async test "encoder uses valid blocks across large writes" {
     root.spawn_bg() <| () => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(compressed_w)
-      encoder.write(payload)
+      encoder.write_data(payload)
       encoder.end()
     }
 
@@ -123,11 +123,11 @@ async test "encoder emits output when flushed" {
       let encoder = @gzip.Encoder(w)
       log.push("encoder ready")
       log.push("write plain ab")
-      encoder.write("ab")
+      encoder.write_data("ab")
       encoder.flush()
       @async.sleep(60)
       log.push("write plain cd")
-      encoder.write("cd")
+      encoder.write_data("cd")
       encoder.flush()
       @async.sleep(60)
       log.push("end")
@@ -153,20 +153,20 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg() <| () => {
       defer compressed_w.close()
-      compressed_w.write(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
+      compressed_w.write_data(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
       @async.sleep(20)
       log.push("write plain ab")
-      compressed_w.write(b"\x00\x02\x00\xfd\xffab")
+      compressed_w.write_data(b"\x00\x02\x00\xfd\xffab")
       @async.sleep(200)
       log.push("write plain cd")
-      compressed_w.write(b"\x00\x02\x00\xfd\xffcd")
+      compressed_w.write_data(b"\x00\x02\x00\xfd\xffcd")
       @async.sleep(200)
       log.push("write plain ef")
-      compressed_w.write(b"\x00\x02\x00\xfd\xffef")
+      compressed_w.write_data(b"\x00\x02\x00\xfd\xffef")
       @async.sleep(200)
       log.push("finish")
-      compressed_w.write(b"\x01\x00\x00\xff\xff")
-      compressed_w.write(b"\xef\x39\x8e\x4b\x06\x00\x00\x00")
+      compressed_w.write_data(b"\x01\x00\x00\xff\xff")
+      compressed_w.write_data(b"\xef\x39\x8e\x4b\x06\x00\x00\x00")
     }
     let decoder = @gzip.Decoder(compressed_r)
     match decoder.read_some(max_len=2) {
@@ -195,12 +195,12 @@ async test "decoder supports reads smaller than writer chunks" {
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg() <| () => {
       defer compressed_w.close()
-      compressed_w.write(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
-      compressed_w.write(b"\x00\x04\x00\xfb\xffabcd")
+      compressed_w.write_data(b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff")
+      compressed_w.write_data(b"\x00\x04\x00\xfb\xffabcd")
       @async.sleep(200)
-      compressed_w.write(b"\x00\x04\x00\xfb\xffefgh")
-      compressed_w.write(b"\x01\x00\x00\xff\xff")
-      compressed_w.write(b"\x50\x2a\xef\xae\x08\x00\x00\x00")
+      compressed_w.write_data(b"\x00\x04\x00\xfb\xffefgh")
+      compressed_w.write_data(b"\x01\x00\x00\xff\xff")
+      compressed_w.write_data(b"\x50\x2a\xef\xae\x08\x00\x00\x00")
     }
     let decoder = @gzip.Decoder(compressed_r)
     debug_inspect(

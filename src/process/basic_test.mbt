@@ -50,9 +50,9 @@ async test "basic_cat" {
     @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
     group.spawn_bg() <| () => {
       defer we_write.close()
-      we_write.write(b"abcd")
+      we_write.write_data(b"abcd")
       @async.sleep(50)
-      we_write.write(b"efgh")
+      we_write.write_data(b"efgh")
     }
     group.spawn_bg() <| () => {
       defer we_read.close()

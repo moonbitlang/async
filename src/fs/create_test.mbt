@@ -18,7 +18,7 @@ async test "basic create" {
   {
     let w = @fs.create(path, sync=Full)
     defer w.close()
-    w.write(b"abcd\n")
+    w.write_data(b"abcd\n")
   }
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
@@ -47,7 +47,7 @@ async test "create or append" {
       append=true,
     )
     defer w.close()
-    w.write(data)
+    w.write_data(data)
   }
 
   add_data(b"abcd")
@@ -81,7 +81,7 @@ async test "create_mode test" {
       let file = @fs.create(path, allow_existing=false)
       defer file.close()
       group.add_defer(() => @fs.remove(path))
-      file.write("abcd")
+      file.write_data("abcd")
     }
     inspect(@fs.read_file(path).text(), content="abcd")
     assert_true((try? @fs.create(path, allow_existing=false)) is Err(_))
@@ -91,25 +91,25 @@ async test "create_mode test" {
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
       defer file.close()
-      file.write("AB")
+      file.write_data("AB")
     }
     inspect(@fs.read_file(path).text(), content="ABcd")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=OpenOrCreate)
       defer file.close()
-      file.write("XY")
+      file.write_data("XY")
     }
     inspect(@fs.read_file(path).text(), content="XYcd")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate)
       defer file.close()
-      file.write("12")
+      file.write_data("12")
     }
     inspect(@fs.read_file(path).text(), content="12")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=TruncateExisting)
       defer file.close()
-      file.write("34")
+      file.write_data("34")
     }
     inspect(@fs.read_file(path).text(), content="34")
   }

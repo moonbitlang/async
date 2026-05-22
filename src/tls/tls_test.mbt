@@ -64,11 +64,11 @@ async test "one way" {
         trust=NoVerification,
       )
       defer client.close()
-      client.write(b"abcd")
+      client.write_data(b"abcd")
       @async.sleep(50)
-      client.write(b"efgh")
+      client.write_data(b"efgh")
       @async.sleep(50)
-      client.write(b"ijkl")
+      client.write_data(b"ijkl")
       client.shutdown()
       inspect(client.read_all().text(), content="")
     }
@@ -100,7 +100,7 @@ async test "echo" {
       defer server.close()
       while server.read_some() is Some(data) {
         log.write_string("server received: \{@utf8.decode(data)}\n")
-        server.write(data)
+        server.write_data(data)
       } nobreak {
         server.shutdown()
       }
@@ -118,7 +118,7 @@ async test "echo" {
       )
       defer client.close()
       for data in [b"abcd", b"efgh", b"ijkl"] {
-        client.write(data)
+        client.write_data(data)
         assert_eq(client.read_exactly(4), data)
         @async.sleep(50)
       }
@@ -271,7 +271,7 @@ async test "client custom root certificate" {
         trust=CustomPemFile("test_keys/valid_root_cert.pem"),
       )
       defer client.close()
-      client.write(b"ok")
+      client.write_data(b"ok")
       client.shutdown()
       inspect(client.read_all().text(), content="")
     }

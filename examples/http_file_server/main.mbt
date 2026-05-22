@@ -122,7 +122,7 @@ let page_for_404 : Bytes = b"<html><head></head><body>Page Not Found</body></htm
 async fn serve_404(conn : @http.ServerConnection) -> Unit {
   conn
   ..send_response(404, "NotFound", extra_headers={ "Content-Type": "text/html" })
-  ..write(page_for_404)
+  ..write_data(page_for_404)
   .end_response()
 }
 

@@ -19,7 +19,7 @@ async test "read EOF" {
   {
     let w = @fs.create(path, permission=0o644, sync=Full)
     defer w.close()
-    w.write(b"abcd")
+    w.write_data(b"abcd")
   }
   let n = {
     let r = @fs.open(path, mode=ReadOnly)

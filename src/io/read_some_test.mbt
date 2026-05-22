@@ -100,7 +100,7 @@ async test "read_some length limit 3" {
     defer r.close()
     root.spawn_bg() <| () => {
       defer w.close()
-      w.write("abcdefghijkl")
+      w.write_data("abcdefghijkl")
     }
     for max_len = 2; ; max_len = max_len * 2 {
       guard r.read_some(max_len~) is Some(chunk) else { break }

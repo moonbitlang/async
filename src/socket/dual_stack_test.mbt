@@ -42,7 +42,7 @@ async test "Only_V4 server" {
         err => raise err
       }
       defer conn.close()
-      conn.write("message")
+      conn.write_data("message")
     }
 
     for protocol in all_protocol_preferences {
@@ -95,7 +95,7 @@ async test "Only_V6 server" {
         err => raise err
       }
       defer conn.close()
-      conn.write("message")
+      conn.write_data("message")
     }
 
     for protocol in all_protocol_preferences {
@@ -141,7 +141,7 @@ async test "dual stack server" {
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
-      conn.write("message")
+      conn.write_data("message")
     }
 
     for protocol in all_protocol_preferences {

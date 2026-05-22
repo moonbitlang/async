@@ -32,11 +32,11 @@ async test "quick start pipeline" {
     // Spawn a background writer that sends a UTF-8 string in three chunks.
     root.spawn_bg(() => {
       defer writer.close()
-      writer.write(b"Hello, ")
+      writer.write_data(b"Hello, ")
       @async.sleep(10)
-      writer.write(b"MoonBit")
+      writer.write_data(b"MoonBit")
       @async.sleep(10)
-      writer.write(b"!\n")
+      writer.write_data(b"!\n")
     })
 
     // Read everything that arrives and print it as text.
@@ -69,7 +69,7 @@ async test "data as binary" {
     root.spawn_bg(() => {
       defer w.close()
       // Send raw binary bytes.
-      w.write(b"binary data")
+      w.write_data(b"binary data")
     })
     let data = r.read_all()
     let binary = data.binary()
@@ -85,7 +85,7 @@ async test "data as text" {
     root.spawn_bg(() => {
       defer w.close()
       // Send UTF-8 encoded string
-      w.write("Hello, MoonBit!")
+      w.write_data("Hello, MoonBit!")
     })
     let data = r.read_all()
     // Decoding happens lazily when `.text()` is invoked.
@@ -102,7 +102,7 @@ async test "data as json" {
       defer w.close()
       // send UTF-8 encoded JSON string
       let data : Json = { "name": "John", "age": 30 }
-      w.write(data)
+      w.write_data(data)
     })
     let data = r.read_all()
     let json = data.json()
@@ -134,7 +134,7 @@ async test "read from reader" {
     root.spawn_bg(() => {
       defer w.close()
       // Emit the payload in a single chunk.
-      w.write(b"Hello, World!")
+      w.write_data(b"Hello, World!")
     })
     let buf = FixedArray::make(13, b'0')
     // Read up to 13 bytes into the fixed buffer.
@@ -156,7 +156,7 @@ async test "read_exactly - read exact number of bytes" {
     root.spawn_bg(() => {
       defer w.close()
       // Produce a fixed-size frame.
-      w.write(b"0123456789")
+      w.write_data(b"0123456789")
     })
     // Blocks until exactly 5 bytes are received or ReaderClosed is raised.
     let data1 = r.read_exactly(5)
@@ -174,11 +174,11 @@ async test "read_some - read next chunk of data" {
     root.spawn_bg(() => {
       defer w.close()
       // the writer supplieds data in two chunks
-      w.write("abcd")
+      w.write_data("abcd")
       @async.sleep(200)
-      w.write("efgh")
+      w.write_data("efgh")
       @async.sleep(200)
-      w.write("ijkl")
+      w.write_data("ijkl")
     })
     debug_inspect(
       r.read_some(),
@@ -218,7 +218,7 @@ async test "read_all - read entire content" {
     defer r.close()
     root.spawn_bg(() => {
       defer w.close()
-      w.write(b"Complete content")
+      w.write_data(b"Complete content")
     })
     // `read_all` accumulates everything into a `&Data` handle.
     let data = r.read_all()
@@ -235,7 +235,7 @@ async test "read_all large data" {
     root.spawn_bg(() => {
       defer w.close()
       // Large payloads can be streamed without precomputing the size.
-      w.write(Bytes::make(4097, 0))
+      w.write_data(Bytes::make(4097, 0))
     })
     inspect(r.read_all().binary().length(), content="4097")
   })
@@ -248,7 +248,7 @@ async test "drop - advance stream by discarding data" {
     defer r.close()
     root.spawn_bg(() => {
       defer w.close()
-      w.write(b"0123456789")
+      w.write_data(b"0123456789")
     })
     // Advance the window by five bytes; subsequent reads start after this point.
     // The number of bytes actually dropped would be returned.
@@ -265,8 +265,8 @@ async test "read_until - read text from stream until a separator is found" {
     defer r.close()
     root.spawn_bg(() => {
       defer w.close()
-      w.write("abcd|")
-      w.write("defg")
+      w.write_data("abcd|")
+      w.write_data("defg")
     })
     // read until the separator "|" is met. The separator will be consumed as well
     debug_inspect(
@@ -321,9 +321,9 @@ async test "write to writer" {
     root.spawn_bg(() => {
       defer w.close()
       // Each call appends to the outgoing stream.
-      w.write(b"Hello")
-      w.write(b", ")
-      w.write(b"World!")
+      w.write_data(b"Hello")
+      w.write_data(b", ")
+      w.write_data(b"World!")
     })
     // `read_all` collapses everything for verification.
     let data = r.read_all()
@@ -356,7 +356,7 @@ async test "write large data" {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
       // `write` handles chunking internally, avoiding manual loops.
-      w.write(data)
+      w.write_data(data)
     })
     root.spawn_bg(() => {
       defer r.close()
@@ -388,13 +388,13 @@ async test "write_reader - copy from reader to writer" {
       defer w2.close()
       // Simulate a producer that emits three frames with pauses in between.
       log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
+      w2.write_data(b"abcd")
       @async.sleep(300)
       log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
+      w2.write_data(b"efgh")
       @async.sleep(300)
       log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
+      w2.write_data(b"ijkl")
     })
   })
   inspect(
@@ -419,7 +419,7 @@ async test "write string" {
     root.spawn_bg(() => {
       defer w.close()
       // Unicode data is transparently encoded via UTF-8.
-      w.write("abcd中文☺")
+      w.write_data("abcd中文☺")
     })
     inspect(r.read_all().text(), content="abcd中文☺")
   })
@@ -442,13 +442,13 @@ async test "BufferedWriter - basic buffering" {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log <+ "2 bytes written\n"
-      w.write("ab")
+      w.write_data("ab")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("cd")
+      w.write_data("cd")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("ef")
+      w.write_data("ef")
       // Force the remaining bytes out of the buffer.
       w.flush()
     })
@@ -482,7 +482,7 @@ async test "BufferedWriter::new with custom size" {
       let w = @io.BufferedWriter::new(w, size=8)
       inspect(w.capacity(), content="8")
       // Writes remain buffered until an explicit flush.
-      w.write(b"test")
+      w.write_data(b"test")
       w.flush()
     })
     let data = r.read_all()
@@ -498,10 +498,10 @@ async test "BufferedWriter::flush - commit buffered data" {
     root.spawn_bg(() => {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=16)
-      w.write(b"buffer")
+      w.write_data(b"buffer")
       w.flush()
       // Data written after the flush remains buffered until the next flush.
-      w.write(b"more")
+      w.write_data(b"more")
       w.flush()
     })
     let data = r.read_all()
@@ -533,13 +533,13 @@ async test "BufferedWriter::write_reader - buffered copy" {
     root.spawn_bg(() => {
       defer w2.close()
       log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
+      w2.write_data(b"abcd")
       @async.sleep(100)
       log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
+      w2.write_data(b"efgh")
       @async.sleep(100)
       log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
+      w2.write_data(b"ijkl")
     })
   })
   inspect(

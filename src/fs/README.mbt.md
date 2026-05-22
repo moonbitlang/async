@@ -46,7 +46,7 @@ async test "open file for writing" {
   let test_file = "_build/test_open_write.txt"
   let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
   defer file.close()
-  file.write(b"Hello, World!")
+  file.write_data(b"Hello, World!")
   @fs.remove(test_file)
 }
 
@@ -59,7 +59,7 @@ async test "open with append mode" {
 
   // Append to existing file
   let file = @fs.open(test_file, mode=WriteOnly, append=true)
-  file.write(b"Second line\n")
+  file.write_data(b"Second line\n")
   file.close()
   let content = @fs.read_file(test_file).text()
   @fs.remove(test_file)
@@ -75,7 +75,7 @@ The `create` function is a convenience wrapper for creating new files:
 async test "create new file" {
   let test_file = "_build/test_create.txt"
   let file = @fs.create(test_file)
-  file.write(b"New file content")
+  file.write_data(b"New file content")
   file.close()
   let exists = @fs.exists(test_file)
   @fs.remove(test_file)
@@ -173,8 +173,8 @@ async test "write with sync modes" {
 async test "write using File methods" {
   let test_file = "_build/test_file_write.txt"
   let file = @fs.create(test_file)
-  file.write(b"Line 1\n")
-  file.write(b"Line 2\n")
+  file.write_data(b"Line 1\n")
+  file.write_data(b"Line 2\n")
   file.close()
   let content = @fs.read_file(test_file).text()
   @fs.remove(test_file)
@@ -227,7 +227,7 @@ async test "write at specific position" {
   {
     let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
     defer file.close()
-    file.write("abcdef")
+    file.write_data("abcdef")
     file.write_at(b"CD", position=2)
   }
 

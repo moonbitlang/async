@@ -25,7 +25,7 @@ async test "write_at" {
     defer w.close()
     w.write_at(b"56", position=w.size() - 2)
     w.write_at(b"34", position=2)
-    w.write("12") // still write from the start
+    w.write_data("12") // still write from the start
   }
   // read content
   {

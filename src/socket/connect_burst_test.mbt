@@ -37,7 +37,7 @@ async fn server_main(server : @socket.TcpServer) -> Int {
 async fn client(msg : Bytes, addr : @socket.Addr) -> Unit {
   let conn = @socket.Tcp::connect(addr)
   defer conn.close()
-  conn.write(msg)
+  conn.write_data(msg)
 }
 
 ///|

@@ -30,7 +30,7 @@ async test "ping auto-reply" {
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
-    http_client.write(ping_frame)
+    http_client.write_data(ping_frame)
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
     ws_client.send_text("1234")
@@ -56,7 +56,7 @@ async test "pong ignored" {
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
-    http_client.write(ping_frame)
+    http_client.write_data(ping_frame)
     ws_client.send_text("1234")
     inspect(ws_client.recv().read_all().text(), content="1234")
   }
@@ -78,7 +78,7 @@ async test "ping auto-reply race-with-write" {
         // currently, auto-reply is only triggered when the user is actually reading.
         group.spawn_bg(no_wait=true, () => ignore(ws.recv().read_all()))
         ws.start_message(Text)
-        ws.write("1234")
+        ws.write_data("1234")
         @async.sleep(400)
         ws.end_message()
       }
@@ -90,7 +90,7 @@ async test "ping auto-reply race-with-write" {
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
     // the "1234" message from the server is already buffered at this stage.
     // However, the pong message will interrupt it.
-    http_client.write(ping_frame)
+    http_client.write_data(ping_frame)
     // The `PONG` reply should come first
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x8a, 0x04])
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
@@ -122,7 +122,7 @@ async test "close test" {
           )
         }
         ws.start_message(Text)
-        ws.write("1234")
+        ws.write_data("1234")
         @async.sleep(400)
         ws.end_message()
       }
@@ -188,7 +188,7 @@ async test "ping inside message" {
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
-        ws..start_message(Text)..ping()..write("1234").end_message()
+        ws..start_message(Text)..ping()..write_data("1234").end_message()
       }
       inspect(ws.recv().read_all().text(), content="abcd")
     }

@@ -168,7 +168,7 @@ async test "write to process with pipe" {
     )
     group.spawn_bg(() => {
       defer we_write.close()
-      we_write.write(b"test input\n")
+      we_write.write_data(b"test input\n")
     })
     group.spawn_bg(() => {
       defer we_read.close()
