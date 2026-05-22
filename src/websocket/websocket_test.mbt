@@ -28,12 +28,12 @@ async test "websocket basic" {
       let msg_content = msg.read_all().text()
       debug_inspect(msg.kind, content="Binary")
       inspect(msg_content, content="abcd")
-      ws..start_message(msg.kind)..write(msg_content).end_message()
+      ws..start_message(msg.kind)..write_data(msg_content).end_message()
       let msg = ws.recv()
       let msg_content = msg.read_all().text()
       debug_inspect(msg.kind, content="Text")
       inspect(msg_content, content="abcd")
-      ws..start_message(msg.kind)..write(msg_content).end_message()
+      ws..start_message(msg.kind)..write_data(msg_content).end_message()
       try ws.recv() catch {
         err => inspect(err, content="ConnectionClosed(Normal, None)")
       } noraise {
@@ -139,10 +139,10 @@ async test "write buffering" {
     }
     let client = @websocket.connect("ws://localhost:\{addr.port()}")
     defer client.close()
-    client..start_message(Text).write("ab")
+    client..start_message(Text).write_data("ab")
     @async.sleep(100)
     // due to buffering, this message will not be sent directly
-    client..write("cd").end_message()
+    client..write_data("cd").end_message()
 
     // close the channel
     client.send_close()
@@ -183,7 +183,7 @@ async test "large message" {
       for byte in chunk {
         checksum += byte.to_int()
       }
-      client.write(chunk)
+      client.write_data(chunk)
     }
     client.end_message()
     inspect(checksum, content="3745800")

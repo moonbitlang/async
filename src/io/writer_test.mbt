@@ -19,7 +19,7 @@ async test "write large data" {
     root.spawn_bg() <| () => {
       defer w.close()
       let data = Bytes::make(1024 * 16, 0)
-      w.write(data)
+      w.write_data(data)
     }
     root.spawn_bg() <| () => {
       defer r.close()
@@ -49,13 +49,13 @@ async test "write reader" {
     root.spawn_bg() <| () => {
       defer w2.close()
       log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
+      w2.write_data(b"abcd")
       @async.sleep(300)
       log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
+      w2.write_data(b"efgh")
       @async.sleep(300)
       log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
+      w2.write_data(b"ijkl")
     }
   }
   inspect(
@@ -91,7 +91,7 @@ impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
 async test "write cancel" {
   let log = StringBuilder::new()
   let writer = { logger: log, base_timeout: 300 }
-  @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
+  @async.with_timeout_opt(450, () => writer.write_data(b"abcd")) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang
   inspect(
@@ -110,7 +110,7 @@ async test "write_string" {
     defer r.close()
     root.spawn_bg() <| () => {
       defer w.close()
-      w.write("abcd中文☺")
+      w.write_data("abcd中文☺")
     }
     inspect(r.read_all().text(), content="abcd中文☺")
   }

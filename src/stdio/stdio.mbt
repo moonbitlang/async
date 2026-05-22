@@ -49,7 +49,7 @@ pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
 ///|
 /// Introduced so that the sugar `writer <+ "hello \{world}"` can work on `Output`.
 pub async fn Output::write_string(self : Output, s : String) -> Unit {
-  @io.Writer::write(self, s)
+  @io.Writer::write_data(self, s)
 }
 
 ///|

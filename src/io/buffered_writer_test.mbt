@@ -21,13 +21,13 @@ async test "BufferedWriter" {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log <+ "2 bytes written\n"
-      w.write("ab")
+      w.write_data("ab")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("cd")
+      w.write_data("cd")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("ef")
+      w.write_data("ef")
       w.flush()
     }
     root.spawn_bg() <| () => {
@@ -73,13 +73,13 @@ async test "BufferedWriter::write_reader" {
     root.spawn_bg() <| () => {
       defer w2.close()
       log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
+      w2.write_data(b"abcd")
       @async.sleep(100)
       log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
+      w2.write_data(b"efgh")
       @async.sleep(100)
       log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
+      w2.write_data(b"ijkl")
     }
   }
   inspect(

@@ -40,7 +40,7 @@ async test "passthrough mode" {
     client.enter_passthrough_mode()
     for packet in ["abcd", "efgh", "ijkl"] {
       log.push("client sending: \{packet}")
-      client.write(packet)
+      client.write_data(packet)
       @async.sleep(200)
     }
   }
@@ -70,7 +70,7 @@ async test "passthrough mode remaining data" {
       @socket.Addr::parse("127.0.0.1:\{server_addr.port()}"),
     )
     defer client.close()
-    client.write("GET / HTTP/1.1\r\n\r\nremaining data")
+    client.write_data("GET / HTTP/1.1\r\n\r\nremaining data")
   }
 }
 

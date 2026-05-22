@@ -26,7 +26,7 @@ async test "reuse addr" {
         port = server.addr.port()
         let (conn, _) = server.accept()
         defer conn.close()
-        conn.write("abcd")
+        conn.write_data("abcd")
       }
     }
     for _ in 0..<2 {

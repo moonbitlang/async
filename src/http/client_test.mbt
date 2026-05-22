@@ -26,10 +26,10 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
       }
       conn.send_response(200, "OK")
       log.write_string("server: sending \{meth} response part 1\n")
-      conn..write("\{meth} response part 1\n").flush()
+      conn..write_data("\{meth} response part 1\n").flush()
       @async.sleep(100)
       log.write_string("server: sending \{meth} response part 2\n")
-      conn.write("\{meth} response part 2\n")
+      conn.write_data("\{meth} response part 2\n")
     })
   }
   server.addr.port()
@@ -114,10 +114,10 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending PUT data part 1\n"
-      client..write("PUT data part 1\n").flush()
+      client..write_data("PUT data part 1\n").flush()
       @async.sleep(100)
       log <+ "client: sending PUT data part 2\n"
-      client.write("PUT data part 2\n")
+      client.write_data("PUT data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       fetch_response(client)
@@ -128,10 +128,10 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending POST data part 1\n"
-      client..write("POST data part 1\n").flush()
+      client..write_data("POST data part 1\n").flush()
       @async.sleep(100)
       log <+ "client: sending POST data part 2\n"
-      client.write("POST data part 2\n")
+      client.write_data("POST data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       fetch_response(client)

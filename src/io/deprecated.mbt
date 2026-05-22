@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+impl Writer with write(self, data) {
+  self.write_data(data)
+}
+
+///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for ReaderClosed
 

@@ -17,13 +17,13 @@ async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
   defer w.close()
   @async.sleep(20)
   log <+ "writing 4 bytes of data\n"
-  w.write(b"abcd")
+  w.write_data(b"abcd")
   @async.sleep(20)
   log <+ "writing 4 bytes of data\n"
-  w.write(b"efgh")
+  w.write_data(b"efgh")
   @async.sleep(20)
   log <+ "writing 4 bytes of data\n"
-  w.write(b"ijkl")
+  w.write_data(b"ijkl")
 }
 
 ///|
@@ -44,7 +44,7 @@ async test "read_all large data" {
     defer r.close()
     root.spawn_bg() <| () => {
       defer w.close()
-      w.write(Bytes::make(4097, 0))
+      w.write_data(Bytes::make(4097, 0))
     }
     inspect(r.read_all().binary().length(), content="4097")
   }

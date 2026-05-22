@@ -41,7 +41,7 @@ async test "bad client" {
       @async.with_task_group() <| group => {
         group.spawn_bg() <| () => {
           for frame in frames {
-            http_client.write(frame)
+            http_client.write_data(frame)
           }
         }
         try? ws_client.recv().read_all().text()

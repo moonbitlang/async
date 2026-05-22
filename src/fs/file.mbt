@@ -490,5 +490,5 @@ pub async fn write_file(
     permission~,
   )
   defer file.close()
-  file.write(content.binary())
+  file.write_data(content.binary())
 }

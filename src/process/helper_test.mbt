@@ -63,7 +63,7 @@ async test "collect_output blocked" {
       defer we_write.close()
       let chunk = Bytes::make(1024, 0)
       for _ in 0..<1024 {
-        we_write.write(chunk)
+        we_write.write_data(chunk)
       }
     }
     let (code, stdout, stderr) = @process.collect_output(

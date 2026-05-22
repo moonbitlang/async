@@ -310,11 +310,11 @@ async test "send_request stream2" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      sender.write("abcd")
+      sender.write_data("abcd")
       @async.sleep(50)
-      sender.write("efgh")
+      sender.write_data("efgh")
       @async.sleep(50)
-      sender.write("ijkl")
+      sender.write_data("ijkl")
       sender.end_body()
     }
     defer r.close()
@@ -388,9 +388,9 @@ async test "send fixed length" {
         "Content-Length": total_size.to_string(),
       })
       sender
-      ..write(header)
+      ..write_data(header)
       ..write_reader(license_file)
-      ..write(trailer)
+      ..write_data(trailer)
       .end_body()
     }
     defer r.close()
@@ -627,9 +627,9 @@ async test "sender write incorrect length" {
       "Content-Length": "39",
     })
     let data = Bytes::make(20, b'\x00')
-    sender.write(data)
+    sender.write_data(data)
     debug_inspect(
-      try? sender.write(data),
+      try? sender.write_data(data),
       content=(
         #|Err(IncorrectBodyLength)
       ),
@@ -740,7 +740,7 @@ async test "send_request empty body" {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers={})
-      sender..write("").end_body()
+      sender..write_data("").end_body()
       let _ = sender.send_request(Head, "/", extra_headers={})
       sender.end_body()
       let _ = sender.send_request(Post, "/", extra_headers={})
@@ -776,11 +776,11 @@ async test "send_response empty body" {
       let _ = sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
       let _ = sender.send_response(200, "OK", cookies=[], request_method=Head, extra_headers={})
-      sender..write("").end_body()
+      sender..write_data("").end_body()
       let _ = sender.send_response(102, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
       let _ = sender.send_response(204, "OK", cookies=[], request_method=Get, extra_headers={})
-      sender..write("").end_body()
+      sender..write_data("").end_body()
       let _ = sender.send_response(304, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
     }

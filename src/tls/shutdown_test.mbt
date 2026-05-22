@@ -24,7 +24,7 @@ async test "peer close connection" {
       defer conn.close()
       let server = test_server(conn, conn)
       defer server.close()
-      server.write("1234")
+      server.write_data("1234")
       inspect(server.read_all().text(), content="abcd")
     }
     // client
@@ -41,7 +41,7 @@ async test "peer close connection" {
     // due to pending data in the recv buffer.
     // Read something before closing the connection solves the problem.
     inspect(@utf8.decode(client.read_exactly(4)), content="1234")
-    client.write("abcd")
+    client.write_data("abcd")
     // close the underlying connection directly
   }
 }

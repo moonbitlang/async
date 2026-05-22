@@ -123,7 +123,7 @@ pub async fn ServerConnection::write_string(
   self : ServerConnection,
   s : String,
 ) -> Unit {
-  @io.Writer::write(self, s)
+  @io.Writer::write_data(self, s)
 }
 
 ///|

@@ -39,9 +39,9 @@ async test "read_request basic" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      .write("User-Agent: MoonBit\r\n\r\n")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: x.y.org\r\n")
+      .write_data("User-Agent: MoonBit\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -68,11 +68,11 @@ async test "read_request fixed body" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Content-Length: 7\r\n\r\n")
-      .write("message")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: x.y.org\r\n")
+      ..write_data("User-Agent: MoonBit\r\n")
+      ..write_data("Content-Length: 7\r\n\r\n")
+      .write_data("message")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -100,15 +100,15 @@ async test "read_request chunked" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Transfer-Encoding: chunked\r\n\r\n")
-      ..write("4\r\n")
-      ..write("abcd\r\n")
-      ..write("10\r\n")
-      ..write("abcdefghijklmnop\r\n")
-      .write("0\r\n\r\n")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: x.y.org\r\n")
+      ..write_data("User-Agent: MoonBit\r\n")
+      ..write_data("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_data("4\r\n")
+      ..write_data("abcd\r\n")
+      ..write_data("10\r\n")
+      ..write_data("abcdefghijklmnop\r\n")
+      .write_data("0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -136,20 +136,20 @@ async test "read_request stream" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      .write("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: x.y.org\r\n")
+      ..write_data("User-Agent: MoonBit\r\n")
+      .write_data("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nabcd\r\n")
+      w.write_data("4\r\nabcd\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nefgh\r\n")
+      w.write_data("4\r\nefgh\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nijkl\r\n")
-      w.write("0\r\n\r\n")
+      w.write_data("4\r\nijkl\r\n")
+      w.write_data("0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -186,27 +186,27 @@ async test "multiple request" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      .write("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: x.y.org\r\n")
+      ..write_data("User-Agent: MoonBit\r\n")
+      .write_data("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nabcd\r\n")
+      w.write_data("4\r\nabcd\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nefgh\r\n")
+      w.write_data("4\r\nefgh\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nijkl\r\n")
-      w.write("0\r\n\r\n")
+      w.write_data("4\r\nijkl\r\n")
+      w.write_data("0\r\n\r\n")
       @async.sleep(50)
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: z.w.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Content-Length: 8\r\n\r\n")
-      .write("message2")
+      ..write_data("GET / HTTP/1.1\r\n")
+      ..write_data("Host: z.w.org\r\n")
+      ..write_data("User-Agent: MoonBit\r\n")
+      ..write_data("Content-Length: 8\r\n\r\n")
+      .write_data("message2")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -248,9 +248,9 @@ async test "read_response basic" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Content-Length: 7\r\n\r\n")
-      .write("message")
+      ..write_data("HTTP/1.1 200 OK\r\n")
+      ..write_data("Content-Length: 7\r\n\r\n")
+      .write_data("message")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -279,12 +279,12 @@ async test "read_response passthrough fallback (no length headers)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Connection: close\r\n")
-      ..write("Content-Type: text/plain\r\n\r\n")
+      ..write_data("HTTP/1.1 200 OK\r\n")
+      ..write_data("Connection: close\r\n")
+      ..write_data("Content-Type: text/plain\r\n\r\n")
       // No Content-Length or Transfer-Encoding
       // Body ends when connection closes
-      .write("Hello, World!")
+      .write_data("Hello, World!")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -316,9 +316,9 @@ async test "read_response 204 No Content (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 204 No Content\r\n")
-      ..write("Connection: keep-alive\r\n")
-      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      ..write_data("HTTP/1.1 204 No Content\r\n")
+      ..write_data("Connection: keep-alive\r\n")
+      .write_data("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 204 responses MUST NOT contain a message body
       // Connection remains open for next request
     }
@@ -353,9 +353,9 @@ async test "read_response 205 Reset Content (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 205 Reset Content\r\n")
-      ..write("Connection: keep-alive\r\n")
-      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      ..write_data("HTTP/1.1 205 Reset Content\r\n")
+      ..write_data("Connection: keep-alive\r\n")
+      .write_data("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 205 responses MUST NOT contain a message body
       // Connection remains open for next request
     }
@@ -390,10 +390,10 @@ async test "read_response 304 Not Modified (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 304 Not Modified\r\n")
-      ..write("Connection: keep-alive\r\n")
-      ..write("ETag: \"abc123\"\r\n")
-      .write("Cache-Control: max-age=3600\r\n\r\n")
+      ..write_data("HTTP/1.1 304 Not Modified\r\n")
+      ..write_data("Connection: keep-alive\r\n")
+      ..write_data("ETag: \"abc123\"\r\n")
+      .write_data("Cache-Control: max-age=3600\r\n\r\n")
       // 304 responses MUST NOT contain a message body
     }
     defer r.close()
@@ -427,8 +427,8 @@ async test "read_response 100 Continue (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 100 Continue\r\n")
-      .write("\r\n")
+      ..write_data("HTTP/1.1 100 Continue\r\n")
+      .write_data("\r\n")
       // 1xx responses MUST NOT contain a message body
     }
     defer r.close()
@@ -459,8 +459,8 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 Connection Established\r\n")
-      .write("\r\n")
+      ..write_data("HTTP/1.1 200 Connection Established\r\n")
+      .write_data("\r\n")
       // Successful CONNECT responses switch to tunnel mode
       // Connection remains open for tunneled traffic
     }
@@ -493,10 +493,10 @@ async test "read_response HEAD 200 (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Content-Length: 1234\r\n")
-      ..write("Content-Type: text/html\r\n")
-      .write("\r\n")
+      ..write_data("HTTP/1.1 200 OK\r\n")
+      ..write_data("Content-Length: 1234\r\n")
+      ..write_data("Content-Type: text/html\r\n")
+      .write_data("\r\n")
       // HEAD responses never have a body, even with Content-Length
       // Connection remains open for next request
     }
@@ -733,7 +733,7 @@ async test "gzip split between chunks" {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
       defer w.close()
-      @gzip_stream.Encoder(w)..write("A simple message to compress").end()
+      @gzip_stream.Encoder(w)..write_data("A simple message to compress").end()
     }
     defer r.close()
     r.read_all().binary()
@@ -743,13 +743,13 @@ async test "gzip split between chunks" {
     group.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Transfer-Encoding: Chunked\r\n")
-      .write("Content-Encoding: gzip\r\n\r\n")
+      ..write_data("HTTP/1.1 200 OK\r\n")
+      ..write_data("Transfer-Encoding: Chunked\r\n")
+      .write_data("Content-Encoding: gzip\r\n\r\n")
       for i in 0..<compressed.length() {
-        w..write("1\r\n")..write(compressed[i:i + 1]).write("\r\n")
+        w..write_data("1\r\n")..write_data(compressed[i:i + 1]).write_data("\r\n")
       }
-      w.write("0\r\n\r\n")
+      w.write_data("0\r\n\r\n")
     }
     defer r.close()
     let r = Reader::new(r)
@@ -774,16 +774,16 @@ async test "read_response parse cookie" {
     group.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Set-Cookie: Cookie1=value1\r\n")
-      ..write(
+      ..write_data("HTTP/1.1 200 OK\r\n")
+      ..write_data("Set-Cookie: Cookie1=value1\r\n")
+      ..write_data(
         "Set-Cookie: Cookie2=value2; Path=/path/to/xxx; Max-Age=420000; Secure\r\n",
       )
-      ..write(
+      ..write_data(
         "Set-Cookie: Cookie3=value3; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Domain=example.moonbitlang.com; HttpOnly\r\n",
       )
-      ..write("Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n")
-      .write("Content-Length: 0\r\n\r\n")
+      ..write_data("Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n")
+      .write_data("Content-Length: 0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)

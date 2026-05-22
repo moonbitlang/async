@@ -43,7 +43,7 @@ async fn client(
               if send_count == 0 {
                 before = @async.now()
               }
-              conn.write(data)
+              conn.write_data(data)
               send_count += data.length().to_int64()
             }
             conn_group.spawn_loop(no_wait=true) <| () => {

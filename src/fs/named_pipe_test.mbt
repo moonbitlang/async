@@ -76,9 +76,9 @@ async test "named fifo" {
     group.spawn_bg() <| () => {
       let w = @fs.open(path, mode=WriteOnly)
       defer w.close()
-      w.write("abcd\n")
+      w.write_data("abcd\n")
       @async.sleep(500)
-      w.write("efgh")
+      w.write_data("efgh")
     }
   }
 }

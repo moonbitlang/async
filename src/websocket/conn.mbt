@@ -684,14 +684,14 @@ pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
 /// Convenient helper for sending a single text message.
 /// To send large message lazily, see `start_message`.
 pub async fn Conn::send_text(self : Conn, text : StringView) -> Unit {
-  self..start_message(Text)..write(text).end_message()
+  self..start_message(Text)..write_data(text).end_message()
 }
 
 ///|
 /// Convenient helper for sending a single binary message.
 /// To send large message lazily, see `start_message`.
 pub async fn Conn::send_binary(self : Conn, data : BytesView) -> Unit {
-  self..start_message(Binary)..write(data).end_message()
+  self..start_message(Binary)..write_data(data).end_message()
 }
 
 ///|
