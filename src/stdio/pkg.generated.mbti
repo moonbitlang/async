@@ -21,6 +21,7 @@ pub impl @io.Reader for Input
 
 type Output
 pub fn Output::fd(Self) -> Int
+pub async fn Output::write_string(Self, String) -> Unit
 pub impl @io.Writer for Output
 
 // Type aliases
