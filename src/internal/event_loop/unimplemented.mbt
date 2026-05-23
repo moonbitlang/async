@@ -38,3 +38,12 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
   ignore(timer)
   abort("`Timer::cancel()` is unimplemented on WASM backend")
 }
+
+///|
+/// WASM stub for the scheduler-only `reschedule` entry point. Mirrors
+/// the JS shim — no IO, just drains ready coroutines until none remain.
+pub fn reschedule() -> Unit {
+  while !@coroutine.no_more_work() {
+    @coroutine.reschedule()
+  }
+}
