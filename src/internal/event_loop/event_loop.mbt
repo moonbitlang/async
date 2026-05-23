@@ -210,9 +210,14 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
 
 ///|
 fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
+  // Short-circuit when no timers are pending: this is the common case
+  // for IO-only or compute-only tasks that never call `sleep` / `Timer`.
+  // Avoids both the iterator-allocation on `self.timers.iter().head()`
+  // and the redundant `ms_since_epoch()` + loop below.
+  let has_timers = !self.timers.is_empty()
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
-  } else if self.timers.iter().head() is Some(timer) {
+  } else if has_timers && self.timers.iter().head() is Some(timer) {
     @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
   } else {
     -1
@@ -221,12 +226,14 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   if n < 0 {
     @os_error.check_errno("runtime internal: poll_wait")
   }
-  let now = @time.ms_since_epoch()
-  for timer in self.timers {
-    if timer.expire_time <= now {
-      (timer.callback)()
-    } else {
-      break
+  if has_timers {
+    let now = @time.ms_since_epoch()
+    for timer in self.timers {
+      if timer.expire_time <= now {
+        (timer.callback)()
+      } else {
+        break
+      }
     }
   }
   n
