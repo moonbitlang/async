@@ -321,7 +321,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Reader for Tls with _get_internal_buffer(self) {
+pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
@@ -341,7 +341,7 @@ extern "C" fn Schannel::msg_trailer(ch : Schannel) -> Int = "moonbitlang_async_s
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
   if self.closed {
     return 0
   }
@@ -406,7 +406,7 @@ extern "C" fn Schannel::write(
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   let write_buf = self.transport.write_buf
   guard write_buf.len == 0
   let max_len = write_buf.buf.length() -
