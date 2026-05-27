@@ -71,17 +71,22 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 /// At most one task can read from a pipe at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for PipeRead with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for PipeRead with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   self.io.read(buf, offset~, len=max_len, context="@pipe.PipeRead::read()")
 }
 
 ///|
-pub impl @io.Reader for PipeRead with _get_internal_buffer(self) {
+pub impl @io.Reader for PipeRead with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Writer for PipeWrite with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
   let PipeWrite(io) = self
   io.write(buf, offset~, len~, context="@pipe.PipeRead::write()")
 }

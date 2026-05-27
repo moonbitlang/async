@@ -24,12 +24,12 @@ pub fn Input::fd(self : Input) -> @fd_util.Fd {
 }
 
 ///|
-pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
 }
 
 ///|
-pub impl @io.Reader for Input with _get_internal_buffer(self) {
+pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
@@ -42,7 +42,7 @@ pub fn Output::fd(self : Output) -> @fd_util.Fd {
 }
 
 ///|
-pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
   self.0.write(buf, offset~, len~, context="@fs.File::write()")
 }
 

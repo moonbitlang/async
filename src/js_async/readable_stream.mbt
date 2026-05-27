@@ -123,12 +123,12 @@ pub fn ReadableStream::close(self : ReadableStream) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with _get_internal_buffer(self) {
+pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(self) {
   self.read_end._get_internal_buffer()
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with _direct_read(
+pub impl @io.Reader for ReadableStream with fn _direct_read(
   self,
   buf,
   offset~,

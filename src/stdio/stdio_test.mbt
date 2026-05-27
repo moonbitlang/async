@@ -23,7 +23,7 @@ let cat : @async.Lazy[String] = @async.Lazy(() => {
   guard exit_code is 0 else {
     fail("failed to build `cat` program: \{exit_code}")
   }
-  "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
+  "./src/process/test_programs/_build/native/debug/build/moonbitlang/test_programs_for_process/cat/cat.exe"
 })
 
 ///|
@@ -33,14 +33,11 @@ async test "redirect_file" {
   let code = @process.run(
     cat,
     [],
-    stdin=@process.redirect_from_file("moon.mod.json"),
+    stdin=@process.redirect_from_file("moon.mod"),
     stdout=@process.redirect_to_file(out_file, create_mode=CreateOrTruncate),
   )
   inspect(code, content="0")
-  assert_eq(
-    @fs.read_file(out_file).text(),
-    @fs.read_file("moon.mod.json").text(),
-  )
+  assert_eq(@fs.read_file(out_file).text(), @fs.read_file("moon.mod").text())
 }
 
 ///|

@@ -14,7 +14,7 @@
 
 ///|
 let tmpdir_seed : @random.Rand = {
-  let seed = @buffer.new()
+  let seed = Buffer()
   let now = @async.now()
   for _ in 0..<4 {
     seed.write_int64_le(now)

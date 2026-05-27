@@ -46,7 +46,7 @@ suberror JsError {
 }
 
 ///|
-pub impl Show for JsError with output(self, logger) {
+pub impl Show for JsError with fn output(self, logger) {
   let JsError(value) = self
   logger <+ "\{value.to_string()}"
 }

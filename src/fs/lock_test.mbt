@@ -20,7 +20,7 @@ let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
   if code != 0 {
     fail("failed to build test program `lock_file`: \{code}")
   }
-  "src/process/test_programs/_build/native/debug/build/lock_file/lock_file.exe"
+  "src/process/test_programs/_build/native/debug/build/moonbitlang/test_programs_for_process/lock_file/lock_file.exe"
 })
 
 ///|
@@ -50,6 +50,31 @@ async fn run_lock_file_prog(
 }
 
 ///|
+fn log_contains(log : Array[String], line : String) -> Bool {
+  for item in log {
+    if item == line {
+      break true
+    }
+  } nobreak {
+    false
+  }
+}
+
+///|
+async fn wait_for_log(log : Array[String], line : String) -> Unit {
+  guard @async.with_timeout_opt(3000, () => {
+      while !log_contains(log, line) {
+        @async.sleep(10)
+      }
+    })
+    is Some(_) else {
+    fail(
+      "timed out waiting for log line `\{line}`; log: \{@debug.to_string(log)}",
+    )
+  }
+}
+
+///|
 async test "flock exclusive vs exclusive" {
   let log = []
   let file_name = "_build/flock_ex_ex"
@@ -58,9 +83,10 @@ async test "flock exclusive vs exclusive" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
-    @async.sleep(250)
+    wait_for_log(log, "acquired lock")
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    @async.sleep(500)
+    wait_for_log(log, "releasing lock")
+    @async.sleep(50)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
   }
   json_inspect(log, content=[
@@ -77,7 +103,7 @@ async test "flock exclusive vs exclusive blocking" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
@@ -99,9 +125,10 @@ async test "flock shared vs exclusive" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
-    @async.sleep(250)
+    wait_for_log(log, "acquired lock")
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    @async.sleep(500)
+    wait_for_log(log, "releasing lock")
+    @async.sleep(50)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
   }
   json_inspect(log, content=[
@@ -118,7 +145,7 @@ async test "flock shared vs exclusive blocking" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
@@ -140,9 +167,10 @@ async test "flock exclusive vs shared" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log)
-    @async.sleep(250)
+    wait_for_log(log, "acquired lock")
     log.push("try_lock() => \{file.try_lock(Shared)}")
-    @async.sleep(500)
+    wait_for_log(log, "releasing lock")
+    @async.sleep(50)
     log.push("try_lock() => \{file.try_lock(Shared)}")
   }
   json_inspect(log, content=[
@@ -159,7 +187,7 @@ async test "flock exclusive vs shared blocking" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to acquire lock")
     file.lock(Shared)
     defer file.unlock()
@@ -181,7 +209,7 @@ async test "flock shared vs shared" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log)
-    @async.sleep(250)
+    wait_for_log(log, "acquired lock")
     log.push("try_lock() => \{file.try_lock(Shared)}")
   }
   json_inspect(log, content=[
@@ -198,7 +226,7 @@ async test "flock shared vs shared blocking" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to acquire lock")
     file.lock(Shared)
     defer file.unlock()
@@ -218,14 +246,30 @@ async test "flock shared vs shared vs exclusive" {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
-    @async.sleep(250)
-    run_lock_file_prog(group, file_name, Shared, log, prefix="child #2: ")
-    @async.sleep(100)
+    run_lock_file_prog(
+      group,
+      file_name,
+      Shared,
+      log,
+      duration=350,
+      prefix="child #1: ",
+    )
+    wait_for_log(log, "child #1: acquired lock")
+    run_lock_file_prog(
+      group,
+      file_name,
+      Shared,
+      log,
+      duration=800,
+      prefix="child #2: ",
+    )
+    wait_for_log(log, "child #2: acquired lock")
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    @async.sleep(200)
+    wait_for_log(log, "child #1: releasing lock")
+    @async.sleep(50)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    @async.sleep(450)
+    wait_for_log(log, "child #2: releasing lock")
+    @async.sleep(50)
     log.push("try_lock() => \{file.try_lock(Exclusive)}")
   }
   json_inspect(log, content=[
@@ -243,10 +287,24 @@ async test "flock shared vs shared vs exclusive blocking" {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    run_lock_file_prog(group, file_name, Shared, log, prefix="child #1: ")
-    @async.sleep(250)
-    run_lock_file_prog(group, file_name, Shared, log, prefix="child #2: ")
-    @async.sleep(100)
+    run_lock_file_prog(
+      group,
+      file_name,
+      Shared,
+      log,
+      duration=350,
+      prefix="child #1: ",
+    )
+    wait_for_log(log, "child #1: acquired lock")
+    run_lock_file_prog(
+      group,
+      file_name,
+      Shared,
+      log,
+      duration=800,
+      prefix="child #2: ",
+    )
+    wait_for_log(log, "child #2: acquired lock")
     log.push("attempting to acquire lock")
     file.lock(Exclusive)
     defer file.unlock()
@@ -268,7 +326,7 @@ async test "flock cancelled" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to acquire lock")
     let result = @async.with_timeout_opt(100, () => file.lock(Exclusive))
     log.push("lock() with timeout: \{@debug.to_string(result)}")
@@ -292,7 +350,7 @@ async test "flock advisory" {
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     run_lock_file_prog(group, file_name, Exclusive, log, prefix="child: ")
-    @async.sleep(250)
+    wait_for_log(log, "child: acquired lock")
     log.push("attempting to read")
     log.push("read from file: \{file.read_all().text()}")
   }

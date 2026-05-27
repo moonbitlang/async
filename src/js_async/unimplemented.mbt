@@ -37,7 +37,7 @@ suberror JsError {
 ///|
 #internal(unimplemented, "unimplemented in native backend")
 #coverage.skip
-pub impl Show for JsError with output(self, _logger) {
+pub impl Show for JsError with fn output(self, _logger) {
   let JsError(x) = self
   let _ = JsError(x)
   abort("unimplemented in native backend")
@@ -199,13 +199,13 @@ pub fn ReadableStream::close(self : ReadableStream) -> Unit {
 
 ///|
 #coverage.skip
-pub impl @io.Reader for ReadableStream with _get_internal_buffer(_) {
+pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(_) {
   abort("unimplemented in native backend")
 }
 
 ///|
 #coverage.skip
-pub impl @io.Reader for ReadableStream with _direct_read(
+pub impl @io.Reader for ReadableStream with fn _direct_read(
   _,
   _,
   offset~,

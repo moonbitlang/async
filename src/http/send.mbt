@@ -43,7 +43,7 @@ fn[W : @io.Writer] Sender::new(
   w : W,
   headers? : Map[String, String] = {},
 ) -> Sender {
-  let header_text = @buffer.new()
+  let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {
     let k_lower = k.to_lower()
@@ -89,7 +89,7 @@ const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 pub suberror IncorrectBodyLength derive(Debug, ToJson)
 
 ///|
-impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
+impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
   match self.mode {
     SendingHeader => {
       if self.send_len >= self.send_buf.length() {
@@ -153,7 +153,7 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-impl @io.Writer for Sender with write_reader(self, reader) {
+impl @io.Writer for Sender with fn write_reader(self, reader) {
   match self.mode {
     SendingHeader =>
       for ;; {

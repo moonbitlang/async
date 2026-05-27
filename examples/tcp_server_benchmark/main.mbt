@@ -109,7 +109,7 @@ async fn main {
   let conn_duration = @string.parse_int(conn_duration_str)
   let addr = @socket.Addr::parse(addr_str)
   let rand = {
-    let seed = @buffer.new()
+    let seed = Buffer()
     let now = @env.now()
     seed
     ..write_uint64_le(now)

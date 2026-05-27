@@ -21,8 +21,7 @@ async fn serve_directory(
   let files = dir.read_all()
   files.sort()
   conn.send_response(200, "OK", extra_headers={ "Content-Type": "text/html" })
-  conn
-    <+
+  conn <+
     $|<!DOCTYPE html><html><head></head><body>
     $|<h1>\{path}</h1>
     $|<div style="margin: 1em; font-size: 15pt">
