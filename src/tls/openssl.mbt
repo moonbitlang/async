@@ -490,7 +490,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
   let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       break ret
@@ -520,13 +520,13 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with _get_internal_buffer(self) {
+pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
       break ret

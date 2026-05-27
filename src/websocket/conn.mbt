@@ -21,16 +21,16 @@ const MASK_SIZE : Int = 4
 
 ///|
 priv trait Transport: @io.Reader + @io.Writer {
-  close(Self) -> Unit
+  fn close(Self) -> Unit
 }
 
 ///|
-impl Transport for @http.Client with close(self) {
+impl Transport for @http.Client with fn close(self) {
   self.close()
 }
 
 ///|
-impl Transport for @http.ServerConnection with close(self) {
+impl Transport for @http.ServerConnection with fn close(self) {
   self.close()
 }
 
@@ -516,12 +516,12 @@ pub async fn Conn::recv(self : Conn) -> Message {
 }
 
 ///|
-pub impl @io.Reader for Message with _get_internal_buffer(self) {
+pub impl @io.Reader for Message with fn _get_internal_buffer(self) {
   self.conn.read_buf
 }
 
 ///|
-pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Message with fn _direct_read(self, buf, offset~, max_len~) {
   match self.state {
     Active => ()
     Closed => return 0
@@ -667,7 +667,7 @@ async fn Conn::flush(self : Conn) -> Unit {
 /// The message may be fragmented into multiple WebSocket frames automatically.
 /// Writing message content is buffered.
 /// To ensure immediate delivery of data, call `flush` manually.
-pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
   if self.payload_start + self.write_len >= self.write_buf.length() {
     self.flush()
   }

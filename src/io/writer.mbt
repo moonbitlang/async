@@ -19,13 +19,13 @@ pub(all) enum Encoding {
 
 ///|
 pub(open) trait Writer {
-  async write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async write(Self, &Data) -> Unit = _
-  async write_reader(Self, &Reader) -> Unit = _
+  async fn write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+  async fn write(Self, &Data) -> Unit = _
+  async fn write_reader(Self, &Reader) -> Unit = _
 }
 
 ///|
-impl Writer with write(self, data) {
+impl Writer with fn write(self, data) {
   let view = data.to_bytesview()
   let start = view.start_offset()
   let len = view.length()
@@ -42,7 +42,7 @@ impl Writer with write(self, data) {
 }
 
 ///|
-impl Writer with write_reader(self, reader) {
+impl Writer with fn write_reader(self, reader) {
   let buf = reader._get_internal_buffer()
   if buf.len > 0 {
     let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()

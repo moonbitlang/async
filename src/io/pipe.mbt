@@ -91,7 +91,7 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 ///|
 /// Read data from a pipe. The data come from the write end of the pipe.
 /// Data transfer only happen when reader and writer are present at the same time.
-pub impl Reader for PipeRead with _direct_read(self, dst, offset~, max_len~) {
+pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) {
   let PipeRead(self) = self
   guard self.reader is NoReader
   match self.writer {
@@ -117,7 +117,7 @@ pub impl Reader for PipeRead with _direct_read(self, dst, offset~, max_len~) {
 }
 
 ///|
-pub impl Reader for PipeRead with _get_internal_buffer(self) {
+pub impl Reader for PipeRead with fn _get_internal_buffer(self) {
   let PipeRead(self) = self
   self.read_buf
 }
@@ -130,7 +130,7 @@ pub suberror PipeClosed derive(Debug, ToJson)
 ///|
 /// Write data to a pipe. The data can be read from the read end of the pipe.
 /// Data transfer only happen when reader and writer are present at the same time.
-pub impl Writer for PipeWrite with write_once(self, buf, offset~, len~) {
+pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
   let PipeWrite(self) = self
   guard self.writer is NoWriter
   match self.reader {

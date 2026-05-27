@@ -21,42 +21,42 @@
 /// - `String` and `StringView`, for string (UTF8 encoded)
 /// - `Json` for JSON string (UTF8 encoded)
 trait Data {
-  to_bytesview(Self) -> BytesView = _
-  to_bytes(Self) -> Bytes
+  fn to_bytesview(Self) -> BytesView = _
+  fn to_bytes(Self) -> Bytes
 }
 
 ///|
-impl Data with to_bytesview(self) {
+impl Data with fn to_bytesview(self) {
   self.to_bytes()[:]
 }
 
 ///|
-pub impl Data for Bytes with to_bytes(self) {
+pub impl Data for Bytes with fn to_bytes(self) {
   self
 }
 
 ///|
-pub impl Data for BytesView with to_bytes(self) {
+pub impl Data for BytesView with fn to_bytes(self) {
   self.to_owned()
 }
 
 ///|
-pub impl Data for BytesView with to_bytesview(self) {
+pub impl Data for BytesView with fn to_bytesview(self) {
   self
 }
 
 ///|
-pub impl Data for String with to_bytes(self) {
+pub impl Data for String with fn to_bytes(self) {
   @utf8.encode(self)
 }
 
 ///|
-pub impl Data for StringView with to_bytes(self) {
+pub impl Data for StringView with fn to_bytes(self) {
   @utf8.encode(self)
 }
 
 ///|
-pub impl Data for Json with to_bytes(self) {
+pub impl Data for Json with fn to_bytes(self) {
   @utf8.encode(self.stringify())
 }
 
