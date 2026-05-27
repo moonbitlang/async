@@ -81,7 +81,7 @@ extern "C" fn Addr::scope_id(addr : Addr) -> UInt = "moonbitlang_async_addr_get_
 extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6_wildcard"
 
 ///|
-pub impl Show for Addr with output(self, logger) {
+pub impl Show for Addr with fn output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
     logger <+ "["
@@ -98,8 +98,7 @@ pub impl Show for Addr with output(self, logger) {
     // IPv4 address format
     let ip = self.ip()
     let port = self.port()
-    logger
-      <+
+    logger <+
       "\{ip >> 24}.\{(ip >> 16) & 255}.\{(ip >> 8) & 255}.\{ip & 255}:\{port}"
   }
 }

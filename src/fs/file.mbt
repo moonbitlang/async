@@ -189,12 +189,12 @@ pub async fn create(
 ///
 /// - EOF is reached before reading all requested data
 /// - the file is a named pipe, and not enough data is available
-pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
 }
 
 ///|
-pub impl @io.Reader for File with _get_internal_buffer(self) {
+pub impl @io.Reader for File with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
@@ -241,7 +241,7 @@ pub async fn File::read_exactly_at(
 }
 
 ///|
-pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
 

@@ -69,12 +69,12 @@ pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for ReadFromProcess with _get_internal_buffer(self) {
+pub impl @io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Reader for ReadFromProcess with _direct_read(
+pub impl @io.Reader for ReadFromProcess with fn _direct_read(
   self,
   buf,
   offset~,
@@ -95,7 +95,12 @@ pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @io.Writer for WriteToProcess with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for WriteToProcess with fn write_once(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let WriteToProcess(io) = self
   io.write(buf, offset~, len~, context="@process.WriteToProcess::write()")
 }
@@ -162,44 +167,44 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
 ///|
 /// An entity that can be used to redirect stdin of a process
 trait ProcessInput {
-  fd(Self) -> @fd_util.Fd
-  after_spawn(Self) -> Unit = _
+  fn fd(Self) -> @fd_util.Fd
+  fn after_spawn(Self) -> Unit = _
 }
 
 ///|
-impl ProcessInput with after_spawn(_) {
+impl ProcessInput with fn after_spawn(_) {
   ()
 }
 
 ///|
-pub impl ProcessInput for @pipe.PipeRead with fd(self) {
+pub impl ProcessInput for @pipe.PipeRead with fn fd(self) {
   self.fd()
 }
 
 ///|
-pub impl ProcessInput for @stdio.Input with fd(self) {
+pub impl ProcessInput for @stdio.Input with fn fd(self) {
   self.fd()
 }
 
 ///|
 /// An entity that can be used to redirect stdout/stderr of a process
 trait ProcessOutput {
-  fd(Self) -> @fd_util.Fd
-  after_spawn(Self) -> Unit = _
+  fn fd(Self) -> @fd_util.Fd
+  fn after_spawn(Self) -> Unit = _
 }
 
 ///|
-impl ProcessOutput with after_spawn(_) {
+impl ProcessOutput with fn after_spawn(_) {
   ()
 }
 
 ///|
-pub impl ProcessOutput for @pipe.PipeWrite with fd(self) {
+pub impl ProcessOutput for @pipe.PipeWrite with fn fd(self) {
   self.fd()
 }
 
 ///|
-pub impl ProcessOutput for @stdio.Output with fd(self) {
+pub impl ProcessOutput for @stdio.Output with fn fd(self) {
   self.fd()
 }
 
@@ -216,12 +221,12 @@ priv struct TempPipeWrite {
 }
 
 ///|
-impl ProcessOutput for TempPipeWrite with fd(self) {
+impl ProcessOutput for TempPipeWrite with fn fd(self) {
   self.pipe.fd()
 }
 
 ///|
-impl ProcessOutput for TempPipeWrite with after_spawn(self) {
+impl ProcessOutput for TempPipeWrite with fn after_spawn(self) {
   if !self.closed {
     self.closed = true
     self.pipe.close()
@@ -229,12 +234,12 @@ impl ProcessOutput for TempPipeWrite with after_spawn(self) {
 }
 
 ///|
-impl ProcessInput for TempPipeRead with fd(self) {
+impl ProcessInput for TempPipeRead with fn fd(self) {
   self.pipe.fd()
 }
 
 ///|
-impl ProcessInput for TempPipeRead with after_spawn(self) {
+impl ProcessInput for TempPipeRead with fn after_spawn(self) {
   if !self.closed {
     self.closed = true
     self.pipe.close()
@@ -245,21 +250,21 @@ impl ProcessInput for TempPipeRead with after_spawn(self) {
 priv struct RedirectToFile(@event_loop.IoHandle)
 
 ///|
-impl ProcessOutput for RedirectToFile with fd(self) {
+impl ProcessOutput for RedirectToFile with fn fd(self) {
   self.0.fd()
 }
 
 ///|
-impl ProcessOutput for RedirectToFile with after_spawn(self) {
+impl ProcessOutput for RedirectToFile with fn after_spawn(self) {
   self.0.close()
 }
 
 ///|
-impl ProcessInput for RedirectToFile with fd(self) {
+impl ProcessInput for RedirectToFile with fn fd(self) {
   self.0.fd()
 }
 
 ///|
-impl ProcessInput for RedirectToFile with after_spawn(self) {
+impl ProcessInput for RedirectToFile with fn after_spawn(self) {
   self.0.close()
 }

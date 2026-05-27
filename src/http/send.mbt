@@ -89,7 +89,7 @@ const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 pub suberror IncorrectBodyLength derive(Debug, ToJson)
 
 ///|
-impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
+impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
   match self.mode {
     SendingHeader => {
       if self.send_len >= self.send_buf.length() {
@@ -153,7 +153,7 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-impl @io.Writer for Sender with write_reader(self, reader) {
+impl @io.Writer for Sender with fn write_reader(self, reader) {
   match self.mode {
     SendingHeader =>
       for ;; {

@@ -17,7 +17,7 @@
 pub impl Show for FileKind
 
 ///|
-pub impl Show for FileKind with output(self, logger) {
+pub impl Show for FileKind with fn output(self, logger) {
   match self {
     Unknown => logger <+ "Unknown"
     Regular => logger <+ "Regular"

@@ -15,16 +15,16 @@
 ///|
 pub(open) trait Reader {
   // API for internal implementation only, do not use
-  _get_internal_buffer(Self) -> ReaderBuffer
+  fn _get_internal_buffer(Self) -> ReaderBuffer
 
   // API for internal implementation only, do not use
-  async _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
-  async read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
-  async drop(Self, Int) -> Int = _
-  async read_exactly(Self, len : Int) -> Bytes = _
-  async read_some(Self, max_len? : Int) -> Bytes? = _
-  async read_all(Self) -> &Data = _
-  async read_until(Self, StringView) -> String? = _
+  async fn _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+  async fn read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
+  async fn drop(Self, Int) -> Int = _
+  async fn read_exactly(Self, len : Int) -> Bytes = _
+  async fn read_some(Self, max_len? : Int) -> Bytes? = _
+  async fn read_all(Self) -> &Data = _
+  async fn read_until(Self, StringView) -> String? = _
 }
 
 ///|
@@ -37,7 +37,12 @@ pub(all) suberror ReaderClosed derive(Debug, ToJson)
 /// Note that the return value may be smaller than `max_len`
 /// if not enough data is *immediately* available.
 /// If EOF is reached and no more data is available, zero will be returned.
-impl Reader with read(self, dst, offset? = 0, max_len? = dst.length() - offset) {
+impl Reader with fn read(
+  self,
+  dst,
+  offset? = 0,
+  max_len? = dst.length() - offset,
+) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
     let n = @cmp.minimum(max_len, buf.len)
@@ -54,7 +59,7 @@ impl Reader with read(self, dst, offset? = 0, max_len? = dst.length() - offset) 
 /// The number of bytes actually dropped is returned.
 /// `drop` will wait until enough number of bytes is available,
 /// so the return value would be smaller than `len` only when EOF is reached.
-impl Reader with drop(self, len) {
+impl Reader with fn drop(self, len) {
   let buf = self._get_internal_buffer()
   if buf.len >= len {
     buf.0.drop(len)
@@ -81,7 +86,7 @@ impl Reader with drop(self, len) {
 /// `reader.read_exactly(len)` read exactly `len` number of bytes from the reader.
 /// It will wait until enough number of bytes is available.
 /// If EOF is reached before enough data is read, `ReaderClosed` is raised.
-impl Reader with read_exactly(self, len) {
+impl Reader with fn read_exactly(self, len) {
   let buf = FixedArray::make(len, b'0')
   for received = 0; received < len; {
     let new_received = self.read(buf, offset=received, max_len=len - received)
@@ -102,7 +107,7 @@ impl Reader with read_exactly(self, len) {
 /// Since `read_some` will return immediately when new data become available,
 /// the returned chunk may be smaller than `max_len`,
 /// even if there are still data available in the reader.
-impl Reader with read_some(self, max_len?) {
+impl Reader with fn read_some(self, max_len?) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
     let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
@@ -138,7 +143,7 @@ impl Reader with read_some(self, max_len?) {
 /// Read all remaining content from the reader.
 /// The return value is a `&io.Data` object, which can be converted to different formats
 /// using `.binary()`, `.text()` or `.json()`.
-impl Reader with read_all(self) {
+impl Reader with fn read_all(self) {
   let buffer_list = []
   let mut buffer = FixedArray::make(1024, b'0')
   let mut offset = 0
@@ -165,7 +170,7 @@ impl Reader with read_all(self) {
 /// until `sep` or EOF is reached.
 /// The segment of input from start of reader to start of `sep` or EOF is returned.
 /// `sep` will be conusmed from the input, but is not included in the return value.
-impl Reader with read_until(self, sep) {
+impl Reader with fn read_until(self, sep) {
   let sep = @utf8.encode(sep)
   let buf = self._get_internal_buffer()
   match buf.find_opt(sep, reader=self) {

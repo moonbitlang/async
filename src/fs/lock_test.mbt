@@ -20,7 +20,7 @@ let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
   if code != 0 {
     fail("failed to build test program `lock_file`: \{code}")
   }
-  "src/process/test_programs/_build/native/debug/build/lock_file/lock_file.exe"
+  "src/process/test_programs/_build/native/debug/build/moonbitlang/test_programs_for_process/lock_file/lock_file.exe"
 })
 
 ///|

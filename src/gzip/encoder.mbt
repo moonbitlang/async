@@ -67,7 +67,7 @@ pub async fn[W : @io.Writer] Encoder::end(self : Encoder[W]) -> Unit {
 }
 
 ///|
-pub impl[W : @io.Writer] @io.Writer for Encoder[W] with write_once(
+pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
   self,
   buf,
   offset~,

@@ -17,6 +17,6 @@
 pub impl Show for Cancelled
 
 ///|
-pub impl Show for Cancelled with output(_self, logger) {
+pub impl Show for Cancelled with fn output(_self, logger) {
   logger <+ "Cancelled"
 }
