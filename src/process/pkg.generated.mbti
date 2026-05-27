@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/signal",
   "moonbitlang/async/stdio",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -33,6 +34,8 @@ pub async fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateM
 
 pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
 
+pub async fn run_checked(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Unit
+
 pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
 
 pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
@@ -42,6 +45,9 @@ pub async fn wait_pid(Int) -> Int
 pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
 
 // Errors
+pub suberror NonZeroExit {
+  NonZeroExit(exit_code~ : Int, cmd~ : String, args~ : Array[String])
+} derive(ToJson, @debug.Debug)
 
 // Types and methods
 pub(all) struct CancellationHandler(async (Int) -> Unit)

@@ -66,6 +66,13 @@ pub async fn wait_pid(pid : Int) -> Int {
 }
 
 ///|
+/// Error raised by `@process.run_checked` when the process exits with a
+/// non-zero status code.
+pub suberror NonZeroExit {
+  NonZeroExit(exit_code~ : Int, cmd~ : String, args~ : Array[String])
+} derive(Debug, ToJson)
+
+///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
 /// Both `cmd` and elements of `args` are encoded using UTF8.
@@ -142,6 +149,38 @@ pub async fn run(
         }
       }
     err => raise err
+  }
+}
+
+///|
+/// Execute a system process like `@process.run`, but raise `NonZeroExit`
+/// if the process exits with a non-zero status code.
+///
+/// The meaning of parameters is the same as `@process.run`.
+pub async fn run_checked(
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env? : Map[String, String] = {},
+  inherit_env? : Bool = true,
+  stdin? : &ProcessInput,
+  stdout? : &ProcessOutput,
+  stderr? : &ProcessOutput,
+  cwd? : StringView,
+  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+) -> Unit {
+  let exit_code = run(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin?,
+    stdout?,
+    stderr?,
+    cwd?,
+    cancel_handler~,
+  )
+  guard exit_code == 0 else {
+    raise NonZeroExit(exit_code~, cmd=cmd.to_owned(), args=args.to_owned())
   }
 }
 

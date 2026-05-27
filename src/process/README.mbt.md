@@ -466,7 +466,8 @@ Trait for types that can be used as process output:
 
 ## Error Handling
 
-Process operations handle errors through exit codes:
+`@process.run` returns the child process exit code. Use `@process.run_checked`
+when a non-zero exit code should be treated as an error.
 
 ```moonbit check
 ///|
@@ -483,6 +484,13 @@ async test "exit code indicates failure" {
   let exit_code = @process.run("sh", ["-c", "exit 1"])
   let is_failure = exit_code != 0
   inspect(is_failure, content="true")
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "checked run raises on non-zero exit" {
+  let result = try? @process.run_checked("sh", ["-c", "exit 1"])
+  assert_true(result is Err(@process.NonZeroExit(_)))
 }
 ```
 
