@@ -43,7 +43,7 @@ fn[W : @io.Writer] Sender::new(
   w : W,
   headers? : Map[String, String] = {},
 ) -> Sender {
-  let header_text = @buffer.new()
+  let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {
     let k_lower = k.to_lower()
