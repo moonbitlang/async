@@ -164,7 +164,12 @@ pub fn Client::close(self : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   self.reader._direct_read(buf, offset~, max_len~)
 }
 

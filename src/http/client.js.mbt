@@ -146,7 +146,12 @@ pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   guard self.response_body is Some(stream)
   stream._direct_read(buf, offset~, max_len~)
 }

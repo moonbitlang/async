@@ -37,7 +37,12 @@ pub(all) suberror ReaderClosed derive(Debug, ToJson)
 /// Note that the return value may be smaller than `max_len`
 /// if not enough data is *immediately* available.
 /// If EOF is reached and no more data is available, zero will be returned.
-impl Reader with fn read(self, dst, offset? = 0, max_len? = dst.length() - offset) {
+impl Reader with fn read(
+  self,
+  dst,
+  offset? = 0,
+  max_len? = dst.length() - offset,
+) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
     let n = @cmp.minimum(max_len, buf.len)
