@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/string",
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/signal",
+}
+
+supported_targets = "-all+native"
+
+options(
+  "is-main": true,
+  "native-stub": [ "stub.c" ],
+)

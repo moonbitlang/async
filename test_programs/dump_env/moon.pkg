@@ -2,6 +2,8 @@ import {
   "moonbitlang/core/encoding/utf8",
 }
 
+supported_targets = "-all+native"
+
 options(
   "is-main": true,
   "native-stub": [ "stub.c" ],

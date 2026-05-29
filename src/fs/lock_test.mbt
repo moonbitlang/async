@@ -15,12 +15,12 @@
 ///|
 let lock_file_prog : @async.Lazy[String] = @async.Lazy(() => {
   let code = @process.run("moon", [
-    "-C", "src/process/test_programs", "build", "lock_file", "--debug",
+    "build", "test_programs/lock_file", "--debug", "--target-dir", "_build/test_programs",
   ])
   if code != 0 {
     fail("failed to build test program `lock_file`: \{code}")
   }
-  "src/process/test_programs/_build/native/debug/build/lock_file/lock_file.exe"
+  "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/lock_file/lock_file.exe"
 })
 
 ///|

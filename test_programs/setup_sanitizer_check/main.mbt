@@ -35,7 +35,7 @@ async fn main {
     match path {
       "./target" | "./_build" | "./examples/target" | "./examples/_build" =>
         true
-      "./src/process/test_programs/dump_env" =>
+      "./test_programs/dump_env" =>
         // This program may be run in an (almost) empty environment,
         // ASAN will not work with some linking related variables missing
         true

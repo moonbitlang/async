@@ -4,6 +4,8 @@ import {
   "moonbitlang/async/fs",
 }
 
+supported_targets = "-all+native"
+
 options(
   "is-main": true,
 )
