@@ -41,21 +41,21 @@ control returns.
 ///|
 async test "quick start" {
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    root.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<3 {
         let v = q.get()
         log.push("get() => \{v}")
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "put(0)", "put(1)", "put(2)", "get() => 0", "get() => 1", "get() => 2",
   ])
@@ -106,22 +106,22 @@ item. This applies backpressure automatically.
 ///|
 async test "blocking creates backpressure" {
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     let q = @aqueue.Queue(kind=Blocking(1))
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    root.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<3 {
         let x = q.get()
         log.push("get() => \{x}")
         @async.sleep(100)
       }
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "put(0)", "get() => 0", "put(1)", "get() => 1", "put(2)", "get() => 2",
   ])
@@ -137,22 +137,22 @@ directly with a `get`.
 ///|
 async test "blocking with zero capacity is a rendezvous" {
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     let q = @aqueue.Queue(kind=Blocking(0))
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
         log.push("put(\{i})")
       }
-    })
-    root.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       for _ in 0..<3 {
         let x = q.get()
         log.push("get() => \{x}")
         @async.sleep(50)
       }
-    })
-  })
+    }
+  }
   // Every `get` strictly precedes the matching `put`'s log entry,
   // because the producer cannot record `put(i)` until the buffer
   // (size 0) hands the value off to a waiting reader.
@@ -184,6 +184,9 @@ async test "discard oldest" {
 }
 ```
 
+`n` can be zero, in this case, data transfer can only happen
+when a reader and a writer are both present.
+
 ### DiscardLatest(n)
 
 When the buffer is full, the **incoming** item is silently dropped.
@@ -209,6 +212,9 @@ async test "discard latest" {
 > a full `DiscardOldest`/`DiscardLatest` queue rather than performing
 > the discard. Use `try_put` when you want to *know* if the queue
 > accepted the value.
+
+`n` can be zero, in this case, data transfer can only happen
+when a reader and a writer are both present.
 
 ## Closing a Queue
 
@@ -271,30 +277,24 @@ and the consumer looping with `try ... catch { _ => break }`:
 ///|
 async test "close as end-of-stream signal" {
   let received = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     // Capacity 1 forces the producer to suspend between puts,
     // so the consumer can drain each item before `close()` runs.
     let q = @aqueue.Queue(kind=Blocking(1))
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for word in ["alpha", "beta", "gamma"] {
         q.put(word)
       }
       q.close()
-    })
+    }
     while true {
       let v = q.get() catch { _ => break }
       received.push(v)
     }
-  })
+  }
   json_inspect(received, content=["alpha", "beta", "gamma"])
 }
 ```
-
-> **Tip:** When the producer wants to close immediately after the
-> last item, prefer a *bounded* queue. The forced suspension on full
-> guarantees that the consumer has caught up before `close()` runs,
-> avoiding the corner case where a value is in flight to a reader at
-> the instant the queue is closed.
 
 If a task is currently suspended inside `put` on a `Blocking` queue
 when `close()` is called, that `put` is unblocked with
@@ -364,6 +364,10 @@ test "try_get and try_put" {
 }
 ```
 
+`try_get`/`try_put` never break the FIFO behavior of blocking `get`/`put`.
+When there is one or more blocked `get`/`put` operations waiting,
+`try_get`/`try_put` always returns `None`/`false`, even if a value happens to have just arrived.
+
 ## Patterns
 
 ### Fan-in: many producers, one consumer
@@ -376,28 +380,28 @@ stream. Below, two producers feed numbered items into one consumer.
 ///|
 async test "fan-in merges multiple producers" {
   let received = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     let q : @aqueue.Queue[String] = @aqueue.Queue(kind=Unbounded)
     // Producer A puts items at time 0, 100, 200 ms.
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put("A\{i}")
         @async.sleep(100)
       }
-    })
+    }
     // Producer B puts items at 50, 150, 250 ms.
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       @async.sleep(50)
       for i in 0..<3 {
         q.put("B\{i}")
         @async.sleep(100)
       }
-    })
+    }
     // Consumer drains 6 items.
     for _ in 0..<6 {
       received.push(q.get())
     }
-  })
+  }
   json_inspect(received, content=["A0", "B0", "A1", "B1", "A2", "B2"])
 }
 ```
@@ -408,38 +412,29 @@ One producer feeds items; N worker tasks each call `get` and process
 items in parallel. The queue load-balances automatically because
 `get` is first-come-first-served.
 
-A robust way to signal "no more work" to a worker pool is to push one
-**sentinel** value per worker (here, `None`). This avoids any race
-between `close()` and an in-flight value, and the queue stays a
-plain typed pipeline.
+To signal "no more work" to a worker pool,
+simply close the queue with `clear=false` (the default):
 
 ```moonbit check
 ///|
 async test "fan-out distributes work to a pool" {
   let work_by_worker : Array[Array[Int]] = [[], [], []]
-  @async.with_task_group(root => {
-    let q : @aqueue.Queue[Int?] = @aqueue.Queue(kind=Blocking(1))
+  @async.with_task_group <| group => {
+    let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Blocking(1))
     for w in 0..<3 {
-      root.spawn_bg(() => {
+      group.spawn_bg(allow_failure=true) <| () => {
         for ;; {
-          match q.get() {
-            Some(item) => {
-              work_by_worker[w].push(item)
-              @async.sleep(20) // simulate per-item processing cost
-            }
-            None => break // sentinel: this worker is done
-          }
+          let item = q.get()
+          work_by_worker[w].push(item)
+          @async.sleep(20) // simulate per-item processing cost
         }
-      })
+      }
     }
     for i in 0..<9 {
-      q.put(Some(i))
+      q.put(i)
     }
-    // Send one sentinel per worker.
-    for _ in 0..<3 {
-      q.put(None)
-    }
-  })
+    q.close()
+  }
   // Every item is processed exactly once, and the union of the
   // workers' logs is the full input range.
   let total = []
@@ -485,33 +480,10 @@ async test "readers are woken FIFO" {
 
 ## Cancellation Safety
 
-When a task is cancelled while suspended inside `get`, the queue
-takes care to **not lose a value** that was already handed to it.
-If a producer has just delivered a value to the reader's slot and
-the reader is then cancelled, the value is still returned rather
-than silently dropped.
-
-```moonbit check
-///|
-async test "get does not swallow a delivered value on cancel" {
-  let log = []
-  @async.with_task_group(root => {
-    let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
-    let reader = root.spawn(() => log.push("got \{q.get()}"))
-    @async.sleep(50)
-    q.put(42) // value is handed to the suspended reader
-    reader.cancel() // cancellation arrives after the hand-off
-    @async.sleep(50)
-    // No leftover value in the queue.
-    debug_inspect(q.try_get(), content="None")
-  })
-  json_inspect(log, content=["got 42"])
-}
-```
-
-A `get` that has *not* yet received a value, however, will raise the
-cancellation error normally — wrap it in `try ... catch` if you need
-to do cleanup.
+`@async.Queue::get` and `@async.Queue::put` are both **cancellation-safe**.
+When they fail due to cancellation, it is guaranteed that
+the cancelled `get`/`put` operation will not trigger any visible side effect
+(i.e. it appears as if the `get`/`put` operation never happened).
 
 ## Types Reference
 
