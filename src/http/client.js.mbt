@@ -267,6 +267,7 @@ pub async fn Client::request(
 
 ///|
 /// Perform a `GET` request to the server, see `Client::request` for more details.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn Client::get(
   self : Client,
   path : String,

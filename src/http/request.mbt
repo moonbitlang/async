@@ -96,6 +96,7 @@ async fn perform_request(
 /// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
@@ -137,6 +138,7 @@ pub async fn post(
 ///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get_stream(
   uri : String,
   headers? : Map[String, String] = {},
