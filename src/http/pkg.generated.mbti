@@ -9,8 +9,10 @@ import {
 }
 
 // Values
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
 
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get_stream(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, Client)
 
 pub async fn post(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data)
@@ -56,6 +58,7 @@ pub fn Client::close(Self) -> Unit
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
 pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
 pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
