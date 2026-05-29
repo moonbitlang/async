@@ -62,8 +62,7 @@ pub impl Show for WebSocketError with fn output(self, logger) {
       logger <+ "ConnectionClosed(\{close_code}, \{msg})"
     InvalidHandshake(msg) => logger <+ "InvalidHandshake(\{msg})"
     HandshakeRejected(msg, response) =>
-      logger
-        <+
+      logger <+
         "HandshakeRejected(\{msg}, \{response.code}, \{to_repr(response.reason)})"
     ProtocolError(msg) => logger <+ "ProtocolError(\{msg})"
   }

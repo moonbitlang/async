@@ -521,7 +521,12 @@ pub impl @io.Reader for Message with fn _get_internal_buffer(self) {
 }
 
 ///|
-pub impl @io.Reader for Message with fn _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Message with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   match self.state {
     Active => ()
     Closed => return 0

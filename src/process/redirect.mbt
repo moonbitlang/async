@@ -95,7 +95,12 @@ pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @io.Writer for WriteToProcess with fn write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for WriteToProcess with fn write_once(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let WriteToProcess(io) = self
   io.write(buf, offset~, len~, context="@process.WriteToProcess::write()")
 }
