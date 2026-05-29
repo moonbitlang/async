@@ -56,9 +56,6 @@ jobs:
       - name: moon check
         run: moon check --deny-warn
 
-      - name: moon check (test programs)
-        run: moon -C src/process/test_programs check --deny-warn
-
       - name: moon test
         run: moon test
 
@@ -113,9 +110,6 @@ jobs:
 
       - name: moon check
         run: moon check
-
-      - name: moon check (test programs)
-        run: moon -C src/process/test_programs check
 
       - name: moon test
         run: moon test
@@ -192,7 +186,6 @@ jobs:
       - name: format diff
         run: |
           moon fmt
-          moon fmt --manifest-path src/process/test_programs/moon.mod.json
           git diff --exit-code
 
   moon-info:
@@ -250,7 +243,7 @@ jobs:
 
       - name: setup sanitizer check
         run: |
-          moon run --debug src/process/test_programs/setup_sanitizer_check
+          moon run --debug test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |
@@ -293,7 +286,7 @@ jobs:
 
       - name: setup sanitizer check
         run: |
-          moon run --debug src/process/test_programs/setup_sanitizer_check
+          moon run --debug test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |

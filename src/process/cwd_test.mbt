@@ -38,10 +38,9 @@ async test "set cwd" {
     json_inspect(files, content=[
       "stub.c", "moon.pkg", "unix.mbt", "README.md", "windows.c", "process.mbt",
       "windows.mbt", "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md",
-      "test_programs", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
-      "cancellation.mbt", "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti",
-      "commands_for_test.mbt", "unimplemented_test.mbt", "spawn_in_group_test.mbt",
-      "windows_escape_wbtest.mbt",
+      "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt", "cancellation.mbt",
+      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "commands_for_test.mbt",
+      "unimplemented_test.mbt", "spawn_in_group_test.mbt", "windows_escape_wbtest.mbt",
     ])
   }
 }
