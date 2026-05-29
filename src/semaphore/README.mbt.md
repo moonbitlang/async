@@ -41,17 +41,17 @@ to a critical section.
 async test "mutex serializes access" {
   let mutex = @semaphore.Semaphore(1)
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     for i in 0..<3 {
-      root.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         mutex.acquire()
         defer mutex.release()
         log.push("task \{i}: enter")
         @async.sleep(50)
         log.push("task \{i}: leave")
-      })
+      }
     }
-  })
+  }
   // Every "enter" is followed by the same task's "leave" before
   // any other task enters.
   json_inspect(log, content=[
@@ -82,9 +82,9 @@ async test "bounded concurrency caps in-flight tasks" {
   let limit = @semaphore.Semaphore(3)
   let mut active = 0
   let mut peak = 0
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     for _ in 0..<8 {
-      root.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         limit.acquire()
         defer limit.release()
         active = active + 1
@@ -93,9 +93,9 @@ async test "bounded concurrency caps in-flight tasks" {
         }
         @async.sleep(30)
         active = active - 1
-      })
+      }
     }
-  })
+  }
   // 8 tasks competed for 3 permits; peak in-flight is exactly 3.
   inspect(peak, content="3")
   // All tasks finished — the counter is back to zero.
@@ -126,19 +126,19 @@ async test "one-shot signal" {
   // size 1, but starts empty — acquire blocks until release().
   let ready = @semaphore.Semaphore(1, initial_value=0)
   let log = []
-  @async.with_task_group(root => {
-    root.spawn_bg(() => {
+  @async.with_task_group <| group => {
+    group.spawn_bg() <| () => {
       log.push("waiter: parking")
       ready.acquire()
       log.push("waiter: unblocked")
-    })
-    root.spawn_bg(() => {
+    }
+    group.spawn_bg() <| () => {
       log.push("signaller: setup")
       @async.sleep(50)
       log.push("signaller: release")
       ready.release()
-    })
-  })
+    }
+  }
   json_inspect(log, content=[
     "waiter: parking", "signaller: setup", "signaller: release", "waiter: unblocked",
   ])
@@ -146,7 +146,7 @@ async test "one-shot signal" {
 ```
 
 > **Caveat:** `release()` wakes **one** waiter. If multiple tasks
-> need to react to the same event, use `@cond_var` (broadcast
+> need to react to the same event, use `@async.Cond` (broadcast
 > notification) instead.
 
 ### Count-down latch
@@ -161,19 +161,19 @@ async test "count-down latch waits for N events" {
   let n = 3
   let done = @semaphore.Semaphore(n, initial_value=0)
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     for i in 0..<n {
-      root.spawn_bg(() => {
+      group.spawn_bg() <| () => {
         @async.sleep(20 * (i + 1))
         log.push("worker \{i} done")
         done.release()
-      })
+      }
     }
     for _ in 0..<n {
       done.acquire()
     }
     log.push("all workers reported")
-  })
+  }
   json_inspect(log, content=[
     "worker 0 done", "worker 1 done", "worker 2 done", "all workers reported",
   ])
@@ -213,6 +213,10 @@ limiting where it's OK to drop a job, or polling. **Do not** use it
 in a busy-loop instead of `acquire()`; let the scheduler do the
 waiting for you.
 
+Note that `try_acquire` never break the FIFO fairness of `acquire`.
+When there are blocked `acquire` operations on the same semaphore,
+`try_acquire` always return `false`.
+
 ## Fairness
 
 When multiple tasks are blocked on `acquire()`, the semaphore wakes
@@ -226,23 +230,23 @@ async test "waiters are woken FIFO" {
   let sem = @semaphore.Semaphore(1)
   sem.acquire() // main holds the permit
   let log = []
-  @async.with_task_group(root => {
+  @async.with_task_group <| group => {
     // Task A starts waiting at ~0 ms.
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       sem.acquire()
       log.push("A acquired")
       sem.release()
-    })
+    }
     // Task B starts waiting at ~50 ms.
-    root.spawn_bg(() => {
+    group.spawn_bg() <| () => {
       @async.sleep(50)
       sem.acquire()
       log.push("B acquired")
       sem.release()
-    })
+    }
     @async.sleep(100)
     sem.release() // main hands off the permit
-  })
+  }
   // A queued first, so A wakes first.
   json_inspect(log, content=["A acquired", "B acquired"])
 }
@@ -250,38 +254,10 @@ async test "waiters are woken FIFO" {
 
 ## Cancellation Safety
 
-If a waiter is *just* about to acquire a permit (woken by
-`release()`) and is cancelled before it actually resumes, the
-semaphore preserves the permit for the now-cancelled task rather
-than silently leaking it. This is the same level-triggered
-cancellation discipline you saw in `@aqueue`.
-
-```moonbit check
-///|
-async test "permit is not lost when a woken waiter is cancelled" {
-  let sem = @semaphore.Semaphore(1)
-  sem.acquire() // main holds the only permit
-  let log = []
-  @async.with_task_group(root => {
-    let waiter = root.spawn(() => {
-      sem.acquire()
-      log.push("waiter acquired")
-    })
-    @async.sleep(50)
-    sem.release() // permit handed off to the waiter
-    waiter.cancel() // cancel after the hand-off
-    @async.sleep(50)
-  })
-  // The waiter ran and consumed the permit, so there's nothing left.
-  inspect(sem.try_acquire(), content="false")
-  json_inspect(log, content=["waiter acquired"])
-}
-```
-
-A waiter that has *not* yet been handed a permit, on the other hand,
-will raise the cancellation error normally — wrap `acquire()` in
-`try ... catch` if you need cleanup, or just let `with_task_group`
-unwind the stack.
+`@async.Semaphore::acquire` is **cancellation-safe**.
+When `acquire` is cancelled and fail with an error,
+it is guaranteed that the cancelled `acquire` operation will not trigger any visible side effect
+(i.e. it appears as if the `acquire` operation never happened).
 
 ## Types Reference
 
