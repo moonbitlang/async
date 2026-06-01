@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/raw_fd"
 
+import {
+  "moonbitlang/async/io",
+}
+
 // Values
 
 // Errors
@@ -15,6 +19,15 @@ pub async fn RawFd::RawFd(Int) -> Self
 pub fn RawFd::close(Self) -> Unit
 pub async fn RawFd::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 pub async fn RawFd::write(Self, Bytes, offset? : Int, len? : Int) -> Int
+
+pub struct RawFdStream {
+  fd : Int
+  // private fields
+}
+pub async fn RawFdStream::RawFdStream(Int) -> Self
+pub fn RawFdStream::close(Self) -> Unit
+pub impl @io.Reader for RawFdStream
+pub impl @io.Writer for RawFdStream
 
 // Type aliases
 

@@ -55,6 +55,41 @@ async test "pipe as raw fd" {
 }
 
 ///|
+async test "pipe as raw fd stream" {
+  let log = []
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=false,
+    context="pipe as raw fd",
+  )
+  assert_true(@event_loop.kind_of_fd(r, context="kind_of_fd") is Pipe)
+  assert_true(@event_loop.kind_of_fd(w, context="kind_of_fd") is Pipe)
+  @async.with_task_group <| group => {
+    group.spawn_bg() <| () => {
+      let r = @raw_fd.RawFdStream(r)
+      defer r.close()
+      while r.read_some() is Some(data) {
+        @async.sleep(50)
+        log.push("read() => \{@utf8.decode(data).escape()}")
+      }
+    }
+    group.spawn_bg() <| () => {
+      let w = @raw_fd.RawFdStream(w)
+      defer w.close()
+      for data in [b"abcd", b"1234", b"ABCD"] {
+        @async.sleep(200)
+        w.write(data)
+        log.push("write(\{@utf8.decode(data).escape()})")
+      }
+    }
+  }
+  json_inspect(log, content=[
+    "write(\"abcd\")", "read() => \"abcd\"", "write(\"1234\")", "read() => \"1234\"",
+    "write(\"ABCD\")", "read() => \"ABCD\"",
+  ])
+}
+
+///|
 async test "file as raw fd" {
   let truth = @fs.read_file("LICENSE").binary()
   let (io, _) = @event_loop.open(
@@ -81,6 +116,27 @@ async test "file as raw fd" {
   assert_eq(len, truth.length())
   let raw_fd_result = buf.unsafe_reinterpret_as_bytes()[:len]
   assert_eq(truth[:], raw_fd_result)
+}
+
+///|
+async test "file as raw fd stream" {
+  let truth = @fs.read_file("LICENSE").binary()
+  let (io, _) = @event_loop.open(
+    "LICENSE",
+    0,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context="file as raw fd test",
+  )
+  let fd = io.detach_from_event_loop()
+  let file = @raw_fd.RawFdStream(fd)
+  defer file.close()
+  assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
+  let actual = file.read_all().binary()
+  assert_eq(actual.length(), truth.length())
+  assert_eq(truth, actual)
 }
 
 ///|
