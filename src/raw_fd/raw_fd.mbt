@@ -86,3 +86,69 @@ pub async fn RawFd::write(
 ) -> Int {
   self.io.write(buf, offset~, len~, context="@raw_fd.RawFd::write()")
 }
+
+///|
+/// A wrapper around a raw file descriptor that can be used to
+/// perform asynchronous stream-based IO on the raw file descriptor
+/// via the `@io.Reader`/`@io.Writer` interface.
+/// This is useful for binding special file descriptors
+/// that are not natively supported by `moonbitlang/async`.
+pub struct RawFdStream {
+  fd : @fd_util.Fd
+  priv io : @event_loop.IoHandle
+  priv read_buf : @io.ReaderBuffer
+}
+
+///|
+/// Create a new `RawFdStream` object from the underlying file descriptor.
+/// The ownership of the file descriptor will be transferred to this function,
+/// so the file descriptor must not be used or closed directly later,
+/// even if creation of `RawFdStream` object failed.
+#cfg(not(platform="windows"))
+pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
+  let context = "@raw_fd.RawFdStream()"
+  let kind = @event_loop.kind_of_fd(fd, context~)
+  let is_async = @fd_util.fd_is_nonblocking(fd, context~)
+  let read_buf = @io.ReaderBuffer::new()
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~), read_buf }
+}
+
+///|
+/// Create a new `RawFdStream` object from the underlying file descriptor.
+/// The ownership of the file descriptor will be transferred to this function,
+/// so the file descriptor must not be used or closed directly later,
+/// even if creation of `RawFdStream` object failed.
+///
+/// The file descriptor (`HANDLE`) MUST NOT be overlapped.
+#cfg(platform="windows")
+pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
+  let context = "@raw_fd.RawFdStream()"
+  let kind = @event_loop.kind_of_fd(fd, context~)
+  let read_buf = @io.ReaderBuffer::new()
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false), read_buf }
+}
+
+///|
+pub fn RawFdStream::close(self : RawFdStream) -> Unit {
+  self.io.close()
+}
+
+///|
+pub impl @io.Reader for RawFdStream with fn _get_internal_buffer(self) {
+  self.read_buf
+}
+
+///|
+pub impl @io.Reader for RawFdStream with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.io.read(buf, offset~, len=max_len, context="@raw_fd.RawFdStream::read()")
+}
+
+///|
+pub impl @io.Writer for RawFdStream with fn write_once(self, buf, offset~, len~) {
+  self.io.write(buf, offset~, len~, context="@raw_fd.RawFdStream::write()")
+}
