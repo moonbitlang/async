@@ -51,7 +51,7 @@ let tmp_base_path : String = {
 /// The temporary directory name is not cryptographically secure.
 pub async fn tmpdir(prefix~ : StringView) -> String {
   for _ in 0..<@int.MAX_VALUE {
-    let hasher = Hasher::new()
+    let hasher = Hasher()
     hasher.combine_uint64(tmpdir_seed.uint64())
     hasher.combine_int64(@async.now())
     let h = hasher.finalize().reinterpret_as_uint()
