@@ -389,3 +389,15 @@ fn Watcher::add_dirty_child(
     }
   }
 }
+
+///|
+fn Watcher::overflow(self : Watcher) -> Unit {
+  for file in self.watched.values() {
+    file.modified = true
+    if file.is_dir {
+      for name, id in file.children {
+        file.dirty_children[name] = id
+      }
+    }
+  }
+}

@@ -228,11 +228,7 @@ async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
       }
 
       if event.has_overflow() {
-        for file_id, file in self.watcher.watched {
-          if file.is_dir {
-            self.watcher.mark_as_modified(file_id)
-          }
-        }
+        self.watcher.overflow()
         continue
       }
 

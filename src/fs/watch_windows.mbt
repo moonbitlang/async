@@ -170,11 +170,7 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
     self.debounce_timer.refresh()
     if n is 0 {
       // overflow
-      for file_id, file in self.watcher.watched {
-        if file.is_dir {
-          self.watcher.mark_as_modified(file_id)
-        }
-      }
+      self.watcher.overflow()
       continue
     }
     let mut offset = 0
