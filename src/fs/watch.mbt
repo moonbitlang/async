@@ -45,6 +45,7 @@ priv trait WatcherBackend {
 }
 
 ///|
+/// A file system watcher for watching changes in a directory.
 struct Watcher {
   mut backend : &WatcherBackend?
   root_id : FileIdentity
@@ -91,6 +92,14 @@ fn Watcher::new_backend(
 }
 
 ///|
+/// Create a new file system watcher that watches the directory `path` recursively.
+/// Currently only recursive directory watching is supported.
+///
+/// When files are created, removed, modified or renamed inside `path`,
+/// the watcher will get notified and report events for the change.
+/// New files will be watched automatically, and removed files will be unwatched automatically.
+///
+/// Currently, the behavior when `path` itself is renamed or removed is undefined.
 pub async fn Watcher::Watcher(path : String) -> Watcher {
   let context = "@fs.Watcher()"
   let path = path.trim_end(chars="/")
@@ -157,6 +166,8 @@ fn rel_path(parent : String, name : String) -> String {
 }
 
 ///|
+/// Wait for any change in the watched tree
+/// since the last `wait_any` call or watcher creation.
 pub async fn Watcher::wait_any(self : Watcher) -> Unit {
   let context = "@fs.Watcher::wait()"
   guard self.backend is Some(backend)
