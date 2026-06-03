@@ -113,6 +113,7 @@ impl WatcherBackend for KqueueWatcher with fn remove_file(self, fd, context~) {
   ignore(context)
   let file = self.watched[fd]
   file.io.close()
+  self.watched.remove(fd)
 }
 
 ///|

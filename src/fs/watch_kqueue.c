@@ -122,7 +122,7 @@ int moonbitlang_async_kqueue_watcher_event_get_fd(struct kevent *event) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_kqueue_watcher_event_has_modify(struct kevent *event) {
 #ifdef __MACH__
-  return (event->filter & (NOTE_WRITE | NOTE_EXTEND)) != 0;
+  return (event->fflags & (NOTE_WRITE | NOTE_EXTEND)) != 0;
 #else
   moonbit_panic();
 #endif

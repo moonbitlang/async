@@ -202,9 +202,10 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
               break path[:i]
             }
           } nobreak {
-            path
+            ""
           }
         }
+        // file change in the root directory
         let (file, file_info) = @event_loop.open(
           "\{self.watcher.base_path}\\\{path}",
           0,
