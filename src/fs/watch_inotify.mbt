@@ -107,27 +107,19 @@ impl WatcherBackend for InotifyWatcher with fn wait(self) {
 
 ///|
 #cfg(not(platform="windows"))
-#borrow(path)
-extern "C" fn InotifyWatcher::add_file_ffi(
-  inotify_fd : @fd_util.Fd,
-  path : @os_string.OsString,
-  is_dir~ : Bool,
-) -> @fd_util.Fd = "moonbitlang_async_inotify_add_file"
-
-///|
-#cfg(not(platform="windows"))
 impl WatcherBackend for InotifyWatcher with fn add_file(
   self,
-  path_str,
+  path,
   is_dir~,
   file_id~,
   context~,
 ) {
-  let path = @os_string.encode(path_str)
-  let wd = InotifyWatcher::add_file_ffi(self.inotify.fd(), path, is_dir~)
-  if !@fd_util.fd_is_valid(wd) {
-    @os_error.check_errno("\{context}: \{path_str.escape()}")
-  }
+  let wd = @event_loop.inotify_add_watch(
+    self.inotify.fd(),
+    path,
+    is_dir~,
+    context~,
+  )
   self.watched[wd] = file_id
   wd
 }

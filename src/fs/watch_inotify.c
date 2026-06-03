@@ -43,18 +43,6 @@ int moonbitlang_async_inotify_create() {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_inotify_add_file(int inotify, const char *path, int32_t is_dir) {
-#ifdef __linux__
-  uint32_t flags = is_dir
-    ? IN_CREATE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE
-    : IN_MODIFY;
-  return inotify_add_watch(inotify, path, flags);
-#else
-  moonbit_panic();
-#endif
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_remove_file(int inotify, int wd) {
 #ifdef __linux__
   return inotify_rm_watch(inotify, wd);

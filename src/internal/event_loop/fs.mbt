@@ -290,6 +290,23 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
 }
 
 ///|
+#cfg(not(platform="windows"))
+pub async fn inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : StringView,
+  is_dir~ : Bool,
+  context~ : String,
+) -> @fd_util.Fd {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::inotify_add_watch(inotify, path_bytes, is_dir)
+  perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  }
+}
+
+///|
 #cfg(platform="windows")
 extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read_dir_changes"
 

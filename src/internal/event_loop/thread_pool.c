@@ -52,6 +52,7 @@
 #ifdef __linux__
 #include <sys/syscall.h>
 #include <linux/fs.h>
+#include <sys/inotify.h>
 #endif
 
 #ifdef __MACH__
@@ -2341,3 +2342,57 @@ struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
 }
 
 #endif // #ifndef _WIN32, sigwait job
+
+#ifndef _WIN32
+
+// ===== inotify_add_watch job, add path to watch with inotify =====
+struct inotify_add_watch_job {
+  struct job job;
+  HANDLE inotify;
+  char *path;
+  int32_t is_dir;
+};
+
+static
+void free_inotify_add_watch_job(void *obj) {
+  struct inotify_add_watch_job *job = (struct inotify_add_watch_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void inotify_add_watch_job_worker(struct job *job) {
+  struct inotify_add_watch_job *inotify_add_watch_job = (struct inotify_add_watch_job*)job;
+
+#ifdef __linux__
+
+  uint32_t flags = inotify_add_watch_job->is_dir
+    ? IN_CREATE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE
+    : IN_MODIFY;
+
+  job->ret = inotify_add_watch(inotify_add_watch_job->inotify, inotify_add_watch_job->path, flags);
+  if (job->ret < 0)
+    job->err = errno;
+
+#else
+
+  job->err = ENOSYS;
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+struct inotify_add_watch_job *moonbitlang_async_make_inotify_add_watch_job(
+  HANDLE inotify,
+  char *path,
+  int32_t is_dir
+) {
+  struct inotify_add_watch_job *job = MAKE_JOB(inotify_add_watch);
+
+  job->inotify = inotify;
+  job->path = path;
+  job->is_dir = is_dir;
+
+  return job;
+}
+
+#endif // #ifndef _WIN32, `inotify_add_watch` job

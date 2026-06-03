@@ -293,5 +293,14 @@ extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_
 extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
 
 ///|
+#cfg(not(platform="windows"))
+#owned(path)
+extern "C" fn Job::inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : @os_string.OsString,
+  is_dir : Bool,
+) -> Job = "moonbitlang_async_make_inotify_add_watch_job"
+
+///|
 #cfg(platform="windows")
 let _mute_unused_warning : Unit = ignore(@c_buffer.Buffer::get)
