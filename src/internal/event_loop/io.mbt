@@ -26,10 +26,11 @@ pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
 /// Close a file descriptor and detach it from the event loop.
 /// This function is idempotent: it is safe to call `.close()` multiple times.
 pub fn IoHandle::close(handle : IoHandle) -> Unit {
-  let fd = handle.detach_from_event_loop()
-  if @fd_util.fd_is_valid(fd) {
-    @fd_util.close(fd, kind=handle.kind, context="") catch {
+  handle.detach_from_event_loop()
+  if @fd_util.fd_is_valid(handle.fd) {
+    @fd_util.close(handle.fd, kind=handle.kind, context="") catch {
       _ => ()
     }
   }
+  handle.fd = @fd_util.invalid_fd
 }

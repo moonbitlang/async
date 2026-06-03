@@ -121,18 +121,15 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 /// but does not close the file descriptor itself.
 /// The underlying file descriptor is returned.
 #cfg(not(platform="windows"))
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
+  guard @fd_util.fd_is_valid(handle.fd) else { return }
   evloop.fds.remove(handle.fd)
   if !(handle.events is NoEvent) {
     evloop.poll.remove(handle.fd, events=handle.events) catch {
       err => abort("detach \{handle.fd} from loop: \{err}")
     }
   }
-  let fd = handle.fd
-  handle.fd = @fd_util.invalid_fd
-  fd
 }
 
 ///|

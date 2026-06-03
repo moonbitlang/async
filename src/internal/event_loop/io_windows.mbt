@@ -175,13 +175,10 @@ pub fn IoHandle::from_fd(
 
 ///|
 #cfg(platform="windows")
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
+  guard @fd_util.fd_is_valid(handle.fd) else { return }
   evloop.fds.remove(handle.fd)
-  let fd = handle.fd
-  handle.fd = @fd_util.invalid_fd
-  fd
 }
 
 ///|

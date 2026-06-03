@@ -42,7 +42,7 @@ fn setup_stdio(fd : Int, context~ : String) -> IoHandle {
       evloop.fds[fd] = handle
     },
     exit=() => {
-      let _ = handle.detach_from_event_loop()
+      handle.detach_from_event_loop()
       handle.events = NoEvent
     },
   )
@@ -85,7 +85,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
       guard evloop.fds.get(fd) is None
       evloop.fds[fd] = handle
     },
-    exit=() => ignore(handle.detach_from_event_loop()),
+    exit=() => handle.detach_from_event_loop(),
   )
   handle
 }
