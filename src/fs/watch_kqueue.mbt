@@ -26,6 +26,8 @@ priv struct KqueueWatcher {
   watched : Map[@fd_util.Fd, KqueueWatchedFile]
   watcher : Watcher
   event_buffer : FixedArray[Byte]
+  debounce_timeout : Int
+  max_debounce_delay : Int
 }
 
 ///|
@@ -40,6 +42,8 @@ extern "C" fn KqueueWatcher::event_buffer_size() -> Int = "moonbitlang_async_kqu
 #cfg(not(platform="windows"))
 fn KqueueWatcher::KqueueWatcher(
   watcher : Watcher,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
   context~ : String,
 ) -> KqueueWatcher raise {
   let kqueue = KqueueWatcher::new_ffi()
@@ -51,6 +55,8 @@ fn KqueueWatcher::KqueueWatcher(
     watched: {},
     watcher,
     event_buffer: FixedArray::make(KqueueWatcher::event_buffer_size(), 0),
+    debounce_timeout,
+    max_debounce_delay,
   }
 }
 
@@ -151,11 +157,14 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
   while root.is_clean() {
     self.process_events(timeout=None, context~)
   }
-  let debounce_deadline = @async.now() + 200
+  let debounce_deadline = @async.now() + self.max_debounce_delay.to_int64()
   for ;; {
-    let t = @cmp.minimum(debounce_deadline - @async.now(), 20)
+    let t = @cmp.minimum(
+      (debounce_deadline - @async.now()).to_int(),
+      self.debounce_timeout,
+    )
     guard t > 0 else { break }
-    self.process_events(timeout=Some(t.to_int()), context~) catch {
+    self.process_events(timeout=Some(t), context~) catch {
       @async.TimeoutError => break
       err => raise err
     }

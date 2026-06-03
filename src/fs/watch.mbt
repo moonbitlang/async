@@ -68,10 +68,12 @@ fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
   context~ : String,
 ) -> &WatcherBackend {
   ignore(context)
-  WindowsWatcher(self, root, root_id~)
+  WindowsWatcher(self, root, root_id~, debounce_timeout~, max_debounce_delay~)
 }
 
 ///|
@@ -80,13 +82,19 @@ fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
   context~ : String,
 ) -> &WatcherBackend raise {
   ignore(root_id)
   root.close()
   match @event_loop.platform {
-    Linux => InotifyWatcher(self, context~) as &WatcherBackend
-    MacOS => KqueueWatcher(self, context~) as &WatcherBackend
+    Linux =>
+      InotifyWatcher(self, debounce_timeout~, max_debounce_delay~, context~)
+      as &WatcherBackend
+    MacOS =>
+      KqueueWatcher(self, debounce_timeout~, max_debounce_delay~, context~)
+      as &WatcherBackend
     Windows => panic()
   }
 }
@@ -99,8 +107,20 @@ fn Watcher::new_backend(
 /// the watcher will get notified and report events for the change.
 /// New files will be watched automatically, and removed files will be unwatched automatically.
 ///
+/// File system events often come in batch.
+/// For example, removing a directory recursively will result in several removal event in a row.
+/// By default `Watcher` will perform debouncing internally:
+/// when many events are happening in sequence, instead of immediately return on the first event,
+/// `Watcher::wait_any` will wait until no event is happening
+/// within the last `debounce_timeout` ms (defaults to 20ms),
+/// or if `max_debounce_delay` ms (defaults to 200ms) has elapsed since the first event.
+///
 /// Currently, the behavior when `path` itself is renamed or removed is undefined.
-pub async fn Watcher::Watcher(path : String) -> Watcher {
+pub async fn Watcher::Watcher(
+  path : String,
+  debounce_timeout? : Int = 20,
+  max_debounce_delay? : Int = 200,
+) -> Watcher {
   let context = "@fs.Watcher()"
   let path = path.trim_end(chars="/")
   let path = if path is "" { "/" } else { path.to_owned() }
@@ -133,7 +153,13 @@ pub async fn Watcher::Watcher(path : String) -> Watcher {
     pending_remove: Set([]),
   }
   try {
-    let backend = self.new_backend(root_file, root_id~, context~)
+    let backend = self.new_backend(
+      root_file,
+      root_id~,
+      debounce_timeout~,
+      max_debounce_delay~,
+      context~,
+    )
     self.backend = Some(backend)
     let root_wd = backend.add_file(path, is_dir=true, file_id=root_id, context~)
     let root = {

@@ -22,6 +22,7 @@ priv struct WindowsWatcher {
   mut err : Error?
   mut waiter : @coroutine.Coroutine?
   debounce_timer : @async.Timer
+  max_debounce_delay : Int
 }
 
 ///|
@@ -30,6 +31,8 @@ fn WindowsWatcher::WindowsWatcher(
   watcher : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
 ) -> WindowsWatcher {
   let self = {
     root,
@@ -38,7 +41,8 @@ fn WindowsWatcher::WindowsWatcher(
     err: None,
     waiter: None,
     event_processor: None,
-    debounce_timer: @async.Timer(20),
+    debounce_timer: @async.Timer(debounce_timeout),
+    max_debounce_delay,
   }
   self.event_processor = Some(
     @coroutine.spawn(() => {
@@ -104,7 +108,7 @@ impl WatcherBackend for WindowsWatcher with fn wait(self) {
       raise err
     }
   }
-  @async.with_timeout(200, () => self.debounce_timer.wait()) catch {
+  @async.with_timeout(self.max_debounce_delay, () => self.debounce_timer.wait()) catch {
     @async.TimeoutError => ()
     err => raise err
   }

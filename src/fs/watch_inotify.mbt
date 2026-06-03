@@ -22,6 +22,7 @@ priv struct InotifyWatcher {
   mut err : Error?
   mut waiter : @coroutine.Coroutine?
   debounce_timer : @async.Timer
+  max_debounce_delay : Int
 }
 
 ///|
@@ -32,6 +33,8 @@ extern "C" fn InotifyWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang_async_inot
 #cfg(not(platform="windows"))
 fn InotifyWatcher::InotifyWatcher(
   watcher : Watcher,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
   context~ : String,
 ) -> InotifyWatcher raise {
   let inotify_fd = InotifyWatcher::new_ffi()
@@ -49,7 +52,8 @@ fn InotifyWatcher::InotifyWatcher(
     event_processor: None,
     waiter: None,
     err: None,
-    debounce_timer: @async.Timer(20),
+    debounce_timer: @async.Timer(debounce_timeout),
+    max_debounce_delay,
   }
   self.event_processor = Some(
     @coroutine.spawn(() => {
@@ -99,7 +103,7 @@ impl WatcherBackend for InotifyWatcher with fn wait(self) {
       raise err
     }
   }
-  @async.with_timeout(200, () => self.debounce_timer.wait()) catch {
+  @async.with_timeout(self.max_debounce_delay, () => self.debounce_timer.wait()) catch {
     @async.TimeoutError => ()
     err => raise err
   }
