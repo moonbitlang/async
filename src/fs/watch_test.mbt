@@ -442,3 +442,149 @@ async test "watch vertical swap" {
     ),
   )
 }
+
+///|
+async test "watch ignored path" {
+  let log = []
+  @async.with_task_group(group => {
+    let path = "_build/watch_ignored_path_test"
+    let test_dir = Dir({
+      "ignored": Dir({ "file": File("abcd") }),
+      "normal": Dir({ "file": File("efgh") }),
+    })
+    test_dir.instantiate(path)
+    group.add_defer(() => {
+      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
+    })
+
+    let watcher = @fs.Watcher(path, ignored_paths=path => path is "ignored")
+    group.spawn_bg(no_wait=true, () => {
+      defer watcher.close()
+      for ;; {
+        watcher.wait_any()
+        log.push("watcher received change")
+      }
+    })
+
+    // 1. modify file in ignored path
+    log.push("writing to ignored/file")
+    @fs.write_file("\{path}/ignored/file", "ABCD", create_mode=OpenExisting)
+    @async.sleep(150)
+
+    // 2. modify file in normal path
+    log.push("writing to normal/file")
+    @fs.write_file("\{path}/normal/file", "EFGH", create_mode=OpenExisting)
+    @async.sleep(150)
+
+    // 3. create file in ignored directory
+    {
+      log.push("creating new file in ignored directory")
+      let file = @fs.create("\{path}/ignored/file2")
+      defer file.close()
+      @async.sleep(150)
+
+      // 4. modify content of newly created file at ignored directory
+      log.push("writing to newly created file in ignored directory")
+      file.write("ABCD")
+    }
+    @async.sleep(150)
+
+    // 5. create file in normal directory
+    {
+      log.push("creating new file in normal directory")
+      let file = @fs.create("\{path}/normal/file2")
+      defer file.close()
+      @async.sleep(150)
+
+      // 6. modify content of newly created file at normal directory
+      log.push("writing to newly created file in normal directory")
+      file.write("EFGH")
+    }
+    @async.sleep(150)
+
+    // 7. remove a file in ignored directory
+    log.push("removing file in ignored directory")
+    @fs.remove("\{path}/ignored/file")
+    @async.sleep(150)
+
+    // 8. remove a file in normal directory
+    log.push("removing file in normal directory")
+    @fs.remove("\{path}/normal/file")
+    @async.sleep(150)
+
+    // 9. remove ignored directory
+    log.push("removing ignored directory")
+    @fs.rmdir("\{path}/ignored", recursive=true)
+    @async.sleep(150)
+
+    // 10. remove normal directory
+    log.push("removing normal directory")
+    @fs.rmdir("\{path}/normal", recursive=true)
+    @async.sleep(150)
+
+    // 11. re-create directory at ignored path
+    log.push("re-creating directory at ignored path")
+    @fs.mkdir("\{path}/ignored")
+    @async.sleep(150)
+
+    // 12. create new file in re-created ignored path
+    {
+      log.push("creating new file in re-created directory at normal path")
+      let file = @fs.create("\{path}/ignored/file")
+      defer file.close()
+      @async.sleep(150)
+
+      // 13. create new file in re-created ignored path
+      log.push("writing to newly created file in ignored directory")
+      file.write("ABCD")
+    }
+    @async.sleep(150)
+
+    // 14. re-create directory at normal path
+    log.push("re-creating directory at normal path")
+    @fs.mkdir("\{path}/normal")
+    @async.sleep(150)
+
+    // 15. create new file in re-created normal path
+    {
+      log.push("creating new file in re-created directory at normal path")
+      let file = @fs.create("\{path}/normal/file")
+      defer file.close()
+      @async.sleep(150)
+
+      // 16. create new file in re-created normal path
+      log.push("writing to newly created file in normal directory")
+      file.write("EFGH")
+    }
+    @async.sleep(150)
+  })
+  inspect(
+    log.join("\n"),
+    content=(
+      #|writing to ignored/file
+      #|writing to normal/file
+      #|watcher received change
+      #|creating new file in ignored directory
+      #|writing to newly created file in ignored directory
+      #|creating new file in normal directory
+      #|watcher received change
+      #|writing to newly created file in normal directory
+      #|watcher received change
+      #|removing file in ignored directory
+      #|removing file in normal directory
+      #|watcher received change
+      #|removing ignored directory
+      #|removing normal directory
+      #|watcher received change
+      #|re-creating directory at ignored path
+      #|creating new file in re-created directory at normal path
+      #|writing to newly created file in ignored directory
+      #|re-creating directory at normal path
+      #|watcher received change
+      #|creating new file in re-created directory at normal path
+      #|watcher received change
+      #|writing to newly created file in normal directory
+      #|watcher received change
+    ),
+  )
+}

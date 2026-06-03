@@ -52,6 +52,8 @@ struct Watcher {
   base_path : String
   watched : Map[FileIdentity, WatchedFile]
   pending_remove : Set[FileIdentity]
+  ignored_paths : (String) -> Bool
+  mut event_count : Int
 }
 
 ///|
@@ -115,11 +117,20 @@ fn Watcher::new_backend(
 /// within the last `debounce_timeout` ms (defaults to 20ms),
 /// or if `max_debounce_delay` ms (defaults to 200ms) has elapsed since the first event.
 ///
+/// `ignored_paths`, if present, can be used to filter out paths that the user don't want to watch.
+/// When a file or directory is going to be watched, its path
+/// (relative to root of watched tree, using `/` as path separator) will be supplied to `ignored_paths`.
+/// If `ignored_paths` return `true`, the file or directory will be ignored.
+/// When a directory is ignored, all files/directories within it are also ignored.
+/// So to ignore a single directory,
+/// `ignored_paths` only need to handle paths of the files inside that ignored directory.
+///
 /// Currently, the behavior when `path` itself is renamed or removed is undefined.
 pub async fn Watcher::Watcher(
   path : String,
   debounce_timeout? : Int = 20,
   max_debounce_delay? : Int = 200,
+  ignored_paths? : (String) -> Bool = _ => false,
 ) -> Watcher {
   let context = "@fs.Watcher()"
   let path = path.trim_end(chars="/")
@@ -151,6 +162,8 @@ pub async fn Watcher::Watcher(
     base_path: path,
     watched: {},
     pending_remove: Set([]),
+    ignored_paths,
+    event_count: 0,
   }
   try {
     let backend = self.new_backend(
@@ -173,6 +186,7 @@ pub async fn Watcher::Watcher(
     }
     self.watched[root_id] = root
     self.synchronize_tree(context~)
+    self.event_count = 0
     self
   } catch {
     err => {
@@ -197,8 +211,11 @@ fn rel_path(parent : String, name : String) -> String {
 pub async fn Watcher::wait_any(self : Watcher) -> Unit {
   let context = "@fs.Watcher::wait()"
   guard self.backend is Some(backend)
-  backend.wait()
-  self.synchronize_tree(context~)
+  while self.event_count <= 0 {
+    backend.wait()
+    self.synchronize_tree(context~)
+  }
+  self.event_count = 0
   while self.pending_remove.iter().next() is Some(file_id) {
     self.pending_remove.remove(file_id)
     let file = self.watched[file_id]
@@ -257,6 +274,9 @@ async fn Watcher::add_file_at(
   path~ : String,
   context~ : String,
 ) -> Unit {
+  if (self.ignored_paths)(path) {
+    return
+  }
   if dir.children.get(name) is Some(curr_id) {
     if curr_id == file_id {
       return
@@ -264,6 +284,7 @@ async fn Watcher::add_file_at(
       self.remove_file_at(dir, name)
     }
   }
+  self.event_count += 1
   let location = (dir.file_id, name)
   let file = self.get_file_at(path~, is_dir~, file_id~, context~)
   dir.children[name] = file.file_id
@@ -318,6 +339,7 @@ async fn Watcher::scan_dir(
     removed_children.remove(ent.name)
   }
   for name in removed_children.keys() {
+    self.event_count += 1
     self.remove_file_at(dir, name)
   }
 }
@@ -341,6 +363,8 @@ async fn Watcher::synchronize_file(
     file.modified = false
     if file.is_dir {
       self.scan_dir(file, path~, context~)
+    } else {
+      self.event_count += 1
     }
   } else if file.dirty_children.iter().next() is Some((name, child_id)) {
     let child = self.watched[child_id]
