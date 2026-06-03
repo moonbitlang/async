@@ -54,6 +54,14 @@ pub struct Lazy[X] {
 pub fn[X] Lazy::Lazy(async () -> X) -> Self[X]
 pub async fn[X] Lazy::wait(Self[X]) -> X
 
+pub struct Mutex {
+  // private fields
+}
+pub fn Mutex::Mutex() -> Self
+pub async fn Mutex::acquire(Self) -> Unit
+pub fn Mutex::release(Self) -> Unit
+pub fn Mutex::try_acquire(Self) -> Bool
+
 pub(all) enum RetryMethod {
   Immediate
   FixedDelay(Int)
