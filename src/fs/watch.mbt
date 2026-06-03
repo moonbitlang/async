@@ -54,6 +54,7 @@ struct Watcher {
   pending_remove : Set[FileIdentity]
   ignored_paths : (String) -> Bool
   mut event_count : Int
+  mut synchronize_task : @coroutine.Coroutine?
 }
 
 ///|
@@ -61,6 +62,9 @@ pub fn Watcher::close(self : Watcher) -> Unit {
   if self.backend is Some(backend) {
     self.backend = None
     backend.close()
+  }
+  if self.synchronize_task is Some(task) {
+    task.cancel()
   }
 }
 
@@ -164,6 +168,7 @@ pub async fn Watcher::Watcher(
     pending_remove: Set([]),
     ignored_paths,
     event_count: 0,
+    synchronize_task: None,
   }
   try {
     let backend = self.new_backend(
@@ -210,7 +215,12 @@ fn rel_path(parent : String, name : String) -> String {
 /// since the last `wait_any` call or watcher creation.
 pub async fn Watcher::wait_any(self : Watcher) -> Unit {
   let context = "@fs.Watcher::wait()"
-  guard self.backend is Some(backend)
+  guard self.backend is Some(backend) else {
+    raise Failure::Failure("watcher already closed")
+  }
+  if self.synchronize_task is Some(task) {
+    task.wait()
+  }
   while self.event_count <= 0 {
     backend.wait()
     self.synchronize_tree(context~)
@@ -249,7 +259,9 @@ async fn Watcher::get_file_at(
 
   let full_path = "\{self.base_path}/\{path}"
 
-  guard self.backend is Some(backend)
+  guard self.backend is Some(backend) else {
+    raise Failure::Failure("watcher already closed")
+  }
   let wd = backend.add_file(full_path, is_dir~, file_id~, context~)
   let new_file = {
     wd,
@@ -346,10 +358,21 @@ async fn Watcher::scan_dir(
 
 ///|
 async fn Watcher::synchronize_tree(self : Watcher, context~ : String) -> Unit {
-  let root = self.watched[self.root_id]
-  while !root.is_clean() {
-    self.synchronize_file(root, path="", context~)
+  if self.synchronize_task is Some(task) {
+    task.wait()
+    return
   }
+  let task = @coroutine.spawn <| () => {
+    defer {
+      self.synchronize_task = None
+    }
+    let root = self.watched[self.root_id]
+    while !root.is_clean() {
+      self.synchronize_file(root, path="", context~)
+    }
+  }
+  self.synchronize_task = Some(task)
+  task.wait()
 }
 
 ///|
