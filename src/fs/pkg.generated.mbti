@@ -131,7 +131,7 @@ pub(all) enum SyncMode {
 pub struct Watcher {
   // private fields
 }
-pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int) -> Self
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, ignored_paths? : (String) -> Bool) -> Self
 pub fn Watcher::close(Self) -> Unit
 pub async fn Watcher::wait_any(Self) -> Unit
 
