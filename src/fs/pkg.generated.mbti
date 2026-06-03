@@ -76,6 +76,7 @@ pub async fn Directory::read_all(Self, include_hidden? : Bool, include_special? 
 pub struct DirectoryEntry {
   name : String
   is_dir : Bool
+  // private fields
 }
 
 type File
@@ -126,6 +127,13 @@ pub(all) enum SyncMode {
   Data
   Full
 }
+
+pub struct Watcher {
+  // private fields
+}
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int) -> Self
+pub fn Watcher::close(Self) -> Unit
+pub async fn Watcher::wait_any(Self) -> Unit
 
 // Type aliases
 

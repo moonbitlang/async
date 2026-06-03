@@ -34,6 +34,8 @@ pub async fn file_time_by_path(StringView, follow_symlink~ : Bool, context~ : St
 
 pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
 
+pub async fn inotify_add_watch(Int, StringView, is_dir~ : Bool, context~ : String) -> Int
+
 pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
@@ -93,16 +95,20 @@ pub fn IoHandle::from_fd(Int, kind~ : @fd_util.FileKind, is_async? : Bool) -> Se
 pub async fn IoHandle::fsync(Self, only_data~ : Bool, context~ : String) -> Unit
 pub fn IoHandle::kind(Self) -> @fd_util.FileKind
 pub async fn IoHandle::lock(Self, exclusive~ : Bool, context~ : String) -> Unit
+pub fn IoHandle::prepare_read(Self) -> Unit raise
 pub async fn IoHandle::read(Self, FixedArray[Byte], offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::read_at(Self, FixedArray[Byte], offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Int
-pub async fn IoHandle::readdir(Self, FixedArray[Byte], Int, context~ : String) -> Int
+pub async fn IoHandle::readdir(Self, FixedArray[Byte], Int, restart~ : Bool, context~ : String) -> Int
 pub async fn IoHandle::recvfrom(Self, FixedArray[Byte], offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
 pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : Bytes, context~ : String) -> Int
+pub async fn IoHandle::wait_read(Self) -> Unit
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
 
 type OpenResult
+pub fn OpenResult::dev_id(Self) -> UInt64
 pub fn OpenResult::fd(Self) -> Int
+pub fn OpenResult::file_id(Self) -> UInt64
 pub fn OpenResult::kind(Self) -> @fd_util.FileKind
 
 pub(all) enum Platform {

@@ -52,6 +52,7 @@
 #ifdef __linux__
 #include <sys/syscall.h>
 #include <linux/fs.h>
+#include <sys/inotify.h>
 #endif
 
 #ifdef __MACH__
@@ -95,7 +96,9 @@ typedef int SOCKET;
 // defined in `detect_file_kind.c`
 int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
 
-#ifndef _WIN32
+#ifdef _WIN32
+int32_t moonbitlang_async_file_kind_from_attr(DWORD attrs);
+#else
 int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
 #endif
 
@@ -685,7 +688,7 @@ struct open_job {
   int mode;
   HANDLE result;
 #ifdef _WIN32
-  int32_t kind;
+  BY_HANDLE_FILE_INFORMATION stat;
 #else
   struct stat stat;
 #endif
@@ -700,10 +703,15 @@ void free_open_job(void *obj) {
 static
 void open_job_worker(struct job *job) {
 #ifdef _WIN32
-  static int access_flags[] = { GENERIC_READ, GENERIC_WRITE, GENERIC_READ | GENERIC_WRITE };
+  static int access_flags[] = {
+    GENERIC_READ,
+    GENERIC_WRITE,
+    GENERIC_READ | GENERIC_WRITE,
+    FILE_LIST_DIRECTORY
+  };
   static int create_modes[] = { OPEN_EXISTING, TRUNCATE_EXISTING, OPEN_ALWAYS, CREATE_ALWAYS, CREATE_NEW };
 #else
-  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR };
+  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY };
   static int create_modes[] = {
     0,
     O_TRUNC,
@@ -718,6 +726,8 @@ void open_job_worker(struct job *job) {
 
 #ifdef _WIN32
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
+  if (open_job->access == 3)
+    flags |= FILE_FLAG_OVERLAPPED;
 
   DWORD access_flag = access_flags[open_job->access];
   if (open_job->append)
@@ -751,9 +761,12 @@ void open_job_worker(struct job *job) {
     }
   } while (0);
 
+  if (open_job->access == 4) {
+    printf("open() => %lx\n", open_job->result);
+  }
+
   // get the kind of the file
-  open_job->kind = moonbitlang_async_kind_of_fd(open_job->result);
-  if (open_job->kind < 0) {
+  if (!GetFileInformationByHandle(open_job->result, &open_job->stat)) {
     job->err = GetLastError();
     CloseHandle(open_job->result);
   }
@@ -813,9 +826,27 @@ HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
 #ifdef _WIN32
-  return job->kind;
+  return moonbitlang_async_kind_from_attr(job->stat.dwFileAttributes);
 #else
   return moonbitlang_async_file_kind_from_stat(&job->stat);
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
+#ifdef _WIN32
+  return job->stat.dwVolumeSerialNumber;
+#else
+  return job->stat.st_dev;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
+#ifdef _WIN32
+  return ((uint64_t)(job->stat.nFileIndexHigh) << 32) | (uint64_t)(job->stat.nFileIndexLow);
+#else
+  return job->stat.st_ino;
 #endif
 }
 
@@ -1535,6 +1566,7 @@ struct readdir_job {
   HANDLE dir;
   void *out;
   int32_t len;
+  int32_t restart;
 };
 
 static
@@ -1551,7 +1583,7 @@ void readdir_job_worker(struct job *job) {
   if (
     !GetFileInformationByHandleEx(
       readdir_job->dir,
-      FileIdBothDirectoryInfo,
+      readdir_job->restart ?  FileIdBothDirectoryRestartInfo : FileIdBothDirectoryInfo,
       readdir_job->out,
       readdir_job->len
     )
@@ -1568,16 +1600,26 @@ void readdir_job_worker(struct job *job) {
 
 #elif defined(__linux__)
 
+  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
+    job->err = errno;
+    return;
+  }
+
   job->ret = syscall(SYS_getdents64, readdir_job->dir, readdir_job->out, readdir_job->len);
   if (job->ret < 0)
     job->err = errno;
 
 #elif defined(__MACH__)
 
+  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
+    job->err = errno;
+    return;
+  }
+
   struct attrlist attr_spec = {
     ATTR_BIT_MAP_COUNT,
     0, // reserved
-    ATTR_CMN_NAME | ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_OBJTYPE, // commonattr
+    ATTR_CMN_NAME | ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_OBJTYPE | ATTR_CMN_FILEID, // commonattr
     0, // volattr
     0, // dirattr
     0, // fileattr
@@ -1594,11 +1636,17 @@ void readdir_job_worker(struct job *job) {
 #endif
 }
 
-struct readdir_job *moonbitlang_async_make_readdir_job(HANDLE dir, void *out, int32_t len) {
+struct readdir_job *moonbitlang_async_make_readdir_job(
+  HANDLE dir,
+  void *out,
+  int32_t len,
+  int32_t restart
+) {
   struct readdir_job *job = MAKE_JOB(readdir);
   job->dir = dir;
   job->out = out;
   job->len = len;
+  job->restart = restart;
   return job;
 }
 
@@ -2294,3 +2342,57 @@ struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
 }
 
 #endif // #ifndef _WIN32, sigwait job
+
+#ifndef _WIN32
+
+// ===== inotify_add_watch job, add path to watch with inotify =====
+struct inotify_add_watch_job {
+  struct job job;
+  HANDLE inotify;
+  char *path;
+  int32_t is_dir;
+};
+
+static
+void free_inotify_add_watch_job(void *obj) {
+  struct inotify_add_watch_job *job = (struct inotify_add_watch_job*)obj;
+  moonbit_decref(job->path);
+}
+
+static
+void inotify_add_watch_job_worker(struct job *job) {
+  struct inotify_add_watch_job *inotify_add_watch_job = (struct inotify_add_watch_job*)job;
+
+#ifdef __linux__
+
+  uint32_t flags = inotify_add_watch_job->is_dir
+    ? IN_CREATE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE
+    : IN_MODIFY;
+
+  job->ret = inotify_add_watch(inotify_add_watch_job->inotify, inotify_add_watch_job->path, flags);
+  if (job->ret < 0)
+    job->err = errno;
+
+#else
+
+  job->err = ENOSYS;
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+struct inotify_add_watch_job *moonbitlang_async_make_inotify_add_watch_job(
+  HANDLE inotify,
+  char *path,
+  int32_t is_dir
+) {
+  struct inotify_add_watch_job *job = MAKE_JOB(inotify_add_watch);
+
+  job->inotify = inotify;
+  job->path = path;
+  job->is_dir = is_dir;
+
+  return job;
+}
+
+#endif // #ifndef _WIN32, `inotify_add_watch` job

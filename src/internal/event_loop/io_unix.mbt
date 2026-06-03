@@ -36,7 +36,7 @@ pub fn IoHandle::from_fd(
   let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
-  if is_async {
+  if is_async && !(kind is Unknown) {
     @fd_util.set_nonblocking(fd, context~) catch {
       err => {
         @fd_util.close(fd, kind~, context~)
@@ -51,7 +51,7 @@ pub fn IoHandle::from_fd(
 
 ///|
 #cfg(not(platform="windows"))
-fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
+pub fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
@@ -69,7 +69,7 @@ fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
 
 ///|
 #cfg(not(platform="windows"))
-async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   guard (handle.events & ReadEvent) != 0
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")

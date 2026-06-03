@@ -122,6 +122,14 @@ pub extern "C" fn OpenResult::fd(job : OpenResult) -> @fd_util.Fd = "moonbitlang
 pub extern "C" fn OpenResult::kind(job : OpenResult) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
 
 ///|
+#borrow(job)
+pub extern "C" fn OpenResult::dev_id(job : OpenResult) -> UInt64 = "moonbitlang_async_open_job_get_dev_id"
+
+///|
+#borrow(job)
+pub extern "C" fn OpenResult::file_id(job : OpenResult) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
+
+///|
 extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
 
 ///|
@@ -206,6 +214,7 @@ extern "C" fn Job::readdir(
   dir : @fd_util.Fd,
   buf : FixedArray[Byte],
   len : Int,
+  restart : Bool,
 ) -> Job = "moonbitlang_async_make_readdir_job"
 
 ///|
@@ -282,6 +291,15 @@ extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_
 #cfg(not(platform="windows"))
 #borrow(signals)
 extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
+
+///|
+#cfg(not(platform="windows"))
+#owned(path)
+extern "C" fn Job::inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : @os_string.OsString,
+  is_dir : Bool,
+) -> Job = "moonbitlang_async_make_inotify_add_watch_job"
 
 ///|
 #cfg(platform="windows")
