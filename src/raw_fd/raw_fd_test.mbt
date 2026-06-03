@@ -101,7 +101,8 @@ async test "file as raw fd" {
     mode=0,
     context="file as raw fd test",
   )
-  let fd = io.detach_from_event_loop()
+  let fd = io.fd()
+  io.detach_from_event_loop()
   let file = @raw_fd.RawFd(fd)
   defer file.close()
   assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
@@ -130,7 +131,8 @@ async test "file as raw fd stream" {
     mode=0,
     context="file as raw fd test",
   )
-  let fd = io.detach_from_event_loop()
+  let fd = io.fd()
+  io.detach_from_event_loop()
   let file = @raw_fd.RawFdStream(fd)
   defer file.close()
   assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
