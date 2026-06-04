@@ -529,7 +529,7 @@ async test "watch ignored path" {
 
     // 12. create new file in re-created ignored path
     {
-      log.push("creating new file in re-created directory at normal path")
+      log.push("creating new file in re-created directory at ignored path")
       let file = @fs.create("\{path}/ignored/file")
       defer file.close()
       @async.sleep(150)
@@ -577,7 +577,7 @@ async test "watch ignored path" {
       #|removing normal directory
       #|watcher received change
       #|re-creating directory at ignored path
-      #|creating new file in re-created directory at normal path
+      #|creating new file in re-created directory at ignored path
       #|writing to newly created file in ignored directory
       #|re-creating directory at normal path
       #|watcher received change
