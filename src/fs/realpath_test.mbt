@@ -24,6 +24,62 @@ async test "realpath absolute" {
 }
 
 ///|
+#cfg(platform="windows")
+async test "realpath missing path windows" {
+  try @fs.realpath("_build\\realpath_test_missing.test") catch {
+    @os_error.OSError(_) as err if err.is_ENOENT() => ()
+    err => fail("incorrect error: \{err}")
+  } noraise {
+    path => fail("`@fs.realpath` unexpectedly succeeded: \{path}")
+  }
+}
+
+///|
+#cfg(platform="windows")
+async test "realpath junction to dir windows" {
+  @async.with_task_group() <| group => {
+    let target_dir = "_build\\realpath_test_junction_target"
+    let target_file = "\{target_dir}\\file.txt"
+    let junction_path = "_build\\realpath_test_junction"
+    @fs.rmdir(junction_path) catch {
+      _ => ()
+    }
+    @fs.rmdir(target_dir, recursive=true) catch {
+      _ => ()
+    }
+    @fs.mkdir(target_dir, recursive=true)
+    @fs.write_file(target_file, "content", create_mode=CreateOrTruncate)
+    group.add_defer(() => {
+      @fs.rmdir(junction_path) catch {
+        _ => ()
+      }
+      @fs.rmdir(target_dir, recursive=true) catch {
+        _ => ()
+      }
+    })
+    let target_realpath = @fs.realpath(target_file).replace_all(
+      old="\\",
+      new="/",
+    )
+    let code = @process.run("cmd", [
+      "/c",
+      "mklink",
+      "/J",
+      junction_path,
+      @fs.realpath(target_dir),
+    ])
+    if code != 0 {
+      fail("failed to create junction: \{code}")
+    }
+    let link_realpath = @fs.realpath("\{junction_path}\\file.txt").replace_all(
+      old="\\",
+      new="/",
+    )
+    assert_eq(link_realpath, target_realpath)
+  }
+}
+
+///|
 #cfg(not(platform="windows"))
 async test "realpath link to absolute" {
   @async.with_task_group() <| root => {

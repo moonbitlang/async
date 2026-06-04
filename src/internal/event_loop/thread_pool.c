@@ -15,6 +15,9 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <wchar.h>
 #include <moonbit.h>
 
 #ifdef _WIN32
@@ -1664,38 +1667,90 @@ void free_realpath_job(void *obj) {
   moonbit_decref(job->path);
 }
 
+#ifdef _WIN32
+
+static
+char *moonbitlang_async_make_windows_realpath_string(WCHAR *path, DWORD len) {
+  if (len >= 8 && wcsncmp(path, L"\\\\?\\UNC\\", 8) == 0) {
+    char *result = (char*)moonbit_make_string_raw(len - 6);
+    WCHAR *out = (WCHAR*)result;
+    out[0] = L'\\';
+    out[1] = L'\\';
+    memcpy(out + 2, path + 8, (len - 8) * sizeof(WCHAR));
+    return result;
+  }
+
+  if (len >= 4 && wcsncmp(path, L"\\\\?\\", 4) == 0) {
+    path += 4;
+    len -= 4;
+  }
+
+  char *result = (char*)moonbit_make_string_raw(len);
+  memcpy(result, path, len * sizeof(WCHAR));
+  return result;
+}
+
+#endif
+
 static
 void realpath_job_worker(struct job *job) {
   struct realpath_job *realpath_job = (struct realpath_job*)job;
 
 #ifdef _WIN32
-  static wchar_t buf[1024];
-  DWORD len = GetFullPathNameW(
+  HANDLE file = CreateFileW(
     (LPCWSTR)realpath_job->path,
-    1024,
-    buf,
+    FILE_READ_ATTRIBUTES,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    NULL,
+    OPEN_EXISTING,
+    FILE_FLAG_BACKUP_SEMANTICS,
     NULL
   );
 
-  if (!len) {
+  if (file == INVALID_HANDLE_VALUE) {
     job->err = GetLastError();
     return;
   }
 
-  realpath_job->result = (char*)moonbit_make_string_raw(len);
-  if (len <= 1024) {
-    memcpy(realpath_job->result, buf, len * sizeof(wchar_t));
-  } else if (
-    !GetFullPathNameW(
-      (LPCWSTR)realpath_job->path,
-      len,
-      (LPWSTR)realpath_job->result,
-      NULL
-    )
-  ) {
-    job->err = GetLastError();
-    moonbit_decref(realpath_job->result);
+  WCHAR stack_buf[1024];
+  DWORD capacity = sizeof(stack_buf) / sizeof(stack_buf[0]);
+  WCHAR *buf = stack_buf;
+  DWORD len = 0;
+
+  while (1) {
+    len = GetFinalPathNameByHandleW(
+      file,
+      buf,
+      capacity,
+      FILE_NAME_NORMALIZED | VOLUME_NAME_DOS
+    );
+
+    if (!len) {
+      job->err = GetLastError();
+      if (buf != stack_buf)
+        free(buf);
+      CloseHandle(file);
+      return;
+    }
+
+    if (len < capacity)
+      break;
+
+    if (buf != stack_buf)
+      free(buf);
+    capacity = len + 1;
+    buf = (WCHAR*)malloc(capacity * sizeof(WCHAR));
+    if (!buf) {
+      job->err = ERROR_NOT_ENOUGH_MEMORY;
+      CloseHandle(file);
+      return;
+    }
   }
+
+  realpath_job->result = moonbitlang_async_make_windows_realpath_string(buf, len);
+  if (buf != stack_buf)
+    free(buf);
+  CloseHandle(file);
 
 #else
 
