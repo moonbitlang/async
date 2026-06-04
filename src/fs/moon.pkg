@@ -25,7 +25,7 @@ import {
 } for "test"
 
 options(
-  "max-concurrent-tests": 5,
+  "max-concurrent-tests": 3,
   "native-stub": [
     "stub.c",
     "dir.c",
