@@ -23,7 +23,32 @@ let tmpdir_seed : @random.Rand = {
 }
 
 ///|
-extern "C" fn get_tmp_path_ffi() -> String? = "moonbitlang_async_get_tmp_path"
+#borrow(out)
+extern "C" fn fill_tmp_path_ffi(out : String, len : Int) -> Int = "moonbitlang_async_fill_tmp_path"
+
+///|
+fn get_tmp_path_ffi() -> String? {
+  let buffer_len = 1024
+  let buffer = String::make(buffer_len, '\u{0}')
+  let actual_len = fill_tmp_path_ffi(buffer, buffer_len)
+  if 0 <= actual_len && actual_len < buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len >= buffer_len {
+    let result = String::make(actual_len, '\u{0}')
+    let final_len = fill_tmp_path_ffi(result, actual_len)
+    if 0 <= final_len && final_len <= actual_len {
+      if final_len == actual_len {
+        Some(result)
+      } else {
+        Some(result[:final_len].to_owned())
+      }
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
 
 ///|
 let tmp_base_path : String = {

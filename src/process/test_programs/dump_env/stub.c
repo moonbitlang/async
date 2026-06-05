@@ -20,26 +20,39 @@
 
 #include <windows.h>
 
+LPWCH env_block = NULL;
 LPWCH env_ptr = NULL;
 
 MOONBIT_FFI_EXPORT
 void init_env() {
-  env_ptr = GetEnvironmentStringsW();
+  if (env_block)
+    FreeEnvironmentStringsW(env_block);
+  env_block = GetEnvironmentStringsW();
+  env_ptr = env_block;
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_string_t next_entry(){
+void free_env() {
+  if (env_block)
+    FreeEnvironmentStringsW(env_block);
+  env_block = NULL;
+  env_ptr = NULL;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t next_entry_fill(moonbit_string_t out, int32_t out_len) {
   if (!env_ptr)
-    return moonbit_make_string_raw(0);
+    return 0;
 
   int len = wcslen(env_ptr);
   if (len == 0)
-    return moonbit_make_string_raw(0);
+    return 0;
 
-  moonbit_string_t result = moonbit_make_string_raw(len);
-  memcpy(result, env_ptr, len * sizeof(WCHAR));
-  env_ptr += len + 1;
-  return result;
+  if (len <= out_len) {
+    memcpy(out, env_ptr, len * sizeof(WCHAR));
+    env_ptr += len + 1;
+  }
+  return len;
 }
 
 #else
@@ -49,19 +62,28 @@ moonbit_string_t next_entry(){
 extern char **environ;
 char **cursor = 0;
 
+MOONBIT_FFI_EXPORT
 void init_env() {
   cursor = environ;
 }
 
-moonbit_bytes_t next_entry() {
+MOONBIT_FFI_EXPORT
+void free_env() {}
+
+MOONBIT_FFI_EXPORT
+int32_t next_entry_fill(moonbit_bytes_t out, int32_t out_len) {
   if (cursor == 0 || *cursor == 0)
-    return moonbit_make_bytes_raw(0);
+    return 0;
 
   int len = strlen(*cursor);
-  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
-  memcpy(result, *cursor, len);
-  cursor += 1;
-  return result;
+  if (len == 0)
+    return 0;
+
+  if (len <= out_len) {
+    memcpy(out, *cursor, len);
+    cursor += 1;
+  }
+  return len;
 }
 
 #endif

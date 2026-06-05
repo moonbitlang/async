@@ -14,7 +14,28 @@
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_curr_env() -> String = "moonbitlang_async_get_curr_env"
+#borrow(out)
+extern "C" fn curr_env_fill(out : String, len : Int) -> Int = "moonbitlang_async_curr_env_fill"
+
+///|
+#cfg(platform="windows")
+fn get_curr_env() -> String {
+  let buffer_len = 32768
+  let buffer = String::make(buffer_len, '\u{0}')
+  let actual_len = curr_env_fill(buffer, buffer_len)
+  if 0 < actual_len && actual_len <= buffer_len {
+    buffer[:actual_len].to_owned()
+  } else if actual_len > buffer_len {
+    let result = String::make(actual_len, '\u{0}')
+    if curr_env_fill(result, actual_len) == actual_len {
+      result
+    } else {
+      ""
+    }
+  } else {
+    ""
+  }
+}
 
 ///|
 #cfg(platform="windows")

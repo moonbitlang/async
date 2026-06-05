@@ -14,7 +14,37 @@
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn get_curr_env() -> FixedArray[@os_string.OsString?] = "moonbitlang_async_get_curr_env"
+extern "C" fn curr_env_count() -> Int = "moonbitlang_async_curr_env_count"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(out)
+extern "C" fn curr_env_fill_entry(
+  index : Int,
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_curr_env_fill_entry"
+
+///|
+#cfg(not(platform="windows"))
+fn get_curr_env() -> FixedArray[@os_string.OsString?] {
+  let count = curr_env_count()
+  let result = FixedArray::make(count + 1, None)
+  let buffer_len = 32768
+  for i in 0..<count {
+    let buffer = Bytes::make(buffer_len, 0)
+    let len = curr_env_fill_entry(i, buffer, buffer_len)
+    let entry = if len <= buffer_len {
+      buffer[:len].to_owned()
+    } else {
+      let entry = Bytes::make(len, 0)
+      ignore(curr_env_fill_entry(i, entry, len))
+      entry
+    }
+    result[i] = Some(@os_string.OsString::from_bytes(entry))
+  }
+  result
+}
 
 ///|
 #cfg(not(platform="windows"))

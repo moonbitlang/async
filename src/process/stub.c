@@ -24,22 +24,23 @@
 
 extern char **environ;
 
-moonbit_bytes_t *moonbitlang_async_get_curr_env() {
+int32_t moonbitlang_async_curr_env_count() {
   int len = 0;
   for (char **cursor = environ; *cursor; ++cursor)
     ++len;
+  return len;
+}
 
-  moonbit_bytes_t *result = (moonbit_bytes_t*)moonbit_make_ref_array(len + 1, 0);
-  for (int i = 0; i < len; ++i) {
-    char *entry = environ[i];
-    int len = strlen(entry) + 1;
-    moonbit_bytes_t bytes = moonbit_make_bytes(len, 0);
-    memcpy(bytes, entry, len);
-    result[i] = bytes;
+int32_t moonbitlang_async_curr_env_fill_entry(
+  int32_t index,
+  moonbit_bytes_t out,
+  int32_t out_len
+) {
+  int32_t len = strlen(environ[index]) + 1;
+  if (len <= out_len) {
+    memcpy(out, environ[index], len);
   }
-  result[len] = 0;
-
-  return result;
+  return len;
 }
 
 void moonbitlang_async_terminate_process(pid_t pid, int signal) {

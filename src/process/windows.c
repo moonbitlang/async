@@ -19,18 +19,21 @@
 #include <windows.h>
 #include <moonbit.h>
 
-moonbit_string_t moonbitlang_async_get_curr_env() {
+int32_t moonbitlang_async_curr_env_fill(moonbit_string_t out, int32_t out_len) {
   LPWCH env_block = GetEnvironmentStringsW();
   if (!env_block)
-    return moonbit_make_string(0, 0);
+    return 0;
 
-  int len = 1;
-  while (env_block[len - 1] != 0 || env_block[len] != 0) {
+  int len = 0;
+  while (env_block[len] != 0 || env_block[len + 1] != 0) {
     ++len;
   }
-  moonbit_string_t result = moonbit_make_string_raw(len);
-  memcpy(result, env_block, len * sizeof(WCHAR));
-  return result;
+  len += 2;
+  if (len <= out_len) {
+    memcpy(out, env_block, len * sizeof(WCHAR));
+  }
+  FreeEnvironmentStringsW(env_block);
+  return len;
 }
 
 void moonbitlang_async_terminate_process(DWORD pid, int signal) {

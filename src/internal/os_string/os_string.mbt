@@ -23,6 +23,20 @@ struct OsString(String)
 
 ///|
 #cfg(not(platform="windows"))
+#internal(internal, "for internal FFI wrappers only")
+pub fn OsString::from_bytes(data : Bytes) -> OsString {
+  OsString(data)
+}
+
+///|
+#cfg(platform="windows")
+#internal(internal, "for internal FFI wrappers only")
+pub fn OsString::from_string(data : String) -> OsString {
+  OsString(data)
+}
+
+///|
+#cfg(not(platform="windows"))
 pub fn encode(str : StringView) -> OsString {
   @utf8.encode(str)
 }
@@ -65,7 +79,35 @@ pub fn decode(
 
 ///|
 #cfg(platform="windows")
-pub extern "C" fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String = "moonbitlang_async_c_buffer_as_string"
+#borrow(out)
+extern "C" fn decode_fill(
+  os_str : @c_buffer.Buffer,
+  len : Int,
+  out : String,
+  out_len : Int,
+) -> Int = "moonbitlang_async_c_buffer_fill_string"
+
+///|
+#cfg(platform="windows")
+pub fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String {
+  let buffer_len = if len >= 0 { len / 2 } else { 1024 }
+  let buffer = String::make(buffer_len, '\u{0}')
+  let actual_len = decode_fill(os_str, len, buffer, buffer_len)
+  if actual_len <= buffer_len {
+    if actual_len == buffer_len {
+      buffer
+    } else {
+      buffer[:actual_len].to_owned()
+    }
+  } else {
+    let result = String::make(actual_len, '\u{0}')
+    if decode_fill(os_str, len, result, actual_len) == actual_len {
+      result
+    } else {
+      ""
+    }
+  }
+}
 
 ///|
 #cfg(platform="windows")
