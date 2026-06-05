@@ -46,6 +46,7 @@ priv struct EventLoop {
   job_queue : @deque.Deque[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
+  running_jobs : Map[Int, Job]
   completed_jobs_buffer : FixedArray[Int]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
@@ -63,6 +64,7 @@ priv struct EventLoop {
   job_queue : @deque.Deque[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
+  running_jobs : Map[Int, Job]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
@@ -123,6 +125,7 @@ fn EventLoop::new() -> EventLoop raise {
     job_queue: @deque.Deque([]),
     idle_workers: @deque.Deque([]),
     running_workers: {},
+    running_jobs: {},
     completed_jobs_buffer: FixedArray::make(1024, 0),
     jobs: {},
     timers: @sorted_set.SortedSet([]),
@@ -147,6 +150,7 @@ fn EventLoop::new() -> EventLoop raise {
     job_queue: @deque.Deque([]),
     idle_workers: @deque.Deque([]),
     running_workers: {},
+    running_jobs: {},
     jobs: {},
     timers: @sorted_set.SortedSet([]),
     main: None,
@@ -244,18 +248,35 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     self.killed_by_signal = Some(job_id ^ (1 << 31))
   }
   guard self.running_workers.get(job_id) is Some(worker)
+  let waiter = self.jobs.get(job_id)
+  if waiter is None {
+    if self.running_jobs.get(job_id) is Some(job) {
+      job.cleanup()
+    }
+  }
   self.running_workers.remove(job_id)
-  match self.job_queue.pop_front() {
+  self.running_jobs.remove(job_id)
+  let next_job = while self.job_queue.pop_front() is Some(job) {
+    if self.jobs.get(job.job_id) is Some(_) {
+      break Some(job)
+    } else {
+      job.job.cleanup()
+    }
+  } nobreak {
+    None
+  }
+  match next_job {
     None => {
       worker.enter_idle()
       self.idle_workers.push_back(worker)
     }
     Some(job) => {
       self.running_workers[job.job_id] = worker
+      self.running_jobs[job.job_id] = job.job
       worker.wake(job.job_id, job.job)
     }
   }
-  if self.jobs.get(job_id) is Some(coro) {
+  if waiter is Some(coro) {
     coro.wake()
   }
 }
@@ -503,15 +524,18 @@ async fn perform_job_in_worker(
     None if evloop.running_workers.length() >= evloop.max_worker_count =>
       evloop.job_queue.push_back({ job_id, job })
     None => {
+      evloop.running_jobs[job_id] = job
       let worker = Worker::spawn(job_id, job)
       evloop.running_workers[job_id] = worker
     }
     Some(worker) => {
       evloop.running_workers[job_id] = worker
+      evloop.running_jobs[job_id] = job
       worker.wake(job_id, job)
     }
   }
   evloop.wait_for_job(job_id, cancel?)
+  job.keepalive()
   if job.err() is err && err > 0 {
     if errno_is_cancelled(err) {
       raise @coroutine.Cancelled
