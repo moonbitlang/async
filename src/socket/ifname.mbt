@@ -55,10 +55,80 @@ extern "C" fn if_nametoindex_ffi(
 ) -> UInt = "moonbitlang_async_if_nametoindex"
 
 ///|
-extern "C" fn if_indextoname_ffi(
+#cfg(not(platform="windows"))
+#borrow(out)
+extern "C" fn if_indextoname_fill_ffi(
   global_sock : @fd_util.Fd,
   index : UInt,
-) -> @os_string.OsString? = "moonbitlang_async_if_indextoname"
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_if_indextoname_fill"
+
+///|
+#cfg(platform="windows")
+#borrow(out)
+extern "C" fn if_indextoname_fill_ffi(
+  global_sock : @fd_util.Fd,
+  index : UInt,
+  out : String,
+  len : Int,
+) -> Int = "moonbitlang_async_if_indextoname_fill"
+
+///|
+#cfg(platform="windows")
+fn if_indextoname_ffi(
+  global_sock : @fd_util.Fd,
+  index : UInt,
+) -> @os_string.OsString? {
+  let buffer_len = 1024
+  let buffer = String::make(buffer_len, '\u{0}')
+  let actual_len = if_indextoname_fill_ffi(
+    global_sock,
+    index,
+    buffer,
+    buffer_len,
+  )
+  if 0 <= actual_len && actual_len <= buffer_len {
+    Some(@os_string.OsString::from_string(buffer[:actual_len].to_owned()))
+  } else if actual_len > buffer_len {
+    let result = String::make(actual_len, '\u{0}')
+    if if_indextoname_fill_ffi(global_sock, index, result, actual_len) == actual_len {
+      Some(@os_string.OsString::from_string(result))
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn if_indextoname_ffi(
+  global_sock : @fd_util.Fd,
+  index : UInt,
+) -> @os_string.OsString? {
+  let buffer_len = 1024
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = if_indextoname_fill_ffi(
+    global_sock,
+    index,
+    buffer,
+    buffer_len,
+  )
+  if 0 <= actual_len && actual_len <= buffer_len {
+    Some(@os_string.OsString::from_bytes(buffer[:actual_len].to_owned()))
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if if_indextoname_fill_ffi(global_sock, index, result, actual_len) == actual_len {
+      Some(@os_string.OsString::from_bytes(result))
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
 
 ///|
 #doc(hidden)

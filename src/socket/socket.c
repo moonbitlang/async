@@ -571,7 +571,12 @@ uint32_t moonbitlang_async_if_nametoindex(HANDLE sock, const char *name) {
 }
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
+int32_t moonbitlang_async_if_indextoname_fill(
+  HANDLE sock,
+  uint32_t index,
+  void *out,
+  int32_t out_len
+) {
 #ifdef _WIN32
 
   WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
@@ -580,20 +585,21 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
   int err = ConvertInterfaceIndexToLuid(index, &luid);
   if (err) {
     SetLastError(err);
-    return 0;
+    return -1;
   }
 
   err = ConvertInterfaceLuidToAlias(&luid, buf, NDIS_IF_MAX_STRING_SIZE + 1);
   if (err) {
     SetLastError(err);
-    return 0;
+    return -1;
   }
 
   int len = wcslen(buf);
-  moonbit_string_t str = moonbit_make_string_raw(len);
-  memcpy(str, buf, len * sizeof(WCHAR));
+  if (len > out_len)
+    return len;
 
-  return str;
+  memcpy(out, buf, len * sizeof(WCHAR));
+  return len;
 
 #elif defined(__linux__)
 
@@ -601,25 +607,27 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
   ifreq.ifr_ifindex = index;
 
   if (ioctl(sock, SIOCGIFNAME, &ifreq) < 0)
-    return 0;
+    return -1;
 
   int len = strlen(ifreq.ifr_name);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, ifreq.ifr_name, len);
+  if (len > out_len)
+    return len;
 
-  return str;
+  memcpy(out, ifreq.ifr_name, len);
+  return len;
 
 #else
 
   char buf[IF_NAMESIZE];
   if (!if_indextoname(index, buf))
-    return 0;
+    return -1;
 
   int len = strlen(buf);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, buf, len);
+  if (len > out_len)
+    return len;
 
-  return str;
+  memcpy(out, buf, len);
+  return len;
 
 #endif
 }
