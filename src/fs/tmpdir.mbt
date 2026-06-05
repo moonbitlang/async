@@ -23,15 +23,16 @@ let tmpdir_seed : @random.Rand = {
 }
 
 ///|
-extern "C" fn get_tmp_path_ffi() -> String? = "moonbitlang_async_get_tmp_path"
+extern "C" fn get_tmp_path_ffi() -> @c_buffer.Buffer = "moonbitlang_async_get_tmp_path"
 
 ///|
 let tmp_base_path : String = {
-  guard get_tmp_path_ffi() is Some(path) else {
+  let path = get_tmp_path_ffi()
+  if path.is_null() {
     let err = @os_error.errno_to_string(@os_error.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
-  path
+  @os_string.decode(path)
 }
 
 ///|

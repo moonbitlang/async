@@ -91,45 +91,28 @@ int moonbitlang_async_unlock_file(int fd) {
 
 #endif
 
+MOONBIT_FFI_EXPORT
+void *moonbitlang_async_get_tmp_path() {
 #ifdef _WIN32
 
-MOONBIT_FFI_EXPORT
-moonbit_string_t moonbitlang_async_get_tmp_path() {
-  static wchar_t buffer[1024];
+  static wchar_t buffer[MAX_PATH + 1];
 
-  const DWORD buffer_len = sizeof(buffer) / sizeof(wchar_t);
-  DWORD len = GetTempPath2W(buffer_len, buffer);
+  DWORD len = GetTempPath2W(MAX_PATH + 1, buffer);
 
   if (len == 0) {
     return NULL;
   }
 
-  if (len > buffer_len) {
-    moonbit_string_t str = moonbit_make_string_raw(len - 1);
-    len = GetTempPath2W(len, (LPWSTR)str);
-    return len == 0 ? NULL : str;
-  } else {
-    moonbit_string_t str = moonbit_make_string_raw(len);
-    memcpy(str, buffer, len * sizeof(wchar_t));
-    return str;
-  }
-}
+  return buffer;
 
-#else
+#elif defined(__ANDROID__)
 
-moonbit_string_t moonbitlang_async_get_tmp_path() {
-  const char *path;
-#ifdef __ANDROID__
   const char *tmpdir = getenv("TMPDIR");
-  path = tmpdir ? tmpdir : "/data/local/tmp/";
+  return tmpdir ? tmpdir : "/data/local/tmp/";
+
 #else
-  path = "/tmp/";
+
+  return "/tmp/";
+
 #endif
-  size_t len = strlen(path);
-  moonbit_string_t str = moonbit_make_string_raw(len);
-  for (size_t i = 0; i < len; i++) {
-    ((uint16_t*)str)[i] = (uint16_t)(unsigned char)path[i];
-  }
-  return str;
 }
-#endif
