@@ -355,50 +355,34 @@ int moonbitlang_async_enable_keepalive(
 #endif
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
-  // For IPv4, create traditional sockaddr_in structure
-  struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
-    sizeof(struct sockaddr_in),
-    0
-  );
+int32_t moonbitlang_async_ipv4_addr_size() {
+  return sizeof(struct sockaddr_in);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_ipv6_addr_size() {
+  return sizeof(struct sockaddr_in6);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_init_ip_addr(struct sockaddr_in *addr, uint32_t ip, int port) {
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
   addr->sin_addr.s_addr = htonl(ip);
-  return addr;
 }
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_empty_addr(int family) {
-  if (family == 4) {
-    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in),
-      0
-    );
-    addr->sa_family = AF_INET;
-    return addr;
-  } else {
-    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in6),
-      0
-    );
-    addr->sa_family = AF_INET6;
-    return addr;
-  };
-}
-
-MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t scope_id) {
-  // For IPv6, create sockaddr_in6 structure directly
-  struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
-    sizeof(struct sockaddr_in6),
-    0
-  );
+void moonbitlang_async_init_ipv6_addr(
+  struct sockaddr_in6 *addr,
+  uint8_t *ip,
+  int port,
+  uint32_t scope_id
+) {
   addr->sin6_family = AF_INET6;
   addr->sin6_flowinfo = 0;
   addr->sin6_port = htons(port);
   memcpy(&addr->sin6_addr, ip, 16);
   addr->sin6_scope_id = scope_id;
-  return addr;
 }
 
 MOONBIT_FFI_EXPORT
@@ -475,31 +459,42 @@ addrinfo_t *moonbitlang_async_addrinfo_get_next(addrinfo_t *addrinfo) {
 }
 
 MOONBIT_FFI_EXPORT
-void* moonbitlang_async_addrinfo_to_addr(addrinfo_t *addrinfo, int port) {
+int32_t moonbitlang_async_addrinfo_addr_size(addrinfo_t *addrinfo) {
   if (addrinfo == NULL || addrinfo->ai_addr == NULL) {
-    return NULL;
+    return 0;
   }
 
   if (addrinfo->ai_family == AF_INET) {
-    // IPv4
-    struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in),
-      0
-    );
+    return sizeof(struct sockaddr_in);
+  } else if (addrinfo->ai_family == AF_INET6) {
+    return sizeof(struct sockaddr_in6);
+  } else {
+    return 0;
+  }
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_addrinfo_fill_addr(
+  addrinfo_t *addrinfo,
+  void *addr_out,
+  int port
+) {
+  if (addrinfo == NULL || addrinfo->ai_addr == NULL) {
+    return;
+  }
+
+  if (addrinfo->ai_family == AF_INET) {
+    struct sockaddr_in *addr = (struct sockaddr_in*)addr_out;
     memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in));
     addr->sin_port = htons(port);
-    return addr;
+    return;
   } else if (addrinfo->ai_family == AF_INET6) {
-    // IPv6
-    struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in6),
-      0
-    );
+    struct sockaddr_in6 *addr = (struct sockaddr_in6*)addr_out;
     memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in6));
     addr->sin6_port = htons(port);
-    return addr;
+    return;
   } else {
-      return NULL;
+    return;
   }
 }
 
