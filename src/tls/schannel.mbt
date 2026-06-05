@@ -457,20 +457,90 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 
 ///|
 #cfg(platform="windows")
-#borrow(ch)
-extern "C" fn Schannel::get_peer_certificate(ch : Schannel) -> Bytes? = "moonbitlang_async_schannel_get_peer_certificate"
-
-///|
-#cfg(platform="windows")
-#borrow(ch)
-extern "C" fn Schannel::unique_channel_binding(ch : Schannel) -> Bytes? = "moonbitlang_async_schannel_unique_channel_binding"
-
-///|
-#cfg(platform="windows")
-#borrow(ch)
-extern "C" fn Schannel::server_endpoint_channel_binding(
+#borrow(ch, out)
+extern "C" fn Schannel::get_peer_certificate_fill(
   ch : Schannel,
-) -> Bytes? = "moonbitlang_async_schannel_server_endpoint_channel_binding"
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_schannel_get_peer_certificate"
+
+///|
+#cfg(platform="windows")
+fn Schannel::get_peer_certificate(ch : Schannel) -> Bytes? {
+  let buffer_len = 16384
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = ch.get_peer_certificate_fill(buffer, buffer_len)
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if ch.get_peer_certificate_fill(result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(platform="windows")
+#borrow(ch, out)
+extern "C" fn Schannel::unique_channel_binding_fill(
+  ch : Schannel,
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_schannel_unique_channel_binding"
+
+///|
+#cfg(platform="windows")
+fn Schannel::unique_channel_binding(ch : Schannel) -> Bytes? {
+  let buffer_len = 1024
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = ch.unique_channel_binding_fill(buffer, buffer_len)
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if ch.unique_channel_binding_fill(result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(platform="windows")
+#borrow(ch, out)
+extern "C" fn Schannel::server_endpoint_channel_binding_fill(
+  ch : Schannel,
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_schannel_server_endpoint_channel_binding"
+
+///|
+#cfg(platform="windows")
+fn Schannel::server_endpoint_channel_binding(ch : Schannel) -> Bytes? {
+  let buffer_len = 1024
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = ch.server_endpoint_channel_binding_fill(buffer, buffer_len)
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if ch.server_endpoint_channel_binding_fill(result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
 
 ///|
 #cfg(platform="windows")

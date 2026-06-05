@@ -98,21 +98,103 @@ extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::get_peer_certificate(self : SSL) -> Bytes? = "moonbitlang_async_tls_ssl_get_peer_certificate"
+#borrow(out)
+extern "C" fn SSL::get_peer_certificate_fill(
+  self : SSL,
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_tls_ssl_get_peer_certificate"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::unique_channel_binding(
-  self : SSL,
-  is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_unique_channel_binding"
+fn SSL::get_peer_certificate(self : SSL) -> Bytes? {
+  let buffer_len = 16384
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = self.get_peer_certificate_fill(buffer, buffer_len)
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if self.get_peer_certificate_fill(result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::server_endpoint_channel_binding(
+#borrow(out)
+extern "C" fn SSL::unique_channel_binding_fill(
   self : SSL,
   is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_server_endpoint_channel_binding"
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_tls_ssl_unique_channel_binding"
+
+///|
+#cfg(not(platform="windows"))
+fn SSL::unique_channel_binding(self : SSL, is_client~ : Bool) -> Bytes? {
+  let buffer_len = 1024
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = self.unique_channel_binding_fill(
+    is_client~,
+    buffer,
+    buffer_len,
+  )
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if self.unique_channel_binding_fill(is_client~, result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+#borrow(out)
+extern "C" fn SSL::server_endpoint_channel_binding_fill(
+  self : SSL,
+  is_client~ : Bool,
+  out : Bytes,
+  len : Int,
+) -> Int = "moonbitlang_async_tls_ssl_server_endpoint_channel_binding"
+
+///|
+#cfg(not(platform="windows"))
+fn SSL::server_endpoint_channel_binding(
+  self : SSL,
+  is_client~ : Bool,
+) -> Bytes? {
+  let buffer_len = 64
+  let buffer = Bytes::make(buffer_len, 0)
+  let actual_len = self.server_endpoint_channel_binding_fill(
+    is_client~,
+    buffer,
+    buffer_len,
+  )
+  if 0 < actual_len && actual_len <= buffer_len {
+    Some(buffer[:actual_len].to_owned())
+  } else if actual_len > buffer_len {
+    let result = Bytes::make(actual_len, 0)
+    if self.server_endpoint_channel_binding_fill(is_client~, result, actual_len) == actual_len {
+      Some(result)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
 
 ///|
 pub(all) enum X509FileType {

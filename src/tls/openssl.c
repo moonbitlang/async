@@ -304,26 +304,36 @@ void moonbitlang_async_tls_ssl_free(SSL *ssl) {
   SSL_free(ssl);
 }
 
-moonbit_bytes_t moonbitlang_async_tls_ssl_get_peer_certificate(SSL *ssl) {
+int32_t moonbitlang_async_tls_ssl_get_peer_certificate(
+  SSL *ssl,
+  moonbit_bytes_t out,
+  int32_t len
+) {
   X509 *cert = SSL_get1_peer_certificate(ssl);
   if (!cert) return 0;
 
-  int len = i2d_X509_AUX(cert, 0);
-  if (len < 0) goto handle_error;
+  int expected_len = i2d_X509_AUX(cert, 0);
+  if (expected_len < 0) {
+    X509_free(cert);
+    return -1;
+  }
+  if (len < expected_len) {
+    X509_free(cert);
+    return expected_len;
+  }
 
-  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
-  unsigned char *buf = result;
-  i2d_X509_AUX(cert, &buf);
+  unsigned char *buf = out;
+  int written = i2d_X509_AUX(cert, &buf);
   X509_free(cert);
-  return result;
-
-handle_error:
-  X509_free(cert);
-  return 0;
+  return written;
 }
 
 static
-moonbit_bytes_t hash_server_endpoint_certificate(X509 *cert) {
+int32_t hash_server_endpoint_certificate(
+  X509 *cert,
+  moonbit_bytes_t out,
+  int32_t len
+) {
   int signature_nid = X509_get_signature_nid(cert);
   int digest_nid = 0;
   int public_key_nid = 0;
@@ -333,11 +343,11 @@ moonbit_bytes_t hash_server_endpoint_certificate(X509 *cert) {
   unsigned char digest_buf[MAX_DIGEST_LEN];
 
   if (!OBJ_find_sigid_algs(signature_nid, &digest_nid, &public_key_nid))
-    return 0;
+    return -1;
 
   digest_name = OBJ_nid2sn(digest_nid);
   if (!digest_name)
-    return 0;
+    return -1;
 
   if (strcmp(digest_name, "MD5") == 0 || strcmp(digest_name, "SHA1") == 0) {
     digest = EVP_sha256();
@@ -346,45 +356,54 @@ moonbit_bytes_t hash_server_endpoint_certificate(X509 *cert) {
   }
 
   if (!digest)
-    return 0;
+    return -1;
 
   if (!X509_digest(cert, digest, digest_buf, &digest_len))
-    return 0;
+    return -1;
 
-  moonbit_bytes_t result = moonbit_make_bytes_raw(digest_len);
-  memcpy(result, digest_buf, digest_len);
-  return result;
+  if (!out) return digest_len;
+  if (len < digest_len) return digest_len;
+  memcpy(out, digest_buf, digest_len);
+  return digest_len;
 }
 
-moonbit_bytes_t moonbitlang_async_tls_ssl_unique_channel_binding(SSL *ssl, int32_t is_client) {
+int32_t moonbitlang_async_tls_ssl_unique_channel_binding(
+  SSL *ssl,
+  int32_t is_client,
+  moonbit_bytes_t out,
+  int32_t out_len
+) {
   size_t len = is_client ?
     SSL_get_finished(ssl, 0, 0) :
     SSL_get_peer_finished(ssl, 0, 0);
   if (len == 0)
     return 0;
-
-  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
+  if (out_len < len)
+    return len;
   size_t copied = is_client ?
-    SSL_get_finished(ssl, result, len) :
-    SSL_get_peer_finished(ssl, result, len);
-  if (copied != len)
-    return 0;
-  return result;
+    SSL_get_finished(ssl, out, out_len) :
+    SSL_get_peer_finished(ssl, out, out_len);
+  return copied;
 }
 
-moonbit_bytes_t moonbitlang_async_tls_ssl_server_endpoint_channel_binding(SSL *ssl, int32_t is_client) {
+int32_t moonbitlang_async_tls_ssl_server_endpoint_channel_binding(
+  SSL *ssl,
+  int32_t is_client,
+  moonbit_bytes_t out,
+  int32_t len
+) {
   if (is_client) {
     X509 *cert = SSL_get1_peer_certificate(ssl);
     if (!cert)
       return 0;
-    moonbit_bytes_t result = hash_server_endpoint_certificate(cert);
+    int32_t result = hash_server_endpoint_certificate(cert, out, len);
     X509_free(cert);
     return result;
   } else {
     X509 *cert = SSL_get_certificate(ssl);
     if (!cert)
       return 0;
-    return hash_server_endpoint_certificate(cert);
+    return hash_server_endpoint_certificate(cert, out, len);
   }
 }
 
