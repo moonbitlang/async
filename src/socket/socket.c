@@ -558,7 +558,7 @@ MOONBIT_FFI_EXPORT
 void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
 #ifdef _WIN32
 
-  WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
+  static WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
   NET_LUID luid;
 
   int err = ConvertInterfaceIndexToLuid(index, &luid);
@@ -573,37 +573,25 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
     return 0;
   }
 
-  int len = wcslen(buf);
-  moonbit_string_t str = moonbit_make_string_raw(len);
-  memcpy(str, buf, len * sizeof(WCHAR));
-
-  return str;
+  return buf;
 
 #elif defined(__linux__)
 
-  struct ifreq ifreq;
+  static struct ifreq ifreq;
   ifreq.ifr_ifindex = index;
 
   if (ioctl(sock, SIOCGIFNAME, &ifreq) < 0)
     return 0;
 
-  int len = strlen(ifreq.ifr_name);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, ifreq.ifr_name, len);
-
-  return str;
+  return ifreq.ifr_name;
 
 #else
 
-  char buf[IF_NAMESIZE];
+  static char buf[IF_NAMESIZE];
   if (!if_indextoname(index, buf))
     return 0;
 
-  int len = strlen(buf);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, buf, len);
-
-  return str;
+  return buf;
 
 #endif
 }
