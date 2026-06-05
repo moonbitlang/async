@@ -19,23 +19,56 @@ priv enum AddrFamily {
 }
 
 ///|
-/// IPv4 address + port number
 #warnings("-unused_constructor")
 struct Addr(Bytes) derive(Eq, Compare, Hash)
 
 ///|
-pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
+extern "C" fn ipv4_addr_size() -> Int = "moonbitlang_async_ipv4_addr_size"
 
 ///|
-extern "C" fn Addr::empty(family : AddrFamily) -> Addr = "moonbitlang_async_make_empty_addr"
+extern "C" fn ipv6_addr_size() -> Int = "moonbitlang_async_ipv6_addr_size"
 
 ///|
-#borrow(ip)
-extern "C" fn Addr::new_ipv6(
+#borrow(addr)
+extern "C" fn init_ip_addr(addr : Bytes, ip : UInt, port : Int) = "moonbitlang_async_init_ip_addr"
+
+///|
+pub fn Addr::new(ip : UInt, port : Int) -> Addr {
+  let addr = Bytes::make(ipv4_addr_size(), 0)
+  init_ip_addr(addr, ip, port)
+  Addr(addr)
+}
+
+///|
+#borrow(addr)
+extern "C" fn init_empty_addr(addr : Bytes, family : AddrFamily) = "moonbitlang_async_init_empty_addr"
+
+///|
+fn Addr::empty(family : AddrFamily) -> Addr {
+  let size = match family {
+    IPv4 => ipv4_addr_size()
+    IPv6 => ipv6_addr_size()
+  }
+  let addr = Bytes::make(size, 0)
+  init_empty_addr(addr, family)
+  Addr(addr)
+}
+
+///|
+#borrow(addr, ip)
+extern "C" fn init_ipv6_addr(
+  addr : Bytes,
   ip : FixedArray[Byte],
   port : Int,
   scope_id~ : UInt,
-) -> Addr = "moonbitlang_async_make_ipv6_addr"
+) = "moonbitlang_async_init_ipv6_addr"
+
+///|
+fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int, scope_id~ : UInt) -> Addr {
+  let addr = Bytes::make(ipv6_addr_size(), 0)
+  init_ipv6_addr(addr, ip, port, scope_id~)
+  Addr(addr)
+}
 
 ///|
 #borrow(addr)
@@ -135,7 +168,28 @@ extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_ad
 
 ///|
 /// Convert AddrInfo to Addr(support both IPv4 and IPv6)
-extern "C" fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr = "moonbitlang_async_addrinfo_to_addr"
+extern "C" fn AddrInfo::addr_size(self : AddrInfo) -> Int = "moonbitlang_async_addrinfo_addr_size"
+
+///|
+#borrow(out)
+extern "C" fn AddrInfo::fill_addr(
+  self : AddrInfo,
+  out : Bytes,
+  port : Int,
+) -> Bool = "moonbitlang_async_addrinfo_fill_addr"
+
+///|
+fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr {
+  let size = self.addr_size()
+  guard size > 0 else {
+    abort("unsupported address family returned from getaddrinfo")
+  }
+  let addr = Bytes::make(size, 0)
+  guard self.fill_addr(addr, port) else {
+    abort("failed to copy address returned from getaddrinfo")
+  }
+  Addr(addr)
+}
 
 ///|
 extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
