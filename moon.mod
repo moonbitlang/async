@@ -1,6 +1,6 @@
 name = "moonbitlang/async"
 
-version = "0.19.1"
+version = "0.19.2"
 
 readme = "README.md"
 
