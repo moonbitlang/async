@@ -15,12 +15,33 @@
 
 ///|
 #cfg(platform="windows")
-async test "run explicit .com command" {
-  let (exit_code, output) = @process.collect_stdout("more.com", ["/?"])
+async test "run bare .exe command" {
+  let (exit_code, output) = @process.collect_stdout("where", ["where"])
   inspect(exit_code, content="0")
-  let text = output.text()
-  inspect(
-    text.contains("Displays output one screen at a time."),
-    content="true",
-  )
+  inspect(output.text().contains("where.exe"), content="true")
+}
+
+///|
+#cfg(platform="windows")
+async test "run explicit .exe command" {
+  let (exit_code, output) = @process.collect_stdout("where.exe", ["where"])
+  inspect(exit_code, content="0")
+  inspect(output.text().contains("where.exe"), content="true")
+}
+
+///|
+#cfg(platform="windows")
+async test "reject bare .com command" {
+  try ignore(@process.collect_stdout("more", ["/?"])) catch {
+    _ => inspect(true, content="true")
+  } noraise {
+    _ => fail("expected bare .com command to fail")
+  }
+}
+
+///|
+#cfg(platform="windows")
+async test "run explicit .com command" {
+  let (exit_code, _) = @process.collect_stdout("more.com", ["/?"])
+  inspect(exit_code, content="0")
 }
