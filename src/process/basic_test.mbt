@@ -36,6 +36,7 @@ async test "basic_ls" {
       "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt", "cancellation.mbt",
       "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "commands_for_test.mbt",
       "unimplemented_test.mbt", "spawn_in_group_test.mbt", "windows_escape_wbtest.mbt",
+      "windows_command_resolution_test.mbt",
     ])
   }
 }

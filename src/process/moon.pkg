@@ -34,6 +34,7 @@ options(
     "spawn_in_group_test.mbt": [ "native" ],
     "unix.mbt": [ "native" ],
     "wait_test.mbt": [ "native" ],
+    "windows_command_resolution_test.mbt": [ "native" ],
     "windows.mbt": [ "native" ],
   },
 )

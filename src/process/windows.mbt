@@ -83,10 +83,6 @@ async fn raw_spawn(
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
-  let cmd = match cmd {
-    [.., .. ".exe"] => cmd
-    _ => cmd + ".exe"
-  }
   let command_line = StringBuilder::new()
   command_line.write_arg_with_windows_escape(cmd)
   for arg in args {
