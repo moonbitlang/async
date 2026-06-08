@@ -21,7 +21,11 @@ async test "cond var cancellation" {
       cond.signal()
     }
     debug_inspect(
-      try? @async.with_timeout(250, () => cond.wait()),
+      try @async.with_timeout(250, () => cond.wait()) catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
       content="Err(TimeoutError)",
     )
   }

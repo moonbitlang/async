@@ -15,16 +15,22 @@
 ///|
 async test "spawn error1" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(root => {
-    root.spawn_bg() <| () => {
-      @async.sleep(1000)
-      buf <+ "task 1 finished\n"
-    }
-    root.spawn_bg() <| () => {
-      @async.sleep(200)
-      raise Err
-    }
-  })
+  let result = try
+    @async.with_task_group(root => {
+      root.spawn_bg() <| () => {
+        @async.sleep(1000)
+        buf <+ "task 1 finished\n"
+      }
+      root.spawn_bg() <| () => {
+        @async.sleep(200)
+        raise Err
+      }
+    })
+  catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   buf.write_string(@debug.to_string(result))
   inspect(buf.to_string(), content="Err(Err)")
 }
@@ -32,16 +38,22 @@ async test "spawn error1" {
 ///|
 async test "spawn error2" {
   let buf = StringBuilder::new()
-  let result = try? @async.with_task_group(root => {
-    root.spawn_bg() <| () => {
-      @async.sleep(200)
-      raise Err
-    }
-    root.spawn_bg() <| () => {
-      @async.sleep(1000)
-      buf <+ "task 1 finished\n"
-    }
-  })
+  let result = try
+    @async.with_task_group(root => {
+      root.spawn_bg() <| () => {
+        @async.sleep(200)
+        raise Err
+      }
+      root.spawn_bg() <| () => {
+        @async.sleep(1000)
+        buf <+ "task 1 finished\n"
+      }
+    })
+  catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   buf.write_string(@debug.to_string(result))
   inspect(buf.to_string(), content="Err(Err)")
 }
@@ -49,22 +61,31 @@ async test "spawn error2" {
 ///|
 async test "spawn after cancelled" {
   let log = []
-  let _ : Result[Unit, _] = try? @async.with_task_group(group => {
-    group.spawn_bg() <| () => {
-      // emulate a non-cancellable job,
-      // or a job that happens to be completed on cancellation,
-      // such that discarding the result may lead to data loss
-      @async.protect_from_cancel(() => @async.sleep(300), resume_on_cancel=true)
-      // even if control flow enters here normally,
-      // current task and the whole group may be in a cancelled state
-      group.spawn_bg(allow_failure=true) <| () => {
-        log.push("enter child task after cancelled")
-        @async.sleep(100)
-        log.push("child task completed")
+  let _ : Result[Unit, _] = try
+    @async.with_task_group(group => {
+      group.spawn_bg() <| () => {
+        // emulate a non-cancellable job,
+        // or a job that happens to be completed on cancellation,
+        // such that discarding the result may lead to data loss
+        @async.protect_from_cancel(
+          () => @async.sleep(300),
+          resume_on_cancel=true,
+        )
+        // even if control flow enters here normally,
+        // current task and the whole group may be in a cancelled state
+        group.spawn_bg(allow_failure=true) <| () => {
+          log.push("enter child task after cancelled")
+          @async.sleep(100)
+          log.push("child task completed")
+        }
       }
-    }
-    @async.sleep(150)
-    raise Failure::Failure("failure")
-  })
+      @async.sleep(150)
+      raise Failure::Failure("failure")
+    })
+  catch {
+    e => Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   json_inspect(log, content=["enter child task after cancelled"])
 }

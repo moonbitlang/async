@@ -32,7 +32,11 @@ async test "rmdir recursive" {
   @fs.mkdir("\{path}/inner")
   @fs.write_file("\{path}/inner/file", "", create_mode=CreateOrTruncate)
   @fs.symlink("\{path}/symlink", target="../../target")
-  let result = try? @fs.rmdir(path)
+  let result = try @fs.rmdir(path) catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   @fs.rmdir(path, recursive=true)
   assert_true(result is Err(_))
 }

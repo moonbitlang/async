@@ -473,7 +473,11 @@ Process operations handle errors through exit codes:
 #cfg(all(target="native", not(platform="windows")))
 async test "handle process errors" {
   // Non-existent command fails
-  let result = try? @process.run("nonexistent_command", [])
+  let result = try @process.run("nonexistent_command", []) catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Err(_))
 }
 

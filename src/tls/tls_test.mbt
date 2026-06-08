@@ -157,11 +157,17 @@ async test "`connect` accidental close" {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = try? @tls.Tls::client_from_pair(
-        client_read_from_server,
-        client_write_to_server,
-        trust=NoVerification,
-      )
+      let client = try
+        @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          trust=NoVerification,
+        )
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      }
       match client {
         Ok(client) => {
           client.close()
@@ -199,7 +205,14 @@ async test "`read` already closed" {
         trust=NoVerification,
       )
       defer client.close()
-      debug_inspect(try? client.read_some(), content="Ok(None)")
+      debug_inspect(
+        try client.read_some() catch {
+          e => Result::Err(e)
+        } noraise {
+          value => Ok(value)
+        },
+        content="Ok(None)",
+      )
     }
   }
 }
@@ -288,9 +301,13 @@ async test "client custom root certificate rejects different root" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = try? other_root_test_server(
-        server_read_from_client, server_write_to_client,
-      )
+      let server = try
+        other_root_test_server(server_read_from_client, server_write_to_client)
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      }
       assert_true(server is Err(_))
     }
     root.spawn_bg() <| () => {
@@ -298,12 +315,18 @@ async test "client custom root certificate rejects different root" {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = try? @tls.Tls::client_from_pair(
-        client_read_from_server,
-        client_write_to_server,
-        host="whatever",
-        trust=CustomPemFile("test_keys/valid_root_cert.pem"),
-      )
+      let client = try
+        @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          host="whatever",
+          trust=CustomPemFile("test_keys/valid_root_cert.pem"),
+        )
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      }
       assert_true(client is Err(_))
     }
   }

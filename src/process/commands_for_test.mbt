@@ -38,7 +38,7 @@ let ls : String = if is_windows { "Get-ChildItem -Name" } else { "ls" }
 
 ///|
 fn make_test_prog(name : String) -> @async.Lazy[String] {
-  @async.Lazy() <| () => {
+  Lazy() <| () => {
     let code = @process.run("moon", [
       "build",
       "test_programs/\{name}",

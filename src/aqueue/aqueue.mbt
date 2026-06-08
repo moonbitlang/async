@@ -80,9 +80,9 @@ pub fn[X] Queue::Queue(kind~ : Kind) -> Queue[X] {
   }
   {
     kind,
-    writers: @deque.Deque([]),
-    readers: @deque.Deque([]),
-    buffer: @deque.Deque([]),
+    writers: Deque([]),
+    readers: Deque([]),
+    buffer: Deque([]),
     closed: None,
   }
 }

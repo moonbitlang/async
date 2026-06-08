@@ -22,11 +22,15 @@ async test "bad client" {
       server.run_forever() <| ((req, _, conn) => {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
-        let result = try? ({
+        let result = try {
           let result = ws.recv().read_all().text()
           ws.send_text(result)
           result
-        })
+        } catch {
+          e => Result::Err(e)
+        } noraise {
+          value => Ok(value)
+        }
         server_result_queue.put(result)
         // delay closing of the TCP connection,
         // so that the client has enough time to react to the CLOSE frame
@@ -44,7 +48,11 @@ async test "bad client" {
             http_client.write(frame)
           }
         }
-        try? ws_client.recv().read_all().text()
+        try ws_client.recv().read_all().text() catch {
+          e => Result::Err(e)
+        } noraise {
+          value => Ok(value)
+        }
       }
     }
 

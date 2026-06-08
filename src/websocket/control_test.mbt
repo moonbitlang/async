@@ -115,7 +115,11 @@ async test "close test" {
         // currently, auto-reply is only triggered when the user is actually reading.
         group.spawn_bg() <| () => {
           debug_inspect(
-            try? ws.recv().read_all().text(),
+            try ws.recv().read_all().text() catch {
+              e => Result::Err(e)
+            } noraise {
+              value => Ok(value)
+            },
             content=(
               #|Err(ConnectionClosed(Normal, Some("abcd")))
             ),
@@ -282,7 +286,11 @@ async test "duplicated ping" {
           inner.spawn_bg(() => ws.ping(msg=b"1"))
           inner.spawn_bg() <| () => {
             debug_inspect(
-              try? ws.ping(msg=b"1"),
+              try ws.ping(msg=b"1") catch {
+                e => Result::Err(e)
+              } noraise {
+                value => Ok(value)
+              },
               content=(
                 #|Err(Failure("A PING request with the same payload is already pending"))
               ),

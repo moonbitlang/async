@@ -36,7 +36,7 @@ pub fn[W] Encoder::Encoder(
     inner,
     buf,
     buf_len: 0,
-    core: @gzip_internal.Encoder(mtime~, extra_flags~, operating_system~),
+    core: Encoder(mtime~, extra_flags~, operating_system~),
   }
 }
 

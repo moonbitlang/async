@@ -55,10 +55,16 @@ async test "walk parallel" {
 async test "walk failure" {
   let log = StringBuilder::new()
   debug_inspect(
-    try? @fs.walk("test_directory", max_concurrency=1, (path, _) => {
-      log.write_string("handling \{path}\n")
-      raise Failure::Failure("failure when handling directory")
-    }),
+    try
+      @fs.walk("test_directory", max_concurrency=1, (path, _) => {
+        log.write_string("handling \{path}\n")
+        raise Failure::Failure("failure when handling directory")
+      })
+    catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content=(
       #|Err(Failure("failure when handling directory"))
     ),
@@ -76,13 +82,19 @@ async test "walk failure" {
 async test "walk allow_failure" {
   let log = StringBuilder::new()
   debug_inspect(
-    try? @fs.walk("test_directory", allow_failure=true, max_concurrency=1, (
-      path,
-      _,
-    ) => {
-      log.write_string("handling \{path}\n")
-      raise Failure::Failure("failure when handling directory")
-    }),
+    try
+      @fs.walk("test_directory", allow_failure=true, max_concurrency=1, (
+        path,
+        _,
+      ) => {
+        log.write_string("handling \{path}\n")
+        raise Failure::Failure("failure when handling directory")
+      })
+    catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content="Ok(())",
   )
   inspect(

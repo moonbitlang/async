@@ -31,7 +31,11 @@ test "parse cookie success" {
     ),
   )
   debug_inspect(
-    try? Cookie::parse("Cookie="),
+    try Cookie::parse("Cookie=") catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content=(
       #|Ok(
       #|  {
@@ -71,13 +75,21 @@ test "parse cookie success" {
 ///|
 test "parse cookie failure" {
   debug_inspect(
-    try? Cookie::parse("Cookie"),
+    try Cookie::parse("Cookie") catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content=(
       #|Err(BadRequest)
     ),
   )
   debug_inspect(
-    try? Cookie::parse("Cookie=value;Max-Age=xxx"),
+    try Cookie::parse("Cookie=value;Max-Age=xxx") catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content=(
       #|Err(BadRequest)
     ),

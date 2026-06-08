@@ -17,16 +17,22 @@ async test "spawn_loop basic" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        let mut i = 0
-        root.spawn_loop() <| () => {
-          log.write_string("tick \{i}\n")
-          i = i + 1
-          if i >= 3 {
-            raise @async.BreakFromSpawnLoop
+      try
+        @async.with_task_group(root => {
+          let mut i = 0
+          root.spawn_loop() <| () => {
+            log.write_string("tick \{i}\n")
+            i = i + 1
+            if i >= 3 {
+              raise @async.BreakFromSpawnLoop
+            }
           }
-        }
-      }),
+        })
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
     ),
   )
   inspect(
@@ -45,16 +51,22 @@ async test "spawn_loop basic-error" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        let mut i = 0
-        root.spawn_loop() <| () => {
-          log.write_string("tick \{i}\n")
-          i = i + 1
-          if i >= 3 {
-            raise Err
+      try
+        @async.with_task_group(root => {
+          let mut i = 0
+          root.spawn_loop() <| () => {
+            log.write_string("tick \{i}\n")
+            i = i + 1
+            if i >= 3 {
+              raise Err
+            }
           }
-        }
-      }),
+        })
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
     ),
   )
   inspect(

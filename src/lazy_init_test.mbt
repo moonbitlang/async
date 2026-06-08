@@ -38,7 +38,7 @@ async test "lazy init basic" {
 
 ///|
 async test "lazy init failure" {
-  let x : @async.Lazy[Unit] = @async.Lazy(() => {
+  let x : @async.Lazy[Unit] = Lazy(() => {
     @async.sleep(200)
     raise Failure::Failure("msg")
   })
@@ -47,7 +47,11 @@ async test "lazy init failure" {
     (@async.now() - start + 20).to_int() / 200
   }
 
-  let result = try? x.wait()
+  let result = try x.wait() catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   inspect(current_tick(), content="1")
   debug_inspect(
     result,
@@ -55,7 +59,11 @@ async test "lazy init failure" {
       #|Err(Failure("msg"))
     ),
   )
-  let result = try? x.wait()
+  let result = try x.wait() catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   inspect(current_tick(), content="1")
   debug_inspect(
     result,

@@ -38,7 +38,7 @@ struct Cond {
 /// Create a new condition variable.
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { waiters: @deque.Deque([]) }
+  { waiters: Deque([]) }
 }
 
 ///|

@@ -28,11 +28,7 @@ struct Decoder[R] {
 ///|
 #alias(new, deprecated)
 pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
-  let decoder = {
-    inner,
-    core: @gzip_internal.Decoder(),
-    read_buf: @io.ReaderBuffer::new(),
-  }
+  let decoder = { inner, core: Decoder(), read_buf: @io.ReaderBuffer::new() }
   decoder.inner._get_internal_buffer().repr().enlarge_to(decoder_buffer_size)
   decoder
 }

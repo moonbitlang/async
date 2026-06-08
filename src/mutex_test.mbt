@@ -47,7 +47,11 @@ async test "mutex cancellation" {
       mutex.release()
     }
     debug_inspect(
-      try? @async.with_timeout(250, () => mutex.acquire()),
+      try @async.with_timeout(250, () => mutex.acquire()) catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
       content="Err(TimeoutError)",
     )
     @async.sleep(500)

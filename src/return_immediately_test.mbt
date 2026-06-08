@@ -17,16 +17,22 @@ async test "return_immediately basic" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          root.return_immediately(())
-        }
-        root.spawn_bg() <| () => {
-          @async.sleep(300)
-          log <+ "task finished\n"
-        }
-      }),
+      try
+        @async.with_task_group(root => {
+          root.spawn_bg() <| () => {
+            @async.sleep(200)
+            root.return_immediately(())
+          }
+          root.spawn_bg() <| () => {
+            @async.sleep(300)
+            log <+ "task finished\n"
+          }
+        })
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
     ),
   )
   inspect(log.to_string(), content="Ok(())")
@@ -37,22 +43,28 @@ async test "return_immediately nested" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(300)
-          log <+ "outer task finished\n"
-        }
-        @async.with_task_group() <| fn(group) {
-          group.spawn_bg() <| () => {
-            @async.sleep(200)
-            root.return_immediately(())
-          }
-          group.spawn_bg() <| () => {
+      try
+        @async.with_task_group(root => {
+          root.spawn_bg() <| () => {
             @async.sleep(300)
-            log <+ "inner task finished\n"
+            log <+ "outer task finished\n"
           }
-        }
-      }),
+          @async.with_task_group() <| fn(group) {
+            group.spawn_bg() <| () => {
+              @async.sleep(200)
+              root.return_immediately(())
+            }
+            group.spawn_bg() <| () => {
+              @async.sleep(300)
+              log <+ "inner task finished\n"
+            }
+          }
+        })
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
     ),
   )
   inspect(log.to_string(), content="Ok(())")
@@ -63,21 +75,27 @@ async test "return_immediately error on cancel" {
   let log = StringBuilder::new()
   log.write_string(
     @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          root.return_immediately(())
-        }
-        root.spawn_bg() <| () => {
-          @async.sleep(300) catch {
-            _ => {
-              log <+ "task cancelled, causing other error\n"
-              raise Err
-            }
+      try
+        @async.with_task_group(root => {
+          root.spawn_bg() <| () => {
+            @async.sleep(200)
+            root.return_immediately(())
           }
-          log <+ "task finished\n"
-        }
-      }),
+          root.spawn_bg() <| () => {
+            @async.sleep(300) catch {
+              _ => {
+                log <+ "task cancelled, causing other error\n"
+                raise Err
+              }
+            }
+            log <+ "task finished\n"
+          }
+        })
+      catch {
+        e => Result::Err(e)
+      } noraise {
+        value => Ok(value)
+      },
     ),
   )
   inspect(

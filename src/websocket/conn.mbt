@@ -161,7 +161,7 @@ fn Conn::new(
     read_mask: None,
     mask_offset: 0,
     utf8_remaining: -1,
-    write_lock: @semaphore.Semaphore(1),
+    write_lock: Semaphore(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
       MAX_HEADER_SIZE + MASK_SIZE
@@ -454,7 +454,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     (CloseCode::from_uint(code), reason)
   } else {
     // the `close` packet we receive is empty
-    (CloseCode::Normal, None)
+    (Normal, None)
   }
   self.closed = Some(ConnectionClosed(close_code, reason))
   if self.write_mask is Some(rand) {

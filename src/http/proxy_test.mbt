@@ -122,7 +122,7 @@ async test "proxied https request" {
     }
     let (_, result) = @http.get(
       "https://www.moonbitlang.com",
-      proxy=@http.Client("http://localhost:\{port}"),
+      proxy=Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -144,7 +144,7 @@ async test "proxied http request" {
     }
     let (_, result) = @http.get(
       "http://www.example.org",
-      proxy=@http.Client("http://localhost:\{port}"),
+      proxy=Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -211,7 +211,7 @@ async test "proxy error" {
     try
       @http.get(
         "https://www.moonbitlang.com",
-        proxy=@http.Client("http://localhost:\{port}"),
+        proxy=Client("http://localhost:\{port}"),
       )
     catch {
       err =>

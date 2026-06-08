@@ -265,7 +265,7 @@ async fn Reader::read_headers(
       "content-encoding" if self.auto_decompress => {
         guard self.gzip is None else { raise BadRequest }
         guard value.to_lower() is "gzip" else { raise NotImplemented }
-        self.gzip = Some(@gzip.Decoder())
+        self.gzip = Some(Decoder())
         // if automatic decompression is enabled, avoid reporting a wrong content-length value
         headers.remove("content-length")
         continue

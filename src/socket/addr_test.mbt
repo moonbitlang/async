@@ -29,15 +29,27 @@ test "Parse IPv4 address" {
 ///|
 test "Parse invalid IPv4 address" {
   // Too short
-  let v = try? @socket.Addr::parse("127.0.0.1")
+  let v = try @socket.Addr::parse("127.0.0.1") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 
   // Too long
-  let v = try? @socket.Addr::parse("127.0.0.1:8080:8080")
+  let v = try @socket.Addr::parse("127.0.0.1:8080:8080") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 
   // Invalid IP, out of range
-  let v = try? @socket.Addr::parse("256.0.0.1:8080")
+  let v = try @socket.Addr::parse("256.0.0.1:8080") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 }
 
@@ -67,19 +79,35 @@ test "Parse IPv6 address" {
 ///|
 test "Parse invalid IPv6 address" {
   // Too short
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:8080]")
+  let v = try @socket.Addr::parse("[1:2:3:4:5:6:7:8080]") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 
   // Too long
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:8:9:8080]")
+  let v = try @socket.Addr::parse("[1:2:3:4:5:6:7:8:9:8080]") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 
   // triple colon
-  let v = try? @socket.Addr::parse("[1:2:::6:7:8]:8080]")
+  let v = try @socket.Addr::parse("[1:2:::6:7:8]:8080]") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 
   // two double colons
-  let v = try? @socket.Addr::parse("[1:2::6::8]:8080]")
+  let v = try @socket.Addr::parse("[1:2::6::8]:8080]") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 }
 
@@ -90,9 +118,17 @@ test "Parse IPv6 address with ipv4" {
   let addr = @socket.Addr::parse("[::FFFF:192.0.2.33]:8080")
   assert_eq(addr.to_string(), "[::ffff:192.0.2.33]:8080")
   // Not enough groups
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:127.0.0.1]:8080")
+  let v = try @socket.Addr::parse("[1:2:3:4:5:127.0.0.1]:8080") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
   // Too many groups
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:127.0.0.1]:8080")
+  let v = try @socket.Addr::parse("[1:2:3:4:5:6:7:127.0.0.1]:8080") catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(v is Err(_))
 }

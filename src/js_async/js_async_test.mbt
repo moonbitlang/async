@@ -26,14 +26,20 @@ async test "Promise::from_async" {
 ///|
 async test "Promise::from_async cancellation" {
   let mut worker_finished = false
-  let result = try? @async.with_timeout(100, () => {
-    @js_async.run_promise() <| abort_signal => {
-      @js_async.Promise::from_async(abort_signal~) <| () => {
-        @async.sleep(200)
-        worker_finished = true
+  let result = try
+    @async.with_timeout(100, () => {
+      @js_async.run_promise() <| abort_signal => {
+        @js_async.Promise::from_async(abort_signal~) <| () => {
+          @async.sleep(200)
+          worker_finished = true
+        }
       }
-    }
-  })
+    })
+  catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   debug_inspect(result, content="Err(TimeoutError)")
   assert_false(worker_finished)
 }
@@ -47,7 +53,11 @@ async test "Promise::from_async cancellation 2" {
   @async.sleep(100)
   controller.abort()
   debug_inspect(
-    try? p.wait(),
+    try p.wait() catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
     content=(
       #|Err(<moonbitlang/async/js_async.JsError.JsError: ...>)
     ),
@@ -62,7 +72,14 @@ async test "Promise::from_async cancellation 3" {
   })
   @async.sleep(200)
   controller.abort()
-  debug_inspect(try? p.wait(), content="Ok(())")
+  debug_inspect(
+    try p.wait() catch {
+      e => Result::Err(e)
+    } noraise {
+      value => Ok(value)
+    },
+    content="Ok(())",
+  )
 }
 
 ///|

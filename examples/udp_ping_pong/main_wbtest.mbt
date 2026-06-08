@@ -19,7 +19,11 @@ async test "main" {
     log..write_string(msg).write_string("\n")
   }
 
-  let result = try? main_prog(println)
+  let result = try main_prog(println) catch {
+    e => Result::Err(e)
+  } noraise {
+    value => Ok(value)
+  }
   log.write_string(@debug.to_string(result))
   inspect(
     log.to_string(),

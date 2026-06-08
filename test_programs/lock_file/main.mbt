@@ -31,7 +31,7 @@ async fn main {
         continue rest
       }
       ["-exclusive", .. rest] => {
-        kind = Some(@fs.Exclusive)
+        kind = Some(Exclusive)
         continue rest
       }
       [['-', ..] as opt, ..] => fail("unknown argument \{opt}")

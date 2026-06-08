@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-let cat : @async.Lazy[String] = @async.Lazy(() => {
+let cat : @async.Lazy[String] = Lazy(() => {
   // Note: the `cat` example program lies in another MoonBit module.
   // Currently, dependencies of a module is built locally in that module,
   // so there will be no build lock conflict between this test and the `cat` program.
