@@ -98,7 +98,28 @@ extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::get_peer_certificate(self : SSL) -> Bytes? = "moonbitlang_async_tls_ssl_get_peer_certificate"
+priv struct PeerCertificate(@c_buffer.Buffer)
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn PeerCertificate::free(self : PeerCertificate) -> Unit = "moonbitlang_async_tls_free_peer_certificate"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int = "moonbitlang_async_tls_peer_certificate_length"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(buf)
+extern "C" fn PeerCertificate::blit_to(
+  self : PeerCertificate,
+  buf : FixedArray[Byte],
+  len~ : Int,
+) -> Unit = "moonbitlang_async_tls_peer_certificate_blit_to"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::get_peer_certificate(self : SSL) -> PeerCertificate = "moonbitlang_async_tls_ssl_get_peer_certificate"
 
 ///|
 #cfg(not(platform="windows"))
@@ -604,11 +625,20 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 /// Therefore the return type is `Bytes?` instead of `Bytes`.
 #cfg(not(platform="windows"))
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
-  let result = self.ssl.get_peer_certificate()
-  if result is None && err_peek_error_code() != 0 {
-    raise TlsError(err_get_error())
+  let cert = self.ssl.get_peer_certificate()
+  if cert.0.is_null() {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      return None
+    }
   }
-  result
+  defer cert.free()
+  let len = cert.length()
+  guard len > 0
+  let result = FixedArray::make(len, b'\x00')
+  cert.blit_to(result, len~)
+  Some(result.unsafe_reinterpret_as_bytes())
 }
 
 ///|

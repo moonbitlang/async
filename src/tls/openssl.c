@@ -304,22 +304,20 @@ void moonbitlang_async_tls_ssl_free(SSL *ssl) {
   SSL_free(ssl);
 }
 
-moonbit_bytes_t moonbitlang_async_tls_ssl_get_peer_certificate(SSL *ssl) {
-  X509 *cert = SSL_get1_peer_certificate(ssl);
-  if (!cert) return 0;
+X509 *moonbitlang_async_tls_ssl_get_peer_certificate(SSL *ssl) {
+  return SSL_get1_peer_certificate(ssl);
+}
 
-  int len = i2d_X509_AUX(cert, 0);
-  if (len < 0) goto handle_error;
+int32_t moonbitlang_async_tls_peer_certificate_length(X509 *cert) {
+  return i2d_X509_AUX(cert, 0);
+}
 
-  moonbit_bytes_t result = moonbit_make_bytes_raw(len);
-  unsigned char *buf = result;
+void moonbitlang_async_tls_peer_certificate_blit_to(X509 *cert, unsigned char *buf) {
   i2d_X509_AUX(cert, &buf);
-  X509_free(cert);
-  return result;
+}
 
-handle_error:
+void moonbitlang_async_tls_free_peer_certificate(X509 *cert) {
   X509_free(cert);
-  return 0;
 }
 
 static

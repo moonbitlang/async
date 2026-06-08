@@ -457,8 +457,29 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 
 ///|
 #cfg(platform="windows")
+priv struct PeerCertificate(@c_buffer.Buffer)
+
+///|
+#cfg(platform="windows")
+extern "C" fn PeerCertificate::free(self : PeerCertificate) -> Unit = "moonbitlang_async_schannel_free_peer_certificate"
+
+///|
+#cfg(platform="windows")
+extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int = "moonbitlang_async_schannel_peer_certificate_length"
+
+///|
+#cfg(platform="windows")
+#borrow(buf)
+extern "C" fn PeerCertificate::blit_to(
+  self : PeerCertificate,
+  buf : FixedArray[Byte],
+  len~ : Int,
+) -> Unit = "moonbitlang_async_schannel_peer_certificate_blit_to"
+
+///|
+#cfg(platform="windows")
 #borrow(ch)
-extern "C" fn Schannel::get_peer_certificate(ch : Schannel) -> Bytes? = "moonbitlang_async_schannel_get_peer_certificate"
+extern "C" fn Schannel::get_peer_certificate(ch : Schannel) -> PeerCertificate = "moonbitlang_async_schannel_get_peer_certificate"
 
 ///|
 #cfg(platform="windows")
@@ -475,14 +496,19 @@ extern "C" fn Schannel::server_endpoint_channel_binding(
 ///|
 #cfg(platform="windows")
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
-  let result = self.context.get_peer_certificate()
-  if result is None {
-    let errno = @os_error.get_errno()
-    if errno != 0 {
-      raise TlsError(@os_error.errno_to_string(errno))
-    }
+  let cert = self.context.get_peer_certificate()
+  if cert.0.is_null() {
+    @os_error.check_errno("@tls.Tls::get_peer_certificate()")
+    // if the error number is 0,
+    // no error is happening, the certificate simply does not exist
+    return None
   }
-  result
+  defer cert.free()
+  let len = cert.length()
+  guard len > 0
+  let result = FixedArray::make(len, b'\x00')
+  cert.blit_to(result, len~)
+  Some(result.unsafe_reinterpret_as_bytes())
 }
 
 ///|
