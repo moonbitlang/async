@@ -119,21 +119,35 @@ extern "C" fn PeerCertificate::blit_to(
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::get_peer_certificate(self : SSL) -> PeerCertificate = "moonbitlang_async_tls_ssl_get_peer_certificate"
+#borrow(len)
+extern "C" fn PeerCertificate::server_endpoint_hash(
+  self : PeerCertificate,
+  len~ : Ref[Int],
+) -> @c_buffer.Buffer = "moonbitlang_async_tls_hash_server_endpoint_certificate"
 
 ///|
 #cfg(not(platform="windows"))
+extern "C" fn SSL::get_certificate(
+  self : SSL,
+  is_client~ : Bool,
+) -> PeerCertificate = "moonbitlang_async_tls_ssl_get_certificate"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::unique_channel_binding_length(
+  self : SSL,
+  is_client~ : Bool,
+) -> Int = "moonbitlang_async_tls_ssl_unique_channel_binding_length"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(buf)
 extern "C" fn SSL::unique_channel_binding(
   self : SSL,
+  buf : FixedArray[Byte],
+  len~ : Int,
   is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_unique_channel_binding"
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn SSL::server_endpoint_channel_binding(
-  self : SSL,
-  is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_server_endpoint_channel_binding"
+) -> Unit = "moonbitlang_async_tls_ssl_unique_channel_binding"
 
 ///|
 pub(all) enum X509FileType {
@@ -625,7 +639,8 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 /// Therefore the return type is `Bytes?` instead of `Bytes`.
 #cfg(not(platform="windows"))
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
-  let cert = self.ssl.get_peer_certificate()
+  guard self.is_client else { None }
+  let cert = self.ssl.get_certificate(is_client=true)
   if cert.0.is_null() {
     if err_peek_error_code() != 0 {
       raise TlsError(err_get_error())
@@ -646,15 +661,17 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
 /// according to RFC 5929
 #cfg(not(platform="windows"))
 pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
-  match self.ssl.unique_channel_binding(is_client=self.is_client) {
-    Some(binding) => binding
-    None =>
-      if err_peek_error_code() != 0 {
-        raise TlsError(err_get_error())
-      } else {
-        raise TlsError("tls-unique channel binding unavailable")
-      }
+  let len = self.ssl.unique_channel_binding_length(is_client=self.is_client)
+  guard len > 0 else {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      raise TlsError("tls-unique channel binding unavailable")
+    }
   }
+  let result = FixedArray::make(len, b'\x00')
+  self.ssl.unique_channel_binding(result, len~, is_client=self.is_client)
+  result.unsafe_reinterpret_as_bytes()
 }
 
 ///|
@@ -664,15 +681,25 @@ pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
 /// so `tls-unique` is the more recommended approach when available.
 #cfg(not(platform="windows"))
 pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
-  match self.ssl.server_endpoint_channel_binding(is_client=self.is_client) {
-    Some(binding) => binding
-    None =>
-      if err_peek_error_code() != 0 {
-        raise TlsError(err_get_error())
-      } else {
-        raise TlsError("tls-server-endpoint channel binding unavailable")
-      }
+  let cert = self.ssl.get_certificate(is_client=self.is_client)
+  if cert.0.is_null() {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      raise TlsError("tls-server-endpoint channel binding unavailable")
+    }
   }
+  // for the server, the result is obtained by `SSL_get_certificate`,
+  // which should not be freed by us according to https://docs.openssl.org/3.3/man3/SSL_get_certificate
+  defer (if self.is_client { cert.free() })
+  let len = Ref(0)
+  let hash = cert.server_endpoint_hash(len~)
+  if hash.is_null() {
+    raise TlsError(err_get_error())
+  }
+  let result = FixedArray::make(len.val, b'\x00')
+  hash.blit_to_bytes(dst=result, offset=0, len=len.val)
+  result.unsafe_reinterpret_as_bytes()
 }
 
 ///|
