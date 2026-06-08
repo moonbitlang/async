@@ -605,23 +605,36 @@ moonbit_bytes_t get_channel_binding(struct Context *ctx, int attribute) {
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
+CERT_CONTEXT *moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
   CERT_CONTEXT *cert = 0;
   int err = QueryContextAttributes(&ctx->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &cert);
   if (err != SEC_E_OK && err != SEC_E_NO_CREDENTIALS) {
     SetLastError(err);
     return 0;
-  }
-
-  if (!cert) {
+  } else {
     SetLastError(0);
-    return 0;
   }
 
-  moonbit_bytes_t result = moonbit_make_bytes_raw(cert->cbCertEncoded);
-  memcpy(result, cert->pbCertEncoded, cert->cbCertEncoded);
+  return cert;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_free_peer_certificate(CERT_CONTEXT *cert) {
   CertFreeCertificateContext(cert);
-  return result;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_schannel_peer_certificate_length(CERT_CONTEXT *cert) {
+  return cert->cbCertEncoded;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_peer_certificate_blit_to(
+  CERT_CONTEXT *cert,
+  void *buf,
+  int32_t len
+) {
+  memcpy(buf, cert->pbCertEncoded, len);
 }
 
 MOONBIT_FFI_EXPORT
