@@ -19,7 +19,6 @@ priv enum AddrFamily {
 }
 
 ///|
-#warnings("-unused_constructor")
 struct Addr(Bytes) derive(Eq, Compare, Hash)
 
 ///|

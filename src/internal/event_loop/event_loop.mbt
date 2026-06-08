@@ -440,7 +440,6 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
 }
 
 ///|
-#warnings("-unused_constructor")
 priv enum CancellationStatus {
   NoWait
   NeedWait
