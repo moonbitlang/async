@@ -569,41 +569,6 @@ int32_t moonbitlang_async_schannel_shutdown(struct Context *ctx) {
   return ApplyControlToken(&ctx->context, &buf_desc);
 }
 
-static
-moonbit_bytes_t get_channel_binding(struct Context *ctx, int attribute) {
-  SecPkgContext_Bindings bindings;
-  int32_t err = QueryContextAttributes(&ctx->context, attribute, &bindings);
-  if (err != SEC_E_OK) {
-    SetLastError(err);
-    return 0;
-  }
-
-  if (!bindings.Bindings) {
-    FreeContextBuffer(bindings.Bindings);
-    return 0;
-  }
-
-  unsigned long data_offset = bindings.Bindings->dwApplicationDataOffset;
-  unsigned long data_len = bindings.Bindings->cbApplicationDataLength;
-  if (
-    data_offset > bindings.BindingsLength ||
-    data_len > bindings.BindingsLength - data_offset
-  ) {
-    SetLastError(ERROR_INVALID_DATA);
-    FreeContextBuffer(bindings.Bindings);
-    return 0;
-  }
-
-  moonbit_bytes_t result = moonbit_make_bytes_raw(data_len);
-  memcpy(
-    result,
-    ((unsigned char *)bindings.Bindings) + data_offset,
-    data_len
-  );
-  FreeContextBuffer(bindings.Bindings);
-  return result;
-}
-
 MOONBIT_FFI_EXPORT
 CERT_CONTEXT *moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
   CERT_CONTEXT *cert = 0;
@@ -637,13 +602,43 @@ void moonbitlang_async_schannel_peer_certificate_blit_to(
   memcpy(buf, cert->pbCertEncoded, len);
 }
 
+static
+SEC_CHANNEL_BINDINGS *get_channel_binding(struct Context *ctx, int attribute) {
+  SecPkgContext_Bindings bindings;
+  int32_t err = QueryContextAttributes(&ctx->context, attribute, &bindings);
+  if (err != SEC_E_OK) {
+    SetLastError(err);
+    return 0;
+  }
+  return bindings.Bindings;
+}
+
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_unique_channel_binding(struct Context *ctx) {
+int32_t moonbitlang_async_schannel_channel_binding_length(SEC_CHANNEL_BINDINGS *bindings) {
+  return bindings->cbApplicationDataLength;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_channel_binding_blit_to(
+  SEC_CHANNEL_BINDINGS *bindings,
+  void *buf,
+  int32_t len
+) {
+  memcpy(buf, ((unsigned char *)bindings) + bindings->dwApplicationDataOffset, len);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_free_channel_binding(SEC_CHANNEL_BINDINGS *bindings) {
+  FreeContextBuffer(bindings);
+}
+
+MOONBIT_FFI_EXPORT
+SEC_CHANNEL_BINDINGS *moonbitlang_async_schannel_unique_channel_binding(struct Context *ctx) {
   return get_channel_binding(ctx, SECPKG_ATTR_UNIQUE_BINDINGS);
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_server_endpoint_channel_binding(struct Context *ctx) {
+SEC_CHANNEL_BINDINGS *moonbitlang_async_schannel_server_endpoint_channel_binding(struct Context *ctx) {
   return get_channel_binding(ctx, SECPKG_ATTR_ENDPOINT_BINDINGS);
 }
 
