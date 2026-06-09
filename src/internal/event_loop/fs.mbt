@@ -44,7 +44,7 @@ pub async fn open(
       let io = IoHandle::from_fd(
         fd,
         kind~,
-        is_async=access is 3 || (!IS_WINDOWS && kind.can_poll()),
+        is_async=access is 3 || (!is_windows() && kind.can_poll()),
       )
       (io, result)
     }
