@@ -30,6 +30,7 @@ priv struct Waiter {
 
 ///|
 /// A condition variable that can be used for synchronization between tasks.
+#valtype
 struct Cond {
   waiters : @deque.Deque[Waiter]
 }
