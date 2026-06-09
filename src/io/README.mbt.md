@@ -9,6 +9,7 @@ Asynchronous I/O abstraction for MoonBit. This package provides fundamental abst
   - [Reader Trait](#reader-trait)
   - [Writer Trait](#writer-trait)
   - [Data Trait](#data-trait)
+- [wrap in-memory data into reader](#wrap-in-memory-data-into-reader)
 - [Buffered I/O](#buffered-io)
   - [BufferedReader](#bufferedreader)
   - [BufferedWriter](#bufferedwriter)
@@ -299,6 +300,55 @@ async test "read_until - used to read file line by line" {
   }
   inspect(lines.length(), content="202")
   assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
+}
+```
+
+## Wrap In-memory Data Into Reader
+
+`MemoryReader` wraps an async writer callback as a `Reader`. The callback receives an auxiliary writer, runs in the background, and any data written to that writer becomes readable from the `MemoryReader`. This is useful when an API expects a `Reader`, but the data is produced in memory or generated incrementally.
+
+The reader reaches EOF when the callback returns normally. If the callback raises an error, read operations fail with the same error. Closing the reader cancels the background callback if it is still running.
+
+```moonbit check
+///|
+async test "MemoryReader - generate reader content in memory" {
+  let r = @io.MemoryReader() <| w => {
+    w.write("hello, ")
+    @async.sleep(10)
+    w.write("MoonBit")
+  }
+  defer r.close()
+  inspect(r.read_all().text(), content="hello, MoonBit")
+}
+
+///|
+async test "MemoryReader - stream generated chunks" {
+  let r = @io.MemoryReader() <| w => {
+    for part in ["ab", "cd", "ef"] {
+      w.write(part)
+      @async.sleep(10)
+    }
+  }
+  defer r.close()
+  debug_inspect(
+    r.read_some().map(data => @utf8.decode(data)),
+    content=(
+      #|Some("ab")
+    ),
+  )
+  debug_inspect(
+    r.read_some().map(data => @utf8.decode(data)),
+    content=(
+      #|Some("cd")
+    ),
+  )
+  debug_inspect(
+    r.read_some().map(data => @utf8.decode(data)),
+    content=(
+      #|Some("ef")
+    ),
+  )
+  debug_inspect(r.read_some(), content="None")
 }
 ```
 
@@ -609,6 +659,12 @@ A buffered reader that wraps around a normal reader. Methods include:
 - `find_opt(target)` - Find substring (returns None if not found)
 - `read_line()` - Read line until newline
 
+### MemoryReader
+
+A reader backed by an async in-memory writer callback. Methods include:
+- `MemoryReader(callback)` - Create a reader and run `callback` in the background with an auxiliary writer
+- `close()` - Close the reader and cancel the background callback if it is still running
+
 ### BufferedWriter
 
 A buffered writer with fixed-size buffer. Methods include:
@@ -637,4 +693,3 @@ Error raised when attempting to read from a closed reader.
   `.text()` and `.json()` methods need to perform decoding and parsing, so users should cache the result of these conversion methods instead of calling them repeatedly
 
 For more examples and detailed usage, explore the test suites in this package—they double as executable documentation.
-
