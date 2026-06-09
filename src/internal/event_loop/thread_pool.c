@@ -2096,7 +2096,7 @@ void spawn_job_worker(struct job *job) {
 
 #else
 
-  // Notice that we are not setting `CREATE_BREAKAWAY_FROM_JOB` here for orphan process here.
+  // Notice that we are not setting `CREATE_BREAKAWAY_FROM_JOB` for orphan process here.
   // Because in case the main process is already in a job disallowing break away,
   // setting `CREATE_BREAKAWAY_FROM_JOB` will fail the `CreateProcess` call.
   if (!spawn_job->is_orphan && global_job_object != INVALID_HANDLE_VALUE) {
@@ -2135,7 +2135,7 @@ void spawn_job_worker(struct job *job) {
     // On Windows, hard termination is much more common,
     // due to lack of a universal way for graceful process termination.
     // So assign the new process to a job object,
-    // so that it is automatically killed on when the main process is killed.
+    // so that it is automatically killed when the main process is killed.
     if (!AssignProcessToJobObject(global_job_object, process_info.hProcess)) {
       job->err = GetLastError();
       TerminateProcess(process_info.hProcess, 1);
