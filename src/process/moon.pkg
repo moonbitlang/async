@@ -21,7 +21,7 @@ import {
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "windows.c" ],
+  "native-stub": [ "unix.c", "windows.c" ],
   targets: {
     "basic_test.mbt": [ "native" ],
     "cancel_test.mbt": [ "native" ],
