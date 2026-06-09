@@ -122,7 +122,7 @@ async test "multicast no loopback" {
     )
     defer client.close()
     @async.sleep(200)
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.is_windows() {
       server.set_multicast_loopback(false)
     } else {
       client.set_multicast_loopback(false)
@@ -130,7 +130,7 @@ async test "multicast no loopback" {
     client.set_multicast_ttl(0)
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.is_windows() {
       server.set_multicast_loopback(true)
     } else {
       client.set_multicast_loopback(true)
@@ -226,14 +226,14 @@ async test "multicast no loopback v6" {
     @async.sleep(200)
     client.set_multicast_interface_v6(test_interface)
     client.set_multicast_ttl(0)
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.is_windows() {
       server.set_multicast_loopback(false)
     } else {
       client.set_multicast_loopback(false)
     }
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.is_windows() {
       server.set_multicast_loopback(true)
     } else {
       client.set_multicast_loopback(true)

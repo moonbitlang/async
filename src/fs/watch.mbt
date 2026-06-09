@@ -137,7 +137,7 @@ pub async fn Watcher::Watcher(
   let path = if path is "" { "/" } else { path.to_owned() }
   let (root_file, root_id) = @event_loop.open(
     path,
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.is_windows() {
       3
     } else {
       0

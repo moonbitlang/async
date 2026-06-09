@@ -32,6 +32,11 @@ pub let platform : Platform = get_platform()
 pub const IS_WINDOWS : Bool = false
 
 ///|
+pub fn is_windows() -> Bool {
+  platform is Windows
+}
+
+///|
 let _ignore_unused_import : Unit = {
   ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)

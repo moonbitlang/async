@@ -21,6 +21,11 @@ pub const IS_WINDOWS : Bool = false
 pub const IS_WINDOWS : Bool = true
 
 ///|
+pub fn is_windows() -> Bool {
+  IS_WINDOWS
+}
+
+///|
 pub(all) enum Platform {
   Linux = 0
   MacOS = 1
