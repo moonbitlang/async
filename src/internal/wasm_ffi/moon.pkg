@@ -1,0 +1,3 @@
+options(
+  targets: { "wasm_ffi.mbt": [ "wasm" ] },
+)
