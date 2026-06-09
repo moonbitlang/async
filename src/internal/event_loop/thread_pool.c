@@ -761,10 +761,6 @@ void open_job_worker(struct job *job) {
     }
   } while (0);
 
-  if (open_job->access == 4) {
-    printf("open() => %lx\n", open_job->result);
-  }
-
   // get the kind of the file
   if (!GetFileInformationByHandle(open_job->result, &open_job->stat)) {
     job->err = GetLastError();
