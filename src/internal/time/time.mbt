@@ -62,7 +62,11 @@ pub fn ms_since_epoch() -> Int64 {
 }
 
 ///|
-#cfg(any(target="wasm", target="wasm-gc"))
+#cfg(target="wasm")
+pub fn ms_since_epoch() -> Int64 = "moonbit_v0" "get_ms_since_epoch"
+
+///|
+#cfg(target="wasm-gc")
 pub fn ms_since_epoch() -> Int64 {
   abort("unimplemented")
 }

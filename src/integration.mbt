@@ -41,3 +41,16 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   let _ = @coroutine.spawn(main)
   @event_loop.reschedule()
 }
+
+///|
+#coverage.skip
+#cfg(target="wasm")
+#doc(hidden)
+pub fn run_async_main(main : async () -> Unit) -> Unit {
+  @event_loop.with_event_loop(() => main()) catch {
+    err => {
+      println(err)
+      abort("async main failed")
+    }
+  }
+}
