@@ -15,6 +15,7 @@ import {
   "moonbitlang/core/env",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/fs",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 options(

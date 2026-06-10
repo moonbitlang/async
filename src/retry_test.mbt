@@ -146,9 +146,11 @@ async test "retry fatal_error" {
   }
 
   debug_inspect(
-    try? @async.retry(Immediate, fatal_error~, worker),
+    @test_util.expect_error_async <| () => {
+      @async.retry(Immediate, fatal_error~, worker)
+    },
     content=(
-      #|Err(Failure("fatal error"))
+      #|Failure("fatal error")
     ),
   )
   inspect(

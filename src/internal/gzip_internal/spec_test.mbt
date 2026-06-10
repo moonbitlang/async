@@ -49,28 +49,22 @@ test "zlib infcover fixed huffman block" {
 ///|
 test "zlib infcover invalid stored block lengths" {
   let compressed = add_metadata(b"\x00\x00\x00\x00\x00", 0U, 0U)
-  let result = try? decode(compressed, expected_len=0)
-  let result_min = try? decode(compressed, expected_len=0, input_step=Min)
-  assert_true(result is Err(_))
-  assert_true(result_min is Err(_))
+  @test.assert_raise(() => decode(compressed, expected_len=0))
+  @test.assert_raise(() => decode(compressed, expected_len=0, input_step=Min))
 }
 
 ///|
 test "zlib infcover invalid block type" {
   let compressed = add_metadata(b"\x06", 0U, 0U)
-  let result = try? decode(compressed, expected_len=0)
-  let result_min = try? decode(compressed, expected_len=0, input_step=Min)
-  assert_true(result is Err(_))
-  assert_true(result_min is Err(_))
+  @test.assert_raise(() => decode(compressed, expected_len=0))
+  @test.assert_raise(() => decode(compressed, expected_len=0, input_step=Min))
 }
 
 ///|
 test "zlib infcover gzip optional header fields rejected" {
   let compressed = b"\x1f\x8b\x08\x02\x00\x00\x00\x00\x00\x00\x1d\x26\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-  let result = try? decode(compressed, expected_len=0)
-  let result_min = try? decode(compressed, expected_len=0, input_step=Min)
-  assert_true(result is Err(_))
-  assert_true(result_min is Err(_))
+  @test.assert_raise(() => decode(compressed, expected_len=0))
+  @test.assert_raise(() => decode(compressed, expected_len=0, input_step=Min))
 }
 
 ///|

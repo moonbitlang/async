@@ -14,77 +14,55 @@
 
 ///|
 async test "return_immediately basic" {
-  let log = StringBuilder::new()
-  log.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          root.return_immediately(())
-        }
-        root.spawn_bg() <| () => {
-          @async.sleep(300)
-          log <+ "task finished\n"
-        }
-      }),
-    ),
-  )
-  inspect(log.to_string(), content="Ok(())")
+  @async.with_task_group(root => {
+    root.spawn_bg() <| () => {
+      @async.sleep(200)
+      root.return_immediately(())
+    }
+    root.spawn_bg() <| () => { @async.sleep(300) }
+  })
 }
 
 ///|
 async test "return_immediately nested" {
-  let log = StringBuilder::new()
-  log.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(300)
-          log <+ "outer task finished\n"
-        }
-        @async.with_task_group() <| fn(group) {
-          group.spawn_bg() <| () => {
-            @async.sleep(200)
-            root.return_immediately(())
-          }
-          group.spawn_bg() <| () => {
-            @async.sleep(300)
-            log <+ "inner task finished\n"
-          }
-        }
-      }),
-    ),
-  )
-  inspect(log.to_string(), content="Ok(())")
+  @async.with_task_group(root => {
+    root.spawn_bg() <| () => { @async.sleep(300) }
+    @async.with_task_group() <| fn(group) {
+      group.spawn_bg() <| () => {
+        @async.sleep(200)
+        root.return_immediately(())
+      }
+      group.spawn_bg() <| () => { @async.sleep(300) }
+    }
+  })
 }
 
 ///|
 async test "return_immediately error on cancel" {
   let log = StringBuilder::new()
-  log.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          root.return_immediately(())
-        }
-        root.spawn_bg() <| () => {
-          @async.sleep(300) catch {
-            _ => {
-              log <+ "task cancelled, causing other error\n"
-              raise Err
-            }
+  let err = @test_util.expect_error_async <| () => {
+    @async.with_task_group(root => {
+      root.spawn_bg() <| () => {
+        @async.sleep(200)
+        root.return_immediately(())
+      }
+      root.spawn_bg() <| () => {
+        @async.sleep(300) catch {
+          _ => {
+            log <+ "task cancelled, causing other error\n"
+            raise Err
           }
-          log <+ "task finished\n"
         }
-      }),
-    ),
-  )
+        log <+ "task finished\n"
+      }
+    })
+  }
+  log.write_string(@debug.to_string(err))
   inspect(
     log.to_string(),
     content=(
       #|task cancelled, causing other error
-      #|Err(Err)
+      #|Err
     ),
   )
 }

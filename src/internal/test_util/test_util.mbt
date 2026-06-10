@@ -13,9 +13,27 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _unimplemented : Unit = {
-  ignore(@fs.unimplemented)
-  ignore(@utf8.encode(""))
-  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
+#callsite(autofill(loc))
+pub async fn[T, E : Error] expect_error_async(
+  f : async () -> T raise E,
+  loc~ : SourceLoc,
+) -> E {
+  try f() catch {
+    err => err
+  } noraise {
+    _ => fail("expected error, but no error is raised", loc~)
+  }
+}
+
+///|
+#callsite(autofill(loc))
+pub async fn[T, E : Error] assert_raise_async(
+  f : async () -> T raise E,
+  loc~ : SourceLoc,
+) -> Unit {
+  try f() catch {
+    _ => ()
+  } noraise {
+    _ => fail("expected error, but no error is raised", loc~)
+  }
 }

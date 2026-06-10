@@ -157,18 +157,16 @@ async test "`connect` accidental close" {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = try? @tls.Tls::client_from_pair(
-        client_read_from_server,
-        client_write_to_server,
-        trust=NoVerification,
+      inspect(
+        @test_util.expect_error_async <| () => {
+          @tls.Tls::client_from_pair(
+            client_read_from_server,
+            client_write_to_server,
+            trust=NoVerification,
+          )
+        },
+        content="ConnectionClosed",
       )
-      match client {
-        Ok(client) => {
-          client.close()
-          fail("expected `ConnectionClosed` error")
-        }
-        Err(err) => inspect(err, content="ConnectionClosed")
-      }
     }
   }
 }
@@ -199,7 +197,7 @@ async test "`read` already closed" {
         trust=NoVerification,
       )
       defer client.close()
-      debug_inspect(try? client.read_some(), content="Ok(None)")
+      debug_inspect(client.read_some(), content="None")
     }
   }
 }
@@ -288,23 +286,23 @@ async test "client custom root certificate rejects different root" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let server = try? other_root_test_server(
-        server_read_from_client, server_write_to_client,
-      )
-      assert_true(server is Err(_))
+      @test_util.assert_raise_async <| () => {
+        other_root_test_server(server_read_from_client, server_write_to_client)
+      }
     }
     root.spawn_bg() <| () => {
       defer {
         client_read_from_server.close()
         client_write_to_server.close()
       }
-      let client = try? @tls.Tls::client_from_pair(
-        client_read_from_server,
-        client_write_to_server,
-        host="whatever",
-        trust=CustomPemFile("test_keys/valid_root_cert.pem"),
-      )
-      assert_true(client is Err(_))
+      @test_util.assert_raise_async <| () => {
+        @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          host="whatever",
+          trust=CustomPemFile("test_keys/valid_root_cert.pem"),
+        )
+      }
     }
   }
 }

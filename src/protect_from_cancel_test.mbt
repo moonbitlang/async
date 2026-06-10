@@ -62,34 +62,28 @@ async test "protect_from_cancel" {
 ///|
 async test "protect_from_cancel wait" {
   let log = StringBuilder::new()
-  log.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          log <+ "200ms tick\n"
-          @async.sleep(200)
-          log <+ "400ms tick\n"
-        }
-        @async.with_task_group(group => {
-          group.spawn_bg() <| () => {
-            @async.sleep(300)
-            log.write_string(
-              "trying to cancel the group containing critial job\n",
-            )
-            raise Err
-          }
-          @async.protect_from_cancel() <| () => {
-            @async.sleep(500)
-            log <+ "critial job finished\n"
-          }
-        }) catch {
-          _ => ()
-        }
-        log <+ "task group containing critical job finished\n"
-      }),
-    ),
-  )
+  @async.with_task_group(root => {
+    root.spawn_bg() <| () => {
+      @async.sleep(200)
+      log <+ "200ms tick\n"
+      @async.sleep(200)
+      log <+ "400ms tick\n"
+    }
+    @async.with_task_group(group => {
+      group.spawn_bg() <| () => {
+        @async.sleep(300)
+        log.write_string("trying to cancel the group containing critial job\n")
+        raise Err
+      }
+      @async.protect_from_cancel() <| () => {
+        @async.sleep(500)
+        log <+ "critial job finished\n"
+      }
+    }) catch {
+      _ => ()
+    }
+    log <+ "task group containing critical job finished\n"
+  })
   inspect(
     log.to_string(),
     content=(
@@ -98,7 +92,7 @@ async test "protect_from_cancel wait" {
       #|400ms tick
       #|critial job finished
       #|task group containing critical job finished
-      #|Ok(())
+      #|
     ),
   )
 }
@@ -137,21 +131,24 @@ async test "protect_from_cancel with_timeout" {
 ///|
 async test "protect_from_cancel fail" {
   let log = StringBuilder::new()
-  let result : Result[Unit, _] = try? @async.with_task_group(root => {
-    root.spawn_bg() <| () => {
-      @async.sleep(200)
-      log <+ "200ms tick\n"
-      @async.sleep(200)
-      log <+ "400ms tick\n"
-    }
-    @async.with_timeout(300, () => {
-      @async.protect_from_cancel() <| () => {
-        @async.sleep(500)
-        log <+ "critial job fail\n"
-        raise Err
-      }
-    })
-  })
+  let result : Error = @test_util.expect_error_async <| () => {
+    (
+      @async.with_task_group(root => {
+        root.spawn_bg() <| () => {
+          @async.sleep(200)
+          log <+ "200ms tick\n"
+          @async.sleep(200)
+          log <+ "400ms tick\n"
+        }
+        @async.with_timeout(300, () => {
+          @async.protect_from_cancel() <| () => {
+            @async.sleep(500)
+            log <+ "critial job fail\n"
+            raise Err
+          }
+        })
+      }) : Unit)
+  }
   log.write_string(@debug.to_string(result))
   inspect(
     log.to_string(),
@@ -159,7 +156,7 @@ async test "protect_from_cancel fail" {
       #|200ms tick
       #|400ms tick
       #|critial job fail
-      #|Err(Err)
+      #|Err
     ),
   )
 }
@@ -239,33 +236,29 @@ async test "protect_from_cancel nested2" {
 ///|
 async test "protect_from_cancel in cancellation handler" {
   let log = StringBuilder::new()
-  log.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg(no_wait=true) <| () => {
-          @async.sleep(400) catch {
-            err => {
-              log.write_string("cancelled with error \{err}\n")
-              @async.protect_from_cancel() <| () => {
-                @async.sleep(200)
-                log <+ "critial cancellation handler terminated\n"
-              }
-              raise err
-            }
+  @async.with_task_group(root => {
+    root.spawn_bg(no_wait=true) <| () => {
+      @async.sleep(400) catch {
+        err => {
+          log.write_string("cancelled with error \{err}\n")
+          @async.protect_from_cancel() <| () => {
+            @async.sleep(200)
+            log <+ "critial cancellation handler terminated\n"
           }
+          raise err
         }
-        @async.sleep(200)
-        log <+ "start cancellation\n"
-      }),
-    ),
-  )
+      }
+    }
+    @async.sleep(200)
+    log <+ "start cancellation\n"
+  })
   inspect(
     log.to_string(),
     content=(
       #|start cancellation
       #|cancelled with error Cancelled
       #|critial cancellation handler terminated
-      #|Ok(())
+      #|
     ),
   )
 }
@@ -323,27 +316,23 @@ async test "error in async cancel" {
         log <+ "tick\n"
       }
     }
-    log.write_string(
-      @debug.to_string(
-        try? @async.with_task_group(group => {
-          group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-            @async.sleep(1000) catch {
-              _ => {
-                log <+ "performing async cleanup\n"
-                @async.protect_from_cancel() <| () => {
-                  @async.sleep(300)
-                  log <+ "raising error from async cleanup\n"
-                  raise Err
-                }
-              }
+    @async.with_task_group(group => {
+      group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
+        @async.sleep(1000) catch {
+          _ => {
+            log <+ "performing async cleanup\n"
+            @async.protect_from_cancel() <| () => {
+              @async.sleep(300)
+              log <+ "raising error from async cleanup\n"
+              raise Err
             }
           }
-          @async.sleep(150)
-          log <+ "main task of inner group done\n"
-        }),
-      ),
-    )
-    log <+ "\ngroup terminates\n"
+        }
+      }
+      @async.sleep(150)
+      log <+ "main task of inner group done\n"
+    })
+    log <+ "group terminates\n"
   }
   inspect(
     log.to_string(),
@@ -352,7 +341,6 @@ async test "error in async cancel" {
       #|performing async cleanup
       #|tick
       #|raising error from async cleanup
-      #|Ok(())
       #|group terminates
       #|tick
       #|

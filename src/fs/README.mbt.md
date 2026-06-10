@@ -676,8 +676,7 @@ All async file operations can raise errors. Use proper error handling:
 ///|
 #cfg(target="native")
 async test "error handling example" {
-  let result = try? @fs.read_file("nonexistent.txt")
-  inspect(result is Err(_), content="true")
+  @test_util.assert_raise_async(() => @fs.read_file("nonexistent.txt"))
 }
 ```
 
