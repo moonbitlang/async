@@ -733,7 +733,7 @@ void open_job_worker(struct job *job) {
   if (open_job->append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
 
-  do {
+  while (1) {
     open_job->result = CreateFileW(
       (LPCWSTR)open_job->filename,
       access_flag, // desired access
@@ -744,22 +744,24 @@ void open_job_worker(struct job *job) {
       NULL // template file
     );
 
-    // handle error
-    if (open_job->result == INVALID_HANDLE_VALUE) {
-      job->err = GetLastError();
-      if (job->err != ERROR_PIPE_BUSY)
-        return;
+    if (open_job->result != INVALID_HANDLE_VALUE)
+      break;
 
-      // We are trying to open a named pipe, but no pipe instance is available,
-      // so wait until any instance is available.
-      // This wait is cancellable via `CancelSynchronousIo`.
-      if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER)) {
-        job->err = GetLastError();
-        return;
-      }
-      continue;
+    // handle error
+    int err = GetLastError();
+    if (err != ERROR_PIPE_BUSY) {
+      job->err = err;
+      return;
     }
-  } while (0);
+
+    // We are trying to open a named pipe, but no pipe instance is available,
+    // so wait until any instance is available.
+    // This wait is cancellable via `CancelSynchronousIo`.
+    if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER)) {
+      job->err = GetLastError();
+      return;
+    }
+  }
 
   // get the kind of the file
   if (!GetFileInformationByHandle(open_job->result, &open_job->stat)) {

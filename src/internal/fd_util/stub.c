@@ -143,6 +143,16 @@ HANDLE moonbitlang_async_create_named_pipe_client(LPCWSTR name, int32_t is_async
   );
 }
 
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_connect_named_pipe_server(HANDLE server) {
+  ConnectNamedPipe(server, NULL);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_disconnect_named_pipe_server(HANDLE server) {
+  DisconnectNamedPipe(server);
+}
+
 #else
 
 int moonbitlang_async_pipe(int *fds) {
