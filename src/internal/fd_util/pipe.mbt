@@ -73,6 +73,15 @@ extern "C" fn create_named_pipe_client(
 ) -> Fd = "moonbitlang_async_create_named_pipe_client"
 
 ///|
+/// This should only be used for testing
+#cfg(platform="windows")
+pub extern "C" fn connect_named_pipe_server_sync(server : Fd) -> Unit = "moonbitlang_async_connect_named_pipe_server"
+
+///|
+#cfg(platform="windows")
+pub extern "C" fn disconnect_named_pipe_server(server : Fd) -> Unit = "moonbitlang_async_disconnect_named_pipe_server"
+
+///|
 #cfg(platform="windows")
 let pipe_id : Ref[UInt64] = Ref(0)
 
