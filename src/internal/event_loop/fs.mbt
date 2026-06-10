@@ -13,6 +13,13 @@
 // limitations under the License.
 
 ///|
+#valtype
+pub(all) struct FileIdentity {
+  dev_id : UInt64
+  file_id : UInt64
+} derive(Eq, Hash)
+
+///|
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
@@ -25,28 +32,28 @@ pub async fn open(
   // permission for file when new file is created
   mode~ : Int,
   context~ : String,
-) -> (IoHandle, OpenResult) {
+) -> (IoHandle, FileIdentity) {
   let path_bytes = @os_string.encode(path)
-  let result = Job::open(path_bytes, access, create~, append~, sync~, mode~)
+  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
   fn cancel(job_id) raise {
     guard curr_loop.val is Some(evloop)
     evloop.cancel_job_in_worker(job_id, context~)
   }
 
-  try perform_job_in_worker(result.0, context~, cancel~) catch {
+  try perform_job_in_worker(job.0, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => {
-      let fd = result.fd()
-      let kind = result.kind()
+      let fd = job.fd()
+      let kind = job.kind()
       let io = IoHandle::from_fd(
         fd,
         kind~,
         is_async=access is 3 || (!IS_WINDOWS && kind.can_poll()),
       )
-      (io, result)
+      (io, { dev_id: job.dev_id(), file_id: job.file_id() })
     }
   }
 }

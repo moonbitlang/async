@@ -182,12 +182,13 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
       } else {
         offset += size
       }
-      let file_id = if WindowsWatcher::has_ReadDirectoryChangesExW() {
-        if event.is_modify() {
+      let file_id : FileIdentity = if WindowsWatcher::has_ReadDirectoryChangesExW() {
+        let file_id = if event.is_modify() {
           event.get_file_id()
         } else {
           event.get_parent_file_id()
         }
+        { dev_id: self.dev_id, file_id }
       } else {
         let path = @os_string.decode(event.get_path(), len=event.get_path_len())
         let path = if event.is_modify() {
@@ -202,7 +203,7 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
           }
         }
         // file change in the root directory
-        let (file, file_info) = @event_loop.open(
+        let (file, file_id) = @event_loop.open(
           "\{self.watcher.base_path}\\\{path}",
           0,
           create=0,
@@ -212,9 +213,8 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
           context~,
         )
         file.close()
-        file_info.file_id()
+        file_id
       }
-      let file_id = { dev_id: self.dev_id, file_id }
       if self.watcher.watched.get(file_id) is Some(file) {
         if !(event.is_modify() && file.is_dir) {
           self.watcher.mark_as_modified(file_id)
