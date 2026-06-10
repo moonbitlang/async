@@ -134,6 +134,7 @@ async test "named pipe multiple client" {
     }
     for i in 1..<=2 {
       group.spawn_bg() <| () => {
+        @async.sleep(i * 50)
         let r = @fs.open(path, mode=ReadOnly)
         defer r.close()
         log.push("client #\{i} connected")

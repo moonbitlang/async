@@ -135,6 +135,7 @@ async test "multicast no loopback" {
     } else {
       client.set_multicast_loopback(true)
     }
+    @async.sleep(100)
     log.push("client sending: xyzw")
     let _ = client.send(b"xyzw")
     @async.sleep(200)
