@@ -108,26 +108,26 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-) -> OpenResult = "moonbitlang_async_make_open_job"
+) -> OpenJob = "moonbitlang_async_make_open_job"
 
 ///|
-struct OpenResult(Job)
-
-///|
-#borrow(job)
-pub extern "C" fn OpenResult::fd(job : OpenResult) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
+priv struct OpenJob(Job)
 
 ///|
 #borrow(job)
-pub extern "C" fn OpenResult::kind(job : OpenResult) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
+extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
 
 ///|
 #borrow(job)
-pub extern "C" fn OpenResult::dev_id(job : OpenResult) -> UInt64 = "moonbitlang_async_open_job_get_dev_id"
+extern "C" fn OpenJob::kind(job : OpenJob) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
 
 ///|
 #borrow(job)
-pub extern "C" fn OpenResult::file_id(job : OpenResult) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
+extern "C" fn OpenJob::dev_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_dev_id"
+
+///|
+#borrow(job)
+extern "C" fn OpenJob::file_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
 
 ///|
 extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"

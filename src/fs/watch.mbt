@@ -13,11 +13,7 @@
 // limitations under the License.
 
 ///|
-#valtype
-priv struct FileIdentity {
-  dev_id : UInt64
-  file_id : UInt64
-} derive(Eq, Hash)
+using @event_loop {type FileIdentity}
 
 ///|
 priv struct WatchedFile {
@@ -139,7 +135,7 @@ pub async fn Watcher::Watcher(
   let context = "@fs.Watcher()"
   let path = path.trim_end(chars="/")
   let path = if path is "" { "/" } else { path.to_owned() }
-  let (root_file, root_file_info) = @event_loop.open(
+  let (root_file, root_id) = @event_loop.open(
     path,
     if @event_loop.IS_WINDOWS {
       3
@@ -155,10 +151,6 @@ pub async fn Watcher::Watcher(
   guard root_file.kind() is Directory else {
     root_file.close()
     raise @os_error.OSError(@os_error.errno_ENOTDIR, context~)
-  }
-  let root_id = {
-    dev_id: root_file_info.dev_id(),
-    file_id: root_file_info.file_id(),
   }
   let self = {
     backend: None,

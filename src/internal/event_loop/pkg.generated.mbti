@@ -40,7 +40,7 @@ pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
-pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (IoHandle, OpenResult)
+pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (IoHandle, FileIdentity)
 
 pub let platform : Platform
 
@@ -84,6 +84,11 @@ pub(all) enum Access {
 #external
 pub type AddrInfo
 
+pub(all) struct FileIdentity {
+  dev_id : UInt64
+  file_id : UInt64
+} derive(Eq, Hash)
+
 type IoHandle
 pub async fn IoHandle::accept(Self, Bytes, context~ : String) -> Self
 pub async fn IoHandle::bind(Self, Bytes, context~ : String) -> Unit
@@ -104,12 +109,6 @@ pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : By
 pub async fn IoHandle::wait_read(Self) -> Unit
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
-
-type OpenResult
-pub fn OpenResult::dev_id(Self) -> UInt64
-pub fn OpenResult::fd(Self) -> Int
-pub fn OpenResult::file_id(Self) -> UInt64
-pub fn OpenResult::kind(Self) -> @fd_util.FileKind
 
 pub(all) enum Platform {
   Linux
