@@ -75,7 +75,9 @@ async test "create_mode test" {
   let path = "_build/create_exclusive_test"
   @async.with_task_group() <| group => {
     for create_mode in [@fs.OpenExisting, @fs.TruncateExisting] {
-      assert_true((try? @fs.open(path, mode=WriteOnly, create_mode~)) is Err(_))
+      @test_util.assert_raise_async <| () => {
+        @fs.open(path, mode=WriteOnly, create_mode~)
+      }
     }
     {
       let file = @fs.create(path, allow_existing=false)
@@ -84,10 +86,10 @@ async test "create_mode test" {
       file.write("abcd")
     }
     inspect(@fs.read_file(path).text(), content="abcd")
-    assert_true((try? @fs.create(path, allow_existing=false)) is Err(_))
-    assert_true(
-      (try? @fs.open(path, mode=WriteOnly, create_mode=CreateNew)) is Err(_),
-    )
+    @test_util.assert_raise_async(() => @fs.create(path, allow_existing=false))
+    @test_util.assert_raise_async <| () => {
+      @fs.open(path, mode=WriteOnly, create_mode=CreateNew)
+    }
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
       defer file.close()

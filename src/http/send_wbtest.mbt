@@ -629,9 +629,9 @@ async test "sender write incorrect length" {
     let data = Bytes::make(20, b'\x00')
     sender.write(data)
     debug_inspect(
-      try? sender.write(data),
+      @test_util.expect_error_async(() => sender.write(data)),
       content=(
-        #|Err(IncorrectBodyLength)
+        #|IncorrectBodyLength
       ),
     )
   }
@@ -655,9 +655,9 @@ async test "sender write_reader incorrect length" {
       "Content-Length": "2048",
     })
     debug_inspect(
-      try? sender.write_reader(license_file),
+      @test_util.expect_error_async(() => sender.write_reader(license_file)),
       content=(
-        #|Err(IncorrectBodyLength)
+        #|IncorrectBodyLength
       ),
     )
   }
@@ -679,9 +679,9 @@ async test "sender end_body incorrect length" {
       "content-length": "1",
     })
     debug_inspect(
-      try? sender.end_body(),
+      @test_util.expect_error_async(() => sender.end_body()),
       content=(
-        #|Err(IncorrectBodyLength)
+        #|IncorrectBodyLength
       ),
     )
   }

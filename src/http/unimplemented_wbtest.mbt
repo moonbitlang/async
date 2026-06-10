@@ -20,4 +20,5 @@ fn _ignore_unused_import() -> Unit {
   ignore(@fs.unimplemented)
   ignore(@bytes_util.ascii_to_string)
   ignore(@utf8.encode(""))
+  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }

@@ -16,8 +16,14 @@
 async test "put after closed" {
   let q = @async.Queue(kind=Unbounded)
   q.close()
-  debug_inspect(try? q.put(42), content="Err(QueueAlreadyClosed)")
-  debug_inspect(try? q.try_put(42), content="Err(QueueAlreadyClosed)")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.put(42)),
+    content="QueueAlreadyClosed",
+  )
+  debug_inspect(
+    @test_util.expect_error_async(() => q.try_put(42)),
+    content="QueueAlreadyClosed",
+  )
 }
 
 ///|
@@ -25,8 +31,11 @@ async test "get after closed" {
   let q = @async.Queue(kind=Unbounded)
   q.put(42)
   q.close()
-  debug_inspect(try? q.get(), content="Ok(42)")
-  debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(q.get(), content="42")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.get()),
+    content="QueueAlreadyClosed",
+  )
 }
 
 ///|
@@ -34,8 +43,11 @@ async test "try_get after closed" {
   let q = @async.Queue(kind=Unbounded)
   q.put(42)
   q.close()
-  debug_inspect(try? q.try_get(), content="Ok(Some(42))")
-  debug_inspect(try? q.try_get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(q.try_get(), content="Some(42)")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.try_get()),
+    content="QueueAlreadyClosed",
+  )
 }
 
 ///|
@@ -43,7 +55,10 @@ async test "get after hard close" {
   let q = @async.Queue(kind=Unbounded)
   q.put(42)
   q.close(clear=true)
-  debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.get()),
+    content="QueueAlreadyClosed",
+  )
 }
 
 ///|
@@ -51,7 +66,10 @@ async test "try_get after hard close" {
   let q = @async.Queue(kind=Unbounded)
   q.put(42)
   q.close(clear=true)
-  debug_inspect(try? q.try_get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.try_get()),
+    content="QueueAlreadyClosed",
+  )
 }
 
 ///|
@@ -64,7 +82,10 @@ async test "close with blocking put" {
       @async.sleep(300)
       q.close()
     }
-    debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    debug_inspect(
+      @test_util.expect_error_async(() => q.put(2)),
+      content="QueueAlreadyClosed",
+    )
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
@@ -80,7 +101,10 @@ async test "close zero buffered with blocking put" {
       @async.sleep(300)
       q.close()
     }
-    debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    debug_inspect(
+      @test_util.expect_error_async(() => q.put(2)),
+      content="QueueAlreadyClosed",
+    )
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
@@ -96,7 +120,10 @@ async test "close with blocking get" {
       @async.sleep(300)
       q.close()
     }
-    debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+    debug_inspect(
+      @test_util.expect_error_async(() => q.get()),
+      content="QueueAlreadyClosed",
+    )
     let now = @async.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
@@ -109,9 +136,9 @@ async test "close with completed get" {
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       debug_inspect(
-        try? q.get(),
+        q.get(),
         content=(
-          #|Ok(42)
+          #|42
         ),
       )
     }
@@ -123,9 +150,9 @@ async test "close with completed get" {
     // one of `get` above and `try_get` here should suceed,
     // the value should not get swallowed.
     debug_inspect(
-      try? q.try_get(),
+      @test_util.expect_error_async(() => q.try_get()),
       content=(
-        #|Err(QueueAlreadyClosed)
+        #|QueueAlreadyClosed
       ),
     )
   }

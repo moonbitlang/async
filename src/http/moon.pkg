@@ -22,9 +22,11 @@ import {
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/test",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/bytes_util",
+  "moonbitlang/async/internal/test_util",
   "moonbitlang/async/gzip" @gzip_stream,
 } for "wbtest"
 

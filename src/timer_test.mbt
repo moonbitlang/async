@@ -15,7 +15,7 @@
 ///|
 async test "basic sleep" {
   let buf = StringBuilder::new()
-  let result = try? (@async.with_task_group() <| root => {
+  @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       @async.sleep(100)
       buf <+ "task 1, tick 1\n"
@@ -32,8 +32,7 @@ async test "basic sleep" {
       @async.sleep(200)
       buf <+ "task 2, tick 3\n"
     }
-  })
-  debug_inspect(result, content="Ok(())")
+  }
   inspect(
     buf.to_string(),
     content=(
@@ -118,6 +117,9 @@ async test "Timer waiter cancelled 2" {
 async test "Timer::cancel" {
   let log = []
   let start = @async.now()
+  fn tick() {
+    (@async.now() - start + 50).to_int() / 150
+  }
   let timer = @async.Timer(450)
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -125,23 +127,19 @@ async test "Timer::cancel" {
       timer.cancel()
     }
     group.spawn_bg() <| () => {
-      let result = try? timer.wait()
-      let tick = (@async.now() - start + 50).to_int() / 150
-      log.push("Timer::wait(): \{@debug.to_string(result)} at tick #\{tick}")
+      let result = @test_util.expect_error_async(() => timer.wait())
+      log.push("Timer::wait(): \{@debug.to_string(result)} at tick #\{tick()}")
     }
     @async.sleep(600)
-    let tick = (@async.now() - start + 50).to_int() / 150
-    log.push(
-      "at tick #\{tick}: Timer::wait(): \{@debug.to_string(try? timer.wait())}",
-    )
+    let err = @test_util.expect_error_async(() => timer.wait())
+    log.push("at tick #\{tick()}: Timer::wait(): \{@debug.to_string(err)}")
     timer.cancel()
-    log.push(
-      "at tick #\{tick}: Timer::wait(): \{@debug.to_string(try? timer.wait())}",
-    )
+    let err = @test_util.expect_error_async(() => timer.wait())
+    log.push("at tick #\{tick()}: Timer::wait(): \{@debug.to_string(err)}")
   }
   json_inspect(log, content=[
-    "Timer::wait(): Err(TimerCancelled) at tick #1", "at tick #4: Timer::wait(): Err(TimerCancelled)",
-    "at tick #4: Timer::wait(): Err(TimerCancelled)",
+    "Timer::wait(): TimerCancelled at tick #1", "at tick #4: Timer::wait(): TimerCancelled",
+    "at tick #4: Timer::wait(): TimerCancelled",
   ])
 }
 
@@ -219,9 +217,11 @@ async test "Timer::refresh already cancelled" {
   timer.cancel()
   timer.refresh()
   debug_inspect(
-    @async.with_timeout_opt(0, () => try? timer.wait()),
+    @async.with_timeout_opt(0, () => {
+      @test_util.expect_error_async(() => timer.wait())
+    }),
     content=(
-      #|Some(Err(TimerCancelled))
+      #|Some(TimerCancelled)
     ),
   )
 }

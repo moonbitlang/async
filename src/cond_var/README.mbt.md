@@ -84,8 +84,9 @@ async test "signal before wait is lost" {
   // Signal first, with no waiters — this signal is dropped.
   cond.signal()
   // Now park; the signal we issued above will not save us.
-  let result = try? @async.with_timeout(100, () => cond.wait())
-  inspect(result is Err(_), content="true")
+  @test_util.assert_raise_async <| () => {
+    @async.with_timeout(100, () => cond.wait())
+  }
 }
 ```
 

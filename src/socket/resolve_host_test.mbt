@@ -44,8 +44,12 @@ async test "resolve cancel" {
 
 ///|
 async test "resolve failure" {
-  let result = try? @socket.Addr::resolve("does.not.exist", port=443)
-  assert_true(result is Err(@socket.ResolveHostnameError(_)))
+  assert_true(
+    (@test_util.expect_error_async <| () => {
+      @socket.Addr::resolve("does.not.exist", port=443)
+    })
+    is @socket.ResolveHostnameError(_),
+  )
 }
 
 ///|

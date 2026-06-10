@@ -236,9 +236,12 @@ async test "soft close drains buffered items" {
   q.put(2)
   q.close()
   // Reads still succeed until the buffer is empty.
-  debug_inspect(try? q.get(), content="Ok(1)")
-  debug_inspect(try? q.get(), content="Ok(2)")
-  debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+  debug_inspect(q.get(), content="1")
+  debug_inspect(q.get(), content="2")
+  inspect(
+    @test_util.expect_error_async(() => q.get()),
+    content="QueueAlreadyClosed",
+  )
 }
 ```
 
@@ -254,7 +257,10 @@ async test "hard close discards buffered items" {
   q.put(1)
   q.put(2)
   q.close(clear=true)
-  debug_inspect(try? q.get(), content="Err(QueueAlreadyClosed)")
+  inspect(
+    @test_util.expect_error_async(() => q.get()),
+    content="QueueAlreadyClosed",
+  )
 }
 ```
 
@@ -265,8 +271,14 @@ After close, all writes — buffered or otherwise — fail immediately:
 async test "writes after close fail" {
   let q = @aqueue.Queue(kind=Unbounded)
   q.close()
-  debug_inspect(try? q.put(42), content="Err(QueueAlreadyClosed)")
-  debug_inspect(try? q.try_put(42), content="Err(QueueAlreadyClosed)")
+  debug_inspect(
+    @test_util.expect_error_async(() => q.put(42)),
+    content="QueueAlreadyClosed",
+  )
+  debug_inspect(
+    @test_util.expect_error_async(() => q.try_put(42)),
+    content="QueueAlreadyClosed",
+  )
 }
 ```
 
@@ -312,7 +324,10 @@ async test "blocked put fails when queue is closed" {
     })
     // This `put` blocks because the buffer is full, then gets
     // unblocked when `close()` runs.
-    debug_inspect(try? q.put(2), content="Err(QueueAlreadyClosed)")
+    debug_inspect(
+      @test_util.expect_error_async(() => q.put(2)),
+      content="QueueAlreadyClosed",
+    )
   })
 }
 ```
@@ -330,14 +345,7 @@ suberror MyDone derive(Debug)
 async test "custom close error" {
   let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
   q.close(error=MyDone)
-  let err = try {
-    let _ = q.get()
-    "no error"
-  } catch {
-    MyDone => "got MyDone"
-    _ => "other error"
-  }
-  inspect(err, content="got MyDone")
+  debug_inspect(@test_util.expect_error_async(() => q.get()), content="MyDone")
 }
 ```
 

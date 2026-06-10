@@ -29,16 +29,13 @@ test "Parse IPv4 address" {
 ///|
 test "Parse invalid IPv4 address" {
   // Too short
-  let v = try? @socket.Addr::parse("127.0.0.1")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("127.0.0.1"))
 
   // Too long
-  let v = try? @socket.Addr::parse("127.0.0.1:8080:8080")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("127.0.0.1:8080:8080"))
 
   // Invalid IP, out of range
-  let v = try? @socket.Addr::parse("256.0.0.1:8080")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("256.0.0.1:8080"))
 }
 
 ///|
@@ -67,20 +64,16 @@ test "Parse IPv6 address" {
 ///|
 test "Parse invalid IPv6 address" {
   // Too short
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:8080]")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2:3:4:5:6:7:8080]"))
 
   // Too long
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:8:9:8080]")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2:3:4:5:6:7:8:9:8080]"))
 
   // triple colon
-  let v = try? @socket.Addr::parse("[1:2:::6:7:8]:8080]")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2:::6:7:8]:8080]"))
 
   // two double colons
-  let v = try? @socket.Addr::parse("[1:2::6::8]:8080]")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2::6::8]:8080]"))
 }
 
 ///|
@@ -90,9 +83,7 @@ test "Parse IPv6 address with ipv4" {
   let addr = @socket.Addr::parse("[::FFFF:192.0.2.33]:8080")
   assert_eq(addr.to_string(), "[::ffff:192.0.2.33]:8080")
   // Not enough groups
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:127.0.0.1]:8080")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2:3:4:5:127.0.0.1]:8080"))
   // Too many groups
-  let v = try? @socket.Addr::parse("[1:2:3:4:5:6:7:127.0.0.1]:8080")
-  assert_true(v is Err(_))
+  @test.assert_raise(() => @socket.Addr::parse("[1:2:3:4:5:6:7:127.0.0.1]:8080"))
 }

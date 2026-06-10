@@ -22,6 +22,7 @@ import {
   "moonbitlang/core/env",
   "moonbitlang/core/debug",
   "moonbitlang/async/process",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 options(
