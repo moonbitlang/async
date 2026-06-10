@@ -99,3 +99,25 @@ async test "stdio cancel" {
     )
   }
 }
+
+///|
+async test "stdout and stderr are the same" {
+  let cat = cat.wait()
+  let (cat_read, we_write) = @process.write_to_process()
+  @async.with_task_group <| group => {
+    let cat_task = group.spawn() <| () => {
+      @process.collect_output_merged(cat, [], stdin=cat_read)
+    }
+    {
+      defer we_write.close()
+      we_write.write("abcd")
+    }
+    let (_, output) = cat_task.wait()
+    inspect(
+      output.text(),
+      content=(
+        #|abcd
+      ),
+    )
+  }
+}

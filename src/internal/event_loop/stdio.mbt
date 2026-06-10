@@ -55,12 +55,22 @@ extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_s
 
 ///|
 #cfg(platform="windows")
+let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
+
+///|
+#cfg(platform="windows")
 fn setup_stdio(id : Int, context~ : String) -> IoHandle {
   // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
   let fd = get_std_handle(-10 - id)
   if !@fd_util.fd_is_valid(fd) {
     let errno = @os_error.get_errno()
     abort("\{context}: \{@os_error.errno_to_string(errno)}")
+  }
+  if stdio_handles.get(fd) is Some(handle) {
+    // when `stdout` and `stderr` are redirected to the same file/pipe,
+    // `GetStdHande` will return the same handle for them.
+    // In this case, avoid problem caused by duplicated handle value
+    return handle
   }
   let kind = kind_of_fd_sync(fd, context~) catch {
     @os_error.OSError(errno, context~) =>
@@ -76,6 +86,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
     writing: false,
     write_offset: 0,
   }
+  stdio_handles[fd] = handle
 
   // register stdio on event loop creation.
   // This allows multiple event loop inside a single program.
