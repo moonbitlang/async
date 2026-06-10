@@ -23,10 +23,18 @@ let crc32_table : FixedArray[UInt] = FixedArray::makei(256, i => {
 
 ///|
 fn crc32_update(current : UInt, chunk : BytesView) -> UInt {
-  for byte in chunk; crc = current {
-    let index = ((crc ^ byte.to_uint()) & 0xffU).reinterpret_as_int()
-    continue crc32_table[index] ^ (crc >> 8)
-  } nobreak {
-    crc
+  // Pull out the backing Bytes + start offset once and index that
+  // directly. `for byte in chunk` desugars through BytesView::iter +
+  // Iter::next (15-16% in a gzip_roundtrip profile), and even
+  // `chunk[i]` (= BytesView::at) is a non-inlined function call
+  // (6.88% before this change). Indexing the raw Bytes is intrinsic.
+  let mut crc = current
+  let bytes = chunk.data()
+  let start = chunk.start_offset()
+  let len = chunk.length()
+  for i in 0..<len {
+    let index = ((crc ^ bytes[start + i].to_uint()) & 0xffU).reinterpret_as_int()
+    crc = crc32_table[index] ^ (crc >> 8)
   }
+  crc
 }
