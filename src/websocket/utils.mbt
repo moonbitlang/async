@@ -97,7 +97,7 @@ fn verify_utf8(data : BytesView, remaining~ : Int) -> Int raise {
       (0, 0..<0x80) => continue i + 1, 0
       (0, 0xc0..<0xe0) => continue i + 1, 1
       (0, 0xe0..<0xf0) => continue i + 1, 2
-      (0, 0xf0) => continue i + 1, 3
+      (0, 0xf0..<0xf8) => continue i + 1, 3
       (0, _) => {
         ignore(@utf8.decode(data[i:i + 1]))
         panic()

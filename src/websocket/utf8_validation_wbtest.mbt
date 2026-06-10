@@ -20,7 +20,7 @@ test "validate utf8 single byte" {
 ///|
 test "validate utf8 two bytes" {
   debug_inspect(verify_utf8([0xc0], remaining=0), content="1")
-  debug_inspect(verify_utf8([0xc0, 0x80], remaining=0), content="0")
+  debug_inspect(verify_utf8([0xdf, 0x80], remaining=0), content="0")
   debug_inspect(
     @test.expect_error(() => verify_utf8([0xc0, 0x79], remaining=0)),
     content=(
@@ -33,7 +33,7 @@ test "validate utf8 two bytes" {
 test "validate utf8 three bytes" {
   debug_inspect(verify_utf8([0xe0], remaining=0), content="2")
   debug_inspect(verify_utf8([0xe0, 0x80], remaining=0), content="1")
-  debug_inspect(verify_utf8([0xe0, 0x80, 0x80], remaining=0), content="0")
+  debug_inspect(verify_utf8([0xef, 0x80, 0x80], remaining=0), content="0")
   debug_inspect(
     @test.expect_error(() => verify_utf8([0xe0, 0x79], remaining=0)),
     content=(
@@ -53,7 +53,7 @@ test "validate utf8 four bytes" {
   debug_inspect(verify_utf8([0xf0], remaining=0), content="3")
   debug_inspect(verify_utf8([0xf0, 0x80], remaining=0), content="2")
   debug_inspect(verify_utf8([0xf0, 0x80, 0x80], remaining=0), content="1")
-  debug_inspect(verify_utf8([0xf0, 0x80, 0x80, 0x80], remaining=0), content="0")
+  debug_inspect(verify_utf8([0xf7, 0x80, 0x80, 0x80], remaining=0), content="0")
   debug_inspect(
     @test.expect_error(() => verify_utf8([0xf0, 0x79], remaining=0)),
     content=(
@@ -75,6 +75,16 @@ test "validate utf8 four bytes" {
   debug_inspect(
     verify_utf8([0xf0, 0x80, 0x80, 0x80, 0x79], remaining=0),
     content="0",
+  )
+}
+
+///|
+test "invalid utf8 first byte" {
+  debug_inspect(
+    @test.expect_error(() => verify_utf8([0xf8], remaining=0)),
+    content=(
+      #|Malformed(<BytesView: [0xf8]>)
+    ),
   )
 }
 
