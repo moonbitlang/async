@@ -84,7 +84,7 @@ async fn raw_spawn(
   context~ : String,
 ) -> @event_loop.Process {
   let cmd = match cmd {
-    [.., .. ".exe"] => cmd
+    [.., .. ".exe"] | [.., .. ".com"] => cmd
     _ => cmd + ".exe"
   }
   let command_line = StringBuilder::new()

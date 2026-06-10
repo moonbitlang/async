@@ -59,3 +59,15 @@ async test "basic_cat" {
     }
   }
 }
+
+///|
+#cfg(platform="windows")
+async test "execute .com file" {
+  let (_, output) = @process.collect_stdout("chcp.com", [])
+  guard output.binary().chop_suffix(b"\r\n") is Some(output) &&
+    output.rev_find(b" ") is Some(index) &&
+    index + 1 < output.length() else {
+    fail("invalid output format from chcp")
+  }
+  let _code = @string.parse_int(@utf8.decode(output[index + 1:]))
+}
