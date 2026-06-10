@@ -1,9 +1,10 @@
 import {
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/utf16",
   "moonbitlang/async/internal/c_buffer",
 }
 
 options(
   "native-stub": [ "stub.c" ],
-  targets: { "os_string.mbt": [ "native" ] },
+  targets: { "os_string.mbt": [ "native" ], "os_string.wasm.mbt": [ "wasm" ] },
 )
