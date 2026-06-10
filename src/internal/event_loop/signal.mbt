@@ -64,7 +64,9 @@ fn setup_signal_handler() -> @coroutine.Coroutine {
       guard curr_loop.val is Some(evloop)
       evloop.cancel_job_in_worker(job_id, context~)
     }
-    let _ = perform_job_in_worker(Job::sigwait(all_signals), context~, cancel~)
+    let job = Job::sigwait(all_signals)
+    defer job.free()
+    ignore <| perform_job_in_worker(job, context~, cancel~)
   }
 }
 

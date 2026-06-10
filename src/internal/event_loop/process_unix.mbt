@@ -47,10 +47,9 @@ pub async fn spawn(
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Process {
-  perform_job_in_worker(
-    Job::spawn(path, args, env, stdin, stdout, stderr, cwd),
-    context~,
-  )
+  let job = Job::spawn(path, args, env, stdin, stdout, stderr, cwd)
+  defer job.free()
+  perform_job_in_worker(job, context~)
 }
 
 ///|
@@ -68,6 +67,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     // The worker reaps the child and stores the exit code in job.ret(),
     // so return it here to avoid a second waitpid in get_process_result.
     let job = Job::wait_for_process(pid)
+    defer job.free()
     let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
       evloop.cancel_job_in_worker(job_id, context~)
     })

@@ -257,6 +257,7 @@ pub async fn IoHandle::read(
       len,
       position=handle.read_offset,
     )
+    defer job.free()
     let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
     let n = perform_job_in_worker(job, context~, cancel~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
@@ -306,6 +307,7 @@ pub async fn IoHandle::read_at(
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::read(handle.fd, buf, offset, len, position~)
+  defer job.free()
   let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
   perform_job_in_worker(job, context~, cancel~) catch {
     @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
@@ -368,6 +370,7 @@ pub async fn IoHandle::write(
       len,
       position=handle.write_offset,
     )
+    defer job.free()
     let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
     let n = perform_job_in_worker(job, context~, cancel~)
     handle.write_offset += n.to_int64()
@@ -400,6 +403,7 @@ pub async fn IoHandle::write_at(
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
   let job = Job::write(handle.fd, buf, offset, len, position~)
+  defer job.free()
   let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
   ignore(perform_job_in_worker(job, context~, cancel~))
 }

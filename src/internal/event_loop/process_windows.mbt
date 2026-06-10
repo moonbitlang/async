@@ -87,6 +87,7 @@ pub async fn spawn(
     cwd,
     is_orphan~,
   )
+  defer job.free()
   let pid = perform_job_in_worker(job, context~)
   { pid, handle: job.get_spawn_job_result_handle() }
 }
@@ -100,11 +101,13 @@ extern "C" fn get_process_result(handle : @fd_util.Fd, out : Ref[Int]) -> Int = 
 #cfg(platform="windows")
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
   let job = Job::wait_for_process(self.handle)
-  perform_job_in_worker(job, context~, cancel=_ => {
-    job.cancel_process_waiter()
-    NeedWait
-  })
-  |> ignore
+  let _ = {
+    defer job.free()
+    perform_job_in_worker(job, context~, cancel=_ => {
+      job.cancel_process_waiter()
+      NeedWait
+    })
+  }
   let out = Ref(0)
   let ret = get_process_result(self.handle, out)
   if ret < 0 {
