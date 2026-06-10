@@ -37,17 +37,47 @@ pub async fn getaddrinfo(
   host : StringView,
   context~ : String,
 ) -> Result[AddrInfo, String] {
+  @coroutine.check_cancellation()
   let host_bytes = @os_string.encode(host)
   let job = Job::getaddrinfo(host_bytes)
-  let ret = perform_job_in_worker(job, cancel=_ => NoWait, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
-    err => raise err
+  let mut result = Err("")
+  let mut terminated = false
+  defer {
+    terminated = true
   }
-  if ret != 0 {
-    Err(gai_error_to_string(ret))
-  } else {
-    Ok(job.get_getaddrinfo_result())
+  // `getaddrinfo` cannot be cancelled,
+  // but it always does not have any critical side effect.
+  // So our strategy here is to keep `getaddrinfo` running on cancellation,
+  // let a background task wait for its completion and perform cleanup, 
+  // while not waiting for the result in the main task
+  try
+    @coroutine.spawn(() => {
+      defer job.free()
+      let ret = perform_job_in_worker(job, context~) catch {
+        @os_error.OSError(errno, context~) =>
+          raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
+        err => raise err
+      }
+      // if the outer `getaddrinfo` call already terminated,
+      // we should not extract the result from the job,
+      // instead we should let `job.free` free the result.
+      guard !terminated else { return }
+      if ret != 0 {
+        result = Err(gai_error_to_string(ret))
+      } else {
+        result = Ok(job.get_getaddrinfo_result())
+      }
+    }).wait()
+  catch {
+    _ if result is Ok(_) =>
+      // corner case: if the job happens to complete at the same tick as cancellation,
+      // as long as `get_getaddrinfo_result` is called,
+      // we should treat `getaddrinfo` as successful anyway,
+      // otherwise the result will leak
+      return result
+    err => raise err
+  } noraise {
+    _ => result
   }
 }
 
@@ -58,5 +88,7 @@ pub async fn IoHandle::bind(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  ignore(perform_job_in_worker(Job::bind(handle.fd, addr), context~))
+  let job = Job::bind(handle.fd, addr)
+  defer job.free()
+  ignore(perform_job_in_worker(job, context~))
 }

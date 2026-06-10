@@ -23,14 +23,12 @@ extern "C" fn init_thread_pool_ffi(notify_send : @fd_util.Fd) = "moonbitlang_asy
 extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
-#owned(init_job)
 extern "C" fn Worker::spawn(init_job_id : Int, init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
 extern "C" fn Worker::free(worker : Worker) = "moonbitlang_async_free_worker"
 
 ///|
-#owned(job)
 extern "C" fn Worker::wake(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
 
 ///|
@@ -63,14 +61,16 @@ extern "C" fn fetch_completion_ffi(
 ) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
+#external
 priv type Job
 
 ///|
-#borrow(self)
+extern "C" fn Job::free(self : Job) -> Unit = "moonbitlang_async_free_job"
+
+///|
 extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
 
 ///|
-#borrow(self)
 extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
@@ -114,19 +114,15 @@ extern "C" fn Job::open(
 priv struct OpenJob(Job)
 
 ///|
-#borrow(job)
 extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
 
 ///|
-#borrow(job)
 extern "C" fn OpenJob::kind(job : OpenJob) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
 
 ///|
-#borrow(job)
 extern "C" fn OpenJob::dev_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_dev_id"
 
 ///|
-#borrow(job)
 extern "C" fn OpenJob::file_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
 
 ///|
@@ -144,7 +140,6 @@ extern "C" fn Job::file_kind_by_path(
 extern "C" fn Job::file_size(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_file_size_job"
 
 ///|
-#borrow(job)
 extern "C" fn Job::get_file_size_result(job : Job) -> Int64 = "moonbitlang_async_get_file_size_result"
 
 ///|
@@ -223,12 +218,10 @@ extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_as
 
 ///|
 #cfg(not(platform="windows"))
-#borrow(job)
 extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
 
 ///|
 #cfg(platform="windows")
-#borrow(job)
 extern "C" fn Job::get_realpath_result(job : Job) -> String = "moonbitlang_async_get_realpath_result"
 
 ///|
@@ -259,7 +252,6 @@ extern "C" fn Job::spawn(
 
 ///|
 #cfg(platform="windows")
-#borrow(job)
 extern "C" fn Job::get_spawn_job_result_handle(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
 
 ///|
@@ -272,7 +264,6 @@ extern "C" fn Job::wait_for_process(handle : @fd_util.Fd) -> Job = "moonbitlang_
 
 ///|
 #cfg(platform="windows")
-#borrow(job)
 extern "C" fn Job::cancel_process_waiter(job : Job) = "moonbitlang_async_cancel_wait_for_process_job"
 
 ///|
@@ -284,7 +275,6 @@ extern "C" fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job = "moonbitlan
 extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbitlang_async_make_getaddrinfo_job"
 
 ///|
-#borrow(job)
 extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
 
 ///|

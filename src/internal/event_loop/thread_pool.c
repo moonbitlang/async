@@ -130,10 +130,19 @@ struct job {
   // it will receive the job itself as parameter.
   // extra payload can be placed after the header fields in `struct job`
   void (*worker)(struct job*);
+
+  // finalizer for the job
+  void (*free)(void *);
 };
 
 MOONBIT_FFI_EXPORT
-int64_t moonbitlang_async_job_get_ret(struct job *job) {
+void moonbitlang_async_free_job(struct job *job) {
+  (job->free)(job);
+  free(job);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_job_get_ret(struct job *job) {
   return job->ret;
 }
 
@@ -264,9 +273,6 @@ void moonbitlang_async_wake_worker(
   int32_t job_id,
   struct job *job
 ) {
-  if (worker->job)
-    moonbit_decref(worker->job);
-
   worker->job_id = job_id;
   worker->job = job;
 
@@ -286,9 +292,6 @@ void moonbitlang_async_wake_worker(
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_worker_enter_idle(struct worker *worker) {
-  if (worker->job)
-    moonbit_decref(worker->job);
-
   worker->job = 0;
 }
 
@@ -457,16 +460,14 @@ int32_t moonbitlang_async_errno_is_cancelled(int32_t err) {
 static
 struct job *make_job(
   int32_t size,
-  void (*free_job)(void*),
+  void (*free)(void*),
   void (*worker)(struct job*)
 ) {
-  struct job *job = (struct job*)moonbit_make_external_object(
-    free_job,
-    size
-  );
+  struct job *job = (struct job*)malloc(size);
   job->ret = 0;
   job->err = 0;
   job->worker = worker;
+  job->free = free;
   return job;
 }
 

@@ -177,6 +177,7 @@ pub async fn IoHandle::read(
       None
     }
     let job = Job::read(handle.fd, buf, offset, len, position=-1)
+    defer job.free()
     perform_job_in_worker(job, context~, cancel?)
   }
 }
@@ -193,6 +194,7 @@ pub async fn IoHandle::read_at(
 ) -> Int {
   guard !handle.kind.can_poll()
   let job = Job::read(handle.fd, buf, offset, len, position~)
+  defer job.free()
   perform_job_in_worker(job, context~)
 }
 
@@ -241,6 +243,7 @@ pub async fn IoHandle::write(
       None
     }
     let job = Job::write(handle.fd, buf, offset, len, position=-1)
+    defer job.free()
     perform_job_in_worker(job, context~, cancel?)
   }
 }
@@ -257,5 +260,6 @@ pub async fn IoHandle::write_at(
 ) -> Unit {
   guard !handle.kind.can_poll()
   let job = Job::write(handle.fd, buf, offset, len, position~)
+  defer job.free()
   perform_job_in_worker(job, context~) |> ignore
 }
