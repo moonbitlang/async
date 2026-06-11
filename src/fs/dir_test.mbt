@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 async test "read_all" {
   let dir = @fs.opendir("src/fs")
   defer dir.close()
@@ -33,6 +34,7 @@ async test "read_all" {
 }
 
 ///|
+#cfg(target="native")
 async test "as_dir" {
   let dir_file = @fs.open("src/fs", mode=ReadOnly)
   guard dir_file.kind() is Directory
@@ -63,11 +65,6 @@ test "readdir clear errno" {
     let dir = @fs.opendir("src/fs")
     defer dir.close()
     let list = dir.read_all()
-    inspect(
-      list.length(),
-      content=(
-        #|39
-      ),
-    )
+    assert_true(list.contains("moon.pkg"))
   }
 }

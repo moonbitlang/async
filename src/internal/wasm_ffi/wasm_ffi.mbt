@@ -17,25 +17,33 @@ pub extern "wasm" fn free(position : Int) =
   #|(func (param i32) local.get 0 call $moonbit.decref)
 
 ///| Borrow a pointer to a Bytes object. The caller must keep the Bytes value live
-///| until the host import using the pointer has returned.
+
+///|
+/// until the host import using the pointer has returned.
 #borrow(bytes)
 pub extern "wasm" fn bytes_to_ptr(bytes : Bytes) -> Int =
   #|(func (param i32) (result i32) local.get 0)
 
 ///| Take ownership of a Bytes pointer. The returned pointer must be released with
-///| `free` after the host import using it has returned.
+
+///|
+/// `free` after the host import using it has returned.
 #owned(bytes)
 pub extern "wasm" fn bytes_to_owned_ptr(bytes : Bytes) -> Int =
   #|(func (param i32) (result i32) local.get 0)
 
 ///| Borrow a pointer to a byte array. The caller must keep the array live until
-///| the host import using the pointer has returned.
+
+///|
+/// the host import using the pointer has returned.
 #borrow(bytes)
 pub extern "wasm" fn byte_array_to_ptr(bytes : FixedArray[Byte]) -> Int =
   #|(func (param i32) (result i32) local.get 0)
 
 ///| Take ownership of a byte array pointer. The returned pointer must be released
-///| with `free` after the host import using it has returned.
+
+///|
+/// with `free` after the host import using it has returned.
 #owned(bytes)
 pub extern "wasm" fn byte_array_to_owned_ptr(bytes : FixedArray[Byte]) -> Int =
   #|(func (param i32) (result i32) local.get 0)

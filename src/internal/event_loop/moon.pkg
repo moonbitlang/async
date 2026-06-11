@@ -52,6 +52,7 @@ options(
     "network_windows.mbt": [ "native" ],
     "poll.mbt": [ "native" ],
     "process_unix.mbt": [ "native" ],
+    "process.wasm.mbt": [ "wasm" ],
     "process_windows.mbt": [ "native" ],
     "signal.mbt": [ "native" ],
     "stdio.mbt": [ "native" ],

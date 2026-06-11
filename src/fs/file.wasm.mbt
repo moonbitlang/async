@@ -142,6 +142,26 @@ pub async fn File::read_at(
 }
 
 ///|
+pub async fn File::read_exactly_at(
+  self : File,
+  len : Int,
+  position~ : Int64,
+) -> Bytes {
+  let buf = FixedArray::make(len, b'\x00')
+  let n = self.io.read_at(
+    buf,
+    offset=0,
+    len~,
+    position~,
+    context="@fs.File::read_exactly_at()",
+  )
+  if n < len {
+    raise @io.ReaderClosed
+  }
+  buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
 pub async fn File::write_at(
   self : File,
   buf : BytesView,
@@ -157,6 +177,71 @@ pub async fn File::write_at(
 }
 
 ///|
+pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
+  self.io.fsync(only_data~, context="@fs.File::sync()")
+}
+
+///|
+pub async fn File::size(self : File) -> Int64 {
+  @event_loop.file_size(self.io.fd(), context="@fs.File::size()")
+}
+
+///|
+pub async fn File::atime(self : File) -> (Int64, Int) {
+  @event_loop.file_time(self.io.fd(), context="@fs.File::atime()").atime()
+}
+
+///|
+pub async fn File::mtime(self : File) -> (Int64, Int) {
+  @event_loop.file_time(self.io.fd(), context="@fs.File::mtime()").mtime()
+}
+
+///|
+pub async fn File::ctime(self : File) -> (Int64, Int) {
+  @event_loop.file_time(self.io.fd(), context="@fs.File::ctime()").ctime()
+}
+
+///|
+pub(all) enum Lock {
+  Shared
+  Exclusive
+}
+
+///|
+pub async fn File::lock(self : File, lock : Lock) -> Unit {
+  self.io.lock(exclusive=lock is Exclusive, context="@fs.File::lock()")
+}
+
+///|
+fn errno_is_lock_violation(err : Int) -> Bool = "moonbit_v0" "errno_is_lock_violation"
+
+///|
+fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbit_v0" "try_lock_file"
+
+///|
+pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
+  let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
+  if ret >= 0 {
+    true
+  } else if errno_is_lock_violation(@os_error.get_errno()) {
+    false
+  } else {
+    @os_error.check_errno("@fs.File::try_lock()")
+    false
+  }
+}
+
+///|
+fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "unlock_file"
+
+///|
+pub fn File::unlock(self : File) -> Unit {
+  if unlock_ffi(self.fd()) < 0 {
+    try! @os_error.check_errno("@fs.File::unlock()")
+  }
+}
+
+///|
 pub async fn read_file(
   path : StringView,
   sync_timestamp? : Bool = false,
@@ -165,7 +250,10 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    file.io.fsync(only_data=false, context="@fs.File::read_file(sync_timestamp=true)")
+    file.io.fsync(
+      only_data=false,
+      context="@fs.File::read_file(sync_timestamp=true)",
+    )
   }
   result
 }
@@ -211,16 +299,15 @@ pub async fn write_file(
 }
 
 ///|
-pub async fn remove(_path : StringView) -> Unit {
-  abort("@fs.remove is not supported for wasm yet")
+pub async fn remove(path : StringView) -> Unit {
+  @event_loop.remove(path, context="@fs.remove()")
 }
 
 ///|
 pub async fn rename(
-  _old_path : StringView,
-  _new_path : StringView,
+  old_path : StringView,
+  new_path : StringView,
   replace? : Bool = true,
 ) -> Unit {
-  ignore(replace)
-  abort("@fs.rename is not supported for wasm yet")
+  @event_loop.rename(old_path, new_path, replace~, context="@fs.rename()")
 }

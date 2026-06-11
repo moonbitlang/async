@@ -35,6 +35,7 @@ async fn run_lock_file_prog(
   let prog = lock_file_prog.wait()
   let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
+  let ready = @semaphore.Semaphore(1, initial_value=0)
   let _ = @process.spawn(group, prog, stdout=w, [
     file,
     "-duration",
@@ -43,10 +44,16 @@ async fn run_lock_file_prog(
   ])
   group.spawn() <| () => {
     defer r.close()
+    let mut first_line = true
     while r.read_until("\n") is Some(line) {
       log.push(prefix + line)
+      if first_line {
+        first_line = false
+        ready.release()
+      }
     }
   }
+  @async.with_timeout(5000, () => ready.acquire())
 }
 
 ///|

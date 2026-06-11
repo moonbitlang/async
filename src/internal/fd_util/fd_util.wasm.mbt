@@ -54,3 +54,26 @@ pub fn set_nonblocking(_fd : Fd, context~ : String) -> Unit raise {
 pub fn set_cloexec(_fd : Fd, context~ : String) -> Unit raise {
   ignore(context)
 }
+
+///|
+fn pipe_ffi(fds : Int, len : Int) -> Int = "moonbit_v0" "pipe"
+
+///|
+#borrow(array)
+fn int_array_to_ptr(array : FixedArray[Int]) -> Int =
+  #|(func (param i32) (result i32) local.get 0)
+
+///|
+pub fn pipe(
+  read_end_is_async~ : Bool,
+  write_end_is_async~ : Bool,
+  context~ : String,
+) -> (Fd, Fd) raise {
+  ignore(read_end_is_async)
+  ignore(write_end_is_async)
+  let fds = FixedArray::make(2, 0)
+  if pipe_ffi(int_array_to_ptr(fds), fds.length()) < 0 {
+    @os_error.check_errno(context)
+  }
+  (fds[0], fds[1])
+}

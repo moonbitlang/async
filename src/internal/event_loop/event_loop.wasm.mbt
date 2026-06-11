@@ -133,7 +133,19 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
+    let timer_timeout = @cmp.maximum(
+      0,
+      (timer.expire_time - @time.ms_since_epoch()).to_int(),
+    )
+    if !self.running_workers.is_empty() {
+      // Native pollers wake early when the thread-pool notification fd becomes
+      // readable. The wasm host currently exposes completion fetching, not an
+      // interruptible wait primitive, so poll briefly while worker jobs are
+      // outstanding to avoid starving completions behind a later timer.
+      @cmp.minimum(timer_timeout, 1)
+    } else {
+      timer_timeout
+    }
   } else if !self.running_workers.is_empty() {
     1
   } else {
@@ -144,12 +156,17 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
   }
   if has_timers {
     let now = @time.ms_since_epoch()
+    let expired = []
     for timer in self.timers {
       if timer.expire_time <= now {
-        (timer.callback)()
+        expired.push(timer)
       } else {
         break
       }
+    }
+    for timer in expired {
+      self.timers.remove(timer)
+      (timer.callback)()
     }
   }
   while true {

@@ -84,8 +84,12 @@ fn Worker::cancel(
   context~ : String,
 ) -> CancellationStatus raise {
   match worker.cancel_ffi() {
-    0 => RetryLater
+    // The wasm host cannot interrupt every blocking OS operation yet. It still
+    // drains the worker completion later, but cancellation should resume the
+    // coroutine immediately to match the async timeout surface.
+    0 => NoWait
     1 => NeedWait
+    2 => RetryLater
     _ => {
       @os_error.check_errno(context)
       NoWait
@@ -98,7 +102,10 @@ priv struct Job {
   handle : Int
   read_buf : FixedArray[Byte]?
   write_buf : Bytes?
+  write_buf2 : Bytes?
   path : @os_string.OsString?
+  path2 : @os_string.OsString?
+  file_time : @fd_util.FileTime?
 }
 
 ///|
@@ -158,6 +165,81 @@ fn open_job_get_dev_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "open_job_get_dev
 fn open_job_get_file_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "open_job_get_file_id"
 
 ///|
+fn make_file_kind_by_path_job_ffi(
+  parent : @fd_util.Fd,
+  path : Int,
+  path_len : Int,
+  follow_symlink : Bool,
+) -> Int = "moonbit_v0" "make_file_kind_by_path_job"
+
+///|
+fn make_file_size_job_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "make_file_size_job"
+
+///|
+fn get_file_size_result_ffi(job : Int) -> Int64 = "moonbit_v0" "get_file_size_result"
+
+///|
+fn make_file_time_job_ffi(fd : @fd_util.Fd, out : Int, len : Int) -> Int = "moonbit_v0" "make_file_time_job"
+
+///|
+fn make_file_time_by_path_job_ffi(
+  path : Int,
+  path_len : Int,
+  out : Int,
+  len : Int,
+  follow_symlink : Bool,
+) -> Int = "moonbit_v0" "make_file_time_by_path_job"
+
+///|
+fn make_access_job_ffi(path : Int, path_len : Int, access : Int) -> Int = "moonbit_v0" "make_access_job"
+
+///|
+fn make_chmod_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "make_chmod_job"
+
+///|
+fn make_fsync_job_ffi(fd : @fd_util.Fd, only_data : Bool) -> Int = "moonbit_v0" "make_fsync_job"
+
+///|
+fn make_flock_job_ffi(fd : @fd_util.Fd, exclusive : Bool) -> Int = "moonbit_v0" "make_flock_job"
+
+///|
+fn make_remove_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "make_remove_job"
+
+///|
+fn make_rename_job_ffi(
+  old_path : Int,
+  old_path_len : Int,
+  new_path : Int,
+  new_path_len : Int,
+  replace : Bool,
+) -> Int = "moonbit_v0" "make_rename_job"
+
+///|
+fn make_symlink_job_ffi(
+  target : Int,
+  target_len : Int,
+  path : Int,
+  path_len : Int,
+) -> Int = "moonbit_v0" "make_symlink_job"
+
+///|
+fn make_mkdir_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "make_mkdir_job"
+
+///|
+fn make_rmdir_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "make_rmdir_job"
+
+///|
+fn make_readdir_job_ffi(
+  dir : @fd_util.Fd,
+  buf : Int,
+  len : Int,
+  restart : Bool,
+) -> Int = "moonbit_v0" "make_readdir_job"
+
+///|
+fn make_wait_for_process_job_ffi(process : Int) -> Int = "moonbit_v0" "make_wait_for_process_job"
+
+///|
 fn Job::free(self : Job) -> Unit {
   free_job_ffi(self.handle)
 }
@@ -200,7 +282,10 @@ fn Job::read(
     ),
     read_buf: Some(buf),
     write_buf: None,
+    write_buf2: None,
     path: None,
+    path2: None,
+    file_time: None,
   }
 }
 
@@ -222,7 +307,10 @@ fn Job::write(
     ),
     read_buf: None,
     write_buf: Some(buf),
+    write_buf2: None,
     path: None,
+    path2: None,
+    file_time: None,
   }
 }
 
@@ -248,7 +336,10 @@ fn Job::open(
     ),
     read_buf: None,
     write_buf: Some(encoded),
+    write_buf2: None,
     path: Some(filename),
+    path2: None,
+    file_time: None,
   }
   OpenResult(job)
 }
@@ -308,6 +399,9 @@ pub(all) enum Access {
 }
 
 ///|
+fn Access::to_int(self : Access) -> Int = "%identity"
+
+///|
 fn unsupported_job() -> Job {
   abort("moonbitlang/async wasm job is not supported in this MVP")
 }
@@ -319,100 +413,265 @@ fn Job::kind_of_fd(_fd : @fd_util.Fd) -> Job {
 
 ///|
 fn Job::file_kind_by_path(
-  _parent : @fd_util.Fd,
-  _path : @os_string.OsString,
+  parent : @fd_util.Fd,
+  path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job {
-  ignore(follow_symlink)
-  unsupported_job()
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_file_kind_by_path_job_ffi(
+      parent,
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+      follow_symlink,
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::file_size(_fd : @fd_util.Fd) -> Job {
-  unsupported_job()
+fn Job::file_size(fd : @fd_util.Fd) -> Job {
+  {
+    handle: make_file_size_job_ffi(fd),
+    read_buf: None,
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::get_file_size_result(_job : Job) -> Int64 {
-  0
+fn Job::get_file_size_result(job : Job) -> Int64 {
+  get_file_size_result_ffi(job.handle)
 }
 
 ///|
-fn Job::file_time(_fd : @fd_util.Fd, _out : @fd_util.FileTime) -> Job {
-  unsupported_job()
+fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job {
+  {
+    handle: make_file_time_job_ffi(fd, out.ptr(), out.length()),
+    read_buf: None,
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: Some(out),
+  }
 }
 
 ///|
 fn Job::file_time_by_path(
-  _path : @os_string.OsString,
-  _out : @fd_util.FileTime,
+  path : @os_string.OsString,
+  out : @fd_util.FileTime,
   follow_symlink~ : Bool,
 ) -> Job {
-  ignore(follow_symlink)
-  unsupported_job()
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_file_time_by_path_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+      out.ptr(),
+      out.length(),
+      follow_symlink,
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::access(_path : @os_string.OsString, _access : Access) -> Job {
-  unsupported_job()
+fn Job::access(path : @os_string.OsString, access : Access) -> Job {
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_access_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+      access.to_int(),
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::chmod(_path : @os_string.OsString, _mode : Int) -> Job {
-  unsupported_job()
+fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job {
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_chmod_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+      mode,
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::fsync(_fd : @fd_util.Fd, _only_data : Bool) -> Job {
-  unsupported_job()
+fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job {
+  {
+    handle: make_fsync_job_ffi(fd, only_data),
+    read_buf: None,
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::flock(_fd : @fd_util.Fd, _exclusive : Bool) -> Job {
-  unsupported_job()
+fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job {
+  {
+    handle: make_flock_job_ffi(fd, exclusive),
+    read_buf: None,
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::remove(_path : @os_string.OsString) -> Job {
-  unsupported_job()
+fn Job::remove(path : @os_string.OsString) -> Job {
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_remove_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
 fn Job::rename(
-  _old_path : @os_string.OsString,
-  _new_path : @os_string.OsString,
+  old_path : @os_string.OsString,
+  new_path : @os_string.OsString,
   replace~ : Bool,
 ) -> Job {
-  ignore(replace)
-  unsupported_job()
+  let old_encoded = @utf8.encode(old_path.to_string())
+  let new_encoded = @utf8.encode(new_path.to_string())
+  {
+    handle: make_rename_job_ffi(
+      @wasm_ffi.bytes_to_ptr(old_encoded),
+      old_encoded.length(),
+      @wasm_ffi.bytes_to_ptr(new_encoded),
+      new_encoded.length(),
+      replace,
+    ),
+    read_buf: None,
+    write_buf: Some(old_encoded),
+    write_buf2: Some(new_encoded),
+    path: Some(old_path),
+    path2: Some(new_path),
+    file_time: None,
+  }
 }
 
 ///|
 fn Job::symlink(
-  _target : @os_string.OsString,
-  _path : @os_string.OsString,
+  target : @os_string.OsString,
+  path : @os_string.OsString,
 ) -> Job {
-  unsupported_job()
+  let target_encoded = @utf8.encode(target.to_string())
+  let path_encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_symlink_job_ffi(
+      @wasm_ffi.bytes_to_ptr(target_encoded),
+      target_encoded.length(),
+      @wasm_ffi.bytes_to_ptr(path_encoded),
+      path_encoded.length(),
+    ),
+    read_buf: None,
+    write_buf: Some(target_encoded),
+    write_buf2: Some(path_encoded),
+    path: Some(target),
+    path2: Some(path),
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::mkdir(_path : @os_string.OsString, _mode : Int) -> Job {
-  unsupported_job()
+fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_mkdir_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+      mode,
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
-fn Job::rmdir(_path : @os_string.OsString) -> Job {
-  unsupported_job()
+fn Job::rmdir(path : @os_string.OsString) -> Job {
+  let encoded = @utf8.encode(path.to_string())
+  {
+    handle: make_rmdir_job_ffi(
+      @wasm_ffi.bytes_to_ptr(encoded),
+      encoded.length(),
+    ),
+    read_buf: None,
+    write_buf: Some(encoded),
+    write_buf2: None,
+    path: Some(path),
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
 fn Job::readdir(
-  _dir : @fd_util.Fd,
-  _buf : FixedArray[Byte],
-  _len : Int,
-  _restart : Bool,
+  dir : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  len : Int,
+  restart : Bool,
 ) -> Job {
-  unsupported_job()
+  {
+    handle: make_readdir_job_ffi(
+      dir,
+      @wasm_ffi.byte_array_to_ptr(buf),
+      len,
+      restart,
+    ),
+    read_buf: Some(buf),
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|
@@ -426,8 +685,16 @@ fn Job::get_realpath_result(_job : Job) -> @c_buffer.Buffer {
 }
 
 ///|
-fn Job::wait_for_process(_pid : Int) -> Job {
-  unsupported_job()
+fn Job::wait_for_process(process : Int) -> Job {
+  {
+    handle: make_wait_for_process_job_ffi(process),
+    read_buf: None,
+    write_buf: None,
+    write_buf2: None,
+    path: None,
+    path2: None,
+    file_time: None,
+  }
 }
 
 ///|

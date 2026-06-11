@@ -39,21 +39,59 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 struct FileTime(FixedArray[Byte])
 
 ///|
+fn FileTime::size() -> Int = "moonbit_v0" "sizeof_file_time"
+
+///|
 pub fn FileTime::new() -> FileTime {
-  FixedArray::make(0, b'\x00')
+  FixedArray::make(FileTime::size(), b'\x00')
 }
 
 ///|
-pub fn FileTime::atime(_self : FileTime) -> (Int64, Int) {
-  (0, 0)
+fn get_atime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_atime_sec"
+
+///|
+fn get_atime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_atime_nsec"
+
+///|
+fn get_mtime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_mtime_sec"
+
+///|
+fn get_mtime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_mtime_nsec"
+
+///|
+fn get_ctime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_ctime_sec"
+
+///|
+fn get_ctime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_ctime_nsec"
+
+///|
+#borrow(self)
+pub fn FileTime::ptr(self : FileTime) -> Int {
+  let FileTime(buf) = self
+  @wasm_ffi.byte_array_to_ptr(buf)
 }
 
 ///|
-pub fn FileTime::mtime(_self : FileTime) -> (Int64, Int) {
-  (0, 0)
+#borrow(self)
+pub fn FileTime::length(self : FileTime) -> Int {
+  let FileTime(buf) = self
+  buf.length()
 }
 
 ///|
-pub fn FileTime::ctime(_self : FileTime) -> (Int64, Int) {
-  (0, 0)
+pub fn FileTime::atime(self : FileTime) -> (Int64, Int) {
+  let ptr = self.ptr()
+  (get_atime_sec_ffi(ptr), get_atime_nsec_ffi(ptr))
+}
+
+///|
+pub fn FileTime::mtime(self : FileTime) -> (Int64, Int) {
+  let ptr = self.ptr()
+  (get_mtime_sec_ffi(ptr), get_mtime_nsec_ffi(ptr))
+}
+
+///|
+pub fn FileTime::ctime(self : FileTime) -> (Int64, Int) {
+  let ptr = self.ptr()
+  (get_ctime_sec_ffi(ptr), get_ctime_nsec_ffi(ptr))
 }
