@@ -4,12 +4,14 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/env",
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/os_error",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/time",
+  "moonbitlang/async/internal/wasm_ffi",
 }
 
 import {
@@ -40,7 +42,7 @@ options(
     "cancel_before_submit_test.mbt": [ "native" ],
     "event_loop.js.mbt": [ "js" ],
     "event_loop.mbt": [ "native" ],
-    "fs.mbt": [ "native" ],
+    "fs.mbt": [ "native", "wasm" ],
     "io.mbt": [ "native" ],
     "io_unix.mbt": [ "native" ],
     "io_windows.mbt": [ "native" ],
@@ -57,7 +59,9 @@ options(
     "timer.mbt": [ "native" ],
     "timer.wasm.mbt": [ "wasm" ],
     "event_loop.wasm.mbt": [ "wasm" ],
+    "io.wasm.mbt": [ "wasm" ],
     "unimplemented.mbt": [ "wasm-gc" ],
     "worker_wbtest.mbt": [ "native", "js" ],
+    "thread_pool.wasm.mbt": [ "wasm" ],
   },
 )

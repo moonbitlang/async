@@ -148,3 +148,43 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
 
 ///|
 pub let check_fd_leak : Ref[Bool] = Ref(false)
+
+///|
+priv enum CancellationStatus {
+  NoWait
+  NeedWait
+  RetryLater
+}
+
+///|
+async fn perform_job_in_worker(
+  job : Job,
+  context~ : String,
+  cancel? : (Int) -> CancellationStatus raise,
+) -> Int {
+  ignore(cancel)
+  @coroutine.check_cancellation()
+  job.run()
+  if job.err() is err && err > 0 {
+    if errno_is_cancelled(err) {
+      raise @coroutine.Cancelled
+    } else {
+      raise @os_error.OSError(err, context~)
+    }
+  } else {
+    job.ret()
+  }
+}
+
+///|
+fn errno_is_cancelled(errno : Int) -> Bool = "moonbit_v0" "errno_is_cancelled"
+
+///|
+fn EventLoop::cancel_job_in_worker(
+  _evloop : EventLoop,
+  _job_id : Int,
+  context~ : String,
+) -> CancellationStatus raise {
+  ignore(context)
+  NoWait
+}
