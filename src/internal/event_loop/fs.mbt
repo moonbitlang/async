@@ -288,7 +288,6 @@ pub async fn IoHandle::readdir(
 }
 
 ///|
-#cfg(not(platform="windows"))
 pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
   let job = Job::realpath(path_bytes)
@@ -299,22 +298,7 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
     err => raise err
   }
   let c_path = job.get_realpath_result()
-  defer c_path.free()
   @os_string.decode(c_path)
-}
-
-///|
-#cfg(platform="windows")
-pub async fn realpath(path : StringView, context~ : String) -> String {
-  let path_bytes = @os_string.encode(path)
-  let job = Job::realpath(path_bytes)
-  defer job.free()
-  let _ = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  }
-  job.get_realpath_result()
 }
 
 ///|

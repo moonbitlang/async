@@ -218,12 +218,7 @@ extern "C" fn Job::readdir(
 extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_async_make_realpath_job"
 
 ///|
-#cfg(not(platform="windows"))
 extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn Job::get_realpath_result(job : Job) -> String = "moonbitlang_async_get_realpath_result"
 
 ///|
 #cfg(not(platform="windows"))
