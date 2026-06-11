@@ -227,11 +227,12 @@ pub async fn rename(
 pub async fn symlink(
   target : StringView,
   path : StringView,
+  force_symlink~ : Bool,
   context~ : String,
 ) -> Unit {
   let target_bytes = @os_string.encode(target)
   let path_bytes = @os_string.encode(path)
-  let job = Job::symlink(target_bytes, path_bytes)
+  let job = Job::symlink(target_bytes, path_bytes, force_symlink~)
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
