@@ -26,28 +26,56 @@ fn destroy_thread_pool() -> Unit {
 }
 
 ///|
-fn Worker::spawn(_init_job_id : Int, _init_job : Job) -> Worker {
-  Worker(0)
+fn spawn_worker_ffi(init_job_id : Int, init_job : Int) -> Int = "moonbit_v0" "spawn_worker"
+
+///|
+fn free_worker_ffi(worker : Int) -> Unit = "moonbit_v0" "free_worker"
+
+///|
+fn wake_worker_ffi(worker : Int, job_id : Int, job : Int) -> Unit = "moonbit_v0" "wake_worker"
+
+///|
+fn worker_enter_idle_ffi(worker : Int) -> Unit = "moonbit_v0" "worker_enter_idle"
+
+///|
+fn cancel_worker_ffi(worker : Int) -> Int = "moonbit_v0" "cancel_worker"
+
+///|
+fn fetch_completion_raw(output : Int, len : Int) -> Int = "moonbit_v0" "fetch_completion"
+
+///|
+#borrow(array)
+fn int_array_to_ptr(array : FixedArray[Int]) -> Int =
+  #|(func (param i32) (result i32) local.get 0)
+
+///|
+fn fetch_completion_ffi(output : FixedArray[Int]) -> Int {
+  fetch_completion_raw(int_array_to_ptr(output), output.length())
 }
 
 ///|
-fn Worker::free(_worker : Worker) -> Unit {
-  ()
+fn Worker::spawn(init_job_id : Int, init_job : Job) -> Worker {
+  Worker(spawn_worker_ffi(init_job_id, init_job.handle))
 }
 
 ///|
-fn Worker::wake(_worker : Worker, _job_id : Int, _job : Job) -> Unit {
-  ()
+fn Worker::free(worker : Worker) -> Unit {
+  free_worker_ffi(worker.0)
 }
 
 ///|
-fn Worker::enter_idle(_worker : Worker) -> Unit {
-  ()
+fn Worker::wake(worker : Worker, job_id : Int, job : Job) -> Unit {
+  wake_worker_ffi(worker.0, job_id, job.handle)
 }
 
 ///|
-fn Worker::cancel_ffi(_worker : Worker) -> Int {
-  1
+fn Worker::enter_idle(worker : Worker) -> Unit {
+  worker_enter_idle_ffi(worker.0)
+}
+
+///|
+fn Worker::cancel_ffi(worker : Worker) -> Int {
+  cancel_worker_ffi(worker.0)
 }
 
 ///|
@@ -78,6 +106,9 @@ fn free_job_ffi(job : Int) -> Unit = "moonbit_v0" "free_job"
 
 ///|
 fn run_job_ffi(job : Int) -> Unit = "moonbit_v0" "run_job"
+
+///|
+fn complete_job_ffi(job : Int) -> Unit = "moonbit_v0" "complete_job"
 
 ///|
 fn job_get_ret_ffi(job : Int) -> Int = "moonbit_v0" "job_get_ret"
@@ -134,6 +165,11 @@ fn Job::free(self : Job) -> Unit {
 ///|
 fn Job::run(self : Job) -> Unit {
   run_job_ffi(self.handle)
+}
+
+///|
+fn Job::complete(self : Job) -> Unit {
+  complete_job_ffi(self.handle)
 }
 
 ///|
