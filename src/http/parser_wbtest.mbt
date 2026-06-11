@@ -93,6 +93,31 @@ async test "read_request fixed body" {
 }
 
 ///|
+async test "read_request fixed body early EOF" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("GET / HTTP/1.1\r\n")
+      ..write("Host: x.y.org\r\n")
+      ..write("User-Agent: MoonBit\r\n")
+      ..write("Content-Length: 8\r\n\r\n")
+      .write("message")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let _request = input.read_request()
+    debug_inspect(
+      @test_util.expect_error_async(() => input.read_all().binary()),
+      content=(
+        #|ReaderClosed
+      ),
+    )
+  }
+}
+
+///|
 async test "read_request chunked" {
   let log = StringBuilder::new()
   @async.with_task_group() <| root => {

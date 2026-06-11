@@ -139,6 +139,9 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         max_len~,
         limit=remaining,
       )
+      if produced is 0 {
+        raise @io.ReaderClosed
+      }
       let remaining = remaining - consumed
       self.body = if remaining == 0 {
         if self.gzip is Some(gzip) {
@@ -395,6 +398,8 @@ async fn Reader::read_response(
   // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
   if should_read_body_until_close(code, headers, self.body, request_method) {
     self.body = WaitConnectionClose // Read until connection close
+  } else if request_method is Some(Head) {
+    self.body = Empty
   }
 
   { code, reason, headers, cookies }
