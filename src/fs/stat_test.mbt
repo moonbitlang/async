@@ -14,12 +14,24 @@
 
 ///|
 #cfg(not(platform="windows"))
-async test "stat" {
-  let link_path = "_build/fs_stat_test"
+async test "kind of symlink to regular" {
+  let link_path = "_build/stat_symlink_to_regular_test"
   @fs.symlink(link_path, target="../LICENSE")
   @async.with_task_group() <| group => {
     group.add_defer(() => @fs.remove(link_path))
     debug_inspect(@fs.kind(link_path), content="Regular")
+    debug_inspect(@fs.kind(link_path, follow_symlink=false), content="SymLink")
+  }
+}
+
+///|
+async test "kind of symlink to directory" {
+  guard @env.current_dir() is Some(cwd)
+  let link_path = "_build/stat_symlink_to_dir_test"
+  @fs.symlink(link_path, target="\{cwd}/_build")
+  @async.with_task_group() <| group => {
+    group.add_defer(() => @fs.remove(link_path))
+    debug_inspect(@fs.kind(link_path), content="Directory")
     debug_inspect(@fs.kind(link_path, follow_symlink=false), content="SymLink")
   }
 }

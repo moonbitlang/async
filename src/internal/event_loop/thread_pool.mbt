@@ -193,6 +193,7 @@ extern "C" fn Job::rename(
 extern "C" fn Job::symlink(
   target : @os_string.OsString,
   path : @os_string.OsString,
+  force_symlink~ : Bool,
 ) -> Job = "moonbitlang_async_make_symlink_job"
 
 ///|

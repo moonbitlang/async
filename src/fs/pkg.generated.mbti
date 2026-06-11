@@ -47,7 +47,7 @@ pub async fn rename(StringView, StringView, replace? : Bool) -> Unit
 
 pub async fn rmdir(StringView, recursive? : Bool) -> Unit
 
-pub async fn symlink(target~ : StringView, StringView) -> Unit
+pub async fn symlink(target~ : StringView, StringView, force_symlink? : Bool) -> Unit
 
 pub async fn tmpdir(prefix~ : StringView) -> String
 

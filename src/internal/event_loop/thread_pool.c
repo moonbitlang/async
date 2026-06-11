@@ -26,6 +26,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <stddef.h>
 
 #else
 
@@ -1249,7 +1250,22 @@ static
 void remove_job_worker(struct job *job) {
   struct remove_job *remove_job = (struct remove_job*)job;
 #ifdef _WIN32
-  if (!DeleteFileW((LPCWSTR)remove_job->path))
+  DWORD attrs = GetFileAttributesW((LPCWSTR)remove_job->path);
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+    job->err = GetLastError();
+    return;
+  }
+
+  BOOL ret;
+  // Simulate POSIX behavior on Windows.
+  // Maybe we should just merge `@fs.remove` and `@fs.rmdir`?
+  if ((attrs & FILE_ATTRIBUTE_DIRECTORY) && (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) {
+    ret = RemoveDirectoryW((LPCWSTR)remove_job->path);
+  } else {
+    ret = DeleteFileW((LPCWSTR)remove_job->path);
+  }
+
+  if (!ret)
     job->err = GetLastError();
 #else
   job->ret = remove(remove_job->path);
@@ -1434,6 +1450,7 @@ struct symlink_job {
   struct job job;
   char *target;
   char *path;
+  int32_t force_symlink;
 };
 
 static
@@ -1443,25 +1460,170 @@ void free_symlink_job(void *obj) {
   moonbit_decref(job->path);
 }
 
+#ifdef _WIN32
+typedef struct {
+    USHORT SubstituteNameOffset;
+    USHORT SubstituteNameLength;
+    USHORT PrintNameOffset;
+    USHORT PrintNameLength;
+    WCHAR  PathBuffer[1];
+} MOUNT_POINT_REPARSE_BUFFER;
+
+typedef struct {
+  ULONG ReparseTag;
+  USHORT ReparseDataLength;
+  USHORT Reserved;
+  MOUNT_POINT_REPARSE_BUFFER MountPointReparseBuffer;
+} REPARSE_DATA_BUFFER;
+#endif
+
 static
 void symlink_job_worker(struct job *job) {
   struct symlink_job *symlink_job = (struct symlink_job*)job;
 
 #ifdef _WIN32
+
+  int target_len = Moonbit_array_length(symlink_job->target);
   LPCWSTR target = (LPCWSTR)symlink_job->target;
   LPCWSTR path = (LPCWSTR)symlink_job->path;
 
   DWORD attrs = GetFileAttributesW(target);
-  if (attrs == INVALID_FILE_ATTRIBUTES) {
+  BOOL is_dir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
+
+  // create NTFS junction if possible
+  if (symlink_job->force_symlink)
+    goto symlink_fallback;
+
+  if (!is_dir)
+    goto symlink_fallback;
+
+  if (wcsncmp(target, L"\\??\\", 4) == 0 || wcsncmp(target, L"\\\\?\\", 4) == 0) {
+    target += 4;
+    target_len -= 4;
+  }
+
+  if (
+    target_len >= 3
+    && ('a' <= target[0] && target[0] <= 'z' || 'A' <= target[0] && target[0] <= 'Z')
+    && target[1] == ':'
+    && (target[2] == '\\' || target[2] == '/')
+  ) {
+    // normal absolute path
+  } else if (wcsncmp(target, L"\\", 2) == 0) {
+    // UNC path for network resource, does not support junction
+    goto symlink_fallback;
+  } else {
+    // relaive path, does not support junction
+    goto symlink_fallback;
+  }
+
+  if (!CreateDirectoryW(path, NULL)) {
     job->err = GetLastError();
     return;
   }
+
+  HANDLE link = CreateFileW(
+    path,
+    GENERIC_WRITE,
+    0,
+    NULL,
+    OPEN_EXISTING,
+    FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+    NULL
+  );
+  if (link == INVALID_HANDLE_VALUE) {
+    job->err = GetLastError();
+    RemoveDirectoryW(path);
+    return;
+  }
+
+  DWORD substitute_name_len =
+    2 * target_len
+    + 8 // NT path "\??\" prefix for substitute path
+  ;
+  DWORD print_name_len = 2 * target_len;
+
+  DWORD path_buffer_length =
+    substitute_name_len
+    + print_name_len
+    + 4 // NUL terminator for substitute path and print path
+  ;
+
+  DWORD reparse_buffer_length =
+    offsetof(MOUNT_POINT_REPARSE_BUFFER, PathBuffer)
+    + path_buffer_length;
+
+  DWORD buffer_size =
+    offsetof(REPARSE_DATA_BUFFER, MountPointReparseBuffer)
+    + reparse_buffer_length;
+
+  REPARSE_DATA_BUFFER *buf = (REPARSE_DATA_BUFFER*)malloc(buffer_size);
+  buf->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+  buf->ReparseDataLength = reparse_buffer_length;
+  buf->Reserved = 0;
+  buf->MountPointReparseBuffer.SubstituteNameOffset = 0;
+  buf->MountPointReparseBuffer.SubstituteNameLength = substitute_name_len;
+  memcpy(
+    buf->MountPointReparseBuffer.PathBuffer,
+    L"\\??\\",
+    8
+  );
+  memcpy(
+    buf->MountPointReparseBuffer.PathBuffer + 4,
+    target,
+    target_len * 2 + 2
+  );
+  for (WCHAR *ptr = buf->MountPointReparseBuffer.PathBuffer + 4; *ptr; ++ptr) {
+    // substitute path does not support forward slash
+    if (*ptr == L'/')
+      *ptr = L'\\';
+  }
+  buf->MountPointReparseBuffer.PrintNameOffset = substitute_name_len + 2;
+  buf->MountPointReparseBuffer.PrintNameLength = print_name_len;
+  memcpy(
+    buf->MountPointReparseBuffer.PathBuffer + 5 + target_len,
+    // avoid substituting forward slash twice, reuse the substituted result
+    buf->MountPointReparseBuffer.PathBuffer + 4,
+    target_len * 2 + 2
+  );
+
+  DWORD bytes_returned = 0;
+  BOOL ok = DeviceIoControl(
+    link,
+    FSCTL_SET_REPARSE_POINT,
+    buf,
+    buffer_size,
+    NULL,
+    0,
+    &bytes_returned,
+    NULL
+  );
+  int err = GetLastError();
+  free(buf);
+  CloseHandle(link);
+
+  if (!ok) {
+    RemoveDirectoryW(path);
+    if (err == ERROR_INVALID_PARAMETER) {
+      // this is mainly for handling non-NTFS volume.
+      // There are other cases that will also generate `ERROR_INVALID_PARAMETER`,
+      // such as invalid character in path.
+      // But for those cases, the symlink fallback path will give a similar error,
+      // so the net result is still the same.
+      goto symlink_fallback;
+    }
+    job->err = err;
+  }
+
+  return;
+
+symlink_fallback:
 
   if (
     !CreateSymbolicLinkW(
       (LPCWSTR)symlink_job->path,
       (LPCWSTR)symlink_job->target,
-      attrs & FILE_ATTRIBUTE_DIRECTORY ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0
+      is_dir ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0
     )
   ) {
     job->err = GetLastError();
@@ -1476,10 +1638,15 @@ void symlink_job_worker(struct job *job) {
 #endif
 }
 
-struct symlink_job *moonbitlang_async_make_symlink_job(char *target, char *path) {
+struct symlink_job *moonbitlang_async_make_symlink_job(
+  char *target,
+  char *path,
+  int32_t force_symlink
+) {
   struct symlink_job *job = MAKE_JOB(symlink);
   job->target = target;
   job->path = path;
+  job->force_symlink = force_symlink;
   return job;
 }
 

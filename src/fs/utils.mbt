@@ -124,8 +124,24 @@ pub async fn realpath(path : StringView) -> String {
 
 ///|
 /// Create a symbolic link to `old_path` at `new_path`.
-pub async fn symlink(target~ : StringView, path : StringView) -> Unit {
-  @event_loop.symlink(target, path, context="@fs.link()")
+///
+/// On Windows, creating true symbolic link requires admin privilege.
+/// So `@fs.symlink()` will try to create NTFS junction when feasible,
+/// which is similar to symlink in characteristics.
+/// NTFS junction is not as flexible as symlink, it will only be created when:
+///
+/// 1. the target path is an existing directory
+/// 2. the target path is onn the same local machine
+/// 3. the link is created on a NTFS volume
+///
+/// To force creation of true symbolic link on Windows, pass `force_symlink=true`.
+/// `force_symlink` has no effect on non-Windows platforms.
+pub async fn symlink(
+  target~ : StringView,
+  path : StringView,
+  force_symlink? : Bool = false,
+) -> Unit {
+  @event_loop.symlink(target, path, force_symlink~, context="@fs.symlink()")
 }
 
 ///|
