@@ -1818,16 +1818,31 @@ struct readdir_job *moonbitlang_async_make_readdir_job(
 
 // ===== realpath job, get canonical representation of a path =====
 
+#ifdef _WIN32
+#define REALPATH_JOB_BUFFER_LENGTH 1024
+#endif
+
 struct realpath_job {
   struct job job;
   char *path;
   char *result;
+#ifdef _WIN32
+  // avoid some allocation in the simple case
+  WCHAR buf[REALPATH_JOB_BUFFER_LENGTH];
+#endif
 };
 
 static
 void free_realpath_job(void *obj) {
   struct realpath_job *job = (struct realpath_job*)obj;
   moonbit_decref(job->path);
+#ifdef _WIN32
+  if (job->result && job->result != (char*)job->buf)
+    free(job->result);
+#else
+  if (job->result)
+    free(job->result);
+#endif
 }
 
 static
@@ -1835,33 +1850,45 @@ void realpath_job_worker(struct job *job) {
   struct realpath_job *realpath_job = (struct realpath_job*)job;
 
 #ifdef _WIN32
-  static wchar_t buf[1024];
-  DWORD len = GetFullPathNameW(
+  HANDLE file = CreateFileW(
     (LPCWSTR)realpath_job->path,
-    1024,
-    buf,
+    0,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS,
     NULL
   );
-
-  if (!len) {
+  if (file == INVALID_HANDLE_VALUE) {
     job->err = GetLastError();
     return;
   }
 
-  realpath_job->result = (char*)moonbit_make_string_raw(len);
-  if (len <= 1024) {
-    memcpy(realpath_job->result, buf, len * sizeof(wchar_t));
-  } else if (
-    !GetFullPathNameW(
-      (LPCWSTR)realpath_job->path,
-      len,
-      (LPWSTR)realpath_job->result,
-      NULL
-    )
-  ) {
+  DWORD len = GetFinalPathNameByHandleW(
+    file,
+    realpath_job->buf,
+    REALPATH_JOB_BUFFER_LENGTH,
+    FILE_NAME_NORMALIZED | VOLUME_NAME_DOS
+  );
+
+  if (!len) {
     job->err = GetLastError();
-    moonbit_decref(realpath_job->result);
+  } else if (len < REALPATH_JOB_BUFFER_LENGTH) {
+    realpath_job->result = (char*)realpath_job->buf;
+  } else {
+    // include the extra NUL terminator
+    realpath_job->result = malloc((len + 1) * sizeof(WCHAR));
+    len = GetFinalPathNameByHandleW(
+      file,
+      (LPWSTR)realpath_job->result,
+      len,
+      FILE_NAME_NORMALIZED | VOLUME_NAME_DOS
+    );
+    if (!len)
+      job->err = GetLastError();
   }
+
+  CloseHandle(file);
 
 #else
 
@@ -1877,11 +1904,23 @@ void realpath_job_worker(struct job *job) {
 struct realpath_job *moonbitlang_async_make_realpath_job(char *path) {
   struct realpath_job *job = MAKE_JOB(realpath);
   job->path = path;
+  job->result = 0;
   return job;
 }
 
 char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
+#ifdef _WIN32
+  if (wcsncmp((WCHAR*)job->result, L"\\\\?\\UNC\\", 8) == 0) {
+    ((WCHAR*)job->result)[6] = L'\\';
+    return job->result + 6 * sizeof(WCHAR);
+  }
+  else if (wcsncmp((WCHAR*)job->result, L"\\\\?\\", 4) == 0)
+    return job->result + 4 * sizeof(WCHAR);
+  else
+    return job->result + 8;
+#else
   return job->result;
+#endif
 }
 
 // ===== spawn job, spawn foreign process =====
