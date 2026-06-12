@@ -47,11 +47,7 @@ fn get_tmp_base_path() -> String {
     let err = @os_error.errno_to_string(@os_error.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
-  let path = if @event_loop.is_windows() {
-    @utf16.decode_lossy(data.unsafe_reinterpret_as_bytes())
-  } else {
-    @utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
-  }
+  let path = @utf16.decode_lossy(data.unsafe_reinterpret_as_bytes())
   tmp_base_path.val = Some(path)
   path
 }

@@ -16,14 +16,6 @@
 struct OsString(String)
 
 ///|
-fn get_platform() -> Int = "moonbit_v0" "runtime/get_platform"
-
-///|
-fn is_windows() -> Bool {
-  get_platform() == 2
-}
-
-///|
 pub fn encode(str : StringView) -> OsString {
   OsString(str.to_owned())
 }
@@ -39,26 +31,17 @@ pub impl Show for OsString with fn to_string(self) {
 }
 
 ///|
-/// `len`, if present, is the number of bytes to decode in `os_str`.
-/// The default follows the native stubs: Windows scans for a UTF-16 NUL
-/// terminator, while non-Windows uses `strlen`.
+/// Wasm `OsString` is always UTF-16LE, matching MoonBit String storage.
+/// `len`, if present, is the number of UTF-16 bytes to decode in `os_str`.
 pub fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String {
   let len = if len == -1 {
-    if is_windows() {
-      wchar_len(os_str)
-    } else {
-      os_str.strlen()
-    }
+    wchar_len(os_str)
   } else {
     len
   }
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, offset=0, len~)
-  if is_windows() {
-    @utf16.decode_lossy(data.unsafe_reinterpret_as_bytes())
-  } else {
-    @utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
-  }
+  @utf16.decode_lossy(data.unsafe_reinterpret_as_bytes())
 }
 
 ///|

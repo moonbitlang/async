@@ -14,6 +14,6 @@
 
 ///|
 #cfg(target="wasm")
-test "wasm os string keeps moonbit string" {
+test "wasm os string is moonbit utf16 string" {
   inspect(encode("tmp/路径").to_string(), content="tmp/路径")
 }
