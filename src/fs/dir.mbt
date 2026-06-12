@@ -31,12 +31,12 @@ pub async fn mkdir(
     @os_error.OSError(_) as err if recursive && err.is_ENOENT() => {
       let last_path_sep_index = match path.rev_find("/") {
         Some(index) => index
-        None if @event_loop.IS_WINDOWS && path.rev_find("\\") is Some(index) =>
-          index
+        None if @event_loop.platform is Windows &&
+          path.rev_find("\\") is Some(index) => index
         None => raise err
       }
       let parent = path[:last_path_sep_index].trim_end(chars="/")
-      let parent = if @event_loop.IS_WINDOWS {
+      let parent = if @event_loop.platform is Windows {
         parent.trim_end(chars="\\")
       } else {
         parent
@@ -57,7 +57,7 @@ pub async fn mkdir(
 pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
-    let base = if @event_loop.IS_WINDOWS {
+    let base = if @event_loop.platform is Windows {
       path.trim_end(chars="/\\")
     } else {
       path.trim_end(chars="/")

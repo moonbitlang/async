@@ -8,8 +8,6 @@ import {
 }
 
 // Values
-pub const IS_WINDOWS : Bool = false
-
 pub let _SIGBREAK : Int
 
 pub let _SIGHUP : Int

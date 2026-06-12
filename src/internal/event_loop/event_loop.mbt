@@ -13,14 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
-pub const IS_WINDOWS : Bool = false
-
-///|
-#cfg(platform="windows")
-pub const IS_WINDOWS : Bool = true
-
-///|
 pub(all) enum Platform {
   Linux = 0
   MacOS = 1

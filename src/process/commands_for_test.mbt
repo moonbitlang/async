@@ -14,7 +14,7 @@
 // limitations under the License.
 
 ///|
-let is_windows : Bool = @event_loop.IS_WINDOWS
+let is_windows : Bool = @event_loop.platform is Windows
 
 ///|
 let shell : String = if is_windows { "powershell" } else { "sh" }
