@@ -143,15 +143,7 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
   self.drain_worker_completions()
   if has_timers {
     let now = @time.ms_since_epoch()
-    let expired = []
-    for timer in self.timers {
-      if timer.expire_time <= now {
-        expired.push(timer)
-      } else {
-        break
-      }
-    }
-    for timer in expired {
+    if self.timers.iter().head() is Some(timer) && timer.expire_time <= now {
       self.timers.remove(timer)
       (timer.callback)()
     }
