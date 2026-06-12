@@ -17,19 +17,19 @@
 pub type Buffer
 
 ///|
-fn blit_to_c(dst : Buffer, src : Int, offset : Int, len : Int) -> Unit = "moonbit_v0" "blit_to_c"
+fn blit_to_c(dst : Buffer, src : Int, offset : Int, len : Int) -> Unit = "moonbit_v0" "c_buffer/blit_to_c"
 
 ///|
-fn blit_from_c(src : Buffer, dst : Int, offset : Int, len : Int) -> Unit = "moonbit_v0" "blit_from_c"
+fn blit_from_c(src : Buffer, dst : Int, offset : Int, len : Int) -> Unit = "moonbit_v0" "c_buffer/blit_from_c"
 
 ///|
-fn c_buffer_get(buf : Buffer, index : Int) -> Byte = "moonbit_v0" "c_buffer_get"
+fn c_buffer_get(buf : Buffer, index : Int) -> Byte = "moonbit_v0" "c_buffer/c_buffer_get"
 
 ///|
-fn strlen(buf : Buffer) -> Int = "moonbit_v0" "strlen"
+fn strlen(buf : Buffer) -> Int = "moonbit_v0" "c_buffer/strlen"
 
 ///|
-fn pointer_is_null(ptr : Buffer) -> Bool = "moonbit_v0" "pointer_is_null"
+fn pointer_is_null(ptr : Buffer) -> Bool = "moonbit_v0" "c_buffer/pointer_is_null"
 
 ///|
 fn buffer_to_ptr(buf : Buffer) -> Int =

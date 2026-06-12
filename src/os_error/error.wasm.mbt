@@ -13,28 +13,28 @@
 // limitations under the License.
 
 ///|
-pub fn get_errno() -> Int = "moonbit_v0" "get_errno"
+pub fn get_errno() -> Int = "moonbit_v0" "os_error/get_errno"
 
 ///|
-fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbit_v0" "is_nonblocking_io_error"
+fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbit_v0" "os_error/is_nonblocking_io_error"
 
 ///|
-fn errno_is_EINTR(errno : Int) -> Bool = "moonbit_v0" "is_EINTR"
+fn errno_is_EINTR(errno : Int) -> Bool = "moonbit_v0" "os_error/is_EINTR"
 
 ///|
-fn errno_is_ENOENT(errno : Int) -> Bool = "moonbit_v0" "is_ENOENT"
+fn errno_is_ENOENT(errno : Int) -> Bool = "moonbit_v0" "os_error/is_ENOENT"
 
 ///|
-fn errno_is_EEXIST(errno : Int) -> Bool = "moonbit_v0" "is_EEXIST"
+fn errno_is_EEXIST(errno : Int) -> Bool = "moonbit_v0" "os_error/is_EEXIST"
 
 ///|
-fn errno_is_EACCES(errno : Int) -> Bool = "moonbit_v0" "is_EACCES"
+fn errno_is_EACCES(errno : Int) -> Bool = "moonbit_v0" "os_error/is_EACCES"
 
 ///|
-fn errno_is_ECONNREFUSED(errno : Int) -> Bool = "moonbit_v0" "is_ECONNREFUSED"
+fn errno_is_ECONNREFUSED(errno : Int) -> Bool = "moonbit_v0" "os_error/is_ECONNREFUSED"
 
 ///|
-fn errno_is_ERROR_NOTIFY_ENUM_DIR(errno : Int) -> Bool = "moonbit_v0" "is_ERROR_NOTIFY_ENUM_DIR"
+fn errno_is_ERROR_NOTIFY_ENUM_DIR(errno : Int) -> Bool = "moonbit_v0" "os_error/is_ERROR_NOTIFY_ENUM_DIR"
 
 ///|
 pub fn is_nonblocking_io_error() -> Bool {
@@ -110,7 +110,7 @@ pub fn check_errno(context : String) -> Unit raise OSError {
 }
 
 ///|
-fn get_ENOTDIR() -> Int = "moonbit_v0" "get_ENOTDIR"
+fn get_ENOTDIR() -> Int = "moonbit_v0" "os_error/get_ENOTDIR"
 
 ///|
 pub let errno_ENOTDIR : Int = get_ENOTDIR()

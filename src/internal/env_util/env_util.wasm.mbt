@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn get_pid() -> UInt = "moonbit_v0" "getpid"
+fn get_pid() -> UInt = "moonbit_v0" "env_util/getpid"
 
 ///|
 pub let current_process : UInt = get_pid()

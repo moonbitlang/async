@@ -86,7 +86,7 @@ pub fn Directory::close(self : Directory) -> Unit {
 }
 
 ///|
-fn dir_buffer_min_size_ffi() -> Int = "moonbit_v0" "dir_buffer_min_size"
+fn dir_buffer_min_size_ffi() -> Int = "moonbit_v0" "fs/dir_buffer_min_size"
 
 ///|
 fn Directory::min_buffer_size() -> Int {
@@ -134,22 +134,22 @@ fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
 }
 
 ///|
-fn dir_entry_length_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "dir_entry_length"
+fn dir_entry_length_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "fs/dir_entry_length"
 
 ///|
-fn dir_entry_name_len_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "dir_entry_get_name_len"
+fn dir_entry_name_len_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "fs/dir_entry_get_name_len"
 
 ///|
-fn dir_entry_name_ffi(buf : Int, offset : Int) -> @c_buffer.Buffer = "moonbit_v0" "dir_entry_get_name"
+fn dir_entry_name_ffi(buf : Int, offset : Int) -> @c_buffer.Buffer = "moonbit_v0" "fs/dir_entry_get_name"
 
 ///|
-fn dir_entry_is_dir_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "dir_entry_is_dir"
+fn dir_entry_is_dir_ffi(buf : Int, offset : Int) -> Int = "moonbit_v0" "fs/dir_entry_is_dir"
 
 ///|
-fn dir_entry_is_hidden_ffi(buf : Int, offset : Int) -> Bool = "moonbit_v0" "dir_entry_is_hidden"
+fn dir_entry_is_hidden_ffi(buf : Int, offset : Int) -> Bool = "moonbit_v0" "fs/dir_entry_is_hidden"
 
 ///|
-fn dir_entry_file_id_ffi(buf : Int, offset : Int) -> UInt64 = "moonbit_v0" "dir_entry_get_file_id"
+fn dir_entry_file_id_ffi(buf : Int, offset : Int) -> UInt64 = "moonbit_v0" "fs/dir_entry_get_file_id"
 
 ///|
 #borrow(buf)

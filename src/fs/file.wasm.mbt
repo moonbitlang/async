@@ -213,10 +213,10 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 }
 
 ///|
-fn errno_is_lock_violation(err : Int) -> Bool = "moonbit_v0" "errno_is_lock_violation"
+fn errno_is_lock_violation(err : Int) -> Bool = "moonbit_v0" "fs/errno_is_lock_violation"
 
 ///|
-fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbit_v0" "try_lock_file"
+fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbit_v0" "fs/try_lock_file"
 
 ///|
 pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
@@ -232,7 +232,7 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
 }
 
 ///|
-fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "unlock_file"
+fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "fs/unlock_file"
 
 ///|
 pub fn File::unlock(self : File) -> Unit {

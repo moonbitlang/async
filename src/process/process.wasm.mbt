@@ -101,7 +101,7 @@ fn spawn_process_ffi(
   stdin : @fd_util.Fd,
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
-) -> Int = "moonbit_v0" "spawn_process"
+) -> Int = "moonbit_v0" "process/spawn_process"
 
 ///|
 async fn raw_spawn(

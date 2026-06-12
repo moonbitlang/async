@@ -16,7 +16,7 @@
 pub type Fd = @types.Fd
 
 ///|
-fn close_ffi(fd : Fd) -> Int = "moonbit_v0" "close_fd"
+fn close_ffi(fd : Fd) -> Int = "moonbit_v0" "fd_util/close_fd"
 
 ///|
 pub fn close(fd : Fd, kind~ : FileKind, context~ : String) -> Unit raise {
@@ -56,7 +56,7 @@ pub fn set_cloexec(_fd : Fd, context~ : String) -> Unit raise {
 }
 
 ///|
-fn pipe_ffi(fds : Int, len : Int) -> Int = "moonbit_v0" "pipe"
+fn pipe_ffi(fds : Int, len : Int) -> Int = "moonbit_v0" "fd_util/pipe"
 
 ///|
 #borrow(array)

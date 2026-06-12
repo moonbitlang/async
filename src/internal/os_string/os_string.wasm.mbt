@@ -16,7 +16,7 @@
 struct OsString(String)
 
 ///|
-fn get_platform() -> Int = "moonbit_v0" "get_platform"
+fn get_platform() -> Int = "moonbit_v0" "runtime/get_platform"
 
 ///|
 fn is_windows() -> Bool {

@@ -39,7 +39,7 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 struct FileTime(FixedArray[Byte])
 
 ///|
-fn FileTime::size() -> Int = "moonbit_v0" "sizeof_file_time"
+fn FileTime::size() -> Int = "moonbit_v0" "fd_util/sizeof_file_time"
 
 ///|
 pub fn FileTime::new() -> FileTime {
@@ -47,22 +47,22 @@ pub fn FileTime::new() -> FileTime {
 }
 
 ///|
-fn get_atime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_atime_sec"
+fn get_atime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "fd_util/get_atime_sec"
 
 ///|
-fn get_atime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_atime_nsec"
+fn get_atime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "fd_util/get_atime_nsec"
 
 ///|
-fn get_mtime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_mtime_sec"
+fn get_mtime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "fd_util/get_mtime_sec"
 
 ///|
-fn get_mtime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_mtime_nsec"
+fn get_mtime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "fd_util/get_mtime_nsec"
 
 ///|
-fn get_ctime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "get_ctime_sec"
+fn get_ctime_sec_ffi(ptr : Int) -> Int64 = "moonbit_v0" "fd_util/get_ctime_sec"
 
 ///|
-fn get_ctime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "get_ctime_nsec"
+fn get_ctime_nsec_ffi(ptr : Int) -> Int = "moonbit_v0" "fd_util/get_ctime_nsec"
 
 ///|
 #borrow(self)

@@ -23,10 +23,10 @@ let tmpdir_seed : @random.Rand = {
 }
 
 ///|
-fn get_tmp_path_len_ffi() -> Int = "moonbit_v0" "get_tmp_path_len"
+fn get_tmp_path_len_ffi() -> Int = "moonbit_v0" "fs/get_tmp_path_len"
 
 ///|
-fn get_tmp_path_ffi(ptr : Int, len : Int) -> Int = "moonbit_v0" "get_tmp_path"
+fn get_tmp_path_ffi(ptr : Int, len : Int) -> Int = "moonbit_v0" "fs/get_tmp_path"
 
 ///|
 let tmp_base_path : Ref[String?] = Ref(None)

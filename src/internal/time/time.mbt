@@ -63,7 +63,7 @@ pub fn ms_since_epoch() -> Int64 {
 
 ///|
 #cfg(target="wasm")
-pub fn ms_since_epoch() -> Int64 = "moonbit_v0" "get_ms_since_epoch"
+pub fn ms_since_epoch() -> Int64 = "moonbit_v0" "time/get_ms_since_epoch"
 
 ///|
 #cfg(target="wasm-gc")

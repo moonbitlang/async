@@ -26,22 +26,22 @@ fn destroy_thread_pool() -> Unit {
 }
 
 ///|
-fn spawn_worker_ffi(init_job_id : Int, init_job : Int) -> Int = "moonbit_v0" "spawn_worker"
+fn spawn_worker_ffi(init_job_id : Int, init_job : Int) -> Int = "moonbit_v0" "thread_pool/spawn_worker"
 
 ///|
-fn free_worker_ffi(worker : Int) -> Unit = "moonbit_v0" "free_worker"
+fn free_worker_ffi(worker : Int) -> Unit = "moonbit_v0" "thread_pool/free_worker"
 
 ///|
-fn wake_worker_ffi(worker : Int, job_id : Int, job : Int) -> Unit = "moonbit_v0" "wake_worker"
+fn wake_worker_ffi(worker : Int, job_id : Int, job : Int) -> Unit = "moonbit_v0" "thread_pool/wake_worker"
 
 ///|
-fn worker_enter_idle_ffi(worker : Int) -> Unit = "moonbit_v0" "worker_enter_idle"
+fn worker_enter_idle_ffi(worker : Int) -> Unit = "moonbit_v0" "thread_pool/worker_enter_idle"
 
 ///|
-fn cancel_worker_ffi(worker : Int) -> Int = "moonbit_v0" "cancel_worker"
+fn cancel_worker_ffi(worker : Int) -> Int = "moonbit_v0" "thread_pool/cancel_worker"
 
 ///|
-fn fetch_completion_raw(output : Int, len : Int) -> Int = "moonbit_v0" "fetch_completion"
+fn fetch_completion_raw(output : Int, len : Int) -> Int = "moonbit_v0" "thread_pool/fetch_completion"
 
 ///|
 #borrow(array)
@@ -109,19 +109,19 @@ priv struct Job {
 }
 
 ///|
-fn free_job_ffi(job : Int) -> Unit = "moonbit_v0" "free_job"
+fn free_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/free_job"
 
 ///|
-fn run_job_ffi(job : Int) -> Unit = "moonbit_v0" "run_job"
+fn run_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/run_job"
 
 ///|
-fn complete_job_ffi(job : Int) -> Unit = "moonbit_v0" "complete_job"
+fn complete_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/complete_job"
 
 ///|
-fn job_get_ret_ffi(job : Int) -> Int = "moonbit_v0" "job_get_ret"
+fn job_get_ret_ffi(job : Int) -> Int = "moonbit_v0" "thread_pool/job_get_ret"
 
 ///|
-fn job_get_err_ffi(job : Int) -> Int = "moonbit_v0" "job_get_err"
+fn job_get_err_ffi(job : Int) -> Int = "moonbit_v0" "thread_pool/job_get_err"
 
 ///|
 fn make_read_job_ffi(
@@ -130,7 +130,7 @@ fn make_read_job_ffi(
   offset : Int,
   len : Int,
   position : Int64,
-) -> Int = "moonbit_v0" "make_read_job"
+) -> Int = "moonbit_v0" "thread_pool/make_read_job"
 
 ///|
 fn make_write_job_ffi(
@@ -139,7 +139,7 @@ fn make_write_job_ffi(
   offset : Int,
   len : Int,
   position : Int64,
-) -> Int = "moonbit_v0" "make_write_job"
+) -> Int = "moonbit_v0" "thread_pool/make_write_job"
 
 ///|
 fn make_open_job_ffi(
@@ -150,19 +150,19 @@ fn make_open_job_ffi(
   append : Bool,
   sync : Int,
   mode : Int,
-) -> Int = "moonbit_v0" "make_open_job"
+) -> Int = "moonbit_v0" "thread_pool/make_open_job"
 
 ///|
-fn open_job_get_fd_ffi(job : Int) -> @fd_util.Fd = "moonbit_v0" "open_job_get_fd"
+fn open_job_get_fd_ffi(job : Int) -> @fd_util.Fd = "moonbit_v0" "thread_pool/open_job_get_fd"
 
 ///|
-fn open_job_get_kind_ffi(job : Int) -> @fd_util.FileKind = "moonbit_v0" "open_job_get_kind"
+fn open_job_get_kind_ffi(job : Int) -> @fd_util.FileKind = "moonbit_v0" "thread_pool/open_job_get_kind"
 
 ///|
-fn open_job_get_dev_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "open_job_get_dev_id"
+fn open_job_get_dev_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "thread_pool/open_job_get_dev_id"
 
 ///|
-fn open_job_get_file_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "open_job_get_file_id"
+fn open_job_get_file_id_ffi(job : Int) -> UInt64 = "moonbit_v0" "thread_pool/open_job_get_file_id"
 
 ///|
 fn make_file_kind_by_path_job_ffi(
@@ -170,16 +170,16 @@ fn make_file_kind_by_path_job_ffi(
   path : Int,
   path_len : Int,
   follow_symlink : Bool,
-) -> Int = "moonbit_v0" "make_file_kind_by_path_job"
+) -> Int = "moonbit_v0" "thread_pool/make_file_kind_by_path_job"
 
 ///|
-fn make_file_size_job_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "make_file_size_job"
+fn make_file_size_job_ffi(fd : @fd_util.Fd) -> Int = "moonbit_v0" "thread_pool/make_file_size_job"
 
 ///|
-fn get_file_size_result_ffi(job : Int) -> Int64 = "moonbit_v0" "get_file_size_result"
+fn get_file_size_result_ffi(job : Int) -> Int64 = "moonbit_v0" "thread_pool/get_file_size_result"
 
 ///|
-fn make_file_time_job_ffi(fd : @fd_util.Fd, out : Int, len : Int) -> Int = "moonbit_v0" "make_file_time_job"
+fn make_file_time_job_ffi(fd : @fd_util.Fd, out : Int, len : Int) -> Int = "moonbit_v0" "thread_pool/make_file_time_job"
 
 ///|
 fn make_file_time_by_path_job_ffi(
@@ -188,22 +188,22 @@ fn make_file_time_by_path_job_ffi(
   out : Int,
   len : Int,
   follow_symlink : Bool,
-) -> Int = "moonbit_v0" "make_file_time_by_path_job"
+) -> Int = "moonbit_v0" "thread_pool/make_file_time_by_path_job"
 
 ///|
-fn make_access_job_ffi(path : Int, path_len : Int, access : Int) -> Int = "moonbit_v0" "make_access_job"
+fn make_access_job_ffi(path : Int, path_len : Int, access : Int) -> Int = "moonbit_v0" "thread_pool/make_access_job"
 
 ///|
-fn make_chmod_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "make_chmod_job"
+fn make_chmod_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "thread_pool/make_chmod_job"
 
 ///|
-fn make_fsync_job_ffi(fd : @fd_util.Fd, only_data : Bool) -> Int = "moonbit_v0" "make_fsync_job"
+fn make_fsync_job_ffi(fd : @fd_util.Fd, only_data : Bool) -> Int = "moonbit_v0" "thread_pool/make_fsync_job"
 
 ///|
-fn make_flock_job_ffi(fd : @fd_util.Fd, exclusive : Bool) -> Int = "moonbit_v0" "make_flock_job"
+fn make_flock_job_ffi(fd : @fd_util.Fd, exclusive : Bool) -> Int = "moonbit_v0" "thread_pool/make_flock_job"
 
 ///|
-fn make_remove_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "make_remove_job"
+fn make_remove_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "thread_pool/make_remove_job"
 
 ///|
 fn make_rename_job_ffi(
@@ -212,7 +212,7 @@ fn make_rename_job_ffi(
   new_path : Int,
   new_path_len : Int,
   replace : Bool,
-) -> Int = "moonbit_v0" "make_rename_job"
+) -> Int = "moonbit_v0" "thread_pool/make_rename_job"
 
 ///|
 fn make_symlink_job_ffi(
@@ -220,13 +220,13 @@ fn make_symlink_job_ffi(
   target_len : Int,
   path : Int,
   path_len : Int,
-) -> Int = "moonbit_v0" "make_symlink_job"
+) -> Int = "moonbit_v0" "thread_pool/make_symlink_job"
 
 ///|
-fn make_mkdir_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "make_mkdir_job"
+fn make_mkdir_job_ffi(path : Int, path_len : Int, mode : Int) -> Int = "moonbit_v0" "thread_pool/make_mkdir_job"
 
 ///|
-fn make_rmdir_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "make_rmdir_job"
+fn make_rmdir_job_ffi(path : Int, path_len : Int) -> Int = "moonbit_v0" "thread_pool/make_rmdir_job"
 
 ///|
 fn make_readdir_job_ffi(
@@ -234,10 +234,10 @@ fn make_readdir_job_ffi(
   buf : Int,
   len : Int,
   restart : Bool,
-) -> Int = "moonbit_v0" "make_readdir_job"
+) -> Int = "moonbit_v0" "thread_pool/make_readdir_job"
 
 ///|
-fn make_wait_for_process_job_ffi(process : Int) -> Int = "moonbit_v0" "make_wait_for_process_job"
+fn make_wait_for_process_job_ffi(process : Int) -> Int = "moonbit_v0" "thread_pool/make_wait_for_process_job"
 
 ///|
 fn Job::free(self : Job) -> Unit {

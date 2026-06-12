@@ -20,10 +20,10 @@ pub(all) enum Platform {
 }
 
 ///|
-fn get_platform() -> Platform = "moonbit_v0" "get_platform"
+fn get_platform() -> Platform = "moonbit_v0" "runtime/get_platform"
 
 ///|
-fn sleep_ms(duration : Int) -> Int = "moonbit_v0" "sleep_ms"
+fn sleep_ms(duration : Int) -> Int = "moonbit_v0" "time/sleep_ms"
 
 ///|
 pub let platform : Platform = get_platform()
@@ -288,7 +288,7 @@ async fn perform_job_in_worker(
 }
 
 ///|
-fn errno_is_cancelled(errno : Int) -> Bool = "moonbit_v0" "errno_is_cancelled"
+fn errno_is_cancelled(errno : Int) -> Bool = "moonbit_v0" "thread_pool/errno_is_cancelled"
 
 ///|
 async fn EventLoop::wait_for_job(
