@@ -32,6 +32,14 @@ pub extern "wasm" fn bytes_to_ptr(bytes : Bytes) -> Int =
 pub extern "wasm" fn bytes_to_owned_ptr(bytes : Bytes) -> Int =
   #|(func (param i32) (result i32) local.get 0)
 
+///|
+/// Borrow a pointer to a String object. The pointer addresses UTF-16 code
+/// units, and the caller must keep the String value live until the host import
+/// using the pointer has returned.
+#borrow(str)
+pub extern "wasm" fn string_to_ptr(str : String) -> Int =
+  #|(func (param i32) (result i32) local.get 0)
+
 ///| Borrow a pointer to a byte array. The caller must keep the array live until
 
 ///|

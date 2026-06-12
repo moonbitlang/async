@@ -323,11 +323,11 @@ fn Job::open(
   sync~ : Int,
   mode~ : Int,
 ) -> OpenResult {
-  let encoded = @utf8.encode(filename.to_string())
+  let filename_string = filename.to_string()
   let job = {
     handle: make_open_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(filename_string),
+      filename_string.length(),
       access,
       create,
       append,
@@ -335,7 +335,7 @@ fn Job::open(
       mode,
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(filename),
     path2: None,
@@ -417,16 +417,16 @@ fn Job::file_kind_by_path(
   path : @os_string.OsString,
   follow_symlink~ : Bool,
 ) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_file_kind_by_path_job_ffi(
       parent,
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
       follow_symlink,
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -471,17 +471,17 @@ fn Job::file_time_by_path(
   out : @fd_util.FileTime,
   follow_symlink~ : Bool,
 ) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_file_time_by_path_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
       out.ptr(),
       out.length(),
       follow_symlink,
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -491,15 +491,15 @@ fn Job::file_time_by_path(
 
 ///|
 fn Job::access(path : @os_string.OsString, access : Access) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_access_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
       access.to_int(),
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -509,15 +509,15 @@ fn Job::access(path : @os_string.OsString, access : Access) -> Job {
 
 ///|
 fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_chmod_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
       mode,
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -553,14 +553,14 @@ fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job {
 
 ///|
 fn Job::remove(path : @os_string.OsString) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_remove_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -574,19 +574,19 @@ fn Job::rename(
   new_path : @os_string.OsString,
   replace~ : Bool,
 ) -> Job {
-  let old_encoded = @utf8.encode(old_path.to_string())
-  let new_encoded = @utf8.encode(new_path.to_string())
+  let old_path_string = old_path.to_string()
+  let new_path_string = new_path.to_string()
   {
     handle: make_rename_job_ffi(
-      @wasm_ffi.bytes_to_ptr(old_encoded),
-      old_encoded.length(),
-      @wasm_ffi.bytes_to_ptr(new_encoded),
-      new_encoded.length(),
+      @wasm_ffi.string_to_ptr(old_path_string),
+      old_path_string.length(),
+      @wasm_ffi.string_to_ptr(new_path_string),
+      new_path_string.length(),
       replace,
     ),
     read_buf: None,
-    write_buf: Some(old_encoded),
-    write_buf2: Some(new_encoded),
+    write_buf: None,
+    write_buf2: None,
     path: Some(old_path),
     path2: Some(new_path),
     file_time: None,
@@ -598,18 +598,18 @@ fn Job::symlink(
   target : @os_string.OsString,
   path : @os_string.OsString,
 ) -> Job {
-  let target_encoded = @utf8.encode(target.to_string())
-  let path_encoded = @utf8.encode(path.to_string())
+  let target_string = target.to_string()
+  let path_string = path.to_string()
   {
     handle: make_symlink_job_ffi(
-      @wasm_ffi.bytes_to_ptr(target_encoded),
-      target_encoded.length(),
-      @wasm_ffi.bytes_to_ptr(path_encoded),
-      path_encoded.length(),
+      @wasm_ffi.string_to_ptr(target_string),
+      target_string.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
     ),
     read_buf: None,
-    write_buf: Some(target_encoded),
-    write_buf2: Some(path_encoded),
+    write_buf: None,
+    write_buf2: None,
     path: Some(target),
     path2: Some(path),
     file_time: None,
@@ -618,15 +618,15 @@ fn Job::symlink(
 
 ///|
 fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_mkdir_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
       mode,
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
@@ -636,14 +636,14 @@ fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
 
 ///|
 fn Job::rmdir(path : @os_string.OsString) -> Job {
-  let encoded = @utf8.encode(path.to_string())
+  let path_string = path.to_string()
   {
     handle: make_rmdir_job_ffi(
-      @wasm_ffi.bytes_to_ptr(encoded),
-      encoded.length(),
+      @wasm_ffi.string_to_ptr(path_string),
+      path_string.length(),
     ),
     read_buf: None,
-    write_buf: Some(encoded),
+    write_buf: None,
     write_buf2: None,
     path: Some(path),
     path2: None,
