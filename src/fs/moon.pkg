@@ -29,7 +29,7 @@ import {
 } for "test"
 
 options(
-  "max-concurrent-tests": 3,
+  "max-concurrent-tests": 1,
   "native-stub": [
     "stub.c",
     "dir.c",
