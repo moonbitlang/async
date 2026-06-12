@@ -16,7 +16,7 @@
 priv struct Worker(Int)
 
 ///|
-fn init_thread_pool_ffi(_notify_send : @fd_util.Fd) -> Unit {
+fn init_thread_pool_ffi() -> Unit {
   ()
 }
 
@@ -407,16 +407,6 @@ pub(all) enum Access {
 fn Access::to_int(self : Access) -> Int = "%identity"
 
 ///|
-fn unsupported_job() -> Job {
-  abort("moonbitlang/async wasm job is not supported in this MVP")
-}
-
-///|
-fn Job::kind_of_fd(_fd : @fd_util.Fd) -> Job {
-  unsupported_job()
-}
-
-///|
 fn Job::file_kind_by_path(
   parent : @fd_util.Fd,
   path : @os_string.OsString,
@@ -682,16 +672,6 @@ fn Job::readdir(
 }
 
 ///|
-fn Job::realpath(_path : @os_string.OsString) -> Job {
-  unsupported_job()
-}
-
-///|
-fn Job::get_realpath_result(_job : Job) -> @c_buffer.Buffer {
-  abort("realpath is not supported for wasm yet")
-}
-
-///|
 fn Job::wait_for_process(process : Int) -> Job {
   {
     handle: make_wait_for_process_job_ffi(process),
@@ -703,36 +683,3 @@ fn Job::wait_for_process(process : Int) -> Job {
     file_time: None,
   }
 }
-
-///|
-fn Job::bind(_socket : @fd_util.Fd, _addr : Bytes) -> Job {
-  unsupported_job()
-}
-
-///|
-fn Job::getaddrinfo(_host : @os_string.OsString) -> Job {
-  unsupported_job()
-}
-
-///|
-fn Job::get_getaddrinfo_result(_job : Job) -> AddrInfo {
-  abort("getaddrinfo is not supported for wasm yet")
-}
-
-///|
-fn Job::sigwait(_signals : ReadOnlyArray[Int]) -> Job {
-  unsupported_job()
-}
-
-///|
-fn Job::inotify_add_watch(
-  _inotify : @fd_util.Fd,
-  _path : @os_string.OsString,
-  is_dir : Bool,
-) -> Job {
-  ignore(is_dir)
-  unsupported_job()
-}
-
-///|
-priv struct AddrInfo(Int)

@@ -13,10 +13,9 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
 async test "kind of symlink to regular" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
   if @event_loop.is_windows() {
     return
   }
@@ -31,8 +30,8 @@ async test "kind of symlink to regular" {
 
 ///|
 async test "kind of symlink to directory" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
   if @event_loop.is_windows() {
     return
   }

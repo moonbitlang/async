@@ -27,11 +27,6 @@ pub fn Process::from_pid(pid : Int, context~ : String) -> Process {
 }
 
 ///|
-pub fn Process::close(_ : Process) -> Unit {
-
-}
-
-///|
 fn spawn_process_ffi(
   argv : Int,
   argv_len : Int,

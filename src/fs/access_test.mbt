@@ -39,10 +39,9 @@ async test "can_write" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "can_execute" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
   if @event_loop.is_windows() {
     return
   }
@@ -50,13 +49,8 @@ async test "can_execute" {
 }
 
 ///|
-#cfg(not(platform="windows"))
-async test "chmod" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
-  if @event_loop.is_windows() {
-    return
-  }
+#cfg(any(target="wasm", not(platform="windows")))
+async fn chmod_posix_test() -> Unit {
   let path = "_build/chmod_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
@@ -73,4 +67,21 @@ async test "chmod" {
     inspect(@fs.can_write(path), content="true")
     inspect(@fs.can_execute(path), content="true")
   }
+}
+
+///|
+#cfg(target="wasm")
+async test "chmod" {
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
+  if @event_loop.is_windows() {
+    return
+  }
+  chmod_posix_test()
+}
+
+///|
+#cfg(all(not(target="wasm"), not(platform="windows")))
+async test "chmod native" {
+  chmod_posix_test()
 }

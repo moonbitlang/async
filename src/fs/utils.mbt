@@ -118,6 +118,7 @@ pub async fn can_execute(path : StringView) -> Bool {
 ///
 /// If the path contains cyclic symbolic link,
 /// an error will be raised.
+#cfg(not(target="wasm"))
 pub async fn realpath(path : StringView) -> String {
   @event_loop.realpath(path, context="@fs.realpath()")
 }
@@ -151,7 +152,7 @@ pub async fn symlink(
 /// - the owner of the file can read and write the file (`6`)
 /// - users in the owner group of the file can read the file (`4`)
 /// - other users can do nothing to the file
-#cfg(not(platform="windows"))
+#cfg(any(target="wasm", not(platform="windows")))
 pub async fn chmod(path : StringView, mode : Int) -> Unit {
   @event_loop.chmod(path, mode, context="@fs.chmod()")
 }

@@ -20,13 +20,8 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 }
 
 ///|
-#cfg(not(platform="windows"))
-async test "timestamp for path" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
-  if @event_loop.is_windows() {
-    return
-  }
+#cfg(any(target="wasm", not(platform="windows")))
+async fn timestamp_for_path_posix_test() -> Unit {
   let path = "/tmp/timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
@@ -58,6 +53,23 @@ async test "timestamp for path" {
 }
 
 ///|
+#cfg(target="wasm")
+async test "timestamp for path" {
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
+  if @event_loop.is_windows() {
+    return
+  }
+  timestamp_for_path_posix_test()
+}
+
+///|
+#cfg(all(not(target="wasm"), not(platform="windows")))
+async test "timestamp for path native" {
+  timestamp_for_path_posix_test()
+}
+
+///|
 // `atime` is not reliable on Windows.
 #cfg(platform="windows")
 async test "mtime for path" {
@@ -77,13 +89,8 @@ async test "mtime for path" {
 }
 
 ///|
-#cfg(not(platform="windows"))
-async test "timestamp for opened file" {
-  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
-  // exclude this POSIX-semantics test on Windows hosts.
-  if @event_loop.is_windows() {
-    return
-  }
+#cfg(any(target="wasm", not(platform="windows")))
+async fn timestamp_for_opened_file_posix_test() -> Unit {
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
@@ -115,6 +122,23 @@ async test "timestamp for opened file" {
     @debug.assert_eq(mtime_4, mtime_3)
     assert_true(diff_timestamp(ctime_4, ctime_3) > 500_000_000)
   }
+}
+
+///|
+#cfg(target="wasm")
+async test "timestamp for opened file" {
+  // Wasm selects the host OS at runtime, so skip POSIX-semantics assertions
+  // with the runtime platform value.
+  if @event_loop.is_windows() {
+    return
+  }
+  timestamp_for_opened_file_posix_test()
+}
+
+///|
+#cfg(all(not(target="wasm"), not(platform="windows")))
+async test "timestamp for opened file native" {
+  timestamp_for_opened_file_posix_test()
 }
 
 ///|

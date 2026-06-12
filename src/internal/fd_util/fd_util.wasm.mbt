@@ -35,27 +35,6 @@ pub fn fd_is_valid(fd : Fd) -> Bool {
 }
 
 ///|
-pub fn fd_is_nonblocking(_fd : Fd, context~ : String) -> Bool raise {
-  ignore(context)
-  false
-}
-
-///|
-pub fn set_blocking(_fd : Fd, context~ : String) -> Unit raise {
-  ignore(context)
-}
-
-///|
-pub fn set_nonblocking(_fd : Fd, context~ : String) -> Unit raise {
-  ignore(context)
-}
-
-///|
-pub fn set_cloexec(_fd : Fd, context~ : String) -> Unit raise {
-  ignore(context)
-}
-
-///|
 fn pipe_ffi(fds : Int, len : Int) -> Int = "moonbit_v0" "fd_util/pipe"
 
 ///|

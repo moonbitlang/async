@@ -37,14 +37,6 @@ pub fn is_windows() -> Bool {
 }
 
 ///|
-let _ignore_unused_import : Unit = {
-  ignore(@c_buffer.unimplemented)
-  ignore(@fd_util.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@os_error.unimplemented)
-}
-
-///|
 priv struct EventLoop {
   max_worker_count : Int
   mut job_id : Int
@@ -84,7 +76,7 @@ pub fn register_hook(
 
 ///|
 fn EventLoop::new() -> EventLoop {
-  init_thread_pool_ffi(@fd_util.invalid_fd)
+  init_thread_pool_ffi()
   {
     max_worker_count: 1024,
     job_id: 0,
@@ -98,16 +90,10 @@ fn EventLoop::new() -> EventLoop {
 }
 
 ///|
-fn EventLoop::destroy(evloop : EventLoop) -> Unit {
-  ignore(evloop)
-  destroy_thread_pool()
-}
-
-///|
 pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
   guard curr_loop.val is None
   let evloop = EventLoop::new()
-  defer evloop.destroy()
+  defer destroy_thread_pool()
   curr_loop.val = Some(evloop)
   defer {
     curr_loop.val = None

@@ -39,11 +39,6 @@ pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
 }
 
 ///|
-pub fn IoHandle::detach_from_event_loop(_handle : IoHandle) -> Unit {
-  ()
-}
-
-///|
 pub fn IoHandle::close(handle : IoHandle) -> Unit {
   if @fd_util.fd_is_valid(handle.fd) {
     @fd_util.close(handle.fd, kind=handle.kind, context="") catch {
