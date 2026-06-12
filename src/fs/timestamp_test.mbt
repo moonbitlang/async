@@ -22,6 +22,11 @@ fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
 ///|
 #cfg(not(platform="windows"))
 async test "timestamp for path" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   let path = "/tmp/timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
@@ -74,6 +79,11 @@ async test "mtime for path" {
 ///|
 #cfg(not(platform="windows"))
 async test "timestamp for opened file" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)

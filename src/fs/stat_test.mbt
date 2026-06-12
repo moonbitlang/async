@@ -15,6 +15,11 @@
 ///|
 #cfg(not(platform="windows"))
 async test "kind of symlink to regular" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   let link_path = "_build/stat_symlink_to_regular_test"
   @fs.symlink(link_path, target="../LICENSE")
   @async.with_task_group() <| group => {
@@ -26,6 +31,11 @@ async test "kind of symlink to regular" {
 
 ///|
 async test "kind of symlink to directory" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   guard @env.current_dir() is Some(cwd)
   let link_path = "_build/stat_symlink_to_dir_test"
   @fs.symlink(link_path, target="\{cwd}/_build")

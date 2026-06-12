@@ -41,12 +41,22 @@ async test "can_write" {
 ///|
 #cfg(not(platform="windows"))
 async test "can_execute" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   assert_false(@fs.can_execute("moon.mod"))
 }
 
 ///|
 #cfg(not(platform="windows"))
 async test "chmod" {
+  // Wasm selects the host OS at runtime, so compile-time platform cfg cannot
+  // exclude this POSIX-semantics test on Windows hosts.
+  if @event_loop.is_windows() {
+    return
+  }
   let path = "_build/chmod_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
