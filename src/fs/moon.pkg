@@ -6,7 +6,6 @@ import {
   "moonbitlang/core/deque",
   "moonbitlang/core/sorted_set",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/encoding/utf16",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",

@@ -26,6 +26,8 @@ let tmpdir_seed : @random.Rand = {
 fn get_tmp_path_len_ffi() -> Int = "moonbit_v0" "fs/get_tmp_path_len"
 
 ///|
+// The destination pointer is from @wasm_ffi.string_to_ptr. It points at
+// guest-owned MoonBit String storage, whose units are UTF-16 code units.
 fn get_tmp_path_ffi(ptr : Int, len : Int) -> Int = "moonbit_v0" "fs/get_tmp_path"
 
 ///|
@@ -41,13 +43,11 @@ fn get_tmp_base_path() -> String {
     let err = @os_error.errno_to_string(@os_error.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
-  let data = FixedArray::make(len, b'\x00')
-  let ret = get_tmp_path_ffi(@wasm_ffi.byte_array_to_ptr(data), len)
-  if ret != 0 {
+  let path = String::make(len, '\u{0}')
+  if get_tmp_path_ffi(@wasm_ffi.string_to_ptr(path), len) < 0 {
     let err = @os_error.errno_to_string(@os_error.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
-  let path = @utf16.decode_lossy(data.unsafe_reinterpret_as_bytes())
   tmp_base_path.val = Some(path)
   path
 }
