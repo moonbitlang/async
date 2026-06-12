@@ -141,6 +141,10 @@ fn make_write_job_ffi(
   position : Int64,
 ) -> Int = "moonbit_v0" "thread_pool/make_write_job"
 
+// Path job imports pass borrowed MoonBit String pointers. The length is the
+// number of UTF-16 code units, not bytes; moonrun converts the string data
+// into the host path representation.
+
 ///|
 fn make_open_job_ffi(
   filename : Int,
