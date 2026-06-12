@@ -154,6 +154,7 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
   if timeout > 0 {
     ignore(sleep_ms(timeout))
   }
+  self.drain_worker_completions()
   if has_timers {
     let now = @time.ms_since_epoch()
     let expired = []
@@ -169,6 +170,11 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
       (timer.callback)()
     }
   }
+  self.drain_worker_completions()
+}
+
+///|
+fn EventLoop::drain_worker_completions(self : EventLoop) -> Unit {
   while true {
     let bytes_transferred = fetch_completion_ffi(self.completed_jobs_buffer)
     let n = bytes_transferred / 4
