@@ -34,6 +34,10 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 extern "C" fn exit(code : Int) = "exit"
 
 ///|
+#cfg(target="wasm")
+fn exit(code : Int) = "moonbit_v0" "runtime/exit"
+
+///|
 #coverage.skip
 #cfg(target="js")
 #doc(hidden)
@@ -50,7 +54,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
     err => {
       println(err)
-      abort("async main failed")
+      exit(1)
     }
   }
 }
