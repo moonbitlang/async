@@ -41,3 +41,27 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   let _ = @coroutine.spawn(main)
   @event_loop.reschedule()
 }
+
+///|
+/// Scheduler-only entry for wasm / wasm-gc. The async library does not
+/// provide IO on these targets (`sleep`, `Timer`, sockets, fs, etc. all
+/// `abort` via the existing `unimplemented.mbt` stubs), but pure
+/// coroutine code (`pause`, `with_task_group`, `aqueue`, `semaphore`,
+/// `cond_var`) does not depend on the event loop and works fine — this
+/// shim just drains the ready queue.
+#coverage.skip
+#cfg(target="wasm")
+#doc(hidden)
+pub fn run_async_main(main : async () -> Unit) -> Unit {
+  let _ = @coroutine.spawn(main)
+  @event_loop.reschedule()
+}
+
+///|
+#coverage.skip
+#cfg(target="wasm-gc")
+#doc(hidden)
+pub fn run_async_main(main : async () -> Unit) -> Unit {
+  let _ = @coroutine.spawn(main)
+  @event_loop.reschedule()
+}

@@ -38,3 +38,18 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
   ignore(timer)
   abort("`Timer::cancel()` is unimplemented on WASM backend")
 }
+
+///|
+/// WASM stub for the scheduler-only `reschedule` entry point. Drains
+/// immediately-ready coroutines (including any wake-ups produced by
+/// running coroutines themselves) and then returns. Gating on
+/// `has_immediately_ready_task` rather than `no_more_work` ensures
+/// blocked coroutines (`blocking > 0`, e.g. suspended on an external
+/// host callback) do NOT cause this function to tight-spin: when there
+/// is nothing ready to run we exit and yield back to the host, which
+/// can re-enter via `run_async_main` once new work is available.
+pub fn reschedule() -> Unit {
+  while @coroutine.has_immediately_ready_task() {
+    @coroutine.reschedule()
+  }
+}
