@@ -158,14 +158,11 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
   if has_timers {
     let now = @time.ms_since_epoch()
     let expired = []
-    if self.timers.iter().head() is Some(first) && first.expire_time <= now {
-      let first_expire_time = first.expire_time
-      for timer in self.timers {
-        if timer.expire_time == first_expire_time {
-          expired.push(timer)
-        } else {
-          break
-        }
+    for timer in self.timers {
+      if timer.expire_time <= now {
+        expired.push(timer)
+      } else {
+        break
       }
     }
     for timer in expired {
