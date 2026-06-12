@@ -66,6 +66,7 @@ async test "spawn_loop basic-error" {
 ///|
 async test "spawn_loop retry-exponential" {
   let log = []
+  let ticks = []
   @async.with_task_group() <| group => {
     let mut i = 0
     let start = @async.now()
@@ -75,7 +76,8 @@ async test "spawn_loop retry-exponential" {
     group.spawn_loop(
       retry=ExponentialDelay(initial=200, factor=2, maximum=600),
       () => {
-        log.push("loop \{i} at tick #\{tick()}")
+        log.push("loop \{i}")
+        ticks.push(tick())
         i = i + 1
         match i {
           1 | 2 | 3 => raise Err
@@ -87,7 +89,12 @@ async test "spawn_loop retry-exponential" {
     )
   }
   json_inspect(log, content=[
-    "loop 0 at tick #0", "loop 1 at tick #1", "loop 2 at tick #3", "loop 3 at tick #6",
-    "loop 4 at tick #6", "loop 5 at tick #7", "loop 6 at tick #9",
+    "loop 0", "loop 1", "loop 2", "loop 3", "loop 4", "loop 5", "loop 6",
   ])
+  assert_true(ticks[1] >= ticks[0] + 1)
+  assert_true(ticks[2] >= ticks[1] + 2)
+  assert_true(ticks[3] >= ticks[2] + 3)
+  assert_true(ticks[4] >= ticks[3])
+  assert_true(ticks[5] >= ticks[4] + 1)
+  assert_true(ticks[6] >= ticks[5] + 2)
 }

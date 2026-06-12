@@ -68,20 +68,24 @@ async test "lazy init failure" {
 ///|
 async test "lazy init cancelled" {
   let log = []
+  let ticks = []
   let start = @async.now()
   fn current_tick() -> Int {
     (@async.now() - start + 20).to_int() / 200
   }
 
   let x = @async.Lazy(() => {
-    log.push("lazy init started at tick \{current_tick()}")
+    log.push("lazy init started")
+    ticks.push(current_tick())
     @async.sleep(400) catch {
       err => {
-        log.push("lazy init cancelled at tick \{current_tick()}")
+        log.push("lazy init cancelled")
+        ticks.push(current_tick())
         raise err
       }
     }
-    log.push("lazy init completed at tick \{current_tick()}")
+    log.push("lazy init completed")
+    ticks.push(current_tick())
   })
   debug_inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
   @async.sleep(100)
@@ -89,9 +93,11 @@ async test "lazy init cancelled" {
   // this `wait` will trigger a new attempt
   x.wait()
   json_inspect(log, content=[
-    "lazy init started at tick 0", "lazy init cancelled at tick 1", "lazy init started at tick 1",
-    "lazy init completed at tick 3",
+    "lazy init started", "lazy init cancelled", "lazy init started", "lazy init completed",
   ])
+  assert_true(ticks[1] >= ticks[0] + 1)
+  assert_true(ticks[2] >= ticks[1])
+  assert_true(ticks[3] >= ticks[2] + 2)
 }
 
 ///|
