@@ -224,6 +224,7 @@ fn make_symlink_job_ffi(
   target_len : Int,
   path : Int,
   path_len : Int,
+  force_symlink : Bool,
 ) -> Int = "moonbit_v0" "thread_pool/make_symlink_job"
 
 ///|
@@ -601,6 +602,7 @@ fn Job::rename(
 fn Job::symlink(
   target : @os_string.OsString,
   path : @os_string.OsString,
+  force_symlink~ : Bool,
 ) -> Job {
   let target_string = target.to_string()
   let path_string = path.to_string()
@@ -610,6 +612,7 @@ fn Job::symlink(
       target_string.length(),
       @wasm_ffi.string_to_ptr(path_string),
       path_string.length(),
+      force_symlink,
     ),
     read_buf: None,
     write_buf: None,

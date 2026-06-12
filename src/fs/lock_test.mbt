@@ -42,7 +42,7 @@ async fn run_lock_file_prog(
     duration.to_string(),
     lock_kind,
   ])
-  group.spawn() <| () => {
+  let reader = group.spawn() <| () => {
     defer r.close()
     let mut first_line = true
     while r.read_until("\n") is Some(line) {
@@ -54,6 +54,7 @@ async fn run_lock_file_prog(
     }
   }
   @async.with_timeout(5000, () => ready.acquire())
+  reader
 }
 
 ///|
