@@ -48,7 +48,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
     let dst_addr = if addr.is_multicast() {
-      if @event_loop.IS_WINDOWS {
+      if @event_loop.platform is Windows {
         let local_addr = match family {
           IPv4 => ipv4_any
           IPv6 => ipv6_any
@@ -278,7 +278,7 @@ pub async fn UdpServer::multicast(
   let sock = make_udp_socket(family, multicast=true, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
   try {
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.platform is Windows {
       let local_addr = Addr::new(0, multi_addr.port())
       io.bind(local_addr.0, context~)
     } else {

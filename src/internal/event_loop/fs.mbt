@@ -52,7 +52,7 @@ pub async fn open(
       let io = IoHandle::from_fd(
         fd,
         kind~,
-        is_async=access is 3 || (!IS_WINDOWS && kind.can_poll()),
+        is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
       )
       (io, { dev_id: job.dev_id(), file_id: job.file_id() })
     }
