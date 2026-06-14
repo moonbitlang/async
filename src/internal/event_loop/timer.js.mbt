@@ -17,8 +17,13 @@
 type Timer
 
 ///|
+#cfg(target="js")
 extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
   #| (duration, f) => setTimeout(f, duration)
+
+///|
+#cfg(target="wasm-gc")
+fn set_timeout(duration : Int, f : () -> Unit) -> Timer = "moonbitlang_async_timer" "setTimeout"
 
 ///|
 pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
@@ -29,5 +34,16 @@ pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
 }
 
 ///|
+#cfg(target="js")
 pub extern "js" fn Timer::cancel(self : Timer) =
   #| (timer) => clearTimeout(timer)
+
+///|
+#cfg(target="wasm-gc")
+fn clear_timeout(timer : Timer) = "moonbitlang_async_timer" "clearTimeout"
+
+///|
+#cfg(target="wasm-gc")
+pub fn Timer::cancel(self : Timer) -> Unit {
+  clear_timeout(self)
+}

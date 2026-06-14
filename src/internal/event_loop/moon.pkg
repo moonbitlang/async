@@ -38,7 +38,7 @@ options(
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],
-    "event_loop.js.mbt": [ "js" ],
+    "event_loop.js.mbt": [ "js", "wasm-gc" ],
     "event_loop.mbt": [ "native" ],
     "fs.mbt": [ "native" ],
     "io.mbt": [ "native" ],
@@ -54,8 +54,9 @@ options(
     "signal.mbt": [ "native" ],
     "stdio.mbt": [ "native" ],
     "thread_pool.mbt": [ "native" ],
+    "timer.js.mbt": [ "js", "wasm-gc" ],
     "timer.mbt": [ "native" ],
-    "unimplemented.mbt": [ "wasm", "wasm-gc" ],
+    "unimplemented.mbt": [ "wasm" ],
     "worker_wbtest.mbt": [ "native", "js" ],
   },
 )
