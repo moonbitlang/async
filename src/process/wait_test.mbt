@@ -45,6 +45,25 @@ async test "wait exitcode" {
 }
 
 ///|
+async test "run_checked success" {
+  @process.run_checked(shell, ["-c", "exit 0"])
+}
+
+///|
+async test "run_checked nonzero exit" {
+  let expected_args = ["-c", "exit 42"]
+  let result = try? @process.run_checked(shell, expected_args)
+  guard result is Err(@process.NonZeroExit(exit_code~, cmd~, args~)) else {
+    fail("expected NonZeroExit")
+  }
+  assert_eq(exit_code, 42)
+  assert_eq(cmd, shell)
+  assert_eq(args.length(), expected_args.length())
+  assert_eq(args[0], expected_args[0])
+  assert_eq(args[1], expected_args[1])
+}
+
+///|
 async test "wait_pid" {
   let log = StringBuilder::new()
   let test_prog = sleep_prog.wait()
