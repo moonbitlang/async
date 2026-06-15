@@ -46,9 +46,8 @@ fn spawn_process_raw(
   stderr : @fd_util.Fd,
 ) -> Int {
   let argv_ptr = @wasm_ffi.byte_array_to_owned_ptr(argv)
-  let result = spawn_process_ffi(argv_ptr, argv_len, argc, stdin, stdout, stderr)
-  @wasm_ffi.free(argv_ptr)
-  result
+  defer @wasm_ffi.free(argv_ptr)
+  spawn_process_ffi(argv_ptr, argv_len, argc, stdin, stdout, stderr)
 }
 
 ///|
