@@ -104,6 +104,26 @@ fn spawn_process_ffi(
 ) -> Int = "moonbit_v0" "process/spawn_process"
 
 ///|
+#borrow(argv)
+fn spawn_process(
+  argv : FixedArray[Byte],
+  argv_len : Int,
+  argc : Int,
+  stdin : @fd_util.Fd,
+  stdout : @fd_util.Fd,
+  stderr : @fd_util.Fd,
+) -> Int {
+  spawn_process_ffi(
+    @wasm_ffi.byte_array_to_ptr(argv),
+    argv_len,
+    argc,
+    stdin,
+    stdout,
+    stderr,
+  )
+}
+
+///|
 async fn raw_spawn(
   cmd : StringView,
   args : ArrayView[String],
@@ -144,8 +164,8 @@ async fn raw_spawn(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let handle = spawn_process_ffi(
-    @wasm_ffi.byte_array_to_ptr(argv),
+  let handle = spawn_process(
+    argv,
     argv_len,
     argv_bytes.length(),
     @fd_util.invalid_fd,

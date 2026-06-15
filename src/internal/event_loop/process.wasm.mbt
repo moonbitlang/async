@@ -37,6 +37,26 @@ fn spawn_process_ffi(
 ) -> Int = "moonbit_v0" "process/spawn_process"
 
 ///|
+#borrow(argv)
+fn spawn_process_raw(
+  argv : FixedArray[Byte],
+  argv_len : Int,
+  argc : Int,
+  stdin : @fd_util.Fd,
+  stdout : @fd_util.Fd,
+  stderr : @fd_util.Fd,
+) -> Int {
+  spawn_process_ffi(
+    @wasm_ffi.byte_array_to_ptr(argv),
+    argv_len,
+    argc,
+    stdin,
+    stdout,
+    stderr,
+  )
+}
+
+///|
 pub async fn spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
@@ -70,8 +90,8 @@ pub async fn spawn(
     }
     offset += bytes.length()
   }
-  let handle = spawn_process_ffi(
-    @wasm_ffi.byte_array_to_ptr(argv),
+  let handle = spawn_process_raw(
+    argv,
     argv_len,
     argv_bufs.length(),
     stdin,
