@@ -26,13 +26,13 @@ async test "http request" {
 
 ///|
 async test "request cancel" {
-  let start = @async.now()
+  let start = @env.now()
   let result = @async.with_timeout_opt(300, () => {
     @http.get(
       "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
     )
   })
-  let end = @async.now()
+  let end = @env.now()
   assert_true(result is None)
   if @env.get_env_var("MOONBIT_ASYNC_TEST_SANITIZER_ENABLED") is None {
     let delta = end - start

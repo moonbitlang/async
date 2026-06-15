@@ -21,8 +21,8 @@ async test "starvation" {
       log.push("sleep completed")
     }
     group.spawn_bg() <| () => {
-      let start = @async.now()
-      while @async.now() - start < 100 {
+      let start = @env.now()
+      while @env.now() - start < 100 {
         @async.pause()
       }
       log.push("busy wait completed")

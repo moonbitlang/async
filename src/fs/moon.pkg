@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/deque",
   "moonbitlang/core/sorted_set",
+  "moonbitlang/core/env",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",
@@ -19,7 +20,6 @@ import {
 
 import {
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/env",
   "moonbitlang/core/debug",
   "moonbitlang/async/process",
   "moonbitlang/async/internal/test_util",

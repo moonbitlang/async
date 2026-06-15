@@ -116,9 +116,9 @@ async test "Timer waiter cancelled 2" {
 ///|
 async test "Timer::cancel" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() {
-    (@async.now() - start + 50).to_int() / 150
+    (@env.now() - start + 50).to_int() / 150
   }
   let timer = @async.Timer(450)
   @async.with_task_group() <| group => {
@@ -146,9 +146,9 @@ async test "Timer::cancel" {
 ///|
 async test "Timer::refresh has waiter" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() -> Int {
-    (@async.now() - start + 50).to_int() / 150
+    (@env.now() - start + 50).to_int() / 150
   }
 
   let timer = @async.Timer(300)
@@ -176,9 +176,9 @@ async test "Timer::refresh has waiter" {
 ///|
 async test "Timer::refresh no waiter" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() -> Int {
-    (@async.now() - start + 50).to_int() / 150
+    (@env.now() - start + 50).to_int() / 150
   }
 
   let timer = @async.Timer(300)
@@ -195,9 +195,9 @@ async test "Timer::refresh no waiter" {
 ///|
 async test "Timer::refresh already terminated" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() -> Int {
-    (@async.now() - start + 50).to_int() / 150
+    (@env.now() - start + 50).to_int() / 150
   }
 
   let timer = @async.Timer(300)

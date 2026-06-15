@@ -48,7 +48,7 @@ priv enum TimerState {
 pub struct Timer {
   duration : Int
   priv mut state : TimerState
-  priv mut expire_time : Int64
+  priv mut expire_time : UInt64
   // invariant: `waiters` is non-empty iff `state` is `Running`
   priv waiters : Set[@coroutine.Coroutine]
 }
@@ -58,7 +58,7 @@ pub struct Timer {
 /// The timer will start immediately, and expire after the duration elapsed.
 #alias(new, deprecated)
 pub fn Timer::Timer(duration : Int) -> Timer {
-  let expire_time = @time.ms_since_epoch() + duration.to_int64()
+  let expire_time = @env.now() + duration.to_uint64()
   { state: Detached, duration, expire_time, waiters: Set([]) }
 }
 
@@ -97,7 +97,7 @@ pub async fn Timer::wait(timer : Timer) -> Unit {
   match timer.state {
     Running(_) => ()
     Detached => {
-      let duration = timer.expire_time - @time.ms_since_epoch()
+      let duration = timer.expire_time - @env.now()
       guard duration > 0 else { return }
       timer.state = Running(
         @event_loop.Timer::new(duration.to_int()) <| () => {
@@ -131,7 +131,7 @@ pub fn Timer::refresh(timer : Timer) -> Unit {
     Detached | Terminated => ()
     Cancelled(_) => return
   }
-  timer.expire_time = @time.ms_since_epoch() + timer.duration.to_int64()
+  timer.expire_time = @env.now() + timer.duration.to_uint64()
   if timer.waiters.is_empty() {
     timer.state = Detached
   } else {

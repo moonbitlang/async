@@ -210,7 +210,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
+    @cmp.maximum(0, (timer.expire_time - @env.now()).to_int())
   } else {
     -1
   }
@@ -219,7 +219,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
     @os_error.check_errno("runtime internal: poll_wait")
   }
   if has_timers {
-    let now = @time.ms_since_epoch()
+    let now = @env.now()
     for timer in self.timers {
       if timer.expire_time <= now {
         (timer.callback)()
