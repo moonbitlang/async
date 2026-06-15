@@ -11,13 +11,13 @@ import {
 }
 
 // Values
-pub async fn collect_output(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data, &@io.Data)
+pub async fn collect_output(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int, &@io.Data, &@io.Data)
 
-pub async fn collect_output_merged(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data)
+pub async fn collect_output_merged(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int, &@io.Data)
 
-pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
+pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int, &@io.Data)
 
-pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
+pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int, &@io.Data)
 
 pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> CancellationHandler
 
@@ -31,11 +31,11 @@ pub async fn redirect_from_file(String) -> &ProcessInput
 #label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int, create? : Int, truncate? : Bool) -> &ProcessOutput
 
-pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
+pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler) -> Int
 
-pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
+pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
 
-pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
+pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> Int
 
 pub async fn wait_pid(Int) -> Int
 

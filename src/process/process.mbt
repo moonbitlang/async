@@ -40,6 +40,7 @@ pub async fn spawn_orphan(
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
+  no_console_window? : Bool = false,
 ) -> Int {
   raw_spawn(
     cmd,
@@ -50,6 +51,7 @@ pub async fn spawn_orphan(
     stdout~,
     stderr~,
     cwd~,
+    no_console_window~,
     is_orphan=true,
     context="@process.spawn_orphan()",
   ).pid()
@@ -98,6 +100,13 @@ pub async fn wait_pid(pid : Int) -> Int {
 /// If `cwd` is present, the spawned command will be executed
 /// in the directory specified by `cwd`.
 ///
+/// When `no_console_window` is `true` (`false` by default),
+/// creation of a new console window will be disabled on Windows.
+/// By default a new console window may be created
+/// when the calling process is a GUI application
+/// and the child process is a conlose application.
+/// `no_console_window` has no effect on non-Windows platforms.
+///
 /// If current task is cancelled while blocking,
 /// `cancel_handler` will be used to automatically stop the process.
 /// `@process.run` will not return until the process terminates, even if cancelled.
@@ -116,6 +125,7 @@ pub async fn run(
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
+  no_console_window? : Bool = false,
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
@@ -128,6 +138,7 @@ pub async fn run(
     stdout~,
     stderr~,
     cwd~,
+    no_console_window~,
     is_orphan=false,
     context~,
   )
@@ -198,6 +209,7 @@ pub async fn[X] spawn(
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
+  no_console_window? : Bool = false,
   cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
   no_wait? : Bool,
 ) -> Process {
@@ -211,6 +223,7 @@ pub async fn[X] spawn(
     stdout~,
     stderr~,
     cwd~,
+    no_console_window~,
     is_orphan=false,
     context~,
   )
@@ -244,12 +257,23 @@ pub async fn collect_stdout(
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
+  no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
-      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr?, cwd?)
+      run(
+        cmd,
+        args,
+        extra_env~,
+        inherit_env~,
+        stdin?,
+        stdout=w,
+        stderr?,
+        cwd?,
+        no_console_window?,
+      )
     })
     let output = r.read_all()
     (exit_code.wait(), output)
@@ -269,12 +293,23 @@ pub async fn collect_stderr(
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   cwd? : StringView,
+  no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
-      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout?, stderr=w, cwd?)
+      run(
+        cmd,
+        args,
+        extra_env~,
+        inherit_env~,
+        stdin?,
+        stdout?,
+        stderr=w,
+        cwd?,
+        no_console_window?,
+      )
     })
     let output = r.read_all()
     (exit_code.wait(), output)
@@ -294,6 +329,7 @@ pub async fn collect_output(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
+  no_console_window? : Bool,
 ) -> (Int, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
@@ -308,6 +344,7 @@ pub async fn collect_output(
         stdout=w_out,
         stderr=w_err,
         cwd?,
+        no_console_window?,
       )
     })
     let stdout = group.spawn(() => {
@@ -335,12 +372,23 @@ pub async fn collect_output_merged(
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
+  no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
-      run(cmd, args, extra_env~, inherit_env~, stdin?, stdout=w, stderr=w, cwd?)
+      run(
+        cmd,
+        args,
+        extra_env~,
+        inherit_env~,
+        stdin?,
+        stdout=w,
+        stderr=w,
+        cwd?,
+        no_console_window?,
+      )
     })
     let output = r.read_all()
     (exit_code.wait(), output)

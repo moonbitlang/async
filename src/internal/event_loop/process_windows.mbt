@@ -74,6 +74,7 @@ pub async fn spawn(
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
   cwd~ : @os_string.OsString?,
+  no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
 ) -> Process {
@@ -85,6 +86,7 @@ pub async fn spawn(
     stdout,
     stderr,
     cwd,
+    no_console_window~,
     is_orphan~,
   )
   defer job.free()
