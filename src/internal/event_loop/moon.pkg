@@ -40,6 +40,7 @@ options(
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],
+    "event_loop_common.mbt": [ "native", "wasm" ],
     "event_loop.js.mbt": [ "js" ],
     "event_loop.mbt": [ "native" ],
     "fs.mbt": [ "native", "wasm" ],

@@ -231,16 +231,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   if n < 0 {
     @os_error.check_errno("runtime internal: poll_wait")
   }
-  if has_timers {
-    let now = @time.ms_since_epoch()
-    for timer in self.timers {
-      if timer.expire_time <= now {
-        (timer.callback)()
-      } else {
-        break
-      }
-    }
-  }
+  self.run_expired_timers(has_timers)
   n
 }
 

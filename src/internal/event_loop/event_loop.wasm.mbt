@@ -141,13 +141,7 @@ fn EventLoop::poll(self : EventLoop) -> Unit {
     ignore(sleep_ms(timeout))
   }
   self.drain_worker_completions()
-  if has_timers {
-    let now = @time.ms_since_epoch()
-    if self.timers.iter().head() is Some(timer) && timer.expire_time <= now {
-      self.timers.remove(timer)
-      (timer.callback)()
-    }
-  }
+  self.run_expired_timers(has_timers)
   self.drain_worker_completions()
 }
 
