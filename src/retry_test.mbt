@@ -37,9 +37,9 @@ async test "retry immediate" {
 ///|
 async test "retry fixed" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() {
-    (@async.now() - start + 50).to_int() / 200
+    (@env.now() - start + 50).to_int() / 200
   }
   let mut i = 0
   @async.retry(FixedDelay(200)) <| () => {
@@ -58,9 +58,9 @@ async test "retry fixed" {
 ///|
 async test "retry exponential" {
   let log = []
-  let start = @async.now()
+  let start = @env.now()
   fn tick() {
-    (@async.now() - start + 50).to_int() / 200
+    (@env.now() - start + 50).to_int() / 200
   }
   let mut i = 0
   @async.retry(ExponentialDelay(initial=200, factor=2, maximum=600)) <| () => {

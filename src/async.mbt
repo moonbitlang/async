@@ -113,8 +113,9 @@ pub using @coroutine {protect_from_cancel}
 /// `now` can be used to measure elapsed time, such as benchmarking,
 /// but the meaning of the absolute time value returned by `now`
 /// is undefined, and should not be depended on.
+#deprecated("use `@env.now()` from `moonbitlang/core/env` instead")
 pub fn now() -> Int64 {
-  @time.ms_since_epoch()
+  @env.now().reinterpret_as_int64()
 }
 
 ///|

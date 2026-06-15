@@ -14,7 +14,7 @@
 
 ///|
 async test "all basic" {
-  let start = @async.now()
+  let start = @env.now()
   let results = @async.all([
     () => {
       @async.sleep(400)
@@ -26,7 +26,7 @@ async test "all basic" {
     },
     () => 3,
   ])
-  let duration = (@async.now() - start).to_int()
+  let duration = (@env.now() - start).to_int()
   json_inspect(results, content=[1, 2, 3])
   inspect((duration + 50) / 200, content="2")
 }
@@ -160,7 +160,7 @@ async test "all cancelled" {
 
 ///|
 async test "any basic" {
-  let start = @async.now()
+  let start = @env.now()
   let result = @async.any([
     () => {
       @async.sleep(600)
@@ -175,7 +175,7 @@ async test "any basic" {
       3
     },
   ])
-  let duration = (@async.now() - start).to_int()
+  let duration = (@env.now() - start).to_int()
   json_inspect(result, content=2)
   inspect((duration + 50) / 200, content="1")
 }

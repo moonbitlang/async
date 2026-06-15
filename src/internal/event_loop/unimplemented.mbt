@@ -19,7 +19,6 @@ let _ignore_unused_import : Unit = {
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
-  ignore(@time.ms_since_epoch)
   ignore(@coroutine.is_being_cancelled)
 }
 

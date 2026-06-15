@@ -77,7 +77,7 @@ async test "close with blocking put" {
   let q = @async.Queue(kind=Blocking(1))
   q.put(1)
   @async.with_task_group() <| group => {
-    let start = @async.now()
+    let start = @env.now()
     group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
@@ -86,7 +86,7 @@ async test "close with blocking put" {
       @test_util.expect_error_async(() => q.put(2)),
       content="QueueAlreadyClosed",
     )
-    let now = @async.now()
+    let now = @env.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
   }
@@ -96,7 +96,7 @@ async test "close with blocking put" {
 async test "close zero buffered with blocking put" {
   let q = @async.Queue(kind=Blocking(0))
   @async.with_task_group() <| group => {
-    let start = @async.now()
+    let start = @env.now()
     group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
@@ -105,7 +105,7 @@ async test "close zero buffered with blocking put" {
       @test_util.expect_error_async(() => q.put(2)),
       content="QueueAlreadyClosed",
     )
-    let now = @async.now()
+    let now = @env.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
   }
@@ -115,7 +115,7 @@ async test "close zero buffered with blocking put" {
 async test "close with blocking get" {
   let q : @aqueue.Queue[Int] = @async.Queue(kind=Unbounded)
   @async.with_task_group() <| group => {
-    let start = @async.now()
+    let start = @env.now()
     group.spawn_bg() <| () => {
       @async.sleep(300)
       q.close()
@@ -124,7 +124,7 @@ async test "close with blocking get" {
       @test_util.expect_error_async(() => q.get()),
       content="QueueAlreadyClosed",
     )
-    let now = @async.now()
+    let now = @env.now()
     let duration = (now + 50 - start) / 300
     inspect(duration, content="1")
   }

@@ -24,7 +24,7 @@ async fn client(
   conn_duration~ : Int,
 ) -> (Int64, Double) {
   let mut throughput_sum : Int64 = 0
-  let mut latency_sum : Int64 = 0
+  let mut latency_sum : UInt64 = 0
   @async.with_task_group <| group => {
     let mut remaining = total_conn
     for _ in 0..<max_concurrent_conn {
@@ -38,10 +38,10 @@ async fn client(
           @async.with_task_group <| conn_group => {
             let mut send_count : Int64 = 0
             let mut recv_count : Int64 = 0
-            let mut before : Int64 = 0
+            let mut before : UInt64 = 0
             conn_group.spawn_loop(no_wait=true) <| () => {
               if send_count == 0 {
-                before = @async.now()
+                before = @env.now()
               }
               conn.write(data)
               send_count += data.length().to_int64()
@@ -49,7 +49,7 @@ async fn client(
             conn_group.spawn_loop(no_wait=true) <| () => {
               let n = conn.read(buf)
               if recv_count == 0 {
-                latency_sum += @async.now() - before
+                latency_sum += @env.now() - before
               }
               recv_count += n.to_int64()
             }
