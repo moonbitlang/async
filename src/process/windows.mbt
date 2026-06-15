@@ -80,6 +80,7 @@ async fn raw_spawn(
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
   cwd~ : StringView?,
+  no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
@@ -147,6 +148,7 @@ async fn raw_spawn(
     stdout~,
     stderr~,
     cwd~,
+    no_console_window~,
     is_orphan~,
     context~,
   )

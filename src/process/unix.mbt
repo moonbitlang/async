@@ -31,6 +31,7 @@ async fn raw_spawn(
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
   cwd~ : StringView?,
+  no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
@@ -95,5 +96,6 @@ async fn raw_spawn(
   // currently auto kill child process on hard termination is not supported on Unix,
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
+  ignore(no_console_window)
   @event_loop.spawn(cmd, argv, env~, stdin~, stdout~, stderr~, cwd~, context~)
 }

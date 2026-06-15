@@ -1987,6 +1987,7 @@ struct spawn_job {
   void *environment;
   HANDLE stdio[3];
   LPWSTR cwd;
+  int32_t no_console_window;
   int32_t is_orphan;
   HANDLE result;
 };
@@ -2038,6 +2039,9 @@ void spawn_job_worker(struct job *job) {
     CREATE_NEW_PROCESS_GROUP // so that we can gracefully terminate this process
                              // via sending Ctrl+Break console event
     | CREATE_UNICODE_ENVIRONMENT;
+
+    if (spawn_job->no_console_window)
+      create_flags |= CREATE_NO_WINDOW;
 
   STARTUPINFOEXW startup_info;
   memset(&startup_info, 0, sizeof(STARTUPINFOEXW));
@@ -2153,6 +2157,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   HANDLE stdout_handle,
   HANDLE stderr_handle,
   LPWSTR cwd,
+  int32_t no_console_window,
   int32_t is_orphan
 ) {
   struct spawn_job *job = MAKE_JOB(spawn);
@@ -2162,6 +2167,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[1] = stdout_handle;
   job->stdio[2] = stderr_handle;
   job->cwd = cwd;
+  job->no_console_window = no_console_window;
   job->is_orphan = is_orphan;
   job->result = INVALID_HANDLE_VALUE;
   return job;
