@@ -113,15 +113,6 @@ priv struct Job {
 }
 
 ///|
-fn JobGuestState::keep_alive(self : JobGuestState) -> Unit {
-  match self {
-    NoGuestState => ()
-    OutputBuffer(buf) => ignore(buf)
-    FileTimeOutput(out) => ignore(out)
-  }
-}
-
-///|
 fn free_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/free_job"
 
 ///|
@@ -266,13 +257,11 @@ fn Job::run(self : Job) -> Unit {
 
 ///|
 fn Job::ret(self : Job) -> Int {
-  self.state.keep_alive()
   job_get_ret_ffi(self.handle)
 }
 
 ///|
 fn Job::err(self : Job) -> Int {
-  self.state.keep_alive()
   job_get_err_ffi(self.handle)
 }
 
