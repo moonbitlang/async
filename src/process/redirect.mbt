@@ -167,7 +167,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
 ///|
 /// An entity that can be used to redirect stdin of a process
 trait ProcessInput {
-  fn fd(Self) -> @fd_util.Fd
+  fn fd(Self) -> @fd_util.Fd raise
   fn after_spawn(Self) -> Unit = _
 }
 
@@ -189,7 +189,7 @@ pub impl ProcessInput for @stdio.Input with fn fd(self) {
 ///|
 /// An entity that can be used to redirect stdout/stderr of a process
 trait ProcessOutput {
-  fn fd(Self) -> @fd_util.Fd
+  fn fd(Self) -> @fd_util.Fd raise
   fn after_spawn(Self) -> Unit = _
 }
 

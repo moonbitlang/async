@@ -29,11 +29,9 @@ fn kind_of_fd_sync(
 
 ///|
 #cfg(not(platform="windows"))
-fn setup_stdio(fd : Int, context~ : String) -> IoHandle {
-  let kind = kind_of_fd_sync(fd, context~) catch {
-    err => abort("\{context}: \{err}")
-  }
-  let is_async = try! @fd_util.fd_is_nonblocking(fd, context~)
+fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
+  let kind = kind_of_fd_sync(fd, context~)
+  let is_async = @fd_util.fd_is_nonblocking(fd, context~)
   let handle = { fd, kind, is_async, events: NoEvent, read: None, write: None }
   register_hook(
     init=() => {
@@ -63,8 +61,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
   // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
   let fd = get_std_handle(-10 - id)
   if !@fd_util.fd_is_valid(fd) {
-    let errno = @os_error.get_errno()
-    abort("\{context}: \{@os_error.errno_to_string(errno)}")
+    @os_error.check_errno(context)
   }
   if stdio_handles.get(fd) is Some(handle) {
     // when `stdout` and `stderr` are redirected to the same file/pipe,
@@ -72,11 +69,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
     // In this case, avoid problem caused by duplicated handle value
     return handle
   }
-  let kind = kind_of_fd_sync(fd, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      abort("\{context}: \{@os_error.errno_to_string(errno)}")
-    err => abort("\{context}: \{err}")
-  }
+  let kind = kind_of_fd_sync(fd, context~)
   let handle = {
     fd,
     kind,
@@ -102,10 +95,28 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle {
 }
 
 ///|
-pub let stdin : IoHandle = setup_stdio(0, context="initialize `stdin`")
+pub let stdin : Result[IoHandle, Error] = try
+  setup_stdio(0, context="initialize `stdin`")
+catch {
+  err => Err(err)
+} noraise {
+  handle => Ok(handle)
+}
 
 ///|
-pub let stdout : IoHandle = setup_stdio(1, context="initialize `stdout`")
+pub let stdout : Result[IoHandle, Error] = try
+  setup_stdio(1, context="initialize `stdout`")
+catch {
+  err => Err(err)
+} noraise {
+  handle => Ok(handle)
+}
 
 ///|
-pub let stderr : IoHandle = setup_stdio(2, context="initialize `stderr`")
+pub let stderr : Result[IoHandle, Error] = try
+  setup_stdio(2, context="initialize `stderr`")
+catch {
+  err => Err(err)
+} noraise {
+  handle => Ok(handle)
+}

@@ -14,18 +14,20 @@
 
 ///|
 struct Input {
-  io : @event_loop.IoHandle
+  io : Result[@event_loop.IoHandle, Error]
   read_buf : @io.ReaderBuffer
 }
 
 ///|
-pub fn Input::fd(self : Input) -> @fd_util.Fd {
-  self.io.fd()
+pub fn Input::fd(self : Input) -> @fd_util.Fd raise {
+  self.io.unwrap_or_error().fd()
 }
 
 ///|
 pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
-  self.io.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+  self.io
+  .unwrap_or_error()
+  .read(buf, offset~, len=max_len, context="@stdio.Input::read()")
 }
 
 ///|
@@ -34,16 +36,18 @@ pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
 }
 
 ///|
-struct Output(@event_loop.IoHandle)
+struct Output(Result[@event_loop.IoHandle, Error])
 
 ///|
-pub fn Output::fd(self : Output) -> @fd_util.Fd {
-  self.0.fd()
+pub fn Output::fd(self : Output) -> @fd_util.Fd raise {
+  self.0.unwrap_or_error().fd()
 }
 
 ///|
 pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
-  self.0.write(buf, offset~, len~, context="@fs.File::write()")
+  self.0
+  .unwrap_or_error()
+  .write(buf, offset~, len~, context="@fs.File::write()")
 }
 
 ///|

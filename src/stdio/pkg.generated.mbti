@@ -16,11 +16,11 @@ pub let stdout : Output
 
 // Types and methods
 type Input
-pub fn Input::fd(Self) -> Int
+pub fn Input::fd(Self) -> Int raise
 pub impl @io.Reader for Input
 
 type Output
-pub fn Output::fd(Self) -> Int
+pub fn Output::fd(Self) -> Int raise
 pub impl @io.Writer for Output
 
 // Type aliases
