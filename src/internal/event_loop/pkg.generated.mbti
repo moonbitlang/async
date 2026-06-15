@@ -56,11 +56,11 @@ pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 
 pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
-pub let stderr : IoHandle
+pub let stderr : Result[IoHandle, Error]
 
-pub let stdin : IoHandle
+pub let stdin : Result[IoHandle, Error]
 
-pub let stdout : IoHandle
+pub let stdout : Result[IoHandle, Error]
 
 pub async fn symlink(StringView, StringView, force_symlink~ : Bool, context~ : String) -> Unit
 
