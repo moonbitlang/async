@@ -253,7 +253,6 @@ async fn perform_job_in_worker(
     }
   }
   evloop.wait_for_job(job_id, cancel?)
-  job.complete()
   if job.err() is err && err > 0 {
     if errno_is_cancelled(err) {
       raise @coroutine.Cancelled

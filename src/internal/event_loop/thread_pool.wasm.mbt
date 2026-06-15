@@ -98,14 +98,27 @@ fn Worker::cancel(
 }
 
 ///|
+// Guest state keeps delayed output buffers alive while the opaque host job
+// handle is pending. Inputs are copied by moonrun during job construction.
+priv enum JobGuestState {
+  NoGuestState
+  OutputBuffer(FixedArray[Byte])
+  FileTimeOutput(@fd_util.FileTime)
+}
+
+///|
 priv struct Job {
   handle : Int
-  read_buf : FixedArray[Byte]?
-  write_buf : Bytes?
-  write_buf2 : Bytes?
-  path : @os_string.OsString?
-  path2 : @os_string.OsString?
-  file_time : @fd_util.FileTime?
+  state : JobGuestState
+}
+
+///|
+fn JobGuestState::keep_alive(self : JobGuestState) -> Unit {
+  match self {
+    NoGuestState => ()
+    OutputBuffer(buf) => ignore(buf)
+    FileTimeOutput(out) => ignore(out)
+  }
 }
 
 ///|
@@ -113,9 +126,6 @@ fn free_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/free_job"
 
 ///|
 fn run_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/run_job"
-
-///|
-fn complete_job_ffi(job : Int) -> Unit = "moonbit_v0" "thread_pool/complete_job"
 
 ///|
 fn job_get_ret_ffi(job : Int) -> Int = "moonbit_v0" "thread_pool/job_get_ret"
@@ -255,17 +265,14 @@ fn Job::run(self : Job) -> Unit {
 }
 
 ///|
-fn Job::complete(self : Job) -> Unit {
-  complete_job_ffi(self.handle)
-}
-
-///|
 fn Job::ret(self : Job) -> Int {
+  self.state.keep_alive()
   job_get_ret_ffi(self.handle)
 }
 
 ///|
 fn Job::err(self : Job) -> Int {
+  self.state.keep_alive()
   job_get_err_ffi(self.handle)
 }
 
@@ -285,12 +292,7 @@ fn Job::read(
       len,
       position,
     ),
-    read_buf: Some(buf),
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: OutputBuffer(buf),
   }
 }
 
@@ -310,12 +312,7 @@ fn Job::write(
       len,
       position,
     ),
-    read_buf: None,
-    write_buf: Some(buf),
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -339,12 +336,7 @@ fn Job::open(
       sync,
       mode,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(filename),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
   OpenResult(job)
 }
@@ -420,12 +412,7 @@ fn Job::file_kind_by_path(
       path_string.length(),
       follow_symlink,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -433,12 +420,7 @@ fn Job::file_kind_by_path(
 fn Job::file_size(fd : @fd_util.Fd) -> Job {
   {
     handle: make_file_size_job_ffi(fd),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -451,12 +433,7 @@ fn Job::get_file_size_result(job : Job) -> Int64 {
 fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job {
   {
     handle: make_file_time_job_ffi(fd, out.ptr(), out.length()),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: Some(out),
+    state: FileTimeOutput(out),
   }
 }
 
@@ -475,12 +452,7 @@ fn Job::file_time_by_path(
       out.length(),
       follow_symlink,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: FileTimeOutput(out),
   }
 }
 
@@ -493,12 +465,7 @@ fn Job::access(path : @os_string.OsString, access : Access) -> Job {
       path_string.length(),
       access.to_int(),
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -511,12 +478,7 @@ fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job {
       path_string.length(),
       mode,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -524,12 +486,7 @@ fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job {
 fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job {
   {
     handle: make_fsync_job_ffi(fd, only_data),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -537,12 +494,7 @@ fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job {
 fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job {
   {
     handle: make_flock_job_ffi(fd, exclusive),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -554,12 +506,7 @@ fn Job::remove(path : @os_string.OsString) -> Job {
       @wasm_ffi.string_to_ptr(path_string),
       path_string.length(),
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -579,12 +526,7 @@ fn Job::rename(
       new_path_string.length(),
       replace,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(old_path),
-    path2: Some(new_path),
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -604,12 +546,7 @@ fn Job::symlink(
       path_string.length(),
       force_symlink,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(target),
-    path2: Some(path),
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -622,12 +559,7 @@ fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
       path_string.length(),
       mode,
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -639,12 +571,7 @@ fn Job::rmdir(path : @os_string.OsString) -> Job {
       @wasm_ffi.string_to_ptr(path_string),
       path_string.length(),
     ),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: Some(path),
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
 
@@ -662,12 +589,7 @@ fn Job::readdir(
       len,
       restart,
     ),
-    read_buf: Some(buf),
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: OutputBuffer(buf),
   }
 }
 
@@ -675,11 +597,6 @@ fn Job::readdir(
 fn Job::wait_for_process(process : Int) -> Job {
   {
     handle: make_wait_for_process_job_ffi(process),
-    read_buf: None,
-    write_buf: None,
-    write_buf2: None,
-    path: None,
-    path2: None,
-    file_time: None,
+    state: NoGuestState,
   }
 }
