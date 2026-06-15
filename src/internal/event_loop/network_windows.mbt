@@ -31,16 +31,12 @@ pub async fn IoHandle::recvfrom(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
   guard !handle.reading
   handle.reading = true
   defer {
     handle.reading = false
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = IoResult::for_socket_with_addr(
-    job_id,
     buf.unsafe_reinterpret_as_bytes(),
     offset~,
     len~,
@@ -48,7 +44,7 @@ pub async fn IoHandle::recvfrom(
     addr~,
   )
   defer result.free()
-  handle.generic_read(job_id, result, context~)
+  handle.generic_read(result, context~)
 }
 
 ///|
@@ -62,16 +58,12 @@ pub async fn IoHandle::sendto(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
   guard !handle.writing
   handle.writing = true
   defer {
     handle.writing = false
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = IoResult::for_socket_with_addr(
-    job_id,
     buf,
     offset~,
     len~,
@@ -79,7 +71,7 @@ pub async fn IoHandle::sendto(
     addr~,
   )
   defer result.free()
-  handle.generic_write(job_id, result, context~)
+  handle.generic_write(result, context~)
 }
 
 ///|
@@ -104,15 +96,13 @@ pub async fn IoHandle::connect(
   defer {
     handle.writing = false
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
-  let result = IoResult::for_connect(job_id, addr)
+  let result = IoResult::for_connect(addr)
   defer result.free()
   if 0 == connect_ffi(handle.fd, result) {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    evloop.wait_for_io_result(result, handle.fd, context~)
     ignore(result.status(handle.fd, context~))
   }
   if setup_connected_socket_ffi(handle.fd) < 0 {
@@ -149,15 +139,13 @@ pub async fn IoHandle::accept(
   defer {
     handle.reading = false
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
-  let result = IoResult::for_accept(job_id)
+  let result = IoResult::for_accept()
   defer result.free()
   if 0 == accept_ffi(handle.fd, conn_sock, result) {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    evloop.wait_for_io_result(result, handle.fd, context~)
     ignore(result.status(handle.fd, context~))
   }
   if setup_accepted_socket_ffi(handle.fd, conn_sock) < 0 {

@@ -39,7 +39,7 @@ pub async fn getaddrinfo(
 ) -> Result[AddrInfo, String] {
   @coroutine.check_cancellation()
   let host_bytes = @os_string.encode(host)
-  let job = Job::getaddrinfo(host_bytes)
+  let spec = OperationSpec::getaddrinfo(host_bytes)
   let mut result = Err("")
   let mut terminated = false
   defer {
@@ -48,24 +48,25 @@ pub async fn getaddrinfo(
   // `getaddrinfo` cannot be cancelled,
   // but it always does not have any critical side effect.
   // So our strategy here is to keep `getaddrinfo` running on cancellation,
-  // let a background task wait for its completion and perform cleanup, 
+  // let a background task wait for its completion and perform cleanup,
   // while not waiting for the result in the main task
   try
     @coroutine.spawn(() => {
-      defer job.free()
-      let ret = perform_job_in_worker(job, context~) catch {
+      let job = perform_operation(spec, context~) catch {
         @os_error.OSError(errno, context~) =>
           raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
         err => raise err
       }
+      defer job.free()
       // if the outer `getaddrinfo` call already terminated,
       // we should not extract the result from the job,
       // instead we should let `job.free` free the result.
       guard !terminated else { return }
+      let ret = job.ret()
       if ret != 0 {
         result = Err(gai_error_to_string(ret))
       } else {
-        result = Ok(job.get_getaddrinfo_result())
+        result = Ok(job.getaddrinfo_result())
       }
     }).wait()
   catch {
@@ -88,7 +89,6 @@ pub async fn IoHandle::bind(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  let job = Job::bind(handle.fd, addr)
+  let job = perform_operation(OperationSpec::bind(handle.fd, addr), context~)
   defer job.free()
-  ignore(perform_job_in_worker(job, context~))
 }

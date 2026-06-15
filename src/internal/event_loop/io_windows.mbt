@@ -20,7 +20,7 @@ priv type IoResult
 ///|
 #cfg(platform="windows")
 #owned(buf)
-extern "C" fn IoResult::for_file(
+extern "C" fn IoResult::for_file_ffi(
   job_id : Int,
   buf : Bytes,
   offset~ : Int,
@@ -30,8 +30,26 @@ extern "C" fn IoResult::for_file(
 
 ///|
 #cfg(platform="windows")
+fn IoResult::for_file(
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+) -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_file_ffi(
+    evloop.backend.next_operation_id(),
+    buf,
+    offset~,
+    len~,
+    position~,
+  )
+}
+
+///|
+#cfg(platform="windows")
 #owned(buf)
-extern "C" fn IoResult::for_socket(
+extern "C" fn IoResult::for_socket_ffi(
   job_id : Int,
   buf : Bytes,
   offset~ : Int,
@@ -41,8 +59,26 @@ extern "C" fn IoResult::for_socket(
 
 ///|
 #cfg(platform="windows")
+fn IoResult::for_socket(
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+) -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_socket_ffi(
+    evloop.backend.next_operation_id(),
+    buf,
+    offset~,
+    len~,
+    flags~,
+  )
+}
+
+///|
+#cfg(platform="windows")
 #owned(buf, addr)
-extern "C" fn IoResult::for_socket_with_addr(
+extern "C" fn IoResult::for_socket_with_addr_ffi(
   job_id : Int,
   buf : Bytes,
   offset~ : Int,
@@ -53,21 +89,66 @@ extern "C" fn IoResult::for_socket_with_addr(
 
 ///|
 #cfg(platform="windows")
-#owned(addr)
-extern "C" fn IoResult::for_connect(job_id : Int, addr : Bytes) -> IoResult = "moonbitlang_async_make_connect_io_result"
+fn IoResult::for_socket_with_addr(
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+  addr~ : Bytes,
+) -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_socket_with_addr_ffi(
+    evloop.backend.next_operation_id(),
+    buf,
+    offset~,
+    len~,
+    flags~,
+    addr~,
+  )
+}
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::for_accept(job_id : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
+#owned(addr)
+extern "C" fn IoResult::for_connect_ffi(job_id : Int, addr : Bytes) -> IoResult = "moonbitlang_async_make_connect_io_result"
+
+///|
+#cfg(platform="windows")
+fn IoResult::for_connect(addr : Bytes) -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_connect_ffi(evloop.backend.next_operation_id(), addr)
+}
+
+///|
+#cfg(platform="windows")
+extern "C" fn IoResult::for_accept_ffi(job_id : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
+
+///|
+#cfg(platform="windows")
+fn IoResult::for_accept() -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_accept_ffi(evloop.backend.next_operation_id())
+}
 
 ///|
 #cfg(platform="windows")
 #owned(buf)
-extern "C" fn IoResult::for_read_dir_changes(
+extern "C" fn IoResult::for_read_dir_changes_ffi(
   job_id : Int,
   buf : Bytes,
   len~ : Int,
 ) -> IoResult = "moonbitlang_async_make_read_dir_changes_io_result"
+
+///|
+#cfg(platform="windows")
+fn IoResult::for_read_dir_changes(buf : Bytes, len~ : Int) -> IoResult {
+  guard curr_loop.val is Some(evloop)
+  IoResult::for_read_dir_changes_ffi(
+    evloop.backend.next_operation_id(),
+    buf,
+    len~,
+  )
+}
 
 ///|
 #cfg(platform="windows")
@@ -151,9 +232,9 @@ pub fn IoHandle::from_fd(
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is None
+  guard evloop.backend.fds.get(fd) is None
   if is_async {
-    evloop.poll.register(fd) catch {
+    evloop.backend.poll.register(fd) catch {
       err => {
         @fd_util.close(fd, kind~, context~)
         raise err
@@ -169,7 +250,7 @@ pub fn IoHandle::from_fd(
     writing: false,
     write_offset: 0,
   }
-  evloop.fds[fd] = handle
+  evloop.backend.fds[fd] = handle
   handle
 }
 
@@ -178,19 +259,27 @@ pub fn IoHandle::from_fd(
 pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { return }
-  evloop.fds.remove(handle.fd)
+  evloop.backend.fds.remove(handle.fd)
 }
 
 ///|
 #cfg(platform="windows")
 async fn EventLoop::wait_for_io_result(
   evloop : EventLoop,
-  job_id : Int,
   io_result : IoResult,
   handle : @fd_util.Fd,
   context~ : String,
 ) -> Unit {
-  evloop.wait_for_job(job_id, cancel=_ => io_result.cancel(handle, context~))
+  let operation_id = io_result.job_id()
+  let (subscription_id, operation) = evloop.subscribe_backend_operation(
+    subscription_id => {
+      evloop.backend.completion_operation(subscription_id, operation_id)
+    },
+    Wake(@coroutine.current_coroutine()),
+  )
+  evloop.wait_for_submitted_operation(subscription_id, operation, cancel=_ => {
+    io_result.cancel(handle, context~)
+  })
 }
 
 ///|
@@ -205,7 +294,6 @@ extern "C" fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang_async_errno_
 #cfg(platform="windows")
 async fn IoHandle::generic_read(
   handle : IoHandle,
-  job_id : Int,
   result : IoResult,
   context~ : String,
 ) -> Int {
@@ -220,7 +308,7 @@ async fn IoHandle::generic_read(
     @coroutine.pause()
     n
   } else if @os_error.is_nonblocking_io_error() {
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    evloop.wait_for_io_result(result, handle.fd, context~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
@@ -250,29 +338,28 @@ pub async fn IoHandle::read(
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {
-    let job = Job::read(
+    let spec = OperationSpec::read(
       handle.fd,
       buf,
       offset,
       len,
       position=handle.read_offset,
     )
-    defer job.free()
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~) catch {
-      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+    let job = perform_operation(spec, context~, cancel=job => {
+      evloop.backend.cancel_operation(job, context~)
+    }) catch {
+      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => return 0
       err => raise err
     }
+    defer job.free()
+    let n = job.ret()
     handle.read_offset += n.to_int64()
     return n
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = match handle.kind {
     Regular => panic()
     Socket =>
       IoResult::for_socket(
-        job_id,
         buf.unsafe_reinterpret_as_bytes(),
         offset~,
         len~,
@@ -280,7 +367,6 @@ pub async fn IoHandle::read(
       )
     _ =>
       IoResult::for_file(
-        job_id,
         buf.unsafe_reinterpret_as_bytes(),
         offset~,
         len~,
@@ -288,7 +374,7 @@ pub async fn IoHandle::read(
       )
   }
   defer result.free()
-  let n = handle.generic_read(job_id, result, context~)
+  let n = handle.generic_read(result, context~)
   handle.read_offset += n.to_int64()
   n
 }
@@ -306,13 +392,16 @@ pub async fn IoHandle::read_at(
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
-  let job = Job::read(handle.fd, buf, offset, len, position~)
-  defer job.free()
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  perform_job_in_worker(job, context~, cancel~) catch {
-    @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+  let job = perform_operation(
+    OperationSpec::read(handle.fd, buf, offset, len, position~),
+    context~,
+    cancel=job => evloop.backend.cancel_operation(job, context~),
+  ) catch {
+    @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => return 0
     err => raise err
   }
+  defer job.free()
+  job.ret()
 }
 
 ///|
@@ -323,7 +412,6 @@ extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitla
 #cfg(platform="windows")
 async fn IoHandle::generic_write(
   handle : IoHandle,
-  job_id : Int,
   result : IoResult,
   context~ : String,
 ) -> Int {
@@ -338,7 +426,7 @@ async fn IoHandle::generic_write(
     // we still need to wait for the completion packet to obtain correct result.
     n
   } else if @os_error.is_nonblocking_io_error() {
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    evloop.wait_for_io_result(result, handle.fd, context~)
     result.status(handle.fd, context~)
   } else {
     @os_error.check_errno(context)
@@ -363,28 +451,29 @@ pub async fn IoHandle::write(
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {
-    let job = Job::write(
-      handle.fd,
-      buf,
-      offset,
-      len,
-      position=handle.write_offset,
+    let job = perform_operation(
+      OperationSpec::write(
+        handle.fd,
+        buf,
+        offset,
+        len,
+        position=handle.write_offset,
+      ),
+      context~,
+      cancel=job => evloop.backend.cancel_operation(job, context~),
     )
     defer job.free()
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~)
+    let n = job.ret()
     handle.write_offset += n.to_int64()
     return n
   }
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = match handle.kind {
     Regular => panic()
-    Socket => IoResult::for_socket(job_id, buf, offset~, len~, flags=0)
-    _ => IoResult::for_file(job_id, buf, offset~, len~, position=0)
+    Socket => IoResult::for_socket(buf, offset~, len~, flags=0)
+    _ => IoResult::for_file(buf, offset~, len~, position=0)
   }
   defer result.free()
-  let n = handle.generic_write(job_id, result, context~)
+  let n = handle.generic_write(result, context~)
   handle.write_offset += n.to_int64()
   n
 }
@@ -402,8 +491,10 @@ pub async fn IoHandle::write_at(
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Regular
-  let job = Job::write(handle.fd, buf, offset, len, position~)
+  let job = perform_operation(
+    OperationSpec::write(handle.fd, buf, offset, len, position~),
+    context~,
+    cancel=job => evloop.backend.cancel_operation(job, context~),
+  )
   defer job.free()
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  ignore(perform_job_in_worker(job, context~, cancel~))
 }

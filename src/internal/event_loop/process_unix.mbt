@@ -47,15 +47,24 @@ pub async fn spawn(
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Process {
-  let job = Job::spawn(path, args, env, stdin, stdout, stderr, cwd)
+  let job = perform_operation(
+    OperationSpec::spawn(path, args, env, stdin, stdout, stderr, cwd),
+    context~,
+  )
   defer job.free()
-  perform_job_in_worker(job, context~)
+  Process(job.ret())
 }
 
 ///|
 #cfg(not(platform="windows"))
 #borrow(out)
 extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
+
+///|
+#cfg(not(platform="windows"))
+async fn wait_process(pid_handle : Int) -> Unit {
+  wait_operation(OperationSpec::process_wait(pid_handle))
+}
 
 ///|
 #cfg(not(platform="windows"))
@@ -66,22 +75,23 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     // pidfd not available, fall back to blocking waitpid in worker thread.
     // The worker reaps the child and stores the exit code in job.ret(),
     // so return it here to avoid a second waitpid in get_process_result.
-    let job = Job::wait_for_process(pid)
+    let job = perform_operation(
+      OperationSpec::wait_for_process(pid),
+      context~,
+      cancel=job => evloop.backend.cancel_operation(job, context~),
+    )
     defer job.free()
-    let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
-      evloop.cancel_job_in_worker(job_id, context~)
-    })
-    exit_code
+    job.ret()
   }
-  match evloop.poll.register_pid(pid) {
+  match evloop.backend.poll.register_pid(pid) {
     Running(alt_id) => {
-      guard evloop.pids.get(alt_id) is None
-      evloop.pids[alt_id] = @coroutine.current_coroutine()
+      guard evloop.backend.pids.get(alt_id) is None
+      evloop.backend.pids[alt_id] = ()
       defer {
-        evloop.pids.remove(alt_id)
-        evloop.poll.remove_pid(alt_id)
+        evloop.backend.pids.remove(alt_id)
+        evloop.backend.poll.remove_pid(alt_id)
       }
-      @coroutine.suspend()
+      wait_process(alt_id)
     }
     Stopped => ()
   }

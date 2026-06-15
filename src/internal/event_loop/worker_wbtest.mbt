@@ -14,14 +14,35 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
+extern "C" fn NativeJob::sleep(time : Int) -> NativeJob = "moonbitlang_async_make_sleep_job"
 
 ///|
 #cfg(target="native")
 async fn perform_sleep_job(t : Int) -> Unit {
-  let job = Job::sleep(t)
-  defer job.free()
-  perform_job_in_worker(job, context="") |> ignore
+  @coroutine.check_cancellation()
+  guard curr_loop.val is Some(evloop)
+  let (subscription_id, operation) = evloop.subscribe_backend_operation(
+    subscription_id => {
+      evloop.backend.submit_thread_pool_job(
+        subscription_id,
+        NativeJob::sleep(t),
+      )
+    },
+    Wake(@coroutine.current_coroutine()),
+  )
+  try {
+    evloop.wait_for_submitted_operation(subscription_id, operation)
+    if operation.err() is err && err > 0 {
+      raise @os_error.OSError(err, context="")
+    }
+  } catch {
+    err => {
+      operation.free()
+      raise err
+    }
+  } noraise {
+    _ => operation.free()
+  }
 }
 
 ///|
@@ -84,6 +105,31 @@ async test "worker multiple" {
       #|
     ),
   )
+}
+
+///|
+#cfg(target="native")
+async test "queued worker cancellation removes job" {
+  guard curr_loop.val is Some(evloop)
+  let first : Job = {
+    id: evloop.backend.next_operation_id(),
+    native: NativeJob::sleep(1),
+  }
+  let second : Job = {
+    id: evloop.backend.next_operation_id(),
+    native: NativeJob::sleep(1),
+  }
+  defer first.free()
+  defer second.free()
+  evloop.backend.thread_pool.job_queue.push_back(first)
+  evloop.backend.thread_pool.job_queue.push_back(second)
+  assert_true(evloop.backend.thread_pool.remove_queued_job(first.id()))
+  assert_false(evloop.backend.thread_pool.remove_queued_job(first.id()))
+  guard evloop.backend.thread_pool.job_queue.pop_front() is Some(job) else {
+    abort("remaining queued job was removed")
+  }
+  assert_true(job.id() == second.id())
+  assert_true(evloop.backend.thread_pool.job_queue.pop_front() is None)
 }
 
 ///|

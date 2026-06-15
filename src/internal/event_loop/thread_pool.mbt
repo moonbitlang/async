@@ -17,19 +17,23 @@
 priv type Worker
 
 ///|
+#external
+priv type NativeJob
+
+///|
 extern "C" fn init_thread_pool_ffi(notify_send : @fd_util.Fd) = "moonbitlang_async_init_thread_pool"
 
 ///|
 extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
 
 ///|
-extern "C" fn Worker::spawn(init_job_id : Int, init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
+extern "C" fn Worker::spawn(init_job_id : Int, init_job : NativeJob) -> Worker = "moonbitlang_async_spawn_worker"
 
 ///|
 extern "C" fn Worker::free(worker : Worker) = "moonbitlang_async_free_worker"
 
 ///|
-extern "C" fn Worker::wake(worker : Worker, job_id : Int, job : Job) = "moonbitlang_async_wake_worker"
+extern "C" fn Worker::wake(worker : Worker, job_id : Int, job : NativeJob) = "moonbitlang_async_wake_worker"
 
 ///|
 extern "C" fn Worker::enter_idle(worker : Worker) = "moonbitlang_async_worker_enter_idle"
@@ -61,43 +65,168 @@ extern "C" fn fetch_completion_ffi(
 ) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
-#external
-priv type Job
+priv struct ThreadPool {
+  max_worker_count : Int
+  job_queue : @deque.Deque[Job]
+  idle_workers : @deque.Deque[Worker]
+  running_workers : Map[Int, Worker]
+}
 
 ///|
-extern "C" fn Job::free(self : Job) -> Unit = "moonbitlang_async_free_job"
+priv struct Job {
+  id : Int
+  native : NativeJob
+}
 
 ///|
-extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
+fn ThreadPool::new(max_worker_count~ : Int) -> ThreadPool {
+  {
+    max_worker_count,
+    job_queue: @deque.Deque([]),
+    idle_workers: @deque.Deque([]),
+    running_workers: {},
+  }
+}
 
 ///|
-extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
+fn ThreadPool::has_pending_work(self : ThreadPool) -> Bool {
+  !self.running_workers.is_empty()
+}
+
+///|
+fn Job::id(self : Job) -> Int {
+  self.id
+}
+
+///|
+fn Job::free(self : Job) -> Unit {
+  self.native.free()
+}
+
+///|
+fn Job::ret(self : Job) -> Int {
+  self.native.ret()
+}
+
+///|
+fn Job::err(self : Job) -> Int {
+  self.native.err()
+}
+
+///|
+fn ThreadPool::submit_job(
+  self : ThreadPool,
+  id : Int,
+  native : NativeJob,
+) -> Job {
+  let job = { id, native }
+  match self.idle_workers.pop_front() {
+    None if self.running_workers.length() >= self.max_worker_count =>
+      self.job_queue.push_back(job)
+    None => {
+      let worker = Worker::spawn(job.id, job.native)
+      self.running_workers[job.id] = worker
+    }
+    Some(worker) => {
+      self.running_workers[job.id] = worker
+      worker.wake(job.id, job.native)
+    }
+  }
+  job
+}
+
+///|
+fn ThreadPool::complete(self : ThreadPool, id : Int) -> Bool {
+  guard self.running_workers.get(id) is Some(worker) else { false }
+  self.running_workers.remove(id)
+  match self.job_queue.pop_front() {
+    None => {
+      worker.enter_idle()
+      self.idle_workers.push_back(worker)
+    }
+    Some(job) => {
+      self.running_workers[job.id] = worker
+      worker.wake(job.id, job.native)
+    }
+  }
+  true
+}
+
+///|
+fn ThreadPool::remove_queued_job(self : ThreadPool, id : Int) -> Bool {
+  let kept : @deque.Deque[Job] = @deque.Deque([])
+  let mut removed = false
+  while self.job_queue.pop_front() is Some(job) {
+    if job.id == id {
+      removed = true
+    } else {
+      kept.push_back(job)
+    }
+  }
+  while kept.pop_front() is Some(job) {
+    self.job_queue.push_back(job)
+  }
+  removed
+}
+
+///|
+fn ThreadPool::cancel(
+  self : ThreadPool,
+  job : Job,
+  context~ : String,
+) -> CancellationStatus raise {
+  if self.running_workers.get(job.id) is Some(worker) {
+    worker.cancel(context~)
+  } else if self.remove_queued_job(job.id) {
+    NoWait
+  } else {
+    NoWait
+  }
+}
+
+///|
+fn ThreadPool::cleanup(self : ThreadPool) -> Unit {
+  for worker in self.idle_workers {
+    worker.free()
+  }
+}
+
+///|
+// Keep raw native-job FFI constructors in this file so higher-level
+// fs/io/network/process code only builds semantic `OperationSpec`s.
+extern "C" fn NativeJob::free(self : NativeJob) -> Unit = "moonbitlang_async_free_job"
+
+///|
+extern "C" fn NativeJob::ret(self : NativeJob) -> Int = "moonbitlang_async_job_get_ret"
+
+///|
+extern "C" fn NativeJob::err(self : NativeJob) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
 #owned(buf)
-extern "C" fn Job::read(
+extern "C" fn NativeJob::read(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset : Int,
   len : Int,
   // `-1` indicates no offset
   position~ : Int64,
-) -> Job = "moonbitlang_async_make_read_job"
+) -> NativeJob = "moonbitlang_async_make_read_job"
 
 ///|
 #owned(buf)
-extern "C" fn Job::write(
+extern "C" fn NativeJob::write(
   fd : @fd_util.Fd,
   buf : Bytes,
   offset : Int,
   len : Int,
   // `-1` indicates no offset
   position~ : Int64,
-) -> Job = "moonbitlang_async_make_write_job"
+) -> NativeJob = "moonbitlang_async_make_write_job"
 
 ///|
 #owned(filename)
-extern "C" fn Job::open(
+extern "C" fn NativeJob::open(
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int,
@@ -111,7 +240,7 @@ extern "C" fn Job::open(
 ) -> OpenJob = "moonbitlang_async_make_open_job"
 
 ///|
-priv struct OpenJob(Job)
+priv struct OpenJob(NativeJob)
 
 ///|
 extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
@@ -126,33 +255,36 @@ extern "C" fn OpenJob::dev_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open
 extern "C" fn OpenJob::file_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
 
 ///|
-extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
+extern "C" fn NativeJob::kind_of_fd(fd : @fd_util.Fd) -> NativeJob = "moonbitlang_async_make_kind_of_fd_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::file_kind_by_path(
+extern "C" fn NativeJob::file_kind_by_path(
   parent : @fd_util.Fd,
   path : @os_string.OsString,
   follow_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
+) -> NativeJob = "moonbitlang_async_make_file_kind_by_path_job"
 
 ///|
-extern "C" fn Job::file_size(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_file_size_job"
+extern "C" fn NativeJob::file_size(fd : @fd_util.Fd) -> NativeJob = "moonbitlang_async_make_file_size_job"
 
 ///|
-extern "C" fn Job::get_file_size_result(job : Job) -> Int64 = "moonbitlang_async_get_file_size_result"
+extern "C" fn NativeJob::get_file_size_result(job : NativeJob) -> Int64 = "moonbitlang_async_get_file_size_result"
 
 ///|
 #owned(out)
-extern "C" fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job = "moonbitlang_async_make_file_time_job"
+extern "C" fn NativeJob::file_time(
+  fd : @fd_util.Fd,
+  out : @fd_util.FileTime,
+) -> NativeJob = "moonbitlang_async_make_file_time_job"
 
 ///|
 #owned(path, out)
-extern "C" fn Job::file_time_by_path(
+extern "C" fn NativeJob::file_time_by_path(
   path : @os_string.OsString,
   out : @fd_util.FileTime,
   follow_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_file_time_by_path_job"
+) -> NativeJob = "moonbitlang_async_make_file_time_by_path_job"
 
 ///|
 pub(all) enum Access {
@@ -164,66 +296,78 @@ pub(all) enum Access {
 
 ///|
 #owned(path)
-extern "C" fn Job::access(path : @os_string.OsString, access : Access) -> Job = "moonbitlang_async_make_access_job"
+extern "C" fn NativeJob::access(
+  path : @os_string.OsString,
+  access : Access,
+) -> NativeJob = "moonbitlang_async_make_access_job"
+
+///|
+#cfg(not(platform="windows"))
+#owned(path)
+extern "C" fn NativeJob::chmod(
+  path : @os_string.OsString,
+  mode : Int,
+) -> NativeJob = "moonbitlang_async_make_chmod_job"
+
+///|
+extern "C" fn NativeJob::fsync(fd : @fd_util.Fd, only_data : Bool) -> NativeJob = "moonbitlang_async_make_fsync_job"
+
+///|
+extern "C" fn NativeJob::flock(fd : @fd_util.Fd, exclusive : Bool) -> NativeJob = "moonbitlang_async_make_flock_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job = "moonbitlang_async_make_chmod_job"
-
-///|
-extern "C" fn Job::fsync(fd : @fd_util.Fd, only_data : Bool) -> Job = "moonbitlang_async_make_fsync_job"
-
-///|
-extern "C" fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job = "moonbitlang_async_make_flock_job"
-
-///|
-#owned(path)
-extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_async_make_remove_job"
+extern "C" fn NativeJob::remove(path : @os_string.OsString) -> NativeJob = "moonbitlang_async_make_remove_job"
 
 ///|
 #owned(old_path, new_path)
-extern "C" fn Job::rename(
+extern "C" fn NativeJob::rename(
   old_path : @os_string.OsString,
   new_path : @os_string.OsString,
   replace~ : Bool,
-) -> Job = "moonbitlang_async_make_rename_job"
+) -> NativeJob = "moonbitlang_async_make_rename_job"
 
 ///|
 #owned(target, path)
-extern "C" fn Job::symlink(
+extern "C" fn NativeJob::symlink(
   target : @os_string.OsString,
   path : @os_string.OsString,
   force_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_symlink_job"
+) -> NativeJob = "moonbitlang_async_make_symlink_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job = "moonbitlang_async_make_mkdir_job"
+extern "C" fn NativeJob::mkdir(
+  path : @os_string.OsString,
+  mode : Int,
+) -> NativeJob = "moonbitlang_async_make_mkdir_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::rmdir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_rmdir_job"
+extern "C" fn NativeJob::rmdir(path : @os_string.OsString) -> NativeJob = "moonbitlang_async_make_rmdir_job"
 
 ///|
 #owned(buf)
-extern "C" fn Job::readdir(
+extern "C" fn NativeJob::readdir(
   dir : @fd_util.Fd,
   buf : FixedArray[Byte],
   len : Int,
   restart : Bool,
-) -> Job = "moonbitlang_async_make_readdir_job"
+) -> NativeJob = "moonbitlang_async_make_readdir_job"
 
 ///|
 #owned(path)
-extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_async_make_realpath_job"
+extern "C" fn NativeJob::realpath(path : @os_string.OsString) -> NativeJob = "moonbitlang_async_make_realpath_job"
 
 ///|
-extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
+extern "C" fn NativeJob::get_realpath_result(
+  job : NativeJob,
+) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
 
 ///|
 #cfg(not(platform="windows"))
 #owned(path, args, env, cwd)
-extern "C" fn Job::spawn(
+extern "C" fn NativeJob::spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
   env : FixedArray[@os_string.OsString?],
@@ -231,12 +375,12 @@ extern "C" fn Job::spawn(
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
   cwd : @os_string.OsString?,
-) -> Job = "moonbitlang_async_make_spawn_job"
+) -> NativeJob = "moonbitlang_async_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
 #owned(command_line, env, cwd)
-extern "C" fn Job::spawn(
+extern "C" fn NativeJob::spawn(
   command_line : @os_string.OsString,
   env : @os_string.OsString?,
   stdin : @fd_util.Fd,
@@ -245,49 +389,116 @@ extern "C" fn Job::spawn(
   cwd : @os_string.OsString?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
-) -> Job = "moonbitlang_async_make_spawn_job"
+) -> NativeJob = "moonbitlang_async_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn Job::get_spawn_job_result_handle(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
+extern "C" fn NativeJob::get_spawn_job_result_handle(
+  job : NativeJob,
+) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
+extern "C" fn NativeJob::wait_for_process(pid : Int) -> NativeJob = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn Job::wait_for_process(handle : @fd_util.Fd) -> Job = "moonbitlang_async_make_wait_for_process_job"
+extern "C" fn NativeJob::wait_for_process(handle : @fd_util.Fd) -> NativeJob = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn Job::cancel_process_waiter(job : Job) = "moonbitlang_async_cancel_wait_for_process_job"
+extern "C" fn NativeJob::cancel_process_waiter(job : NativeJob) = "moonbitlang_async_cancel_wait_for_process_job"
 
 ///|
 #owned(addr)
-extern "C" fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job = "moonbitlang_async_make_bind_job"
+extern "C" fn NativeJob::bind(socket : @fd_util.Fd, addr : Bytes) -> NativeJob = "moonbitlang_async_make_bind_job"
 
 ///|
 #owned(host)
-extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbitlang_async_make_getaddrinfo_job"
+extern "C" fn NativeJob::getaddrinfo(host : @os_string.OsString) -> NativeJob = "moonbitlang_async_make_getaddrinfo_job"
 
 ///|
-extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
+extern "C" fn NativeJob::get_getaddrinfo_result(job : NativeJob) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
 
 ///|
 #cfg(not(platform="windows"))
 #borrow(signals)
-extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
+extern "C" fn NativeJob::sigwait(signals : ReadOnlyArray[Int]) -> NativeJob = "moonbitlang_async_make_sigwait_job"
 
 ///|
 #cfg(not(platform="windows"))
 #owned(path)
-extern "C" fn Job::inotify_add_watch(
+extern "C" fn NativeJob::inotify_add_watch(
   inotify : @fd_util.Fd,
   path : @os_string.OsString,
   is_dir : Bool,
-) -> Job = "moonbitlang_async_make_inotify_add_watch_job"
+) -> NativeJob = "moonbitlang_async_make_inotify_add_watch_job"
 
 ///|
 #cfg(platform="windows")
 let _mute_unused_warning : Unit = ignore(@c_buffer.Buffer::get)
+
+///|
+fn SubmittedOperation::free(self : SubmittedOperation) -> Unit {
+  self.job().free()
+}
+
+///|
+fn SubmittedOperation::ret(self : SubmittedOperation) -> Int {
+  self.job().ret()
+}
+
+///|
+fn SubmittedOperation::err(self : SubmittedOperation) -> Int {
+  self.job().err()
+}
+
+///|
+priv struct OpenJobResult {
+  fd : @fd_util.Fd
+  kind : @fd_util.FileKind
+  identity : FileIdentity
+}
+
+///|
+fn SubmittedOperation::open_result(self : SubmittedOperation) -> OpenJobResult {
+  let job = OpenJob(self.job().native)
+  {
+    fd: job.fd(),
+    kind: job.kind(),
+    identity: { dev_id: job.dev_id(), file_id: job.file_id() },
+  }
+}
+
+///|
+fn SubmittedOperation::file_size_result(self : SubmittedOperation) -> Int64 {
+  self.job().native.get_file_size_result()
+}
+
+///|
+fn SubmittedOperation::realpath_result(
+  self : SubmittedOperation,
+) -> @c_buffer.Buffer {
+  self.job().native.get_realpath_result()
+}
+
+///|
+#cfg(platform="windows")
+fn SubmittedOperation::spawn_result_handle(
+  self : SubmittedOperation,
+) -> @fd_util.Fd {
+  self.job().native.get_spawn_job_result_handle()
+}
+
+///|
+#cfg(platform="windows")
+fn SubmittedOperation::cancel_process_waiter(self : SubmittedOperation) -> Unit {
+  self.job().native.cancel_process_waiter()
+}
+
+///|
+fn SubmittedOperation::getaddrinfo_result(
+  self : SubmittedOperation,
+) -> AddrInfo {
+  self.job().native.get_getaddrinfo_result()
+}

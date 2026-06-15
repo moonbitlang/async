@@ -35,7 +35,7 @@ pub fn IoHandle::from_fd(
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is None
+  guard evloop.backend.fds.get(fd) is None
   if is_async && !(kind is Unknown) {
     @fd_util.set_nonblocking(fd, context~) catch {
       err => {
@@ -45,7 +45,7 @@ pub fn IoHandle::from_fd(
     }
   }
   let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
-  evloop.fds[fd] = handle
+  evloop.backend.fds[fd] = handle
   handle
 }
 
@@ -57,7 +57,7 @@ pub fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
     abort("file descriptor already closed")
   }
   if (handle.events & ReadEvent) == 0 {
-    evloop.poll.register(
+    evloop.backend.poll.register(
       handle.fd,
       prev_events=handle.events,
       new_events=ReadEvent,
@@ -79,7 +79,7 @@ pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   defer {
     handle.read = None
   }
-  @coroutine.suspend()
+  wait_operation(OperationSpec::fd_read(handle.fd))
 }
 
 ///|
@@ -90,7 +90,7 @@ fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
     abort("file descriptor already closed")
   }
   if (handle.events & WriteEvent) == 0 {
-    evloop.poll.register(
+    evloop.backend.poll.register(
       handle.fd,
       prev_events=handle.events,
       new_events=WriteEvent,
@@ -113,7 +113,7 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
   defer {
     handle.write = None
   }
-  @coroutine.suspend()
+  wait_operation(OperationSpec::fd_write(handle.fd))
 }
 
 ///|
@@ -124,9 +124,9 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { return }
-  evloop.fds.remove(handle.fd)
+  evloop.backend.fds.remove(handle.fd)
   if !(handle.events is NoEvent) {
-    evloop.poll.remove(handle.fd, events=handle.events) catch {
+    evloop.backend.poll.remove(handle.fd, events=handle.events) catch {
       err => abort("detach \{handle.fd} from loop: \{err}")
     }
   }
@@ -172,13 +172,17 @@ pub async fn IoHandle::read(
   } else {
     let cancel = if handle.kind.can_poll() {
       guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+      Some(job => evloop.backend.cancel_operation(job, context~))
     } else {
       None
     }
-    let job = Job::read(handle.fd, buf, offset, len, position=-1)
+    let job = perform_operation(
+      OperationSpec::read(handle.fd, buf, offset, len, position=-1),
+      context~,
+      cancel?,
+    )
     defer job.free()
-    perform_job_in_worker(job, context~, cancel?)
+    job.ret()
   }
 }
 
@@ -193,9 +197,12 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   guard !handle.kind.can_poll()
-  let job = Job::read(handle.fd, buf, offset, len, position~)
+  let job = perform_operation(
+    OperationSpec::read(handle.fd, buf, offset, len, position~),
+    context~,
+  )
   defer job.free()
-  perform_job_in_worker(job, context~)
+  job.ret()
 }
 
 ///|
@@ -238,13 +245,17 @@ pub async fn IoHandle::write(
   } else {
     let cancel = if handle.kind.can_poll() {
       guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+      Some(job => evloop.backend.cancel_operation(job, context~))
     } else {
       None
     }
-    let job = Job::write(handle.fd, buf, offset, len, position=-1)
+    let job = perform_operation(
+      OperationSpec::write(handle.fd, buf, offset, len, position=-1),
+      context~,
+      cancel?,
+    )
     defer job.free()
-    perform_job_in_worker(job, context~, cancel?)
+    job.ret()
   }
 }
 
@@ -259,7 +270,9 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   guard !handle.kind.can_poll()
-  let job = Job::write(handle.fd, buf, offset, len, position~)
+  let job = perform_operation(
+    OperationSpec::write(handle.fd, buf, offset, len, position~),
+    context~,
+  )
   defer job.free()
-  perform_job_in_worker(job, context~) |> ignore
 }

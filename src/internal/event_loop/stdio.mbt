@@ -36,8 +36,8 @@ fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
   register_hook(
     init=() => {
       guard curr_loop.val is Some(evloop)
-      guard evloop.fds.get(fd) is None
-      evloop.fds[fd] = handle
+      guard evloop.backend.fds.get(fd) is None
+      evloop.backend.fds[fd] = handle
     },
     exit=() => {
       handle.detach_from_event_loop()
@@ -86,8 +86,8 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
   register_hook(
     init=() => {
       guard curr_loop.val is Some(evloop)
-      guard evloop.fds.get(fd) is None
-      evloop.fds[fd] = handle
+      guard evloop.backend.fds.get(fd) is None
+      evloop.backend.fds[fd] = handle
     },
     exit=() => handle.detach_from_event_loop(),
   )

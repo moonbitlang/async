@@ -60,13 +60,16 @@ fn setup_signal_handler() -> @coroutine.Coroutine {
   }
   @coroutine.spawn() <| () => {
     let context = "sigwait thread"
-    fn cancel(job_id) raise {
+    fn cancel(job : SubmittedOperation) raise {
       guard curr_loop.val is Some(evloop)
-      evloop.cancel_job_in_worker(job_id, context~)
+      evloop.backend.cancel_operation(job, context~)
     }
-    let job = Job::sigwait(all_signals)
+    let job = perform_operation(
+      OperationSpec::sigwait(all_signals),
+      context~,
+      cancel~,
+    )
     defer job.free()
-    ignore <| perform_job_in_worker(job, context~, cancel~)
   }
 }
 
@@ -81,7 +84,7 @@ async fn EventLoop::terminate_signal_handler(
     @coroutine.Cancelled => ()
     err => raise err
   }
-  if evloop.killed_by_signal is Some(signal) {
+  if evloop.backend.killed_by_signal is Some(signal) {
     raise KilledBySignal(signal)
   }
 }
@@ -110,7 +113,7 @@ fn EventLoop::terminate_signal_handler(
   if set_console_control_handler(0) is 0 {
     @os_error.check_errno("terminate_signal_handler()")
   }
-  if evloop.killed_by_signal is Some(signal) {
+  if evloop.backend.killed_by_signal is Some(signal) {
     raise KilledBySignal(signal)
   }
 }

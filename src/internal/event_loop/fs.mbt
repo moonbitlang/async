@@ -34,27 +34,34 @@ pub async fn open(
   context~ : String,
 ) -> (IoHandle, FileIdentity) {
   let path_bytes = @os_string.encode(path)
-  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
-  defer job.0.free()
-  fn cancel(job_id) raise {
+  let spec = OperationSpec::open(
+    path_bytes,
+    access,
+    create~,
+    append~,
+    sync~,
+    mode~,
+  )
+  fn cancel(job : SubmittedOperation) raise {
     guard curr_loop.val is Some(evloop)
-    evloop.cancel_job_in_worker(job_id, context~)
+    evloop.backend.cancel_operation(job, context~)
   }
 
-  try perform_job_in_worker(job.0, context~, cancel~) catch {
+  try perform_operation(spec, context~, cancel~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    _ => {
-      let fd = job.fd()
-      let kind = job.kind()
+    job => {
+      let result = job.open_result()
+      defer job.free()
       let io = IoHandle::from_fd(
-        fd,
-        kind~,
-        is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
+        result.fd,
+        kind=result.kind,
+        is_async=access is 3 ||
+          (!(platform is Windows) && result.kind.can_poll()),
       )
-      (io, { dev_id: job.dev_id(), file_id: job.file_id() })
+      (io, result.identity)
     }
   }
 }
@@ -64,9 +71,9 @@ pub async fn kind_of_fd(
   fd : @fd_util.Fd,
   context~ : String,
 ) -> @fd_util.FileKind {
-  let job = Job::kind_of_fd(fd)
+  let job = perform_operation(OperationSpec::kind_of_fd(fd), context~)
   defer job.free()
-  perform_job_in_worker(job, context~) |> @fd_util.FileKind::unsafe_from_int
+  job.ret() |> @fd_util.FileKind::unsafe_from_int
 }
 
 ///|
@@ -81,23 +88,27 @@ pub async fn file_kind_by_path(
   context~ : String,
 ) -> @fd_util.FileKind {
   let path_bytes = @os_string.encode(path)
-  let job = Job::file_kind_by_path(parent, path_bytes, follow_symlink~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = try
+    perform_operation(
+      OperationSpec::file_kind_by_path(parent, path_bytes, follow_symlink~),
+      context~,
+    )
+  catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    result => @fd_util.FileKind::unsafe_from_int(result)
+    job => job
   }
+  defer job.free()
+  @fd_util.FileKind::unsafe_from_int(job.ret())
 }
 
 ///|
 pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
-  let job = Job::file_size(fd)
+  let job = perform_operation(OperationSpec::file_size(fd), context~)
   defer job.free()
-  let _ = perform_job_in_worker(job, context~)
-  job.get_file_size_result()
+  job.file_size_result()
 }
 
 ///|
@@ -106,9 +117,8 @@ pub async fn file_time(
   context~ : String,
 ) -> @fd_util.FileTime {
   let result = @fd_util.FileTime::new()
-  let job = Job::file_time(fd, result)
+  let job = perform_operation(OperationSpec::file_time(fd, result), context~)
   defer job.free()
-  let _ = perform_job_in_worker(job, context~)
   result
 }
 
@@ -120,42 +130,44 @@ pub async fn file_time_by_path(
 ) -> @fd_util.FileTime {
   let path_bytes = @os_string.encode(path)
   let result = @fd_util.FileTime::new()
-  let job = Job::file_time_by_path(path_bytes, result, follow_symlink~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = try
+    perform_operation(
+      OperationSpec::file_time_by_path(path_bytes, result, follow_symlink~),
+      context~,
+    )
+  catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   } noraise {
-    _ => ()
+    job => job
   }
+  defer job.free()
   result
 }
 
 ///|
 pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
   let path_bytes = @os_string.encode(path)
-  let job = Job::access(path_bytes, acc)
-  defer job.free()
-  perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::access(path_bytes, acc), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
+  defer job.free()
+  job.ret()
 }
 
 ///|
+#cfg(not(platform="windows"))
 pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
-  let job = Job::chmod(path_bytes, mode)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::chmod(path_bytes, mode), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
@@ -164,9 +176,11 @@ pub async fn IoHandle::fsync(
   only_data~ : Bool,
   context~ : String,
 ) -> Unit {
-  let job = Job::fsync(handle.fd, only_data)
+  let job = perform_operation(
+    OperationSpec::fsync(handle.fd, only_data),
+    context~,
+  )
   defer job.free()
-  perform_job_in_worker(job, context~) |> ignore
 }
 
 ///|
@@ -176,28 +190,23 @@ pub async fn IoHandle::lock(
   context~ : String,
 ) -> Unit {
   guard curr_loop.val is Some(evloop)
-  let job = Job::flock(handle.fd, exclusive)
-  defer job.free()
-  perform_job_in_worker(
-    job,
-    cancel=job_id => evloop.cancel_job_in_worker(job_id, context~),
+  let job = perform_operation(
+    OperationSpec::flock(handle.fd, exclusive),
+    cancel=job => evloop.backend.cancel_operation(job, context~),
     context~,
   )
-  |> ignore
+  defer job.free()
 }
 
 ///|
 pub async fn remove(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
-  let job = Job::remove(path_bytes)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::remove(path_bytes), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
@@ -209,18 +218,18 @@ pub async fn rename(
 ) -> Unit {
   let old_path_bytes = @os_string.encode(old_path)
   let new_path_bytes = @os_string.encode(new_path)
-  let job = Job::rename(old_path_bytes, new_path_bytes, replace~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(
+    OperationSpec::rename(old_path_bytes, new_path_bytes, replace~),
+    context~,
+  ) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(
         errno,
         context="\{context}: \{old_path.escape()} => \{new_path.escape()}",
       )
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
@@ -232,46 +241,40 @@ pub async fn symlink(
 ) -> Unit {
   let target_bytes = @os_string.encode(target)
   let path_bytes = @os_string.encode(path)
-  let job = Job::symlink(target_bytes, path_bytes, force_symlink~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(
+    OperationSpec::symlink(target_bytes, path_bytes, force_symlink~),
+    context~,
+  ) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(
         errno,
         context="\{context}: \{target.escape()} => \{path.escape()}",
       )
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
 pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
-  let job = Job::mkdir(path_bytes, mode)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::mkdir(path_bytes, mode), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
 pub async fn rmdir(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
-  let job = Job::rmdir(path_bytes)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::rmdir(path_bytes), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
-  } noraise {
-    _ => ()
   }
+  defer job.free()
 }
 
 ///|
@@ -282,22 +285,24 @@ pub async fn IoHandle::readdir(
   restart~ : Bool,
   context~ : String,
 ) -> Int {
-  let job = Job::readdir(dir.fd, buf, len, restart)
+  let job = perform_operation(
+    OperationSpec::readdir(dir.fd, buf, len, restart),
+    context~,
+  )
   defer job.free()
-  perform_job_in_worker(job, context~)
+  job.ret()
 }
 
 ///|
 pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
-  let job = Job::realpath(path_bytes)
-  defer job.free()
-  let _ = perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(OperationSpec::realpath(path_bytes), context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
-  let c_path = job.get_realpath_result()
+  defer job.free()
+  let c_path = job.realpath_result()
   @os_string.decode(c_path)
 }
 
@@ -310,13 +315,16 @@ pub async fn inotify_add_watch(
   context~ : String,
 ) -> @fd_util.Fd {
   let path_bytes = @os_string.encode(path)
-  let job = Job::inotify_add_watch(inotify, path_bytes, is_dir)
-  defer job.free()
-  perform_job_in_worker(job, context~) catch {
+  let job = perform_operation(
+    OperationSpec::inotify_add_watch(inotify, path_bytes, is_dir),
+    context~,
+  ) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
   }
+  defer job.free()
+  job.ret()
 }
 
 ///|
@@ -334,10 +342,7 @@ pub async fn IoHandle::read_dir_changes(
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard handle.kind is Directory
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = IoResult::for_read_dir_changes(
-    job_id,
     buf.unsafe_reinterpret_as_bytes(),
     len=buf.length(),
   )
@@ -347,7 +352,7 @@ pub async fn IoHandle::read_dir_changes(
     @coroutine.pause()
     n
   } else if @os_error.is_nonblocking_io_error() {
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    evloop.wait_for_io_result(result, handle.fd, context~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
       err => raise err

@@ -79,19 +79,21 @@ pub async fn spawn(
   context~ : String,
 ) -> Process {
   init_global_job_object()
-  let job = Job::spawn(
-    command_line,
-    env,
-    stdin,
-    stdout,
-    stderr,
-    cwd,
-    no_console_window~,
-    is_orphan~,
+  let job = perform_operation(
+    OperationSpec::spawn(
+      command_line,
+      env,
+      stdin,
+      stdout,
+      stderr,
+      cwd,
+      no_console_window~,
+      is_orphan~,
+    ),
+    context~,
   )
   defer job.free()
-  let pid = perform_job_in_worker(job, context~)
-  { pid, handle: job.get_spawn_job_result_handle() }
+  { pid: job.ret(), handle: job.spawn_result_handle() }
 }
 
 ///|
@@ -102,14 +104,15 @@ extern "C" fn get_process_result(handle : @fd_util.Fd, out : Ref[Int]) -> Int = 
 ///|
 #cfg(platform="windows")
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
-  let job = Job::wait_for_process(self.handle)
-  let _ = {
-    defer job.free()
-    perform_job_in_worker(job, context~, cancel=_ => {
+  let job = perform_operation(
+    OperationSpec::wait_for_process(self.handle),
+    context~,
+    cancel=job => {
       job.cancel_process_waiter()
       NeedWait
-    })
-  }
+    },
+  )
+  defer job.free()
   let out = Ref(0)
   let ret = get_process_result(self.handle, out)
   if ret < 0 {
