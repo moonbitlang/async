@@ -57,7 +57,7 @@ let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
 
 ///|
 #cfg(platform="windows")
-fn setup_stdio(id : Int, context~ : String) -> IoHandle {
+fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
   // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
   let fd = get_std_handle(-10 - id)
   if !@fd_util.fd_is_valid(fd) {
