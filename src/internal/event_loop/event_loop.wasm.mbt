@@ -23,7 +23,7 @@ pub(all) enum Platform {
 fn get_platform() -> Platform = "moonbit_v0" "runtime/get_platform"
 
 ///|
-fn sleep_ms(duration : Int) -> Int = "moonbit_v0" "time/sleep_ms"
+fn wait_for_event(timeout : Int) -> Int = "moonbit_v0" "runtime/wait_for_event"
 
 ///|
 pub let platform : Platform = get_platform()
@@ -114,33 +114,18 @@ pub fn reschedule() -> Unit {
 }
 
 ///|
-fn EventLoop::poll(self : EventLoop) -> Unit {
+fn EventLoop::poll(self : EventLoop) -> Unit raise {
   let has_timers = !self.timers.is_empty()
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    let timer_timeout = @cmp.maximum(
-      0,
-      (timer.expire_time - @time.ms_since_epoch()).to_int(),
-    )
-    if !self.running_workers.is_empty() {
-      // Native pollers wake early when the thread-pool notification fd becomes
-      // readable. The wasm host currently exposes completion fetching, not an
-      // interruptible wait primitive, so poll briefly while worker jobs are
-      // outstanding to avoid starving completions behind a later timer.
-      @cmp.minimum(timer_timeout, 1)
-    } else {
-      timer_timeout
-    }
-  } else if !self.running_workers.is_empty() {
-    1
+    @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
   } else {
-    1
+    -1
   }
-  if timeout > 0 {
-    ignore(sleep_ms(timeout))
+  if wait_for_event(timeout) != 0 {
+    @os_error.check_errno("runtime internal: wait_for_event")
   }
-  self.drain_worker_completions()
   self.run_expired_timers(has_timers)
   self.drain_worker_completions()
 }
