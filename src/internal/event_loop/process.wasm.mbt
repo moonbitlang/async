@@ -37,7 +37,6 @@ fn spawn_process_ffi(
 ) -> Int = "moonbit_v0" "process/spawn_process"
 
 ///|
-#borrow(argv)
 fn spawn_process_raw(
   argv : FixedArray[Byte],
   argv_len : Int,
@@ -46,14 +45,10 @@ fn spawn_process_raw(
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
 ) -> Int {
-  spawn_process_ffi(
-    @wasm_ffi.byte_array_to_ptr(argv),
-    argv_len,
-    argc,
-    stdin,
-    stdout,
-    stderr,
-  )
+  let argv_ptr = @wasm_ffi.byte_array_to_owned_ptr(argv)
+  let result = spawn_process_ffi(argv_ptr, argv_len, argc, stdin, stdout, stderr)
+  @wasm_ffi.free(argv_ptr)
+  result
 }
 
 ///|
