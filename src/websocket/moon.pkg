@@ -4,6 +4,7 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/random",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/base64",
   "moonbitlang/async/io",
   "moonbitlang/async/tls",
   "moonbitlang/async/http",
