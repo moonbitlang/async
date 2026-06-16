@@ -54,7 +54,10 @@ options(
     "stdio.mbt": [ "native" ],
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native" ],
-    "unimplemented.mbt": [ "wasm", "wasm-gc" ],
+    "timer.wasm.mbt": [ "wasm" ],
+    "event_loop.wasm.mbt": [ "wasm" ],
+    "unimplemented.mbt": [ "wasm-gc" ],
     "worker_wbtest.mbt": [ "native", "js" ],
+    "thread_pool.wasm.mbt": [ "wasm" ],
   },
 )

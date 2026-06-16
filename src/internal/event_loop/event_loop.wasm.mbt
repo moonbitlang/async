@@ -1,0 +1,332 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+pub(all) enum Platform {
+  Linux = 0
+  MacOS = 1
+  Windows = 2
+}
+
+///|
+fn get_platform() -> Platform = "moonbit_v0" "runtime/get_platform"
+
+///|
+fn wait_for_event(timeout : Int) -> Int = "moonbit_v0" "runtime/wait_for_event"
+
+///|
+fn ms_since_epoch() -> Int64 = "moonbit_v0" "time/get_ms_since_epoch"
+
+///|
+pub let platform : Platform = get_platform()
+
+///|
+priv struct EventLoop {
+  max_worker_count : Int
+  mut job_id : Int
+  job_queue : @deque.Deque[QueuedJob]
+  idle_workers : @deque.Deque[Worker]
+  running_workers : Map[Int, Worker]
+  completed_jobs_buffer : FixedArray[Int]
+  jobs : Map[Int, @coroutine.Coroutine]
+  timers : @sorted_set.SortedSet[Timer]
+}
+
+///|
+priv struct QueuedJob {
+  job_id : Int
+  job : Job
+}
+
+///|
+let curr_loop : Ref[EventLoop?] = Ref(None)
+
+///|
+priv struct EventLoopHook {
+  init : (() -> Unit raise)?
+  exit : (() -> Unit raise)?
+}
+
+///|
+let hooks : Array[EventLoopHook] = []
+
+///|
+pub fn register_hook(
+  init? : () -> Unit raise,
+  exit? : () -> Unit raise,
+) -> Unit {
+  hooks.push({ init, exit })
+}
+
+///|
+fn EventLoop::new() -> EventLoop {
+  init_thread_pool_ffi()
+  {
+    max_worker_count: 1024,
+    job_id: 0,
+    job_queue: @deque.Deque([]),
+    idle_workers: @deque.Deque([]),
+    running_workers: {},
+    completed_jobs_buffer: FixedArray::make(1024, 0),
+    jobs: {},
+    timers: @sorted_set.SortedSet([]),
+  }
+}
+
+///|
+pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
+  guard curr_loop.val is None
+  let evloop = EventLoop::new()
+  defer destroy_thread_pool()
+  curr_loop.val = Some(evloop)
+  defer {
+    curr_loop.val = None
+  }
+  for hook in hooks {
+    if hook.init is Some(init) {
+      init()
+    }
+  }
+  let main = @coroutine.spawn(() => f())
+  evloop.run_forever()
+  main.unwrap()
+}
+
+///|
+fn EventLoop::wait_for_event(self : EventLoop) -> Unit raise {
+  // Mirrors native `EventLoop::wait_for_event`: compute the next scheduler
+  // timeout, block in the host poll primitive, then drain expired timers.
+  // Native uses `self.poll.wait(timeout~)` here. In wasm PR1 the replacement is
+  // `runtime/wait_for_event(timeout)`, which only blocks for the timeout because
+  // there is no native `Instance`/event-list object in the wasm event loop.
+  let has_timers = !self.timers.is_empty()
+  let timeout = if @coroutine.has_immediately_ready_task() {
+    0
+  } else if has_timers && self.timers.iter().head() is Some(timer) {
+    @cmp.maximum(0, (timer.expire_time - ms_since_epoch()).to_int())
+  } else {
+    -1
+  }
+  if wait_for_event(timeout) != 0 {
+    @os_error.check_errno("runtime internal: wait_for_event")
+  }
+  if has_timers {
+    let now = ms_since_epoch()
+    for timer in self.timers {
+      if timer.expire_time <= now {
+        (timer.callback)()
+      } else {
+        break
+      }
+    }
+  }
+}
+
+///|
+fn EventLoop::poll(self : EventLoop) -> Unit raise {
+  self.wait_for_event()
+  // Native `EventLoop::poll` fetches worker completions after `poll.wait`
+  // reports the notify fd: `fd == self.notify_recv` calls
+  // `fetch_completion_ffi(self.notify_recv, self.completed_jobs_buffer)`.
+  // Wasm has no fd event array, so the matching point is immediately after the
+  // host wait returns. The explicit host completion queue is still drained
+  // after timers, matching native `wait_for_event` then `poll` ordering.
+  self.drain_worker_completions()
+}
+
+///|
+fn EventLoop::drain_worker_completions(self : EventLoop) -> Unit {
+  // Native worker threads publish job ids to the notify pipe in
+  // `worker_loop` (`write(pool.notify_send, &job_id, sizeof(int))` on Unix,
+  // `PostQueuedCompletionStatus(pool.notify_send, job_id, ...)` on Windows).
+  // Native `EventLoop::poll` then reads them through
+  // `moonbitlang_async_fetch_completion`. The wasm import exposes the same
+  // completed job-id stream without an OS fd, and PR1's host returns an empty
+  // stream until real worker jobs are introduced.
+  while true {
+    let bytes_transferred = fetch_completion_ffi(self.completed_jobs_buffer)
+    let n = bytes_transferred / 4
+    for i in 0..<n {
+      self.handle_completed_job(self.completed_jobs_buffer[i])
+    }
+    if n < self.completed_jobs_buffer.length() {
+      break
+    }
+  }
+}
+
+///|
+fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
+  // Keep the native worker handoff logic: either park the worker as idle or
+  // immediately give it the next queued job, then wake the waiting coroutine.
+  guard self.running_workers.get(job_id) is Some(worker)
+  self.running_workers.remove(job_id)
+  match self.job_queue.pop_front() {
+    None => {
+      worker.enter_idle()
+      self.idle_workers.push_back(worker)
+    }
+    Some(job) => {
+      self.running_workers[job.job_id] = worker
+      worker.wake(job.job_id, job.job)
+    }
+  }
+  if self.jobs.get(job_id) is Some(coro) {
+    coro.wake()
+  }
+}
+
+///|
+pub let check_fd_leak : Ref[Bool] = Ref(false)
+
+///|
+fn EventLoop::cleanup(self : Self) -> Unit raise {
+  for hook in hooks {
+    if hook.exit is Some(exit) {
+      exit()
+    }
+  }
+  for _, coro in self.jobs {
+    coro.cancel()
+  }
+  self.jobs.clear()
+  for worker in self.idle_workers {
+    worker.free()
+  }
+}
+
+///|
+fn EventLoop::run_forever(self : Self) -> Unit raise {
+  try {
+    while !(@coroutine.no_more_work() && self.running_workers.is_empty()) {
+      self.poll()
+      @coroutine.reschedule()
+    }
+  } catch {
+    err => {
+      Ref::protect(check_fd_leak, false, () => self.cleanup())
+      // In case the event loop has encountered some fatal error,
+      // propagate the error to relevant coroutines.
+      while !@coroutine.no_more_work() {
+        @coroutine.reschedule()
+      }
+      raise err
+    }
+  } noraise {
+    _ => self.cleanup()
+  }
+}
+
+///|
+priv enum CancellationStatus {
+  NoWait
+  NeedWait
+  RetryLater
+}
+
+///|
+fn errno_is_cancelled(errno : Int) -> Bool = "moonbit_v0" "thread_pool/errno_is_cancelled"
+
+///|
+async fn EventLoop::wait_for_job(
+  evloop : EventLoop,
+  job_id : Int,
+  cancel? : (Int) -> CancellationStatus raise,
+) -> Unit {
+  evloop.jobs[job_id] = @coroutine.current_coroutine()
+  defer evloop.jobs.remove(job_id)
+  match cancel {
+    None =>
+      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+    Some(cancel_func) =>
+      @coroutine.suspend() catch {
+        err =>
+          for ;; {
+            let status = cancel_func(job_id) catch {
+              err =>
+                @coroutine.protect_from_cancel() <| () => {
+                  @coroutine.suspend()
+                  raise err
+                }
+            }
+            match status {
+              NeedWait => {
+                @coroutine.protect_from_cancel(
+                  @coroutine.suspend,
+                  resume_on_cancel=true,
+                )
+                break
+              }
+              NoWait => raise err
+              RetryLater => {
+                @coroutine.protect_from_cancel(
+                  @coroutine.pause,
+                  resume_on_cancel=true,
+                )
+                if evloop.jobs.get(job_id) is None {
+                  break
+                }
+              }
+            }
+          }
+      }
+  }
+}
+
+///|
+async fn perform_job_in_worker(
+  job : Job,
+  context~ : String,
+  cancel? : (Int) -> CancellationStatus raise,
+) -> Int {
+  @coroutine.check_cancellation()
+  guard curr_loop.val is Some(evloop)
+  let job_id = evloop.job_id
+  evloop.job_id += 1
+  match evloop.idle_workers.pop_front() {
+    None if evloop.running_workers.length() >= evloop.max_worker_count =>
+      evloop.job_queue.push_back({ job_id, job })
+    None => {
+      let worker = Worker::spawn(job_id, job)
+      evloop.running_workers[job_id] = worker
+    }
+    Some(worker) => {
+      evloop.running_workers[job_id] = worker
+      worker.wake(job_id, job)
+    }
+  }
+  evloop.wait_for_job(job_id, cancel?)
+  if job.err() is err && err > 0 {
+    if errno_is_cancelled(err) {
+      raise @coroutine.Cancelled
+    } else {
+      raise @os_error.OSError(err, context~)
+    }
+  } else {
+    job.ret()
+  }
+}
+
+///|
+fn EventLoop::cancel_job_in_worker(
+  evloop : EventLoop,
+  job_id : Int,
+  context~ : String,
+) -> CancellationStatus raise {
+  if evloop.running_workers.get(job_id) is Some(worker) {
+    worker.cancel(context~)
+  } else {
+    NoWait
+  }
+}

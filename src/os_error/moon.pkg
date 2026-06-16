@@ -11,5 +11,9 @@ import {
 
 options(
   "native-stub": [ "stub.c" ],
-  targets: { "error.mbt": [ "native" ], "os_error_test.mbt": [ "native" ] },
+  targets: {
+    "error.mbt": [ "native" ],
+    "error.wasm.mbt": [ "wasm" ],
+    "os_error_test.mbt": [ "native" ],
+  },
 )
