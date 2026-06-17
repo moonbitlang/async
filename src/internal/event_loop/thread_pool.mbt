@@ -226,7 +226,8 @@ extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbit
 extern "C" fn Job::spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
-  env : FixedArray[@os_string.OsString?],
+  env : @c_buffer.Buffer,
+  inherited_env_entry_count : Int,
   stdin : @fd_util.Fd,
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,

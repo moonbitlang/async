@@ -18,28 +18,69 @@
 
 #include <sys/wait.h>
 #include <sys/types.h>
-#include <string.h>
 #include <signal.h>
 #include <moonbit.h>
 
 extern char **environ;
 
-moonbit_bytes_t *moonbitlang_async_get_curr_env() {
-  int len = 0;
-  for (char **cursor = environ; *cursor; ++cursor)
-    ++len;
+char **moonbitlang_async_get_curr_env() {
+  return environ;
+}
 
-  moonbit_bytes_t *result = (moonbit_bytes_t*)moonbit_make_ref_array(len + 1, 0);
-  for (int i = 0; i < len; ++i) {
-    char *entry = environ[i];
-    int len = strlen(entry) + 1;
-    moonbit_bytes_t bytes = moonbit_make_bytes(len, 0);
-    memcpy(bytes, entry, len);
-    result[i] = bytes;
+int32_t moonbitlang_async_env_block_length(char **env_block) {
+  for (char **cursor = env_block;; ++cursor) {
+    if (*cursor == 0)
+      return cursor - env_block;
   }
-  result[len] = 0;
+}
 
-  return result;
+char **moonbitlang_async_allocate_env_block(int32_t size) {
+  char **env_block = (char**)malloc((size + 1) * sizeof(char*));
+  env_block[size] = 0;
+  return env_block;
+}
+
+void moonbitlang_async_write_env_block(char **dst, char **env_block) {
+  for (int i = 0;; ++i) {
+    if (env_block[i] == 0)
+      return;
+
+    dst[i] = env_block[i];
+  }
+}
+
+
+int32_t moonbit_utf8_len_from_utf16(
+  moonbit_string_t src,
+  int32_t src_offset,
+  int32_t src_length
+);
+
+int32_t moonbit_utf8_encode_from_utf16(
+  moonbit_string_t src,
+  int32_t src_offset,
+  int32_t src_length,
+  moonbit_bytes_t dst, 
+  int32_t dst_offset
+);
+
+void moonbitlang_async_env_block_add_entry(
+  char **env_block,
+  int32_t index,
+  moonbit_string_t key,
+  int32_t key_len,
+  moonbit_string_t value,
+  int32_t value_len
+) {
+  int key_bytes = moonbit_utf8_len_from_utf16(key, 0, key_len);
+  int value_bytes = moonbit_utf8_len_from_utf16(value, 0, value_len);
+  // `2`: `=` + trailing NUL
+  unsigned char *entry = (unsigned char*)malloc(key_bytes + value_bytes + 2);
+  moonbit_utf8_encode_from_utf16(key, 0, key_len, entry, 0);
+  entry[key_bytes] = '=';
+  moonbit_utf8_encode_from_utf16(value, 0, value_len, entry, key_bytes + 1);
+  entry[key_bytes + value_bytes + 1] = 0;
+  env_block[index] = (char*)entry; 
 }
 
 void moonbitlang_async_terminate_process(pid_t pid, int signal) {
