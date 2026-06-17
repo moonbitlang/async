@@ -266,7 +266,7 @@ pub async fn File::write_at(
     offset=buf.start_offset(),
     len=buf.length(),
     position~,
-    context="@fs.File::read_at()",
+    context="@fs.File::write_at()",
   )
 }
 
@@ -441,10 +441,7 @@ pub async fn read_file(
   defer file.close()
   let result = file.read_all()
   if sync_timestamp {
-    file.io.fsync(
-      only_data=false,
-      context="@fs.File::read_file(sync_timestamp=true)",
-    )
+    file.io.fsync(only_data=false, context="@fs.read_file(sync_timestamp=true)")
   }
   result
 }

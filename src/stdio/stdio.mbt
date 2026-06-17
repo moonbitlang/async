@@ -59,7 +59,7 @@ pub fn Output::fd(self : Output) -> @fd_util.Fd raise {
 pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
   self.0
   .unwrap_or_error()
-  .write(buf, offset~, len~, context="@fs.File::write()")
+  .write(buf, offset~, len~, context="@stdio.Output::write()")
 }
 
 ///|

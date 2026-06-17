@@ -461,7 +461,7 @@ pub async fn UdpClient::recv(
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> Int {
-  self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
+  self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv()")
 }
 
 ///|
@@ -481,7 +481,7 @@ pub async fn UdpClient::recvfrom(
     offset~,
     len=max_len,
     addr=addr.0,
-    context="@socket.UdpClient::recvfrom",
+    context="@socket.UdpClient::recvfrom()",
   )
   (n_read, addr)
 }
@@ -513,7 +513,7 @@ pub async fn UdpServer::recvfrom(
     offset~,
     len=max_len,
     addr=addr.0,
-    context="@socket.UdpServer::recvfrom",
+    context="@socket.UdpServer::recvfrom()",
   )
   (n_read, addr)
 }
@@ -564,7 +564,7 @@ pub async fn UdpServer::sendto(
     offset~,
     len~,
     addr=addr.0,
-    context="@socket.UdpServer::sendto",
+    context="@socket.UdpServer::sendto()",
   )
   |> ignore
 }
