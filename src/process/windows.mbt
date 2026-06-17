@@ -14,11 +14,42 @@
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_curr_env() -> String = "moonbitlang_async_get_curr_env"
+priv struct OsEnvBlock(@c_buffer.Buffer)
 
 ///|
 #cfg(platform="windows")
-let curr_env : String = get_curr_env()
+extern "C" fn get_curr_env() -> OsEnvBlock = "moonbitlang_async_get_curr_env"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnvBlock::length(self : OsEnvBlock) -> Int = "moonbitlang_async_env_block_length"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnvBlock::free(self : OsEnvBlock) -> Unit = "moonbitlang_async_free_env_block"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnvBlock::new(size : Int) -> OsEnvBlock = "moonbitlang_async_allocate_env_block"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnvBlock::write_env_block(
+  dst : OsEnvBlock,
+  block : OsEnvBlock,
+) -> Unit = "moonbitlang_async_write_env_block"
+
+///|
+#cfg(platform="windows")
+#borrow(key, value)
+extern "C" fn OsEnvBlock::add_entry(
+  dst : OsEnvBlock,
+  index : Int,
+  key~ : String,
+  key_len~ : Int,
+  value~ : String,
+  value_len~ : Int,
+) -> Unit = "moonbitlang_async_env_block_add_entry"
 
 ///|
 #cfg(platform="windows")
@@ -121,29 +152,33 @@ async fn raw_spawn(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let env = match (inherit_env, extra_env.is_empty()) {
-    (true, true) => None
-    (false, true) => Some(@os_string.encode("\u{0}"))
-    (_, false) => {
-      let env = StringBuilder::new()
-      for key, value in extra_env {
-        env
-        ..write_string(key)
-        ..write_char('=')
-        ..write_string(value)
-        .write_string("\u{0}")
-      }
-      if inherit_env {
-        env.write_string(curr_env)
-      } else {
-        env <+ "\u{0}"
-      }
-      Some(@os_string.encode(env.to_string()))
+  let extra_env_len = for k, v in extra_env; acc = 0 {
+    continue acc + k.length() + v.length() + 2
+  } nobreak {
+    acc
+  }
+  let (env, extra_env_offset) = if inherit_env {
+    let curr_env = get_curr_env()
+    if curr_env.0.is_null() {
+      @os_error.check_errno(context)
     }
+    defer curr_env.free()
+    let curr_env_len = curr_env.length()
+    let env = OsEnvBlock::new(curr_env_len + extra_env_len)
+    env.write_env_block(curr_env)
+    (env, curr_env_len)
+  } else {
+    (OsEnvBlock::new(extra_env_len), 0)
+  }
+  for k, v in extra_env; offset = extra_env_offset {
+    let key_len = k.length()
+    let value_len = v.length()
+    env.add_entry(offset, key=k, key_len~, value=v, value_len~)
+    continue offset + key_len + value_len + 2
   }
   @event_loop.spawn(
     command_line,
-    env~,
+    env=env.0,
     stdin~,
     stdout~,
     stderr~,

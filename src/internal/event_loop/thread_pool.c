@@ -1996,8 +1996,7 @@ static
 void free_spawn_job(void *obj) {
   struct spawn_job *job = (struct spawn_job*)obj;
   moonbit_decref(job->command_line);
-  if (job->environment)
-    moonbit_decref(job->environment);
+  free(job->environment);
   if (job->cwd)
     moonbit_decref(job->cwd);
   if (job->result != INVALID_HANDLE_VALUE)
