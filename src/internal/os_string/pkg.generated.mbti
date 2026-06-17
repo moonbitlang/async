@@ -14,6 +14,7 @@ pub fn encode(StringView) -> OsString
 
 // Types and methods
 type OsString
+pub fn OsString::bytes_length(Self) -> Int
 pub impl Show for OsString
 
 // Type aliases

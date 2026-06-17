@@ -23,6 +23,18 @@ struct OsString(String)
 
 ///|
 #cfg(not(platform="windows"))
+pub fn OsString::bytes_length(self : OsString) -> Int {
+  self.0.length()
+}
+
+///|
+#cfg(platform="windows")
+pub fn OsString::bytes_length(self : OsString) -> Int {
+  self.0.length() * 2
+}
+
+///|
+#cfg(not(platform="windows"))
 pub fn encode(str : StringView) -> OsString {
   @utf8.encode(str)
 }
