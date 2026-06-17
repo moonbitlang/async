@@ -99,3 +99,6 @@ async fn raw_spawn(
   ignore(no_console_window)
   @event_loop.spawn(cmd, argv, env~, stdin~, stdout~, stderr~, cwd~, context~)
 }
+
+///|
+let _ignored : Unit = ignore(@os_error.check_errno)

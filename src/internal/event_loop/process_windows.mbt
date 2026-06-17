@@ -69,7 +69,7 @@ pub fn Process::close(self : Process) -> Unit {
 #cfg(platform="windows")
 pub async fn spawn(
   command_line : @os_string.OsString,
-  env~ : @os_string.OsString?,
+  env~ : @c_buffer.Buffer,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,

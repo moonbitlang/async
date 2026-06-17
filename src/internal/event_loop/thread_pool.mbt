@@ -238,7 +238,7 @@ extern "C" fn Job::spawn(
 #owned(command_line, env, cwd)
 extern "C" fn Job::spawn(
   command_line : @os_string.OsString,
-  env : @os_string.OsString?,
+  env : @c_buffer.Buffer,
   stdin : @fd_util.Fd,
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
