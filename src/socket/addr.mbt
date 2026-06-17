@@ -155,7 +155,7 @@ pub fn Addr::parse(src : String) -> Addr raise {
   if src.has_prefix("[") {
     let (ip_bytes, port, interface) = try_parse_ipv6(src)
     let scope_id = if interface is Some(interface) {
-      parse_ipv6_zone_suffix(interface, context="socket.Addr::parse()")
+      parse_ipv6_zone_suffix(interface, context="@socket.Addr::parse()")
     } else {
       0
     }

@@ -94,7 +94,7 @@ fn EventLoop::new() -> EventLoop raise {
   let (notify_recv, notify_send) = @fd_util.pipe(
     read_end_is_async=true,
     write_end_is_async=false,
-    context="initialze runtime",
+    context="initialize runtime",
   )
   poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
     err => {

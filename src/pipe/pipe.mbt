@@ -88,5 +88,5 @@ pub impl @io.Reader for PipeRead with fn _get_internal_buffer(self) {
 ///|
 pub impl @io.Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
   let PipeWrite(io) = self
-  io.write(buf, offset~, len~, context="@pipe.PipeRead::write()")
+  io.write(buf, offset~, len~, context="@pipe.PipeWrite::write()")
 }

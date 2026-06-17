@@ -178,7 +178,7 @@ pub fn TcpServer::fd(self : TcpServer) -> @fd_util.Fd {
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
-  let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept")
+  let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept()")
   try {
     if disable_nagle(conn.fd()) < 0 {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")

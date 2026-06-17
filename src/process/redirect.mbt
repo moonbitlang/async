@@ -52,7 +52,7 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
 /// where `w` is a temporary pipe that can be used to write to process output,
 /// and `r` should be passed to `@process.run`.
 pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
-  let context = "@process.read_from_process()"
+  let context = "@process.write_to_process()"
   let (r, w) = @fd_util.pipe(
     read_end_is_async=false,
     write_end_is_async=true,
@@ -159,7 +159,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     append=false,
     sync=0,
     mode=0,
-    context="@process.redirect_to_file()",
+    context="@process.redirect_from_file()",
   )
   RedirectToFile(file)
 }
