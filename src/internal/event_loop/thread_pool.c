@@ -2236,7 +2236,9 @@ static
 void free_spawn_job(void *obj) {
   struct spawn_job *job = (struct spawn_job*)obj;
   moonbit_decref(job->path);
-  moonbit_decref(job->args);
+  for (char **cursor = job->args; *cursor; ++cursor)
+    free(*cursor);
+  free(job->args);
   for (int i = job->inherited_env_entry_count; (job->envp)[i]; ++i) {
     free((job->envp)[i]);
   }

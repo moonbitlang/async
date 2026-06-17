@@ -16,6 +16,7 @@
 
 #ifndef _WIN32
 
+#include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -81,6 +82,37 @@ void moonbitlang_async_env_block_add_entry(
   moonbit_utf8_encode_from_utf16(value, 0, value_len, entry, key_bytes + 1);
   entry[key_bytes + value_bytes + 1] = 0;
   env_block[index] = (char*)entry; 
+}
+
+
+char **moonbitlang_async_make_argv_array(int32_t len) {
+  char **argv = malloc((len + 1) * sizeof(char*));
+  argv[len] = 0;
+  return argv;
+}
+
+void moonbitlang_async_argv_array_add_encoded_entry(
+  char **argv,
+  int32_t offset,
+  moonbit_bytes_t arg,
+  int32_t arg_len
+) {
+  char *entry = malloc(arg_len + 1);
+  memcpy(entry, arg, arg_len + 1); 
+  argv[offset] = entry;
+}
+
+void moonbitlang_async_argv_array_add_entry(
+  char **argv,
+  int32_t offset,
+  moonbit_string_t arg,
+  int32_t arg_len
+) {
+  int len = moonbit_utf8_len_from_utf16(arg, 0, arg_len);
+  char *entry = malloc(len + 1);
+  moonbit_utf8_encode_from_utf16(arg, 0, arg_len, (moonbit_bytes_t)entry, 0); 
+  entry[len] = 0;
+  argv[offset] = entry;
 }
 
 void moonbitlang_async_terminate_process(pid_t pid, int signal) {

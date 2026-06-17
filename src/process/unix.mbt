@@ -49,6 +49,34 @@ extern "C" fn OsEnvArray::add_entry(
 
 ///|
 #cfg(not(platform="windows"))
+priv struct OsArgv(@c_buffer.Buffer)
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang_async_make_argv_array"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(arg)
+extern "C" fn OsArgv::add_encoded_entry(
+  self : OsArgv,
+  offset : Int,
+  arg : @os_string.OsString,
+  arg_len~ : Int,
+) -> Unit = "moonbitlang_async_argv_array_add_encoded_entry"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(arg)
+extern "C" fn OsArgv::add_entry(
+  self : OsArgv,
+  offset : Int,
+  arg : String,
+  arg_len~ : Int,
+) -> Unit = "moonbitlang_async_argv_array_add_entry"
+
+///|
+#cfg(not(platform="windows"))
 async fn raw_spawn(
   cmd : StringView,
   args : ArrayView[String],
@@ -63,14 +91,14 @@ async fn raw_spawn(
   context~ : String,
 ) -> @event_loop.Process {
   let cmd = @os_string.encode(cmd)
-  let argv = FixedArray::make(args.length() + 2, None)
   let cwd = match cwd {
     None => None
     Some(cwd) => Some(@os_string.encode(cwd))
   }
-  argv[0] = Some(cmd)
-  for i in 0..<args.length() {
-    argv[i + 1] = Some(@os_string.encode(args[i]))
+  let argv = OsArgv::new(args.length() + 1)
+  argv.add_encoded_entry(0, cmd, arg_len=cmd.bytes_length())
+  for i, arg in args {
+    argv.add_entry(i + 1, arg, arg_len=arg.length())
   }
   defer {
     if stdin is Some(p) {
@@ -125,7 +153,7 @@ async fn raw_spawn(
   ignore(no_console_window)
   @event_loop.spawn(
     cmd,
-    argv,
+    argv.0,
     env=env.0,
     inherited_env_entry_count~,
     stdin~,

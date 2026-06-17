@@ -39,7 +39,7 @@ pub fn Process::close(_ : Process) -> Unit {
 #cfg(not(platform="windows"))
 pub async fn spawn(
   path : @os_string.OsString,
-  args : FixedArray[@os_string.OsString?],
+  args : @c_buffer.Buffer,
   env~ : @c_buffer.Buffer,
   inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
