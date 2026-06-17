@@ -40,14 +40,17 @@ pub fn Process::close(_ : Process) -> Unit {
 pub async fn spawn(
   path : @os_string.OsString,
   args : FixedArray[@os_string.OsString?],
-  env~ : FixedArray[@os_string.OsString?],
+  env~ : @c_buffer.Buffer,
+  inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Process {
-  let job = Job::spawn(path, args, env, stdin, stdout, stderr, cwd)
+  let job = Job::spawn(
+    path, args, env, inherited_env_entry_count, stdin, stdout, stderr, cwd,
+  )
   defer job.free()
   perform_job_in_worker(job, context~)
 }

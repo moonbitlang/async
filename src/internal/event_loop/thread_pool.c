@@ -2227,6 +2227,7 @@ struct spawn_job {
   char *path;
   char **args;
   char **envp;
+  int32_t inherited_env_entry_count;
   int stdio[3];
   char *cwd;
 };
@@ -2236,7 +2237,10 @@ void free_spawn_job(void *obj) {
   struct spawn_job *job = (struct spawn_job*)obj;
   moonbit_decref(job->path);
   moonbit_decref(job->args);
-  moonbit_decref(job->envp);
+  for (int i = job->inherited_env_entry_count; (job->envp)[i]; ++i) {
+    free((job->envp)[i]);
+  }
+  free(job->envp);
   if (job->cwd)
     moonbit_decref(job->cwd);
 }
@@ -2312,6 +2316,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,
   char **args,
   char **envp,
+  int32_t inherited_env_entry_count,
   int stdin_fd,
   int stdout_fd,
   int stderr_fd,
@@ -2321,6 +2326,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->path = path;
   job->args = args;
   job->envp = envp;
+  job->inherited_env_entry_count = inherited_env_entry_count;
   job->stdio[0] = stdin_fd;
   job->stdio[1] = stdout_fd;
   job->stdio[2] = stderr_fd;

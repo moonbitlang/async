@@ -2,6 +2,7 @@
 package "moonbitlang/async/internal/event_loop"
 
 import {
+  "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/core/ref",
@@ -54,7 +55,7 @@ pub async fn rmdir(StringView, context~ : String) -> Unit
 
 pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 
-pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : FixedArray[@os_string.OsString?], stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
+pub async fn spawn(@os_string.OsString, FixedArray[@os_string.OsString?], env~ : @c_buffer.Buffer, inherited_env_entry_count~ : Int, stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
 pub let stderr : Result[IoHandle, Error]
 
