@@ -148,10 +148,12 @@ pub async fn symlink(
 /// Change the permission of a file.
 /// Permission is represented as an integer in UNIX permission style.
 /// For example, `0o640` means:
+///
 /// - the owner of the file can read and write the file (`6`)
 /// - users in the owner group of the file can read the file (`4`)
 /// - other users can do nothing to the file
-#cfg(not(platform="windows"))
+///
+/// On Windows, `@fs.chmod` is not supported, and will fail with error.
 pub async fn chmod(path : StringView, mode : Int) -> Unit {
   @event_loop.chmod(path, mode, context="@fs.chmod()")
 }

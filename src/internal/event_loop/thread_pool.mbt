@@ -288,7 +288,3 @@ extern "C" fn Job::inotify_add_watch(
   path : @os_string.OsString,
   is_dir : Bool,
 ) -> Job = "moonbitlang_async_make_inotify_add_watch_job"
-
-///|
-#cfg(platform="windows")
-let _mute_unused_warning : Unit = ignore(@c_buffer.Buffer::get)
