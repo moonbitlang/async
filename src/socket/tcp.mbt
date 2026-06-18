@@ -77,7 +77,7 @@ pub async fn TcpServer::TcpServer(
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
-  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
   try {
     if addr.is_ipv6() && addr.is_ipv6_wildcard() {
       if 0 != set_ipv6_only(sock, !dual_stack) {

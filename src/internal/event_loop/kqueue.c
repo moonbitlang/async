@@ -30,26 +30,15 @@ void moonbitlang_async_event_bus_destroy(int kqfd) {
   close(kqfd);
 }
 
-static const int ev_masks[] = {
-  0,
-  EVFILT_READ,
-  EVFILT_WRITE,
-  EVFILT_READ | EVFILT_WRITE
-};
-
-int moonbitlang_async_event_bus_register(
-  int kqfd,
-  int fd,
-  int prev_events,
-  int new_events
-) {
-  int filter = ev_masks[new_events];
-
+int moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
   int flags = EV_ADD | EV_CLEAR;
 
-  struct kevent event;
-  EV_SET(&event, fd, filter, flags, 0, 0, 0);
-  return kevent(kqfd, &event, 1, 0, 0, 0);
+  struct kevent events[2];
+  EV_SET(&events[0], fd, EVFILT_READ, flags, 0, 0, 0);
+  if (!read_only)
+    EV_SET(&events[1], fd, EVFILT_WRITE, flags, 0, 0, 0);
+
+  return kevent(kqfd, events, read_only ? 1 : 2, 0, 0, 0);
 }
 
 int moonbitlang_async_support_wait_pid_via_event_bus() {

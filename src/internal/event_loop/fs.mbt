@@ -53,6 +53,7 @@ pub async fn open(
         fd,
         kind~,
         is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
+        read_only=access is 0,
       )
       (io, { dev_id: job.dev_id(), file_id: job.file_id() })
     }

@@ -45,7 +45,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let context = "@socket.UdpClient::new()"
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
-  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
   try {
     let dst_addr = if addr.is_multicast() {
       if @event_loop.platform is Windows {

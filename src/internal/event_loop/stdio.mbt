@@ -32,17 +32,14 @@ fn kind_of_fd_sync(
 fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
   let kind = kind_of_fd_sync(fd, context~)
   let is_async = @fd_util.fd_is_nonblocking(fd, context~)
-  let handle = { fd, kind, is_async, events: NoEvent, read: None, write: None }
+  let handle = { fd, kind, is_async, read: None, write: None }
   register_hook(
     init=() => {
       guard curr_loop.val is Some(evloop)
       guard evloop.fds.get(fd) is None
       evloop.fds[fd] = handle
     },
-    exit=() => {
-      handle.detach_from_event_loop()
-      handle.events = NoEvent
-    },
+    exit=() => handle.detach_from_event_loop(),
   )
   handle
 }

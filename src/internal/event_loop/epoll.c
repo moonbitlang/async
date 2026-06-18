@@ -40,22 +40,15 @@ static const int ev_masks[] = {
 // use mask to classify different kinds of entity
 static const uint64_t pid_mask = (uint64_t)1 << 63;
 
-int moonbitlang_async_event_bus_register(
-  int epfd,
-  int fd,
-  int prev_events,
-  int new_events
-) {
-  int events = ev_masks[prev_events | new_events];
-
-  events |= EPOLLET;
-  events |= EPOLLRDHUP;
+int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
+  int events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+  if (!read_only)
+    events |= EPOLLOUT;
 
   epoll_data_t data;
   data.u64 = fd;
   struct epoll_event event = { events, data };
-  int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-  return epoll_ctl(epfd, op, fd, &event);
+  return epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
 }
 
 int moonbitlang_async_support_wait_pid_via_event_bus() {

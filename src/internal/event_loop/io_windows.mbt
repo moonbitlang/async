@@ -148,12 +148,13 @@ pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
   is_async? : Bool = true,
+  read_only? : Bool = false,
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   if is_async {
-    evloop.bus.register(fd, prev_events=0, new_events=0) catch {
+    evloop.bus.register(fd, read_only~) catch {
       err => {
         @fd_util.close(fd, kind~, context~)
         raise err

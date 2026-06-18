@@ -30,14 +30,7 @@ void moonbitlang_async_event_bus_destroy(HANDLE iocp) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_event_bus_register(
-  HANDLE iocp,
-  HANDLE fd,
-  // the following parameters are just for consistency with Linux implementation,
-  // and has no effect on Windows
-  int32_t prev_events,
-  int32_t new_events
-) {
+int moonbitlang_async_event_bus_register(HANDLE iocp, HANDLE fd, int32_t read_only) {
   if (!SetFileCompletionNotificationModes(fd, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
     return -1;
   return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 0;

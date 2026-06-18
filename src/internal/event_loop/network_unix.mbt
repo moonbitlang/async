@@ -34,7 +34,6 @@ pub async fn IoHandle::recvfrom(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.prepare_read()
   let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     @coroutine.pause()
@@ -74,7 +73,6 @@ pub async fn IoHandle::sendto(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.prepare_write()
   let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     @coroutine.pause()
@@ -109,7 +107,6 @@ pub async fn IoHandle::connect(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  handle.prepare_write()
   if 0 == connect_ffi(handle.fd, addr) {
     return
   }
@@ -139,7 +136,6 @@ pub async fn IoHandle::accept(
   context~ : String,
 ) -> IoHandle {
   @coroutine.check_cancellation()
-  handle.prepare_read()
   let conn = accept_ffi(handle.fd, addr)
   let conn = if conn >= 0 {
     conn
