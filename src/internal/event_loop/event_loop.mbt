@@ -96,7 +96,7 @@ fn EventLoop::new() -> EventLoop raise {
     write_end_is_async=false,
     context="initialize runtime",
   )
-  bus.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
+  bus.register(notify_recv, read_only=true) catch {
     err => {
       @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
       @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")

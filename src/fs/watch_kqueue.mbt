@@ -51,7 +51,12 @@ fn KqueueWatcher::KqueueWatcher(
     @os_error.check_errno(context)
   }
   {
-    kqueue: @event_loop.IoHandle::from_fd(kqueue, kind=Unknown, is_async=true),
+    kqueue: @event_loop.IoHandle::from_fd(
+      kqueue,
+      kind=Unknown,
+      is_async=true,
+      read_only=true,
+    ),
     watched: {},
     watcher,
     event_buffer: FixedArray::make(KqueueWatcher::event_buffer_size(), 0),
@@ -153,7 +158,6 @@ extern "C" fn KqueueEvent::has_modify(event : KqueueEvent) -> Bool = "moonbitlan
 #cfg(not(platform="windows"))
 impl WatcherBackend for KqueueWatcher with fn wait(self) {
   let context = "@fs.Watcher::wait()"
-  self.kqueue.prepare_read()
   let root = self.watcher.watched[self.watcher.root_id]
   while root.is_clean() {
     self.process_events(timeout=None, context~)

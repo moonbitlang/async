@@ -24,10 +24,6 @@ priv struct EventBus(@fd_util.Fd)
 
 ///|
 #cfg(not(platform="windows"))
-const NoEvent = 0
-
-///|
-#cfg(not(platform="windows"))
 const ReadEvent = 1
 
 ///|
@@ -48,18 +44,16 @@ extern "C" fn EventBus::destroy(self : EventBus) = "moonbitlang_async_event_bus_
 extern "C" fn EventBus::register_ffi(
   self : EventBus,
   fd : @fd_util.Fd,
-  prev_events~ : Int,
-  new_events~ : Int,
+  read_only : Bool,
 ) -> Int = "moonbitlang_async_event_bus_register"
 
 ///|
 fn EventBus::register(
   self : EventBus,
   fd : @fd_util.Fd,
-  prev_events~ : Int,
-  new_events~ : Int,
+  read_only~ : Bool,
 ) -> Unit raise {
-  if self.register_ffi(fd, prev_events~, new_events~) < 0 {
+  if self.register_ffi(fd, read_only) < 0 {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
 }

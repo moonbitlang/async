@@ -203,7 +203,6 @@ extern "C" fn InotifyEvent::has_ignore(event : InotifyEvent) -> Bool = "moonbitl
 async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
   let context = "@fs.Watcher::wait()"
   let buf = FixedArray::make(InotifyWatcher::event_buffer_size(), b'\x00')
-  self.inotify.prepare_read()
   for ;; {
     let n = InotifyWatcher::fetch_os_event(self.inotify.fd(), buf)
     if n < 0 {

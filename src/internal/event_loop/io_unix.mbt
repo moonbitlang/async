@@ -18,7 +18,6 @@ struct IoHandle {
   mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
   is_async : Bool
-  mut events : Int
   mut read : @coroutine.Coroutine?
   mut write : @coroutine.Coroutine?
 }
@@ -32,44 +31,32 @@ pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
   is_async? : Bool = true,
+  read_only? : Bool = false,
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
-  if is_async && !(kind is Unknown) {
-    @fd_util.set_nonblocking(fd, context~) catch {
+  if is_async {
+    try {
+      if !(kind is Unknown) {
+        @fd_util.set_nonblocking(fd, context~)
+      }
+      evloop.bus.register(fd, read_only~)
+    } catch {
       err => {
         @fd_util.close(fd, kind~, context~)
         raise err
       }
     }
   }
-  let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
+  let handle = { fd, kind, is_async, read: None, write: None }
   evloop.fds[fd] = handle
   handle
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else {
-    abort("file descriptor already closed")
-  }
-  if (handle.events & ReadEvent) == 0 {
-    evloop.bus.register(
-      handle.fd,
-      prev_events=handle.events,
-      new_events=ReadEvent,
-    )
-    handle.events = handle.events | ReadEvent
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
 pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
-  guard (handle.events & ReadEvent) != 0
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
@@ -83,25 +70,7 @@ pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
 
 ///|
 #cfg(not(platform="windows"))
-fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else {
-    abort("file descriptor already closed")
-  }
-  if (handle.events & WriteEvent) == 0 {
-    evloop.bus.register(
-      handle.fd,
-      prev_events=handle.events,
-      new_events=WriteEvent,
-    )
-    handle.events = handle.events | WriteEvent
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
 async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
-  guard (handle.events & WriteEvent) != 0
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
@@ -146,7 +115,6 @@ pub async fn IoHandle::read(
 ) -> Int {
   if handle.is_async {
     @coroutine.check_cancellation()
-    handle.prepare_read()
     let ret = read_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {
       @coroutine.pause()
@@ -212,7 +180,6 @@ pub async fn IoHandle::write(
 ) -> Int {
   if handle.is_async {
     @coroutine.check_cancellation()
-    handle.prepare_write()
     let ret = write_ffi(handle.fd, buf, offset~, len~)
     if ret >= 0 {
       @coroutine.pause()
