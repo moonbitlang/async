@@ -1107,13 +1107,12 @@ struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
   return job;
 }
 
-#ifndef _WIN32
 // ===== chmod job, change permission of file =====
 
 struct chmod_job {
   struct job job;
   char *path;
-  mode_t mode;
+  int mode;
 };
 
 static
@@ -1124,10 +1123,18 @@ void free_chmod_job(void *obj) {
 
 static
 void chmod_job_worker(struct job *job) {
+#ifdef _WIN32
+
+  job->err = ERROR_NOT_SUPPORTED;
+
+#else
+
   struct chmod_job *chmod_job = (struct chmod_job*)job;
   job->ret = chmod(chmod_job->path, chmod_job->mode);
   if (job->ret < 0)
     job->err = errno;
+
+#endif
 }
 
 struct chmod_job *moonbitlang_async_make_chmod_job(char *path, int mode) {
@@ -1137,8 +1144,6 @@ struct chmod_job *moonbitlang_async_make_chmod_job(char *path, int mode) {
   return job;
 }
 
- 
-#endif
 // ===== fsync job, synchronize file modification to disk =====
 
 struct fsync_job {
