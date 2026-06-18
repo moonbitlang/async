@@ -47,7 +47,7 @@ options(
     "network.mbt": [ "native" ],
     "network_unix.mbt": [ "native" ],
     "network_windows.mbt": [ "native" ],
-    "poll.mbt": [ "native" ],
+    "event_bus.mbt": [ "native" ],
     "process_unix.mbt": [ "native" ],
     "process_windows.mbt": [ "native" ],
     "signal.mbt": [ "native" ],
