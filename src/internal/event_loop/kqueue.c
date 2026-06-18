@@ -22,11 +22,11 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-int moonbitlang_async_poll_create() {
+int moonbitlang_async_event_bus_create() {
   return kqueue();
 }
 
-void moonbitlang_async_poll_destroy(int kqfd) {
+void moonbitlang_async_event_bus_destroy(int kqfd) {
   close(kqfd);
 }
 
@@ -37,25 +37,22 @@ static const int ev_masks[] = {
   EVFILT_READ | EVFILT_WRITE
 };
 
-int moonbitlang_async_poll_register(
+int moonbitlang_async_event_bus_register(
   int kqfd,
   int fd,
   int prev_events,
-  int new_events,
-  int oneshot
+  int new_events
 ) {
   int filter = ev_masks[new_events];
 
   int flags = EV_ADD | EV_CLEAR;
-  if (oneshot)
-    flags |= EV_DISPATCH;
 
   struct kevent event;
   EV_SET(&event, fd, filter, flags, 0, 0, 0);
   return kevent(kqfd, &event, 1, 0, 0, 0);
 }
 
-int moonbitlang_async_support_wait_pid_via_poll() {
+int moonbitlang_async_support_wait_pid_via_event_bus() {
   return 1;
 }
 
@@ -63,7 +60,7 @@ int moonbitlang_async_support_wait_pid_via_poll() {
 // - `>= 0`: success, return the pid itself
 // - `-1`: failure
 // - `-2`: pid already terminated
-int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid) {
+int moonbitlang_async_event_bus_register_pid(int kqfd, pid_t pid) {
   struct kevent event;
 #ifdef __MACH__
   EV_SET(&event, pid, EVFILT_PROC, EV_ADD, NOTE_EXITSTATUS, 0, 0);
@@ -81,21 +78,10 @@ int moonbitlang_async_poll_register_pid(int kqfd, pid_t pid) {
   }
 }
 
-int moonbitlang_async_poll_remove(int kqfd, int fd, int events) {
-  struct kevent event;
-  EV_SET(&event, fd, ev_masks[events], EV_DELETE, 0, 0, 0);
-  return kevent(kqfd, &event, 1, 0, 0, 0);
-}
-
-int moonbitlang_async_poll_remove_pid(int kqfd, pid_t pid) {
-  // after the process exit, the pid is automatically removed
-  return 0;
-}
-
 #define EVENT_BUFFER_SIZE 1024
 static struct kevent event_buffer[EVENT_BUFFER_SIZE];
 
-int moonbitlang_async_poll_wait(int kqfd, int timeout) {
+int moonbitlang_async_event_bus_wait(int kqfd, int timeout) {
   struct timespec timeout_spec = { timeout / 1000, (timeout % 1000) * 1000000 };
   return kevent(
     kqfd,

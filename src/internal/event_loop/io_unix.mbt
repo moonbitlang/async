@@ -57,11 +57,10 @@ pub fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
     abort("file descriptor already closed")
   }
   if (handle.events & ReadEvent) == 0 {
-    evloop.poll.register(
+    evloop.bus.register(
       handle.fd,
       prev_events=handle.events,
       new_events=ReadEvent,
-      oneshot=false,
     )
     handle.events = handle.events | ReadEvent
   }
@@ -90,11 +89,10 @@ fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
     abort("file descriptor already closed")
   }
   if (handle.events & WriteEvent) == 0 {
-    evloop.poll.register(
+    evloop.bus.register(
       handle.fd,
       prev_events=handle.events,
       new_events=WriteEvent,
-      oneshot=false,
     )
     handle.events = handle.events | WriteEvent
   }
@@ -125,11 +123,6 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { return }
   evloop.fds.remove(handle.fd)
-  if !(handle.events is NoEvent) {
-    evloop.poll.remove(handle.fd, events=handle.events) catch {
-      err => abort("detach \{handle.fd} from loop: \{err}")
-    }
-  }
 }
 
 ///|
