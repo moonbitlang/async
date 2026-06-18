@@ -20,14 +20,13 @@
 #include <sys/syscall.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
-#include <errno.h>
 #include <linux/version.h>
 
-int moonbitlang_async_poll_create() {
+int moonbitlang_async_event_bus_create() {
   return epoll_create1(0);
 }
 
-void moonbitlang_async_poll_destroy(int epfd) {
+void moonbitlang_async_event_bus_destroy(int epfd) {
   close(epfd);
 }
 
@@ -41,16 +40,13 @@ static const int ev_masks[] = {
 // use mask to classify different kinds of entity
 static const uint64_t pid_mask = (uint64_t)1 << 63;
 
-int moonbitlang_async_poll_register(
+int moonbitlang_async_event_bus_register(
   int epfd,
   int fd,
   int prev_events,
-  int new_events,
-  int oneshot
+  int new_events
 ) {
   int events = ev_masks[prev_events | new_events];
-  if (oneshot)
-    events |= EPOLLONESHOT;
 
   events |= EPOLLET;
   events |= EPOLLRDHUP;
@@ -62,7 +58,7 @@ int moonbitlang_async_poll_register(
   return epoll_ctl(epfd, op, fd, &event);
 }
 
-int moonbitlang_async_support_wait_pid_via_poll() {
+int moonbitlang_async_support_wait_pid_via_event_bus() {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
   int pidfd = syscall(SYS_pidfd_open, getpid(), 0);
   if (pidfd >= 0) {
@@ -81,7 +77,7 @@ int moonbitlang_async_support_wait_pid_via_poll() {
 // - `>= 0`: success, return the pidfd
 // - `-1`: failure
 // - `-2`: already terminated
-int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
+int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
 
   int pidfd = syscall(SYS_pidfd_open, pid, 0);
@@ -107,20 +103,10 @@ int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
 #endif
 }
 
-int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
-  return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
-}
-
-int moonbitlang_async_poll_remove_pid(int epfd, int pidfd) {
-  int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, pidfd, 0);
-  close(pidfd);
-  return ret;
-}
-
 #define EVENT_BUFFER_SIZE 1024
 static struct epoll_event event_buffer[EVENT_BUFFER_SIZE];
 
-int moonbitlang_async_poll_wait(int epfd, int timeout) {
+int moonbitlang_async_event_bus_wait(int epfd, int timeout) {
   return epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
 }
 

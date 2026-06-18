@@ -153,7 +153,7 @@ pub fn IoHandle::from_fd(
   guard curr_loop.val is Some(evloop)
   guard evloop.fds.get(fd) is None
   if is_async {
-    evloop.poll.register(fd) catch {
+    evloop.bus.register(fd, prev_events=0, new_events=0) catch {
       err => {
         @fd_util.close(fd, kind~, context~)
         raise err

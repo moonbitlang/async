@@ -65,7 +65,7 @@ extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlan
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
   let Process(pid) = self
   guard curr_loop.val is Some(evloop)
-  guard support_wait_pid_via_poll else {
+  guard support_wait_pid_via_event_bus else {
     // pidfd not available, fall back to blocking waitpid in worker thread.
     // The worker reaps the child and stores the exit code in job.ret(),
     // so return it here to avoid a second waitpid in get_process_result.
@@ -76,13 +76,18 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     })
     exit_code
   }
-  match evloop.poll.register_pid(pid) {
+  match evloop.bus.register_pid(pid) {
     Running(alt_id) => {
       guard evloop.pids.get(alt_id) is None
       evloop.pids[alt_id] = @coroutine.current_coroutine()
       defer {
         evloop.pids.remove(alt_id)
-        evloop.poll.remove_pid(alt_id)
+        if platform is Linux {
+          // On Linux, the `pidfd` need to be closed
+          @fd_util.close(alt_id, kind=Unknown, context="") catch {
+            _ => ()
+          }
+        }
       }
       @coroutine.suspend()
     }

@@ -13,7 +13,14 @@
 // limitations under the License.
 
 ///|
-priv struct Instance(@fd_util.Fd)
+/// The main event bus for receiving various notifications
+/// This is what the main event loop iterates over.
+/// Implementation:
+///
+/// - Linux: epoll
+/// - MacOS: kqueue
+/// - Windows: IOCP
+priv struct EventBus(@fd_util.Fd)
 
 ///|
 #cfg(not(platform="windows"))
@@ -32,44 +39,28 @@ const WriteEvent = 2
 const ProcessEvent = 4
 
 ///|
-extern "C" fn Instance::new() -> Instance = "moonbitlang_async_poll_create"
+extern "C" fn EventBus::new() -> EventBus = "moonbitlang_async_event_bus_create"
 
 ///|
-extern "C" fn Instance::destroy(self : Instance) = "moonbitlang_async_poll_destroy"
+extern "C" fn EventBus::destroy(self : EventBus) = "moonbitlang_async_event_bus_destroy"
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn Instance::register_ffi(
-  self : Instance,
+extern "C" fn EventBus::register_ffi(
+  self : EventBus,
   fd : @fd_util.Fd,
   prev_events~ : Int,
   new_events~ : Int,
-  oneshot~ : Bool,
-) -> Int = "moonbitlang_async_poll_register"
+) -> Int = "moonbitlang_async_event_bus_register"
 
 ///|
-#cfg(not(platform="windows"))
-fn Instance::register(
-  self : Instance,
+fn EventBus::register(
+  self : EventBus,
   fd : @fd_util.Fd,
   prev_events~ : Int,
   new_events~ : Int,
-  oneshot? : Bool = false,
 ) -> Unit raise {
-  if self.register_ffi(fd, prev_events~, new_events~, oneshot~) < 0 {
-    @os_error.check_errno("poll_register")
-  }
-}
-
-///|
-#cfg(platform="windows")
-extern "C" fn Instance::register_ffi(self : Instance, fd : @fd_util.Fd) -> Int = "moonbitlang_async_poll_register"
-
-///|
-#cfg(platform="windows")
-fn Instance::register(self : Instance, fd : @fd_util.Fd) -> Unit raise {
-  if self.register_ffi(fd) < 0 {
-    @os_error.check_errno("poll_register")
+  if self.register_ffi(fd, prev_events~, new_events~) < 0 {
+    @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
 }
 
@@ -77,15 +68,15 @@ fn Instance::register(self : Instance, fd : @fd_util.Fd) -> Unit raise {
 /// On Linux <5.3, `pidfd` is not supported,
 /// hence we cannot wait for a process via `epoll`.
 #cfg(not(platform="windows"))
-extern "C" fn detect_wait_pid_via_poll() -> Bool = "moonbitlang_async_support_wait_pid_via_poll"
+extern "C" fn detect_wait_pid_via_event_bus() -> Bool = "moonbitlang_async_support_wait_pid_via_event_bus"
 
 ///|
 #cfg(not(platform="windows"))
-let support_wait_pid_via_poll : Bool = detect_wait_pid_via_poll()
+let support_wait_pid_via_event_bus : Bool = detect_wait_pid_via_event_bus()
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn Instance::register_pid_ffi(self : Instance, pid : Int) -> Int = "moonbitlang_async_poll_register_pid"
+extern "C" fn EventBus::register_pid_ffi(self : EventBus, pid : Int) -> Int = "moonbitlang_async_event_bus_register_pid"
 
 ///|
 #cfg(not(platform="windows"))
@@ -96,8 +87,8 @@ priv enum RegisterPidResult {
 
 ///|
 #cfg(not(platform="windows"))
-fn Instance::register_pid(
-  self : Instance,
+fn EventBus::register_pid(
+  self : EventBus,
   pid : Int,
 ) -> RegisterPidResult raise {
   let ret = self.register_pid_ffi(pid)
@@ -108,43 +99,6 @@ fn Instance::register_pid(
   } else {
     @os_error.check_errno("poll_register_pid")
     Stopped
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn Instance::remove_ffi(
-  self : Instance,
-  fd : @fd_util.Fd,
-  events~ : Int,
-) -> Int = "moonbitlang_async_poll_remove"
-
-///|
-#cfg(not(platform="windows"))
-fn Instance::remove(
-  self : Instance,
-  fd : @fd_util.Fd,
-  events~ : Int,
-) -> Unit raise {
-  if 0 != self.remove_ffi(fd, events~) {
-    @os_error.check_errno("poll_remove")
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn Instance::remove_pid_ffi(
-  self : Instance,
-  pid_handle : Int,
-) -> Int = "moonbitlang_async_poll_remove_pid"
-
-///|
-#cfg(not(platform="windows"))
-fn Instance::remove_pid(self : Instance, pid_handle : Int) -> Unit {
-  if 0 != self.remove_pid_ffi(pid_handle) {
-    @os_error.check_errno("poll_remove_pid") catch {
-      err => abort(err.to_string())
-    }
   }
 }
 
@@ -171,4 +125,4 @@ extern "C" fn Event::io_result(self : Event) -> IoResult = "moonbitlang_async_ev
 extern "C" fn Event::bytes_transferred(self : Event) -> Int = "moonbitlang_async_event_get_bytes_transferred"
 
 ///|
-extern "C" fn Instance::wait(self : Instance, timeout~ : Int) -> Int = "moonbitlang_async_poll_wait"
+extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang_async_event_bus_wait"

@@ -28,7 +28,7 @@ pub let platform : Platform = get_platform()
 ///|
 #cfg(not(platform="windows"))
 priv struct EventLoop {
-  poll : Instance
+  bus : EventBus
   fds : Map[@fd_util.Fd, IoHandle]
   pids : Map[Int, @coroutine.Coroutine]
   notify_recv : @fd_util.Fd
@@ -48,7 +48,7 @@ priv struct EventLoop {
 ///|
 #cfg(platform="windows")
 priv struct EventLoop {
-  poll : Instance
+  bus : EventBus
   fds : Map[@fd_util.Fd, IoHandle]
   max_worker_count : Int
   mut job_id : Int
@@ -90,13 +90,13 @@ pub fn register_hook(
 ///|
 #cfg(not(platform="windows"))
 fn EventLoop::new() -> EventLoop raise {
-  let poll = Instance::new()
+  let bus = EventBus::new()
   let (notify_recv, notify_send) = @fd_util.pipe(
     read_end_is_async=true,
     write_end_is_async=false,
     context="initialize runtime",
   )
-  poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
+  bus.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
     err => {
       @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
       @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")
@@ -105,7 +105,7 @@ fn EventLoop::new() -> EventLoop raise {
   }
   init_thread_pool_ffi(notify_send)
   {
-    poll,
+    bus,
     fds: {},
     pids: {},
     notify_recv,
@@ -126,13 +126,13 @@ fn EventLoop::new() -> EventLoop raise {
 ///|
 #cfg(platform="windows")
 fn EventLoop::new() -> EventLoop raise {
-  let poll = Instance::new()
-  init_thread_pool_ffi(poll.0)
+  let bus = EventBus::new()
+  init_thread_pool_ffi(bus.0)
   if init_WSA_ffi() != 0 {
     @os_error.check_errno("initialize WSA")
   }
   {
-    poll,
+    bus,
     fds: {},
     max_worker_count: 1024,
     job_id: 0,
@@ -155,17 +155,14 @@ fn EventLoop::destroy(evloop : EventLoop) -> Unit {
   @fd_util.close(evloop.notify_send, kind=Pipe, context="initialize runtime") catch {
     _ => ()
   }
-  evloop.poll.remove(evloop.notify_recv, events=ReadEvent) catch {
-    _ => ()
-  }
-  evloop.poll.destroy()
+  evloop.bus.destroy()
   destroy_thread_pool()
 }
 
 ///|
 #cfg(platform="windows")
 fn EventLoop::destroy(evloop : EventLoop) -> Unit {
-  evloop.poll.destroy()
+  evloop.bus.destroy()
   destroy_thread_pool()
   ignore(cleanup_WSA_ffi())
 }
@@ -214,7 +211,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   } else {
     -1
   }
-  let n = self.poll.wait(timeout~)
+  let n = self.bus.wait(timeout~)
   if n < 0 {
     @os_error.check_errno("runtime internal: poll_wait")
   }
@@ -353,12 +350,6 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
     if handle.write is Some(coro) {
       coro.cancel()
     }
-    if !(handle.events is NoEvent) {
-      // if `poll_register` fails, `handle.events` may be `NoEvent`,
-      // in this case we have never added it to the poller,
-      // so we must not remove it from the poller here
-      self.poll.remove(fd, events=handle.events)
-    }
     @fd_util.close(
       fd,
       kind=handle.kind,
@@ -370,9 +361,8 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
   for _, coro in self.jobs {
     coro.cancel()
   }
-  for pid, coro in self.pids {
+  for _, coro in self.pids {
     coro.cancel()
-    self.poll.remove_pid(pid)
   }
   self.pids.clear()
   for worker in self.idle_workers {
