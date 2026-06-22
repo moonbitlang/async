@@ -305,10 +305,12 @@ fn EventLoop::poll(self : Self) -> Unit raise {
     let fd = event.fd()
     if @fd_util.fd_is_valid(fd) {
       // completed IO operation on a file descriptor
-      guard self.fds.get(fd) is Some(_) else {  }
+      guard self.fds.get(fd) is Some(io) else {  }
       let result = event.io_result()
-      let job_id = result.job_id()
-      if self.jobs.get(job_id) is Some(coro) {
+      let event = result.event()
+      if event is ReadEvent && io.read is Waiting(coro) {
+        coro.wake()
+      } else if event is WriteEvent && io.write is Waiting(coro) {
         coro.wake()
       }
     } else {

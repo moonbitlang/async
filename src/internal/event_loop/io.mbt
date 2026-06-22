@@ -13,7 +13,6 @@
 // limitations under the License.
 
 ///|
-#warnings("-unused_constructor")
 priv enum IoStatus {
   Idle
   // a pending read/write operation is already submitted to the OS or thread pool

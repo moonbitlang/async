@@ -43,10 +43,16 @@ enum IoResultKind {
   ReadDirChanges
 };
 
+// should be the same as `ReadEvent`/`WriteEvent` in `event_bus.mbt`
+#define IO_RESULT_READ_EVENT  1
+#define IO_RESULT_WRITE_EVENT 2
+
 struct IoResult {
   OVERLAPPED overlapped;
   enum IoResultKind kind;
-  int32_t job_id;
+  // Used to identify different IO operations on the same handle (in particular read v.s. write).
+  // May be `IO_RESULT_READ_EVENT` or `IO_RESULT_WRITE_EVENT`
+  int32_t event;
 };
 
 struct FileIoResult {
@@ -113,26 +119,26 @@ struct ReadDirChangesIoResult {
 };
 
 static inline
-struct IoResult *make_io_result(int job_id, enum IoResultKind kind, size_t size) {
+struct IoResult *make_io_result(int event, enum IoResultKind kind, size_t size) {
   struct IoResult *result = (struct IoResult*)malloc(size);
   memset(result, 0, sizeof(OVERLAPPED));
   result->kind = kind;
-  result->job_id = job_id;
+  result->event = event;
   return result;
 }
 
-#define MAKE_IO_RESULT(job_id, kind)\
-  (struct kind##IoResult*)make_io_result(job_id, kind, sizeof(struct kind##IoResult))
+#define MAKE_IO_RESULT(event, kind)\
+  (struct kind##IoResult*)make_io_result(event, kind, sizeof(struct kind##IoResult))
 
 MOONBIT_FFI_EXPORT
 struct FileIoResult *moonbitlang_async_make_file_io_result(
-  int32_t job_id,
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int64_t position
 ) {
-  struct FileIoResult *result = MAKE_IO_RESULT(job_id, File);
+  struct FileIoResult *result = MAKE_IO_RESULT(event, File);
   result->header.overlapped.Offset = position & 0xffffffff;
   result->header.overlapped.OffsetHigh = position >> 32;
   result->buf_obj = buf;
@@ -143,13 +149,13 @@ struct FileIoResult *moonbitlang_async_make_file_io_result(
 
 MOONBIT_FFI_EXPORT
 struct SocketIoResult *moonbitlang_async_make_socket_io_result(
-  int32_t job_id,
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int32_t flags
 ) {
-  struct SocketIoResult *result = MAKE_IO_RESULT(job_id, Socket);
+  struct SocketIoResult *result = MAKE_IO_RESULT(event, Socket);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
@@ -159,14 +165,14 @@ struct SocketIoResult *moonbitlang_async_make_socket_io_result(
 
 MOONBIT_FFI_EXPORT
 struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result(
-  int32_t job_id,
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int32_t flags,
   struct sockaddr *addr
 ) {
-  struct SocketWithAddrIoResult *result = MAKE_IO_RESULT(job_id, SocketWithAddr);
+  struct SocketWithAddrIoResult *result = MAKE_IO_RESULT(event, SocketWithAddr);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
@@ -179,27 +185,23 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
 }
 
 MOONBIT_FFI_EXPORT
-struct ConnectIoResult *moonbitlang_async_make_connect_io_result(
-  int32_t job_id,
-  struct sockaddr *addr
-) {
-  struct ConnectIoResult *result = MAKE_IO_RESULT(job_id, Connect);
+struct ConnectIoResult *moonbitlang_async_make_connect_io_result(struct sockaddr *addr) {
+  struct ConnectIoResult *result = MAKE_IO_RESULT(IO_RESULT_WRITE_EVENT, Connect);
   result->addr = addr;
   return result;
 }
 
 MOONBIT_FFI_EXPORT
-struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t job_id) {
-  return MAKE_IO_RESULT(job_id, Accept);
+struct AcceptIoResult *moonbitlang_async_make_accept_io_result() {
+  return MAKE_IO_RESULT(IO_RESULT_READ_EVENT, Accept);
 }
 
 MOONBIT_FFI_EXPORT
 struct ReadDirChangesIoResult *moonbitlang_async_make_read_dir_changes_io_result(
-  int32_t job_id,
   char *buf,
   int32_t len
 ) {
-  struct ReadDirChangesIoResult *result = MAKE_IO_RESULT(job_id, ReadDirChanges);
+  struct ReadDirChangesIoResult *result = MAKE_IO_RESULT(IO_RESULT_READ_EVENT, ReadDirChanges);
   result->buf = buf;
   result->len = len;
   return result;
@@ -231,8 +233,8 @@ void moonbitlang_async_free_io_result(struct IoResult *obj) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_io_result_get_job_id(struct IoResult *result) {
-  return result->job_id;
+int32_t moonbitlang_async_io_result_get_event(struct IoResult *result) {
+  return result->event;
 }
 
 MOONBIT_FFI_EXPORT

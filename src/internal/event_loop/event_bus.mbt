@@ -23,11 +23,9 @@
 priv struct EventBus(@fd_util.Fd)
 
 ///|
-#cfg(not(platform="windows"))
 const ReadEvent = 1
 
 ///|
-#cfg(not(platform="windows"))
 const WriteEvent = 2
 
 ///|
