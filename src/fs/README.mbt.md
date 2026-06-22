@@ -67,6 +67,11 @@ async test "open with append mode" {
 }
 ```
 
+When `append=true`, sequential writes through the `@io.Writer` interface
+always append to the current end of the file, even if another process extends
+the file after it is opened. Append mode does not change read behavior, and
+random-access writes with `write_at` are not supported on append-mode files.
+
 The `create` function is a convenience wrapper for creating new files:
 
 ```moonbit check
@@ -137,6 +142,9 @@ async test "read_exactly specific bytes" {
 }
 ```
 
+When reading through the `@io.Reader` interface, a `File` is read as a byte
+stream. The read stream position is independent of the write stream position.
+
 ### Writing Files
 
 Write data to files using various methods:
@@ -193,6 +201,11 @@ async test "write_once for single write operation" {
   inspect(written, content="12")
 }
 ```
+
+Sequential writes through the `@io.Writer` interface write a byte stream
+starting at offset `0` by default. The write stream position is independent of
+the read stream position. For files opened with `append=true`, sequential writes
+append to the end of the file instead.
 
 ### Random access on files
 
@@ -254,6 +267,7 @@ Some important notes when using `read_at` and `write_at`:
 - only seekable files (i.e. regular files or block devices) support `read_at` and `write_at`. Calling `read_at` and `write_at` on unsupported file types result in error
 - `read_at` and `write_at` does not modify the cursor for reading/writing the file as a stream
 - `read_at` always read as much as possible. When its return value is smaller than requested length, it always indicates EOF
+- `write_at` is forbidden on files opened with `append=true`; use sequential writes to append data
 
 ## Directory Operations
 

@@ -87,6 +87,10 @@ fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
 ///   see `SyncMode` for more details. The default is `NoSync`
 ///
 /// - if `append` is `true` (`false` by default), the file will be opened in append mode.
+///   Under append mode, sequential write (via the `@io.Writer` interface)
+///   will always write to the end of the file, even if the file is modified externally.
+///   The semantic of reading from the file is unaffected by `append`.
+///   Random access write (`write_at`) is forbidden for file opened in append mode.
 ///
 /// - `create_mode` specify how to handle file creation, truncation, etc.
 ///   See the type `CreateMode` for more details.
@@ -189,6 +193,11 @@ pub async fn create(
 ///
 /// - EOF is reached before reading all requested data
 /// - the file is a named pipe, and not enough data is available
+///
+/// When reading a file via the `@io.Reader` interface,
+/// the content of the file will be read as a byte stream.
+/// The position of the read stream in the file is
+/// independent of the write stream (via the `@io.Writer` interface)
 pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
 }
@@ -241,6 +250,15 @@ pub async fn File::read_exactly_at(
 }
 
 ///|
+/// If the file is opened with `append=true`,
+/// writing to the file via the `@io.Writer` interface
+/// always append content at the end of the file.
+///
+/// If the file is opened with `append=false` (the default),
+/// content written to the file via the `@io.Writer` interface
+/// will be written as a byte stream, starting at offset 0.
+/// The position of the write stream in the file is
+/// independent of the read stream (via the `@io.Reader` interface)
 pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
