@@ -22,7 +22,6 @@ priv enum IoStatus {
 }
 
 ///|
-#warnings("-unused_field")
 struct IoHandle {
   mut fd : @fd_util.Fd
   kind : @fd_util.FileKind
@@ -67,6 +66,100 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 }
 
 ///|
+async fn IoHandle::read_via_worker(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  guard handle.read is Idle
+  handle.read = Submitted
+  defer {
+    handle.read = Idle
+  }
+  let job = Job::read(handle.fd, buf, offset, len, position=handle.read_offset)
+  defer job.free()
+  let cancel = if platform is Windows || handle.kind.can_poll() {
+    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+  } else {
+    None
+  }
+  perform_job_in_worker(job, context~, cancel?)
+}
+
+///|
+pub async fn IoHandle::read(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  @coroutine.check_cancellation()
+  let n = if handle.is_async {
+    handle.read_via_event_bus(buf, offset~, len~, context~)
+  } else {
+    handle.read_via_worker(buf, offset~, len~, context~)
+  }
+  if handle.read_offset >= 0 {
+    handle.read_offset += n.to_int64()
+  }
+  n
+}
+
+///|
+async fn IoHandle::write_via_worker(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  guard curr_loop.val is Some(evloop)
+  guard handle.write is Idle
+  handle.write = Submitted
+  defer {
+    handle.write = Idle
+  }
+  let job = Job::write(
+    handle.fd,
+    buf,
+    offset,
+    len,
+    position=handle.write_offset,
+  )
+  defer job.free()
+  let cancel = if platform is Windows || handle.kind.can_poll() {
+    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+  } else {
+    None
+  }
+  perform_job_in_worker(job, context~, cancel?)
+}
+
+///|
+pub async fn IoHandle::write(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  @coroutine.check_cancellation()
+  let n = if handle.is_async {
+    handle.write_via_event_bus(buf, offset~, len~, context~)
+  } else {
+    handle.write_via_worker(buf, offset~, len~, context~)
+  }
+  if handle.write_offset >= 0 {
+    handle.write_offset += n.to_int64()
+  }
+  n
+}
+
+///|
 pub async fn IoHandle::read_at(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -100,6 +193,11 @@ pub async fn IoHandle::write_at(
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.is_async
+  guard handle.write_offset >= 0 else {
+    raise Failure::Failure(
+      "`write_at` is not supported on non-regular file or file opened in append mode",
+    )
+  }
   let job = Job::write(handle.fd, buf, offset, len, position~)
   defer job.free()
   let cancel = if platform is Windows {

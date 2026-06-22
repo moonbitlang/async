@@ -55,6 +55,11 @@ pub async fn open(
         is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
         read_only=access is 0,
       )
+      if append {
+        // For append mode file descriptor, let the OS do the work.
+        // Reading is unaffected by `append`.
+        io.write_offset = -1
+      }
       (io, { dev_id: job.dev_id(), file_id: job.file_id() })
     }
   }

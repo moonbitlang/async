@@ -37,9 +37,17 @@ fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
     kind,
     is_async,
     read: Idle,
-    read_offset: 0,
+    read_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
     write: Idle,
-    write_offset: 0,
+    write_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
   }
   register_hook(
     init=() => {
