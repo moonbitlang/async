@@ -13,16 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
-struct IoHandle {
-  mut fd : @fd_util.Fd
-  kind : @fd_util.FileKind
-  is_async : Bool
-  mut read : @coroutine.Coroutine?
-  mut write : @coroutine.Coroutine?
-}
-
-///|
 /// Create a IO handle from a raw file descriptor.
 /// The ownership of the file descriptor would be transferred to this function,
 /// so the caller must not close the file descriptor manually in any circumstances.
@@ -49,7 +39,15 @@ pub fn IoHandle::from_fd(
       }
     }
   }
-  let handle = { fd, kind, is_async, read: None, write: None }
+  let handle = {
+    fd,
+    kind,
+    is_async,
+    read: Idle,
+    read_offset: 0,
+    write: Idle,
+    write_offset: 0,
+  }
   evloop.fds[fd] = handle
   handle
 }
@@ -60,10 +58,10 @@ pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  guard handle.read is None
-  handle.read = Some(@coroutine.current_coroutine())
+  guard handle.read is Idle
+  handle.read = Waiting(@coroutine.current_coroutine())
   defer {
-    handle.read = None
+    handle.read = Idle
   }
   @coroutine.suspend()
 }
@@ -74,24 +72,13 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  guard handle.write is None
+  guard handle.write is Idle
   let coro = @coroutine.current_coroutine()
-  handle.write = Some(coro)
+  handle.write = Waiting(coro)
   defer {
-    handle.write = None
+    handle.write = Idle
   }
   @coroutine.suspend()
-}
-
-///|
-/// Detach a file descriptor from the event loop,
-/// but does not close the file descriptor itself.
-/// The underlying file descriptor is returned.
-#cfg(not(platform="windows"))
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else { return }
-  evloop.fds.remove(handle.fd)
 }
 
 ///|
@@ -131,6 +118,10 @@ pub async fn IoHandle::read(
     }
     ret
   } else {
+    handle.read = Submitted
+    defer {
+      handle.read = Idle
+    }
     let cancel = if handle.kind.can_poll() {
       guard curr_loop.val is Some(evloop)
       Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
@@ -154,6 +145,10 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   guard !handle.kind.can_poll()
+  handle.read = Submitted
+  defer {
+    handle.read = Idle
+  }
   let job = Job::read(handle.fd, buf, offset, len, position~)
   defer job.free()
   perform_job_in_worker(job, context~)
@@ -196,6 +191,10 @@ pub async fn IoHandle::write(
     }
     ret
   } else {
+    handle.write = Submitted
+    defer {
+      handle.write = Idle
+    }
     let cancel = if handle.kind.can_poll() {
       guard curr_loop.val is Some(evloop)
       Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
@@ -219,6 +218,10 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   guard !handle.kind.can_poll()
+  handle.write = Submitted
+  defer {
+    handle.write = Idle
+  }
   let job = Job::write(handle.fd, buf, offset, len, position~)
   defer job.free()
   perform_job_in_worker(job, context~) |> ignore

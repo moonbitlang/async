@@ -545,7 +545,7 @@ void read_job_worker(struct job *job) {
 
    OVERLAPPED overlapped;
    memset(&overlapped, 0, sizeof(OVERLAPPED));
-   if (read_job->position > 0) {
+   if (read_job->position >= 0) {
      overlapped.Offset = read_job->position & 0xffffffff;
      overlapped.OffsetHigh = read_job->position >> 32;
    }
@@ -622,7 +622,7 @@ void write_job_worker(struct job *job) {
 
    OVERLAPPED overlapped;
    memset(&overlapped, 0, sizeof(OVERLAPPED));
-   if (write_job->position > 0) {
+   if (write_job->position >= 0) {
      overlapped.Offset = write_job->position & 0xffffffff;
      overlapped.OffsetHigh = write_job->position >> 32;
    }
