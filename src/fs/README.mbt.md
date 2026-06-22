@@ -296,10 +296,10 @@ async test "readdir - read directory entries" {
     include_hidden=false,
     include_special=false,
   )
-  @fs.remove("\{dir_path}/test1.txt")
-  @fs.remove("\{dir_path}/test2.txt")
-  @fs.rmdir(dir_path)
-  inspect(entries.length(), content="2")
+  // avoid platform inconsistent ordering
+  entries.sort()
+  @fs.rmdir(dir_path, recursive=true)
+  json_inspect(entries, content=["test1.txt", "test2.txt"])
 }
 
 ///|
@@ -311,14 +311,8 @@ async test "readdir with sorting" {
   @fs.write_file("\{dir_path}/a.txt", b"", create_mode=CreateOrTruncate)
   @fs.write_file("\{dir_path}/b.txt", b"", create_mode=CreateOrTruncate)
   let entries = @fs.readdir(dir_path, sort=true)
-  @fs.remove("\{dir_path}/a.txt")
-  @fs.remove("\{dir_path}/b.txt")
-  @fs.remove("\{dir_path}/c.txt")
-  @fs.rmdir(dir_path)
-  guard entries.length() >= 3 else { println(@debug.to_string(entries)) }
-  inspect(entries[0], content="a.txt")
-  inspect(entries[1], content="b.txt")
-  inspect(entries[2], content="c.txt")
+  @fs.rmdir(dir_path, recursive=true)
+  json_inspect(entries, content=["a.txt", "b.txt", "c.txt"])
 }
 
 ///|
@@ -329,14 +323,12 @@ async test "opendir and Directory::read_all" {
   @fs.write_file("\{dir_path}/file1.txt", b"test", create_mode=CreateOrTruncate)
   @fs.write_file("\{dir_path}/file2.txt", b"test", create_mode=CreateOrTruncate)
   let dir = @fs.opendir(dir_path)
-  let entries = dir.read_all(include_hidden=false, include_special=false)
+  let entries = dir
+    .read_all(include_hidden=false, include_special=false)
+    ..sort()
   dir.close()
-  @fs.remove("\{dir_path}/file1.txt")
-  @fs.remove("\{dir_path}/file2.txt")
-  @fs.rmdir(dir_path)
-  inspect(entries.length(), content="2")
-  inspect(entries.contains("file1.txt"), content="true")
-  inspect(entries.contains("file2.txt"), content="true")
+  @fs.rmdir(dir_path, recursive=true)
+  json_inspect(entries, content=["file1.txt", "file2.txt"])
 }
 ```
 
