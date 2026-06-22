@@ -245,37 +245,13 @@ async fn IoHandle::generic_read(
 
 ///|
 #cfg(platform="windows")
-pub async fn IoHandle::read(
+async fn IoHandle::read_via_event_bus(
   handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
-  if !handle.is_async {
-    guard handle.read is Idle
-    handle.read = Submitted
-    defer {
-      handle.read = Idle
-    }
-    let job = Job::read(
-      handle.fd,
-      buf,
-      offset,
-      len,
-      position=handle.read_offset,
-    )
-    defer job.free()
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~) catch {
-      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
-      err => raise err
-    }
-    handle.read_offset += n.to_int64()
-    return n
-  }
   let result = match handle.kind {
     Regular => panic()
     Socket =>
@@ -296,9 +272,7 @@ pub async fn IoHandle::read(
       )
   }
   defer result.free()
-  let n = handle.generic_read(result, context~)
-  handle.read_offset += n.to_int64()
-  n
+  handle.generic_read(result, context~)
 }
 
 ///|
@@ -332,41 +306,18 @@ async fn IoHandle::generic_write(
 
 ///|
 #cfg(platform="windows")
-pub async fn IoHandle::write(
+async fn IoHandle::write_via_event_bus(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
-  if !handle.is_async {
-    guard handle.write is Idle
-    handle.write = Submitted
-    defer {
-      handle.write = Idle
-    }
-    let job = Job::write(
-      handle.fd,
-      buf,
-      offset,
-      len,
-      position=handle.write_offset,
-    )
-    defer job.free()
-    let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-    let n = perform_job_in_worker(job, context~, cancel~)
-    handle.write_offset += n.to_int64()
-    return n
-  }
   let result = match handle.kind {
     Regular => panic()
     Socket => IoResult::for_socket(WriteEvent, buf, offset~, len~, flags=0)
     _ => IoResult::for_file(WriteEvent, buf, offset~, len~, position=0)
   }
   defer result.free()
-  let n = handle.generic_write(result, context~)
-  handle.write_offset += n.to_int64()
-  n
+  handle.generic_write(result, context~)
 }

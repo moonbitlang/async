@@ -44,9 +44,17 @@ pub fn IoHandle::from_fd(
     kind,
     is_async,
     read: Idle,
-    read_offset: 0,
+    read_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
     write: Idle,
-    write_offset: 0,
+    write_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
   }
   evloop.fds[fd] = handle
   handle
@@ -93,45 +101,28 @@ extern "C" fn read_ffi(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::read(
+async fn IoHandle::read_via_event_bus(
   handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  if handle.is_async {
-    @coroutine.check_cancellation()
-    let ret = read_ffi(handle.fd, buf, offset~, len~)
-    if ret >= 0 {
-      @coroutine.pause()
-      return ret
-    }
-    let ret = if @os_error.is_nonblocking_io_error() {
-      handle.wait_read()
-      read_ffi(handle.fd, buf, offset~, len~)
-    } else {
-      ret
-    }
-    if ret < 0 {
-      @os_error.check_errno(context)
-    }
-    ret
-  } else {
-    handle.read = Submitted
-    defer {
-      handle.read = Idle
-    }
-    let cancel = if handle.kind.can_poll() {
-      guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-    } else {
-      None
-    }
-    let job = Job::read(handle.fd, buf, offset, len, position=-1)
-    defer job.free()
-    perform_job_in_worker(job, context~, cancel?)
+  let ret = read_ffi(handle.fd, buf, offset~, len~)
+  if ret >= 0 {
+    @coroutine.pause()
+    return ret
   }
+  let ret = if @os_error.is_nonblocking_io_error() {
+    handle.wait_read()
+    read_ffi(handle.fd, buf, offset~, len~)
+  } else {
+    ret
+  }
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret
 }
 
 ///|
@@ -146,43 +137,26 @@ extern "C" fn write_ffi(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::write(
+async fn IoHandle::write_via_event_bus(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  if handle.is_async {
-    @coroutine.check_cancellation()
-    let ret = write_ffi(handle.fd, buf, offset~, len~)
-    if ret >= 0 {
-      @coroutine.pause()
-      return ret
-    }
-    let ret = if @os_error.is_nonblocking_io_error() {
-      handle.wait_write()
-      write_ffi(handle.fd, buf, offset~, len~)
-    } else {
-      ret
-    }
-    if ret < 0 {
-      @os_error.check_errno(context)
-    }
-    ret
-  } else {
-    handle.write = Submitted
-    defer {
-      handle.write = Idle
-    }
-    let cancel = if handle.kind.can_poll() {
-      guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-    } else {
-      None
-    }
-    let job = Job::write(handle.fd, buf, offset, len, position=-1)
-    defer job.free()
-    perform_job_in_worker(job, context~, cancel?)
+  let ret = write_ffi(handle.fd, buf, offset~, len~)
+  if ret >= 0 {
+    @coroutine.pause()
+    return ret
   }
+  let ret = if @os_error.is_nonblocking_io_error() {
+    handle.wait_write()
+    write_ffi(handle.fd, buf, offset~, len~)
+  } else {
+    ret
+  }
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret
 }
