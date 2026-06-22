@@ -286,10 +286,10 @@ fn EventLoop::poll(self : Self) -> Unit raise {
         }
       }
     } else if self.fds.get(fd) is Some(handle) {
-      if (events & ReadEvent) != 0 && handle.read is Some(coro) {
+      if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
         coro.wake()
       }
-      if (events & WriteEvent) != 0 && handle.write is Some(coro) {
+      if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {
         coro.wake()
       }
     }
@@ -344,10 +344,10 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
     }
   }
   for fd, handle in self.fds {
-    if handle.read is Some(coro) {
+    if handle.read is Waiting(coro) {
       coro.cancel()
     }
-    if handle.write is Some(coro) {
+    if handle.write is Waiting(coro) {
       coro.cancel()
     }
     @fd_util.close(

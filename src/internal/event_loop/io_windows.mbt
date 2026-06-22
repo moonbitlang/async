@@ -128,18 +128,6 @@ fn IoResult::status(
 }
 
 ///|
-#cfg(platform="windows")
-struct IoHandle {
-  mut fd : @fd_util.Fd
-  kind : @fd_util.FileKind
-  is_async : Bool
-  mut reading : Bool
-  mut read_offset : Int64
-  mut writing : Bool
-  mut write_offset : Int64
-}
-
-///|
 /// Create a IO handle from a raw file descriptor.
 /// The ownership of the file descriptor would be transferred to this function,
 /// so the caller must not close the file descriptor manually in any circumstances.
@@ -165,21 +153,13 @@ pub fn IoHandle::from_fd(
     fd,
     kind,
     is_async,
-    reading: false,
+    read: Idle,
     read_offset: 0,
-    writing: false,
+    write: Idle,
     write_offset: 0,
   }
   evloop.fds[fd] = handle
   handle
-}
-
-///|
-#cfg(platform="windows")
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else { return }
-  evloop.fds.remove(handle.fd)
 }
 
 ///|
@@ -244,10 +224,10 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard !handle.reading
-  handle.reading = true
+  guard handle.read is Idle
+  handle.read = Submitted
   defer {
-    handle.reading = false
+    handle.read = Idle
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {
@@ -357,10 +337,10 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard !handle.writing
-  handle.writing = true
+  guard handle.write is Idle
+  handle.write = Submitted
   defer {
-    handle.writing = false
+    handle.write = Idle
   }
   guard curr_loop.val is Some(evloop)
   if !handle.is_async {

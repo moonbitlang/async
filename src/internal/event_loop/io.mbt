@@ -13,6 +13,28 @@
 // limitations under the License.
 
 ///|
+#warnings("-unused_constructor")
+priv enum IoStatus {
+  Idle
+  // a pending read/write operation is already submitted to the OS or thread pool
+  Submitted
+  // waiting for read/write readiness
+  Waiting(@coroutine.Coroutine)
+}
+
+///|
+#warnings("-unused_field")
+struct IoHandle {
+  mut fd : @fd_util.Fd
+  kind : @fd_util.FileKind
+  is_async : Bool
+  mut read : IoStatus
+  mut read_offset : Int64
+  mut write : IoStatus
+  mut write_offset : Int64
+}
+
+///|
 pub fn IoHandle::fd(handle : IoHandle) -> @fd_util.Fd {
   handle.fd
 }
@@ -20,6 +42,16 @@ pub fn IoHandle::fd(handle : IoHandle) -> @fd_util.Fd {
 ///|
 pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
   handle.kind
+}
+
+///|
+/// Detach a file descriptor from the event loop,
+/// but does not close the file descriptor itself.
+/// The underlying file descriptor is returned.
+pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
+  guard curr_loop.val is Some(evloop)
+  guard @fd_util.fd_is_valid(handle.fd) else { return }
+  evloop.fds.remove(handle.fd)
 }
 
 ///|

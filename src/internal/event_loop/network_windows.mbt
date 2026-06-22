@@ -32,10 +32,10 @@ pub async fn IoHandle::recvfrom(
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
-  guard !handle.reading
-  handle.reading = true
+  guard handle.read is Idle
+  handle.read = Submitted
   defer {
-    handle.reading = false
+    handle.read = Idle
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
@@ -63,10 +63,10 @@ pub async fn IoHandle::sendto(
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
-  guard !handle.writing
-  handle.writing = true
+  guard handle.write is Idle
+  handle.write = Submitted
   defer {
-    handle.writing = false
+    handle.write = Idle
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
@@ -99,10 +99,10 @@ pub async fn IoHandle::connect(
 ) -> Unit {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
-  guard !handle.writing
-  handle.writing = true
+  guard handle.write is Idle
+  handle.write = Submitted
   defer {
-    handle.writing = false
+    handle.write = Idle
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
@@ -144,10 +144,10 @@ pub async fn IoHandle::accept(
 ) -> IoHandle {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
-  guard !handle.reading
-  handle.reading = true
+  guard handle.read is Idle
+  handle.read = Submitted
   defer {
-    handle.reading = false
+    handle.read = Idle
   }
   let job_id = evloop.job_id
   evloop.job_id += 1
