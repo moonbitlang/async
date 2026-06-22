@@ -333,12 +333,8 @@ pub async fn IoHandle::read_dir_changes(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
   guard handle.kind is Directory
-  let job_id = evloop.job_id
-  evloop.job_id += 1
   let result = IoResult::for_read_dir_changes(
-    job_id,
     buf.unsafe_reinterpret_as_bytes(),
     len=buf.length(),
   )
@@ -348,7 +344,7 @@ pub async fn IoHandle::read_dir_changes(
     @coroutine.pause()
     n
   } else if @os_error.is_nonblocking_io_error() {
-    evloop.wait_for_io_result(job_id, result, handle.fd, context~)
+    handle.wait_read(result, context~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
       err => raise err
