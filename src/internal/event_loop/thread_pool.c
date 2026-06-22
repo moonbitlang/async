@@ -558,10 +558,16 @@ void read_job_worker(struct job *job) {
      &bytes_transferred,
      read_job->position < 0 ? NULL : &overlapped
    );
-   if (result)
+   if (result) {
      job->ret = bytes_transferred;
-   else
-     job->err = GetLastError();
+   } else {
+     int err = GetLastError();
+     if (err == ERROR_HANDLE_EOF || err == ERROR_BROKEN_PIPE) {
+       job->ret = 0;
+     } else {
+       job->err = err;
+     }
+   }
 
 #else
 
