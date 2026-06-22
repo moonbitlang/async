@@ -276,28 +276,6 @@ pub async fn IoHandle::read(
 
 ///|
 #cfg(platform="windows")
-pub async fn IoHandle::read_at(
-  handle : IoHandle,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-  context~ : String,
-) -> Int {
-  @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
-  guard handle.kind is Regular
-  let job = Job::read(handle.fd, buf, offset, len, position~)
-  defer job.free()
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  perform_job_in_worker(job, context~, cancel~) catch {
-    @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
-    err => raise err
-  }
-}
-
-///|
-#cfg(platform="windows")
 extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_write"
 
 ///|
@@ -368,23 +346,4 @@ pub async fn IoHandle::write(
   let n = handle.generic_write(job_id, result, context~)
   handle.write_offset += n.to_int64()
   n
-}
-
-///|
-#cfg(platform="windows")
-pub async fn IoHandle::write_at(
-  handle : IoHandle,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-  context~ : String,
-) -> Unit {
-  @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
-  guard handle.kind is Regular
-  let job = Job::write(handle.fd, buf, offset, len, position~)
-  defer job.free()
-  let cancel = job_id => evloop.cancel_job_in_worker(job_id, context~)
-  ignore(perform_job_in_worker(job, context~, cancel~))
 }

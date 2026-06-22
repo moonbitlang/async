@@ -136,26 +136,6 @@ pub async fn IoHandle::read(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::read_at(
-  handle : IoHandle,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-  context~ : String,
-) -> Int {
-  guard !handle.kind.can_poll()
-  handle.read = Submitted
-  defer {
-    handle.read = Idle
-  }
-  let job = Job::read(handle.fd, buf, offset, len, position~)
-  defer job.free()
-  perform_job_in_worker(job, context~)
-}
-
-///|
-#cfg(not(platform="windows"))
 #borrow(buf)
 extern "C" fn write_ffi(
   fd : @fd_util.Fd,
@@ -205,24 +185,4 @@ pub async fn IoHandle::write(
     defer job.free()
     perform_job_in_worker(job, context~, cancel?)
   }
-}
-
-///|
-#cfg(not(platform="windows"))
-pub async fn IoHandle::write_at(
-  handle : IoHandle,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-  context~ : String,
-) -> Unit {
-  guard !handle.kind.can_poll()
-  handle.write = Submitted
-  defer {
-    handle.write = Idle
-  }
-  let job = Job::write(handle.fd, buf, offset, len, position~)
-  defer job.free()
-  perform_job_in_worker(job, context~) |> ignore
 }

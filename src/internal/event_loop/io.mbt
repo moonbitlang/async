@@ -66,3 +66,47 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
   }
   handle.fd = @fd_util.invalid_fd
 }
+
+///|
+pub async fn IoHandle::read_at(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+  context~ : String,
+) -> Int {
+  @coroutine.check_cancellation()
+  guard curr_loop.val is Some(evloop)
+  guard !handle.is_async
+  let job = Job::read(handle.fd, buf, offset, len, position~)
+  defer job.free()
+  let cancel = if platform is Windows {
+    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+  } else {
+    None
+  }
+  perform_job_in_worker(job, context~, cancel?)
+}
+
+///|
+pub async fn IoHandle::write_at(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+  context~ : String,
+) -> Unit {
+  @coroutine.check_cancellation()
+  guard curr_loop.val is Some(evloop)
+  guard !handle.is_async
+  let job = Job::write(handle.fd, buf, offset, len, position~)
+  defer job.free()
+  let cancel = if platform is Windows {
+    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
+  } else {
+    None
+  }
+  ignore(perform_job_in_worker(job, context~, cancel?))
+}
