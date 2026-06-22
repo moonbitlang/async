@@ -68,7 +68,6 @@ async test "realpath link to dir absolute" {
     @fs.symlink(link_path, target=path)
     root.add_defer(() => @fs.remove(link_path))
     let rp = @fs.realpath(link_path + "/realpath_test.mbt")
-    println(rp)
     assert_true(rp.has_prefix(cwd))
     inspect(
       rp[cwd.length():].replace_all(old="\\", new="/"),
