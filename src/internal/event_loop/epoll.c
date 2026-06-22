@@ -17,6 +17,7 @@
 #ifdef __linux__
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/syscall.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
@@ -41,6 +42,14 @@ static const int ev_masks[] = {
 static const uint64_t pid_mask = (uint64_t)1 << 63;
 
 int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
+  // File descriptors registered with the event bus
+  // should always be used in a non-blocking manner, due to our use of `EPOLLET`.
+  // Error is intentionally omitted here, because some special file descriptors,
+  // such as `inotify` instance, may not have the concept of blocking/nonblocking at all.
+  int fd_flags = fcntl(fd, F_GETFL);
+  if (fd_flags >= 0 && !(fd_flags & O_NONBLOCK))
+    fcntl(fd, F_SETFL, fd_flags | O_NONBLOCK);
+
   int events = EPOLLIN | EPOLLET | EPOLLRDHUP;
   if (!read_only)
     events |= EPOLLOUT;
