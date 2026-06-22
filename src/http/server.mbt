@@ -117,6 +117,14 @@ pub impl @io.Writer for ServerConnection with fn write_once(
 }
 
 ///|
+pub async fn ServerConnection::write_string_interpolation(
+  self : ServerConnection,
+  data : &@io.Data,
+) -> Unit {
+  self.write(data)
+}
+
+///|
 /// Introduced so that the sugar `writer <+ "hello \{world}"` can work on `ServerConnection`.
 /// Performance will be improved in the future
 pub async fn ServerConnection::write_string(
