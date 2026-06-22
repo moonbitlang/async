@@ -21,7 +21,7 @@ async test "set cwd" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg() <| () => {
-      let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="src/process", extra_env={
+      let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="test_directory", extra_env={
         "LC_ALL": "C",
       })
       guard @env.current_dir() is Some(new_cwd)
@@ -35,12 +35,6 @@ async test "set cwd" {
       .split("\n")
       .to_array()
     files.sort()
-    json_inspect(files, content=[
-      "unix.c", "moon.pkg", "unix.mbt", "README.md", "windows.c", "process.mbt",
-      "windows.mbt", "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md",
-      "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt", "cancellation.mbt",
-      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "commands_for_test.mbt",
-      "unimplemented_test.mbt", "spawn_in_group_test.mbt", "windows_escape_wbtest.mbt",
-    ])
+    json_inspect(files, content=["file", "inner1"])
   }
 }

@@ -18,7 +18,7 @@ async test "basic_ls" {
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
-    @process.spawn(group, shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
+    @process.spawn(group, shell, ["-c", "\{ls} test_directory"], stdout=w, extra_env={
       "LC_ALL": "C",
     })
     |> ignore
@@ -30,13 +30,7 @@ async test "basic_ls" {
       .split("\n")
       .to_array()
     files.sort()
-    json_inspect(files, content=[
-      "unix.c", "moon.pkg", "unix.mbt", "README.md", "windows.c", "process.mbt",
-      "windows.mbt", "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md",
-      "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt", "cancellation.mbt",
-      "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "commands_for_test.mbt",
-      "unimplemented_test.mbt", "spawn_in_group_test.mbt", "windows_escape_wbtest.mbt",
-    ])
+    json_inspect(files, content=["file", "inner1"])
   }
 }
 
