@@ -18,6 +18,7 @@
 
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
 #include <sys/event.h>
 #include <sys/wait.h>
 #include <errno.h>
@@ -31,6 +32,14 @@ void moonbitlang_async_event_bus_destroy(int kqfd) {
 }
 
 int moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
+  // File descriptors registered with the event bus
+  // should always be used in a non-blocking manner, due to our use of `EV_CLEAR`.
+  // Error is intentionally omitted here, because some special file descriptors,
+  // such as another `kqueue`, may not have the concept of blocking/nonblocking at all.
+  int fd_flags = fcntl(fd, F_GETFL);
+  if (fd_flags >= 0 && !(fd_flags & O_NONBLOCK))
+    fcntl(fd, F_SETFL, fd_flags | O_NONBLOCK);
+
   int flags = EV_ADD | EV_CLEAR;
 
   struct kevent events[2];

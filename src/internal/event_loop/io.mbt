@@ -66,6 +66,48 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 }
 
 ///|
+/// Create a IO handle from a raw file descriptor.
+/// The ownership of the file descriptor would be transferred to this function,
+/// so the caller must not close the file descriptor manually in any circumstances.
+pub fn IoHandle::from_fd(
+  fd : @fd_util.Fd,
+  kind~ : @fd_util.FileKind,
+  is_async? : Bool = true,
+  read_only? : Bool = false,
+) -> IoHandle raise {
+  let context = "@event_loop.IoHandle::from_fd()"
+  guard curr_loop.val is Some(evloop)
+  guard evloop.fds.get(fd) is None
+  if is_async {
+    evloop.bus.register(fd, read_only~) catch {
+      err => {
+        @fd_util.close(fd, kind~, context~)
+        raise err
+      }
+    }
+  }
+  let handle = {
+    fd,
+    kind,
+    is_async,
+    read: Idle,
+    read_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
+    write: Idle,
+    write_offset: if kind is Regular {
+      0
+    } else {
+      -1
+    },
+  }
+  evloop.fds[fd] = handle
+  handle
+}
+
+///|
 async fn IoHandle::read_via_worker(
   handle : IoHandle,
   buf : FixedArray[Byte],
