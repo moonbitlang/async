@@ -15,6 +15,7 @@
 ///|
 /// `Task[X]` represents a running task with result type `X`,
 /// it can be used to wait and retrieve the result value of the task.
+#valtype
 struct Task[X] {
   value : Ref[X?]
   coro : @coroutine.Coroutine
