@@ -24,7 +24,22 @@
 #include <errno.h>
 
 int moonbitlang_async_event_bus_create() {
-  return kqueue();
+  int kq = kqueue();
+  if (kq < 0)
+    return -1;
+
+  int flags = fcntl(kq, F_GETFD);
+  if (flags < 0)
+    goto on_error;
+
+  if (!(flags & FD_CLOEXEC) && fcntl(kq, F_SETFD, flags | FD_CLOEXEC))
+    goto on_error;
+
+  return kq;
+
+on_error:
+  close(kq);
+  return -1;
 }
 
 void moonbitlang_async_event_bus_destroy(int kqfd) {

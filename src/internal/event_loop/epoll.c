@@ -26,7 +26,7 @@
 _Noreturn void moonbit_panic();
 
 int moonbitlang_async_event_bus_create() {
-  return epoll_create1(0);
+  return epoll_create1(EPOLL_CLOEXEC);
 }
 
 void moonbitlang_async_event_bus_destroy(int epfd) {

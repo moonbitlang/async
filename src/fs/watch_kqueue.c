@@ -18,6 +18,8 @@
 
 #ifdef __MACH__
 #include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/event.h>
 #endif
 
@@ -31,9 +33,28 @@ struct kevent;
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_kqueue_watcher_create() {
 #ifdef __MACH__
-  return kqueue();
+
+  int kq = kqueue();
+  if (kq < 0)
+    return -1;
+
+  int flags = fcntl(kq, F_GETFD);
+  if (flags < 0)
+    goto on_error;
+
+  if (!(flags & FD_CLOEXEC) && fcntl(kq, F_SETFD, flags | FD_CLOEXEC))
+    goto on_error;
+
+  return kq;
+
+on_error:
+  close(kq);
+  return -1;
+
 #else
+
   moonbit_panic();
+
 #endif
 }
 
