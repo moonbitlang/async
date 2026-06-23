@@ -32,41 +32,6 @@ fn init_global_job_object() -> Unit raise {
 
 ///|
 #cfg(platform="windows")
-struct Process {
-  pid : Int
-  handle : @fd_util.Fd
-}
-
-///|
-#cfg(platform="windows")
-pub fn Process::pid(self : Process) -> Int {
-  self.pid
-}
-
-///|
-#cfg(platform="windows")
-extern "C" fn open_pid_handle(pid : Int) -> @fd_util.Fd = "moonbitlang_async_open_pid_handle"
-
-///|
-#cfg(platform="windows")
-pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
-  let handle = open_pid_handle(pid)
-  if !@fd_util.fd_is_valid(handle) {
-    @os_error.check_errno(context)
-  }
-  { pid, handle }
-}
-
-///|
-#cfg(platform="windows")
-pub fn Process::close(self : Process) -> Unit {
-  @fd_util.close(self.handle, kind=Unknown, context="") catch {
-    _ => ()
-  }
-}
-
-///|
-#cfg(platform="windows")
 pub async fn spawn(
   command_line : @os_string.OsString,
   env~ : @c_buffer.Buffer,
@@ -89,29 +54,29 @@ pub async fn spawn(
     no_console_window~,
     is_orphan~,
   )
-  defer job.free()
-  let pid = perform_job_in_worker(job, context~)
-  { pid, handle: job.get_spawn_job_result_handle() }
+  defer job.0.free()
+  let pid = perform_job_in_worker(job.0, context~)
+  let handle = IoHandle::from_fd(
+    job.result_handle(),
+    kind=Unknown,
+    is_async=false,
+  )
+  { pid, handle: Some(handle) }
 }
 
 ///|
 #cfg(platform="windows")
-#borrow(out)
-extern "C" fn get_process_result(handle : @fd_util.Fd, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
-
-///|
-#cfg(platform="windows")
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
-  let job = Job::wait_for_process(self.handle)
-  let _ = {
-    defer job.free()
-    perform_job_in_worker(job, context~, cancel=_ => {
-      job.cancel_process_waiter()
-      NeedWait
-    })
-  }
+  guard self.handle is Some(io)
+  let job = Job::wait_for_process(io.fd)
+  defer job.free()
+  let _ = perform_job_in_worker(job, context~, cancel=_ => {
+    job.cancel_process_waiter()
+    NeedWait
+  })
+
   let out = Ref(0)
-  let ret = get_process_result(self.handle, out)
+  let ret = get_process_result(io.fd, self.pid, out)
   if ret < 0 {
     @os_error.check_errno(context)
   }

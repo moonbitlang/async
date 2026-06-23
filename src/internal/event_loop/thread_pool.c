@@ -54,6 +54,7 @@
 #include <sys/syscall.h>
 #include <linux/fs.h>
 #include <sys/inotify.h>
+#include <linux/version.h>
 #endif
 
 #ifdef __MACH__
@@ -2241,6 +2242,7 @@ struct spawn_job {
   int32_t inherited_env_entry_count;
   int stdio[3];
   char *cwd;
+  int pidfd;
 };
 
 static
@@ -2256,6 +2258,8 @@ void free_spawn_job(void *obj) {
   free(job->envp);
   if (job->cwd)
     moonbit_decref(job->cwd);
+  if (job->pidfd >= 0)
+    close(job->pidfd);
 }
 
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
@@ -2318,9 +2322,26 @@ void spawn_job_worker(struct job *job) {
       spawn_job->envp
     );
   }
+
+#ifdef __linux__
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+  if (!job->err) {
+    spawn_job->pidfd = syscall(SYS_pidfd_open, job->ret, 0);
+    if (spawn_job->pidfd < 0 && errno != ENOSYS && errno != EPERM)
+      job->err = errno;
+  }
+#endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#endif // #ifdef __linux__
+
 exit:
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&file_actions);
+}
+
+int moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
+  int result = job->pidfd;
+  job->pidfd = -1;
+  return result;
 }
 
 #endif // posix_spawn availability
@@ -2344,6 +2365,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[1] = stdout_fd;
   job->stdio[2] = stderr_fd;
   job->cwd = cwd;
+  job->pidfd = -1;
   return job;
 }
 

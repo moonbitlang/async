@@ -14,29 +14,6 @@
 
 ///|
 #cfg(not(platform="windows"))
-struct Process(Int)
-
-///|
-#cfg(not(platform="windows"))
-pub fn Process::pid(self : Process) -> Int {
-  self.0
-}
-
-///|
-#cfg(not(platform="windows"))
-pub fn Process::from_pid(pid : Int, context~ : String) -> Process {
-  ignore(context)
-  Process(pid)
-}
-
-///|
-#cfg(not(platform="windows"))
-pub fn Process::close(_ : Process) -> Unit {
-
-}
-
-///|
-#cfg(not(platform="windows"))
 pub async fn spawn(
   path : @os_string.OsString,
   args : @c_buffer.Buffer,
@@ -51,50 +28,54 @@ pub async fn spawn(
   let job = Job::spawn(
     path, args, env, inherited_env_entry_count, stdin, stdout, stderr, cwd,
   )
-  defer job.free()
-  perform_job_in_worker(job, context~)
+  defer job.0.free()
+  let pid = perform_job_in_worker(job.0, context~)
+  let pidfd = job.result_handle()
+  let handle = if !@fd_util.fd_is_valid(pidfd) {
+    None
+  } else {
+    Some(IoHandle::from_fd(pidfd, kind=Unknown, read_only=true))
+  }
+  { pid, handle }
 }
 
 ///|
 #cfg(not(platform="windows"))
-#borrow(out)
-extern "C" fn get_process_result(pid : Int, out : Ref[Int]) -> Int = "moonbitlang_async_get_process_result"
-
-///|
-#cfg(not(platform="windows"))
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
-  let Process(pid) = self
   guard curr_loop.val is Some(evloop)
-  guard support_wait_pid_via_event_bus else {
-    // pidfd not available, fall back to blocking waitpid in worker thread.
-    // The worker reaps the child and stores the exit code in job.ret(),
-    // so return it here to avoid a second waitpid in get_process_result.
-    let job = Job::wait_for_process(pid)
-    defer job.free()
-    let exit_code = perform_job_in_worker(job, context~, cancel=job_id => {
-      evloop.cancel_job_in_worker(job_id, context~)
-    })
-    exit_code
-  }
-  match evloop.bus.register_pid(pid) {
-    Running(alt_id) => {
-      guard evloop.pids.get(alt_id) is None
-      evloop.pids[alt_id] = @coroutine.current_coroutine()
-      defer {
-        evloop.pids.remove(alt_id)
-        if platform is Linux {
-          // On Linux, the `pidfd` need to be closed
-          @fd_util.close(alt_id, kind=Unknown, context="") catch {
-            _ => ()
-          }
-        }
-      }
+  let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
+
+  let out = Ref(0)
+
+  if platform is Linux && self.handle is Some(io) {
+    let ret = get_process_result(handle, self.pid, out)
+    if ret >= 0 {
+      return out.val
+    }
+    if !@os_error.is_nonblocking_io_error() {
+      @os_error.check_errno(context)
+    }
+    io.wait_read()
+  } else if platform is MacOS {
+    // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
+    if evloop.bus.register_pid(self.pid) {
+      guard evloop.pids.get(self.pid) is None
+      evloop.pids[self.pid] = @coroutine.current_coroutine()
+      defer evloop.pids.remove(self.pid)
       @coroutine.suspend()
     }
-    Stopped => ()
+  } else {
+    // Linux systems where pidfd is not available.
+    // Fall back to blocking waitpid in worker thread.
+    // The thread pool job will obain the exit code and reap the process.
+    let job = Job::wait_for_process(self.pid)
+    defer job.free()
+    return perform_job_in_worker(job, context~, cancel=job_id => {
+      evloop.cancel_job_in_worker(job_id, context~)
+    })
   }
-  let out = Ref(0)
-  let ret = get_process_result(pid, out)
+
+  let ret = get_process_result(handle, self.pid, out)
   if ret < 0 {
     @os_error.check_errno(context)
   }

@@ -42,7 +42,7 @@ pub async fn spawn_orphan(
   cwd? : StringView,
   no_console_window? : Bool = false,
 ) -> Int {
-  raw_spawn(
+  let proc = raw_spawn(
     cmd,
     args,
     extra_env~,
@@ -54,7 +54,9 @@ pub async fn spawn_orphan(
     no_console_window~,
     is_orphan=true,
     context="@process.spawn_orphan()",
-  ).pid()
+  )
+  defer proc.close()
+  proc.pid
 }
 
 ///|
@@ -143,7 +145,7 @@ pub async fn run(
     context~,
   )
   defer process.close()
-  let pid = process.pid()
+  let pid = process.pid
   process.wait_pid(context~) catch {
     _ if @coroutine.is_being_cancelled() =>
       @async.protect_from_cancel() <| () => {
@@ -227,7 +229,7 @@ pub async fn[X] spawn(
     is_orphan=false,
     context~,
   )
-  let pid = process.pid()
+  let pid = process.pid
   let result = group.spawn(no_wait?, () => {
     defer process.close()
     process.wait_pid(context~) catch {

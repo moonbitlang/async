@@ -57,41 +57,19 @@ fn EventBus::register(
 }
 
 ///|
-/// On Linux <5.3, `pidfd` is not supported,
-/// hence we cannot wait for a process via `epoll`.
-#cfg(not(platform="windows"))
-extern "C" fn detect_wait_pid_via_event_bus() -> Bool = "moonbitlang_async_support_wait_pid_via_event_bus"
-
-///|
-#cfg(not(platform="windows"))
-let support_wait_pid_via_event_bus : Bool = detect_wait_pid_via_event_bus()
-
-///|
 #cfg(not(platform="windows"))
 extern "C" fn EventBus::register_pid_ffi(self : EventBus, pid : Int) -> Int = "moonbitlang_async_event_bus_register_pid"
 
 ///|
+/// Return `true` if the PID is successfully registered.
+/// Return `false` if the process has already terminated.
 #cfg(not(platform="windows"))
-priv enum RegisterPidResult {
-  Running(Int)
-  Stopped
-}
-
-///|
-#cfg(not(platform="windows"))
-fn EventBus::register_pid(
-  self : EventBus,
-  pid : Int,
-) -> RegisterPidResult raise {
+fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
   let ret = self.register_pid_ffi(pid)
-  if ret >= 0 {
-    Running(ret)
-  } else if ret == -2 {
-    Stopped
-  } else {
+  if ret == -1 {
     @os_error.check_errno("poll_register_pid")
-    Stopped
   }
+  ret > 0
 }
 
 ///|

@@ -50,14 +50,10 @@ int moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
   return kevent(kqfd, events, read_only ? 1 : 2, 0, 0, 0);
 }
 
-int moonbitlang_async_support_wait_pid_via_event_bus() {
-  return 1;
-}
-
 // return value:
-// - `>= 0`: success, return the pid itself
+// - `> 0`: success, return the pid itself
 // - `-1`: failure
-// - `-2`: pid already terminated
+// - `0`: pid already terminated
 int moonbitlang_async_event_bus_register_pid(int kqfd, pid_t pid) {
   struct kevent event;
 #ifdef __MACH__
@@ -68,9 +64,9 @@ int moonbitlang_async_event_bus_register_pid(int kqfd, pid_t pid) {
   int ret = kevent(kqfd, &event, 1, 0, 0, 0);
 
   if (ret >= 0) {
-    return pid;
+    return 1;
   } else if (errno == ESRCH) {
-    return -2;
+    return 0;
   } else {
     return -1;
   }

@@ -23,6 +23,8 @@
 #include <sys/wait.h>
 #include <linux/version.h>
 
+_Noreturn void moonbit_panic();
+
 int moonbitlang_async_event_bus_create() {
   return epoll_create1(0);
 }
@@ -37,9 +39,6 @@ static const int ev_masks[] = {
   EPOLLOUT,
   EPOLLIN | EPOLLOUT,
 };
-
-// use mask to classify different kinds of entity
-static const uint64_t pid_mask = (uint64_t)1 << 63;
 
 int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
   // File descriptors registered with the event bus
@@ -60,49 +59,8 @@ int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
   return epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
 }
 
-int moonbitlang_async_support_wait_pid_via_event_bus() {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
-  int pidfd = syscall(SYS_pidfd_open, getpid(), 0);
-  if (pidfd >= 0) {
-    close(pidfd);
-    return 1;
-  } else {
-    // TODO: check if `errno` is one of `ENOSYS` or `EPERM`.
-    return 0;
-  }
-#else
-  return 0;
-#endif
-}
-
-// return value:
-// - `>= 0`: success, return the pidfd
-// - `-1`: failure
-// - `-2`: already terminated
 int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
-
-  int pidfd = syscall(SYS_pidfd_open, pid, 0);
-  if (pidfd < 0)
-    return -1;
-
-  epoll_data_t data;
-  data.u64 = pid_mask | pidfd;
-
-  struct epoll_event event = { EPOLLIN, data };
-  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &event);
-  if (ret < 0) {
-    close(pidfd);
-    return -1;
-  }
-
-  return pidfd;
-
-#else
-
-  return -1;
-
-#endif
+  moonbit_panic();
 }
 
 #define EVENT_BUFFER_SIZE 1024
@@ -118,13 +76,10 @@ struct epoll_event* moonbitlang_async_event_list_get(int index) {
 }
 
 int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
-  return ev->data.u64 & ~pid_mask;
+  return ev->data.u64;
 }
 
 int moonbitlang_async_event_get_events(struct epoll_event *ev) {
-  if (ev->data.u64 & pid_mask)
-    return 4;
-
   if (ev->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
     return 3;
 
