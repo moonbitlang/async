@@ -65,7 +65,7 @@ MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_dir_buffer_min_size() {
 #ifdef _WIN32
 
-  return sizeof(sys_dirent) + MAX_PATH;
+  return sizeof(sys_dirent) + MAX_PATH * sizeof(WCHAR);
 
 #else
 
