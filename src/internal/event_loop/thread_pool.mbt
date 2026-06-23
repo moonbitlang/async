@@ -221,6 +221,9 @@ extern "C" fn Job::realpath(path : @os_string.OsString) -> Job = "moonbitlang_as
 extern "C" fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer = "moonbitlang_async_get_realpath_result"
 
 ///|
+priv struct SpawnJob(Job)
+
+///|
 #cfg(not(platform="windows"))
 #owned(path, args, env, cwd)
 extern "C" fn Job::spawn(
@@ -232,7 +235,7 @@ extern "C" fn Job::spawn(
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
   cwd : @os_string.OsString?,
-) -> Job = "moonbitlang_async_make_spawn_job"
+) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
@@ -246,11 +249,10 @@ extern "C" fn Job::spawn(
   cwd : @os_string.OsString?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
-) -> Job = "moonbitlang_async_make_spawn_job"
+) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
 ///|
-#cfg(platform="windows")
-extern "C" fn Job::get_spawn_job_result_handle(job : Job) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
+extern "C" fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
 
 ///|
 #cfg(not(platform="windows"))
