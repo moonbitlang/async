@@ -13,3 +13,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/async/internal/test_util",
 } for "test"
+
+options(
+  targets: { "integration.wasm.mbt": [ "wasm" ] },
+)

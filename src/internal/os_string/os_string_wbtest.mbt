@@ -13,17 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@socket.unimplemented)
-  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
-}
-
-///|
 #cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
+test "wasm os string is moonbit utf16 string" {
+  inspect(encode("tmp/路径").to_string(), content="tmp/路径")
+}

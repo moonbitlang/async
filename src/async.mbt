@@ -107,15 +107,33 @@ pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
 pub using @coroutine {protect_from_cancel}
 
 ///|
+#cfg(target="wasm")
+fn ms_since_epoch() -> UInt64 = "moonbitlang/async" "time/get_ms_since_epoch"
+
+///|
 /// Get current time, measured in milliseconds.
 /// `now` uses the same clock as timers in `moonbitlang/async`.
 ///
 /// `now` can be used to measure elapsed time, such as benchmarking,
 /// but the meaning of the absolute time value returned by `now`
 /// is undefined, and should not be depended on.
+#cfg(any(target="native", target="js", target="wasm-gc"))
 #deprecated("use `@env.now()` from `moonbitlang/core/env` instead")
 pub fn now() -> Int64 {
   @env.now().reinterpret_as_int64()
+}
+
+///|
+/// Get current time, measured in milliseconds.
+/// `now` uses the same clock as timers in `moonbitlang/async`.
+///
+/// `now` can be used to measure elapsed time, such as benchmarking,
+/// but the meaning of the absolute time value returned by `now`
+/// is undefined, and should not be depended on.
+#cfg(target="wasm")
+#deprecated("use `@env.now()` from `moonbitlang/core/env` instead")
+pub fn now() -> Int64 {
+  ms_since_epoch().reinterpret_as_int64()
 }
 
 ///|

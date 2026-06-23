@@ -39,14 +39,22 @@ async test "can_write" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "can_execute" {
+  // POSIX execute-bit checks do not match Windows access semantics. Wasm learns
+  // the host platform at runtime instead of through MoonBit target cfg.
+  if @event_loop.platform is Windows {
+    return
+  }
   assert_false(@fs.can_execute("moon.mod"))
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "chmod" {
+  // POSIX permission-bit transitions do not match Windows chmod semantics. Wasm
+  // learns the host platform at runtime instead of through MoonBit target cfg.
+  if @event_loop.platform is Windows {
+    return
+  }
   let path = "_build/chmod_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)

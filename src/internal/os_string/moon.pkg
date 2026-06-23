@@ -5,5 +5,5 @@ import {
 
 options(
   "native-stub": [ "stub.c" ],
-  targets: { "os_string.mbt": [ "native" ] },
+  targets: { "os_string.mbt": [ "native" ], "os_string.wasm.mbt": [ "wasm" ] },
 )

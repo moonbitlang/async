@@ -17,7 +17,14 @@
 let _ignore_unused_import : Unit = {
   ignore(@io.pipe)
   ignore(@async.sleep)
-  ignore(@pipe.unimplemented)
   ignore(@fs.unimplemented)
   ignore(@utf8.encode(""))
 }
+
+///|
+#cfg(target="wasm")
+let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
+
+///|
+#cfg(not(any(target="native", target="wasm")))
+let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)

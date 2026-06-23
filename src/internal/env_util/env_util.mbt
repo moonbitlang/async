@@ -13,7 +13,13 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 extern "C" fn get_pid() -> UInt = "moonbitlang_async_getpid"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_pid() -> UInt = "moonbitlang/async" "env_util/getpid"
 
 ///|
 pub let current_process : UInt = get_pid()
