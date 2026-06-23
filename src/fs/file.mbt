@@ -322,10 +322,22 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang_async_errno_is_lock_violation"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
+
+///|
+#cfg(target="native")
 extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang/async" "fs/try_lock_file"
 
 ///|
 /// Try to lock a file.
@@ -354,7 +366,13 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_unlock_file"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fs/unlock_file"
 
 ///|
 /// Unlock a file that was previously locked by this process.

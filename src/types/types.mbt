@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+/// The wasm host uses opaque `UInt64` handles for host-owned file resources.
+#cfg(target="wasm")
+pub type Fd = UInt64
+
+///|
 /// The type for a system file descriptor.
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
 #cfg(platform="windows")
@@ -36,5 +41,5 @@ pub impl Hash for Fd with fn hash_combine(self, hasher) {
 ///|
 /// The type for a system file descriptor.
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
-#cfg(not(platform="windows"))
+#cfg(not(any(platform="windows", target="wasm")))
 pub type Fd = Int

@@ -13,17 +13,17 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@socket.unimplemented)
-  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
+#coverage.skip
+#doc(hidden)
+pub fn run_async_main(main : async () -> Unit) -> Unit {
+  @event_loop.with_event_loop(() => main()) catch {
+    err => {
+      println(err)
+      exit(1)
+    }
+  }
 }
 
 ///|
-#cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
+#unsafe_skip_stub_check
+fn exit(code : Int) = "moonbitlang/async" "runtime/exit"

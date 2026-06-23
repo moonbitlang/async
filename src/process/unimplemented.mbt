@@ -21,7 +21,6 @@ pub let unimplemented : Unit = {
   ignore(@async.sleep)
   ignore(@event_loop.Timer::new)
   ignore(@coroutine.spawn)
-  ignore(@pipe.unimplemented)
   ignore(@stdio.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
@@ -30,3 +29,11 @@ pub let unimplemented : Unit = {
   ignore(@c_buffer.unimplemented)
   ignore(@os_error.unimplemented)
 }
+
+///|
+#cfg(target="wasm")
+let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
+
+///|
+#cfg(not(any(target="native", target="wasm")))
+let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
