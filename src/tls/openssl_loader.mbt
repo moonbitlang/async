@@ -33,6 +33,10 @@ extern "C" fn init_bio_method(
 let openssl_loaded : Ref[Bool] = Ref(false)
 
 ///|
+/// Lazily load OpenSSL on first use, so a program that never touches TLS pays
+/// nothing. Every raw-symbol FFI wrapper calls this first; all other FFI runs on
+/// handles those produce, so it is transitively covered. Guarded → repeat calls
+/// are free.
 #cfg(not(platform="windows"))
 fn load_openssl() -> Unit {
   if openssl_loaded.val {
@@ -51,12 +55,6 @@ fn load_openssl() -> Unit {
     4 => abort("failed to load some OpenSSL function")
     _ => panic()
   }
-}
-
-///|
-#cfg(not(platform="windows"))
-fn init {
-  load_openssl()
   init_bio_method((bio, dst, len) => bio.read(dst, len)) <| ((bio, src, len) => {
     bio.write(src, len)
   })

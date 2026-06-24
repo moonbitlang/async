@@ -23,6 +23,8 @@ extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbi
 #cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
 pub fn rand_bytes(num : Int) -> Bytes raise {
+  // Reachable with no prior TLS connection (e.g. a plain `ws://` handshake).
+  load_openssl()
   let result = FixedArray::make(num, b'\x00')
   if rand_bytes_ffi(result, num) != 1 {
     raise Failure::Failure(err_get_error())
@@ -55,6 +57,8 @@ extern "C" fn sha1_ffi(src : Bytes, len : Int, dst : FixedArray[Byte]) = "moonbi
 #cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
 pub fn sha1(src : Bytes) -> Bytes {
+  // Reachable with no prior TLS connection (e.g. a plain `ws://` handshake).
+  load_openssl()
   let result = FixedArray::make(20, b'\x00')
   sha1_ffi(src, src.length(), result)
   result.unsafe_reinterpret_as_bytes()

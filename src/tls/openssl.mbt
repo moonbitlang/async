@@ -23,11 +23,25 @@ extern "C" fn SSL_CTX::is_null(self : SSL_CTX) -> Bool = "moonbitlang_async_tls_
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL_CTX::client(load_default_verify_path~ : Bool) -> SSL_CTX = "moonbitlang_async_tls_client_ctx"
+extern "C" fn SSL_CTX::client_ffi(load_default_verify_path~ : Bool) -> SSL_CTX = "moonbitlang_async_tls_client_ctx"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL_CTX::server() -> SSL_CTX = "moonbitlang_async_tls_server_ctx"
+fn SSL_CTX::client(load_default_verify_path~ : Bool) -> SSL_CTX {
+  load_openssl()
+  SSL_CTX::client_ffi(load_default_verify_path~)
+}
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL_CTX::server_ffi() -> SSL_CTX = "moonbitlang_async_tls_server_ctx"
+
+///|
+#cfg(not(platform="windows"))
+fn SSL_CTX::server() -> SSL_CTX {
+  load_openssl()
+  SSL_CTX::server_ffi()
+}
 
 ///|
 #cfg(not(platform="windows"))
@@ -38,28 +52,56 @@ extern "C" fn SSL_CTX::free_ffi(self : SSL_CTX) = "moonbitlang_async_tls_ssl_ctx
 #borrow(der)
 extern "C" fn SSL_CTX::add_root_certificate(self : SSL_CTX, der : Bytes) -> Int = "moonbitlang_async_tls_ssl_ctx_add_root_certificate"
 
+// Lazy singletons: the shared client/server contexts (and the system CA read
+// they trigger) are built on first use, not before a TLS connection is made.
+
 ///|
 #cfg(not(platform="windows"))
-let client_ctx : SSL_CTX = {
-  load_openssl()
-  let ctx = SSL_CTX::client(load_default_verify_path=true)
-  guard !ctx.is_null() else { abort("failed to initialize SSL client context") }
-  ctx
+let client_ctx_cell : Ref[SSL_CTX?] = Ref(None)
+
+///|
+#cfg(not(platform="windows"))
+fn client_ctx() -> SSL_CTX {
+  match client_ctx_cell.val {
+    Some(ctx) => ctx
+    None => {
+      let ctx = SSL_CTX::client(load_default_verify_path=true)
+      guard !ctx.is_null() else {
+        abort("failed to initialize SSL client context")
+      }
+      client_ctx_cell.val = Some(ctx)
+      ctx
+    }
+  }
 }
 
 ///|
 #cfg(not(platform="windows"))
-let server_ctx : SSL_CTX = {
-  load_openssl()
-  let ctx = SSL_CTX::server()
-  guard !ctx.is_null() else { abort("failed to initialize SSL server context") }
-  ctx
+let server_ctx_cell : Ref[SSL_CTX?] = Ref(None)
+
+///|
+#cfg(not(platform="windows"))
+fn server_ctx() -> SSL_CTX {
+  match server_ctx_cell.val {
+    Some(ctx) => ctx
+    None => {
+      let ctx = SSL_CTX::server()
+      guard !ctx.is_null() else {
+        abort("failed to initialize SSL server context")
+      }
+      server_ctx_cell.val = Some(ctx)
+      ctx
+    }
+  }
 }
 
 ///|
 #cfg(not(platform="windows"))
 fn SSL_CTX::free(self : SSL_CTX) -> Unit {
-  if physical_equal(self, client_ctx) || physical_equal(self, server_ctx) {
+  // Never free the shared singletons. Compare against the CACHED contexts without
+  // forcing their creation (a `free` must not lazily spin up a context just to check).
+  if (client_ctx_cell.val is Some(c) && physical_equal(self, c)) ||
+    (server_ctx_cell.val is Some(s) && physical_equal(self, s)) {
     return
   }
   self.free_ffi()
@@ -258,7 +300,15 @@ extern "C" fn BIO::set_flags(bio : BIO, flags : Int) = "moonbitlang_async_tls_bi
 ///|
 #cfg(not(platform="windows"))
 #owned(data)
-extern "C" fn create_bio(data : Transport) -> BIO = "moonbitlang_async_tls_create_bio"
+extern "C" fn create_bio_ffi(data : Transport) -> BIO = "moonbitlang_async_tls_create_bio"
+
+///|
+// Also the sole consumer of the BIO method table `load_openssl` registers.
+#cfg(not(platform="windows"))
+fn create_bio(data : Transport) -> BIO {
+  load_openssl()
+  create_bio_ffi(data)
+}
 
 ///|
 #cfg(not(platform="windows"))
@@ -419,7 +469,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     None => if verify { SystemRoot } else { NoVerification }
   }
   let ctx = match trust {
-    NoVerification | SystemRoot => client_ctx
+    NoVerification | SystemRoot => client_ctx()
     CustomPemFile(root_cert) => SSL_CTX::client_with_custom_root(root_cert)
   }
   let self = Tls::from_pair(ctx, r, w, is_client=true, host~)
@@ -472,7 +522,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 ) -> Tls {
   let private_key_file = @utf8.encode(private_key_file)
   let certificate_file = @utf8.encode(certificate_file)
-  let self = Tls::from_pair(server_ctx, r, w, is_client=false, host=None)
+  let self = Tls::from_pair(server_ctx(), r, w, is_client=false, host=None)
   try {
     if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
       raise TlsError(err_get_error())
