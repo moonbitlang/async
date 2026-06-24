@@ -51,27 +51,19 @@ pub fn is_nonblocking_io_error() -> Bool {
 
 ///|
 #unsafe_skip_stub_check
-fn errno_to_string_len(errno : Int) -> Int = "moonbitlang/async" "os_error/errno_to_string_len"
+fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang/async" "os_error/errno_to_string"
 
 ///|
-// The destination is guest-owned MoonBit String storage, whose length is in
-// UTF-16 code units.
 #unsafe_skip_stub_check
-#borrow(str)
-fn fill_errno_string(errno : Int, str : String, len : Int) -> Int = "moonbitlang/async" "os_error/errno_to_string"
+#owned(str)
+fn free_errno_str(str : @c_buffer.Buffer) -> Unit = "moonbitlang/async" "os_error/free_errno_str"
 
 ///|
 #internal(internal, "for internal use only")
 pub fn errno_to_string(errno : Int) -> String {
-  let len = errno_to_string_len(errno)
-  if len < 0 {
-    return "errno \{errno}"
-  }
-  let msg = String::make(len, '\u{0}')
-  if fill_errno_string(errno, msg, len) < 0 {
-    return "errno \{errno}"
-  }
-  msg
+  let c_str = strerror(errno)
+  defer free_errno_str(c_str)
+  @os_string.decode(c_str).trim_end(chars="\r\n").to_owned()
 }
 
 ///|
