@@ -37,3 +37,10 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
   ignore(timer)
   abort("`Timer::cancel()` is unimplemented on WASM backend")
 }
+
+///|
+#warnings("-unused_async")
+pub async fn sleep(duration : Int) -> Unit {
+  ignore(duration)
+  abort("`sleep()` is unimplemented on WASM backend")
+}

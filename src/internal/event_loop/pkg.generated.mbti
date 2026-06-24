@@ -55,6 +55,8 @@ pub async fn rmdir(StringView, context~ : String) -> Unit
 
 pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 
+pub async fn sleep(Int) -> Unit
+
 pub async fn spawn(@os_string.OsString, @c_buffer.Buffer, env~ : @c_buffer.Buffer, inherited_env_entry_count~ : Int, stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
 pub let stderr : Result[IoHandle, Error]

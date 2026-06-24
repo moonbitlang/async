@@ -50,3 +50,11 @@ impl Compare for Timer with fn compare(t1, t2) {
     o => o
   }
 }
+
+///|
+pub async fn sleep(duration : Int) -> Unit {
+  let coro = @coroutine.current_coroutine()
+  let timer = Timer::new(duration, () => coro.wake())
+  defer timer.cancel()
+  @coroutine.suspend()
+}

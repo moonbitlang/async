@@ -31,3 +31,11 @@ pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
 ///|
 pub extern "js" fn Timer::cancel(self : Timer) =
   #| (timer) => clearTimeout(timer)
+
+///|
+pub async fn sleep(duration : Int) -> Unit {
+  let coro = @coroutine.current_coroutine()
+  let timer = Timer::new(duration, () => coro.wake())
+  defer timer.cancel()
+  @coroutine.suspend()
+}
