@@ -112,7 +112,7 @@ let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
 
 ///|
 #borrow(addr)
-extern "C" fn Addr::get_ipv6_bytes(addr : Addr) -> @c_buffer.Buffer = "moonbitlang_async_addr_get_ipv6_bytes"
+extern "C" fn Addr::get_ipv6_bytes_offset(addr : Addr) -> Int = "moonbitlang_async_addr_get_ipv6_bytes_offset"
 
 ///|
 #borrow(addr)
@@ -127,7 +127,7 @@ pub impl Show for Addr with fn output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
     logger <+ "["
-    write_ipv6_str(self.get_ipv6_bytes(), logger)
+    write_ipv6_str(self.0[self.get_ipv6_bytes_offset():], logger)
     let scope_id = self.scope_id()
     if scope_id > 0 {
       let interface = if_indextoname(scope_id, context="") catch {
