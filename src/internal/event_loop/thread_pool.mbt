@@ -205,10 +205,9 @@ extern "C" fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job = "moonb
 extern "C" fn Job::rmdir(path : @os_string.OsString) -> Job = "moonbitlang_async_make_rmdir_job"
 
 ///|
-#owned(buf)
 extern "C" fn Job::readdir(
   dir : @fd_util.Fd,
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   len : Int,
   restart : Bool,
 ) -> Job = "moonbitlang_async_make_readdir_job"

@@ -44,6 +44,12 @@ char *moonbitlang_async_null_pointer() {
   return 0;
 }
 
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_pointer_is_null(void *ptr) {
   return ptr == 0;
+}
+
+MOONBIT_FFI_EXPORT
+void *moonbitlang_async_make_c_buffer(int32_t size) {
+  return malloc(size);
 }

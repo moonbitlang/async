@@ -47,3 +47,7 @@ pub extern "C" fn Buffer::is_null(ptr : Buffer) -> Bool = "moonbitlang_async_poi
 
 ///|
 pub extern "C" fn Buffer::free(buf : Buffer) = "free"
+
+///|
+#as_free_fn
+pub extern "C" fn Buffer::new(size : Int) -> Buffer = "moonbitlang_async_make_c_buffer"

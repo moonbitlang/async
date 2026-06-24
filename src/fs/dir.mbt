@@ -88,7 +88,8 @@ priv enum DirectoryState {
 /// A directory in file system
 struct Directory {
   io : @event_loop.IoHandle
-  buf : FixedArray[Byte]
+  buf : @c_buffer.Buffer
+  buf_len : Int
   // The offset of the next entry in the buffer
   mut offset : Int
   // The number of entries already consumed
@@ -104,6 +105,7 @@ struct Directory {
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
   self.io.close()
+  self.buf.free()
 }
 
 ///|
@@ -139,12 +141,11 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
 
 ///|
 fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
+  let buf_len = @cmp.maximum(1024, Directory::min_buffer_size())
   {
     io,
-    buf: FixedArray::make(
-      @cmp.maximum(Directory::min_buffer_size(), 1024),
-      b'\x00',
-    ),
+    buf: @c_buffer.new(buf_len),
+    buf_len,
     offset: 0,
     count: 0,
     job_ret: 0,
@@ -153,44 +154,38 @@ fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
 }
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_length(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> Int = "moonbitlang_async_dir_entry_length"
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_name_len(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> Int = "moonbitlang_async_dir_entry_get_name_len"
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_name(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> @c_buffer.Buffer = "moonbitlang_async_dir_entry_get_name"
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_is_dir(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> Int = "moonbitlang_async_dir_entry_is_dir"
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_is_hidden(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
 
 ///|
-#borrow(buf)
 extern "C" fn Directory::entry_file_id(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> UInt64 = "moonbitlang_async_dir_entry_get_file_id"
 
@@ -243,12 +238,7 @@ async fn Directory::next_aux(
     NeedMoreEntry => {
       dir.offset = 0
       dir.count = 0
-      dir.job_ret = dir.io.readdir(
-        dir.buf,
-        dir.buf.length(),
-        restart~,
-        context~,
-      )
+      dir.job_ret = dir.io.readdir(dir.buf, dir.buf_len, restart~, context~)
       if dir.job_ret is 0 {
         dir.state = NoMoreEntry
         return None

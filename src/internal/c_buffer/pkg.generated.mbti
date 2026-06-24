@@ -14,6 +14,8 @@ pub fn Buffer::free(Self) -> Unit
 #alias("_[_]")
 pub fn Buffer::get(Self, Int) -> Byte
 pub fn Buffer::is_null(Self) -> Bool
+#as_free_fn
+pub fn Buffer::new(Int) -> Self
 pub fn Buffer::strlen(Self) -> Int
 
 // Type aliases

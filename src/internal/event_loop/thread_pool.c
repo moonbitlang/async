@@ -1748,10 +1748,7 @@ struct readdir_job {
 };
 
 static
-void free_readdir_job(void *obj) {
-  struct readdir_job *job = (struct readdir_job*)obj;
-  moonbit_decref(job->out);
-}
+void free_readdir_job(void *obj) {}
 
 static
 void readdir_job_worker(struct job *job) {

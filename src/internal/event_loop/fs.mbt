@@ -283,7 +283,7 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
 ///|
 pub async fn IoHandle::readdir(
   dir : IoHandle,
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   len : Int,
   restart~ : Bool,
   context~ : String,
