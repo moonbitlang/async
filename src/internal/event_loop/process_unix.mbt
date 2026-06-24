@@ -77,6 +77,18 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
 
   let ret = get_process_result(handle, self.pid, out)
   if ret < 0 {
+    if platform is MacOS {
+      // On MacOS, when `kevent` report `ESRCH`,
+      // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
+      // Work around this race condition by waiting again after a small timeout.
+      while @os_error.is_nonblocking_io_error() {
+        sleep(10)
+        let ret = get_process_result(handle, self.pid, out)
+        if ret >= 0 {
+          return out.val
+        }
+      }
+    }
     @os_error.check_errno(context)
   }
   out.val

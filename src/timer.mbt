@@ -16,12 +16,7 @@
 /// `sleep` will wait for the given time (in milliseconds) before returning.
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
-pub async fn sleep(duration : Int) -> Unit {
-  let coro = @coroutine.current_coroutine()
-  let timer = @event_loop.Timer::new(duration, () => coro.wake())
-  defer timer.cancel()
-  @coroutine.suspend()
-}
+pub using @event_loop {sleep}
 
 ///|
 priv enum TimerState {
