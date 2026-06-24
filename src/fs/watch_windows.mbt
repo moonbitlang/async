@@ -129,9 +129,8 @@ priv type WindowsWatcherEvent
 
 ///|
 #cfg(platform="windows")
-#borrow(buf)
 extern "C" fn WindowsWatcher::get_os_event(
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
   offset : Int,
 ) -> WindowsWatcherEvent = "moonbitlang_async_watcher_get_event"
 
@@ -164,9 +163,11 @@ extern "C" fn WindowsWatcherEvent::get_parent_file_id(event : Self) -> UInt64 = 
 async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
   defer self.root.close()
   let context = "@fs.Watcher::wait()"
-  let buf = FixedArray::make(WindowsWatcher::event_buffer_size(), b'\x00')
+  let buf_len = WindowsWatcher::event_buffer_size()
+  let buf = @c_buffer.new(buf_len)
+  defer buf.free()
   for ;; {
-    let n = self.root.read_dir_changes(buf, context~)
+    let n = self.root.read_dir_changes(buf, buf_len, context~)
     self.debounce_timer.refresh()
     if n is 0 {
       // overflow
