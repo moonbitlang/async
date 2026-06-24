@@ -114,6 +114,7 @@ struct AcceptIoResult {
 struct ReadDirChangesIoResult {
   struct IoResult header;
 
+  // this buffer should be allocated in C
   char *buf;
   int32_t len;
 };
@@ -224,9 +225,7 @@ void moonbitlang_async_free_io_result(struct IoResult *obj) {
     moonbit_decref(((struct ConnectIoResult*)obj)->addr);
     break;
   case Accept:
-    break;
   case ReadDirChanges:
-    moonbit_decref(((struct ReadDirChangesIoResult*)obj)->buf);
     break;
   }
   free(obj);

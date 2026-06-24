@@ -62,9 +62,8 @@ extern "C" fn IoResult::for_accept() -> IoResult = "moonbitlang_async_make_accep
 
 ///|
 #cfg(platform="windows")
-#owned(buf)
 extern "C" fn IoResult::for_read_dir_changes(
-  buf : Bytes,
+  buf : @c_buffer.Buffer,
   len~ : Int,
 ) -> IoResult = "moonbitlang_async_make_read_dir_changes_io_result"
 

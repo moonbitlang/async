@@ -334,15 +334,13 @@ extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int =
 #cfg(platform="windows")
 pub async fn IoHandle::read_dir_changes(
   handle : IoHandle,
-  buf : FixedArray[Byte],
+  buf : @c_buffer.Buffer,
+  len : Int,
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
   guard handle.kind is Directory
-  let result = IoResult::for_read_dir_changes(
-    buf.unsafe_reinterpret_as_bytes(),
-    len=buf.length(),
-  )
+  let result = IoResult::for_read_dir_changes(buf, len~)
   defer result.free()
   let n = read_dir_changes_ffi(handle.fd, result)
   if n >= 0 {
