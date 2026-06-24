@@ -33,13 +33,14 @@ pub impl Show for OsString with fn to_string(self) {
 ///|
 #unsafe_skip_stub_check
 #borrow(os_str)
-fn decode_len(os_str : @c_buffer.Buffer, len : Int) -> Int = "moonbitlang/async" "os_string/decode_len"
+fn decode_len(os_str : @c_buffer.Buffer, offset : Int, len : Int) -> Int = "moonbitlang/async" "os_string/decode_len"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(os_str, str)
 fn fill_string(
   os_str : @c_buffer.Buffer,
+  offset : Int,
   len : Int,
   str : String,
   str_len : Int,
@@ -49,9 +50,13 @@ fn fill_string(
 /// Decode a host-native string buffer.
 /// The host owns the platform-specific byte decoding and writes UTF-16 code
 /// units into guest-owned MoonBit String storage.
-pub fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String {
-  let str_len = decode_len(os_str, len)
+pub fn decode(
+  os_str : @c_buffer.Buffer,
+  offset? : Int = 0,
+  len? : Int = -1,
+) -> String {
+  let str_len = decode_len(os_str, offset, len)
   let str = String::make(str_len, '\u{0}')
-  fill_string(os_str, len, str, str_len)
+  fill_string(os_str, offset, len, str, str_len)
   str
 }
