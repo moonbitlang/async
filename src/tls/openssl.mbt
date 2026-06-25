@@ -289,7 +289,7 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let len = @cmp.minimum(read_buf.len, len)
   dst.blit_from_bytes(
     src=read_buf.buf.unsafe_reinterpret_as_bytes(),
-    offset=read_buf.start,
+    src_offset=read_buf.start,
     len~,
   )
   read_buf.drop(len)
@@ -308,7 +308,7 @@ fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
     -1
   }
   let len = @cmp.minimum(len, remaining)
-  src.blit_to_bytes(dst=ep.write_buf.buf, offset=end, len~)
+  src.blit_to_bytes(dst=ep.write_buf.buf, dst_offset=end, len~)
   ep.write_buf.len += len
   len
 }
@@ -698,7 +698,7 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
     raise TlsError(err_get_error())
   }
   let result = FixedArray::make(len.val, b'\x00')
-  hash.blit_to_bytes(dst=result, offset=0, len=len.val)
+  hash.blit_to_bytes(dst=result, len=len.val)
   result.unsafe_reinterpret_as_bytes()
 }
 
