@@ -69,7 +69,7 @@ pub impl Show for OsString with fn to_string(self) {
 pub fn decode(
   os_str : @c_buffer.Buffer,
   offset? : Int = 0,
-  len? : Int = os_str.strlen(),
+  len? : Int = os_str.strlen(offset~),
 ) -> String {
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, src_offset=offset, len~)

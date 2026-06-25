@@ -16,7 +16,7 @@ pub fn Buffer::get(Self, Int) -> Byte
 pub fn Buffer::is_null(Self) -> Bool
 #as_free_fn
 pub fn Buffer::new(Int) -> Self
-pub fn Buffer::strlen(Self) -> Int
+pub fn Buffer::strlen(Self, offset? : Int) -> Int
 
 // Type aliases
 

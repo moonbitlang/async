@@ -583,7 +583,6 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
 // mute unused warning
 #cfg(platform="windows")
 let _unused : Unit = {
-  ignore(@c_buffer.Buffer::strlen)
   ignore(@bytes_util.ascii_to_string)
   ignore(@utf8.encode(""))
 }
