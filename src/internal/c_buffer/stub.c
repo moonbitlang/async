@@ -20,13 +20,25 @@
 #include <moonbit.h>
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_blit_to_c(char *dst, char *src, int offset, int len) {
-  memcpy(dst, src + offset, len);
+void moonbitlang_async_blit_to_c(
+  char *dst,
+  int32_t dst_offset,
+  char *src,
+  int32_t src_offset,
+  int32_t len
+) {
+  memcpy(dst + dst_offset, src + src_offset, len);
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_blit_from_c(char *src, char *dst, int offset, int len) {
-  memcpy(dst + offset, src, len);
+void moonbitlang_async_blit_from_c(
+  char *src,
+  int32_t src_offset,
+  char *dst,
+  int32_t dst_offset,
+  int32_t len
+) {
+  memcpy(dst + dst_offset, src + src_offset, len);
 }
 
 MOONBIT_FFI_EXPORT
