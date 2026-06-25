@@ -120,54 +120,53 @@ extern "C" fn WindowsWatcher::has_ReadDirectoryChangesExW() -> Bool = "moonbitla
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcher::event_buffer_size() -> Int = "moonbitlang_async_watcher_event_buffer_size"
+priv struct WindowsWatcherBuf(@c_buffer.Buffer)
 
 ///|
 #cfg(platform="windows")
-#external
-priv type WindowsWatcherEvent
+extern "C" fn WindowsWatcherBuf::size() -> Int = "moonbitlang_async_watcher_event_buffer_size"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcher::get_os_event(
-  buf : @c_buffer.Buffer,
+extern "C" fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = "moonbitlang_async_watcher_event_get_size"
+
+///|
+#cfg(platform="windows")
+extern "C" fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = "moonbitlang_async_watcher_event_is_modify_event"
+
+///|
+#cfg(platform="windows")
+extern "C" fn WindowsWatcherBuf::get_path_len(self : Self, offset : Int) -> Int = "moonbitlang_async_watcher_event_get_path_len"
+
+///|
+/// Get the offset of path data inside the event
+#cfg(platform="windows")
+extern "C" fn WindowsWatcherBuf::get_path_offset() -> Int = "moonbitlang_async_watcher_event_get_path_offset"
+
+///|
+#cfg(platform="windows")
+extern "C" fn WindowsWatcherBuf::get_file_id(
+  self : Self,
   offset : Int,
-) -> WindowsWatcherEvent = "moonbitlang_async_watcher_get_event"
+) -> UInt64 = "moonbitlang_async_watcher_event_get_file_id"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::get_size(event : Self) -> Int = "moonbitlang_async_watcher_event_get_size"
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::is_modify(event : Self) -> Bool = "moonbitlang_async_watcher_event_is_modify_event"
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::get_path_len(event : Self) -> Int = "moonbitlang_async_watcher_event_get_path_len"
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::get_path(event : Self) -> @c_buffer.Buffer = "moonbitlang_async_watcher_event_get_path"
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::get_file_id(event : Self) -> UInt64 = "moonbitlang_async_watcher_event_get_file_id"
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherEvent::get_parent_file_id(event : Self) -> UInt64 = "moonbitlang_async_watcher_event_get_parent_file_id"
+extern "C" fn WindowsWatcherBuf::get_parent_file_id(
+  self : Self,
+  offset : Int,
+) -> UInt64 = "moonbitlang_async_watcher_event_get_parent_file_id"
 
 ///|
 #cfg(platform="windows")
 async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
   defer self.root.close()
   let context = "@fs.Watcher::wait()"
-  let buf_len = WindowsWatcher::event_buffer_size()
-  let buf = @c_buffer.new(buf_len)
-  defer buf.free()
+  let buf_len = WindowsWatcherBuf::size()
+  let buf = WindowsWatcherBuf(@c_buffer.new(buf_len))
+  defer buf.0.free()
   for ;; {
-    let n = self.root.read_dir_changes(buf, buf_len, context~)
+    let n = self.root.read_dir_changes(buf.0, buf_len, context~)
     self.debounce_timer.refresh()
     if n is 0 {
       // overflow
@@ -176,23 +175,21 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
     }
     let mut offset = 0
     while offset < n {
-      let event = WindowsWatcher::get_os_event(buf, offset)
-      let size = event.get_size()
-      if size is 0 {
-        offset = n
-      } else {
-        offset += size
-      }
+      let size = buf.event_size(offset)
       let file_id : FileIdentity = if WindowsWatcher::has_ReadDirectoryChangesExW() {
-        let file_id = if event.is_modify() {
-          event.get_file_id()
+        let file_id = if buf.is_modify(offset) {
+          buf.get_file_id(offset)
         } else {
-          event.get_parent_file_id()
+          buf.get_parent_file_id(offset)
         }
         { dev_id: self.dev_id, file_id }
       } else {
-        let path = @os_string.decode(event.get_path(), len=event.get_path_len())
-        let path = if event.is_modify() {
+        let path = @os_string.decode(
+          buf.0,
+          offset=offset + WindowsWatcherBuf::get_path_offset(),
+          len=buf.get_path_len(offset),
+        )
+        let path = if buf.is_modify(offset) {
           path[:]
         } else {
           for i in path.length()>..0 {
@@ -217,9 +214,14 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
         file_id
       }
       if self.watcher.watched.get(file_id) is Some(file) {
-        if !(event.is_modify() && file.is_dir) {
+        if !(buf.is_modify(offset) && file.is_dir) {
           self.watcher.mark_as_modified(file_id)
         }
+      }
+      if size is 0 {
+        offset = n
+      } else {
+        offset += size
       }
     }
     if self.waiter is Some(coro) {

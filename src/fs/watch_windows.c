@@ -51,23 +51,26 @@ fs_event_t *moonbitlang_async_watcher_get_event(char *buf, int32_t offset) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_watcher_event_get_size(fs_event_t *event) {
+int32_t moonbitlang_async_watcher_event_get_size(char *buf, int32_t offset) {
+  fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->NextEntryOffset;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_watcher_event_is_modify_event(fs_event_t *event) {
+int32_t moonbitlang_async_watcher_event_is_modify_event(char *buf, int32_t offset) {
+  fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->Action == FILE_ACTION_MODIFIED;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_watcher_event_get_path_len(fs_event_t *event) {
+int32_t moonbitlang_async_watcher_event_get_path_len(char *buf, int32_t offset) {
+  fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->FileNameLength;
 }
 
 MOONBIT_FFI_EXPORT
-WCHAR *moonbitlang_async_watcher_event_get_path(fs_event_t *event) {
-  return event->FileName;
+int32_t moonbitlang_async_watcher_event_get_path_offset() {
+  return offsetof(fs_event_t, FileName);
 }
 
 MOONBIT_FFI_EXPORT
