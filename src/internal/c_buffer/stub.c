@@ -47,8 +47,8 @@ int moonbitlang_async_c_buffer_get(uint8_t *buf, int index) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_strlen(char *str) {
-  return strlen(str);
+int32_t moonbitlang_async_strlen(char *str, int32_t offset) {
+  return strlen(str + offset);
 }
 
 MOONBIT_FFI_EXPORT

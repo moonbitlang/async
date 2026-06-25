@@ -42,7 +42,7 @@ pub extern "C" fn Buffer::blit_to_bytes(
 pub extern "C" fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang_async_c_buffer_get"
 
 ///|
-pub extern "C" fn Buffer::strlen(buf : Buffer) -> Int = "moonbitlang_async_strlen"
+pub extern "C" fn Buffer::strlen(buf : Buffer, offset? : Int = 0) -> Int = "moonbitlang_async_strlen"
 
 ///|
 pub extern "C" fn Buffer::is_null(ptr : Buffer) -> Bool = "moonbitlang_async_pointer_is_null"
