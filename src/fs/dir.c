@@ -113,20 +113,20 @@ int32_t moonbitlang_async_dir_entry_get_name_len(char *buf, int32_t offset) {
 }
 
 MOONBIT_FFI_EXPORT
-char *moonbitlang_async_dir_entry_get_name(char *buf, int32_t offset) {
-  sys_dirent *ent = (sys_dirent *)(buf + offset);
+int32_t moonbitlang_async_dir_entry_get_name_offset(char *buf, int32_t offset) {
 
 #ifdef _WIN32
 
-  return (char*)ent->FileName;
+  return offsetof(sys_dirent, FileName);
 
 #elif defined(__MACH__)
 
-  return ((char*)&ent->d_name) + ent->d_name.attr_dataoffset;
+  sys_dirent *ent = (sys_dirent *)(buf + offset);
+  return offsetof(sys_dirent, d_name) + ent->d_name.attr_dataoffset;
 
 #elif defined(__linux__)
 
-  return ent->d_name;
+  return offsetof(sys_dirent, d_name);
 
 #else
 

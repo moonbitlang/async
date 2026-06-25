@@ -85,10 +85,13 @@ priv enum DirectoryState {
 }
 
 ///|
+priv struct DirectoryBuffer(@c_buffer.Buffer)
+
+///|
 /// A directory in file system
 struct Directory {
   io : @event_loop.IoHandle
-  buf : @c_buffer.Buffer
+  buf : DirectoryBuffer
   buf_len : Int
   // The offset of the next entry in the buffer
   mut offset : Int
@@ -105,7 +108,7 @@ struct Directory {
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
   self.io.close()
-  self.buf.free()
+  self.buf.0.free()
 }
 
 ///|
@@ -154,38 +157,29 @@ fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
 }
 
 ///|
-extern "C" fn Directory::entry_length(
-  buf : @c_buffer.Buffer,
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_length"
+extern "C" fn DirectoryBuffer::entry_length(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_length"
 
 ///|
-extern "C" fn Directory::entry_name_len(
-  buf : @c_buffer.Buffer,
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_get_name_len"
+extern "C" fn DirectoryBuffer::entry_name_len(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_get_name_len"
 
 ///|
-extern "C" fn Directory::entry_name(
-  buf : @c_buffer.Buffer,
+extern "C" fn DirectoryBuffer::entry_name_offset(
+  self : Self,
   offset : Int,
-) -> @c_buffer.Buffer = "moonbitlang_async_dir_entry_get_name"
+) -> Int = "moonbitlang_async_dir_entry_get_name_offset"
 
 ///|
-extern "C" fn Directory::entry_is_dir(
-  buf : @c_buffer.Buffer,
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_is_dir"
+extern "C" fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_is_dir"
 
 ///|
-extern "C" fn Directory::entry_is_hidden(
-  buf : @c_buffer.Buffer,
+extern "C" fn DirectoryBuffer::entry_is_hidden(
+  self : Self,
   offset : Int,
 ) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
 
 ///|
-extern "C" fn Directory::entry_file_id(
-  buf : @c_buffer.Buffer,
+extern "C" fn DirectoryBuffer::entry_file_id(
+  self : Self,
   offset : Int,
 ) -> UInt64 = "moonbitlang_async_dir_entry_get_file_id"
 
@@ -238,7 +232,7 @@ async fn Directory::next_aux(
     NeedMoreEntry => {
       dir.offset = 0
       dir.count = 0
-      dir.job_ret = dir.io.readdir(dir.buf, dir.buf_len, restart~, context~)
+      dir.job_ret = dir.io.readdir(dir.buf.0, dir.buf_len, restart~, context~)
       if dir.job_ret is 0 {
         dir.state = NoMoreEntry
         return None
@@ -247,7 +241,7 @@ async fn Directory::next_aux(
       }
     }
   }
-  let entry_len = Directory::entry_length(dir.buf, dir.offset)
+  let entry_len = dir.buf.entry_length(dir.offset)
   let offset = dir.offset
   dir.offset += entry_len
   dir.count += 1
@@ -259,17 +253,18 @@ async fn Directory::next_aux(
   if need_more_entry {
     dir.state = NeedMoreEntry
   }
-  if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
+  if !include_hidden && dir.buf.entry_is_hidden(offset) {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
   let name = @os_string.decode(
-    Directory::entry_name(dir.buf, offset),
-    len=Directory::entry_name_len(dir.buf, offset),
+    dir.buf.0,
+    offset=offset + dir.buf.entry_name_offset(offset),
+    len=dir.buf.entry_name_len(offset),
   )
   if !include_special && name is ("." | "..") {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
-  let is_dir = match Directory::entry_is_dir(dir.buf, offset) {
+  let is_dir = match dir.buf.entry_is_dir(offset) {
     0 => false
     1..<_ => true
     _..<0 => {
@@ -282,7 +277,7 @@ async fn Directory::next_aux(
       kind is Directory
     }
   }
-  let file_id = Directory::entry_file_id(dir.buf, offset)
+  let file_id = dir.buf.entry_file_id(offset)
   Some({ name, is_dir, file_id })
 }
 
