@@ -36,7 +36,9 @@ pub async fn IoHandle::recvfrom(
   @coroutine.check_cancellation()
   let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -75,7 +77,7 @@ pub async fn IoHandle::sendto(
   @coroutine.check_cancellation()
   let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    @coroutine.pause()
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -138,6 +140,9 @@ pub async fn IoHandle::accept(
   @coroutine.check_cancellation()
   let conn = accept_ffi(handle.fd, addr)
   let conn = if conn >= 0 {
+    // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     conn
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read()

@@ -186,12 +186,14 @@ async fn IoHandle::generic_read(
 ) -> Int {
   let n = read_ffi(handle.fd, result)
   if n >= 0 {
+    // The `pause` here prevent a busy read loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
     // Otherwise, even if the read operation itself indicates immediate success,
     // we still need to wait for the completion packet to obtain correct result.
-    @coroutine.pause()
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read(result, context~)
@@ -252,7 +254,9 @@ async fn IoHandle::generic_write(
 ) -> Int {
   let n = write_ffi(handle.fd, result)
   if n >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy write loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.

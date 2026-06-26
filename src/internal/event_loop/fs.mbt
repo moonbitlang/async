@@ -344,7 +344,9 @@ pub async fn IoHandle::read_dir_changes(
   defer result.free()
   let n = read_dir_changes_ffi(handle.fd, result)
   if n >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read(result, context~)
