@@ -18,7 +18,6 @@
 
 #include <sys/inotify.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
 
@@ -62,18 +61,9 @@ int32_t moonbitlang_async_inotify_event_buffer_size() {
 }
 
 MOONBIT_FFI_EXPORT
-struct inotify_event *moonbitlang_async_inotify_get_event(const char *buf, int32_t offset) {
+int32_t moonbitlang_async_inotify_fetch_event(int inotify, void *buf, int32_t buf_len) {
 #ifdef __linux__
-  return (struct inotify_event*)(buf + offset);
-#else
-  moonbit_panic();
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_fetch_event(int inotify, void *buf) {
-#ifdef __linux__
-  int ret = read(inotify, buf, Moonbit_array_length(buf));
+  int ret = read(inotify, buf, buf_len);
   if (ret > 0) {
     return ret;
   } else if (errno == EAGAIN) {
@@ -87,7 +77,8 @@ int32_t moonbitlang_async_inotify_fetch_event(int inotify, void *buf) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_event_get_size(struct inotify_event *event) {
+int32_t moonbitlang_async_inotify_event_get_size(char *buf, int32_t offset) {
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
   return sizeof(struct inotify_event) + event->len;
 #else
@@ -96,7 +87,8 @@ int32_t moonbitlang_async_inotify_event_get_size(struct inotify_event *event) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_event_get_wd(struct inotify_event *event) {
+int32_t moonbitlang_async_inotify_event_get_wd(char *buf, int32_t offset) {
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
   return event->wd;
 #else
@@ -105,7 +97,8 @@ int32_t moonbitlang_async_inotify_event_get_wd(struct inotify_event *event) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_event_has_relevant_event(struct inotify_event *event) {
+int32_t moonbitlang_async_inotify_event_has_relevant_event(char *buf, int32_t offset) {
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
   return (event->mask & (IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO)) != 0;
 #else
@@ -114,7 +107,8 @@ int32_t moonbitlang_async_inotify_event_has_relevant_event(struct inotify_event 
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_event_has_overflow(struct inotify_event *event) {
+int32_t moonbitlang_async_inotify_event_has_overflow(char *buf, int32_t offset) {
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
   return (event->mask & IN_Q_OVERFLOW) != 0;
 #else
@@ -123,7 +117,8 @@ int32_t moonbitlang_async_inotify_event_has_overflow(struct inotify_event *event
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_inotify_event_has_ignore(struct inotify_event *event) {
+int32_t moonbitlang_async_inotify_event_has_ignore(char *buf, int32_t offset) {
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
   return (event->mask & IN_IGNORED) != 0;
 #else

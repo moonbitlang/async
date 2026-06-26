@@ -151,20 +151,11 @@ impl WatcherBackend for InotifyWatcher with fn remove_file(self, wd, context~) {
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyWatcher::event_buffer_size() -> Int = "moonbitlang_async_inotify_event_buffer_size"
+priv struct InotifyEventBuffer(@c_buffer.Buffer)
 
 ///|
 #cfg(not(platform="windows"))
-#external
-priv type InotifyEvent
-
-///|
-#cfg(not(platform="windows"))
-#borrow(buf)
-extern "C" fn InotifyWatcher::get_os_event(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> InotifyEvent = "moonbitlang_async_inotify_get_event"
+extern "C" fn InotifyEventBuffer::size() -> Int = "moonbitlang_async_inotify_event_buffer_size"
 
 ///|
 /// Return value:
@@ -175,36 +166,48 @@ extern "C" fn InotifyWatcher::get_os_event(
 #borrow(buf)
 extern "C" fn InotifyWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
-  buf : FixedArray[Byte],
+  buf : InotifyEventBuffer,
+  len~ : Int,
 ) -> Int = "moonbitlang_async_inotify_fetch_event"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyEvent::get_size(event : InotifyEvent) -> Int = "moonbitlang_async_inotify_event_get_size"
+extern "C" fn InotifyEventBuffer::get_size(self : Self, offset : Int) -> Int = "moonbitlang_async_inotify_event_get_size"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyEvent::get_wd(event : InotifyEvent) -> @fd_util.Fd = "moonbitlang_async_inotify_event_get_wd"
+extern "C" fn InotifyEventBuffer::get_wd(
+  self : Self,
+  offset : Int,
+) -> @fd_util.Fd = "moonbitlang_async_inotify_event_get_wd"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyEvent::has_relevant_evnet(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_relevant_event"
+extern "C" fn InotifyEventBuffer::has_relevant_event(
+  self : Self,
+  offset : Int,
+) -> Bool = "moonbitlang_async_inotify_event_has_relevant_event"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyEvent::has_overflow(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_overflow"
+extern "C" fn InotifyEventBuffer::has_overflow(
+  self : Self,
+  offset : Int,
+) -> Bool = "moonbitlang_async_inotify_event_has_overflow"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn InotifyEvent::has_ignore(event : InotifyEvent) -> Bool = "moonbitlang_async_inotify_event_has_ignore"
+extern "C" fn InotifyEventBuffer::has_ignore(self : Self, offset : Int) -> Bool = "moonbitlang_async_inotify_event_has_ignore"
 
 ///|
 #cfg(not(platform="windows"))
 async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
   let context = "@fs.Watcher::wait()"
-  let buf = FixedArray::make(InotifyWatcher::event_buffer_size(), b'\x00')
+  let buf_len = InotifyEventBuffer::size()
+  let buf = InotifyEventBuffer(@c_buffer.new(buf_len))
+  defer buf.0.free()
   for ;; {
-    let n = InotifyWatcher::fetch_os_event(self.inotify.fd(), buf)
+    let n = InotifyWatcher::fetch_os_event(self.inotify.fd(), buf, len=buf_len)
     if n < 0 {
       @os_error.check_errno(context)
     }
@@ -216,22 +219,19 @@ async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
       continue
     }
     self.debounce_timer.refresh()
-    let mut offset = 0
-    while offset < n {
-      let event = InotifyWatcher::get_os_event(buf, offset)
-      offset += event.get_size()
-      let wd = event.get_wd()
-      if event.has_ignore() {
+    for offset = 0; offset < n; offset = offset + buf.get_size(offset) {
+      let wd = buf.get_wd(offset)
+      if buf.has_ignore(offset) {
         self.watched.remove(wd)
         continue
       }
 
-      if event.has_overflow() {
+      if buf.has_overflow(offset) {
         self.watcher.overflow()
         continue
       }
 
-      if event.has_relevant_evnet() {
+      if buf.has_relevant_event(offset) {
         let id = self.watched[wd]
         self.watcher.mark_as_modified(id)
       }
