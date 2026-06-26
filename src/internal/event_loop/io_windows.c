@@ -252,11 +252,17 @@ int32_t moonbitlang_async_io_result_get_status(
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handle) {
   int32_t result = CancelIoEx(handle, overlapped);
-  // cancellation failure, wait for completion packet
-  if (!result)
-    return GetLastError() == ERROR_NOT_FOUND ? 0 : -1;
+  // The cancellation operation itself failed for some reason.
+  // The caller should give up cancellation and wait for completion in this case.
+  // 
+  // `ERROR_NOT_FOUND` is an exception here,
+  // because it indicates the operation has already completed.
+  if (!result && GetLastError() != ERROR_NOT_FOUND)
+    return -1;
 
-  // no need to wait if the operation already completed
+  // The operation may have already completed before cancellation (`ERROR_NOT_FOUND`),
+  // or `CancelIoEx` may have taken effect immediately.
+  // So we should check the status of the operation immediately here.
   DWORD bytes_transferred;
   if (GetOverlappedResult(handle, overlapped, &bytes_transferred, FALSE))
     return 0;

@@ -286,6 +286,42 @@ priv enum CancellationStatus {
 }
 
 ///|
+/// Generic function for performing cancellation on an IO operation.
+/// `cancel_func` performs the cancellation work under the hood.
+/// For Windows IOCP/thread pool operations, the OS/thread pool hold references to user objects.
+/// We must wait for the completion of the operation before dropping those user objects,
+/// even in case of cancellation.
+async fn wait_for_cancellation(
+  cancel_func : () -> CancellationStatus raise,
+) -> Unit {
+  try cancel_func() catch {
+    err => {
+      // The cancellation operation itself failed.
+      // Give up the cancellation and wait for completion normally.
+      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      raise err
+    }
+  } noraise {
+    NeedWait =>
+      // The cancellation operation has succeeded,
+      // but the thread pool or OS may need some more time to finish all the cleanup.
+      // So wait for the completion of the cleanup process here.
+      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+    NoWait =>
+      // The cancellation operation has succeeded,
+      // and the cancelled operation has already terminated.
+      // Return immediately here.
+      ()
+    RetryLater => {
+      // Due to some inherent race condition, the cancellaion attempt did not succeed.
+      // Retry again after a small timeout.
+      @coroutine.protect_from_cancel(() => sleep(10), resume_on_cancel=true)
+      wait_for_cancellation(cancel_func)
+    }
+  }
+}
+
+///|
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
@@ -298,35 +334,15 @@ async fn EventLoop::wait_for_job(
       @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
     Some(cancel_func) =>
       @coroutine.suspend() catch {
-        err =>
-          for ;; {
-            let status = cancel_func(job_id) catch {
-              err =>
-                @coroutine.protect_from_cancel() <| () => {
-                  @coroutine.suspend()
-                  raise err
-                }
-            }
-            match status {
-              NeedWait => {
-                @coroutine.protect_from_cancel(
-                  @coroutine.suspend,
-                  resume_on_cancel=true,
-                )
-                break
-              }
-              NoWait => raise err
-              RetryLater => {
-                @coroutine.protect_from_cancel(
-                  @coroutine.pause,
-                  resume_on_cancel=true,
-                )
-                if evloop.jobs.get(job_id) is None {
-                  break
-                }
-              }
-            }
-          }
+        _ =>
+          // The cancellation error is swallowed here,
+          // because in case the operation completed before cancellation,
+          // we need to return the result normally to retain cancellation safety
+          // and avoid data loss.
+          // In case the cancellation succeeded,
+          // the underlying operation itself should report cancelled status properly
+          // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
+          wait_for_cancellation(() => cancel_func(job_id))
       }
   }
 }
@@ -359,7 +375,7 @@ async fn perform_job_in_worker(
   }
   evloop.wait_for_job(job_id, cancel?)
   if job.err() is err && err > 0 {
-    if errno_is_cancelled(err) {
+    if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
       raise @coroutine.Cancelled
     } else {
       raise @os_error.OSError(err, context~)
