@@ -111,6 +111,14 @@ let ipv4_any : Addr = Addr::new(0, 0)
 let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
 
 ///|
+fn Addr::any(family : AddrFamily) -> Addr {
+  match family {
+    IPv4 => ipv4_any
+    IPv6 => ipv6_any
+  }
+}
+
+///|
 #borrow(addr)
 extern "C" fn Addr::get_ipv6_bytes_offset(addr : Addr) -> Int = "moonbitlang_async_addr_get_ipv6_bytes_offset"
 

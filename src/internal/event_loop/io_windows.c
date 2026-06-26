@@ -102,13 +102,14 @@ struct ConnectIoResult {
   struct sockaddr *addr;
 };
 
+#define ACCEPTEX_ADDR_LEN (sizeof(struct sockaddr_storage) + 16)
+
 struct AcceptIoResult {
   struct IoResult header;
 
-
   // output buffer used for `AcceptEx`
   DWORD bytes_received;
-  char accept_buffer[sizeof(struct sockaddr_storage) * 2];
+  char accept_buffer[ACCEPTEX_ADDR_LEN * 2];
 };
 
 struct ReadDirChangesIoResult {
@@ -480,8 +481,8 @@ int32_t moonbitlang_async_accept(
     (SOCKET)conn_sock,
     &(result->accept_buffer),
     0,
-    sizeof(struct sockaddr_storage),
-    sizeof(struct sockaddr_storage),
+    ACCEPTEX_ADDR_LEN,
+    ACCEPTEX_ADDR_LEN,
     &(result->bytes_received),
     (LPOVERLAPPED)result
   );

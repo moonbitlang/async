@@ -387,6 +387,42 @@ fn IoResult::for_file(
 
 ///|
 #unsafe_skip_stub_check
+#borrow(buf)
+fn IoResult::for_socket(
+  events : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+) -> IoResult = "moonbitlang/async" "io/make_socket_io_result/windows"
+
+///|
+#unsafe_skip_stub_check
+#borrow(buf, addr)
+fn IoResult::for_socket_with_addr(
+  events : Int,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+  addr~ : Bytes,
+  addr_len? : Int = addr.length(),
+) -> IoResult = "moonbitlang/async" "io/make_socket_with_addr_io_result/windows"
+
+///|
+#unsafe_skip_stub_check
+#borrow(addr)
+fn IoResult::for_connect(
+  addr : Bytes,
+  addr_len? : Int = addr.length(),
+) -> IoResult = "moonbitlang/async" "io/make_connect_io_result/windows"
+
+///|
+#unsafe_skip_stub_check
+fn IoResult::for_accept() -> IoResult = "moonbitlang/async" "io/make_accept_io_result/windows"
+
+///|
+#unsafe_skip_stub_check
 fn IoResult::free(self : IoResult) -> Unit = "moonbitlang/async" "io/free_io_result/windows"
 
 ///|
@@ -521,6 +557,14 @@ async fn IoHandle::read_via_event_bus_windows(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
+    Socket =>
+      IoResult::for_socket(
+        ReadEvent,
+        buf.unsafe_reinterpret_as_bytes(),
+        offset~,
+        len~,
+        flags=0,
+      )
     _ =>
       IoResult::for_file(
         ReadEvent,
@@ -584,6 +628,7 @@ async fn IoHandle::write_via_event_bus_windows(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
+    Socket => IoResult::for_socket(WriteEvent, buf, offset~, len~, flags=0)
     _ => IoResult::for_file(WriteEvent, buf, offset~, len~, position=0)
   }
   defer result.free()
