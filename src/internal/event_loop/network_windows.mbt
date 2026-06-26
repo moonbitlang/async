@@ -115,21 +115,20 @@ extern "C" fn setup_accepted_socket_ffi(
 #cfg(platform="windows")
 pub async fn IoHandle::accept(
   handle : IoHandle,
-  conn_sock : @fd_util.Fd,
+  conn_sock : IoHandle,
   context~ : String,
-) -> IoHandle {
+) -> Unit {
   @coroutine.check_cancellation()
   let result = IoResult::for_accept()
   defer result.free()
-  if 0 == accept_ffi(handle.fd, conn_sock, result) {
+  if 0 == accept_ffi(handle.fd, conn_sock.fd, result) {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
     handle.wait_read(result, context~)
     ignore(result.status(handle.fd, context~))
   }
-  if setup_accepted_socket_ffi(handle.fd, conn_sock) < 0 {
+  if setup_accepted_socket_ffi(handle.fd, conn_sock.fd) < 0 {
     @os_error.check_errno(context)
   }
-  IoHandle::from_fd(conn_sock, kind=Socket)
 }
