@@ -25,6 +25,14 @@ fn get_platform() -> Platform = "moonbitlang/async" "runtime/get_platform"
 
 ///|
 #unsafe_skip_stub_check
+fn init_WSA_ffi() -> Int = "moonbitlang/async" "runtime/init_WSA"
+
+///|
+#unsafe_skip_stub_check
+fn cleanup_WSA_ffi() -> Int = "moonbitlang/async" "runtime/cleanup_WSA"
+
+///|
+#unsafe_skip_stub_check
 fn ms_since_epoch() -> UInt64 = "moonbitlang/async" "time/get_ms_since_epoch"
 
 ///|
@@ -77,9 +85,12 @@ pub fn register_hook(
 }
 
 ///|
-fn EventLoop::new() -> EventLoop {
+fn EventLoop::new() -> EventLoop raise {
   let bus = EventBus::new()
   let notify_recv = init_thread_pool_ffi(bus)
+  if platform is Windows && init_WSA_ffi() != 0 {
+    @os_error.check_errno("initialize WSA")
+  }
   {
     bus,
     fds: {},
@@ -99,6 +110,9 @@ fn EventLoop::new() -> EventLoop {
 fn EventLoop::destroy(evloop : EventLoop) -> Unit {
   destroy_thread_pool()
   evloop.bus.destroy()
+  if platform is Windows {
+    ignore(cleanup_WSA_ffi())
+  }
 }
 
 ///|

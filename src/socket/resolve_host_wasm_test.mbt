@@ -13,30 +13,21 @@
 // limitations under the License.
 
 ///|
-extern "C" fn find_ipv6_test_interface() -> UInt = "moonbitlang_async_find_ipv6_test_interface"
-
-///|
-fn test_interface_index() -> UInt {
-  let index = find_ipv6_test_interface()
-  if index is 0 {
-    abort("cannot find suitable network interface for testing")
-  }
-  index
-}
-
-///|
-let test_interface_cache : Ref[String?] = Ref(
-  Some(
-    @socket.if_indextoname(
-      test_interface_index(),
-      context="fetch name of test network interface",
-    ) catch {
-      err => abort(err.to_string())
-    },
-  ),
-)
-
-///|
-fn test_interface() -> String {
-  test_interface_cache.val.unwrap()
+async test "resolve localhost preference" {
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=FavorV4),
+    content="127.0.0.1:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=OnlyV4),
+    content="127.0.0.1:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=FavorV6),
+    content="[::1]:80",
+  )
+  inspect(
+    @socket.Addr::resolve("localhost", port=80, protocol=OnlyV6),
+    content="[::1]:80",
+  )
 }

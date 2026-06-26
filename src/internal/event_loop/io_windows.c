@@ -105,7 +105,6 @@ struct ConnectIoResult {
 struct AcceptIoResult {
   struct IoResult header;
 
-
   // output buffer used for `AcceptEx`
   DWORD bytes_received;
   int32_t addr_len;
