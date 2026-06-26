@@ -211,6 +211,17 @@ pub async fn Conn::send_close(
 }
 
 ///|
+/// Write `v` big-endian into `buf` byte-by-byte. The frame mask lands at a
+/// non-4-byte-aligned offset, where a single `unsafe_write_uint32_be` would be an
+/// unaligned 32-bit store (UB — traps under UBSan, e.g. a `zig cc` build).
+fn put_u32_be(buf : FixedArray[Byte], off : Int, v : UInt) -> Unit {
+  buf[off] = ((v >> 24) & 0xFFU).to_byte()
+  buf[off + 1] = ((v >> 16) & 0xFFU).to_byte()
+  buf[off + 2] = ((v >> 8) & 0xFFU).to_byte()
+  buf[off + 3] = (v & 0xFFU).to_byte()
+}
+
+///|
 async fn Conn::flush_frame_unprotected(
   self : Conn,
   op_code : OpCode,
@@ -219,9 +230,9 @@ async fn Conn::flush_frame_unprotected(
   // mask the frame if necessary
   let header_end = if self.write_mask is Some(rand) {
     let mask = rand.uint()
-    self.write_buf.unsafe_write_uint32_be(self.payload_start - 4, mask)
+    put_u32_be(self.write_buf, self.payload_start - 4, mask)
     let mask_bytes = FixedArray::make(MASK_SIZE, b'\x00')
-    mask_bytes.unsafe_write_uint32_be(0, mask)
+    put_u32_be(mask_bytes, 0, mask)
     mask_payload(
       self.write_buf,
       mask_bytes.unsafe_reinterpret_as_bytes(),
@@ -386,7 +397,7 @@ async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
     mask_payload(pong_message, mask, offset=payload_start, len~)
   }
   if self.write_mask is Some(rand) {
-    pong_message.unsafe_write_uint32_be(2, rand.uint())
+    put_u32_be(pong_message, 2, rand.uint())
     let mask = pong_message.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
     mask_payload(pong_message, mask, offset=payload_start, len~)
   }
@@ -458,7 +469,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
   }
   self.closed = Some(ConnectionClosed(close_code, reason))
   if self.write_mask is Some(rand) {
-    reply.unsafe_write_uint32_be(2, rand.uint())
+    put_u32_be(reply, 2, rand.uint())
     let mask = reply.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
     mask_payload(reply, mask, offset=payload_start, len~)
   }
@@ -732,7 +743,7 @@ pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
   }
   frame.blit_from_bytesview(payload_start, msg)
   if self.write_mask is Some(rand) {
-    frame.unsafe_write_uint32_be(2, rand.uint())
+    put_u32_be(frame, 2, rand.uint())
     let mask = frame.unsafe_reinterpret_as_bytes()[2:2 + MASK_SIZE]
     mask_payload(frame, mask, offset=payload_start, len~)
   }
