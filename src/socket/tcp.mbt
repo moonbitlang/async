@@ -202,8 +202,9 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let context = "@socket.TcpServer::accept()"
   let family = self.addr.family()
   let conn_sock = make_tcp_socket(family, context~)
-  let conn = self.io.accept(conn_sock, context~)
+  let conn = @event_loop.IoHandle::from_fd(conn_sock, kind=Socket)
   try {
+    self.io.accept(conn, context~)
     if disable_nagle(conn_sock) < 0 {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
     }
