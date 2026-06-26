@@ -103,27 +103,9 @@ int moonbitlang_async_kqueue_watcher_remove_file(int kq, int fd) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_kqueue_watcher_event_size() {
+int32_t moonbitlang_async_kqueue_watcher_fetch_event(int kq, void *buf, int32_t buf_len) {
 #ifdef __MACH__
-  return sizeof(struct kevent);
-#else
-  moonbit_panic();
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-struct kevent *moonbitlang_async_kqueue_watcher_get_event(struct kevent *buf, int32_t index) {
-#ifdef __MACH__
-  return buf + index;
-#else
-  moonbit_panic();
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_kqueue_watcher_fetch_event(int kq, void *buf) {
-#ifdef __MACH__
-  int buffer_size = Moonbit_array_length(buf) / sizeof(struct kevent);
+  int buffer_size = buf_len / sizeof(struct kevent);
   struct timespec timeout = { 0, 0 };
   return kevent(kq, 0, 0, buf, buffer_size, &timeout);
 #else
@@ -132,18 +114,18 @@ int32_t moonbitlang_async_kqueue_watcher_fetch_event(int kq, void *buf) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_kqueue_watcher_event_get_fd(struct kevent *event) {
+int moonbitlang_async_kqueue_watcher_event_get_fd(struct kevent *events, int32_t index) {
 #ifdef __MACH__
-  return event->ident;
+  return events[index].ident;
 #else
   moonbit_panic();
 #endif
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_kqueue_watcher_event_has_modify(struct kevent *event) {
+int32_t moonbitlang_async_kqueue_watcher_event_has_modify(struct kevent *events, int32_t index) {
 #ifdef __MACH__
-  return (event->fflags & (NOTE_WRITE | NOTE_EXTEND)) != 0;
+  return (events[index].fflags & (NOTE_WRITE | NOTE_EXTEND)) != 0;
 #else
   moonbit_panic();
 #endif

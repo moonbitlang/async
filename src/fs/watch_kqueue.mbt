@@ -25,7 +25,8 @@ priv struct KqueueWatcher {
   kqueue : @event_loop.IoHandle
   watched : Map[@fd_util.Fd, KqueueWatchedFile]
   watcher : Watcher
-  event_buffer : FixedArray[Byte]
+  event_buffer : KqueueEventBuffer
+  event_buffer_len : Int
   debounce_timeout : Int
   max_debounce_delay : Int
 }
@@ -36,7 +37,11 @@ extern "C" fn KqueueWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang_async_kqueu
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn KqueueWatcher::event_buffer_size() -> Int = "moonbitlang_async_kqueue_watcher_buffer_size"
+priv struct KqueueEventBuffer(@c_buffer.Buffer)
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn KqueueEventBuffer::size() -> Int = "moonbitlang_async_kqueue_watcher_buffer_size"
 
 ///|
 #cfg(not(platform="windows"))
@@ -50,6 +55,7 @@ fn KqueueWatcher::KqueueWatcher(
   if !@fd_util.fd_is_valid(kqueue) {
     @os_error.check_errno(context)
   }
+  let event_buffer_len = KqueueEventBuffer::size()
   {
     kqueue: @event_loop.IoHandle::from_fd(
       kqueue,
@@ -59,7 +65,8 @@ fn KqueueWatcher::KqueueWatcher(
     ),
     watched: {},
     watcher,
-    event_buffer: FixedArray::make(KqueueWatcher::event_buffer_size(), 0),
+    event_buffer: @c_buffer.new(event_buffer_len),
+    event_buffer_len,
     debounce_timeout,
     max_debounce_delay,
   }
@@ -73,6 +80,7 @@ impl WatcherBackend for KqueueWatcher with fn close(self) {
     file.io.close()
   }
   self.watched.clear()
+  self.event_buffer.0.free()
 }
 
 ///|
@@ -122,19 +130,6 @@ impl WatcherBackend for KqueueWatcher with fn remove_file(self, fd, context~) {
 }
 
 ///|
-#cfg(not(platform="windows"))
-#external
-priv type KqueueEvent
-
-///|
-#cfg(not(platform="windows"))
-#borrow(buf)
-extern "C" fn KqueueWatcher::get_os_event(
-  buf : FixedArray[Byte],
-  index : Int,
-) -> KqueueEvent = "moonbitlang_async_kqueue_watcher_get_event"
-
-///|
 /// Return value:
 /// - positive => number of bytes written
 /// - zero => no more event available currently
@@ -143,16 +138,17 @@ extern "C" fn KqueueWatcher::get_os_event(
 #borrow(buf)
 extern "C" fn KqueueWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
-  buf : FixedArray[Byte],
+  buf : KqueueEventBuffer,
+  len~ : Int,
 ) -> Int = "moonbitlang_async_kqueue_watcher_fetch_event"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn KqueueEvent::fd(event : KqueueEvent) -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_event_get_fd"
+extern "C" fn KqueueEventBuffer::fd(self : Self, index : Int) -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_event_get_fd"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn KqueueEvent::has_modify(event : KqueueEvent) -> Bool = "moonbitlang_async_kqueue_watcher_event_has_modify"
+extern "C" fn KqueueEventBuffer::has_modify(self : Self, index : Int) -> Bool = "moonbitlang_async_kqueue_watcher_event_has_modify"
 
 ///|
 #cfg(not(platform="windows"))
@@ -183,7 +179,11 @@ async fn KqueueWatcher::process_events(
   timeout~ : Int?,
   context~ : String,
 ) -> Unit {
-  let n = KqueueWatcher::fetch_os_event(self.kqueue.fd(), self.event_buffer)
+  let n = KqueueWatcher::fetch_os_event(
+    self.kqueue.fd(),
+    self.event_buffer,
+    len=self.event_buffer_len,
+  )
   if n < 0 {
     @os_error.check_errno(context)
   }
@@ -194,9 +194,8 @@ async fn KqueueWatcher::process_events(
     }
   }
   for i in 0..<n {
-    let event = KqueueWatcher::get_os_event(self.event_buffer, i)
-    let fd = event.fd()
-    if event.has_modify() {
+    let fd = self.event_buffer.fd(i)
+    if self.event_buffer.has_modify(i) {
       let { file_id, .. } = self.watched[fd]
       self.watcher.mark_as_modified(file_id)
     }
