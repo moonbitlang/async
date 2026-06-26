@@ -28,6 +28,17 @@ pub fn set_nonblocking(fd : Fd, context~ : String) -> Unit raise {
 
 ///|
 #unsafe_skip_stub_check
+fn set_cloexec_ffi(fd : Fd) -> Int = "moonbitlang/async" "fd_util/set_cloexec"
+
+///|
+pub fn set_cloexec(fd : Fd, context~ : String) -> Unit raise {
+  if set_cloexec_ffi(fd) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+#unsafe_skip_stub_check
 fn close_ffi(fd : Fd) -> Int = "moonbitlang/async" "fd_util/close_fd"
 
 ///|

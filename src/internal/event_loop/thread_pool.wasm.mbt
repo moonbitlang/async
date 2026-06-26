@@ -271,6 +271,27 @@ fn Job::readdir(
   restart : Bool,
 ) -> Job = "moonbitlang/async" "thread_pool/make_readdir_job"
 
+///|
+#unsafe_skip_stub_check
+#borrow(addr)
+fn Job::bind(
+  socket : @fd_util.Fd,
+  addr : Bytes,
+  addr_len? : Int = addr.length(),
+) -> Job = "moonbitlang/async" "thread_pool/make_bind_job"
+
+///|
+#unsafe_skip_stub_check
+#borrow(host)
+fn Job::getaddrinfo(
+  host : @os_string.OsString,
+  host_len? : Int = host.to_string().length(),
+) -> Job = "moonbitlang/async" "thread_pool/make_getaddrinfo_job"
+
+///|
+#unsafe_skip_stub_check
+fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang/async" "thread_pool/get_getaddrinfo_result"
+
 // Job::realpath
 
 // Job::get_realpath_result

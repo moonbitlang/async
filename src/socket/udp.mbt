@@ -49,10 +49,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   try {
     let dst_addr = if addr.is_multicast() {
       if @event_loop.platform is Windows {
-        let local_addr = match family {
-          IPv4 => ipv4_any
-          IPv6 => ipv6_any
-        }
+        let local_addr = Addr::any(family)
         io.bind(local_addr.0, context~)
       }
       Some(addr)
