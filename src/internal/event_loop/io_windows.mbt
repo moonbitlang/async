@@ -138,12 +138,7 @@ async fn IoHandle::wait_read(
     handle.read = Idle
   }
   @coroutine.suspend() catch {
-    err => {
-      if io_result.cancel(handle.fd, context~) is NeedWait {
-        @coroutine.protect_from_cancel(@coroutine.suspend)
-      }
-      raise err
-    }
+    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
 
@@ -160,12 +155,7 @@ async fn IoHandle::wait_write(
     handle.write = Idle
   }
   @coroutine.suspend() catch {
-    err => {
-      if io_result.cancel(handle.fd, context~) is NeedWait {
-        @coroutine.protect_from_cancel(@coroutine.suspend)
-      }
-      raise err
-    }
+    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
 
