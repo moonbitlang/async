@@ -56,7 +56,7 @@ extern "C" fn sha1_ffi(src : Bytes, len : Int, dst : FixedArray[Byte]) = "moonbi
 ///|
 #cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
-pub fn sha1(src : Bytes) -> Bytes {
+pub fn sha1(src : Bytes) -> Bytes raise {
   // Reachable with no prior TLS connection (e.g. a plain `ws://` handshake).
   load_openssl()
   let result = FixedArray::make(20, b'\x00')

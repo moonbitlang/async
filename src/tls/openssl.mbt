@@ -27,7 +27,7 @@ extern "C" fn SSL_CTX::client_ffi(load_default_verify_path~ : Bool) -> SSL_CTX =
 
 ///|
 #cfg(not(platform="windows"))
-fn SSL_CTX::client(load_default_verify_path~ : Bool) -> SSL_CTX {
+fn SSL_CTX::client(load_default_verify_path~ : Bool) -> SSL_CTX raise {
   load_openssl()
   SSL_CTX::client_ffi(load_default_verify_path~)
 }
@@ -38,7 +38,7 @@ extern "C" fn SSL_CTX::server_ffi() -> SSL_CTX = "moonbitlang_async_tls_server_c
 
 ///|
 #cfg(not(platform="windows"))
-fn SSL_CTX::server() -> SSL_CTX {
+fn SSL_CTX::server() -> SSL_CTX raise {
   load_openssl()
   SSL_CTX::server_ffi()
 }
@@ -61,13 +61,13 @@ let client_ctx_cell : Ref[SSL_CTX?] = Ref(None)
 
 ///|
 #cfg(not(platform="windows"))
-fn client_ctx() -> SSL_CTX {
+fn client_ctx() -> SSL_CTX raise {
   match client_ctx_cell.val {
     Some(ctx) => ctx
     None => {
       let ctx = SSL_CTX::client(load_default_verify_path=true)
       guard !ctx.is_null() else {
-        abort("failed to initialize SSL client context")
+        raise TlsError("failed to initialize SSL client context")
       }
       client_ctx_cell.val = Some(ctx)
       ctx
@@ -81,13 +81,13 @@ let server_ctx_cell : Ref[SSL_CTX?] = Ref(None)
 
 ///|
 #cfg(not(platform="windows"))
-fn server_ctx() -> SSL_CTX {
+fn server_ctx() -> SSL_CTX raise {
   match server_ctx_cell.val {
     Some(ctx) => ctx
     None => {
       let ctx = SSL_CTX::server()
       guard !ctx.is_null() else {
-        abort("failed to initialize SSL server context")
+        raise TlsError("failed to initialize SSL server context")
       }
       server_ctx_cell.val = Some(ctx)
       ctx
@@ -305,7 +305,7 @@ extern "C" fn create_bio_ffi(data : Transport) -> BIO = "moonbitlang_async_tls_c
 ///|
 // Also the sole consumer of the BIO method table `load_openssl` registers.
 #cfg(not(platform="windows"))
-fn create_bio(data : Transport) -> BIO {
+fn create_bio(data : Transport) -> BIO raise {
   load_openssl()
   create_bio_ffi(data)
 }
@@ -385,7 +385,7 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
   w : W,
   is_client~ : Bool,
   host~ : String?,
-) -> Tls {
+) -> Tls raise {
   let transport = Transport::new(r, w)
   let rbio = create_bio(transport)
   let wbio = create_bio(transport)
