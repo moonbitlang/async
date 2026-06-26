@@ -322,7 +322,9 @@ async fn IoHandle::read_via_event_bus_unix(
 ) -> Int {
   let ret = read_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy read loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -352,7 +354,9 @@ async fn IoHandle::write_via_event_bus_unix(
 ) -> Int {
   let ret = write_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy write loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -489,7 +493,9 @@ async fn IoHandle::generic_read_windows(
 ) -> Int {
   let n = read_io_result_ffi(handle.fd, result)
   if n >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy read loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
@@ -555,7 +561,9 @@ async fn IoHandle::generic_write_windows(
 ) -> Int {
   let n = write_io_result_ffi(handle.fd, result)
   if n >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy write loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_write_result(result, context~)

@@ -62,7 +62,9 @@ async fn IoHandle::read_via_event_bus(
 ) -> Int {
   let ret = read_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy read loop from exhausting the whole program
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -98,7 +100,9 @@ async fn IoHandle::write_via_event_bus(
 ) -> Int {
   let ret = write_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
-    @coroutine.pause()
+    // The `pause` here prevent a busy write loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
