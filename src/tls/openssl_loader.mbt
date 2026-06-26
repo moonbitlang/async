@@ -42,8 +42,7 @@ let openssl_loaded : Ref[Result[Unit, Error]?] = Ref(None)
 #cfg(not(platform="windows"))
 fn load_openssl() -> Unit raise {
   match openssl_loaded.val {
-    Some(Ok(_)) => return
-    Some(Err(err)) => raise err
+    Some(cached) => return cached.unwrap_or_error()
     None => ()
   }
   let result = try {
@@ -53,10 +52,7 @@ fn load_openssl() -> Unit raise {
     err => Err(err)
   }
   openssl_loaded.val = Some(result)
-  match result {
-    Ok(_) => ()
-    Err(err) => raise err
-  }
+  result.unwrap_or_error()
 }
 
 ///|
