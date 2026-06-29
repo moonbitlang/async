@@ -47,17 +47,13 @@ pub suberror TimerCancelled derive(@debug.Debug)
 pub impl Show for TimerCancelled
 
 // Types and methods
-pub struct Lazy[X] {
-  // private fields
-}
+type Lazy[X]
 #alias(new, deprecated)
 #as_free_fn(lazy_init, deprecated)
 pub fn[X] Lazy::Lazy(async () -> X) -> Self[X]
 pub async fn[X] Lazy::wait(Self[X]) -> X
 
-pub struct Mutex {
-  // private fields
-}
+type Mutex
 pub fn Mutex::Mutex() -> Self
 pub async fn Mutex::acquire(Self) -> Unit
 pub fn Mutex::release(Self) -> Unit

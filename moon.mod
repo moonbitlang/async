@@ -14,7 +14,8 @@ description = "Asynchronous programming library for MoonBit"
 
 preferred_target = "native"
 
+source = "src"
+
 options(
-  source: "src",
   exclude: [ "test_directory", "test_keys" ],
 )

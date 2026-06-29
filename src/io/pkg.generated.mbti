@@ -28,9 +28,7 @@ pub(all) enum Encoding {
   UTF8
 }
 
-pub struct MemoryReader {
-  // private fields
-}
+type MemoryReader
 pub fn MemoryReader::MemoryReader(async (&Writer) -> Unit) -> Self
 pub fn MemoryReader::close(Self) -> Unit
 pub impl Reader for MemoryReader
