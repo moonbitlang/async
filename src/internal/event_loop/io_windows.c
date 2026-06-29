@@ -108,7 +108,8 @@ struct AcceptIoResult {
 
   // output buffer used for `AcceptEx`
   DWORD bytes_received;
-  char accept_buffer[sizeof(struct sockaddr_storage) * 2];
+  int32_t addr_len;
+  char accept_buffer[0];
 };
 
 struct ReadDirChangesIoResult {
@@ -193,8 +194,15 @@ struct ConnectIoResult *moonbitlang_async_make_connect_io_result(struct sockaddr
 }
 
 MOONBIT_FFI_EXPORT
-struct AcceptIoResult *moonbitlang_async_make_accept_io_result() {
-  return MAKE_IO_RESULT(IO_RESULT_READ_EVENT, Accept);
+struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t addr_len) {
+  struct AcceptIoResult *result = (struct AcceptIoResult*)make_io_result(
+    IO_RESULT_READ_EVENT,
+    Accept,
+    // `AcceptEx` requires 16 extra bytes per address for internal use in the buffer.
+    sizeof(struct AcceptIoResult) + (addr_len + 16) * 2
+  );
+  result->addr_len = addr_len;
+  return result;
 }
 
 MOONBIT_FFI_EXPORT
@@ -478,10 +486,10 @@ int32_t moonbitlang_async_accept(
   return AcceptEx(
     (SOCKET)handle,
     (SOCKET)conn_sock,
-    &(result->accept_buffer),
+    result->accept_buffer,
     0,
-    sizeof(struct sockaddr_storage),
-    sizeof(struct sockaddr_storage),
+    result->addr_len + 16,
+    result->addr_len + 16,
     &(result->bytes_received),
     (LPOVERLAPPED)result
   );
@@ -504,6 +512,11 @@ int32_t moonbitlang_async_setup_accepted_socket(HANDLE listen_sock, HANDLE accep
     (char*)&listen_sock,
     sizeof(UINT_PTR)
   );
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_get_accept_peer_addr(struct AcceptIoResult *result, struct sockaddr *dst) {
+  memcpy(dst, result->accept_buffer + result->addr_len + 16, result->addr_len);
 }
 
 MOONBIT_FFI_EXPORT

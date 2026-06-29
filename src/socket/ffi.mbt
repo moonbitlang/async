@@ -224,22 +224,3 @@ fn getsockname(
   }
   addr
 }
-
-///|
-#cfg(platform="windows")
-#borrow(addr_out)
-extern "C" fn getpeername_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getpeername"
-
-///|
-#cfg(platform="windows")
-fn getpeername(
-  sock : @fd_util.Fd,
-  family : AddrFamily,
-  context~ : String,
-) -> Addr raise {
-  let addr = Addr::empty(family)
-  if getpeername_ffi(sock, addr) != 0 {
-    @os_error.check_errno(context)
-  }
-  addr
-}

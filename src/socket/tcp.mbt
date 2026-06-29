@@ -204,11 +204,11 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let conn_sock = make_tcp_socket(family, context~)
   let conn = @event_loop.IoHandle::from_fd(conn_sock, kind=Socket)
   try {
-    self.io.accept(conn, context~)
+    let addr = Addr::empty(family)
+    self.io.accept(conn, addr.0, context~)
     if disable_nagle(conn_sock) < 0 {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
     }
-    let addr = getpeername(conn_sock, self.addr.family(), context~)
     // The local address of a server connection is the same as the listen address
     ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
   } catch {

@@ -58,7 +58,7 @@ extern "C" fn IoResult::for_connect(addr : Bytes) -> IoResult = "moonbitlang_asy
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::for_accept() -> IoResult = "moonbitlang_async_make_accept_io_result"
+extern "C" fn IoResult::for_accept(addr_len : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
 
 ///|
 #cfg(platform="windows")
