@@ -292,6 +292,16 @@ fn Job::getaddrinfo(
 #unsafe_skip_stub_check
 fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang/async" "thread_pool/get_getaddrinfo_result"
 
-// Job::realpath
+///|
+#unsafe_skip_stub_check
+#borrow(path)
+fn Job::realpath(
+  path : @os_string.OsString,
+  path_len? : Int = path.to_string().length(),
+) -> Job = "moonbitlang/async" "thread_pool/make_realpath_job"
 
-// Job::get_realpath_result
+///|
+#unsafe_skip_stub_check
+fn Job::get_realpath_result(
+  job : Job,
+) -> @c_buffer.Buffer = "moonbitlang/async" "thread_pool/get_realpath_result"
