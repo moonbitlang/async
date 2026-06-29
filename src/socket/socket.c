@@ -112,7 +112,7 @@ HANDLE moonbitlang_async_make_udp_socket(int family, int32_t multicast) {
     0,
     NULL,
     0,
-    WSA_FLAG_OVERLAPPED
+    WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT
   );
   if (sock == INVALID_SOCKET)
     return INVALID_HANDLE_VALUE;
