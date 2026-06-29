@@ -719,6 +719,7 @@ void open_job_worker(struct job *job) {
     FILE_LIST_DIRECTORY
   };
   static int create_modes[] = { OPEN_EXISTING, TRUNCATE_EXISTING, OPEN_ALWAYS, CREATE_ALWAYS, CREATE_NEW };
+  static int sync_flags[] = { 0, FILE_FLAG_WRITE_THROUGH, FILE_FLAG_WRITE_THROUGH };
 #else
   static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY };
   static int create_modes[] = {
@@ -734,7 +735,12 @@ void open_job_worker(struct job *job) {
   struct open_job *open_job = (struct open_job*)job;
 
 #ifdef _WIN32
-  DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
+
+  DWORD flags =
+    FILE_ATTRIBUTE_NORMAL
+    | FILE_FLAG_BACKUP_SEMANTICS
+    | sync_flags[open_job->sync];
+
   if (open_job->access == 3)
     flags |= FILE_FLAG_OVERLAPPED;
 
