@@ -57,7 +57,11 @@ pub async fn Tcp::connect_to_host(
               raise err
             }
           }
-          result = Some(conn)
+          if result is None {
+            result = Some(conn)
+          } else {
+            conn.close()
+          }
           group.return_immediately(())
         }
         @async.sleep(250)
