@@ -57,6 +57,8 @@ pub async fn Tcp::connect_to_host(
               raise err
             }
           }
+          // Multiple `connect` attempt may happen to complete simultaneously,
+          // Keep only one result and properly close the others in this case.
           if result is None {
             result = Some(conn)
           } else {
@@ -69,19 +71,31 @@ pub async fn Tcp::connect_to_host(
     }
   }
 
-  match protocol {
-    NoPreference | OnlyV4 | OnlyV6 => connect_with_protocol(protocol)
-    FavorV4 => {
-      connect_with_protocol(OnlyV4)
-      if result is None {
+  try {
+    match protocol {
+      NoPreference | OnlyV4 | OnlyV6 => connect_with_protocol(protocol)
+      FavorV4 => {
+        connect_with_protocol(OnlyV4)
+        if result is None {
+          connect_with_protocol(OnlyV6)
+        }
+      }
+      FavorV6 => {
         connect_with_protocol(OnlyV6)
+        if result is None {
+          connect_with_protocol(OnlyV4)
+        }
       }
     }
-    FavorV6 => {
-      connect_with_protocol(OnlyV6)
-      if result is None {
-        connect_with_protocol(OnlyV4)
+  } catch {
+    err => {
+      // It is possible that the whole `connect_to_host` call is cancelled,
+      // but a connection attempt succeeded just before the cancellation.
+      // We need to properly close the result in this case.
+      if result is Some(conn) {
+        conn.close()
       }
+      raise err
     }
   }
   match result {
