@@ -106,6 +106,14 @@ extern "C" fn accept_ffi(
 
 ///|
 #cfg(platform="windows")
+#borrow(dst)
+extern "C" fn IoResult::get_accept_peer_addr(
+  result : IoResult,
+  dst : Bytes,
+) -> Unit = "moonbitlang_async_get_accept_peer_addr"
+
+///|
+#cfg(platform="windows")
 extern "C" fn setup_accepted_socket_ffi(
   listen_sock : @fd_util.Fd,
   accept_sock : @fd_util.Fd,
@@ -116,10 +124,11 @@ extern "C" fn setup_accepted_socket_ffi(
 pub async fn IoHandle::accept(
   handle : IoHandle,
   conn_sock : IoHandle,
+  addr : Bytes,
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  let result = IoResult::for_accept()
+  let result = IoResult::for_accept(addr.length())
   defer result.free()
   if 0 == accept_ffi(handle.fd, conn_sock.fd, result) {
     if !@os_error.is_nonblocking_io_error() {
@@ -128,6 +137,7 @@ pub async fn IoHandle::accept(
     handle.wait_read(result, context~)
     ignore(result.status(handle.fd, context~))
   }
+  result.get_accept_peer_addr(addr)
   if setup_accepted_socket_ffi(handle.fd, conn_sock.fd) < 0 {
     @os_error.check_errno(context)
   }

@@ -506,12 +506,6 @@ int moonbitlang_async_getsockname(HANDLE sock, struct sockaddr *addr_out) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_getpeername(HANDLE sock, struct sockaddr *addr_out) {
-  socklen_t len = Moonbit_array_length(addr_out);
-  return getpeername((SOCKET)sock, addr_out, &len);
-}
-
-MOONBIT_FFI_EXPORT
 uint32_t moonbitlang_async_if_nametoindex(HANDLE sock, const char *name) {
 #ifdef _WIN32
 
