@@ -2022,6 +2022,9 @@ void spawn_job_worker(struct job *job) {
 
   struct spawn_job *spawn_job = (struct spawn_job *)job;
 
+  HANDLE handles_to_inherit[3];
+  DWORD number_of_handles_to_inherit = 0;
+
   for (int i = 0; i < 3; ++i) {
     if (spawn_job->stdio[i] == INVALID_HANDLE_VALUE)
       spawn_job->stdio[i] = GetStdHandle(std_handle_values[i]);
@@ -2030,6 +2033,13 @@ void spawn_job_worker(struct job *job) {
       job->err = GetLastError();
       return;
     }
+
+    for (int j = 0; j < number_of_handles_to_inherit; ++j) {
+      if (handles_to_inherit[j] == spawn_job->stdio[i])
+        goto handle_already_added;
+    }
+
+    handles_to_inherit[number_of_handles_to_inherit++] = spawn_job->stdio[i];
 
     if (
       !SetHandleInformation(
@@ -2041,23 +2051,60 @@ void spawn_job_worker(struct job *job) {
       job->err = GetLastError();
       return;
     }
+  handle_already_added:
+    ;
   }
 
   DWORD create_flags =
     CREATE_NEW_PROCESS_GROUP // so that we can gracefully terminate this process
                              // via sending Ctrl+Break console event
-    | CREATE_UNICODE_ENVIRONMENT;
+    | CREATE_UNICODE_ENVIRONMENT
+    | EXTENDED_STARTUPINFO_PRESENT;
 
-    if (spawn_job->no_console_window)
-      create_flags |= CREATE_NO_WINDOW;
+  if (spawn_job->no_console_window)
+    create_flags |= CREATE_NO_WINDOW;
 
   STARTUPINFOEXW startup_info;
   memset(&startup_info, 0, sizeof(STARTUPINFOEXW));
-  startup_info.StartupInfo.cb = sizeof(STARTUPINFOW);
+  startup_info.StartupInfo.cb = sizeof(STARTUPINFOEXW);
   startup_info.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
   startup_info.StartupInfo.hStdInput = spawn_job->stdio[0];
   startup_info.StartupInfo.hStdOutput = spawn_job->stdio[1];
   startup_info.StartupInfo.hStdError = spawn_job->stdio[2];
+
+  SIZE_T attrs_size;
+  InitializeProcThreadAttributeList(NULL, 2, 0, &attrs_size);
+  startup_info.lpAttributeList = malloc(attrs_size);
+  if (
+    !InitializeProcThreadAttributeList(
+      startup_info.lpAttributeList,
+      2,
+      0,
+      &attrs_size
+    )
+  ) {
+    job->err = GetLastError();
+    DeleteProcThreadAttributeList(startup_info.lpAttributeList);
+    free(startup_info.lpAttributeList);
+    return;
+  }
+
+  if (
+    !UpdateProcThreadAttribute(
+      startup_info.lpAttributeList,
+      0, // reserved
+      PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+      handles_to_inherit,
+      number_of_handles_to_inherit * sizeof(HANDLE),
+      NULL, // reserved
+      NULL // reserved
+    )
+  ) {
+    job->err = GetLastError();
+    DeleteProcThreadAttributeList(startup_info.lpAttributeList);
+    free(startup_info.lpAttributeList);
+    return;
+  }
 
 #ifdef PROC_THREAD_ATTRIBUTE_JOB_LIST
 
@@ -2066,25 +2113,6 @@ void spawn_job_worker(struct job *job) {
     // atomically assign a child process to new job atomically on creation.
     // This can avoid race condition when main process is killed after `CreateProcess`,
     // but before `AssignProcessToJobObject` on the child process.
-    create_flags |= EXTENDED_STARTUPINFO_PRESENT;
-    startup_info.StartupInfo.cb = sizeof(STARTUPINFOEXW);
-
-    SIZE_T attrs_size;
-    InitializeProcThreadAttributeList(NULL, 1, 0, &attrs_size);
-    startup_info.lpAttributeList = malloc(attrs_size);
-    if (
-      !InitializeProcThreadAttributeList(
-        startup_info.lpAttributeList,
-        1,
-        0,
-        &attrs_size
-      )
-    ) {
-      job->err = GetLastError();
-      free(startup_info.lpAttributeList);
-      return;
-    }
-
     if (
       !UpdateProcThreadAttribute(
         startup_info.lpAttributeList,
@@ -2097,6 +2125,7 @@ void spawn_job_worker(struct job *job) {
       )
     ) {
       job->err = GetLastError();
+      DeleteProcThreadAttributeList(startup_info.lpAttributeList);
       free(startup_info.lpAttributeList);
       return;
     }

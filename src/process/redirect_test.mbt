@@ -19,24 +19,21 @@ async test "merge multiple" {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      inspect(
-        r.read_all().text(),
-        content=(
-          #|abcd
-          #|efgh
-          #|
-        ),
-      )
+      inspect(r.read_all().text(), content="abcdefgh")
     }
     defer w.close()
     @async.with_task_group() <| group => {
-      @process.spawn(group, shell, ["-c", "echo abcd"], stdout=w, extra_env={
+      @process.spawn(group, shell, ["-c", "\{write_stdout} abcd"], stdout=w, extra_env={
         "LANG": "en_US.UTF-8",
       })
       |> ignore
-      @process.spawn(group, shell, ["-c", "sleep 1; echo efgh"], stdout=w, extra_env={
-        "LANG": "en_US.UTF-8",
-      })
+      @process.spawn(
+        group,
+        shell,
+        ["-c", "sleep 1; \{write_stdout} efgh"],
+        stdout=w,
+        extra_env={ "LANG": "en_US.UTF-8" },
+      )
       |> ignore
     }
   }
