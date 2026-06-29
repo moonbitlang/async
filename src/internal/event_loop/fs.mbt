@@ -288,6 +288,11 @@ pub async fn IoHandle::readdir(
   restart~ : Bool,
   context~ : String,
 ) -> Int {
+  guard dir.read is Idle
+  dir.read = Submitted
+  defer {
+    dir.read = Idle
+  }
   let job = Job::readdir(dir.fd, buf, len, restart)
   defer job.free()
   perform_job_in_worker(job, context~)
