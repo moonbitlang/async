@@ -522,9 +522,27 @@ fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo {
   job.handle.get_getaddrinfo_result()
 }
 
-// Job::realpath
+///|
+#unsafe_skip_stub_check
+#borrow(path)
+fn JobHandle::realpath(
+  path : @os_string.OsString,
+  path_len? : Int = path.to_string().length(),
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_realpath_job"
 
-// Job::get_realpath_result
+///|
+fn Job::realpath(path : @os_string.OsString) -> Job {
+  Job(JobHandle::realpath(path))
+}
+
+///|
+#unsafe_skip_stub_check
+fn JobHandle::get_realpath_result(job : JobHandle) -> @c_buffer.Buffer = "moonbitlang/async" "thread_pool/get_realpath_result"
+
+///|
+fn Job::get_realpath_result(job : Job) -> @c_buffer.Buffer {
+  job.handle.get_realpath_result()
+}
 
 ///|
 priv struct SpawnJob(Job)

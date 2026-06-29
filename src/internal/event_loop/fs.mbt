@@ -300,7 +300,7 @@ pub async fn IoHandle::readdir(
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
   let job = Job::realpath(path_bytes)
