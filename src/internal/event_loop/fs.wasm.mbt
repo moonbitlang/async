@@ -272,3 +272,18 @@ pub async fn IoHandle::readdir(
   defer job.free()
   perform_job_in_worker(job, context~)
 }
+
+///|
+pub async fn realpath(path : StringView, context~ : String) -> String {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::realpath(path_bytes)
+  defer job.free()
+  try {
+    perform_job_in_worker(job, context~) |> ignore
+    job.get_realpath_result() |> @os_string.decode
+  } catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  }
+}
