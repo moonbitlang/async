@@ -255,14 +255,3 @@ pub async fn IoHandle::accept_unix(
   }
   IoHandle::from_fd(conn, kind=Socket)
 }
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-pub async fn IoHandle::accept(
-  handle : IoHandle,
-  addr : Bytes,
-  context~ : String,
-) -> IoHandle {
-  @coroutine.check_cancellation()
-  handle.accept_unix(addr, context~)
-}
