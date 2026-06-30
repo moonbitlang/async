@@ -376,33 +376,17 @@ priv struct IoResult(UInt64)
 
 ///|
 #unsafe_skip_stub_check
-#borrow(buf)
-fn IoResult::for_file(
-  events : Int,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-) -> IoResult = "moonbitlang/async" "io/make_file_io_result/windows"
+fn IoResult::for_file(events : Int, len~ : Int, position~ : Int64) -> IoResult = "moonbitlang/async" "io/make_file_io_result/windows"
 
 ///|
 #unsafe_skip_stub_check
-#borrow(buf)
-fn IoResult::for_socket(
-  events : Int,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
-) -> IoResult = "moonbitlang/async" "io/make_socket_io_result/windows"
+fn IoResult::for_socket(events : Int, len~ : Int, flags~ : Int) -> IoResult = "moonbitlang/async" "io/make_socket_io_result/windows"
 
 ///|
 #unsafe_skip_stub_check
-#borrow(buf, addr)
+#borrow(addr)
 fn IoResult::for_socket_with_addr(
   events : Int,
-  buf : Bytes,
-  offset~ : Int,
   len~ : Int,
   flags~ : Int,
   addr~ : Bytes,
@@ -462,6 +446,18 @@ fn IoResult::cancel(
 ///|
 #unsafe_skip_stub_check
 fn IoResult::status_ffi(result : IoResult, handle : @fd_util.Fd) -> Int = "moonbitlang/async" "io/io_result_get_status/windows"
+
+///|
+#unsafe_skip_stub_check
+#borrow(dst, addr)
+fn IoResult::copy_read(
+  result : IoResult,
+  dst : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  addr_len? : Int = addr.length(),
+) -> Unit = "moonbitlang/async" "io/io_result_copy_read/windows"
 
 ///|
 fn IoResult::status(
@@ -534,10 +530,13 @@ fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang/async" "io/errno_is_rea
 async fn IoHandle::generic_read_windows(
   handle : IoHandle,
   result : IoResult,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  addr~ : Bytes,
   context~ : String,
 ) -> Int {
   let n = read_io_result_ffi(handle.fd, result)
-  if n >= 0 {
+  let n = if n >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program,
     // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
@@ -554,6 +553,8 @@ async fn IoHandle::generic_read_windows(
     @os_error.check_errno(context)
     panic()
   }
+  result.copy_read(buf, offset~, len=n, addr~)
+  n
 }
 
 ///|
@@ -566,25 +567,11 @@ async fn IoHandle::read_via_event_bus_windows(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
-    Socket =>
-      IoResult::for_socket(
-        ReadEvent,
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len~,
-        flags=0,
-      )
-    _ =>
-      IoResult::for_file(
-        ReadEvent,
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len~,
-        position=0,
-      )
+    Socket => IoResult::for_socket(ReadEvent, len~, flags=0)
+    _ => IoResult::for_file(ReadEvent, len~, position=0)
   }
   defer result.free()
-  handle.generic_read_windows(result, context~)
+  handle.generic_read_windows(result, buf, offset~, addr=b"", context~)
 }
 
 ///|
@@ -604,15 +591,25 @@ async fn IoHandle::read_via_event_bus(
 
 ///|
 #unsafe_skip_stub_check
-fn write_io_result_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang/async" "io/write/windows"
+#borrow(buf)
+fn write_io_result_ffi(
+  fd : @fd_util.Fd,
+  result : IoResult,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang/async" "io/write/windows"
 
 ///|
 async fn IoHandle::generic_write_windows(
   handle : IoHandle,
   result : IoResult,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
   context~ : String,
 ) -> Int {
-  let n = write_io_result_ffi(handle.fd, result)
+  let n = write_io_result_ffi(handle.fd, result, buf, offset~, len~)
   if n >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
@@ -637,11 +634,11 @@ async fn IoHandle::write_via_event_bus_windows(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
-    Socket => IoResult::for_socket(WriteEvent, buf, offset~, len~, flags=0)
-    _ => IoResult::for_file(WriteEvent, buf, offset~, len~, position=0)
+    Socket => IoResult::for_socket(WriteEvent, len~, flags=0)
+    _ => IoResult::for_file(WriteEvent, len~, position=0)
   }
   defer result.free()
-  handle.generic_write_windows(result, context~)
+  handle.generic_write_windows(result, buf, offset~, len~, context~)
 }
 
 ///|
