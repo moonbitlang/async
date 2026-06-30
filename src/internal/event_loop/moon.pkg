@@ -42,7 +42,7 @@ options(
     "event_loop.mbt": [ "native" ],
     "fs.mbt": [ "native", "wasm" ],
     "io.mbt": [ "native", "wasm" ],
-    "io_unix.mbt": [ "native" ],
+    "io_unix.mbt": [ "native", "wasm" ],
     "io_windows.mbt": [ "native" ],
     "missing_close_test.mbt": [ "native" ],
     "network.mbt": [ "native" ],
