@@ -28,44 +28,6 @@ fn gai_error_to_string(code : Int) -> String {
 }
 
 ///|
-#unsafe_skip_stub_check
-#borrow(buf, addr)
-fn recvfrom_unix_ffi(
-  fd : @fd_util.Fd,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  addr_len? : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/recvfrom/unix"
-
-///|
-async fn IoHandle::recvfrom_unix(
-  handle : IoHandle,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  context~ : String,
-) -> Int {
-  let ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
-    return ret
-  }
-  let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
-  }
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  ret
-}
-
-///|
 async fn IoHandle::recvfrom_windows(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -94,44 +56,6 @@ pub async fn IoHandle::recvfrom(
   } else {
     handle.recvfrom_unix(buf, offset~, len~, addr~, context~)
   }
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(buf, addr)
-fn sendto_unix_ffi(
-  fd : @fd_util.Fd,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  addr_len? : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/sendto/unix"
-
-///|
-async fn IoHandle::sendto_unix(
-  handle : IoHandle,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-  context~ : String,
-) -> Int {
-  let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
-    return ret
-  }
-  let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
-    sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
-  }
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  ret
 }
 
 ///|
@@ -168,41 +92,6 @@ pub async fn IoHandle::sendto(
     handle.sendto_windows(buf, offset~, len~, addr~, context~)
   } else {
     handle.sendto_unix(buf, offset~, len~, addr~, context~)
-  }
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(addr)
-fn connect_unix_ffi(
-  sock : @fd_util.Fd,
-  addr : Bytes,
-  addr_len? : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/connect/unix"
-
-///|
-#unsafe_skip_stub_check
-fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/getsockerr/unix"
-
-///|
-async fn IoHandle::connect_unix(
-  handle : IoHandle,
-  addr : Bytes,
-  context~ : String,
-) -> Unit {
-  if 0 == connect_unix_ffi(handle.fd, addr) {
-    return
-  }
-  if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
-    let err = get_socket_err(handle.fd)
-    if err < 0 {
-      @os_error.check_errno(context)
-    } else if err > 0 {
-      raise @os_error.OSError(err, context~)
-    }
-  } else {
-    @os_error.check_errno(context)
   }
 }
 
@@ -246,37 +135,6 @@ pub async fn IoHandle::connect(
   } else {
     handle.connect_unix(addr, context~)
   }
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(addr_buf)
-fn accept_unix_ffi(
-  sock : @fd_util.Fd,
-  addr_buf : Bytes,
-  addr_len? : Int = addr_buf.length(),
-) -> @fd_util.Fd = "moonbitlang/async" "socket/accept/unix"
-
-///|
-pub async fn IoHandle::accept_unix(
-  handle : IoHandle,
-  addr : Bytes,
-  context~ : String,
-) -> IoHandle {
-  let conn = accept_unix_ffi(handle.fd, addr)
-  let conn = if @fd_util.fd_is_valid(conn) {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
-    conn
-  } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    accept_unix_ffi(handle.fd, addr)
-  } else {
-    conn
-  }
-  if !@fd_util.fd_is_valid(conn) {
-    @os_error.check_errno(context)
-  }
-  IoHandle::from_fd(conn, kind=Socket)
 }
 
 ///|

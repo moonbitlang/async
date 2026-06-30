@@ -13,19 +13,19 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 fn gai_error_to_string(code : Int) -> String {
   @os_string.decode(gai_strerror(code))
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(buf, addr)
-extern "C" fn recvfrom_ffi(
+extern "C" fn recvfrom_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset~ : Int,
@@ -34,7 +34,49 @@ extern "C" fn recvfrom_ffi(
 ) -> Int = "moonbitlang_async_recvfrom"
 
 ///|
+#unsafe_skip_stub_check
+#borrow(buf, addr)
+#cfg(target="wasm")
+fn recvfrom_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  addr_len? : Int = addr.length(),
+) -> Int = "moonbitlang/async" "socket/recvfrom/unix"
+
+///|
 #cfg(not(platform="windows"))
+async fn IoHandle::recvfrom_unix(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  context~ : String,
+) -> Int {
+  let ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
+  if ret >= 0 {
+    // The `pause` here prevent a busy loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    return ret
+  }
+  let ret = if @os_error.is_nonblocking_io_error() {
+    handle.wait_read()
+    recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
+  } else {
+    ret
+  }
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -44,16 +86,51 @@ pub async fn IoHandle::recvfrom(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
+  handle.recvfrom_unix(buf, offset~, len~, addr~, context~)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+#borrow(buf, addr)
+extern "C" fn sendto_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+) -> Int = "moonbitlang_async_sendto"
+
+///|
+#unsafe_skip_stub_check
+#borrow(buf, addr)
+#cfg(target="wasm")
+fn sendto_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  addr_len? : Int = addr.length(),
+) -> Int = "moonbitlang/async" "socket/sendto/unix"
+
+///|
+#cfg(not(platform="windows"))
+async fn IoHandle::sendto_unix(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  addr~ : Bytes,
+  context~ : String,
+) -> Int {
+  let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    // The `pause` here prevent a busy loop from exhausting the whole program,
-    // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
+    handle.wait_write()
+    sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     ret
   }
@@ -64,18 +141,7 @@ pub async fn IoHandle::recvfrom(
 }
 
 ///|
-#cfg(not(platform="windows"))
-#borrow(buf, addr)
-extern "C" fn sendto_ffi(
-  fd : @fd_util.Fd,
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  addr~ : Bytes,
-) -> Int = "moonbitlang_async_sendto"
-
-///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
@@ -85,41 +151,41 @@ pub async fn IoHandle::sendto(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
-  if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
-    return ret
-  }
-  let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
-    sendto_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
-  }
-  if ret < 0 {
-    @os_error.check_errno(context)
-  }
-  ret
+  handle.sendto_unix(buf, offset~, len~, addr~, context~)
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(addr)
-extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_unix_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn connect_unix_ffi(
+  sock : @fd_util.Fd,
+  addr : Bytes,
+  addr_len? : Int = addr.length(),
+) -> Int = "moonbitlang/async" "socket/connect/unix"
+
+///|
+#cfg(all(target="native", not(platform="windows")))
 extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang_async_getsockerr"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/getsockerr/unix"
+
+///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::connect(
+async fn IoHandle::connect_unix(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
 ) -> Unit {
-  @coroutine.check_cancellation()
-  if 0 == connect_ffi(handle.fd, addr) {
+  if 0 == connect_unix_ffi(handle.fd, addr) {
     return
   }
   if @os_error.is_nonblocking_io_error() {
@@ -136,32 +202,67 @@ pub async fn IoHandle::connect(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
+pub async fn IoHandle::connect(
+  handle : IoHandle,
+  addr : Bytes,
+  context~ : String,
+) -> Unit {
+  @coroutine.check_cancellation()
+  handle.connect_unix(addr, context~)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
 #borrow(addr_buf)
-extern "C" fn accept_ffi(sock : @fd_util.Fd, addr_buf : Bytes) -> Int = "moonbitlang_async_accept"
+extern "C" fn accept_unix_ffi(
+  sock : @fd_util.Fd,
+  addr_buf : Bytes,
+) -> @fd_util.Fd = "moonbitlang_async_accept"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr_buf)
+fn accept_unix_ffi(
+  sock : @fd_util.Fd,
+  addr_buf : Bytes,
+  addr_len? : Int = addr_buf.length(),
+) -> @fd_util.Fd = "moonbitlang/async" "socket/accept/unix"
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::accept(
+pub async fn IoHandle::accept_unix(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
 ) -> IoHandle {
   @coroutine.check_cancellation()
-  let conn = accept_ffi(handle.fd, addr)
-  let conn = if conn >= 0 {
+  let conn = accept_unix_ffi(handle.fd, addr)
+  let conn = if @fd_util.fd_is_valid(conn) {
     // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
     // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     conn
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    accept_ffi(handle.fd, addr)
+    accept_unix_ffi(handle.fd, addr)
   } else {
     conn
   }
-  if conn < 0 {
+  if !@fd_util.fd_is_valid(conn) {
     @os_error.check_errno(context)
   }
   IoHandle::from_fd(conn, kind=Socket)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+pub async fn IoHandle::accept(
+  handle : IoHandle,
+  addr : Bytes,
+  context~ : String,
+) -> IoHandle {
+  @coroutine.check_cancellation()
+  handle.accept_unix(addr, context~)
 }
