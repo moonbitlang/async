@@ -27,8 +27,14 @@
 typedef int HANDLE;
 
 #ifdef __linux__
+
 #include <linux/version.h>
 #include <sys/syscall.h>
+
+#ifndef P_PIDFD
+#define P_PIDFD 3
+#endif
+
 #endif
 
 #endif
