@@ -66,6 +66,7 @@ pub async fn open(
 }
 
 ///|
+#cfg(target="native")
 pub async fn kind_of_fd(
   fd : @fd_util.Fd,
   context~ : String,
@@ -299,6 +300,7 @@ pub async fn IoHandle::readdir(
 }
 
 ///|
+#cfg(target="native")
 pub async fn realpath(path : StringView, context~ : String) -> String {
   let path_bytes = @os_string.encode(path)
   let job = Job::realpath(path_bytes)
@@ -313,7 +315,7 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 pub async fn inotify_add_watch(
   inotify : @fd_util.Fd,
   path : StringView,
