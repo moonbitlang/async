@@ -48,9 +48,7 @@ pub suberror URIParseError {
 pub impl Show for URIParseError
 
 // Types and methods
-pub struct Client {
-  // private fields
-}
+type Client
 #alias(new, deprecated)
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn Client::Client(String, headers? : Map[String, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self

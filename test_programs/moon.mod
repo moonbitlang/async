@@ -8,6 +8,4 @@ import {
 
 preferred_target = "native"
 
-options(
-  source: ".",
-)
+source = "."

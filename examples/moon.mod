@@ -18,6 +18,4 @@ description = "Examples for `moonbitlang/async`"
 
 preferred_target = "native"
 
-options(
-  source: ".",
-)
+source = "."
