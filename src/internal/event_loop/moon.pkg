@@ -47,7 +47,7 @@ options(
     "missing_close_test.mbt": [ "native" ],
     "network.mbt": [ "native", "wasm" ],
     "network.wasm.mbt": [ "wasm" ],
-    "network_unix.mbt": [ "native" ],
+    "network_unix.mbt": [ "native", "wasm" ],
     "network_windows.mbt": [ "native" ],
     "event_bus.mbt": [ "native" ],
     "process.mbt": [ "native" ],
