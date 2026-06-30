@@ -155,13 +155,13 @@ fn setup_accepted_socket_ffi(
 ///|
 pub async fn IoHandle::accept_windows(
   handle : IoHandle,
-  conn_sock : @fd_util.Fd,
+  conn_sock : IoHandle,
   addr : Bytes,
   context~ : String,
-) -> IoHandle {
+) -> Unit {
   let result = IoResult::for_accept(addr.length())
   defer result.free()
-  if 0 == accept_windows_ffi(handle.fd, conn_sock, result) {
+  if 0 == accept_windows_ffi(handle.fd, conn_sock.fd, result) {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
@@ -169,8 +169,7 @@ pub async fn IoHandle::accept_windows(
     ignore(result.status(handle.fd, context~))
   }
   result.get_accept_peer_addr(addr)
-  if setup_accepted_socket_ffi(handle.fd, conn_sock) < 0 {
+  if setup_accepted_socket_ffi(handle.fd, conn_sock.fd) < 0 {
     @os_error.check_errno(context)
   }
-  IoHandle::from_fd(conn_sock, kind=Socket)
 }

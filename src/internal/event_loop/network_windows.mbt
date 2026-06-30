@@ -127,7 +127,7 @@ extern "C" fn setup_accepted_socket_ffi(
 
 ///|
 #cfg(platform="windows")
-pub async fn IoHandle::accept(
+pub async fn IoHandle::accept_windows(
   handle : IoHandle,
   conn_sock : IoHandle,
   addr : Bytes,

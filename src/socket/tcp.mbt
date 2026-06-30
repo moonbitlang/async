@@ -172,13 +172,11 @@ pub fn TcpServer::fd(self : TcpServer) -> @fd_util.Fd {
 }
 
 ///|
-/// Accept a new connection on a listening TCP server.
-/// The accepted connection will be returned together with the address of peer.
-#cfg(not(any(platform="windows", target="wasm")))
-pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+#cfg(not(platform="windows"))
+async fn TcpServer::accept_unix(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
-  let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept()")
+  let conn = self.io.accept_unix(addr.0, context="@socket.TcpServer::accept()")
   try {
     if disable_nagle(conn.fd()) < 0 {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
@@ -197,15 +195,15 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
-#cfg(platform="windows")
-pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+#cfg(any(target="wasm", platform="windows"))
+async fn TcpServer::accept_windows(self : TcpServer) -> (Tcp, Addr) {
   let context = "@socket.TcpServer::accept()"
   let family = self.addr.family()
   let conn_sock = make_tcp_socket(family, context~)
   let conn = @event_loop.IoHandle::from_fd(conn_sock, kind=Socket)
   try {
     let addr = Addr::empty(family)
-    self.io.accept(conn, addr.0, context~)
+    self.io.accept_windows(conn, addr.0, context~)
     if disable_nagle(conn_sock) < 0 {
       @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
     }
@@ -222,47 +220,28 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 ///|
 /// Accept a new connection on a listening TCP server.
 /// The accepted connection will be returned together with the address of peer.
+#cfg(all(target="native", not(platform="windows")))
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  self.accept_unix()
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+#cfg(platform="windows")
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  self.accept_windows()
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
 #cfg(target="wasm")
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
-  let context = "@socket.TcpServer::accept()"
   if @event_loop.platform is Windows {
-    let family = self.addr.family()
-    let conn_sock = make_tcp_socket(family, context~)
-    let addr = Addr::empty(family)
-    let conn = self.io.accept_windows(conn_sock, addr.0, context~) catch {
-      err => {
-        @fd_util.close(conn_sock, kind=Socket, context~) catch {
-          _ => ()
-        }
-        raise err
-      }
-    }
-    try {
-      if disable_nagle(conn_sock) < 0 {
-        @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-      }
-      ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
-    } catch {
-      err => {
-        conn.close()
-        raise err
-      }
-    }
+    self.accept_windows()
   } else {
-    let addr = Addr::empty(self.addr.family())
-    let conn = self.io.accept_unix(addr.0, context~)
-    try {
-      if disable_nagle(conn.fd()) < 0 {
-        @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-      }
-      @fd_util.set_cloexec(conn.fd(), context~)
-    } catch {
-      err => {
-        conn.close()
-        raise err
-      }
-    }
-    ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
+    self.accept_unix()
   }
 }
 
