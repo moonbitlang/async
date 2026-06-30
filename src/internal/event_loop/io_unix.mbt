@@ -42,9 +42,9 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(buf)
-extern "C" fn read_ffi(
+extern "C" fn read_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset~ : Int,
@@ -52,15 +52,26 @@ extern "C" fn read_ffi(
 ) -> Int = "moonbitlang_async_read"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(buf)
+fn read_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang/async" "io/read/unix"
+
+///|
 #cfg(not(platform="windows"))
-async fn IoHandle::read_via_event_bus(
+async fn IoHandle::read_via_event_bus_unix(
   handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  let ret = read_ffi(handle.fd, buf, offset~, len~)
+  let ret = read_unix_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program
     // and give chance for other tasks to execute.
@@ -69,7 +80,7 @@ async fn IoHandle::read_via_event_bus(
   }
   let ret = if @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    read_ffi(handle.fd, buf, offset~, len~)
+    read_unix_ffi(handle.fd, buf, offset~, len~)
   } else {
     ret
   }
@@ -80,9 +91,21 @@ async fn IoHandle::read_via_event_bus(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
+async fn IoHandle::read_via_event_bus(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  handle.read_via_event_bus_unix(buf, offset~, len~, context~)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
 #borrow(buf)
-extern "C" fn write_ffi(
+extern "C" fn write_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
   offset~ : Int,
@@ -90,15 +113,26 @@ extern "C" fn write_ffi(
 ) -> Int = "moonbitlang_async_write"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(buf)
+fn write_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang/async" "io/write/unix"
+
+///|
 #cfg(not(platform="windows"))
-async fn IoHandle::write_via_event_bus(
+async fn IoHandle::write_via_event_bus_unix(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  let ret = write_ffi(handle.fd, buf, offset~, len~)
+  let ret = write_unix_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
@@ -107,7 +141,7 @@ async fn IoHandle::write_via_event_bus(
   }
   let ret = if @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    write_ffi(handle.fd, buf, offset~, len~)
+    write_unix_ffi(handle.fd, buf, offset~, len~)
   } else {
     ret
   }
@@ -115,4 +149,16 @@ async fn IoHandle::write_via_event_bus(
     @os_error.check_errno(context)
   }
   ret
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async fn IoHandle::write_via_event_bus(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  handle.write_via_event_bus_unix(buf, offset~, len~, context~)
 }
