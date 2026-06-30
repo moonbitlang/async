@@ -131,16 +131,14 @@ async fn IoHandle::read_via_worker(
   defer {
     handle.read = Idle
   }
-  let job = Job::read(handle.fd, len, position=handle.read_offset)
+  let job = Job::read(handle.fd, buf, offset, len, position=handle.read_offset)
   defer job.free()
   let cancel = if platform is Windows || handle.kind.can_poll() {
     Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
   } else {
     None
   }
-  let ret = perform_job_in_worker(job, context~, cancel?)
-  job.get_read_result(buf, offset, len)
-  ret
+  perform_job_in_worker(job, context~, cancel?)
 }
 
 ///|
@@ -234,16 +232,14 @@ pub async fn IoHandle::read_at(
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
   guard !handle.is_async
-  let job = Job::read(handle.fd, len, position~)
+  let job = Job::read(handle.fd, buf, offset, len, position~)
   defer job.free()
   let cancel = if platform is Windows {
     Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
   } else {
     None
   }
-  let ret = perform_job_in_worker(job, context~, cancel?)
-  job.get_read_result(buf, offset, len)
-  ret
+  perform_job_in_worker(job, context~, cancel?)
 }
 
 ///|

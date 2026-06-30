@@ -101,11 +101,10 @@ pub async fn file_time(
   fd : @fd_util.Fd,
   context~ : String,
 ) -> @fd_util.FileTime {
-  let job = Job::file_time(fd)
-  defer job.free()
-  perform_job_in_worker(job, context~) |> ignore
   let result = @fd_util.FileTime::new()
-  job.get_file_time_result(result)
+  let job = Job::file_time(fd, result)
+  defer job.free()
+  let _ = perform_job_in_worker(job, context~)
   result
 }
 
@@ -116,18 +115,17 @@ pub async fn file_time_by_path(
   context~ : String,
 ) -> @fd_util.FileTime {
   let path_bytes = @os_string.encode(path)
-  let job = Job::file_time_by_path(path_bytes, follow_symlink~)
+  let result = @fd_util.FileTime::new()
+  let job = Job::file_time_by_path(path_bytes, result, follow_symlink~)
   defer job.free()
-  try {
-    perform_job_in_worker(job, context~) |> ignore
-    let result = @fd_util.FileTime::new()
-    job.get_file_time_result(result)
-    result
-  } catch {
+  try perform_job_in_worker(job, context~) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
+  } noraise {
+    _ => ()
   }
+  result
 }
 
 ///|

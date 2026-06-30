@@ -395,6 +395,9 @@ async fn perform_job_in_worker(
       raise @os_error.OSError(err, context~)
     }
   } else {
+    if job.copy_output is Some(copy_output) {
+      copy_output(job.handle)
+    }
     job.ret()
   }
 }
