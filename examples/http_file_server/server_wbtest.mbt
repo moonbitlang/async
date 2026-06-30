@@ -116,7 +116,7 @@ async test "basic" {
       #|client: GET /moon.mod
       #|HTTP/1.1 200 OK
       #|content-type: appliaction/octet-stream
-      #|content-length: 317
+      #|content-length: 304
       #|name = "moonbitlang/async_examples"
       #|
       #|version = "0.3.0"
@@ -137,9 +137,7 @@ async test "basic" {
       #|
       #|preferred_target = "native"
       #|
-      #|options(
-      #|  source: ".",
-      #|)
+      #|source = "."
       #|
       #|
       #|HTTP/1.1 200 OK
