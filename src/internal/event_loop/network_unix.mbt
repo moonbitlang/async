@@ -14,6 +14,16 @@
 
 ///|
 #cfg(not(platform="windows"))
+extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
+
+///|
+#cfg(not(platform="windows"))
+fn gai_error_to_string(code : Int) -> String {
+  @os_string.decode(gai_strerror(code))
+}
+
+///|
+#cfg(not(platform="windows"))
 #borrow(buf, addr)
 extern "C" fn recvfrom_ffi(
   fd : @fd_util.Fd,

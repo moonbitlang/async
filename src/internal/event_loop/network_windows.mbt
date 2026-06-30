@@ -22,6 +22,12 @@ extern "C" fn cleanup_WSA_ffi() -> Int = "moonbitlang_async_cleanup_WSA"
 
 ///|
 #cfg(platform="windows")
+fn gai_error_to_string(code : Int) -> String {
+  @os_error.errno_to_string(code)
+}
+
+///|
+#cfg(platform="windows")
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],

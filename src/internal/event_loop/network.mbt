@@ -13,24 +13,13 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 #external
 pub type AddrInfo
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
-
-///|
-#cfg(not(platform="windows"))
-fn gai_error_to_string(code : Int) -> String {
-  @os_string.decode(gai_strerror(code))
-}
-
-///|
-#cfg(platform="windows")
-fn gai_error_to_string(code : Int) -> String {
-  @os_error.errno_to_string(code)
-}
+#cfg(target="wasm")
+pub struct AddrInfo(UInt64)
 
 ///|
 pub async fn getaddrinfo(

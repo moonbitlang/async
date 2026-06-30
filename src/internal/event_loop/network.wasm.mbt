@@ -13,9 +13,6 @@
 // limitations under the License.
 
 ///|
-pub struct AddrInfo(UInt64)
-
-///|
 #unsafe_skip_stub_check
 fn gai_strerror(code : Int) -> @c_buffer.Buffer = "moonbitlang/async" "socket/gai_strerror"
 
@@ -28,54 +25,6 @@ fn gai_error_to_string(code : Int) -> String {
     defer message.free()
     @os_string.decode(message)
   }
-}
-
-///|
-pub async fn getaddrinfo(
-  host : StringView,
-  context~ : String,
-) -> Result[AddrInfo, String] {
-  @coroutine.check_cancellation()
-  let host_bytes = @os_string.encode(host)
-  let job = Job::getaddrinfo(host_bytes)
-  let mut result = Err("")
-  let mut terminated = false
-  defer {
-    terminated = true
-  }
-  try
-    @coroutine.spawn(() => {
-      defer job.free()
-      let ret = perform_job_in_worker(job, context~) catch {
-        @os_error.OSError(errno, context~) =>
-          raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
-        err => raise err
-      }
-      guard !terminated else { return }
-      if ret != 0 {
-        result = Err(gai_error_to_string(ret))
-      } else {
-        result = Ok(job.get_getaddrinfo_result())
-      }
-    }).wait()
-  catch {
-    _ if result is Ok(_) => return result
-    err => raise err
-  } noraise {
-    _ => result
-  }
-}
-
-///|
-pub async fn IoHandle::bind(
-  handle : IoHandle,
-  addr : Bytes,
-  context~ : String,
-) -> Unit {
-  @coroutine.check_cancellation()
-  let job = Job::bind(handle.fd, addr)
-  defer job.free()
-  ignore(perform_job_in_worker(job, context~))
 }
 
 ///|
