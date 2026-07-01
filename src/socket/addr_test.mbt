@@ -52,12 +52,12 @@ test "Parse IPv6 address" {
   )
   assert_eq(@socket.Addr::parse("[::1]:8080").to_string(), "[::1]:8080")
   assert_eq(
-    @socket.Addr::parse("[::1%\{test_interface()}]:8080").to_string(),
-    "[::1%\{test_interface()}]:8080",
+    @socket.Addr::parse("[::1%\{test_interface.force()}]:8080").to_string(),
+    "[::1%\{test_interface.force()}]:8080",
   )
   assert_eq(
-    @socket.Addr::parse("[::1%\{test_interface_index()}]:8080").to_string(),
-    "[::1%\{test_interface()}]:8080",
+    @socket.Addr::parse("[::1%\{test_interface_index.force()}]:8080").to_string(),
+    "[::1%\{test_interface.force()}]:8080",
   )
 }
 
