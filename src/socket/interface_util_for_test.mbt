@@ -13,30 +13,29 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 extern "C" fn find_ipv6_test_interface() -> UInt = "moonbitlang_async_find_ipv6_test_interface"
 
 ///|
-fn test_interface_index() -> UInt {
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn find_ipv6_test_interface() -> UInt = "moonbitlang/async" "socket/find_ipv6_test_interface"
+
+///|
+let test_interface_index : Lazy[UInt] = Lazy(() => {
   let index = find_ipv6_test_interface()
   if index is 0 {
     abort("cannot find suitable network interface for testing")
   }
   index
-}
+})
 
 ///|
-let test_interface_cache : Ref[String?] = Ref(
-  Some(
-    @socket.if_indextoname(
-      test_interface_index(),
-      context="fetch name of test network interface",
-    ) catch {
-      err => abort(err.to_string())
-    },
-  ),
-)
-
-///|
-fn test_interface() -> String {
-  test_interface_cache.val.unwrap()
-}
+let test_interface : Lazy[String] = Lazy(() => {
+  @socket.if_indextoname(
+    test_interface_index.force(),
+    context="fetch name of test network interface",
+  ) catch {
+    err => abort(err.to_string())
+  }
+})
