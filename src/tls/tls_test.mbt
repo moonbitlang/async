@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(not(target="wasm"), not(platform="windows")))
 async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
   @tls.Tls::server_from_pair(
     r,
@@ -26,9 +26,23 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(all(not(target="wasm"), platform="windows"))
 async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
-  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/cert.pfx")
+  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/valid_server_cert.pfx")
+}
+
+///|
+#cfg(target="wasm")
+async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/cert.pem",
+    certificate_type=PEM,
+    pfx_file="test_keys/valid_server_cert.pfx",
+  )
 }
 
 ///|
@@ -138,6 +152,7 @@ async test "echo" {
 }
 
 ///|
+#cfg(not(target="wasm"))
 async test "`connect` accidental close" {
   @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
@@ -166,6 +181,41 @@ async test "`connect` accidental close" {
           )
         },
         content="ConnectionClosed",
+      )
+    }
+  }
+}
+
+///|
+#cfg(target="wasm")
+async test "`connect` accidental close wasm" {
+  @async.with_task_group() <| root => {
+    let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+    let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+    // server
+    root.spawn_bg() <| () => {
+      defer {
+        server_read_from_client.close()
+        server_write_to_client.close()
+      }
+      let _ = server_read_from_client.read_some()
+      @async.sleep(100)
+    }
+    // client
+    root.spawn_bg() <| () => {
+      defer {
+        client_read_from_server.close()
+        client_write_to_server.close()
+      }
+      inspect(
+        @test_util.expect_error_async <| () => {
+          @tls.Tls::client_from_pair(
+            client_read_from_server,
+            client_write_to_server,
+            trust=NoVerification,
+          )
+        },
+        content="moonbitlang/async/tls.ConnectionClosed.ConnectionClosed",
       )
     }
   }
@@ -203,20 +253,20 @@ async test "`read` already closed" {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(not(target="wasm"), not(platform="windows")))
 async fn valid_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
   @tls.Tls::server_from_pair(
     r,
     w,
-    private_key_file="test_keys/valid_root_key.pem",
+    private_key_file="test_keys/key.pem",
     private_key_type=PEM,
-    certificate_file="test_keys/valid_root_cert.pem",
+    certificate_file="test_keys/valid_server_cert.pem",
     certificate_type=PEM,
   )
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(not(target="wasm"), not(platform="windows")))
 async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
   @tls.Tls::server_from_pair(
     r,
@@ -229,15 +279,43 @@ async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(all(not(target="wasm"), platform="windows"))
 async fn valid_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
-  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/valid_root_cert.pfx")
+  @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/valid_server_cert.pfx")
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(all(not(target="wasm"), platform="windows"))
 async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
   @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/other_root_cert.pfx")
+}
+
+///|
+#cfg(target="wasm")
+async fn valid_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/valid_server_cert.pem",
+    certificate_type=PEM,
+    pfx_file="test_keys/valid_server_cert.pfx",
+  )
+}
+
+///|
+#cfg(target="wasm")
+async fn other_root_test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+  @tls.Tls::server_from_pair(
+    r,
+    w,
+    private_key_file="test_keys/other_root_key.pem",
+    private_key_type=PEM,
+    certificate_file="test_keys/other_root_cert.pem",
+    certificate_type=PEM,
+    pfx_file="test_keys/other_root_cert.pfx",
+  )
 }
 
 ///|
