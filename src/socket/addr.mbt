@@ -188,45 +188,18 @@ fn Addr::family(self : Addr) -> AddrFamily {
 }
 
 ///|
-#cfg(target="native")
-let ipv4_any : Addr = Addr::new(0, 0)
+let ipv4_any : @lazy.Lazy[Addr] = @lazy.Lazy(() => Addr::new(0, 0))
 
 ///|
-#cfg(target="native")
-let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
+let ipv6_any : @lazy.Lazy[Addr] = @lazy.Lazy(() => {
+  Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
+})
 
 ///|
-#cfg(target="wasm")
-let ipv4_any : Ref[Addr?] = Ref(None)
-
-///|
-#cfg(target="wasm")
-let ipv6_any : Ref[Addr?] = Ref(None)
-
-///|
-#cfg(target="native")
 fn Addr::any(family : AddrFamily) -> Addr {
   match family {
-    IPv4 => ipv4_any
-    IPv6 => ipv6_any
-  }
-}
-
-///|
-#cfg(target="wasm")
-fn Addr::any(family : AddrFamily) -> Addr {
-  // Defer construction because borrowed host imports cannot safely initialize Addr globals in Wasm.
-  let cache = match family {
-    IPv4 => ipv4_any
-    IPv6 => ipv6_any
-  }
-  match cache.val {
-    Some(addr) => addr
-    None => {
-      let addr = Addr::empty(family)
-      cache.val = Some(addr)
-      addr
-    }
+    IPv4 => ipv4_any.force()
+    IPv6 => ipv6_any.force()
   }
 }
 
