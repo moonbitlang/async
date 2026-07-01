@@ -51,7 +51,7 @@ fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 fn resolve_host(
   host : StringView,
   protocol~ : Protocol,

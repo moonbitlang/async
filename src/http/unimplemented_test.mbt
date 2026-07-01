@@ -13,11 +13,18 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _ignore_unused_import : Unit = {
   ignore(@async.sleep)
   ignore(@utf8.encode(""))
   ignore(@env.get_env_var)
   ignore((_ : @gzip_stream.Encoder[&@io.Writer]) => ())
   ignore(@fs.unimplemented)
+}
+
+///|
+#cfg(target="wasm")
+let _ignore_unused_wasm_import : Unit = {
+  ignore(@fs.unimplemented)
+  ignore((_ : @gzip_stream.Encoder[&@io.Writer]) => ())
 }

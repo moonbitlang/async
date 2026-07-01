@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true) <| () => {
@@ -175,6 +175,7 @@ async test "request streaming" {
 }
 
 ///|
+#cfg(any(target="native", target="js"))
 async test "multiple request" {
   let client = @http.Client("https://www.moonbitlang.com")
   defer client.close()

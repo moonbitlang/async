@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 fn _ignore_unused_import() -> Unit {
   let _ : (@gzip_stream.Decoder[&@io.Reader]) -> Unit = ignore
   ignore(@async.sleep)
