@@ -337,11 +337,13 @@ extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int =
 ///|
 /// zero return value indicates overflow
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::read_dir_changes(
   handle : IoHandle,
   buf : @c_buffer.Buffer,
   len : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   guard handle.kind is Directory
@@ -351,10 +353,13 @@ pub async fn IoHandle::read_dir_changes(
   if n >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read(result, context~)
+    handle.wait_read(result, context~, loc~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
       err => raise err

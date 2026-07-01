@@ -14,7 +14,7 @@
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+pub async fn IoHandle::wait_read(handle : IoHandle, loc~ : SourceLoc) -> Unit {
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
@@ -23,12 +23,12 @@ pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
   defer {
     handle.read = Idle
   }
-  @coroutine.suspend()
+  @coroutine.suspend(loc~)
 }
 
 ///|
 #cfg(not(platform="windows"))
-async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
+async fn IoHandle::wait_write(handle : IoHandle, loc~ : SourceLoc) -> Unit {
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
@@ -38,7 +38,7 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
   defer {
     handle.write = Idle
   }
-  @coroutine.suspend()
+  @coroutine.suspend(loc~)
 }
 
 ///|
@@ -59,16 +59,20 @@ async fn IoHandle::read_via_event_bus(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let ret = read_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
+    handle.wait_read(loc~)
     read_ffi(handle.fd, buf, offset~, len~)
   } else {
     ret
@@ -97,16 +101,20 @@ async fn IoHandle::write_via_event_bus(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let ret = write_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
+    handle.wait_write(loc~)
     write_ffi(handle.fd, buf, offset~, len~)
   } else {
     ret

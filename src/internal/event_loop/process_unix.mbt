@@ -41,7 +41,12 @@ pub async fn spawn(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+#callsite(autofill(loc))
+pub async fn Process::wait_pid(
+  self : Process,
+  context~ : String,
+  loc~ : SourceLoc,
+) -> Int {
   guard curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
 
@@ -55,7 +60,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    io.wait_read()
+    io.wait_read(loc~)
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
     if evloop.bus.register_pid(self.pid) {

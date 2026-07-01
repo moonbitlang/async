@@ -116,9 +116,11 @@ priv struct PromiseWaiter[X] {
 /// cancelling the promise automatically.
 ///
 /// If `abort_controller` is absent, `wait` is non-cancellable.
+#callsite(autofill(loc))
 pub async fn[X] Promise::wait(
   promise : Promise[X],
   abort_controller? : AbortController,
+  loc~ : SourceLoc,
 ) -> X {
   let waiter : PromiseWaiter[X] = {
     coro: Some(@coroutine.current_coroutine()),
@@ -153,7 +155,7 @@ pub async fn[X] Promise::wait(
       }
     }
   } else {
-    @coroutine.protect_from_cancel(@coroutine.suspend)
+    @coroutine.protect_from_cancel(() => @coroutine.suspend(loc~))
   }
   if waiter.err is Some(err) {
     raise err

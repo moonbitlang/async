@@ -438,12 +438,16 @@ priv enum CancellationStatus {
 /// even in case of cancellation.
 async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Unit {
   try cancel_func() catch {
     err => {
       // The cancellation operation itself failed.
       // Give up the cancellation and wait for completion normally.
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => @coroutine.suspend(loc~),
+        resume_on_cancel=true,
+      )
       raise err
     }
   } noraise {
@@ -451,7 +455,10 @@ async fn wait_for_cancellation(
       // The cancellation operation has succeeded,
       // but the thread pool or OS may need some more time to finish all the cleanup.
       // So wait for the completion of the cleanup process here.
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => @coroutine.suspend(loc~),
+        resume_on_cancel=true,
+      )
     NoWait =>
       // The cancellation operation has succeeded,
       // and the cancelled operation has already terminated.
@@ -461,7 +468,7 @@ async fn wait_for_cancellation(
       // Due to some inherent race condition, the cancellaion attempt did not succeed.
       // Retry again after a small timeout.
       @coroutine.protect_from_cancel(() => sleep(10), resume_on_cancel=true)
-      wait_for_cancellation(cancel_func)
+      wait_for_cancellation(cancel_func, loc~)
     }
   }
 }
@@ -471,14 +478,18 @@ async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
   cancel? : (Int) -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
   match cancel {
     None =>
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => @coroutine.suspend(loc~),
+        resume_on_cancel=true,
+      )
     Some(cancel_func) =>
-      @coroutine.suspend() catch {
+      @coroutine.suspend(loc~) catch {
         _ =>
           // The cancellation error is swallowed here,
           // because in case the operation completed before cancellation,
@@ -487,7 +498,7 @@ async fn EventLoop::wait_for_job(
           // In case the cancellation succeeded,
           // the underlying operation itself should report cancelled status properly
           // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
-          wait_for_cancellation(() => cancel_func(job_id))
+          wait_for_cancellation(() => cancel_func(job_id), loc~)
       }
   }
 }
@@ -496,10 +507,12 @@ async fn EventLoop::wait_for_job(
 extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
 
 ///|
+#callsite(autofill(loc))
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
   cancel? : (Int) -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
@@ -517,7 +530,7 @@ async fn perform_job_in_worker(
       worker.wake(job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel?)
+  evloop.wait_for_job(job_id, cancel?, loc~)
   if job.err() is err && err > 0 {
     if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
       raise @coroutine.Cancelled
