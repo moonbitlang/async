@@ -20,10 +20,9 @@ import {
 options(
   "native-stub": [ "socket.c" ],
   targets: {
-    "addr.mbt": [ "native" ],
+    "addr.mbt": [ "native", "wasm" ],
     "addr_test.mbt": [ "native", "wasm" ],
-    "addr.wasm.mbt": [ "wasm" ],
-    "addr_utils.mbt": [ "native" ],
+    "addr_utils.mbt": [ "native", "wasm" ],
     "connect_burst_test.mbt": [ "native", "wasm" ],
     "deprecated.mbt": [ "native", "wasm" ],
     "dual_stack_test.mbt": [ "native", "wasm" ],
