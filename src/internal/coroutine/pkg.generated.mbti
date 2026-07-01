@@ -22,7 +22,8 @@ pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> 
 
 pub fn reschedule() -> Unit
 
-pub fn spawn(async () -> Unit) -> Coroutine
+#callsite(autofill(loc))
+pub fn spawn(async () -> Unit, loc~ : SourceLoc) -> Coroutine
 
 pub async fn suspend() -> Unit
 

@@ -28,6 +28,7 @@ struct Coroutine {
   mut cancelled : Bool
   mut ready : Bool
   downstream : Set[Coroutine]
+  loc : SourceLoc
 }
 
 ///|
@@ -103,7 +104,8 @@ pub async fn suspend() -> Unit {
 }
 
 ///|
-pub fn spawn(f : async () -> Unit) -> Coroutine {
+#callsite(autofill(loc))
+pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
     state: Running,
@@ -112,6 +114,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
     downstream: Set([]),
     coro_id: scheduler.coro_id,
     cancelled: false,
+    loc,
   }
   fn run(_) {
     run_async() <| () => {

@@ -33,9 +33,13 @@ struct MemoryReader {
 ///
 /// If the reader is closed before the callback completes,
 /// the callback will be cancelled automatically.
-pub fn MemoryReader::MemoryReader(f : async (&Writer) -> Unit) -> MemoryReader {
+#callsite(autofill(loc))
+pub fn MemoryReader::MemoryReader(
+  f : async (&Writer) -> Unit,
+  loc~ : SourceLoc,
+) -> MemoryReader {
   let (r, w) = pipe()
-  let writer = @coroutine.spawn() <| () => {
+  let writer = @coroutine.spawn(loc~) <| () => {
     defer w.close()
     f(w)
   }
