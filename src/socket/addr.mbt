@@ -119,8 +119,11 @@ fn Addr::any(family : AddrFamily) -> Addr {
 }
 
 ///|
-#borrow(addr)
-extern "C" fn Addr::get_ipv6_bytes_offset(addr : Addr) -> Int = "moonbitlang_async_addr_get_ipv6_bytes_offset"
+extern "C" fn Addr::get_ipv6_bytes_offset() -> Int = "moonbitlang_async_addr_get_ipv6_bytes_offset"
+
+///|
+/// The offset of IPv6 bytes in `struct sockaddr_in6`
+let ipv6_bytes_offset : Int = Addr::get_ipv6_bytes_offset()
 
 ///|
 #borrow(addr)
@@ -135,7 +138,7 @@ pub impl Show for Addr with fn output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
     logger <+ "["
-    write_ipv6_str(self.0[self.get_ipv6_bytes_offset():], logger)
+    write_ipv6_str(self.0[ipv6_bytes_offset:], logger)
     let scope_id = self.scope_id()
     if scope_id > 0 {
       let interface = if_indextoname(scope_id, context="") catch {
