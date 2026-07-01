@@ -30,6 +30,7 @@ struct Lazy[X] {
   worker : async () -> X
   waiters : Set[@coroutine.Coroutine]
   mut state : LazyValueState[X]
+  loc : SourceLoc
 }
 
 ///|
@@ -46,7 +47,7 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
     Fail(err) => raise err
     Running(_) => ()
     Uninitialized => {
-      let coro = @coroutine.spawn(() => {
+      let coro = @coroutine.spawn(loc=self.loc, () => {
         try (self.worker)() catch {
           err =>
             if err is @coroutine.Cancelled && is_being_cancelled() {
@@ -97,6 +98,7 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 /// always complete immediately.
 #as_free_fn(lazy_init, deprecated="use `@async.Lazy(..)` instead")
 #alias(new, deprecated)
-pub fn[X] Lazy::Lazy(f : async () -> X) -> Lazy[X] {
-  { worker: f, waiters: Set([]), state: Uninitialized }
+#callsite(autofill(loc))
+pub fn[X] Lazy::Lazy(f : async () -> X, loc~ : SourceLoc) -> Lazy[X] {
+  { worker: f, waiters: Set([]), state: Uninitialized, loc }
 }
