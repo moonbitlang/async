@@ -29,7 +29,8 @@ pub(all) enum Encoding {
 }
 
 type MemoryReader
-pub fn MemoryReader::MemoryReader(async (&Writer) -> Unit) -> Self
+#callsite(autofill(loc))
+pub fn MemoryReader::MemoryReader(async (&Writer) -> Unit, loc~ : SourceLoc) -> Self
 pub fn MemoryReader::close(Self) -> Unit
 pub impl Reader for MemoryReader
 

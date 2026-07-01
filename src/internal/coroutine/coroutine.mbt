@@ -21,13 +21,14 @@ priv enum State {
 }
 
 ///|
-struct Coroutine {
-  coro_id : Int
-  mut state : State
-  mut shielded : Bool
-  mut cancelled : Bool
-  mut ready : Bool
-  downstream : Set[Coroutine]
+pub struct Coroutine {
+  priv coro_id : Int
+  priv mut state : State
+  priv mut shielded : Bool
+  priv mut cancelled : Bool
+  priv mut ready : Bool
+  priv downstream : Set[Coroutine]
+  loc : SourceLoc
 }
 
 ///|
@@ -103,7 +104,8 @@ pub async fn suspend() -> Unit {
 }
 
 ///|
-pub fn spawn(f : async () -> Unit) -> Coroutine {
+#callsite(autofill(loc))
+pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
   scheduler.coro_id += 1
   let coro = {
     state: Running,
@@ -112,6 +114,7 @@ pub fn spawn(f : async () -> Unit) -> Coroutine {
     downstream: Set([]),
     coro_id: scheduler.coro_id,
     cancelled: false,
+    loc,
   }
   fn run(_) {
     run_async() <| () => {
