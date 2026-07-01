@@ -58,10 +58,17 @@ pub fn reschedule() -> Unit {
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)
+    let start = @env.now()
     if coro.cancelled && !coro.shielded {
       err_cont(Cancelled)
     } else {
       ok_cont(())
+    }
+    let slice = @env.now() - start
+    if slice > 50 {
+      println(
+        "coroutine spawned at \{coro.loc} took \{slice}ms for a single slice",
+      )
     }
     scheduler.curr_coro = last_coro
   }
