@@ -419,8 +419,8 @@ int32_t moonbitlang_async_addr_is_multicast(void *addr_bytes) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_addr_get_ipv6_bytes_offset(struct sockaddr_in6 *addr) {
-  return offsetof(struct sockaddr_in6, sin6_addr.s6_addr);
+int32_t moonbitlang_async_addr_get_ipv6_bytes_offset(void) {
+  return offsetof(struct sockaddr_in6, sin6_addr);
 }
 
 MOONBIT_FFI_EXPORT
