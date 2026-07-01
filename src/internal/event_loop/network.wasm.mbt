@@ -125,7 +125,7 @@ async fn IoHandle::recvfrom_windows(
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
-  let result = IoResult::for_socket_with_addr(ReadEvent, len~, flags=0, addr~)
+  let result = IoResult::for_socket_with_addr_read(len~, flags=0, addr~)
   defer result.free()
   handle.generic_read_windows(result, buf, offset~, addr~, context~)
 }
@@ -194,9 +194,15 @@ async fn IoHandle::sendto_windows(
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
-  let result = IoResult::for_socket_with_addr(WriteEvent, len~, flags=0, addr~)
+  let result = IoResult::for_socket_with_addr_write(
+    buf,
+    offset~,
+    len~,
+    flags=0,
+    addr~,
+  )
   defer result.free()
-  handle.generic_write_windows(result, buf, offset~, len~, context~)
+  handle.generic_write_windows(result, context~)
 }
 
 ///|
