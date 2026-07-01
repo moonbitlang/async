@@ -22,6 +22,7 @@ extern "C" fn cleanup_WSA_ffi() -> Int = "moonbitlang_async_cleanup_WSA"
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -29,6 +30,7 @@ pub async fn IoHandle::recvfrom(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let result = IoResult::for_socket_with_addr(
@@ -40,11 +42,12 @@ pub async fn IoHandle::recvfrom(
     addr~,
   )
   defer result.free()
-  handle.generic_read(result, context~)
+  handle.generic_read(result, context~, loc~)
 }
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
@@ -52,6 +55,7 @@ pub async fn IoHandle::sendto(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let result = IoResult::for_socket_with_addr(
@@ -63,7 +67,7 @@ pub async fn IoHandle::sendto(
     addr~,
   )
   defer result.free()
-  handle.generic_write(result, context~)
+  handle.generic_write(result, context~, loc~)
 }
 
 ///|
@@ -76,10 +80,12 @@ extern "C" fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int = "moonbitla
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::connect(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
   let result = IoResult::for_connect(addr)
@@ -88,7 +94,7 @@ pub async fn IoHandle::connect(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_write(result, context~)
+    handle.wait_write(result, context~, loc~)
     ignore(result.status(handle.fd, context~))
   }
   if setup_connected_socket_ffi(handle.fd) < 0 {
@@ -121,11 +127,13 @@ extern "C" fn setup_accepted_socket_ffi(
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::accept(
   handle : IoHandle,
   conn_sock : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
   let result = IoResult::for_accept(addr.length())
@@ -134,7 +142,7 @@ pub async fn IoHandle::accept(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_read(result, context~)
+    handle.wait_read(result, context~, loc~)
     ignore(result.status(handle.fd, context~))
   }
   result.get_accept_peer_addr(addr)

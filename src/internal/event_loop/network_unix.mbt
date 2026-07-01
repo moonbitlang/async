@@ -25,6 +25,7 @@ extern "C" fn recvfrom_ffi(
 
 ///|
 #cfg(not(platform="windows"))
+#callsite(autofill(loc))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -32,17 +33,21 @@ pub async fn IoHandle::recvfrom(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let ret = recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
+    handle.wait_read(loc~)
     recvfrom_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     ret
@@ -65,6 +70,7 @@ extern "C" fn sendto_ffi(
 ) -> Int = "moonbitlang_async_sendto"
 
 ///|
+#callsite(autofill(loc))
 #cfg(not(platform="windows"))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
@@ -73,15 +79,19 @@ pub async fn IoHandle::sendto(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let ret = sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
+    handle.wait_write(loc~)
     sendto_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     ret
@@ -103,17 +113,19 @@ extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang_async_get
 
 ///|
 #cfg(not(platform="windows"))
+#callsite(autofill(loc))
 pub async fn IoHandle::connect(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
   if 0 == connect_ffi(handle.fd, addr) {
     return
   }
   if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
+    handle.wait_write(loc~)
     let err = get_socket_err(handle.fd)
     if err < 0 {
       @os_error.check_errno(context)
@@ -132,20 +144,25 @@ extern "C" fn accept_ffi(sock : @fd_util.Fd, addr_buf : Bytes) -> Int = "moonbit
 
 ///|
 #cfg(not(platform="windows"))
+#callsite(autofill(loc))
 pub async fn IoHandle::accept(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> IoHandle {
   @coroutine.check_cancellation()
   let conn = accept_ffi(handle.fd, addr)
   let conn = if conn >= 0 {
     // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     conn
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
+    handle.wait_read(loc~)
     accept_ffi(handle.fd, addr)
   } else {
     conn

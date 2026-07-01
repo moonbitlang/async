@@ -21,6 +21,6 @@ pub let unimplemented : Unit = {
   ignore(@semaphore.Semaphore::release)
   ignore(@tls.unimplemented)
   ignore(@http.unimplemented)
-  ignore(@coroutine.spawn)
+  ignore(@coroutine.Coroutine::wake)
   ignore(@utf8.encode(""))
 }

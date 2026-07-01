@@ -131,14 +131,16 @@ async fn IoHandle::wait_read(
   handle : IoHandle,
   io_result : IoResult,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   guard handle.read is Idle
   handle.read = Waiting(@coroutine.current_coroutine())
   defer {
     handle.read = Idle
   }
-  @coroutine.suspend() catch {
-    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
+  @coroutine.suspend(loc~) catch {
+    _ =>
+      wait_for_cancellation(loc~, () => io_result.cancel(handle.fd, context~))
   }
 }
 
@@ -148,14 +150,16 @@ async fn IoHandle::wait_write(
   handle : IoHandle,
   io_result : IoResult,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   guard handle.write is Idle
   handle.write = Waiting(@coroutine.current_coroutine())
   defer {
     handle.write = Idle
   }
-  @coroutine.suspend() catch {
-    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
+  @coroutine.suspend(loc~) catch {
+    _ =>
+      wait_for_cancellation(loc~, () => io_result.cancel(handle.fd, context~))
   }
 }
 
@@ -173,12 +177,16 @@ async fn IoHandle::generic_read(
   handle : IoHandle,
   result : IoResult,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let n = read_ffi(handle.fd, result)
   if n >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
@@ -186,7 +194,7 @@ async fn IoHandle::generic_read(
     // we still need to wait for the completion packet to obtain correct result.
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read(result, context~)
+    handle.wait_read(result, context~, loc~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
@@ -207,6 +215,7 @@ async fn IoHandle::read_via_event_bus(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
@@ -228,7 +237,7 @@ async fn IoHandle::read_via_event_bus(
       )
   }
   defer result.free()
-  handle.generic_read(result, context~)
+  handle.generic_read(result, context~, loc~)
 }
 
 ///|
@@ -241,12 +250,16 @@ async fn IoHandle::generic_write(
   handle : IoHandle,
   result : IoResult,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let n = write_ffi(handle.fd, result)
   if n >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
@@ -254,7 +267,7 @@ async fn IoHandle::generic_write(
     // we still need to wait for the completion packet to obtain correct result.
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_write(result, context~)
+    handle.wait_write(result, context~, loc~)
     result.status(handle.fd, context~)
   } else {
     @os_error.check_errno(context)
@@ -270,6 +283,7 @@ async fn IoHandle::write_via_event_bus(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
@@ -277,5 +291,5 @@ async fn IoHandle::write_via_event_bus(
     _ => IoResult::for_file(WriteEvent, buf, offset~, len~, position=0)
   }
   defer result.free()
-  handle.generic_write(result, context~)
+  handle.generic_write(result, context~, loc~)
 }

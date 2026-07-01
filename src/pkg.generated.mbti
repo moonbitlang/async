@@ -21,7 +21,8 @@ pub fn is_cancellation_error(Error) -> Bool
 #deprecated
 pub fn now() -> Int64
 
-pub async fn pause() -> Unit
+#callsite(autofill(loc))
+pub async fn pause(loc~ : SourceLoc) -> Unit
 
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
@@ -29,7 +30,8 @@ pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> B
 
 pub async fn sleep(Int) -> Unit
 
-pub async fn[X] with_task_group(async (TaskGroup[X]) -> X) -> X
+#callsite(autofill(loc))
+pub async fn[X] with_task_group(async (TaskGroup[X]) -> X, loc~ : SourceLoc) -> X
 
 pub async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
 
@@ -50,7 +52,8 @@ pub impl Show for TimerCancelled
 type Lazy[X]
 #alias(new, deprecated)
 #as_free_fn(lazy_init, deprecated)
-pub fn[X] Lazy::Lazy(async () -> X) -> Self[X]
+#callsite(autofill(loc))
+pub fn[X] Lazy::Lazy(async () -> X, loc~ : SourceLoc) -> Self[X]
 pub async fn[X] Lazy::wait(Self[X]) -> X
 
 type Mutex
@@ -73,8 +76,10 @@ pub async fn[X] Task::wait(Self[X]) -> X
 type TaskGroup[X]
 pub fn[X] TaskGroup::add_defer(Self[X], async () -> Unit) -> Unit
 pub fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
-pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool) -> Task[X]
-pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool) -> Unit
+#callsite(autofill(loc))
+pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Task[X]
+#callsite(autofill(loc))
+pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Unit
 pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
 
 pub struct Timer {
