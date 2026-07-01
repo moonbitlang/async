@@ -138,6 +138,7 @@ async fn IoHandle::read_via_worker(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   guard handle.read is Idle
@@ -152,24 +153,26 @@ async fn IoHandle::read_via_worker(
   } else {
     None
   }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(job, context~, cancel?, loc~)
 }
 
 ///|
+#callsite(autofill(loc))
 pub async fn IoHandle::read(
   handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let n = if handle.is_async {
     /// The implementation of `read_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
-    handle.read_via_event_bus(buf, offset~, len~, context~)
+    handle.read_via_event_bus(buf, offset~, len~, context~, loc~)
   } else {
-    handle.read_via_worker(buf, offset~, len~, context~)
+    handle.read_via_worker(buf, offset~, len~, context~, loc~)
   }
   if handle.read_offset >= 0 {
     handle.read_offset += n.to_int64()
@@ -186,6 +189,7 @@ async fn IoHandle::write_via_worker(
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   guard curr_loop.val is Some(evloop)
   guard handle.write is Idle
@@ -206,24 +210,26 @@ async fn IoHandle::write_via_worker(
   } else {
     None
   }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(job, context~, cancel?, loc~)
 }
 
 ///|
+#callsite(autofill(loc))
 pub async fn IoHandle::write(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   let n = if handle.is_async {
     /// The implementation of `write_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
-    handle.write_via_event_bus(buf, offset~, len~, context~)
+    handle.write_via_event_bus(buf, offset~, len~, context~, loc~)
   } else {
-    handle.write_via_worker(buf, offset~, len~, context~)
+    handle.write_via_worker(buf, offset~, len~, context~, loc~)
   }
   if handle.write_offset >= 0 {
     handle.write_offset += n.to_int64()
@@ -235,6 +241,7 @@ pub async fn IoHandle::write(
 /// Perform a random access read on the IO handle.
 /// Since only regular files support random access IO,
 /// `read_at` is always dispatched to the thread pool.
+#callsite(autofill(loc))
 pub async fn IoHandle::read_at(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -242,6 +249,7 @@ pub async fn IoHandle::read_at(
   len~ : Int,
   position~ : Int64,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
@@ -253,13 +261,14 @@ pub async fn IoHandle::read_at(
   } else {
     None
   }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(job, context~, cancel?, loc~)
 }
 
 ///|
 /// Perform a random access write on the IO handle.
 /// Since only regular files support random access IO,
 /// `write_at` is always dispatched to the thread pool.
+#callsite(autofill(loc))
 pub async fn IoHandle::write_at(
   handle : IoHandle,
   buf : Bytes,
@@ -267,6 +276,7 @@ pub async fn IoHandle::write_at(
   len~ : Int,
   position~ : Int64,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
@@ -283,5 +293,5 @@ pub async fn IoHandle::write_at(
   } else {
     None
   }
-  ignore(perform_job_in_worker(job, context~, cancel?))
+  ignore(perform_job_in_worker(job, context~, cancel?, loc~))
 }

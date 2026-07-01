@@ -49,7 +49,7 @@ pub fn reschedule() -> Unit {
   for _ in 0..<n {
     guard scheduler.run_later.pop_front() is Some(coro) else { break }
     coro.ready = false
-    guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
+    guard coro.state is Suspend(ok_cont~, err_cont~, loc~) else {  }
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)
@@ -62,7 +62,7 @@ pub fn reschedule() -> Unit {
     let slice = @env.now() - start
     if slice > 50 {
       println(
-        "coroutine spawned at \{coro.loc} took \{slice}ms for a single slice",
+        "coroutine spawned at \{coro.loc} took \{slice}ms for a single slice, last suspended at \{loc}",
       )
     }
     scheduler.curr_coro = last_coro
