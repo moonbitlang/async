@@ -215,7 +215,7 @@ async test "`connect` accidental close wasm" {
             trust=NoVerification,
           )
         },
-        content="moonbitlang/async/tls.ConnectionClosed.ConnectionClosed",
+        content="ConnectionClosed",
       )
     }
   }
