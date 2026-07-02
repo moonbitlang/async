@@ -26,30 +26,10 @@ extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
 pub let platform : Platform = get_platform()
 
 ///|
-#cfg(not(platform="windows"))
 priv struct EventLoop {
   bus : EventBus
   fds : Map[@fd_util.Fd, IoHandle]
-  pids : Map[Int, @coroutine.Coroutine]
-  notify_recv : @fd_util.Fd
-  notify_send : @fd_util.Fd
-  max_worker_count : Int
-  mut job_id : Int
-  job_queue : @deque.Deque[QueuedJob]
-  idle_workers : @deque.Deque[Worker]
-  running_workers : Map[Int, Worker]
-  completed_jobs_buffer : FixedArray[Int]
-  jobs : Map[Int, @coroutine.Coroutine]
-  timers : @sorted_set.SortedSet[Timer]
-  mut main : @coroutine.Coroutine?
-  mut killed_by_signal : Int?
-}
-
-///|
-#cfg(platform="windows")
-priv struct EventLoop {
-  bus : EventBus
-  fds : Map[@fd_util.Fd, IoHandle]
+  extra : PlatformEventLoopExtra
   max_worker_count : Int
   mut job_id : Int
   job_queue : @deque.Deque[QueuedJob]
@@ -88,52 +68,18 @@ pub fn register_hook(
 }
 
 ///|
-#cfg(not(platform="windows"))
 fn EventLoop::new() -> EventLoop raise {
   let bus = EventBus::new()
-  let (notify_recv, notify_send) = @fd_util.pipe(
-    read_end_is_async=true,
-    write_end_is_async=false,
-    context="initialize runtime",
-  )
-  bus.register(notify_recv, read_only=true) catch {
+  let extra = PlatformEventLoopExtra::new(bus) catch {
     err => {
-      @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
-      @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")
+      bus.destroy()
       raise err
     }
   }
-  init_thread_pool_ffi(notify_send)
   {
     bus,
     fds: {},
-    pids: {},
-    notify_recv,
-    notify_send,
-    max_worker_count: 1024,
-    job_id: 0,
-    job_queue: @deque.Deque([]),
-    idle_workers: @deque.Deque([]),
-    running_workers: {},
-    completed_jobs_buffer: FixedArray::make(1024, 0),
-    jobs: {},
-    timers: @sorted_set.SortedSet([]),
-    main: None,
-    killed_by_signal: None,
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn EventLoop::new() -> EventLoop raise {
-  let bus = EventBus::new()
-  init_thread_pool_ffi(bus.0)
-  if init_WSA_ffi() != 0 {
-    @os_error.check_errno("initialize WSA")
-  }
-  {
-    bus,
-    fds: {},
+    extra,
     max_worker_count: 1024,
     job_id: 0,
     job_queue: @deque.Deque([]),
@@ -147,24 +93,10 @@ fn EventLoop::new() -> EventLoop raise {
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn EventLoop::destroy(evloop : EventLoop) -> Unit {
-  @fd_util.close(evloop.notify_recv, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
-  @fd_util.close(evloop.notify_send, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
-  evloop.bus.destroy()
-  destroy_thread_pool()
-}
-
-///|
-#cfg(platform="windows")
 fn EventLoop::destroy(evloop : EventLoop) -> Unit {
   evloop.bus.destroy()
   destroy_thread_pool()
-  ignore(cleanup_WSA_ffi())
+  evloop.extra.destroy()
 }
 
 ///|
@@ -257,72 +189,6 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn EventLoop::poll(self : Self) -> Unit raise {
-  let n = self.wait_for_event()
-  for i in 0..<n {
-    let event = get_event(i)
-    let events = event.events()
-    let fd = event.fd()
-    if (events & ProcessEvent) != 0 {
-      if self.pids.get(fd) is Some(coro) {
-        coro.wake()
-      }
-    } else if fd == self.notify_recv {
-      while true {
-        let bytes_transferred = fetch_completion_ffi(
-          self.notify_recv,
-          self.completed_jobs_buffer,
-        )
-        if bytes_transferred < 0 {
-          @os_error.check_errno("runtime internal: failed to get completed job")
-        }
-        let n = bytes_transferred / 4
-        for i in 0..<n {
-          self.handle_completed_job(self.completed_jobs_buffer[i])
-        }
-        if n < self.completed_jobs_buffer.length() {
-          break
-        }
-      }
-    } else if self.fds.get(fd) is Some(handle) {
-      if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
-        coro.wake()
-      }
-      if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {
-        coro.wake()
-      }
-    }
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn EventLoop::poll(self : Self) -> Unit raise {
-  let n = self.wait_for_event()
-  for i in 0..<n {
-    let event = get_event(i)
-    let fd = event.fd()
-    if @fd_util.fd_is_valid(fd) {
-      // completed IO operation on a file descriptor
-      guard self.fds.get(fd) is Some(io) else {  }
-      let result = event.io_result()
-      let event = result.event()
-      if event is ReadEvent && io.read is Waiting(coro) {
-        coro.wake()
-      } else if event is WriteEvent && io.write is Waiting(coro) {
-        coro.wake()
-      }
-    } else {
-      // custom completion packet from thread pool.
-      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
-      let job_id = event.bytes_transferred()
-      self.handle_completed_job(job_id)
-    }
-  }
-}
-
-///|
 pub let check_fd_leak : Ref[Bool] = Ref(
   @env.get_env_var("MOONBIT_ASYNC_CHECK_FD_LEAK") is Some(_),
 )
@@ -338,7 +204,6 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
 }
 
 ///|
-#cfg(not(platform="windows"))
 fn EventLoop::cleanup(self : Self) -> Unit raise {
   for hook in hooks {
     if hook.exit is Some(exit) {
@@ -363,36 +228,7 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
   for _, coro in self.jobs {
     coro.cancel()
   }
-  for _, coro in self.pids {
-    coro.cancel()
-  }
-  self.pids.clear()
-  for worker in self.idle_workers {
-    worker.free()
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn EventLoop::cleanup(self : Self) -> Unit raise {
-  for hook in hooks {
-    if hook.exit is Some(exit) {
-      exit()
-    }
-  }
-  for fd, handle in self.fds {
-    @fd_util.close(
-      fd,
-      kind=handle.kind,
-      context="runtime internal: close leaking fd",
-    )
-  }
-  self.check_fd_leak()
-  self.fds.clear()
-  for _, coro in self.jobs {
-    coro.cancel()
-  }
-  self.jobs.clear()
+  self.extra.cleanup()
   for worker in self.idle_workers {
     worker.free()
   }
@@ -402,7 +238,7 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   try {
     while !(@coroutine.no_more_work() && self.running_workers.is_empty()) {
-      self.poll() catch {
+      self.extra.poll(self) catch {
         @os_error.OSError(_) as err if err.is_EINTR() => continue
         err => raise err
       }
