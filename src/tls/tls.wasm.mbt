@@ -512,8 +512,7 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
         return n
       }
       TLS_STATUS_CLOSED => {
-        self.shutdown = true
-        self.drain_tls_output()
+        self.shutdown()
         return 0
       }
       TLS_STATUS_WOULD_BLOCK => {
