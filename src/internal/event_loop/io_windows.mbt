@@ -20,36 +20,64 @@ priv type IoResult
 ///|
 #cfg(platform="windows")
 #owned(buf)
-extern "C" fn IoResult::for_file(
-  events : Int,
-  buf : Bytes,
+extern "C" fn IoResult::for_file_read(
+  buf : FixedArray[Byte],
   offset~ : Int,
   len~ : Int,
   position~ : Int64,
-) -> IoResult = "moonbitlang_async_make_file_io_result"
+) -> IoResult = "moonbitlang_async_make_file_read_io_result"
 
 ///|
 #cfg(platform="windows")
 #owned(buf)
-extern "C" fn IoResult::for_socket(
-  events : Int,
+extern "C" fn IoResult::for_file_write(
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  position~ : Int64,
+) -> IoResult = "moonbitlang_async_make_file_write_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(buf)
+extern "C" fn IoResult::for_socket_read(
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+) -> IoResult = "moonbitlang_async_make_socket_read_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(buf)
+extern "C" fn IoResult::for_socket_write(
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   flags~ : Int,
-) -> IoResult = "moonbitlang_async_make_socket_io_result"
+) -> IoResult = "moonbitlang_async_make_socket_write_io_result"
 
 ///|
 #cfg(platform="windows")
 #owned(buf, addr)
-extern "C" fn IoResult::for_socket_with_addr(
-  events : Int,
+extern "C" fn IoResult::for_socket_with_addr_read(
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  flags~ : Int,
+  addr~ : Bytes,
+) -> IoResult = "moonbitlang_async_make_socket_with_addr_read_io_result"
+
+///|
+#cfg(platform="windows")
+#owned(buf, addr)
+extern "C" fn IoResult::for_socket_with_addr_write(
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   flags~ : Int,
   addr~ : Bytes,
-) -> IoResult = "moonbitlang_async_make_socket_with_addr_io_result"
+) -> IoResult = "moonbitlang_async_make_socket_with_addr_write_io_result"
 
 ///|
 #cfg(platform="windows")
@@ -210,22 +238,8 @@ async fn IoHandle::read_via_event_bus(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
-    Socket =>
-      IoResult::for_socket(
-        ReadEvent,
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len~,
-        flags=0,
-      )
-    _ =>
-      IoResult::for_file(
-        ReadEvent,
-        buf.unsafe_reinterpret_as_bytes(),
-        offset~,
-        len~,
-        position=0,
-      )
+    Socket => IoResult::for_socket_read(buf, offset~, len~, flags=0)
+    _ => IoResult::for_file_read(buf, offset~, len~, position=0)
   }
   defer result.free()
   handle.generic_read(result, context~)
@@ -273,8 +287,8 @@ async fn IoHandle::write_via_event_bus(
 ) -> Int {
   let result = match handle.kind {
     Regular => panic()
-    Socket => IoResult::for_socket(WriteEvent, buf, offset~, len~, flags=0)
-    _ => IoResult::for_file(WriteEvent, buf, offset~, len~, position=0)
+    Socket => IoResult::for_socket_write(buf, offset~, len~, flags=0)
+    _ => IoResult::for_file_write(buf, offset~, len~, position=0)
   }
   defer result.free()
   handle.generic_write(result, context~)

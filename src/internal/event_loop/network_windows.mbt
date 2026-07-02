@@ -37,9 +37,8 @@ pub async fn IoHandle::recvfrom(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let result = IoResult::for_socket_with_addr(
-    ReadEvent,
-    buf.unsafe_reinterpret_as_bytes(),
+  let result = IoResult::for_socket_with_addr_read(
+    buf,
     offset~,
     len~,
     flags=0,
@@ -60,8 +59,7 @@ pub async fn IoHandle::sendto(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let result = IoResult::for_socket_with_addr(
-    WriteEvent,
+  let result = IoResult::for_socket_with_addr_write(
     buf,
     offset~,
     len~,
