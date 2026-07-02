@@ -36,9 +36,15 @@ async fn IoHandle::recvfrom_windows(
   addr~ : Bytes,
   context~ : String,
 ) -> Int {
-  let result = IoResult::for_socket_with_addr_read(len~, flags=0, addr~)
+  let result = IoResult::for_socket_with_addr_read(
+    buf,
+    offset~,
+    len~,
+    flags=0,
+    addr~,
+  )
   defer result.free()
-  handle.generic_read_with_addr_windows(result, buf, offset~, addr~, context~)
+  handle.generic_read_windows(result, context~)
 }
 
 ///|
@@ -97,7 +103,15 @@ pub async fn IoHandle::sendto(
 
 ///|
 #unsafe_skip_stub_check
-fn connect_windows_ffi(sock : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang/async" "socket/connect/windows"
+fn IoResultHandle::connect_ffi(
+  sock : @fd_util.Fd,
+  result : IoResultHandle,
+) -> Int = "moonbitlang/async" "socket/connect/windows"
+
+///|
+fn connect_windows_ffi(sock : @fd_util.Fd, result : IoResult) -> Int {
+  IoResultHandle::connect_ffi(sock, result.handle)
+}
 
 ///|
 #unsafe_skip_stub_check
@@ -139,11 +153,20 @@ pub async fn IoHandle::connect(
 
 ///|
 #unsafe_skip_stub_check
+fn IoResultHandle::accept_ffi(
+  server_sock : @fd_util.Fd,
+  conn_sock : @fd_util.Fd,
+  result : IoResultHandle,
+) -> Int = "moonbitlang/async" "socket/accept/windows"
+
+///|
 fn accept_windows_ffi(
   server_sock : @fd_util.Fd,
   conn_sock : @fd_util.Fd,
   result : IoResult,
-) -> Int = "moonbitlang/async" "socket/accept/windows"
+) -> Int {
+  IoResultHandle::accept_ffi(server_sock, conn_sock, result.handle)
+}
 
 ///|
 #unsafe_skip_stub_check

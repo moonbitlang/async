@@ -71,7 +71,7 @@ fn Event::events(event : Event) -> Int = "moonbitlang/async" "event_bus/event_ev
 
 ///|
 #unsafe_skip_stub_check
-fn Event::io_result(event : Event) -> IoResult = "moonbitlang/async" "event_bus/event_io_result/windows"
+fn Event::io_result(event : Event) -> IoResultHandle = "moonbitlang/async" "event_bus/event_io_result/windows"
 
 ///|
 #unsafe_skip_stub_check

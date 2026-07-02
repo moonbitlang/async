@@ -131,8 +131,8 @@ struct IoResult *make_io_result(int event, enum IoResultKind kind, size_t size) 
 #define MAKE_IO_RESULT(event, kind)\
   (struct kind##IoResult*)make_io_result(event, kind, sizeof(struct kind##IoResult))
 
-MOONBIT_FFI_EXPORT
-struct FileIoResult *moonbitlang_async_make_file_io_result(
+static
+struct FileIoResult *make_file_io_result(
   int32_t event,
   char *buf,
   int32_t offset,
@@ -149,7 +149,27 @@ struct FileIoResult *moonbitlang_async_make_file_io_result(
 }
 
 MOONBIT_FFI_EXPORT
-struct SocketIoResult *moonbitlang_async_make_socket_io_result(
+struct FileIoResult *moonbitlang_async_make_file_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int64_t position
+) {
+  return make_file_io_result(IO_RESULT_READ_EVENT, buf, offset, len, position);
+}
+
+MOONBIT_FFI_EXPORT
+struct FileIoResult *moonbitlang_async_make_file_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int64_t position
+) {
+  return make_file_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, position);
+}
+
+static
+struct SocketIoResult *make_socket_io_result(
   int32_t event,
   char *buf,
   int32_t offset,
@@ -165,7 +185,27 @@ struct SocketIoResult *moonbitlang_async_make_socket_io_result(
 }
 
 MOONBIT_FFI_EXPORT
-struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result(
+struct SocketIoResult *moonbitlang_async_make_socket_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags
+) {
+  return make_socket_io_result(IO_RESULT_READ_EVENT, buf, offset, len, flags);
+}
+
+MOONBIT_FFI_EXPORT
+struct SocketIoResult *moonbitlang_async_make_socket_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags
+) {
+  return make_socket_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, flags);
+}
+
+static
+struct SocketWithAddrIoResult *make_socket_with_addr_io_result(
   int32_t event,
   char *buf,
   int32_t offset,
@@ -184,6 +224,29 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
     : sizeof(struct sockaddr_in6);
   return result;
 }
+
+MOONBIT_FFI_EXPORT
+struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags,
+  struct sockaddr *addr
+) {
+  return make_socket_with_addr_io_result(IO_RESULT_READ_EVENT, buf, offset, len, flags, addr);
+}
+
+MOONBIT_FFI_EXPORT
+struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags,
+  struct sockaddr *addr
+) {
+  return make_socket_with_addr_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, flags, addr);
+}
+
 
 MOONBIT_FFI_EXPORT
 struct ConnectIoResult *moonbitlang_async_make_connect_io_result(struct sockaddr *addr) {
