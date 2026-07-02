@@ -150,12 +150,6 @@ extern "C" fn SSL::unique_channel_binding(
 ) -> Unit = "moonbitlang_async_tls_ssl_unique_channel_binding"
 
 ///|
-pub(all) enum X509FileType {
-  PEM = 1
-  ANS1 = 2
-}
-
-///|
 #cfg(not(platform="windows"))
 #borrow(file)
 extern "C" fn SSL::use_certificate_file(

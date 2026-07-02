@@ -110,6 +110,7 @@ async fn handle_connect(
 }
 
 ///|
+#cfg(target="native")
 async test "proxied https request" {
   let log = []
   @async.with_task_group() <| group => {
@@ -132,6 +133,7 @@ async test "proxied https request" {
 }
 
 ///|
+#cfg(target="native")
 async test "proxied http request" {
   let log = []
   @async.with_task_group() <| group => {
@@ -198,6 +200,7 @@ async test "proxied misc request" {
 }
 
 ///|
+#cfg(target="native")
 async test "proxy error" {
   let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let port = proxy_server.addr.port()

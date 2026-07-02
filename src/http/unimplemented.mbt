@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+/// This package currently does not support JavaScript or wasm-gc backend
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)

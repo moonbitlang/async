@@ -14,7 +14,7 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(target="js")
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
