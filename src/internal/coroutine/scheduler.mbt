@@ -39,6 +39,14 @@ pub fn has_immediately_ready_task() -> Bool {
 }
 
 ///|
+#valtype
+priv struct CoroDesc {
+  loc : String
+  suspend_loc : String
+  time : UInt64
+} derive(Debug)
+
+///|
 /// Perform a new rousd of scheduling by running all ready coroutines.
 /// While running these coroutines, new coroutines may get waken or spawned,
 /// these new coroutines will *not* get executed in this run of `reschedule`.
@@ -46,6 +54,8 @@ pub fn has_immediately_ready_task() -> Bool {
 /// and prevent starvation, even when there is always immediately ready coroutine.
 pub fn reschedule() -> Unit {
   let n = scheduler.run_later.length()
+  let run_coros = Array::new(capacity=n)
+  let start = @env.now()
   for _ in 0..<n {
     guard scheduler.run_later.pop_front() is Some(coro) else { break }
     coro.ready = false
@@ -59,13 +69,18 @@ pub fn reschedule() -> Unit {
     } else {
       ok_cont(())
     }
-    let slice = @env.now() - start
-    if slice > 50 {
-      println(
-        "coroutine spawned at \{coro.loc} took \{slice}ms for a single slice, last suspended at \{loc}",
-      )
-    }
+    let t = @env.now() - start
+    run_coros.push({
+      loc: coro.loc.to_string(),
+      suspend_loc: loc.to_string(),
+      time: t,
+    })
     scheduler.curr_coro = last_coro
+  }
+  let slice = @env.now() - start
+  if slice > 50 {
+    println("Scheduler slice took \{slice}ms. Related coroutines:")
+    debug(run_coros)
   }
 }
 
