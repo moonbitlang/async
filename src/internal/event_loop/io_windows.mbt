@@ -13,105 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(platform="windows")
-#external
-priv type IoResult
-
-///|
-#cfg(platform="windows")
-#owned(buf)
-extern "C" fn IoResult::for_file_read(
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-) -> IoResult = "moonbitlang_async_make_file_read_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(buf)
-extern "C" fn IoResult::for_file_write(
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-) -> IoResult = "moonbitlang_async_make_file_write_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(buf)
-extern "C" fn IoResult::for_socket_read(
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
-) -> IoResult = "moonbitlang_async_make_socket_read_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(buf)
-extern "C" fn IoResult::for_socket_write(
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
-) -> IoResult = "moonbitlang_async_make_socket_write_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(buf, addr)
-extern "C" fn IoResult::for_socket_with_addr_read(
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
-  addr~ : Bytes,
-) -> IoResult = "moonbitlang_async_make_socket_with_addr_read_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(buf, addr)
-extern "C" fn IoResult::for_socket_with_addr_write(
-  buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
-  addr~ : Bytes,
-) -> IoResult = "moonbitlang_async_make_socket_with_addr_write_io_result"
-
-///|
-#cfg(platform="windows")
-#owned(addr)
-extern "C" fn IoResult::for_connect(addr : Bytes) -> IoResult = "moonbitlang_async_make_connect_io_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn IoResult::for_accept(addr_len : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn IoResult::for_read_dir_changes(
-  buf : @c_buffer.Buffer,
-  len~ : Int,
-) -> IoResult = "moonbitlang_async_make_read_dir_changes_io_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn IoResult::free(self : IoResult) = "moonbitlang_async_free_io_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn IoResult::event(self : IoResult) -> Int = "moonbitlang_async_io_result_get_event"
-
-///|
-#cfg(platform="windows")
-extern "C" fn IoResult::cancel_ffi(
-  self : IoResult,
-  handle : @fd_util.Fd,
-) -> Int = "moonbitlang_async_cancel_io_result"
-
-///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn IoResult::cancel(
   self : IoResult,
   handle : @fd_util.Fd,
@@ -129,14 +31,7 @@ fn IoResult::cancel(
 }
 
 ///|
-#cfg(platform="windows")
-extern "C" fn IoResult::status_ffi(
-  result : IoResult,
-  handle : @fd_util.Fd,
-) -> Int = "moonbitlang_async_io_result_get_status"
-
-///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn IoResult::status(
   result : IoResult,
   handle : @fd_util.Fd,
@@ -154,8 +49,8 @@ fn IoResult::status(
 }
 
 ///|
-#cfg(platform="windows")
-async fn IoHandle::wait_read(
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::wait_read_result(
   handle : IoHandle,
   io_result : IoResult,
   context~ : String,
@@ -171,8 +66,8 @@ async fn IoHandle::wait_read(
 }
 
 ///|
-#cfg(platform="windows")
-async fn IoHandle::wait_write(
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::wait_write_result(
   handle : IoHandle,
   io_result : IoResult,
   context~ : String,
@@ -189,21 +84,37 @@ async fn IoHandle::wait_write(
 
 ///|
 #cfg(platform="windows")
-extern "C" fn read_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read"
+extern "C" fn read_windows(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn read_io_result_ffi(fd : @fd_util.Fd, result : IoResultHandle) -> Int = "moonbitlang/async" "io/read/windows"
+
+///|
+#cfg(target="wasm")
+fn read_windows(fd : @fd_util.Fd, result : IoResult) -> Int {
+  read_io_result_ffi(fd, result.handle)
+}
 
 ///|
 #cfg(platform="windows")
 extern "C" fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang_async_errno_is_read_EOF"
 
 ///|
-#cfg(platform="windows")
-async fn IoHandle::generic_read(
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang/async" "io/errno_is_read_EOF/windows"
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::generic_read_windows(
   handle : IoHandle,
   result : IoResult,
   context~ : String,
 ) -> Int {
-  let n = read_ffi(handle.fd, result)
-  if n >= 0 {
+  let n = read_windows(handle.fd, result)
+  let n = if n >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program,
     // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
@@ -214,7 +125,7 @@ async fn IoHandle::generic_read(
     // we still need to wait for the completion packet to obtain correct result.
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read(result, context~)
+    handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
       err => raise err
@@ -225,11 +136,13 @@ async fn IoHandle::generic_read(
     @os_error.check_errno(context)
     panic()
   }
+  result.copy_read_result(n)
+  n
 }
 
 ///|
-#cfg(platform="windows")
-async fn IoHandle::read_via_event_bus(
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::read_via_event_bus_windows(
   handle : IoHandle,
   buf : FixedArray[Byte],
   offset~ : Int,
@@ -242,21 +155,44 @@ async fn IoHandle::read_via_event_bus(
     _ => IoResult::for_file_read(buf, offset~, len~, position=0)
   }
   defer result.free()
-  handle.generic_read(result, context~)
+  handle.generic_read_windows(result, context~)
 }
 
 ///|
 #cfg(platform="windows")
-extern "C" fn write_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_write"
+async fn IoHandle::read_via_event_bus(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  handle.read_via_event_bus_windows(buf, offset~, len~, context~)
+}
 
 ///|
 #cfg(platform="windows")
-async fn IoHandle::generic_write(
+extern "C" fn write_windows(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_write"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn write_io_result_ffi(fd : @fd_util.Fd, result : IoResultHandle) -> Int = "moonbitlang/async" "io/write/windows"
+
+///|
+#cfg(target="wasm")
+fn write_windows(fd : @fd_util.Fd, result : IoResult) -> Int {
+  write_io_result_ffi(fd, result.handle)
+}
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::generic_write_windows(
   handle : IoHandle,
   result : IoResult,
   context~ : String,
 ) -> Int {
-  let n = write_ffi(handle.fd, result)
+  let n = write_windows(handle.fd, result)
   if n >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
@@ -268,7 +204,7 @@ async fn IoHandle::generic_write(
     // we still need to wait for the completion packet to obtain correct result.
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_write(result, context~)
+    handle.wait_write_result(result, context~)
     result.status(handle.fd, context~)
   } else {
     @os_error.check_errno(context)
@@ -277,8 +213,8 @@ async fn IoHandle::generic_write(
 }
 
 ///|
-#cfg(platform="windows")
-async fn IoHandle::write_via_event_bus(
+#cfg(any(target="wasm", platform="windows"))
+async fn IoHandle::write_via_event_bus_windows(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
@@ -291,5 +227,17 @@ async fn IoHandle::write_via_event_bus(
     _ => IoResult::for_file_write(buf, offset~, len~, position=0)
   }
   defer result.free()
-  handle.generic_write(result, context~)
+  handle.generic_write_windows(result, context~)
+}
+
+///|
+#cfg(platform="windows")
+async fn IoHandle::write_via_event_bus(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  handle.write_via_event_bus_windows(buf, offset~, len~, context~)
 }

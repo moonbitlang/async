@@ -45,7 +45,7 @@ pub async fn IoHandle::recvfrom(
     addr~,
   )
   defer result.free()
-  handle.generic_read(result, context~)
+  handle.generic_read_windows(result, context~)
 }
 
 ///|
@@ -67,7 +67,7 @@ pub async fn IoHandle::sendto(
     addr~,
   )
   defer result.free()
-  handle.generic_write(result, context~)
+  handle.generic_write_windows(result, context~)
 }
 
 ///|
@@ -92,7 +92,7 @@ pub async fn IoHandle::connect(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_write(result, context~)
+    handle.wait_write_result(result, context~)
     ignore(result.status(handle.fd, context~))
   }
   if setup_connected_socket_ffi(handle.fd) < 0 {
@@ -107,14 +107,6 @@ extern "C" fn accept_ffi(
   conn_sock : @fd_util.Fd,
   result : IoResult,
 ) -> Int = "moonbitlang_async_accept"
-
-///|
-#cfg(platform="windows")
-#borrow(dst)
-extern "C" fn IoResult::get_accept_peer_addr(
-  result : IoResult,
-  dst : Bytes,
-) -> Unit = "moonbitlang_async_get_accept_peer_addr"
 
 ///|
 #cfg(platform="windows")
@@ -138,7 +130,7 @@ pub async fn IoHandle::accept_windows(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_read(result, context~)
+    handle.wait_read_result(result, context~)
     ignore(result.status(handle.fd, context~))
   }
   result.get_accept_peer_addr(addr)
