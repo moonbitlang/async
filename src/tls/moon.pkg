@@ -26,7 +26,7 @@ options(
     "certificate_test.mbt": [ "native" ],
     "channel_binding_test.mbt": [ "native" ],
     "crypto_util.mbt": [ "native" ],
-    "deprecated.mbt": [ "native" ],
+    "deprecated.mbt": [ "native", "wasm" ],
     "openssl.mbt": [ "native" ],
     "openssl_loader.mbt": [ "native" ],
     "schannel.mbt": [ "native" ],
