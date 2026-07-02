@@ -356,7 +356,7 @@ pub async fn IoHandle::read_dir_changes(
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     n
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read(result, context~)
+    handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
       @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
       err => raise err
