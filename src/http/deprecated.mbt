@@ -116,12 +116,12 @@ pub impl Show for URIParseError with fn output(self, logger) {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for ProxyError
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 pub impl Show for ProxyError with fn output(self, logger) {
   match self {
     ProxyError(response) => {
@@ -133,12 +133,12 @@ pub impl Show for ProxyError with fn output(self, logger) {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for HttpProtocolError
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 pub impl Show for HttpProtocolError with fn output(self, logger) {
   match self {
     BadRequest => logger <+ "BadRequest"

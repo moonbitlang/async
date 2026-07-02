@@ -14,12 +14,13 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(target="js")
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@bytes_util.ascii_to_string)
   ignore(@c_buffer.unimplemented)
+  ignore(@event_loop.reschedule)
   ignore(@io_buffer.new)
   ignore(@semaphore.Semaphore::acquire)
   ignore(@os_string.unimplemented)
