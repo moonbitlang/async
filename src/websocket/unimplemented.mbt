@@ -14,13 +14,24 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(target="js")
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@semaphore.Semaphore::release)
   ignore(@tls.unimplemented)
   ignore(@http.unimplemented)
+  ignore(@coroutine.spawn)
+  ignore(@utf8.encode(""))
+}
+
+///|
+#cfg(target="wasm")
+let _ignore_unused_wasm_imports : Unit = {
+  ignore(@io.pipe)
+  ignore(@tls.SystemRoot)
+  ignore(@http.Get)
+  ignore(@semaphore.Semaphore::release)
   ignore(@coroutine.spawn)
   ignore(@utf8.encode(""))
 }
