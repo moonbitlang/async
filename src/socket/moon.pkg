@@ -1,7 +1,6 @@
 import {
   "moonbitlang/core/string",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/lazy",
   "moonbitlang/async/os_error",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/fd_util",
