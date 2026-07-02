@@ -59,9 +59,9 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
     if evloop.bus.register_pid(self.pid) {
-      guard evloop.pids.get(self.pid) is None
-      evloop.pids[self.pid] = @coroutine.current_coroutine()
-      defer evloop.pids.remove(self.pid)
+      guard evloop.extra.pids.get(self.pid) is None
+      evloop.extra.pids[self.pid] = @coroutine.current_coroutine()
+      defer evloop.extra.pids.remove(self.pid)
       @coroutine.suspend()
     }
   } else {
