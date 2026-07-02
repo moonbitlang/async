@@ -330,10 +330,18 @@ async fn Tls::read_tls_input(self : Tls) -> Bool {
 async fn Tls::drain_tls_output_unlocked(self : Tls) -> Unit {
   let output = FixedArray::make(BUFFER_SIZE, b'\x00')
   while self.conn.write_tls(output, offset=0, len=output.length()) is n {
-    self.conn.check_status(n)
-    guard n > 0 else { break }
-    let data = output.unsafe_reinterpret_as_bytes()[:n]
-    self.transport.writer.write(data)
+    match n {
+      n if n > 0 => {
+        let data = output.unsafe_reinterpret_as_bytes()[:n]
+        self.transport.writer.write(data)
+      }
+      0 => break
+      TLS_STATUS_WOULD_BLOCK => break
+      TLS_STATUS_CLOSED => raise ConnectionClosed
+      TLS_STATUS_ERROR =>
+        raise TlsError(self.conn.take_error().to_utf8_string())
+      _ => abort("unexpected status code \{n} from TLS output")
+    }
   }
 }
 
