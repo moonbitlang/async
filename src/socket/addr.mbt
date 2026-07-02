@@ -188,10 +188,10 @@ fn Addr::family(self : Addr) -> AddrFamily {
 }
 
 ///|
-let ipv4_any : @lazy.Lazy[Addr] = @lazy.Lazy(() => Addr::new(0, 0))
+let ipv4_any : Lazy[Addr] = Lazy(() => Addr::new(0, 0))
 
 ///|
-let ipv6_any : @lazy.Lazy[Addr] = @lazy.Lazy(() => {
+let ipv6_any : Lazy[Addr] = Lazy(() => {
   Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
 })
 
