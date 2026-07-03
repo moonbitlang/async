@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(target="js")
+/// This package currently does not support JavaScript or WebAssembly backend
+#cfg(any(target="js", target="wasm-gc"))
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
@@ -27,7 +27,8 @@ pub let unimplemented : Unit = {
 
 ///|
 #cfg(target="wasm")
-let _ignore_unused_wasm_imports : Unit = {
+#coverage.skip
+pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@tls.SystemRoot)
   ignore(@http.Get)
