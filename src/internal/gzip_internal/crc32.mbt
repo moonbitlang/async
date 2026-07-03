@@ -13,20 +13,61 @@
 // limitations under the License.
 
 ///|
-let crc32_table : FixedArray[UInt] = FixedArray::makei(256, i => {
-  let mut crc = i.reinterpret_as_uint()
-  for _ in 0..<8 {
-    crc = if (crc & 1U) == 0U { crc >> 1 } else { (crc >> 1) ^ 0xedb88320U }
-  }
-  crc
-})
+fn make_crc32_table(slice : Int) -> FixedArray[UInt] {
+  FixedArray::makei(256, fn(i) {
+    let mut crc = i.reinterpret_as_uint()
+    for _ in 0..<(8 * (slice + 1)) {
+      crc = if (crc & 1U) == 0U { crc >> 1 } else { (crc >> 1) ^ 0xedb88320U }
+    }
+    crc
+  })
+}
+
+///|
+let crc32_table0 : FixedArray[UInt] = make_crc32_table(0)
+
+///|
+let crc32_table1 : FixedArray[UInt] = make_crc32_table(1)
+
+///|
+let crc32_table2 : FixedArray[UInt] = make_crc32_table(2)
+
+///|
+let crc32_table3 : FixedArray[UInt] = make_crc32_table(3)
+
+///|
+let crc32_table4 : FixedArray[UInt] = make_crc32_table(4)
+
+///|
+let crc32_table5 : FixedArray[UInt] = make_crc32_table(5)
+
+///|
+let crc32_table6 : FixedArray[UInt] = make_crc32_table(6)
+
+///|
+let crc32_table7 : FixedArray[UInt] = make_crc32_table(7)
 
 ///|
 fn crc32_update(current : UInt, chunk : BytesView) -> UInt {
-  for byte in chunk; crc = current {
-    let index = ((crc ^ byte.to_uint()) & 0xffU).reinterpret_as_int()
-    continue crc32_table[index] ^ (crc >> 8)
+  let len = chunk.length()
+  for crc = current, i = 0; i + 8 <= len; {
+    let first = crc ^ chunk.unsafe_read_uint32_le(i)
+    let crc = crc32_table7.unsafe_get((first & 0xffU).reinterpret_as_int()) ^
+      crc32_table6.unsafe_get(((first >> 8) & 0xffU).reinterpret_as_int()) ^
+      crc32_table5.unsafe_get(((first >> 16) & 0xffU).reinterpret_as_int()) ^
+      crc32_table4.unsafe_get((first >> 24).reinterpret_as_int()) ^
+      crc32_table3.unsafe_get(chunk.unsafe_get(i + 4).to_int()) ^
+      crc32_table2.unsafe_get(chunk.unsafe_get(i + 5).to_int()) ^
+      crc32_table1.unsafe_get(chunk.unsafe_get(i + 6).to_int()) ^
+      crc32_table0.unsafe_get(chunk.unsafe_get(i + 7).to_int())
+    continue crc, i + 8
   } nobreak {
-    crc
+    for crc = crc, i = i; i < len; {
+      let index = ((crc ^ chunk.unsafe_get(i).to_uint()) & 0xffU).reinterpret_as_int()
+      let crc = crc32_table0.unsafe_get(index) ^ (crc >> 8)
+      continue crc, i + 1
+    } nobreak {
+      crc
+    }
   }
 }
