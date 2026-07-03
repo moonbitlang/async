@@ -15,11 +15,6 @@
 ///|
 #cfg(not(platform="windows"))
 priv struct UnixEventLoopExtra {
-  // On Unix-like systems,  we use a pipe to
-  // receive completion notification from the thread pool
-  notify_recv : @fd_util.Fd
-  notify_send : @fd_util.Fd
-
   // On MacOS, PID waiting is implemented directly via kqueue, 
   // so we need to separately maintain waiters for each PID.
   pids : Map[Int, @coroutine.Coroutine]
@@ -34,37 +29,14 @@ type PlatformEventLoopExtra = UnixEventLoopExtra
 
 ///|
 #cfg(not(platform="windows"))
-fn UnixEventLoopExtra::new(event_bus : EventBus) -> UnixEventLoopExtra raise {
-  let (notify_recv, notify_send) = @fd_util.pipe(
-    read_end_is_async=true,
-    write_end_is_async=false,
-    context="initialize runtime",
-  )
-  event_bus.register(notify_recv, read_only=true) catch {
-    err => {
-      @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
-      @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")
-      raise err
-    }
-  }
-  init_thread_pool_ffi(notify_send)
-  {
-    notify_recv,
-    notify_send,
-    pids: {},
-    completed_jobs_buffer: FixedArray::make(1024, 0),
-  }
+fn UnixEventLoopExtra::new() -> UnixEventLoopExtra {
+  { pids: {}, completed_jobs_buffer: FixedArray::make(1024, 0) }
 }
 
 ///|
 #cfg(not(platform="windows"))
 fn UnixEventLoopExtra::destroy(self : UnixEventLoopExtra) -> Unit {
-  @fd_util.close(self.notify_recv, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
-  @fd_util.close(self.notify_send, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
+  ignore(self)
 }
 
 ///|
@@ -81,17 +53,17 @@ fn UnixEventLoopExtra::cleanup(self : UnixEventLoopExtra) -> Unit {
 fn UnixEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
   let n = evloop.wait_for_event()
   for i in 0..<n {
-    let event = get_event(i)
+    let event = evloop.bus.get_event(i)
     let events = event.events()
     let fd = event.fd()
     if (events & ProcessEvent) != 0 {
       if self.pids.get(fd) is Some(coro) {
         coro.wake()
       }
-    } else if fd == self.notify_recv {
+    } else if fd == evloop.notify_recv {
       while true {
         let bytes_transferred = fetch_completion_ffi(
-          self.notify_recv,
+          evloop.notify_recv,
           self.completed_jobs_buffer,
         )
         if bytes_transferred < 0 {

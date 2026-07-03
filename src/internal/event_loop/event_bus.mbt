@@ -77,7 +77,7 @@ fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
 priv type Event
 
 ///|
-extern "C" fn get_event(index : Int) -> Event = "moonbitlang_async_event_list_get"
+extern "C" fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang_async_event_list_get"
 
 ///|
 extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
