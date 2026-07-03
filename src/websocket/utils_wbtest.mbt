@@ -13,13 +13,9 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript or WebAssembly backend
-#cfg(any(target="js", target="wasm-gc"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@semaphore.Semaphore::release)
-  ignore(@http.unimplemented)
-  ignore(@coroutine.spawn)
-  ignore(@utf8.encode(""))
+test "generate accept key" {
+  inspect(
+    generate_accept_key("dGhlIHNhbXBsZSBub25jZQ=="),
+    content="s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+  )
 }

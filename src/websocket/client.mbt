@@ -35,7 +35,7 @@ pub async fn Conn::from_http_client(
   extra_headers? : Map[String, String] = {},
 ) -> Conn {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
-  let seed = @tls.rand_bytes(32)
+  let seed = websocket_random_bytes(32)
   let rand = @random.Rand::chacha8(seed~)
 
   // Send WebSocket handshake request
