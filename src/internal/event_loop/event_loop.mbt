@@ -145,6 +145,15 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
 }
 
 ///|
+#cfg(target="native")
+using @env {now}
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn now() -> UInt64 = "moonbitlang/async" "time/get_ms_since_epoch"
+
+///|
 fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   // Short-circuit when no timers are pending: this is the common case
   // for IO-only or compute-only tasks that never call `sleep` / `Timer`.
@@ -154,7 +163,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - @env.now()).to_int())
+    @cmp.maximum(0, (timer.expire_time - now()).to_int())
   } else {
     -1
   }
@@ -163,7 +172,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
     @os_error.check_errno("runtime internal: poll_wait")
   }
   if has_timers {
-    let now = @env.now()
+    let now = now()
     for timer in self.timers {
       if timer.expire_time <= now {
         (timer.callback)()
@@ -344,7 +353,13 @@ async fn EventLoop::wait_for_job(
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
 
 ///|
 async fn perform_job_in_worker(
@@ -376,6 +391,7 @@ async fn perform_job_in_worker(
       raise @os_error.OSError(err, context~)
     }
   } else {
+    job.copy_output()
     job.ret()
   }
 }

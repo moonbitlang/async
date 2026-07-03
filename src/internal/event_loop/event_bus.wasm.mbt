@@ -24,6 +24,9 @@ const ReadEvent = 1
 const WriteEvent = 2
 
 ///|
+const ProcessEvent = 4
+
+///|
 #unsafe_skip_stub_check
 fn EventBus::new() -> EventBus = "moonbitlang/async" "event_bus/create"
 
@@ -64,6 +67,12 @@ fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang/asy
 ///|
 #unsafe_skip_stub_check
 fn Event::fd(event : Event) -> @fd_util.Fd = "moonbitlang/async" "event_bus/event_fd"
+
+///|
+fn Event::pid(_ : Event) -> Int {
+  // process is not implementend yet on Wasm backend
+  panic()
+}
 
 ///|
 #unsafe_skip_stub_check

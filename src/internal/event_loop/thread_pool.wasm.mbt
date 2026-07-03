@@ -128,6 +128,13 @@ fn Job::err(self : Job) -> Int {
 }
 
 ///|
+fn Job::copy_output(self : Job) -> Unit {
+  if self.copy_output is Some(copy_output) {
+    copy_output(self.handle)
+  }
+}
+
+///|
 #unsafe_skip_stub_check
 fn JobHandle::read(fd : @fd_util.Fd, len : Int, position~ : Int64) -> JobHandle = "moonbitlang/async" "thread_pool/make_read_job"
 
