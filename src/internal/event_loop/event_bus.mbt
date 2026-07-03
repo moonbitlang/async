@@ -84,6 +84,12 @@ extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_
 
 ///|
 #cfg(not(platform="windows"))
+fn Event::pid(self : Event) -> Int {
+  self.fd()
+}
+
+///|
+#cfg(not(platform="windows"))
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
 
 ///|

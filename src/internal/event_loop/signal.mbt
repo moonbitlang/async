@@ -13,8 +13,16 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 #borrow(name)
 extern "C" fn get_signal_by_name(name : Bytes) -> Int = "moonbitlang_async_get_signal_by_name"
+
+///|
+#cfg(target="wasm")
+fn get_signal_by_name(_name : Bytes) -> Int {
+  // not implemented yet on Wasm
+  -1
+}
 
 ///|
 pub let _SIGINT : Int = get_signal_by_name(b"SIGINT")
@@ -37,11 +45,23 @@ pub suberror KilledBySignal {
 }
 
 ///|
+#cfg(target="native")
 #borrow(all_signals, signals)
 extern "C" fn set_global_cancellation_signals_ffi(
   all_signals : ReadOnlyArray[Int],
   signals : ReadOnlyArray[Int],
 ) -> Unit = "moonbitlang_async_set_global_cancellation_signals"
+
+///|
+#cfg(target="wasm")
+fn set_global_cancellation_signals_ffi(
+  all_signals : ReadOnlyArray[Int],
+  signals : ReadOnlyArray[Int],
+) -> Unit {
+  // not implemented yet on Wasm
+  ignore(all_signals)
+  ignore(signals)
+}
 
 ///|
 let global_signal_handler_initialized : Ref[Bool] = Ref(false)
@@ -53,7 +73,7 @@ pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 fn setup_signal_handler() -> @coroutine.Coroutine {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
@@ -71,7 +91,7 @@ fn setup_signal_handler() -> @coroutine.Coroutine {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   sigwait_task : @coroutine.Coroutine,
@@ -110,6 +130,23 @@ fn EventLoop::terminate_signal_handler(
   if set_console_control_handler(0) is 0 {
     @os_error.check_errno("terminate_signal_handler()")
   }
+  if evloop.killed_by_signal is Some(signal) {
+    raise KilledBySignal(signal)
+  }
+}
+
+///|
+#cfg(target="wasm")
+fn setup_signal_handler() -> Unit {
+  ()
+}
+
+///|
+#cfg(target="wasm")
+fn EventLoop::terminate_signal_handler(
+  evloop : EventLoop,
+  _ : Unit,
+) -> Unit raise {
   if evloop.killed_by_signal is Some(signal) {
     raise KilledBySignal(signal)
   }

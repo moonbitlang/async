@@ -74,6 +74,12 @@ extern "C" fn Job::ret(self : Job) -> Int = "moonbitlang_async_job_get_ret"
 extern "C" fn Job::err(self : Job) -> Int = "moonbitlang_async_job_get_err"
 
 ///|
+/// This is no-op on native, just to align API shape with Wasm.
+fn Job::copy_output(self : Job) -> Unit {
+  ignore(self)
+}
+
+///|
 #owned(buf)
 extern "C" fn Job::read(
   fd : @fd_util.Fd,

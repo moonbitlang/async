@@ -24,7 +24,7 @@ priv struct UnixEventLoopExtra {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 type PlatformEventLoopExtra = UnixEventLoopExtra
 
 ///|
@@ -55,12 +55,15 @@ fn UnixEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
   for i in 0..<n {
     let event = evloop.bus.get_event(i)
     let events = event.events()
-    let fd = event.fd()
     if (events & ProcessEvent) != 0 {
-      if self.pids.get(fd) is Some(coro) {
+      let pid = event.pid()
+      if self.pids.get(pid) is Some(coro) {
         coro.wake()
       }
-    } else if fd == evloop.notify_recv {
+      continue
+    }
+    let fd = event.fd()
+    if fd == evloop.notify_recv {
       while true {
         let bytes_transferred = fetch_completion_ffi(
           evloop.notify_recv,

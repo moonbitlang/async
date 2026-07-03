@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 priv struct WindowsEventLoopExtra {}
 
 ///|
@@ -25,7 +25,12 @@ type PlatformEventLoopExtra = WindowsEventLoopExtra
 extern "C" fn init_WSA_ffi() -> Int = "moonbitlang_async_init_WSA"
 
 ///|
-#cfg(platform="windows")
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn init_WSA_ffi() -> Int = "moonbitlang/async" "runtime/init_WSA"
+
+///|
+#cfg(any(target="wasm", platform="windows"))
 fn WindowsEventLoopExtra::new() -> Self raise {
   if init_WSA_ffi() != 0 {
     @os_error.check_errno("initialize WSA")
@@ -38,19 +43,24 @@ fn WindowsEventLoopExtra::new() -> Self raise {
 extern "C" fn cleanup_WSA_ffi() -> Int = "moonbitlang_async_cleanup_WSA"
 
 ///|
-#cfg(platform="windows")
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn cleanup_WSA_ffi() -> Int = "moonbitlang/async" "runtime/cleanup_WSA"
+
+///|
+#cfg(any(target="wasm", platform="windows"))
 fn WindowsEventLoopExtra::destroy(_self : WindowsEventLoopExtra) -> Unit {
   ignore(cleanup_WSA_ffi())
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn WindowsEventLoopExtra::cleanup(self : WindowsEventLoopExtra) -> Unit {
   ignore(self)
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn WindowsEventLoopExtra::poll(_self : Self, evloop : EventLoop) -> Unit raise {
   let n = evloop.wait_for_event()
   for i in 0..<n {
