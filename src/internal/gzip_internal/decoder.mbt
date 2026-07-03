@@ -448,13 +448,20 @@ fn Decoder::write_output_byte(
   byte : Byte,
 ) -> Int {
   output.unsafe_set(output_offset + produced, byte)
-  self.trailer_state.update(
-    output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-    produced +
-    1],
-  )
   self.append_history(byte)
   produced + 1
+}
+
+///|
+fn Decoder::update_trailer_output(
+  self : Decoder,
+  output : FixedArray[Byte],
+  output_offset : Int,
+  end : Int,
+) -> Unit {
+  self.trailer_state.update(
+    output.unsafe_reinterpret_as_bytes()[output_offset:output_offset + end],
+  )
 }
 
 ///|
@@ -604,13 +611,6 @@ fn Decoder::continue_copy(
     self.copy_remaining -= chunk
     continue written + chunk
   } nobreak {
-    if written > 0 {
-      self.trailer_state.update(
-        output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-        produced +
-        written],
-      )
-    }
     if self.copy_remaining == 0 {
       self.copy_distance = 0
     }
@@ -733,11 +733,6 @@ fn Decoder::read_stored_from_input(
     len,
   )
   self.append_history_bytes(output, output_offset + produced, len)
-  self.trailer_state.update(
-    output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-    produced +
-    len],
-  )
   let remaining = remaining - len
   if remaining == 0 {
     if is_final {
@@ -922,10 +917,11 @@ fn Decoder::write_direct(
         if input_state.end - input_state.index < self.raw_minimum_input_size() {
           break
         }
-        self.finish_trailer(input_state)
-        if self.mode is Trailer || input_state.index >= input_state.end {
-          break
+        if produced > 0 {
+          self.update_trailer_output(output, output_offset, produced)
         }
+        self.finish_trailer(input_state)
+        return (input_state.index - input_offset, produced)
       }
       Finished => break
       Blocks => {
@@ -935,6 +931,9 @@ fn Decoder::write_direct(
         self.start_next_block(input_state)
       }
     }
+  }
+  if produced > 0 {
+    self.update_trailer_output(output, output_offset, produced)
   }
   (input_state.index - input_offset, produced)
 }
