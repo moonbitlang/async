@@ -103,7 +103,7 @@ int moonbitlang_async_event_bus_wait(int kqfd, int timeout) {
 }
 
 // wrapper for handling event list
-struct kevent *moonbitlang_async_event_list_get(int index) {
+struct kevent *moonbitlang_async_event_list_get(int kqfd, int index) {
   return event_buffer + index;
 }
 

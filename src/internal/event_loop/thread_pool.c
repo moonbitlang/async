@@ -161,6 +161,7 @@ struct {
   int initialized;
 
   HANDLE notify_send;
+  HANDLE notify_recv;
 
 #ifndef _WIN32
   sigset_t worker_sigmask;
@@ -235,7 +236,7 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
     PostQueuedCompletionStatus(
       pool.notify_send,
       job_id,
-      (ULONG_PTR)INVALID_HANDLE_VALUE,
+      (ULONG_PTR)pool.notify_recv,
       0
     );
 #else
@@ -344,10 +345,12 @@ void moonbitlang_async_free_worker(struct worker *worker) {
 #ifndef _WIN32
 static
 void nop_signal_handler(int signum) {}
+
+int moonbitlang_async_event_bus_register(int event_bus, int fd, int32_t read_only);
 #endif
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
+HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
   if (pool.initialized)
     abort();
 
@@ -381,8 +384,50 @@ void moonbitlang_async_init_thread_pool(HANDLE notify_send) {
   sigaction(SIGUSR2, &act, NULL);
 #endif
 
-  pool.notify_send = notify_send;
+#ifdef _WIN32
+
+  // On Windows, job completion is sent through IOCP directly
+  pool.notify_send = event_bus;
+
+  // We never receive completion notification for the IOCP port itself.
+  // So we can safely use the IOCP port as the handle in
+  // custom completion packet to indicate this come from the thread pool.
+  pool.notify_recv = event_bus;
+
+#else
+
+  int notify_pipe[2];
+  if (pipe(notify_pipe) < 0)
+    return -1;
+
+  for (int i = 0; i < 2; ++i) {
+    int fd = notify_pipe[i];
+    int flags = fcntl(fd, F_GETFD);
+    if (flags < 0)
+      goto cleanup_with_pipe;
+
+    if (!(flags & FD_CLOEXEC))
+      if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
+        goto cleanup_with_pipe;
+  }
+
+  pool.notify_recv = notify_pipe[0];
+  pool.notify_send = notify_pipe[1];
+
+  if (moonbitlang_async_event_bus_register(event_bus, pool.notify_recv, 1) < 0)
+    goto cleanup_with_pipe;
+
+#endif
+
   pool.initialized = 1;
+  return pool.notify_recv;
+
+#ifndef _WIN32
+cleanup_with_pipe:
+  close(notify_pipe[0]);
+  close(notify_pipe[1]);
+  return -1;
+#endif
 }
 
 MOONBIT_FFI_EXPORT
@@ -394,6 +439,8 @@ void moonbitlang_async_destroy_thread_pool() {
 
 #ifndef _WIN32
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
+  close(pool.notify_recv);
+  close(pool.notify_send);
 #endif
 }
 
@@ -2567,7 +2614,7 @@ BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
     PostQueuedCompletionStatus(
       pool.notify_send,
       ctrl_type | (1 << 31),
-      (ULONG_PTR)INVALID_HANDLE_VALUE,
+      (ULONG_PTR)pool.notify_recv,
       0
     );
     return TRUE;

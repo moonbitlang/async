@@ -26,11 +26,10 @@ extern "C" fn init_WSA_ffi() -> Int = "moonbitlang_async_init_WSA"
 
 ///|
 #cfg(platform="windows")
-fn WindowsEventLoopExtra::new(event_bus : EventBus) -> Self raise {
+fn WindowsEventLoopExtra::new() -> Self raise {
   if init_WSA_ffi() != 0 {
     @os_error.check_errno("initialize WSA")
   }
-  init_thread_pool_ffi(event_bus.0)
   WindowsEventLoopExtra::{  }
 }
 
@@ -55,9 +54,14 @@ fn WindowsEventLoopExtra::cleanup(self : WindowsEventLoopExtra) -> Unit {
 fn WindowsEventLoopExtra::poll(_self : Self, evloop : EventLoop) -> Unit raise {
   let n = evloop.wait_for_event()
   for i in 0..<n {
-    let event = get_event(i)
+    let event = evloop.bus.get_event(i)
     let fd = event.fd()
-    if @fd_util.fd_is_valid(fd) {
+    if fd == evloop.notify_recv {
+      // custom completion packet from thread pool.
+      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
+      let job_id = event.bytes_transferred()
+      evloop.handle_completed_job(job_id)
+    } else {
       // completed IO operation on a file descriptor
       guard evloop.fds.get(fd) is Some(io) else {  }
       let result = event.io_result()
@@ -67,11 +71,6 @@ fn WindowsEventLoopExtra::poll(_self : Self, evloop : EventLoop) -> Unit raise {
       } else if event is WriteEvent && io.write is Waiting(coro) {
         coro.wake()
       }
-    } else {
-      // custom completion packet from thread pool.
-      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
-      let job_id = event.bytes_transferred()
-      evloop.handle_completed_job(job_id)
     }
   }
 }

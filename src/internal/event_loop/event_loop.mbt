@@ -20,7 +20,13 @@ pub(all) enum Platform {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_platform() -> Platform = "moonbitlang/async" "runtime/get_platform"
 
 ///|
 pub let platform : Platform = get_platform()
@@ -30,6 +36,8 @@ priv struct EventLoop {
   bus : EventBus
   fds : Map[@fd_util.Fd, IoHandle]
   extra : PlatformEventLoopExtra
+  /// a special file descriptor used to indicate job completion message from thread pool
+  notify_recv : @fd_util.Fd
   max_worker_count : Int
   mut job_id : Int
   job_queue : @deque.Deque[QueuedJob]
@@ -70,25 +78,32 @@ pub fn register_hook(
 ///|
 fn EventLoop::new() -> EventLoop raise {
   let bus = EventBus::new()
-  let extra = PlatformEventLoopExtra::new(bus) catch {
+  try {
+    let notify_recv = init_thread_pool_ffi(bus)
+    if !@fd_util.fd_is_valid(notify_recv) {
+      @os_error.check_errno("initialize thread pool")
+    }
+    let extra = PlatformEventLoopExtra::new()
+    {
+      bus,
+      fds: {},
+      extra,
+      notify_recv,
+      max_worker_count: 1024,
+      job_id: 0,
+      job_queue: @deque.Deque([]),
+      idle_workers: @deque.Deque([]),
+      running_workers: {},
+      jobs: {},
+      timers: @sorted_set.SortedSet([]),
+      main: None,
+      killed_by_signal: None,
+    }
+  } catch {
     err => {
       bus.destroy()
       raise err
     }
-  }
-  {
-    bus,
-    fds: {},
-    extra,
-    max_worker_count: 1024,
-    job_id: 0,
-    job_queue: @deque.Deque([]),
-    idle_workers: @deque.Deque([]),
-    running_workers: {},
-    jobs: {},
-    timers: @sorted_set.SortedSet([]),
-    main: None,
-    killed_by_signal: None,
   }
 }
 

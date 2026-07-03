@@ -17,7 +17,7 @@
 priv type Worker
 
 ///|
-extern "C" fn init_thread_pool_ffi(notify_send : @fd_util.Fd) = "moonbitlang_async_init_thread_pool"
+extern "C" fn init_thread_pool_ffi(event_bus : EventBus) -> @fd_util.Fd = "moonbitlang_async_init_thread_pool"
 
 ///|
 extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"

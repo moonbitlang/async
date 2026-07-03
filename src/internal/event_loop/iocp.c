@@ -58,7 +58,7 @@ int moonbitlang_async_event_bus_wait(HANDLE iocp, int timeout) {
 }
 
 MOONBIT_FFI_EXPORT
-OVERLAPPED_ENTRY *moonbitlang_async_event_list_get(int index) {
+OVERLAPPED_ENTRY *moonbitlang_async_event_list_get(HANDLE iocp, int index) {
   return event_buffer + index;
 }
 

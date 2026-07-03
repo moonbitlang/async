@@ -71,7 +71,7 @@ int moonbitlang_async_event_bus_wait(int epfd, int timeout) {
 }
 
 // wrapper for handling event list
-struct epoll_event* moonbitlang_async_event_list_get(int index) {
+struct epoll_event* moonbitlang_async_event_list_get(int epfd, int index) {
   return event_buffer + index;
 }
 
