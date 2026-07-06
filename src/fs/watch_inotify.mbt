@@ -142,7 +142,13 @@ impl WatcherBackend for InotifyWatcher with fn remove_file(self, wd, context~) {
     // `inotify` sometimes perform auto removal when file is deleted
     return
   }
-  self.watched.remove(wd)
+  // We do not remove `wd` from `self.watched` here,
+  // because when performing `inotify_rm`, it is possible that some events on te wd
+  // has already been generated and queued.
+  //
+  // `inotify` generates a `IN_IGNORED` event for every removed file,
+  // implicity or explicitly.
+  // We rely on `IN_IGNORED` as the source of truth for the end of watching a file.
   let ret = InotifyWatcher::remove_file_ffi(self.inotify.fd(), wd)
   if ret < 0 {
     @os_error.check_errno(context)
