@@ -14,18 +14,21 @@
 
 ///|
 async test "https request" {
+  @coroutine.set_loc()
   let (_, result) = @http.get("https://www.moonbitlang.com")
   assert_true(result.text().has_prefix("<!doctype html>"))
 }
 
 ///|
 async test "http request" {
+  @coroutine.set_loc()
   let (_, result) = @http.get("http://www.example.org")
   assert_true(result.text().has_prefix("<!doctype html>"))
 }
 
 ///|
 async test "request cancel" {
+  @coroutine.set_loc()
   let start = @async.now()
   let result = @async.with_timeout_opt(300, () => {
     @http.get(
@@ -45,6 +48,7 @@ async test "request cancel" {
 ///|
 #cfg(target="native")
 async test "manual Accept-Encoding" {
+  @coroutine.set_loc()
   let log = []
   let test_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   @async.with_task_group <| group => {
