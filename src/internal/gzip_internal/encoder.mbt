@@ -16,13 +16,35 @@
 let encoder_block_overhead_bits = 10
 
 ///|
-let encoder_window_size = 1024
+let encoder_window_size_shift : Int = 10
+
+///|
+let encoder_window_size : Int = 1 << encoder_window_size_shift
+
+///|
+let encoder_window_mask : Int = encoder_window_size - 1
 
 ///|
 let encoder_max_match_len = 64
 
 ///|
 let encoder_min_match_len = 3
+
+///|
+let encoder_hash_bits : Int = encoder_window_size_shift + 2
+
+///|
+let encoder_hash_size : Int = 1 << encoder_hash_bits
+
+///|
+let encoder_hash_mask : Int = encoder_hash_size - 1
+
+///|
+let encoder_hash_shift : Int = (encoder_hash_bits + encoder_min_match_len - 1) /
+  encoder_min_match_len
+
+///|
+let encoder_hash_chain_length : Int = 8
 
 ///|
 struct Encoder {
@@ -33,6 +55,10 @@ struct Encoder {
   mut finished : Bool
   mut started : Bool
   history : FixedArray[Byte]
+  hash_heads : FixedArray[Int64]
+  hash_prev : FixedArray[Int64]
+  mut hash_value : Int
+  mut history_offset : Int64
   mut history_pos : Int
   mut history_len : Int
 }
@@ -53,10 +79,26 @@ pub fn Encoder::Encoder(
     bit_count: 0,
     finished: false,
     started: false,
-    history: FixedArray::make(32768, b'\x00'),
+    history: FixedArray::make(encoder_window_size, b'\x00'),
+    hash_heads: FixedArray::make(encoder_hash_size, -1L),
+    hash_prev: FixedArray::make(encoder_window_size, -1L),
+    hash_value: 0,
+    history_offset: 0L,
     history_pos: 0,
     history_len: 0,
   }
+}
+
+///|
+fn hash_sequence(first : Byte, second : Byte, third : Byte) -> Int {
+  (
+    (
+      ((first.to_int() << encoder_hash_shift) ^ second.to_int()) <<
+      encoder_hash_shift
+    ) ^
+    third.to_int()
+  ) &
+  encoder_hash_mask
 }
 
 ///|
@@ -240,10 +282,27 @@ fn Encoder::write_match(
 
 ///|
 fn Encoder::append_history_byte(self : Encoder, byte : Byte) -> Unit {
-  self.history[self.history_pos] = byte
-  self.history_pos = (self.history_pos + 1) & 0x7fff
-  if self.history_len < 32768 {
+  self.history.unsafe_set(self.history_pos, byte)
+  self.history_pos = (self.history_pos + 1) & encoder_window_mask
+  self.history_offset += 1
+  self.hash_value = ((self.hash_value << encoder_hash_shift) ^ byte.to_int()) &
+    encoder_hash_mask
+  if self.history_len < encoder_window_size {
     self.history_len += 1
+  }
+  if self.history_len >= encoder_min_match_len {
+    let start = self.history_offset - encoder_min_match_len.to_int64()
+    let previous = self.hash_heads.unsafe_get(self.hash_value)
+    let previous_distance = start - previous
+    let previous = if previous >= 0L &&
+      previous_distance > 0L &&
+      previous_distance < encoder_window_size.to_int64() {
+      previous
+    } else {
+      -1L
+    }
+    self.hash_prev.unsafe_set(start.to_int() & encoder_window_mask, previous)
+    self.hash_heads.unsafe_set(self.hash_value, start)
   }
 }
 
@@ -269,13 +328,9 @@ fn Encoder::match_byte(
   matched : Int,
 ) -> Byte {
   if matched < distance {
-    let mut history_index = self.history_pos - distance + matched
-    if history_index < 0 {
-      history_index += 32768
-    } else if history_index >= 32768 {
-      history_index -= 32768
-    }
-    self.history[history_index]
+    let history_index = (self.history_pos - distance + matched) &
+      encoder_window_mask
+    self.history.unsafe_get(history_index)
   } else {
     input[input_offset + pos + matched - distance]
   }
@@ -294,25 +349,44 @@ fn Encoder::find_match(
   if max_distance <= 0 || max_match_len < encoder_min_match_len {
     return (0, 0)
   }
+  let hash = hash_sequence(
+    input[input_offset + pos],
+    input[input_offset + pos + 1],
+    input[input_offset + pos + 2],
+  )
+  let mut candidate = self.hash_heads.unsafe_get(hash)
   let mut best_len = 0
   let mut best_distance = 0
-  for distance in 1..<=max_distance {
+  let mut probes = 0
+  while candidate >= 0L && probes < encoder_hash_chain_length {
+    let distance64 = self.history_offset - candidate
+    if distance64 <= 0L || distance64 > max_distance.to_int64() {
+      break
+    }
+    let distance = distance64.to_int()
     let mut matched = 0
     while matched < max_match_len &&
           input[input_offset + pos + matched] ==
           self.match_byte(input, input_offset, pos, distance, matched) {
       matched += 1
     }
-    if matched >= encoder_min_match_len &&
-      (matched > best_len || (matched == best_len && distance < best_distance)) {
+    if matched > best_len {
       best_len = matched
       best_distance = distance
       if matched == max_match_len {
         break
       }
     }
+    candidate = self.hash_prev.unsafe_get(
+      candidate.to_int() & encoder_window_mask,
+    )
+    probes += 1
   }
-  (best_len, best_distance)
+  if best_len >= encoder_min_match_len {
+    (best_len, best_distance)
+  } else {
+    (0, 0)
+  }
 }
 
 ///|
