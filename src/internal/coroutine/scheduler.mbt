@@ -63,6 +63,7 @@ pub fn reschedule() -> Unit {
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)
+    let coro_loc = coro.loc
     let start = @env.now()
     if coro.cancelled && !coro.shielded {
       err_cont(Cancelled)
@@ -71,7 +72,7 @@ pub fn reschedule() -> Unit {
     }
     let t = @env.now() - start
     run_coros.push({
-      loc: coro.loc.to_string(),
+      loc: coro_loc.to_string(),
       suspend_loc: loc.to_string(),
       time: t,
     })
