@@ -312,6 +312,14 @@ test "gzip decode min output hello node huffman" {
 }
 
 ///|
+test "gzip encoder hash table survives history wrap" {
+  let data = Bytes::makei(70000, i => (i % 251).to_byte())
+  let compressed = encode(data)
+  let data2 = decode(compressed, expected_len=data.length())
+  assert_eq(data, data2)
+}
+
+///|
 #cfg(target="native")
 async test "gzip encode min input source file" {
   let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
