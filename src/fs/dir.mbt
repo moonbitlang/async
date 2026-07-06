@@ -428,18 +428,22 @@ pub async fn walk(
         defer sem.release()
         let dir = opendir_aux(path, context~)
         defer dir.close()
+        let sub_dirs = []
         let files = []
         while dir.next_aux(include_hidden=true, include_special=false, context~)
               is Some(ent) {
-          let file_path = if path is [.., '/'] {
-            path + ent.name
-          } else {
-            "\{path}/\{ent.name}"
-          }
           if ent.is_dir {
-            handle_path(file_path)
+            let file_path = if path is [.., '/'] {
+              path + ent.name
+            } else {
+              "\{path}/\{ent.name}"
+            }
+            sub_dirs.push(file_path)
           }
           files.push(ent.name)
+        }
+        for path in sub_dirs {
+          handle_path(path)
         }
         f(path, files)
       }
