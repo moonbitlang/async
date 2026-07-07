@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #ifdef __linux__
 #include <sys/syscall.h>
@@ -620,7 +621,18 @@ void read_job_worker(struct job *job) {
 #else
 
   if (read_job->position < 0) {
-    job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
+    while (1) {
+      job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
+      if (job->ret >= 0)
+        break;
+
+      if (errno != EAGAIN && errno != EWOULDBLOCK)
+        break;
+
+      struct pollfd pfd = { read_job->fd, POLL_IN, 0 };
+      if (poll(&pfd, 1, -1) < 0)
+        break;
+    }
   } else {
     job->ret = pread(
       read_job->fd,
@@ -697,11 +709,22 @@ void write_job_worker(struct job *job) {
 #else
 
   if (write_job->position < 0) {
-    job->ret = write(
-      write_job->fd,
-      write_job->buf + write_job->offset,
-      write_job->len
-    );
+    while (1) {
+      job->ret = write(
+        write_job->fd,
+        write_job->buf + write_job->offset,
+        write_job->len
+      );
+      if (job->ret >= 0)
+        break;
+
+      if (errno != EAGAIN && errno != EWOULDBLOCK)
+        break;
+
+      struct pollfd pfd = { write_job->fd, POLL_OUT, 0 };
+      if (poll(&pfd, 1, -1) < 0)
+        break;
+    }
   } else {
     job->ret = pwrite(
       write_job->fd,
