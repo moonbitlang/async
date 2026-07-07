@@ -175,11 +175,12 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   // for IO-only or compute-only tasks that never call `sleep` / `Timer`.
   // Avoids both the iterator-allocation on `self.timers.iter().head()`
   // and the redundant `ms_since_epoch()` + loop below.
+  let before = now()
   let has_timers = !self.timers.is_empty()
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - now()).to_int())
+    @cmp.maximum(0, (timer.expire_time - before).to_int())
   } else {
     -1
   }
@@ -189,8 +190,19 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   }
   if has_timers {
     let now = now()
+    let delta = (now.reinterpret_as_int64() - before.reinterpret_as_int64()).to_int()
+    if delta - timeout >= 10 {
+      println(
+        "main loop polling timer drift detected: \{delta} v.s. \{timeout}",
+      )
+    }
     for timer in self.timers {
       if timer.expire_time <= now {
+        let delta = now.reinterpret_as_int64() -
+          timer.expire_time.reinterpret_as_int64()
+        if delta.abs() >= 10 {
+          println("timer drift detected: \{delta}")
+        }
         (timer.callback)()
       } else {
         break
