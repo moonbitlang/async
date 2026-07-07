@@ -13,7 +13,13 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 extern "C" fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_kind_of_fd"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fd_util/kind_of_fd"
 
 ///|
 fn kind_of_fd_sync(
@@ -28,7 +34,13 @@ fn kind_of_fd_sync(
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang/async" "stdio/get_stdio_handle"
 
 ///|
 let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
