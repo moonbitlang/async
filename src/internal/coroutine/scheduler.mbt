@@ -42,7 +42,8 @@ pub fn has_immediately_ready_task() -> Bool {
 #valtype
 priv struct CoroDesc {
   loc : String
-  suspend_loc : String
+  prev_suspend_loc : String
+  curr_suspend_loc : String?
   time : UInt64
 } derive(Debug)
 
@@ -71,9 +72,14 @@ pub fn reschedule() -> Unit {
       ok_cont(())
     }
     let t = @env.now() - start
+    let curr_suspend_loc = match coro.state {
+      Suspend(loc~, ..) => Some(loc.to_string())
+      _ => None
+    }
     run_coros.push({
       loc: coro_loc.to_string(),
-      suspend_loc: loc.to_string(),
+      prev_suspend_loc: loc.to_string(),
+      curr_suspend_loc,
       time: t,
     })
     scheduler.curr_coro = last_coro
