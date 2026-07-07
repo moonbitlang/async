@@ -28,14 +28,30 @@ fn kind_of_fd_sync(
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
+#borrow(is_async)
+extern "C" fn get_stdio_handle(id : Int, is_async~ : Ref[Bool]) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
+
+///|
+let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
+
+///|
+fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
+  let is_async = Ref(false)
+  let fd = get_stdio_handle(id, is_async~)
+  if !@fd_util.fd_is_valid(fd) {
+    @os_error.check_errno(context)
+  }
+  if stdio_handles.get(fd) is Some(handle) {
+    // On Windows, when `stdout` and `stderr` are redirected to the same file/pipe,
+    // `GetStdHande` will return the same handle for them.
+    // In this case, avoid problem caused by duplicated handle value
+    return handle
+  }
   let kind = kind_of_fd_sync(fd, context~)
-  let is_async = @fd_util.fd_is_nonblocking(fd, context~)
   let handle = {
     fd,
     kind,
-    is_async,
+    is_async: is_async.val,
     read: Idle,
     read_offset: if kind is Regular {
       0
@@ -49,53 +65,7 @@ fn setup_stdio(fd : Int, context~ : String) -> IoHandle raise {
       -1
     },
   }
-  register_hook(
-    init=() => {
-      guard curr_loop.val is Some(evloop)
-      guard evloop.fds.get(fd) is None
-      evloop.fds[fd] = handle
-    },
-    exit=() => handle.detach_from_event_loop(),
-  )
-  handle
-}
-
-///|
-#cfg(platform="windows")
-extern "C" fn get_std_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_std_handle"
-
-///|
-#cfg(platform="windows")
-let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
-
-///|
-#cfg(platform="windows")
-fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
-  // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
-  let fd = get_std_handle(-10 - id)
-  if !@fd_util.fd_is_valid(fd) {
-    @os_error.check_errno(context)
-  }
-  if stdio_handles.get(fd) is Some(handle) {
-    // when `stdout` and `stderr` are redirected to the same file/pipe,
-    // `GetStdHande` will return the same handle for them.
-    // In this case, avoid problem caused by duplicated handle value
-    return handle
-  }
-  let kind = kind_of_fd_sync(fd, context~)
-  let handle = {
-    fd,
-    kind,
-    is_async: false,
-    read: Idle,
-    read_offset: 0,
-    write: Idle,
-    write_offset: 0,
-  }
   stdio_handles[fd] = handle
-
-  // register stdio on event loop creation.
-  // This allows multiple event loop inside a single program.
   register_hook(
     init=() => {
       guard curr_loop.val is Some(evloop)

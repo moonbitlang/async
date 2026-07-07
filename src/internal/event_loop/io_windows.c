@@ -582,11 +582,6 @@ void moonbitlang_async_get_accept_peer_addr(struct AcceptIoResult *result, struc
 }
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_get_std_handle(int32_t id) {
-  return GetStdHandle(id);
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_read_dir_changes(HANDLE dir, struct ReadDirChangesIoResult *result) {
   DWORD bytes_returned;
 #if _WIN32_WINNT >= 0x0A00
