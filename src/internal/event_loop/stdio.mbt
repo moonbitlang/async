@@ -28,16 +28,14 @@ fn kind_of_fd_sync(
 }
 
 ///|
-#borrow(is_async)
-extern "C" fn get_stdio_handle(id : Int, is_async~ : Ref[Bool]) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
+extern "C" fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
 
 ///|
 let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
 
 ///|
 fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
-  let is_async = Ref(false)
-  let fd = get_stdio_handle(id, is_async~)
+  let fd = get_stdio_handle(id)
   if !@fd_util.fd_is_valid(fd) {
     @os_error.check_errno(context)
   }
@@ -51,7 +49,13 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
   let handle = {
     fd,
     kind,
-    is_async: is_async.val,
+    // Stdio channels may be shared between many different processes,
+    // and some (argubly misbehaving ones) of them may
+    // change the blocking/non-blocking status of stdio channels.
+    // So we play safe here and always use the thread pool for stdio channels.
+    // As a consequence, the thread pool need to handle non blocking fd as well,
+    // see the code for `read_job_worker`/`write_job_worker` in `thread_pool.c` for more details.
+    is_async: false,
     read: Idle,
     read_offset: if kind is Regular {
       0

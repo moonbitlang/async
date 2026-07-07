@@ -28,20 +28,14 @@ typedef int HANDLE;
 #include <moonbit.h>
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_get_stdio_handle(int32_t id, int32_t *is_async) {
+HANDLE moonbitlang_async_get_stdio_handle(int32_t id) {
 #ifdef _WIN32
 
-  *is_async = 0;
   // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
   return GetStdHandle(-10 - id);
 
 #else // #ifdef _WIN32
 
-  int flags = fcntl(id, F_GETFL);
-  if (flags < 0)
-    return -1;
-
-  *is_async = (flags & O_NONBLOCK) != 0;
   return id;
 
 #endif // #ifndef _WIN32
