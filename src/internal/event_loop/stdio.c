@@ -1,0 +1,48 @@
+/*
+ * Copyright 2025 International Digital Economy Academy
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifdef _WIN32
+
+#include <windows.h>
+
+#else // #ifdef _WIN32
+
+#include <fcntl.h>
+typedef int HANDLE;
+
+#endif // #ifndef _WIN32
+
+#include <moonbit.h>
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_get_stdio_handle(int32_t id, int32_t *is_async) {
+#ifdef _WIN32
+
+  *is_async = 0;
+  // The value comes from https://learn.microsoft.com/en-us/windows/console/getstdhandle
+  return GetStdHandle(-10 - id);
+
+#else // #ifdef _WIN32
+
+  int flags = fcntl(id, F_GETFL);
+  if (flags < 0)
+    return -1;
+
+  *is_async = (flags & O_NONBLOCK) != 0;
+  return id;
+
+#endif // #ifndef _WIN32
+}
