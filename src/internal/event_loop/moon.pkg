@@ -61,7 +61,7 @@ options(
     "process_unix.mbt": [ "native" ],
     "process_windows.mbt": [ "native" ],
     "signal.mbt": [ "native", "wasm" ],
-    "stdio.mbt": [ "native" ],
+    "stdio.mbt": [ "native", "wasm" ],
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native", "wasm" ],
     "io.wasm.mbt": [ "wasm" ],

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 let cat : @async.Lazy[String] = @async.Lazy(() => {
   // Note: the `cat` example program lies in another MoonBit module.
   // Currently, dependencies of a module is built locally in that module,
@@ -27,6 +28,7 @@ let cat : @async.Lazy[String] = @async.Lazy(() => {
 })
 
 ///|
+#cfg(target="native")
 async test "redirect_file" {
   let cat = cat.wait()
   let out_file = "_build/stdio_file_test"
@@ -41,6 +43,7 @@ async test "redirect_file" {
 }
 
 ///|
+#cfg(target="native")
 async test "redirect pipe" {
   @async.with_task_group() <| root => {
     let cat = cat.wait()
@@ -69,6 +72,7 @@ async test "redirect pipe" {
 }
 
 ///|
+#cfg(target="native")
 async test "stdio cancel" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
@@ -101,6 +105,7 @@ async test "stdio cancel" {
 }
 
 ///|
+#cfg(target="native")
 async test "stdout and stderr are the same" {
   let cat = cat.wait()
   let (cat_read, we_write) = @process.write_to_process()
@@ -120,4 +125,12 @@ async test "stdout and stderr are the same" {
       ),
     )
   }
+}
+
+///|
+#cfg(target="wasm")
+async test "stdio handles are available on wasm" {
+  ignore(@stdio.stdin.fd())
+  ignore(@stdio.stdout.fd())
+  ignore(@stdio.stderr.fd())
 }
