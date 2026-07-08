@@ -16,8 +16,6 @@ pub let invalid_fd : Int
 
 pub fn pipe(read_end_is_async~ : Bool, write_end_is_async~ : Bool, context~ : String) -> (Int, Int) raise
 
-pub fn set_blocking(Int, context~ : String) -> Unit raise
-
 pub fn set_cloexec(Int, context~ : String) -> Unit raise
 
 pub fn set_nonblocking(Int, context~ : String) -> Unit raise

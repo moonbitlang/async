@@ -31,18 +31,6 @@ pub fn fd_is_nonblocking(fd : Fd, context~ : String) -> Bool raise {
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn set_blocking_ffi(fd : Fd) -> Int = "moonbitlang_async_set_blocking"
-
-///|
-#cfg(not(platform="windows"))
-pub fn set_blocking(fd : Fd, context~ : String) -> Unit raise {
-  if set_blocking_ffi(fd) < 0 {
-    @os_error.check_errno(context)
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
 extern "C" fn set_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang_async_set_nonblocking"
 
 ///|
