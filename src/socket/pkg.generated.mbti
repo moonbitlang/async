@@ -29,6 +29,7 @@ pub fn Addr::parse(String) -> Self raise
 pub fn Addr::port(Self) -> Int
 pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
 pub impl Show for Addr
+pub impl @debug.Debug for Addr
 
 pub(all) enum IpProtocolPreference {
   OnlyV4
