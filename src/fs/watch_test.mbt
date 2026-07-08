@@ -49,8 +49,8 @@ async test "watch basic" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        watcher.wait_any()
-        log.push("watcher received change")
+        let events = watcher.wait()
+        log.push("watcher received change: \{to_repr(events)}")
       }
     })
     // 1. modify content of existing file at root
@@ -130,29 +130,29 @@ async test "watch basic" {
     log.join("\n"),
     content=(
       #|writing to root file
-      #|watcher received change
+      #|watcher received change: [Modify("root_file")]
       #|writing to inner file
-      #|watcher received change
+      #|watcher received change: [Modify("inner_dir/inner_file")]
       #|creating new file in root directory
-      #|watcher received change
+      #|watcher received change: [Create("root_file2")]
       #|writing to newly created root file
-      #|watcher received change
+      #|watcher received change: [Modify("root_file2")]
       #|creating new file in inner directory
-      #|watcher received change
+      #|watcher received change: [Create("inner_dir/inner_file2")]
       #|writing to newly created inner file
-      #|watcher received change
+      #|watcher received change: [Modify("inner_dir/inner_file2")]
       #|removing file in root directory
-      #|watcher received change
+      #|watcher received change: [Remove("root_file")]
       #|removing file in inner directory
-      #|watcher received change
+      #|watcher received change: [Remove("inner_dir/inner_file2")]
       #|removing inner directory
-      #|watcher received change
+      #|watcher received change: [Remove("inner_dir/inner_file"), Remove("inner_dir")]
       #|creating new directory in root directory
-      #|watcher received change
+      #|watcher received change: [Create("inner_dir")]
       #|creating new file in inner directory
-      #|watcher received change
+      #|watcher received change: [Create("inner_dir/inner_file")]
       #|writing to newly created inner file
-      #|watcher received change
+      #|watcher received change: [Modify("inner_dir/inner_file")]
     ),
   )
 }
@@ -175,8 +175,8 @@ async test "watch rename within" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        watcher.wait_any()
-        log.push("watcher received change")
+        let events = watcher.wait()
+        log.push("watcher received change: \{to_repr(events)}")
       }
     })
     // 1. rename within the same directory
@@ -226,19 +226,19 @@ async test "watch rename within" {
     log.join("\n"),
     content=(
       #|rename: inner_dir/inner_file => inner_dir/inner_file2
-      #|watcher received change
+      #|watcher received change: [Rename(old="inner_dir/inner_file", new="inner_dir/inner_file2")]
       #|writing to inner_dir/inner_file2
-      #|watcher received change
+      #|watcher received change: [Modify("inner_dir/inner_file2")]
       #|rename: inner_dir => inner_dir2
-      #|watcher received change
+      #|watcher received change: [Rename(old="inner_dir", new="inner_dir2")]
       #|writing to inner_dir2/inner_file2
-      #|watcher received change
+      #|watcher received change: [Modify("inner_dir2/inner_file2")]
       #|rename: inner_dir2/inner_file2 => root_file2
-      #|watcher received change
+      #|watcher received change: [Rename(old="inner_dir2/inner_file2", new="root_file2")]
       #|writing to root_file2
-      #|watcher received change
+      #|watcher received change: [Modify("root_file2")]
       #|rename root_file2 to replace root_file
-      #|watcher received change
+      #|watcher received change: [Remove("root_file"), Rename(old="root_file2", new="root_file")]
     ),
   )
 }
@@ -264,8 +264,8 @@ async test "watch rename inout test" {
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
-        watcher.wait_any()
-        log.push("watcher received change")
+        let events = watcher.wait()
+        log.push("watcher received change: \{to_repr(events)}")
       }
     })
     // 1. move foreign file inside watched tree
@@ -349,23 +349,23 @@ async test "watch rename inout test" {
     log.join("\n"),
     content=(
       #|moving foreign file inside watched tree
-      #|watcher received change
+      #|watcher received change: [Create("moved_in_file")]
       #|writing to moved_in_file
-      #|watcher received change
+      #|watcher received change: [Modify("moved_in_file")]
       #|moving foreign directory inside watched tree
-      #|watcher received change
+      #|watcher received change: [Create("moved_in_dir"), Create("moved_in_dir/foreign_file")]
       #|writing to moved_in_dir/foreign_file
-      #|watcher received change
+      #|watcher received change: [Modify("moved_in_dir/foreign_file")]
       #|moving file outside watched tree
-      #|watcher received change
+      #|watcher received change: [Remove("moved_in_file")]
       #|writing to moved_out_file
       #|removing moved out file
       #|moving directory outside watched tree
-      #|watcher received change
+      #|watcher received change: [Remove("moved_in_dir/foreign_file"), Remove("moved_in_dir")]
       #|writing to moved_out_dir/foreign_file
       #|removing moved out directory
       #|renaming foreign file to replace root_file
-      #|watcher received change
+      #|watcher received change: [Remove("root_file"), Create("root_file")]
     ),
   )
 }
@@ -386,13 +386,13 @@ async test "watch horizontal swap" {
     @fs.rename("\{path}/file2", "\{path}/file1")
     @fs.rename("\{path}/tmp", "\{path}/file2")
     @async.sleep(10)
-    @async.with_timeout(1000, () => watcher.wait_any())
-    log.push("watcher received change")
+    let events = @async.with_timeout(1000, () => watcher.wait())
+    log.push("watcher received change: \{to_repr(events)}")
   })
   inspect(
     log.join("\n"),
     content=(
-      #|watcher received change
+      #|watcher received change: [Remove("file1"), Remove("file2"), Create("file1"), Create("file2")]
     ),
   )
 }
@@ -419,26 +419,32 @@ async test "watch vertical swap" {
     @fs.rename("\{path}/outer", "\{path}/tmp/inner")
     @fs.rename("\{path}/tmp", "\{path}/outer")
     @async.sleep(10)
-    @async.with_timeout(1000, () => watcher.wait_any())
-    log.push("watcher received change")
+    let events = @async.with_timeout(1000, () => watcher.wait())
+    log.push("watcher received change: \{to_repr(events)}")
     log.push("modifying previous outer file")
     @fs.write_file("\{path}/outer/inner/file", "ABCD")
-    @async.with_timeout(1000, () => watcher.wait_any())
-    log.push("watcher received change")
+    let events = @async.with_timeout(1000, () => watcher.wait())
+    log.push("watcher received change: \{to_repr(events)}")
     log.push("modifying previous inner file")
     @fs.write_file("\{path}/outer/file", "EFGH")
-    @async.with_timeout(1000, () => watcher.wait_any())
-    log.push("watcher received change")
+    let events = @async.with_timeout(1000, () => watcher.wait())
+    log.push("watcher received change: \{to_repr(events)}")
   })
   inspect(
     log.join("\n"),
     content=(
       #|performing vertical swapping
-      #|watcher received change
+      #|watcher received change: [
+      #|  Remove("outer"),
+      #|  Create("outer"),
+      #|  Create("outer/file"),
+      #|  Create("outer/inner"),
+      #|  Create("outer/inner/file"),
+      #|]
       #|modifying previous outer file
-      #|watcher received change
+      #|watcher received change: [Modify("outer/inner/file")]
       #|modifying previous inner file
-      #|watcher received change
+      #|watcher received change: [Modify("outer/file")]
     ),
   )
 }

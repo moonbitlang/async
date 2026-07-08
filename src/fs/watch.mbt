@@ -16,6 +16,14 @@
 using @event_loop {type FileIdentity}
 
 ///|
+pub(all) enum FsEvent {
+  Modify(String)
+  Create(String)
+  Remove(String)
+  Rename(old~ : String, new~ : String)
+} derive(Debug)
+
+///|
 priv struct WatchedFile {
   wd : @fd_util.Fd
   file_id : FileIdentity
@@ -24,6 +32,8 @@ priv struct WatchedFile {
   children : Map[String, FileIdentity]
   mut modified : Bool
   dirty_children : Map[String, FileIdentity]
+  modified_children : Map[String, FileIdentity?]
+  children_with_events : Map[String, FileIdentity]
 }
 
 ///|
@@ -49,7 +59,6 @@ struct Watcher {
   watched : Map[FileIdentity, WatchedFile]
   pending_remove : Set[FileIdentity]
   ignored_paths : (String) -> Bool
-  mut event_count : Int
   mut synchronize_task : @coroutine.Coroutine?
 }
 
@@ -159,7 +168,6 @@ pub async fn Watcher::Watcher(
     watched: {},
     pending_remove: Set([]),
     ignored_paths,
-    event_count: 0,
     synchronize_task: None,
   }
   try {
@@ -180,10 +188,12 @@ pub async fn Watcher::Watcher(
       children: {},
       modified: true,
       dirty_children: {},
+      modified_children: {},
+      children_with_events: {},
     }
     self.watched[root_id] = root
     self.synchronize_tree(context~)
-    self.event_count = 0
+    self.emit_events_for_file(root, path="", on_event=(_, _) => (), context~)
     self
   } catch {
     err => {
@@ -203,9 +213,108 @@ fn rel_path(parent : String, name : String) -> String {
 }
 
 ///|
-/// Wait for any change in the watched tree
-/// since the last `wait_any` call or watcher creation.
-pub async fn Watcher::wait_any(self : Watcher) -> Unit {
+fn Watcher::emit_events_for_file(
+  self : Watcher,
+  file : WatchedFile,
+  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  path~ : String,
+  context~ : String,
+) -> Unit raise {
+  guard file.is_dir else { on_event(None, Modify(path)) }
+  let events : Map[FileIdentity, FsEvent] = {}
+  for name, prev_id in file.modified_children {
+    let curr_id = file.children.get(name)
+    let path = rel_path(path, name)
+    if prev_id is Some(prev_id) {
+      match events.get(prev_id) {
+        _ if curr_id is Some(_) => on_event(None, Remove(path))
+        Some(Create(new)) => {
+          events.remove(prev_id)
+          on_event(None, Rename(old=path, new~))
+        }
+        Some(_) => {
+          self.emit_remove_event_for_children(prev_id, on_event~, path~)
+          on_event(Some(prev_id), Remove(path))
+        }
+        None => events[prev_id] = Remove(path)
+      }
+    }
+    if curr_id is Some(curr_id) {
+      match events.get(curr_id) {
+        Some(Remove(old)) => {
+          events.remove(curr_id)
+          on_event(None, Rename(old~, new=path))
+        }
+        Some(_) => {
+          on_event(Some(curr_id), Create(path))
+          self.emit_create_event_for_children(curr_id, on_event~, path~)
+        }
+        None => events[curr_id] = Create(path)
+      }
+    }
+  }
+  file.modified_children.clear()
+  for id, event in events {
+    if event is Remove(path) {
+      self.emit_remove_event_for_children(id, on_event~, path~)
+    }
+    on_event(Some(id), event)
+    if event is Create(path) {
+      self.emit_create_event_for_children(id, on_event~, path~)
+    }
+  }
+  for name, id in file.children_with_events {
+    self.emit_events_for_file(
+      self.watched[id],
+      on_event~,
+      path=rel_path(path, name),
+      context~,
+    )
+  }
+  file.children_with_events.clear()
+}
+
+///|
+fn Watcher::emit_create_event_for_children(
+  self : Watcher,
+  file_id : FileIdentity,
+  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  path~ : String,
+) -> Unit {
+  let file = self.watched[file_id]
+  guard file.is_dir else { return }
+  file.modified_children.clear()
+  file.children_with_events.clear()
+  for name, child_id in file.children {
+    let path = rel_path(path, name)
+    on_event(None, Create(path))
+    self.emit_create_event_for_children(child_id, on_event~, path~)
+  }
+}
+
+///|
+fn Watcher::emit_remove_event_for_children(
+  self : Watcher,
+  file_id : FileIdentity,
+  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  path~ : String,
+) -> Unit {
+  let file = self.watched[file_id]
+  guard file.is_dir else { return }
+  file.modified_children.clear()
+  file.children_with_events.clear()
+  for name, child_id in file.children {
+    let path = rel_path(path, name)
+    self.emit_remove_event_for_children(child_id, on_event~, path~)
+    on_event(None, Remove(path))
+  }
+}
+
+///|
+async fn Watcher::wait_aux(
+  self : Watcher,
+  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+) -> Unit {
   let context = "@fs.Watcher::wait()"
   guard self.backend is Some(backend) else {
     raise Failure::Failure("watcher already closed")
@@ -213,11 +322,12 @@ pub async fn Watcher::wait_any(self : Watcher) -> Unit {
   if self.synchronize_task is Some(task) {
     task.wait()
   }
-  while self.event_count <= 0 {
+  let root = self.watched[self.root_id]
+  while !root.has_events() {
     backend.wait()
     self.synchronize_tree(context~)
   }
-  self.event_count = 0
+  self.emit_events_for_file(root, path="", on_event~, context~)
   while self.pending_remove.iter().next() is Some(file_id) {
     self.pending_remove.remove(file_id)
     let file = self.watched[file_id]
@@ -233,8 +343,47 @@ pub async fn Watcher::wait_any(self : Watcher) -> Unit {
 }
 
 ///|
+pub async fn Watcher::wait(self : Watcher) -> Array[FsEvent] {
+  let events = []
+  let pending_rename : Map[FileIdentity, FsEvent] = {}
+  fn on_event(rename_id, event : FsEvent) {
+    guard rename_id is Some(id) &&
+      !(self.watched.get(id) is Some({ is_dir: true, .. })) else {
+      events.push(event)
+    }
+    match (pending_rename.get(id), event) {
+      (None, Create(_) | Remove(_)) => pending_rename[id] = event
+      (Some(Remove(old)), Create(new)) | (Some(Create(new)), Remove(old)) => {
+        pending_rename.remove(id)
+        events.push(Rename(old~, new~))
+      }
+      _ => events.push(event)
+    }
+  }
+  self.wait_aux(on_event~)
+  for _, event in pending_rename {
+    events.push(event)
+  }
+  events
+}
+
+///|
+/// Wait for any change in the watched tree
+/// since the last `wait_any` call or watcher creation.
+pub async fn Watcher::wait_any(self : Watcher) -> Unit {
+  self.wait_aux(on_event=(_, _) => ())
+}
+
+///|
 fn WatchedFile::is_clean(file : WatchedFile) -> Bool {
   !file.modified && file.dirty_children.is_empty()
+}
+
+///|
+fn WatchedFile::has_events(file : WatchedFile) -> Bool {
+  !(file.is_dir &&
+  file.modified_children.is_empty() &&
+  file.children_with_events.is_empty())
 }
 
 ///|
@@ -263,6 +412,8 @@ async fn Watcher::get_file_at(
     children: {},
     modified: is_dir, // new directory need rescan
     dirty_children: {},
+    modified_children: {},
+    children_with_events: {},
   }
   self.watched[file_id] = new_file
   new_file
@@ -288,13 +439,18 @@ async fn Watcher::add_file_at(
       self.remove_file_at(dir, name)
     }
   }
-  self.event_count += 1
   let location = (dir.file_id, name)
   let file = self.get_file_at(path~, is_dir~, file_id~, context~)
   dir.children[name] = file.file_id
   file.paths.add(location)
   if !file.is_clean() {
     dir.dirty_children[name] = file.file_id
+  }
+  match dir.modified_children.get(name) {
+    None => dir.modified_children[name] = None
+    Some(Some(prev_id)) if prev_id == file_id =>
+      dir.modified_children.remove(name)
+    Some(_) => ()
   }
 }
 
@@ -309,10 +465,16 @@ fn Watcher::remove_file_at(
   let path = (dir.file_id, name)
   dir.children.remove(name)
   dir.dirty_children.remove(name)
+  dir.children_with_events.remove(name)
   let curr = self.watched[curr_id]
   curr.paths.remove(path)
   if curr.paths.is_empty() {
     self.pending_remove.add(curr_id)
+  }
+  match dir.modified_children.get(name) {
+    None => dir.modified_children[name] = Some(curr_id)
+    Some(None) => dir.modified_children.remove(name)
+    Some(Some(_)) => ()
   }
 }
 
@@ -343,7 +505,6 @@ async fn Watcher::scan_dir(
     removed_children.remove(ent.name)
   }
   for name in removed_children.keys() {
-    self.event_count += 1
     self.remove_file_at(dir, name)
   }
 }
@@ -378,8 +539,6 @@ async fn Watcher::synchronize_file(
     file.modified = false
     if file.is_dir {
       self.scan_dir(file, path~, context~)
-    } else {
-      self.event_count += 1
     }
   } else if file.dirty_children.iter().next() is Some((name, child_id)) {
     let child = self.watched[child_id]
@@ -390,7 +549,16 @@ async fn Watcher::synchronize_file(
         self.mark_as_modified(file.file_id)
       err => raise err
     } noraise {
-      _ => if child.is_clean() { file.dirty_children.remove(name) }
+      _ => {
+        if child.is_clean() {
+          file.dirty_children.remove(name)
+        }
+        if child.has_events() {
+          file.children_with_events[name] = child.file_id
+        } else {
+          file.children_with_events.remove(name)
+        }
+      }
     }
   }
 }
