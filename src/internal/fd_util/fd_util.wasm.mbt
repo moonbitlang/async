@@ -17,17 +17,6 @@ pub type Fd = @types.Fd
 
 ///|
 #unsafe_skip_stub_check
-fn set_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang/async" "fd_util/set_nonblocking/unix"
-
-///|
-pub fn set_nonblocking(fd : Fd, context~ : String) -> Unit raise {
-  if set_nonblocking_ffi(fd) < 0 {
-    @os_error.check_errno(context)
-  }
-}
-
-///|
-#unsafe_skip_stub_check
 fn set_cloexec_ffi(fd : Fd) -> Int = "moonbitlang/async" "fd_util/set_cloexec"
 
 ///|
