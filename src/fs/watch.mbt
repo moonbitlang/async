@@ -141,6 +141,7 @@ pub async fn Watcher::Watcher(
   debounce_timeout? : Int = 20,
   max_debounce_delay? : Int = 200,
   report_child_event? : Bool = false,
+  report_event_on_init? : Bool = false,
   ignored_paths? : (String) -> Bool = _ => false,
 ) -> Watcher {
   let context = "@fs.Watcher()"
@@ -196,7 +197,9 @@ pub async fn Watcher::Watcher(
     }
     self.watched[root_id] = root
     self.synchronize_tree(context~)
-    self.emit_events_for_file(root, path="", on_event=(_, _) => (), context~)
+    if !report_event_on_init {
+      self.emit_events_for_file(root, path="", on_event=(_, _) => (), context~)
+    }
     self
   } catch {
     err => {

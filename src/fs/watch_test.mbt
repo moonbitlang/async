@@ -752,3 +752,35 @@ async test "watch ignored path" {
     ),
   )
 }
+
+///|
+async test "watch init event" {
+  let test_dir = Dir({
+    "root_file": File("abcd"),
+    "inner_dir": Dir({ "inner_file": File("efgh") }),
+  })
+  @async.with_task_group <| group => {
+    let path = "_build/watch_init_event_test"
+    test_dir.instantiate(path)
+    group.add_defer(() => {
+      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
+    })
+
+    let watcher = @fs.Watcher(
+      path,
+      report_event_on_init=true,
+      report_child_event=true,
+    )
+    defer watcher.close()
+    debug_inspect(
+      @async.with_timeout(1000, () => watcher.wait()),
+      content=(
+        #|[
+        #|  Create("inner_dir"),
+        #|  Create("inner_dir/inner_file"),
+        #|  Create("root_file"),
+        #|]
+      ),
+    )
+  }
+}

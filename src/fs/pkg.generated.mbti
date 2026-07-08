@@ -136,7 +136,7 @@ pub(all) enum SyncMode {
 }
 
 type Watcher
-pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, report_child_event? : Bool, ignored_paths? : (String) -> Bool) -> Self
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, report_child_event? : Bool, report_event_on_init? : Bool, ignored_paths? : (String) -> Bool) -> Self
 pub fn Watcher::close(Self) -> Unit
 pub async fn Watcher::wait(Self) -> Array[FsEvent]
 pub async fn Watcher::wait_any(Self) -> Unit
