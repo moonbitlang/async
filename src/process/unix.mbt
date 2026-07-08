@@ -112,24 +112,15 @@ async fn raw_spawn(
     }
   }
   let stdin = match stdin {
-    Some(pipe) => {
-      @fd_util.set_blocking(pipe.fd(), context~)
-      pipe.fd()
-    }
+    Some(pipe) => pipe.fd()
     None => -1
   }
   let stdout = match stdout {
-    Some(pipe) => {
-      @fd_util.set_blocking(pipe.fd(), context~)
-      pipe.fd()
-    }
+    Some(pipe) => pipe.fd()
     None => -1
   }
   let stderr = match stderr {
-    Some(pipe) => {
-      @fd_util.set_blocking(pipe.fd(), context~)
-      pipe.fd()
-    }
+    Some(pipe) => pipe.fd()
     None => -1
   }
   let extra_count = extra_env.length()
