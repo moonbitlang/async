@@ -32,10 +32,12 @@ async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
 }
 
 ///|
-async test "watch basic" {
+async fn watch_basic_test(
+  path : String,
+  report_child_event~ : Bool,
+) -> Array[String] {
   let log = []
   @async.with_task_group(group => {
-    let path = "_build/watch_basic_test"
     let test_dir = Dir({
       "root_file": File("abcd"),
       "inner_dir": Dir({ "inner_file": File("efgh") }),
@@ -45,7 +47,7 @@ async test "watch basic" {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path)
+    let watcher = @fs.Watcher(path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -126,6 +128,52 @@ async test "watch basic" {
     }
     @async.sleep(150)
   })
+  log
+}
+
+///|
+async test "watch basic" {
+  let log = watch_basic_test(
+    "_build/watch_basic_test",
+    report_child_event=false,
+  )
+  inspect(
+    log.join("\n"),
+    content=(
+      #|writing to root file
+      #|watcher received change: [Modify("root_file")]
+      #|writing to inner file
+      #|watcher received change: [Modify("inner_dir/inner_file")]
+      #|creating new file in root directory
+      #|watcher received change: [Create("root_file2")]
+      #|writing to newly created root file
+      #|watcher received change: [Modify("root_file2")]
+      #|creating new file in inner directory
+      #|watcher received change: [Create("inner_dir/inner_file2")]
+      #|writing to newly created inner file
+      #|watcher received change: [Modify("inner_dir/inner_file2")]
+      #|removing file in root directory
+      #|watcher received change: [Remove("root_file")]
+      #|removing file in inner directory
+      #|watcher received change: [Remove("inner_dir/inner_file2")]
+      #|removing inner directory
+      #|watcher received change: [Remove("inner_dir")]
+      #|creating new directory in root directory
+      #|watcher received change: [Create("inner_dir")]
+      #|creating new file in inner directory
+      #|watcher received change: [Create("inner_dir/inner_file")]
+      #|writing to newly created inner file
+      #|watcher received change: [Modify("inner_dir/inner_file")]
+    ),
+  )
+}
+
+///|
+async test "watch basic with child" {
+  let log = watch_basic_test(
+    "_build/watch_basic_with_child_test",
+    report_child_event=true,
+  )
   inspect(
     log.join("\n"),
     content=(
@@ -158,10 +206,12 @@ async test "watch basic" {
 }
 
 ///|
-async test "watch rename within" {
+async fn watch_rename_within_test(
+  path : String,
+  report_child_event~ : Bool,
+) -> Array[String] {
   let log = []
   @async.with_task_group(group => {
-    let path = "_build/watch_rename_within_test"
     let test_dir = Dir({
       "root_file": File("abcd"),
       "inner_dir": Dir({ "inner_file": File("efgh") }),
@@ -171,7 +221,7 @@ async test "watch rename within" {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path)
+    let watcher = @fs.Watcher(path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -222,6 +272,15 @@ async test "watch rename within" {
     @fs.rename("\{path}/root_file2", "\{path}/root_file")
     @async.sleep(150)
   })
+  log
+}
+
+///|
+async test "watch rename within" {
+  let log = watch_rename_within_test(
+    "_build/watch_rename_within_test",
+    report_child_event=false,
+  )
   inspect(
     log.join("\n"),
     content=(
@@ -244,10 +303,39 @@ async test "watch rename within" {
 }
 
 ///|
-async test "watch rename inout test" {
+async test "watch rename within with child" {
+  let log = watch_rename_within_test(
+    "_build/watch_rename_within_with_child_test",
+    report_child_event=true,
+  )
+  inspect(
+    log.join("\n"),
+    content=(
+      #|rename: inner_dir/inner_file => inner_dir/inner_file2
+      #|watcher received change: [Rename(old="inner_dir/inner_file", new="inner_dir/inner_file2")]
+      #|writing to inner_dir/inner_file2
+      #|watcher received change: [Modify("inner_dir/inner_file2")]
+      #|rename: inner_dir => inner_dir2
+      #|watcher received change: [Rename(old="inner_dir", new="inner_dir2")]
+      #|writing to inner_dir2/inner_file2
+      #|watcher received change: [Modify("inner_dir2/inner_file2")]
+      #|rename: inner_dir2/inner_file2 => root_file2
+      #|watcher received change: [Rename(old="inner_dir2/inner_file2", new="root_file2")]
+      #|writing to root_file2
+      #|watcher received change: [Modify("root_file2")]
+      #|rename root_file2 to replace root_file
+      #|watcher received change: [Remove("root_file"), Rename(old="root_file2", new="root_file")]
+    ),
+  )
+}
+
+///|
+async fn watch_rename_inout_test(
+  base_path : String,
+  report_child_event~ : Bool,
+) -> Array[String] {
   let log = []
   @async.with_task_group(group => {
-    let base_path = "_build/watch_rename_inout_test"
     let test_dir = Dir({
       "watched": Dir({
         "root_file": File("abcd"),
@@ -260,7 +348,7 @@ async test "watch rename inout test" {
     })
     let watched_path = "\{base_path}/watched"
 
-    let watcher = @fs.Watcher(watched_path)
+    let watcher = @fs.Watcher(watched_path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -345,6 +433,46 @@ async test "watch rename inout test" {
 
     // 12. moved in directory cannot replace existing directory: forbidden by OS
   })
+  log
+}
+
+///|
+async test "watch rename inout test" {
+  let log = watch_rename_inout_test(
+    "_build/watch_rename_inout_test",
+    report_child_event=false,
+  )
+  inspect(
+    log.join("\n"),
+    content=(
+      #|moving foreign file inside watched tree
+      #|watcher received change: [Create("moved_in_file")]
+      #|writing to moved_in_file
+      #|watcher received change: [Modify("moved_in_file")]
+      #|moving foreign directory inside watched tree
+      #|watcher received change: [Create("moved_in_dir")]
+      #|writing to moved_in_dir/foreign_file
+      #|watcher received change: [Modify("moved_in_dir/foreign_file")]
+      #|moving file outside watched tree
+      #|watcher received change: [Remove("moved_in_file")]
+      #|writing to moved_out_file
+      #|removing moved out file
+      #|moving directory outside watched tree
+      #|watcher received change: [Remove("moved_in_dir")]
+      #|writing to moved_out_dir/foreign_file
+      #|removing moved out directory
+      #|renaming foreign file to replace root_file
+      #|watcher received change: [Remove("root_file"), Create("root_file")]
+    ),
+  )
+}
+
+///|
+async test "watch rename inout with child test" {
+  let log = watch_rename_inout_test(
+    "_build/watch_rename_inout_with_child_test",
+    report_child_event=true,
+  )
   inspect(
     log.join("\n"),
     content=(
@@ -398,10 +526,12 @@ async test "watch horizontal swap" {
 }
 
 ///|
-async test "watch vertical swap" {
+async fn watch_vertical_swap_test(
+  path : String,
+  report_child_event~ : Bool,
+) -> Array[String] {
   let log = []
   @async.with_task_group(group => {
-    let path = "_build/watch_vertical_swap_test"
     let test_dir = Dir({
       "outer": Dir({
         "file": File("abcd"),
@@ -412,7 +542,7 @@ async test "watch vertical swap" {
     group.add_defer(() => {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
-    let watcher = @fs.Watcher(path)
+    let watcher = @fs.Watcher(path, report_child_event~)
     defer watcher.close()
     log.push("performing vertical swapping")
     @fs.rename("\{path}/outer/inner", "\{path}/tmp")
@@ -430,6 +560,34 @@ async test "watch vertical swap" {
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{to_repr(events)}")
   })
+  log
+}
+
+///|
+async test "watch vertical swap" {
+  let log = watch_vertical_swap_test(
+    "_build/watch_vertical_swap_test",
+    report_child_event=false,
+  )
+  inspect(
+    log.join("\n"),
+    content=(
+      #|performing vertical swapping
+      #|watcher received change: [Remove("outer"), Create("outer")]
+      #|modifying previous outer file
+      #|watcher received change: [Modify("outer/inner/file")]
+      #|modifying previous inner file
+      #|watcher received change: [Modify("outer/file")]
+    ),
+  )
+}
+
+///|
+async test "watch vertical swap with child" {
+  let log = watch_vertical_swap_test(
+    "_build/watch_vertical_swap_with_child_test",
+    report_child_event=true,
+  )
   inspect(
     log.join("\n"),
     content=(

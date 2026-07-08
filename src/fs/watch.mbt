@@ -21,7 +21,7 @@ pub(all) enum FsEvent {
   Create(String)
   Remove(String)
   Rename(old~ : String, new~ : String)
-} derive(Debug)
+} derive(Eq, Debug)
 
 ///|
 priv struct WatchedFile {
@@ -59,6 +59,7 @@ struct Watcher {
   watched : Map[FileIdentity, WatchedFile]
   pending_remove : Set[FileIdentity]
   ignored_paths : (String) -> Bool
+  report_child_event : Bool
   mut synchronize_task : @coroutine.Coroutine?
 }
 
@@ -139,6 +140,7 @@ pub async fn Watcher::Watcher(
   path : String,
   debounce_timeout? : Int = 20,
   max_debounce_delay? : Int = 200,
+  report_child_event? : Bool = false,
   ignored_paths? : (String) -> Bool = _ => false,
 ) -> Watcher {
   let context = "@fs.Watcher()"
@@ -168,6 +170,7 @@ pub async fn Watcher::Watcher(
     watched: {},
     pending_remove: Set([]),
     ignored_paths,
+    report_child_event,
     synchronize_task: None,
   }
   try {
@@ -287,7 +290,9 @@ fn Watcher::emit_create_event_for_children(
   file.children_with_events.clear()
   for name, child_id in file.children {
     let path = rel_path(path, name)
-    on_event(None, Create(path))
+    if self.report_child_event {
+      on_event(None, Create(path))
+    }
     self.emit_create_event_for_children(child_id, on_event~, path~)
   }
 }
@@ -306,7 +311,9 @@ fn Watcher::emit_remove_event_for_children(
   for name, child_id in file.children {
     let path = rel_path(path, name)
     self.emit_remove_event_for_children(child_id, on_event~, path~)
-    on_event(None, Remove(path))
+    if self.report_child_event {
+      on_event(None, Remove(path))
+    }
   }
 }
 
