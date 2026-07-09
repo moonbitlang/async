@@ -222,16 +222,13 @@ fn Watcher::new_backend(
 /// So to ignore a single directory,
 /// `ignored_paths` only need to handle paths of the files inside that ignored directory.
 ///
-/// When a directory is created/moved inside watched tree or removed/moved outside watched tree:
+/// When a create/remove event is reported for a directory:
 /// - if `report_child_event=true`, respective create/remove events will be emitted
 ///   for everything inside that directory.
 ///   This mode is useful if tracking the exact list of files in desirable.
 /// - If `report_child_event=false` (the default),
 ///   only a single event for the directory itself will be emitted,
 ///   making the watcher less noisy
-/// Note that if a rename event is emitted for a directory,
-/// events will be reported for changes since the last query for the renamed directory.
-/// regardless of the value of `report_child_event`.
 ///
 /// If `report_event_on_init=true` (`false` by default),
 /// the first `wait` call will return immediately after watcher creation,
