@@ -465,6 +465,7 @@ async fn Watcher::get_file_at(
     raise Failure::Failure("watcher already closed")
   }
   let wd = backend.add_file(full_path, is_dir~, file_id~, context~)
+  println("new file \{to_repr(file_id)} at \{path}: is_dir=\{is_dir}")
   let new_file = {
     wd,
     file_id,
