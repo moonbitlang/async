@@ -227,15 +227,18 @@ async fn watch_rename_within_test(
       for ;; {
         let events = watcher.wait()
         log.push("watcher received change: \{to_repr(events)}")
+        println("watcher received change: \{to_repr(events)}")
       }
     })
     // 1. rename within the same directory
     log.push("rename: inner_dir/inner_file => inner_dir/inner_file2")
+    println("rename: inner_dir/inner_file => inner_dir/inner_file2")
     @fs.rename("\{path}/inner_dir/inner_file", "\{path}/inner_dir/inner_file2")
     @async.sleep(150)
 
     // 2. modify file renamed within the same directory
     log.push("writing to inner_dir/inner_file2")
+    println("writing to inner_dir/inner_file2")
     @fs.write_file(
       "\{path}/inner_dir/inner_file2",
       "efgh",
@@ -245,11 +248,13 @@ async fn watch_rename_within_test(
 
     // 3. rename directory
     log.push("rename: inner_dir => inner_dir2")
+    println("rename: inner_dir => inner_dir2")
     @fs.rename("\{path}/inner_dir", "\{path}/inner_dir2")
     @async.sleep(150)
 
     // 4. modify file within renamed directory
     log.push("writing to inner_dir2/inner_file2")
+    println("writing to inner_dir2/inner_file2")
     @fs.write_file(
       "\{path}/inner_dir2/inner_file2",
       "EFGH",
@@ -259,16 +264,19 @@ async fn watch_rename_within_test(
 
     // 5. rename across directory, but within watched tree
     log.push("rename: inner_dir2/inner_file2 => root_file2")
+    println("rename: inner_dir2/inner_file2 => root_file2")
     @fs.rename("\{path}/inner_dir2/inner_file2", "\{path}/root_file2")
     @async.sleep(150)
 
     // 6. modify file moved across directory but still within watched tree
     log.push("writing to root_file2")
+    println("writing to root_file2")
     @fs.write_file("\{path}/root_file2", "EFGH", create_mode=OpenExisting)
     @async.sleep(150)
 
     // 7. rename file replaces existing file
     log.push("rename root_file2 to replace root_file")
+    println("rename root_file2 to replace root_file")
     @fs.rename("\{path}/root_file2", "\{path}/root_file")
     @async.sleep(150)
   })
