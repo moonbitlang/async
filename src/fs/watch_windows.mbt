@@ -177,6 +177,9 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
     while offset < n {
       let size = buf.event_size(offset)
       let file_id : FileIdentity = if WindowsWatcher::has_ReadDirectoryChangesExW() {
+        println(
+          "get event: modify=\{buf.is_modify(offset)}, file_id=\{buf.get_file_id(offset)}, parent_file_id=\{buf.get_parent_file_id(offset)}",
+        )
         let file_id = if buf.is_modify(offset) {
           buf.get_file_id(offset)
         } else {
