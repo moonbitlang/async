@@ -593,8 +593,7 @@ int32_t moonbitlang_async_read_dir_changes(HANDLE dir, struct ReadDirChangesIoRe
     FILE_NOTIFY_CHANGE_SIZE
     | FILE_NOTIFY_CHANGE_LAST_WRITE
     | FILE_NOTIFY_CHANGE_FILE_NAME
-    | FILE_NOTIFY_CHANGE_DIR_NAME
-    | FILE_NOTIFY_CHANGE_CREATION,
+    | FILE_NOTIFY_CHANGE_DIR_NAME,
     &bytes_returned,
     (LPOVERLAPPED)result,
     NULL,
@@ -609,8 +608,7 @@ int32_t moonbitlang_async_read_dir_changes(HANDLE dir, struct ReadDirChangesIoRe
     FILE_NOTIFY_CHANGE_SIZE
     | FILE_NOTIFY_CHANGE_LAST_WRITE
     | FILE_NOTIFY_CHANGE_FILE_NAME
-    | FILE_NOTIFY_CHANGE_DIR_NAME
-    | FILE_NOTIFY_CHANGE_CREATION,
+    | FILE_NOTIFY_CHANGE_DIR_NAME,
     &bytes_returned,
     (LPOVERLAPPED)result,
     NULL
