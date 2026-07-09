@@ -115,7 +115,7 @@ impl WatcherBackend for InotifyWatcher with fn add_file(
   self,
   path,
   is_dir~,
-  file_id~,
+  identity~,
   context~,
 ) {
   let wd = @event_loop.inotify_add_watch(
@@ -124,7 +124,7 @@ impl WatcherBackend for InotifyWatcher with fn add_file(
     is_dir~,
     context~,
   )
-  self.watched[wd] = file_id
+  self.watched[wd] = identity
   wd
 }
 

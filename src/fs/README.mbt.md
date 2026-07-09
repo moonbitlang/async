@@ -14,6 +14,7 @@ Asynchronous file system operations for MoonBit. This package provides comprehen
   - [Reading Directories](#reading-directories)
   - [Walking Directory Trees](#walking-directory-trees)
   - [Removing Directories](#removing-directories)
+- [File Watching](#file-watching)
 - [File Metadata](#file-metadata)
   - [File Kind](#file-kind)
   - [Timestamps](#timestamps)
@@ -603,6 +604,73 @@ async test "remove - delete file" {
 }
 ```
 
+## File Watching
+
+`Watcher` watches a directory tree recursively and reports file system changes as
+[`FsEvent`](#fsevent) values. Events use paths relative to the watched directory,
+with `/` as the path separator. New files and directories are added to the
+watched tree automatically, and removed entries are unwatched automatically.
+Calling `.wait()` on the watcher will block and wait until the watched tree has changed
+since the last `.wait()` or `.wait_any()` call.
+A list of events describing the net changes on the watched tree
+since the last query will be returned.
+Note that events returned by `.wait()` report net change rather than detailed transaction.
+So for example a create event followed by a remove event on the same location will cancel each other.
+If the user only cares about when the watched tree change,
+and does not care about the detailed list of changes,
+`.wait_any()` can be used, which is slightly faster than `.wait()`.
+
+The watcher performs aggresive global rename detection using the physical identity of files.
+There are several cases where the watcher will not report rename event though:
+
+- renaming of directories are only reported as `Rename` when the renaming happen within the same parent directory
+- some rename sequences cannot be serialized as binary `Rename`, such as swapping two files
+
+In these cases, the rename will be split into separated `Remove` and `Create` events.
+
+The following options are available on watcher creation:
+
+- File system notifications are often delivered in bursts, so the watcher
+  debounces changes by default. The debounce behavior can be configured by the
+  `debounce_timeout` and `max_debounce_delay` options on watcher creation.
+  The watcher will wait until no event happens for `debounce_timeout` milliseconds
+  before reporting any events, but the total wait time will never exceed
+  `max_debounce_delay` milliseconds.
+- `ignored_paths`, if present, can be used to filter out paths that the user don't want to watch.
+  When a file or directory is going to be watched, its path
+  (relative to root of watched tree, using `/` as path separator, always without trailing `/`)
+  will be supplied to `ignored_paths`.
+  If `ignored_paths` return `true`, the file or directory will be ignored.
+  When a directory is ignored, all files/directories within it are also ignored.
+  So to ignore a single directory,
+  `ignored_paths` only need to handle paths of the files inside that ignored directory.
+- When a create/remove event is reported for a directory:
+  + if `report_child_event=true`, respective create/remove events will be emitted
+    for everything inside that directory.
+    This mode is useful if tracking the exact list of files in desirable.
+  + If `report_child_event=false` (the default),
+    only a single event for the directory itself will be emitted,
+    making the watcher less noisy
+- If `report_event_on_init=true` (`false` by default),
+  the first `wait` call will return immediately after watcher creation,
+  reporting events describing the initial structure of the watched directory.
+  This is useful for keeping the knowledge of the caller in sync with the watcher.
+  Note that you probably want to set `report_child_event=true` as well in this case.
+
+```moonbit nocheck
+///|
+#cfg(target="native")
+async fn watch_project_sources() -> Unit {
+  let watcher = @fs.Watcher("src", ignored_paths=path => {
+    path.has_prefix("_build/")
+  })
+  defer watcher.close()
+  while watcher.wait() is events {
+    debug(events)
+  }
+}
+```
+
 ## Types Reference
 
 ### FileKind
@@ -664,6 +732,16 @@ Main file handle type. Methods include:
 Directory handle for reading directory entries:
 - `close()` - Close directory
 - `read_all()` - Read all entries
+
+### FsEvent
+
+`FsEvent` describes a net change reported by `Watcher::wait`.
+All paths are relative to the watched directory and use `/` as the path separator.
+
+- `Modify(path)` reports that the regular file at `path` has been modified.
+- `Create(path)` reports that a file or directory now exists at `path`.
+- `Remove(path)` reports that the file or directory at `path` has been removed.
+- `Rename(old~, new~)` reports that a file or directory moved from `old` to `new`.
 
 ## Best Practices
 

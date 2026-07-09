@@ -111,6 +111,13 @@ pub(all) enum FileKind {
 #deprecated
 pub impl Show for FileKind
 
+pub(all) enum FsEvent {
+  Modify(String)
+  Create(String)
+  Remove(String)
+  Rename(old~ : String, new~ : String)
+} derive(Eq, @debug.Debug)
+
 pub(all) enum Lock {
   Shared
   Exclusive
@@ -129,8 +136,9 @@ pub(all) enum SyncMode {
 }
 
 type Watcher
-pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, ignored_paths? : (String) -> Bool) -> Self
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, report_child_event? : Bool, report_event_on_init? : Bool, ignored_paths? : (String) -> Bool) -> Self
 pub fn Watcher::close(Self) -> Unit
+pub async fn Watcher::wait(Self) -> Array[FsEvent]
 pub async fn Watcher::wait_any(Self) -> Unit
 
 // Type aliases

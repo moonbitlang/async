@@ -134,3 +134,9 @@ fn get_ENOTDIR() -> Int = "moonbitlang/async" "os_error/get_ENOTDIR"
 
 ///|
 pub let errno_ENOTDIR : Int = get_ENOTDIR()
+
+///|
+pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
+  let OSError(errno, ..) = err
+  errno == errno_ENOTDIR
+}

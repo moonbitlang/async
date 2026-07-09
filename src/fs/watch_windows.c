@@ -17,7 +17,6 @@
 #ifdef _WIN32
 
 #include <windows.h>
-#include <stdio.h>
 #include "moonbit.h"
 
 #if _WIN32_WINNT >= 0x0A00
@@ -74,8 +73,9 @@ int32_t moonbitlang_async_watcher_event_get_path_offset() {
 }
 
 MOONBIT_FFI_EXPORT
-uint64_t moonbitlang_async_watcher_event_get_file_id(fs_event_t *event) {
+uint64_t moonbitlang_async_watcher_event_get_file_id(char *buf, int32_t offset) {
 #ifdef HAS_ReadDirectoryChangesExW
+  fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->FileId.QuadPart;
 #else
   moonbit_panic();
@@ -83,8 +83,9 @@ uint64_t moonbitlang_async_watcher_event_get_file_id(fs_event_t *event) {
 }
 
 MOONBIT_FFI_EXPORT
-uint64_t moonbitlang_async_watcher_event_get_parent_file_id(fs_event_t *event) {
+uint64_t moonbitlang_async_watcher_event_get_parent_file_id(char *buf, int32_t offset) {
 #ifdef HAS_ReadDirectoryChangesExW
+  fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->ParentFileId.QuadPart;
 #else
   moonbit_panic();
