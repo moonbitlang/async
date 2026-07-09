@@ -32,6 +32,57 @@ pub(all) enum FsEvent {
 } derive(Eq, Debug)
 
 ///|
+/// Info about a watched file in the watched tree.
+/// There are three stages in each `wait` iteration of the watcher:
+///
+/// - The collect pass: when the watcher is idle, the backend silently
+///   collect file system changes in the background.
+///   It may, from time to time, mark modified files and directories as dirty.
+///   This marking is implemented through the `modified` and `dirty_children` fields:
+///
+///   * `modified`: the file/directory itself is modified.
+///     For directory this mean the list of files in the directory has changed
+///   * `dirty_children`: for directory only. Some children in the sub tree is modified
+///
+/// - The scan pass, implemented through `Watcher::synchronize_tree`.
+///   In this pass, we scan those modified directories to collect up-to-date knowledge
+///   on the structure of the watched tree.
+///   Since many operations in the scan pass are path-based,
+///   the scan must be performed from parent to child.
+///   The dirty mark in the collect pass is used to avoid unnecessary scanning.
+///
+///   During the scan pass, new changes may happen concurrently on the file system.
+///   So the scan pass is run in parallel with the collect pass.
+///   When new events arrive during scanning, it is possible that
+///   a previously scanned directory will be marked as dirty again.
+///   The scan pass must be capable of handling this case.
+///   In addition, the scan pass must be also capable of handling scan failure,
+///   in order to handle file system changes that happen concurrently with scanning.
+///
+///   The scan pass consumes `modified` and `dirty_children`,
+///   and record discovered changes in `modified_children` and `children_with_events`,
+///   which are used by the next report pass:
+///
+///   * `modified_children`: for directory only. Record the list of locations in the directory
+///     that have changed since the last query. The value store for each location is the
+///     ID of the old file on that location, or `None` if the file previously does not exist.
+///   * `children_with_events`: for directory only.
+///     Record the list of children that contain any event to report.
+///
+///   The watcher maintain a tree snapshot of the file system through the `children` field,
+///   The state of the this snapshot, and the meaning of other related fields
+///   such as `children_with_events`, should always be in-sync with
+///   the latest progress of the scan pass.
+///
+/// - The report pass. This pass consumes `modified_children` and `children_with_events`,
+///   and report the list of events for the user, through the return value of `wait()`.
+///   Event reporting is not performed during the scan pass,
+///   because the scan pass may need to rescan already-scanned directory from time to time,
+///   while we want to make the returned event list minimal.
+///   The report pass is implemented though `emit_events_for_file`.
+///   Since we report events in a path-based manner, the report pass also need to operate
+///   from parent to children, that's why we need to maintain `children_with_events`
+///   instead of a global list.
 priv struct WatchedFile {
   wd : @fd_util.Fd
   file_id : FileIdentity
@@ -244,14 +295,27 @@ fn rel_path(parent : String, name : String) -> String {
 }
 
 ///|
+/// Callback for handling event.
+/// The first parameter is a rename hint,
+/// if it is `Some(id)`, the second event parameter must be `Create` or `Remove`,
+/// and `id` is the identity of the created/removed file.
+/// Note that some `Create`/`Remove` event may not be a potential rename candidate,
+/// in this case the first parameter would be `None`.
+priv struct EventCallback((FileIdentity?, FsEvent) -> Unit)
+
+///|
 fn Watcher::emit_events_for_file(
   self : Watcher,
   file : WatchedFile,
-  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  on_event~ : EventCallback,
   path~ : String,
   context~ : String,
 ) -> Unit raise {
-  guard file.is_dir else { on_event(None, Modify(path)) }
+  guard file.is_dir else {
+    // The only possible event for a regular file is `Modify`,
+    // so no extra information about event detail is recorded for regular files.
+    on_event(None, Modify(path))
+  }
   let events : Map[FileIdentity, FsEvent] = {}
   for name, prev_id in file.modified_children {
     let curr_id = file.children.get(name)
@@ -306,10 +370,13 @@ fn Watcher::emit_events_for_file(
 }
 
 ///|
+/// Emit create event for the whole tree under `file_id`. 
+/// If the tree is not new, but considered "created" due to failed rename serialization,
+/// the event state of the whole tree will be reset by `emit_create_event_for_children`.
 fn Watcher::emit_create_event_for_children(
   self : Watcher,
   file_id : FileIdentity,
-  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  on_event~ : EventCallback,
   path~ : String,
 ) -> Unit {
   let file = self.watched[file_id]
@@ -326,10 +393,14 @@ fn Watcher::emit_create_event_for_children(
 }
 
 ///|
+/// Emit remove event for the whole tree under `file_id`. 
+/// If the sub tree is still present in the watched tree,
+/// but considered "removed" due to failed rename serialization,
+/// the event state of the whole tree will be reset by `emit_remove_event_for_children`.
 fn Watcher::emit_remove_event_for_children(
   self : Watcher,
   file_id : FileIdentity,
-  on_event~ : (FileIdentity?, FsEvent) -> Unit,
+  on_event~ : EventCallback,
   path~ : String,
 ) -> Unit {
   let file = self.watched[file_id]
