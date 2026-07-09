@@ -17,6 +17,7 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <stdio.h>
 #include "moonbit.h"
 
 #if _WIN32_WINNT >= 0x0A00
@@ -52,6 +53,7 @@ fs_event_t *moonbitlang_async_watcher_get_event(char *buf, int32_t offset) {
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_watcher_event_get_size(char *buf, int32_t offset) {
   fs_event_t *event = (fs_event_t*)(buf + offset);
+  printf("%.*S: %d\n", event->FileNameLength / 2, event->FileName, event->Action);
   return event->NextEntryOffset;
 }
 
