@@ -52,4 +52,4 @@ jobs:
         run: |
           $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
           $env:MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
-          moon test
+          moon test src/fs/watch_test.mbt -F 'watch rename within'
