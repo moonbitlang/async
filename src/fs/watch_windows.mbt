@@ -215,6 +215,7 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
       }
       if self.watcher.watched.get(file_id) is Some(file) {
         if !(buf.is_modify(offset) && file.is_dir) {
+          println("mark as modified")
           self.watcher.mark_as_modified(file_id)
         }
       }
