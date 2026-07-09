@@ -74,11 +74,11 @@ impl WatcherBackend for WindowsWatcher with fn add_file(
   _self,
   _path,
   is_dir~,
-  file_id~,
+  identity~,
   context~,
 ) {
   ignore(is_dir)
-  ignore(file_id)
+  ignore(identity)
   ignore(context)
   @fd_util.invalid_fd
 }

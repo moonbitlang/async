@@ -85,7 +85,10 @@ pub(all) enum FsEvent {
 ///   instead of a global list.
 priv struct WatchedFile {
   wd : @fd_util.Fd
-  file_id : FileIdentity
+  // Mount point note: for mount points/symbolic links/reparse points,
+  // `identity` is the file identity of the directory entry in the parent,
+  // not the actual physical identity of the mounted file system/redirected file.
+  identity : FileIdentity
   paths : Set[(FileIdentity, String)]
   is_dir : Bool
   children : Map[String, FileIdentity]
@@ -103,7 +106,7 @@ priv trait WatcherBackend {
     Self,
     StringView,
     is_dir~ : Bool,
-    file_id~ : FileIdentity,
+    identity~ : FileIdentity,
     context~ : String,
   ) -> @fd_util.Fd
   fn remove_file(Self, @fd_util.Fd, context~ : String) -> Unit raise
@@ -259,10 +262,15 @@ pub async fn Watcher::Watcher(
       context~,
     )
     self.backend = Some(backend)
-    let root_wd = backend.add_file(path, is_dir=true, file_id=root_id, context~)
+    let root_wd = backend.add_file(
+      path,
+      is_dir=true,
+      identity=root_id,
+      context~,
+    )
     let root = {
       wd: root_wd,
-      file_id: root_id,
+      identity: root_id,
       paths: Set([]),
       is_dir: true,
       children: {},
@@ -370,16 +378,16 @@ fn Watcher::emit_events_for_file(
 }
 
 ///|
-/// Emit create event for the whole tree under `file_id`. 
+/// Emit create event for the whole tree under `identity`.
 /// If the tree is not new, but considered "created" due to failed rename serialization,
 /// the event state of the whole tree will be reset by `emit_create_event_for_children`.
 fn Watcher::emit_create_event_for_children(
   self : Watcher,
-  file_id : FileIdentity,
+  identity : FileIdentity,
   on_event~ : EventCallback,
   path~ : String,
 ) -> Unit {
-  let file = self.watched[file_id]
+  let file = self.watched[identity]
   guard file.is_dir else { return }
   file.modified_children.clear()
   file.children_with_events.clear()
@@ -393,17 +401,17 @@ fn Watcher::emit_create_event_for_children(
 }
 
 ///|
-/// Emit remove event for the whole tree under `file_id`. 
+/// Emit remove event for the whole tree under `identity`.
 /// If the sub tree is still present in the watched tree,
 /// but considered "removed" due to failed rename serialization,
 /// the event state of the whole tree will be reset by `emit_remove_event_for_children`.
 fn Watcher::emit_remove_event_for_children(
   self : Watcher,
-  file_id : FileIdentity,
+  identity : FileIdentity,
   on_event~ : EventCallback,
   path~ : String,
 ) -> Unit {
-  let file = self.watched[file_id]
+  let file = self.watched[identity]
   guard file.is_dir else { return }
   file.modified_children.clear()
   file.children_with_events.clear()
@@ -434,16 +442,16 @@ async fn Watcher::wait_aux(
     self.synchronize_tree(context~)
   }
   self.emit_events_for_file(root, path="", on_event~, context~)
-  while self.pending_remove.iter().next() is Some(file_id) {
-    self.pending_remove.remove(file_id)
-    let file = self.watched[file_id]
+  while self.pending_remove.iter().next() is Some(identity) {
+    self.pending_remove.remove(identity)
+    let file = self.watched[identity]
     guard file.paths.is_empty() else { continue }
     if file.is_dir {
       for child in file.children.keys() {
         self.remove_file_at(file, child)
       }
     }
-    self.watched.remove(file_id)
+    self.watched.remove(identity)
     backend.remove_file(file.wd, context~)
   }
 }
@@ -521,12 +529,12 @@ fn WatchedFile::has_events(file : WatchedFile) -> Bool {
 ///|
 async fn Watcher::get_file_at(
   self : Watcher,
-  file_id~ : FileIdentity,
+  identity~ : FileIdentity,
   is_dir~ : Bool,
   path~ : String,
   context~ : String,
 ) -> WatchedFile {
-  if self.watched.get(file_id) is Some(existing) {
+  if self.watched.get(identity) is Some(existing) {
     return existing
   }
 
@@ -535,10 +543,10 @@ async fn Watcher::get_file_at(
   guard self.backend is Some(backend) else {
     raise Failure::Failure("watcher already closed")
   }
-  let wd = backend.add_file(full_path, is_dir~, file_id~, context~)
+  let wd = backend.add_file(full_path, is_dir~, identity~, context~)
   let new_file = {
     wd,
-    file_id,
+    identity,
     paths: Set([]),
     is_dir,
     children: {},
@@ -547,7 +555,7 @@ async fn Watcher::get_file_at(
     modified_children: {},
     children_with_events: {},
   }
-  self.watched[file_id] = new_file
+  self.watched[identity] = new_file
   new_file
 }
 
@@ -557,7 +565,7 @@ async fn Watcher::add_file_at(
   dir : WatchedFile,
   name : String,
   is_dir~ : Bool,
-  file_id~ : FileIdentity,
+  identity~ : FileIdentity,
   path~ : String,
   context~ : String,
 ) -> Unit {
@@ -565,22 +573,22 @@ async fn Watcher::add_file_at(
     return
   }
   if dir.children.get(name) is Some(curr_id) {
-    if curr_id == file_id {
+    if curr_id == identity {
       return
     } else {
       self.remove_file_at(dir, name)
     }
   }
-  let location = (dir.file_id, name)
-  let file = self.get_file_at(path~, is_dir~, file_id~, context~)
-  dir.children[name] = file.file_id
+  let location = (dir.identity, name)
+  let file = self.get_file_at(path~, is_dir~, identity~, context~)
+  dir.children[name] = file.identity
   file.paths.add(location)
   if !file.is_clean() {
-    dir.dirty_children[name] = file.file_id
+    dir.dirty_children[name] = file.identity
   }
   match dir.modified_children.get(name) {
     None => dir.modified_children[name] = None
-    Some(Some(prev_id)) if prev_id == file_id =>
+    Some(Some(prev_id)) if prev_id == identity =>
       dir.modified_children.remove(name)
     Some(_) => ()
   }
@@ -594,7 +602,7 @@ fn Watcher::remove_file_at(
 ) -> Unit {
   let curr_id = dir.children.get(name)
   guard curr_id is Some(curr_id) else { return }
-  let path = (dir.file_id, name)
+  let path = (dir.identity, name)
   dir.children.remove(name)
   dir.dirty_children.remove(name)
   dir.children_with_events.remove(name)
@@ -618,16 +626,29 @@ async fn Watcher::scan_dir(
   context~ : String,
 ) -> Unit {
   let removed_children = dir.children.copy()
-  let dir_obj = opendir_aux("\{self.base_path}/\{path}", context~)
+  let (dir_fd, dir_id) = @event_loop.open(
+    "\{self.base_path}/\{path}",
+    0,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context~,
+  )
+  guard dir_fd.kind() is Directory else {
+    dir_fd.close()
+    raise @os_error.OSError(@os_error.errno_ENOTDIR, context~)
+  }
+  let dir_obj = Directory::from_io_handle(dir_fd)
   defer dir_obj.close()
   while dir_obj.next_aux(include_special=false, include_hidden=true, context~)
         is Some(ent) {
-    let new_file_id = { ..dir.file_id, file_id: ent.file_id }
+    let new_file_id = { ..dir_id, file_id: ent.file_id }
     self.add_file_at(
       dir,
       ent.name,
       is_dir=ent.is_dir,
-      file_id=new_file_id,
+      identity=new_file_id,
       path=rel_path(path, ent.name),
       context~,
     ) catch {
@@ -677,8 +698,8 @@ async fn Watcher::synchronize_file(
     try
       self.synchronize_file(child, path=rel_path(path, name), context~)
     catch {
-      @os_error.OSError(_) as err if err.is_ENOENT() =>
-        self.mark_as_modified(file.file_id)
+      @os_error.OSError(_) as err if err.is_ENOENT() || err.is_ENOTDIR() =>
+        self.mark_as_modified(file.identity)
       err => raise err
     } noraise {
       _ => {
@@ -686,7 +707,7 @@ async fn Watcher::synchronize_file(
           file.dirty_children.remove(name)
         }
         if child.has_events() {
-          file.children_with_events[name] = child.file_id
+          file.children_with_events[name] = child.identity
         } else {
           file.children_with_events.remove(name)
         }

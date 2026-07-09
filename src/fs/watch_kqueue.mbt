@@ -15,7 +15,7 @@
 ///|
 #cfg(not(platform="windows"))
 priv struct KqueueWatchedFile {
-  file_id : FileIdentity
+  identity : FileIdentity
   io : @event_loop.IoHandle
 }
 
@@ -97,7 +97,7 @@ impl WatcherBackend for KqueueWatcher with fn add_file(
   self,
   path,
   is_dir~,
-  file_id~,
+  identity~,
   context~,
 ) {
   let (file, _) = @event_loop.open(
@@ -114,7 +114,7 @@ impl WatcherBackend for KqueueWatcher with fn add_file(
     file.close()
     @os_error.check_errno("\{context}: \{path.escape()}")
   }
-  self.watched[fd] = { file_id, io: file }
+  self.watched[fd] = { identity, io: file }
   fd
 }
 
@@ -196,8 +196,8 @@ async fn KqueueWatcher::process_events(
   for i in 0..<n {
     let fd = self.event_buffer.fd(i)
     if self.event_buffer.has_modify(i) {
-      let { file_id, .. } = self.watched[fd]
-      self.watcher.mark_as_modified(file_id)
+      let { identity, .. } = self.watched[fd]
+      self.watcher.mark_as_modified(identity)
     }
   }
 }
