@@ -38,11 +38,11 @@ pub(all) enum FsEvent {
 /// - The collect pass: when the watcher is idle, the backend silently
 ///   collect file system changes in the background.
 ///   It may, from time to time, mark modified files and directories as dirty.
-///   This marking is implemented through the `modified` and `dirty_children` fields:
+///   This marking is implemented through the `modified` and `children_to_scan` fields:
 ///
 ///   * `modified`: the file/directory itself is modified.
 ///     For directory this mean the list of files in the directory has changed
-///   * `dirty_children`: for directory only. Some children in the sub tree is modified
+///   * `children_to_scan`: for directory only. Some children in the sub tree is modified
 ///
 /// - The scan pass, implemented through `Watcher::synchronize_tree`.
 ///   In this pass, we scan those modified directories to collect up-to-date knowledge
@@ -59,11 +59,11 @@ pub(all) enum FsEvent {
 ///   In addition, the scan pass must be also capable of handling scan failure,
 ///   in order to handle file system changes that happen concurrently with scanning.
 ///
-///   The scan pass consumes `modified` and `dirty_children`,
-///   and record discovered changes in `modified_children` and `children_with_events`,
+///   The scan pass consumes and clears `modified` and `children_to_scan`,
+///   and record discovered changes in `changed_entries` and `children_with_events`,
 ///   which are used by the next report pass:
 ///
-///   * `modified_children`: for directory only. Record the list of locations in the directory
+///   * `changed_entries`: for directory only. Record the list of locations in the directory
 ///     that have changed since the last query. The value store for each location is the
 ///     ID of the old file on that location, or `None` if the file previously does not exist.
 ///   * `children_with_events`: for directory only.
@@ -74,7 +74,7 @@ pub(all) enum FsEvent {
 ///   such as `children_with_events`, should always be in-sync with
 ///   the latest progress of the scan pass.
 ///
-/// - The report pass. This pass consumes `modified_children` and `children_with_events`,
+/// - The report pass. This pass consumes `changed_entries` and `children_with_events`,
 ///   and report the list of events for the user, through the return value of `wait()`.
 ///   Event reporting is not performed during the scan pass,
 ///   because the scan pass may need to rescan already-scanned directory from time to time,
@@ -84,17 +84,42 @@ pub(all) enum FsEvent {
 ///   from parent to children, that's why we need to maintain `children_with_events`
 ///   instead of a global list.
 priv struct WatchedFile {
+  /// A platform dependent "watch-descriptor":
+  /// - for `inotify`, this is the inotify watch descriptor of the file
+  /// - for `kqueue`, this is just a open handle to the file
+  /// - for Windows, this field is meaningless
   wd : @fd_util.Fd
-  // Mount point note: for mount points/symbolic links/reparse points,
-  // `identity` is the file identity of the directory entry in the parent,
-  // not the actual physical identity of the mounted file system/redirected file.
+  /// The identity of this file.
+  ///
+  /// Mount point note: for mount points/symbolic links/reparse points,
+  /// `identity` is the file identity of the directory entry in the parent,
+  /// not the actual physical identity of the mounted file system/redirected file.
   identity : FileIdentity
   paths : Set[(FileIdentity, String)]
   is_dir : Bool
-  children : Map[String, FileIdentity]
+  /// Whether the file itself has been modified since the last query.
+  /// For directory this means the list of files have changed.
+  /// The collect pass set this field while the scan pass reset it after scanning.
+  /// The status of this list should be based on the latest progress of the scan pass.
   mut modified : Bool
-  dirty_children : Map[String, FileIdentity]
-  modified_children : Map[String, FileIdentity?]
+
+  // the following fields are for directory only
+
+  /// The children of a directory, indexed by their file name.
+  /// The status of this map should be based on the latest progress of the scan pass.
+  children : Map[String, FileIdentity]
+  /// The list of children that still need scanning in the scan pass.
+  /// The collect pass add members to this list and the scan pass remove members from it.
+  /// The status of this list should be based on the latest progress of the scan pass.
+  children_to_scan : Map[String, FileIdentity]
+  /// The list of entries whose content have changed since the last query,
+  /// as discovered by the scan pass.
+  /// For entry name the identity of the old file at this location
+  /// (or `None` if the entry did not previously exist) is stored.
+  /// The scan pass set this list, while the report pass consume and clear this list
+  changed_entries : Map[String, FileIdentity?]
+  /// The list of children (recursively) that contain event for the report pass.
+  /// The scan pass set this list, while the report pass consume and clear this list
   children_with_events : Map[String, FileIdentity]
 }
 
@@ -275,8 +300,8 @@ pub async fn Watcher::Watcher(
       is_dir: true,
       children: {},
       modified: true,
-      dirty_children: {},
-      modified_children: {},
+      children_to_scan: {},
+      changed_entries: {},
       children_with_events: {},
     }
     self.watched[root_id] = root
@@ -325,7 +350,7 @@ fn Watcher::emit_events_for_file(
     on_event(None, Modify(path))
   }
   let events : Map[FileIdentity, FsEvent] = {}
-  for name, prev_id in file.modified_children {
+  for name, prev_id in file.changed_entries {
     let curr_id = file.children.get(name)
     let path = rel_path(path, name)
     if prev_id is Some(prev_id) {
@@ -356,7 +381,7 @@ fn Watcher::emit_events_for_file(
       }
     }
   }
-  file.modified_children.clear()
+  file.changed_entries.clear()
   for id, event in events {
     if event is Remove(path) {
       self.emit_remove_event_for_children(id, on_event~, path~)
@@ -389,7 +414,7 @@ fn Watcher::emit_create_event_for_children(
 ) -> Unit {
   let file = self.watched[identity]
   guard file.is_dir else { return }
-  file.modified_children.clear()
+  file.changed_entries.clear()
   file.children_with_events.clear()
   for name, child_id in file.children {
     let path = rel_path(path, name)
@@ -413,7 +438,7 @@ fn Watcher::emit_remove_event_for_children(
 ) -> Unit {
   let file = self.watched[identity]
   guard file.is_dir else { return }
-  file.modified_children.clear()
+  file.changed_entries.clear()
   file.children_with_events.clear()
   for name, child_id in file.children {
     let path = rel_path(path, name)
@@ -516,13 +541,13 @@ pub async fn Watcher::wait_any(self : Watcher) -> Unit {
 
 ///|
 fn WatchedFile::is_clean(file : WatchedFile) -> Bool {
-  !file.modified && file.dirty_children.is_empty()
+  !file.modified && file.children_to_scan.is_empty()
 }
 
 ///|
 fn WatchedFile::has_events(file : WatchedFile) -> Bool {
   !(file.is_dir &&
-  file.modified_children.is_empty() &&
+  file.changed_entries.is_empty() &&
   file.children_with_events.is_empty())
 }
 
@@ -551,8 +576,8 @@ async fn Watcher::get_file_at(
     is_dir,
     children: {},
     modified: is_dir, // new directory need rescan
-    dirty_children: {},
-    modified_children: {},
+    children_to_scan: {},
+    changed_entries: {},
     children_with_events: {},
   }
   self.watched[identity] = new_file
@@ -584,12 +609,12 @@ async fn Watcher::add_file_at(
   dir.children[name] = file.identity
   file.paths.add(location)
   if !file.is_clean() {
-    dir.dirty_children[name] = file.identity
+    dir.children_to_scan[name] = file.identity
   }
-  match dir.modified_children.get(name) {
-    None => dir.modified_children[name] = None
+  match dir.changed_entries.get(name) {
+    None => dir.changed_entries[name] = None
     Some(Some(prev_id)) if prev_id == identity =>
-      dir.modified_children.remove(name)
+      dir.changed_entries.remove(name)
     Some(_) => ()
   }
 }
@@ -604,16 +629,16 @@ fn Watcher::remove_file_at(
   guard curr_id is Some(curr_id) else { return }
   let path = (dir.identity, name)
   dir.children.remove(name)
-  dir.dirty_children.remove(name)
+  dir.children_to_scan.remove(name)
   dir.children_with_events.remove(name)
   let curr = self.watched[curr_id]
   curr.paths.remove(path)
   if curr.paths.is_empty() {
     self.pending_remove.add(curr_id)
   }
-  match dir.modified_children.get(name) {
-    None => dir.modified_children[name] = Some(curr_id)
-    Some(None) => dir.modified_children.remove(name)
+  match dir.changed_entries.get(name) {
+    None => dir.changed_entries[name] = Some(curr_id)
+    Some(None) => dir.changed_entries.remove(name)
     Some(Some(_)) => ()
   }
 }
@@ -693,7 +718,7 @@ async fn Watcher::synchronize_file(
     if file.is_dir {
       self.scan_dir(file, path~, context~)
     }
-  } else if file.dirty_children.iter().next() is Some((name, child_id)) {
+  } else if file.children_to_scan.iter().next() is Some((name, child_id)) {
     let child = self.watched[child_id]
     try
       self.synchronize_file(child, path=rel_path(path, name), context~)
@@ -704,7 +729,7 @@ async fn Watcher::synchronize_file(
     } noraise {
       _ => {
         if child.is_clean() {
-          file.dirty_children.remove(name)
+          file.children_to_scan.remove(name)
         }
         if child.has_events() {
           file.children_with_events[name] = child.identity
@@ -723,7 +748,7 @@ fn Watcher::mark_as_modified(self : Watcher, id : FileIdentity) -> Unit {
     return
   }
   file.modified = true
-  if !file.dirty_children.is_empty() || id == self.root_id {
+  if !file.children_to_scan.is_empty() || id == self.root_id {
     return
   }
   for path in file.paths {
@@ -741,7 +766,7 @@ fn Watcher::add_dirty_child(
 ) -> Unit {
   let dir = self.watched[dir_id]
   let was_clean = dir.is_clean()
-  dir.dirty_children[name] = child_id
+  dir.children_to_scan[name] = child_id
   if was_clean && dir_id != self.root_id {
     for path in dir.paths {
       let (parent, name) = path
@@ -756,7 +781,7 @@ fn Watcher::overflow(self : Watcher) -> Unit {
     file.modified = true
     if file.is_dir {
       for name, id in file.children {
-        file.dirty_children[name] = id
+        file.children_to_scan[name] = id
       }
     }
   }
