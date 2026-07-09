@@ -500,7 +500,6 @@ async test "watch rename inout with child test" {
 
 ///|
 async test "watch horizontal swap" {
-  let log = []
   @async.with_task_group(group => {
     let path = "_build/watch_swap_test"
     let test_dir = Dir({ "file1": File("abcd"), "file2": File("efgh") })
@@ -515,14 +514,22 @@ async test "watch horizontal swap" {
     @fs.rename("\{path}/tmp", "\{path}/file2")
     @async.sleep(10)
     let events = @async.with_timeout(1000, () => watcher.wait())
-    log.push("watcher received change: \{to_repr(events)}")
+    if @event_loop.platform is MacOS {
+      @debug.assert_eq(events, [
+        Remove("file2"),
+        Remove("file1"),
+        Create("file2"),
+        Create("file1"),
+      ])
+    } else {
+      @debug.assert_eq(events, [
+        Remove("file1"),
+        Remove("file2"),
+        Create("file1"),
+        Create("file2"),
+      ])
+    }
   })
-  inspect(
-    log.join("\n"),
-    content=(
-      #|watcher received change: [Remove("file1"), Remove("file2"), Create("file1"), Create("file2")]
-    ),
-  )
 }
 
 ///|
