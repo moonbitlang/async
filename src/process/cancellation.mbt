@@ -13,10 +13,22 @@
 // limitations under the License.
 
 ///|
+#cfg(not(target="wasm"))
 extern "C" fn terminate_process(pid : Int, signal : Int) = "moonbitlang_async_terminate_process"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn terminate_process(pid : Int, signal : Int) = "moonbitlang/async" "process/terminate"
+
+///|
+#cfg(not(target="wasm"))
 extern "C" fn kill_process(pid : Int) = "moonbitlang_async_kill_process"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn kill_process(pid : Int) = "moonbitlang/async" "process/kill"
 
 ///|
 /// A handler function used to stop spawned process on cancellation.
@@ -24,12 +36,11 @@ extern "C" fn kill_process(pid : Int) = "moonbitlang_async_kill_process"
 pub(all) struct CancellationHandler(async (Int) -> Unit)
 
 ///|
-#cfg(platform="windows")
-let default_signal : @signal.Signal = SIGBREAK
-
-///|
-#cfg(not(platform="windows"))
-let default_signal : @signal.Signal = SIGTERM
+let default_signal : @signal.Signal = if @event_loop.platform is Windows {
+  SIGBREAK
+} else {
+  SIGTERM
+}
 
 ///|
 /// A process cancellation handler that first try to gracefully stop the process,

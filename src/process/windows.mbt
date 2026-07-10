@@ -119,6 +119,7 @@ async fn raw_spawn(
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
+  check_process_arguments(cmd, args, extra_env, cwd)
   let cmd = match cmd {
     [.., '.', 'e' | 'E', 'x' | 'X', 'e' | 'E']
     | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
