@@ -68,3 +68,18 @@ async test "wait_pid" {
     ),
   )
 }
+
+///|
+async test "wait exitcode STILL_ACTIVE" {
+  guard @event_loop.platform is Windows else {  }
+  // `259` is the special value for `STILL_ACTIVE`,
+  // wihch is returned by `GetExitCodeProcess` when the process is still running on Windows.
+  // However, 259 can also be a valid exit code,
+  // so we should not use it to determine whether the process has exited or not.
+  inspect(
+    @process.run(shell, ["-c", "exit 259"]),
+    content=(
+      #|259
+    ),
+  )
+}

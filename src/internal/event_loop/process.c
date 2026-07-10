@@ -46,11 +46,8 @@ MOONBIT_FFI_EXPORT
 int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *out) {
 #ifdef _WIN32
 
+  // On Windows, `get_process_result` should only be called when the process has exited.
   BOOL ret = GetExitCodeProcess(handle, out);
-  if (ret && *out == STILL_ACTIVE) {
-    SetLastError(ERROR_IO_PENDING);
-    return -1;
-  }
   return ret ? 0 : - 1;
 
 #else
