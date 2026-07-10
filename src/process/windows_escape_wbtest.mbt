@@ -70,3 +70,28 @@ test "windows command line arg escape" {
     ),
   )
 }
+
+///|
+#cfg(platform="windows")
+test "windows command line arg escape empty" {
+  let test_str = ""
+  inspect(
+    test_arg(test_str),
+    content=(
+      #|""
+    ),
+  )
+}
+
+///|
+#cfg(platform="windows")
+test "windows command line arg escape leading quote" {
+  let test_str =
+    #|"abcd
+  inspect(
+    test_arg(test_str),
+    content=(
+      #|"\"abcd"
+    ),
+  )
+}

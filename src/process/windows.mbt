@@ -57,6 +57,10 @@ fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
   arg : StringView,
 ) -> Unit {
+  if arg is "" {
+    builder.write("\"\"")
+    return
+  }
   // Do not add double quotes if it is unnecessary to do so.
   // This help with simple cases when the program is not using C argv syntax,
   // such as `rundll32.exe`.
@@ -80,8 +84,8 @@ fn StringBuilder::write_arg_with_windows_escape(
       if trailing_backslash > 0 {
         builder.write_string(String::make(trailing_backslash * 2, '\\'))
       }
-      segment_start = index + skip
     }
+    segment_start = index + skip
   }
 
   builder.write_char('"')
