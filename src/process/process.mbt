@@ -396,3 +396,38 @@ pub async fn collect_output_merged(
     (exit_code.wait(), output)
   }
 }
+
+///|
+priv suberror InvalidProcessArgument {
+  InteriorNul(String)
+} derive(Debug)
+
+///|
+fn check_no_nul(
+  context : String,
+  value : StringView,
+) -> Unit raise InvalidProcessArgument {
+  if value.find("\u{0}") is Some(_) {
+    raise InteriorNul(context)
+  }
+}
+
+///|
+fn check_process_arguments(
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env : Map[String, String],
+  cwd : StringView?,
+) -> Unit raise InvalidProcessArgument {
+  check_no_nul("command", cmd)
+  for arg in args {
+    check_no_nul("argument", arg)
+  }
+  for k, v in extra_env {
+    check_no_nul("environment key", k)
+    check_no_nul("environment value", v)
+  }
+  if cwd is Some(cwd) {
+    check_no_nul("working directory", cwd)
+  }
+}

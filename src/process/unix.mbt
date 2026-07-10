@@ -90,6 +90,7 @@ async fn raw_spawn(
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
+  check_process_arguments(cmd, args, extra_env, cwd)
   let cmd = @os_string.encode(cmd)
   let cwd = match cwd {
     None => None

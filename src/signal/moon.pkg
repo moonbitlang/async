@@ -9,5 +9,8 @@ import {
 } for "test"
 
 options(
-  targets: { "signal.mbt": [ "native" ], "signal_test.mbt": [ "native" ] },
+  targets: {
+    "signal.mbt": [ "native", "wasm" ],
+    "signal_test.mbt": [ "native", "wasm" ],
+  },
 )

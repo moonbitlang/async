@@ -11,11 +11,11 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/signal",
   "moonbitlang/async/os_error",
+  "moonbitlang/core/encoding/utf8",
 }
 
 import {
   "moonbitlang/core/env",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/test_util",
@@ -27,17 +27,19 @@ options(
   targets: {
     "basic_test.mbt": [ "native" ],
     "cancel_test.mbt": [ "native" ],
-    "cancellation.mbt": [ "native" ],
+    "cancellation.mbt": [ "native", "wasm" ],
     "commands_for_test.mbt": [ "native" ],
     "cwd_test.mbt": [ "native" ],
     "env_test.mbt": [ "native" ],
     "helper_test.mbt": [ "native" ],
-    "process.mbt": [ "native" ],
-    "redirect.mbt": [ "native" ],
+    "process.mbt": [ "native", "wasm" ],
+    "redirect.mbt": [ "native", "wasm" ],
     "redirect_test.mbt": [ "native" ],
     "spawn_in_group_test.mbt": [ "native" ],
     "unix.mbt": [ "native" ],
+    "wasm.mbt": [ "wasm" ],
     "wait_test.mbt": [ "native" ],
+    "wasm_test.mbt": [ "wasm" ],
     "windows.mbt": [ "native" ],
   },
 )

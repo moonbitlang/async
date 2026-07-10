@@ -55,6 +55,21 @@ fn EventBus::register(
 
 ///|
 #unsafe_skip_stub_check
+fn EventBus::register_pid_ffi(self : EventBus, pid : Int) -> Int = "moonbitlang/async" "event_bus/register_pid"
+
+///|
+/// Return `true` if the PID is successfully registered.
+/// Return `false` if the process has already terminated.
+fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
+  let ret = self.register_pid_ffi(pid)
+  if ret == -1 {
+    @os_error.check_errno("poll_register_pid")
+  }
+  ret > 0
+}
+
+///|
+#unsafe_skip_stub_check
 fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang/async" "event_bus/wait"
 
 ///|
@@ -69,10 +84,8 @@ fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang/asy
 fn Event::fd(event : Event) -> @fd_util.Fd = "moonbitlang/async" "event_bus/event_fd"
 
 ///|
-fn Event::pid(_ : Event) -> Int {
-  // process is not implementend yet on Wasm backend
-  panic()
-}
+#unsafe_skip_stub_check
+fn Event::pid(event : Event) -> Int = "moonbitlang/async" "event_bus/event_pid"
 
 ///|
 #unsafe_skip_stub_check

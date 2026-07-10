@@ -27,7 +27,13 @@ pub fn Process::close(self : Process) -> Unit {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn open_pid_handle(pid : Int) -> @fd_util.Fd = "moonbitlang_async_open_pid_handle"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn open_pid_handle(pid : Int) -> @fd_util.Fd = "moonbitlang/async" "process/open_pid_handle"
 
 ///|
 pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
@@ -48,9 +54,16 @@ pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
 }
 
 ///|
+#cfg(target="native")
 #borrow(out)
 extern "C" fn get_process_result(
   handle : @fd_util.Fd,
   pid : Int,
   out : Ref[Int],
 ) -> Int = "moonbitlang_async_get_process_result"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(out)
+fn get_process_result(handle : @fd_util.Fd, pid : Int, out : Ref[Int]) -> Int = "moonbitlang/async" "process/get_process_result"

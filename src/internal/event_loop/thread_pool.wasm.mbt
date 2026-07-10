@@ -525,3 +525,125 @@ fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo {
 // Job::realpath
 
 // Job::get_realpath_result
+
+///|
+priv struct SpawnJob(Job)
+
+///|
+#unsafe_skip_stub_check
+#borrow(path, cwd)
+fn JobHandle::spawn_unix(
+  path : @os_string.OsString,
+  path_len? : Int = path.to_string().length(),
+  args : UInt64,
+  env~ : UInt64,
+  inherited_env_entry_count~ : Int,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
+  cwd_len? : Int = cwd.to_string().length(),
+  has_cwd~ : Bool,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_spawn_job/unix"
+
+///|
+fn Job::spawn_unix(
+  path : @os_string.OsString,
+  args : UInt64,
+  env~ : UInt64,
+  inherited_env_entry_count~ : Int,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
+  has_cwd~ : Bool,
+) -> SpawnJob {
+  SpawnJob(
+    Job(
+      JobHandle::spawn_unix(
+        path,
+        args,
+        env~,
+        inherited_env_entry_count~,
+        stdin~,
+        stdout~,
+        stderr~,
+        cwd~,
+        has_cwd~,
+      ),
+    ),
+  )
+}
+
+///|
+#unsafe_skip_stub_check
+#borrow(command_line, cwd)
+fn JobHandle::spawn_windows(
+  command_line : @os_string.OsString,
+  command_line_len? : Int = command_line.to_string().length(),
+  env~ : UInt64,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
+  cwd_len? : Int = cwd.to_string().length(),
+  has_cwd~ : Bool,
+  no_console_window~ : Bool,
+  is_orphan~ : Bool,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_spawn_job/windows"
+
+///|
+fn Job::spawn_windows(
+  command_line : @os_string.OsString,
+  env~ : UInt64,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
+  has_cwd~ : Bool,
+  no_console_window~ : Bool,
+  is_orphan~ : Bool,
+) -> SpawnJob {
+  SpawnJob(
+    Job(
+      JobHandle::spawn_windows(
+        command_line,
+        env~,
+        stdin~,
+        stdout~,
+        stderr~,
+        cwd~,
+        has_cwd~,
+        no_console_window~,
+        is_orphan~,
+      ),
+    ),
+  )
+}
+
+///|
+#unsafe_skip_stub_check
+#borrow(job)
+fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/get_spawn_job_result_handle"
+
+///|
+#unsafe_skip_stub_check
+fn JobHandle::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> JobHandle = "moonbitlang/async" "thread_pool/make_wait_for_process_job"
+
+///|
+fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> Job {
+  Job(JobHandle::wait_for_process(handle, pid~))
+}
+
+///|
+#unsafe_skip_stub_check
+#borrow(signals)
+fn JobHandle::sigwait(
+  signals : ReadOnlyArray[Int],
+  signals_len : Int,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_sigwait_job"
+
+///|
+fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job {
+  Job(JobHandle::sigwait(signals, signals.length()))
+}
