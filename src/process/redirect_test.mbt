@@ -19,7 +19,7 @@ async test "merge multiple" {
     let (r, w) = @pipe.pipe()
     root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      inspect(r.read_all().text(), content="abcdefgh")
+      inspect(r.read_all_text(), content="abcdefgh")
     }
     defer w.close()
     @async.with_task_group() <| group => {
@@ -47,7 +47,7 @@ async test "redirect to file" {
     let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
-    @fs.write_file(input_file, "abcd", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, b"abcd", create_mode=CreateOrTruncate)
     let _ = @process.run(
       cat,
       [],
@@ -57,7 +57,7 @@ async test "redirect to file" {
         create_mode=CreateOrTruncate,
       ),
     )
-    inspect(@fs.read_file(output_file).text(), content="abcd")
+    inspect(@utf8.decode(@fs.read_file(output_file)), content="abcd")
   }
 }
 
@@ -73,6 +73,6 @@ async test "merge stdout and stderr" {
       stdout=w,
       stderr=w,
     )
-    inspect(r.read_all().text(), content="abcdefgh")
+    inspect(r.read_all_text(), content="abcdefgh")
   }
 }

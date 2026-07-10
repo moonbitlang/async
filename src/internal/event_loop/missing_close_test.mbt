@@ -26,7 +26,7 @@ test "missing_close" {
       }
       root.spawn_bg() <| () => {
         let data = "abcd"
-        w.write(data)
+        @io.Writer::write_text(w, data)
         log.write_string("written \{data}\n")
       }
     }

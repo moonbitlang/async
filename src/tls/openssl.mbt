@@ -355,7 +355,7 @@ async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
     return ctx
   }
   try {
-    let pem = @fs.read_file(root_cert).text()
+    let pem = @utf8.decode(@fs.read_file(root_cert))
     for cert in decode_pem_certificates(pem) {
       if ctx.add_root_certificate(cert) != 1 {
         raise TlsError(err_get_error())

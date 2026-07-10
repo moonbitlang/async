@@ -472,7 +472,7 @@ pub async fn File::ctime(self : File) -> (Int64, Int) {
 pub async fn read_file(
   path : StringView,
   sync_timestamp? : Bool = false,
-) -> &@io.Data {
+) -> Bytes {
   let file = open(path, mode=ReadOnly)
   defer file.close()
   let result = file.read_all()
@@ -491,7 +491,7 @@ pub async fn read_file(
 #label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn write_file(
   path : StringView,
-  content : &@io.Data,
+  content : BytesView,
   create_mode? : CreateMode,
   permission? : Int,
   sync? : SyncMode = Data,
@@ -523,5 +523,5 @@ pub async fn write_file(
     permission~,
   )
   defer file.close()
-  file.write(content.binary())
+  file.write(content)
 }

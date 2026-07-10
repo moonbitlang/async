@@ -20,7 +20,7 @@ async test "collect_stdout" {
     "\{write_stdout} abcd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcd")
+  inspect(@utf8.decode(output), content="abcd")
 }
 
 ///|
@@ -30,7 +30,7 @@ async test "collect_error" {
     "\{write_stderr} abcd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcd")
+  inspect(@utf8.decode(output), content="abcd")
 }
 
 ///|
@@ -40,8 +40,8 @@ async test "collect_output" {
     "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
-  inspect(stdout.text(), content="abcd")
-  inspect(stderr.text(), content="abcd")
+  inspect(@utf8.decode(stdout), content="abcd")
+  inspect(@utf8.decode(stderr), content="abcd")
 }
 
 ///|
@@ -51,7 +51,7 @@ async test "collect_output_merged" {
     "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="ababcdcd")
+  inspect(@utf8.decode(output), content="ababcdcd")
 }
 
 ///|
@@ -72,7 +72,7 @@ async test "collect_output blocked" {
       stdin=cat_read,
     )
     inspect(code, content="0")
-    inspect(stdout.text(), content="")
-    inspect(stderr.binary().length(), content="1048576")
+    inspect(@utf8.decode(stdout), content="")
+    inspect(stderr.length(), content="1048576")
   }
 }

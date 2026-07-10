@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+test "panic BufferedWriter::new with zero capacity" {
+  ignore(@io.BufferedWriter::new((), size=0))
+}
+
+///|
 async test "BufferedWriter" {
   let log = StringBuilder::new()
   @async.with_task_group() <| fn(root) {
@@ -21,13 +26,13 @@ async test "BufferedWriter" {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log <+ "2 bytes written\n"
-      w.write("ab")
+      w.write_text("ab")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("cd")
+      w.write_text("cd")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("ef")
+      w.write_text("ef")
       w.flush()
     }
     root.spawn_bg() <| () => {

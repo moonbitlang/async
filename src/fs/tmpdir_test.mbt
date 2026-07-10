@@ -28,7 +28,7 @@ async test "tmpdir" {
     assert_true(@fs.exists(t2))
     @fs.write_file(
       "\{t1}/file.txt",
-      "abcd",
+      b"abcd",
       create_mode=CreateNew,
       permission=0o600,
     )

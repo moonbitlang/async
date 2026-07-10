@@ -19,26 +19,41 @@ pub(all) enum Encoding {
 
 ///|
 pub(open) trait Writer {
+  /// `write_once` may accept fewer than `len` bytes, but it must make progress:
+  /// for a non-empty request, its return value must be in `1..=len`.
   async fn write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async fn write(Self, &Data) -> Unit = _
+  async fn write(Self, BytesView) -> Unit = _
+  async fn write_text(Self, StringView) -> Unit = _
+  async fn write_json(Self, Json) -> Unit = _
   async fn write_reader(Self, &Reader) -> Unit = _
 }
 
 ///|
 impl Writer with fn write(self, data) {
-  let view = data.to_bytesview()
-  let start = view.start_offset()
-  let len = view.length()
+  let start = data.start_offset()
+  let len = data.length()
   guard len > 0 else { return }
   let end = start + len
-  let offset = self.write_once(view.data(), offset=start, len~)
-  if offset == end {
-    return
-  }
-  for offset = start + offset; offset < end; {
-    let progress = self.write_once(view.data(), offset~, len=end - offset)
+  for offset = start; offset < end; {
+    let remaining = end - offset
+    let progress = self.write_once(data.data(), offset~, len=remaining)
+    guard progress > 0 && progress <= remaining else {
+      abort("Writer::write_once returned an invalid byte count")
+    }
     continue offset + progress
   }
+}
+
+///|
+/// Encode `text` as UTF-8 and write all encoded bytes.
+impl Writer with fn write_text(self, text) {
+  self.write(@utf8.encode(text))
+}
+
+///|
+/// Serialize `value` as JSON and write its UTF-8 representation.
+impl Writer with fn write_json(self, value) {
+  self.write_text(value.stringify())
 }
 
 ///|

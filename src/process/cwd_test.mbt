@@ -28,8 +28,7 @@ async test "set cwd" {
       guard prev_cwd == new_cwd
     }
     let files = r
-      .read_all()
-      .text()
+      .read_all_text()
       .trim(char_set="\n\r ")
       .replace_all(old="\r\n", new="\n")
       .split("\n")

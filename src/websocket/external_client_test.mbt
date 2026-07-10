@@ -25,9 +25,9 @@ async test "external client" {
         defer ws.close()
         for ;; {
           let msg = ws.recv()
-          let data = msg.read_all().text()
+          let data = msg.read_all_text()
           log.push("\{@debug.to_string(msg.kind)}: \{data}")
-          ws..start_message(msg.kind)..write(data).end_message()
+          ws..start_message(msg.kind)..write_text(data).end_message()
         }
       })
     }
@@ -36,7 +36,7 @@ async test "external client" {
       "ws://localhost:\{port}",
     ])
     inspect(
-      output.text(),
+      @utf8.decode(output),
       content=(
         #|Connection opened
         #|Message from server:  Hello, Server!

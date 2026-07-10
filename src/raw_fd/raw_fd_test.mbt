@@ -91,7 +91,7 @@ async test "pipe as raw fd stream" {
 
 ///|
 async test "file as raw fd" {
-  let truth = @fs.read_file("LICENSE").binary()
+  let truth = @fs.read_file("LICENSE")
   let (io, _) = @event_loop.open(
     "LICENSE",
     0,
@@ -121,7 +121,7 @@ async test "file as raw fd" {
 
 ///|
 async test "file as raw fd stream" {
-  let truth = @fs.read_file("LICENSE").binary()
+  let truth = @fs.read_file("LICENSE")
   let (io, _) = @event_loop.open(
     "LICENSE",
     0,
@@ -136,7 +136,7 @@ async test "file as raw fd stream" {
   let file = @raw_fd.RawFdStream(fd)
   defer file.close()
   assert_true(@event_loop.kind_of_fd(fd, context="kind_of_fd") is Regular)
-  let actual = file.read_all().binary()
+  let actual = file.read_all()
   assert_eq(actual.length(), truth.length())
   assert_eq(truth, actual)
 }

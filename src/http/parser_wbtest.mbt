@@ -39,15 +39,15 @@ async test "read_request basic" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      .write("User-Agent: MoonBit\r\n\r\n")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      .write_text("User-Agent: MoonBit\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -68,17 +68,17 @@ async test "read_request fixed body" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Content-Length: 7\r\n\r\n")
-      .write("message")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      ..write_text("Content-Length: 7\r\n\r\n")
+      .write_text("message")
     }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -99,17 +99,17 @@ async test "read_request fixed body early EOF" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Content-Length: 8\r\n\r\n")
-      .write("message")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      ..write_text("Content-Length: 8\r\n\r\n")
+      .write_text("message")
     }
     defer r.close()
     let input = Reader::new(r)
     let _request = input.read_request()
     debug_inspect(
-      @test_util.expect_error_async(() => input.read_all().binary()),
+      @test_util.expect_error_async(() => input.read_all()),
       content=(
         #|ReaderClosed
       ),
@@ -125,21 +125,21 @@ async test "read_request chunked" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Transfer-Encoding: chunked\r\n\r\n")
-      ..write("4\r\n")
-      ..write("abcd\r\n")
-      ..write("10\r\n")
-      ..write("abcdefghijklmnop\r\n")
-      .write("0\r\n\r\n")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      ..write_text("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_text("4\r\n")
+      ..write_text("abcd\r\n")
+      ..write_text("10\r\n")
+      ..write_text("abcdefghijklmnop\r\n")
+      .write_text("0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -161,20 +161,20 @@ async test "read_request stream" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      .write("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      .write_text("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nabcd\r\n")
+      w.write_text("4\r\nabcd\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nefgh\r\n")
+      w.write_text("4\r\nefgh\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nijkl\r\n")
-      w.write("0\r\n\r\n")
+      w.write_text("4\r\nijkl\r\n")
+      w.write_text("0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -211,36 +211,36 @@ async test "multiple request" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: x.y.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      .write("Transfer-Encoding: chunked\r\n\r\n")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: x.y.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      .write_text("Transfer-Encoding: chunked\r\n\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nabcd\r\n")
+      w.write_text("4\r\nabcd\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nefgh\r\n")
+      w.write_text("4\r\nefgh\r\n")
       @async.sleep(50)
       log <+ "writing data...\n"
-      w.write("4\r\nijkl\r\n")
-      w.write("0\r\n\r\n")
+      w.write_text("4\r\nijkl\r\n")
+      w.write_text("0\r\n\r\n")
       @async.sleep(50)
       w
-      ..write("GET / HTTP/1.1\r\n")
-      ..write("Host: z.w.org\r\n")
-      ..write("User-Agent: MoonBit\r\n")
-      ..write("Content-Length: 8\r\n\r\n")
-      .write("message2")
+      ..write_text("GET / HTTP/1.1\r\n")
+      ..write_text("Host: z.w.org\r\n")
+      ..write_text("User-Agent: MoonBit\r\n")
+      ..write_text("Content-Length: 8\r\n\r\n")
+      .write_text("message2")
     }
     defer r.close()
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log..write_string(input.read_all().text()).write_string("\n\n=========\n\n")
+    log..write_string(input.read_all_text()).write_string("\n\n=========\n\n")
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -273,9 +273,9 @@ async test "read_response basic" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Content-Length: 7\r\n\r\n")
-      .write("message")
+      ..write_text("HTTP/1.1 200 OK\r\n")
+      ..write_text("Content-Length: 7\r\n\r\n")
+      .write_text("message")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -284,7 +284,7 @@ async test "read_response basic" {
       auto_decompress=true,
     )
     log_response(response, log)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -304,12 +304,12 @@ async test "read_response passthrough fallback (no length headers)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Connection: close\r\n")
-      ..write("Content-Type: text/plain\r\n\r\n")
+      ..write_text("HTTP/1.1 200 OK\r\n")
+      ..write_text("Connection: close\r\n")
+      ..write_text("Content-Type: text/plain\r\n\r\n")
       // No Content-Length or Transfer-Encoding
       // Body ends when connection closes
-      .write("Hello, World!")
+      .write_text("Hello, World!")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -320,7 +320,7 @@ async test "read_response passthrough fallback (no length headers)" {
     log_response(response, log)
 
     // Read body via PassThrough fallback (reads until EOF/connection close)
-    log.write_string(input.read_all().text())
+    log.write_string(input.read_all_text())
   }
   inspect(
     log.to_string(),
@@ -341,9 +341,9 @@ async test "read_response 204 No Content (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 204 No Content\r\n")
-      ..write("Connection: keep-alive\r\n")
-      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      ..write_text("HTTP/1.1 204 No Content\r\n")
+      ..write_text("Connection: keep-alive\r\n")
+      .write_text("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 204 responses MUST NOT contain a message body
       // Connection remains open for next request
     }
@@ -355,7 +355,7 @@ async test "read_response 204 No Content (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not PassThrough
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -378,9 +378,9 @@ async test "read_response 205 Reset Content (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 205 Reset Content\r\n")
-      ..write("Connection: keep-alive\r\n")
-      .write("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
+      ..write_text("HTTP/1.1 205 Reset Content\r\n")
+      ..write_text("Connection: keep-alive\r\n")
+      .write_text("Date: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n")
       // 205 responses MUST NOT contain a message body
       // Connection remains open for next request
     }
@@ -392,7 +392,7 @@ async test "read_response 205 Reset Content (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -415,10 +415,10 @@ async test "read_response 304 Not Modified (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 304 Not Modified\r\n")
-      ..write("Connection: keep-alive\r\n")
-      ..write("ETag: \"abc123\"\r\n")
-      .write("Cache-Control: max-age=3600\r\n\r\n")
+      ..write_text("HTTP/1.1 304 Not Modified\r\n")
+      ..write_text("Connection: keep-alive\r\n")
+      ..write_text("ETag: \"abc123\"\r\n")
+      .write_text("Cache-Control: max-age=3600\r\n\r\n")
       // 304 responses MUST NOT contain a message body
     }
     defer r.close()
@@ -428,7 +428,7 @@ async test "read_response 304 Not Modified (no body)" {
       auto_decompress=true,
     )
     log_response(response, log)
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -452,8 +452,8 @@ async test "read_response 100 Continue (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 100 Continue\r\n")
-      .write("\r\n")
+      ..write_text("HTTP/1.1 100 Continue\r\n")
+      .write_text("\r\n")
       // 1xx responses MUST NOT contain a message body
     }
     defer r.close()
@@ -463,7 +463,7 @@ async test "read_response 100 Continue (no body)" {
       auto_decompress=true,
     )
     log_response(response, log)
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -484,8 +484,8 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 Connection Established\r\n")
-      .write("\r\n")
+      ..write_text("HTTP/1.1 200 Connection Established\r\n")
+      .write_text("\r\n")
       // Successful CONNECT responses switch to tunnel mode
       // Connection remains open for tunneled traffic
     }
@@ -497,7 +497,7 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -518,10 +518,10 @@ async test "read_response HEAD 200 (no body)" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Content-Length: 1234\r\n")
-      ..write("Content-Type: text/html\r\n")
-      .write("\r\n")
+      ..write_text("HTTP/1.1 200 OK\r\n")
+      ..write_text("Content-Length: 1234\r\n")
+      ..write_text("Content-Type: text/html\r\n")
+      .write_text("\r\n")
       // HEAD responses never have a body, even with Content-Length
       // Connection remains open for next request
     }
@@ -533,7 +533,7 @@ async test "read_response HEAD 200 (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not Fixed(1234)
-    let body_text = input.read_all().text()
+    let body_text = input.read_all_text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -758,23 +758,23 @@ async test "gzip split between chunks" {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
       defer w.close()
-      @gzip_stream.Encoder(w)..write("A simple message to compress").end()
+      @gzip_stream.Encoder(w)..write_text("A simple message to compress").end()
     }
     defer r.close()
-    r.read_all().binary()
+    r.read_all()
   })
   let (r, w) = @io.pipe()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Transfer-Encoding: Chunked\r\n")
-      .write("Content-Encoding: gzip\r\n\r\n")
+      ..write_text("HTTP/1.1 200 OK\r\n")
+      ..write_text("Transfer-Encoding: Chunked\r\n")
+      .write_text("Content-Encoding: gzip\r\n\r\n")
       for i in 0..<compressed.length() {
-        w..write("1\r\n")..write(compressed[i:i + 1]).write("\r\n")
+        w..write_text("1\r\n")..write(compressed[i:i + 1]).write_text("\r\n")
       }
-      w.write("0\r\n\r\n")
+      w.write_text("0\r\n\r\n")
     }
     defer r.close()
     let r = Reader::new(r)
@@ -784,7 +784,7 @@ async test "gzip split between chunks" {
     )
     inspect(response.code, content="200")
     inspect(
-      r.read_all().text(),
+      r.read_all_text(),
       content=(
         #|A simple message to compress
       ),
@@ -799,16 +799,18 @@ async test "read_response parse cookie" {
     group.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Set-Cookie: Cookie1=value1\r\n")
-      ..write(
+      ..write_text("HTTP/1.1 200 OK\r\n")
+      ..write_text("Set-Cookie: Cookie1=value1\r\n")
+      ..write_text(
         "Set-Cookie: Cookie2=value2; Path=/path/to/xxx; Max-Age=420000; Secure\r\n",
       )
-      ..write(
+      ..write_text(
         "Set-Cookie: Cookie3=value3; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Domain=example.moonbitlang.com; HttpOnly\r\n",
       )
-      ..write("Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n")
-      .write("Content-Length: 0\r\n\r\n")
+      ..write_text(
+        "Set-Cookie: Cookie4=value four; ExtNoArg; ExtWithArg=xxx\r\n",
+      )
+      .write_text("Content-Length: 0\r\n\r\n")
     }
     defer r.close()
     let input = Reader::new(r)

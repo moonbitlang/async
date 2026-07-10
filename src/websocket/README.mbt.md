@@ -63,7 +63,7 @@ async test "WebSocket client example" {
     defer ws.close()
     // convenient helper for sending small text message
     ws.send_text("abcd")
-    inspect(ws.recv().read_all().text(), content="abcd")
+    inspect(ws.recv().read_all_text(), content="abcd")
     // gracefully terminate the WebSocket tunnel
     ws.send_close()
   })

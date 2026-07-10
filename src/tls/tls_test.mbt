@@ -84,7 +84,7 @@ async test "one way" {
       @async.sleep(50)
       client.write(b"ijkl")
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(client.read_all_text(), content="")
     }
   }
   inspect(
@@ -137,7 +137,7 @@ async test "echo" {
         @async.sleep(50)
       }
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(client.read_all_text(), content="")
     }
   }
   inspect(
@@ -299,7 +299,7 @@ async test "client custom root certificate" {
       defer client.close()
       client.write(b"ok")
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(client.read_all_text(), content="")
     }
   }
 }

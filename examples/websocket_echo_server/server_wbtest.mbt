@@ -21,11 +21,11 @@ async test "test server" {
     client.send_binary(b"abcd")
     let msg = client.recv()
     debug_inspect(msg.kind, content="Binary")
-    inspect(msg.read_all().text(), content="abcd")
+    inspect(msg.read_all_text(), content="abcd")
     client.send_text("abcd")
     let msg = client.recv()
     debug_inspect(msg.kind, content="Text")
-    inspect(msg.read_all().text(), content="abcd")
+    inspect(msg.read_all_text(), content="abcd")
     client.send_close()
   }
 }

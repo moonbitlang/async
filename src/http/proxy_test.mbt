@@ -40,7 +40,7 @@ async test "passthrough mode" {
     client.enter_passthrough_mode()
     for packet in ["abcd", "efgh", "ijkl"] {
       log.push("client sending: \{packet}")
-      client.write(packet)
+      client.write_text(packet)
       @async.sleep(200)
     }
   }
@@ -64,13 +64,13 @@ async test "passthrough mode remaining data" {
       debug_inspect(request.meth, content="Get")
       inspect(request.path, content="/")
       conn.enter_passthrough_mode()
-      inspect(conn.read_all().text(), content="remaining data")
+      inspect(conn.read_all_text(), content="remaining data")
     }
     let client = @socket.Tcp::connect(
       @socket.Addr::parse("127.0.0.1:\{server_addr.port()}"),
     )
     defer client.close()
-    client.write("GET / HTTP/1.1\r\n\r\nremaining data")
+    client.write_text("GET / HTTP/1.1\r\n\r\nremaining data")
   }
 }
 
@@ -124,7 +124,7 @@ async test "proxied https request" {
       "https://www.moonbitlang.com",
       proxy=@http.Client("http://localhost:\{port}"),
     )
-    assert_true(result.text().has_prefix("<!doctype html>"))
+    assert_true(@utf8.decode(result).has_prefix("<!doctype html>"))
   }
   json_inspect(log, content=[
     "proxy server: connected to www.moonbitlang.com:443 successfully",
@@ -146,7 +146,7 @@ async test "proxied http request" {
       "http://www.example.org",
       proxy=@http.Client("http://localhost:\{port}"),
     )
-    assert_true(result.text().has_prefix("<!doctype html>"))
+    assert_true(@utf8.decode(result).has_prefix("<!doctype html>"))
   }
   json_inspect(log, content=[
     "proxy server: connected to www.example.org:80 successfully",
@@ -171,7 +171,7 @@ async test "proxied misc request" {
         let conn = @http.ServerConnection::new(conn)
         for ;; {
           let request = conn.read_request()
-          let body = conn.read_all().text()
+          let body = conn.read_all_text()
           log.push(
             "target server: received request \{@debug.to_string(request.meth)} \{request.path} \{body}",
           )
@@ -184,8 +184,8 @@ async test "proxied misc request" {
     }
 
     let _ = @http.get("http://localhost:\{port}", proxy=proxy())
-    let _ = @http.put("http://localhost:\{port}", "abcd", proxy=proxy())
-    let _ = @http.post("http://localhost:\{port}", "efgh", proxy=proxy())
+    let _ = @http.put("http://localhost:\{port}", b"abcd", proxy=proxy())
+    let _ = @http.post("http://localhost:\{port}", b"efgh", proxy=proxy())
   }
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")

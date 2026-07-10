@@ -23,7 +23,7 @@ async test "write large data" {
     }
     root.spawn_bg() <| () => {
       defer r.close()
-      inspect(r.read_all().binary().length(), content="16384")
+      inspect(r.read_all().length(), content="16384")
     }
   }
 }
@@ -104,14 +104,60 @@ async test "write cancel" {
 }
 
 ///|
-async test "write_string" {
+async test "write_text" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg() <| () => {
       defer w.close()
-      w.write("abcd中文☺")
+      w.write_text("abcd中文☺")
     }
-    inspect(r.read_all().text(), content="abcd中文☺")
+    inspect(r.read_all_text(), content="abcd中文☺")
+  }
+}
+
+///|
+struct ShortWriter {
+  logger : &Logger
+}
+
+///|
+impl @io.Writer for ShortWriter with fn write_once(self, buf, offset~, len~) {
+  let written = @cmp.minimum(len, 2)
+  self.logger <+
+    "\{offset}:\{len}:\{@utf8.decode(buf[offset:offset + written])}\n"
+  written
+}
+
+///|
+async test "write a non-zero-offset byte view through short writes" {
+  let log = StringBuilder::new()
+  let writer : ShortWriter = { logger: log }
+  let data = b"__payload__"
+  writer.write(data[2:2])
+  writer.write(data[2:9])
+  writer.write(data[9:9])
+  inspect(
+    log.to_string(),
+    content=(
+      #|2:7:pa
+      #|4:5:yl
+      #|6:3:oa
+      #|8:1:d
+      #|
+    ),
+  )
+}
+
+///|
+async test "write and read JSON explicitly" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w.write_json({ "answer": 42, "ok": true })
+    }
+    json_inspect(r.read_all_json(), content={ "answer": 42, "ok": true })
   }
 }

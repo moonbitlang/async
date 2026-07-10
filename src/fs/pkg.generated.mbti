@@ -35,7 +35,7 @@ pub async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, cr
 
 pub async fn opendir(StringView) -> Directory
 
-pub async fn read_file(StringView, sync_timestamp? : Bool) -> &@io.Data
+pub async fn read_file(StringView, sync_timestamp? : Bool) -> Bytes
 
 pub async fn readdir(StringView, include_hidden? : Bool, include_special? : Bool, sort? : Bool) -> Array[String]
 
@@ -55,7 +55,7 @@ pub async fn walk(StringView, async (String, Array[String]) -> Unit, exclude? : 
 
 #label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
 #label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
-pub async fn write_file(StringView, &@io.Data, create_mode? : CreateMode, permission? : Int, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+pub async fn write_file(StringView, BytesView, create_mode? : CreateMode, permission? : Int, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
 
 // Errors
 

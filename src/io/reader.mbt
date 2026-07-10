@@ -23,7 +23,9 @@ pub(open) trait Reader {
   async fn drop(Self, Int) -> Int = _
   async fn read_exactly(Self, len : Int) -> Bytes = _
   async fn read_some(Self, max_len? : Int) -> Bytes? = _
-  async fn read_all(Self) -> &Data = _
+  async fn read_all(Self) -> Bytes = _
+  async fn read_all_text(Self) -> String = _
+  async fn read_all_json(Self) -> Json = _
   async fn read_until(Self, StringView) -> String? = _
 }
 
@@ -141,8 +143,7 @@ impl Reader with fn read_some(self, max_len?) {
 
 ///|
 /// Read all remaining content from the reader.
-/// The return value is a `&io.Data` object, which can be converted to different formats
-/// using `.binary()`, `.text()` or `.json()`.
+/// The return value contains the raw bytes read from the stream.
 impl Reader with fn read_all(self) {
   let buffer_list = []
   let mut buffer = FixedArray::make(1024, b'0')
@@ -163,6 +164,18 @@ impl Reader with fn read_all(self) {
   }
   result.unsafe_blit(buffer_list.length() * 1024, buffer, 0, offset)
   result.unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// Read all remaining content and decode it as UTF-8 text.
+impl Reader with fn read_all_text(self) {
+  @utf8.decode(self.read_all())
+}
+
+///|
+/// Read all remaining content, decode it as UTF-8, and parse it as JSON.
+impl Reader with fn read_all_json(self) {
+  self.read_all_text() |> @json.parse
 }
 
 ///|

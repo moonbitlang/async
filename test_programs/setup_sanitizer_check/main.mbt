@@ -47,7 +47,7 @@ async fn main {
     for file in files {
       guard file is "moon.pkg" else {  }
       let full_path = "\{path}/\{file}"
-      let content = @fs.read_file(full_path).text().split("\n")
+      let content = @utf8.decode(@fs.read_file(full_path)).split("\n")
       let transformed = StringBuilder::new()
       let mut found = false
       for line in content {
@@ -63,7 +63,7 @@ async fn main {
         ..write_string(link_config)
         .write_string("\n)")
       }
-      @fs.write_file(full_path, transformed.to_string())
+      @fs.write_file(full_path, @utf8.encode(transformed.to_string()))
     }
   })
 }

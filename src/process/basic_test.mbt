@@ -23,8 +23,7 @@ async test "basic_ls" {
     })
     |> ignore
     let files = r
-      .read_all()
-      .text()
+      .read_all_text()
       .trim(char_set="\n\r ")
       .replace_all(old="\r\n", new="\n")
       .split("\n")
@@ -49,7 +48,7 @@ async test "basic_cat" {
     }
     group.spawn_bg() <| () => {
       defer we_read.close()
-      inspect(we_read.read_all().text(), content="abcdefgh")
+      inspect(we_read.read_all_text(), content="abcdefgh")
     }
   }
 }
@@ -58,7 +57,7 @@ async test "basic_cat" {
 #cfg(platform="windows")
 async test "execute .com file" {
   let (_, output) = @process.collect_stdout("chcp.com", [])
-  guard output.binary().chop_suffix(b"\r\n") is Some(output) &&
+  guard output.chop_suffix(b"\r\n") is Some(output) &&
     output.rev_find(b" ") is Some(index) &&
     index + 1 < output.length() else {
     fail("invalid output format from chcp")

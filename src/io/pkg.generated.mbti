@@ -47,16 +47,6 @@ pub fn ReaderBuffer::new() -> Self
 // Type aliases
 
 // Traits
-trait Data
-pub impl Data for String
-pub impl Data for Bytes
-pub impl Data for Json
-pub impl Data for BytesView
-pub impl Data for StringView
-pub fn &Data::binary(Self) -> Bytes
-pub fn &Data::json(Self) -> Json raise
-pub fn &Data::text(Self) -> String raise
-
 pub(open) trait Reader {
   fn _get_internal_buffer(Self) -> ReaderBuffer
   async fn _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
@@ -64,13 +54,17 @@ pub(open) trait Reader {
   async fn drop(Self, Int) -> Int = _
   async fn read_exactly(Self, Int) -> Bytes = _
   async fn read_some(Self, max_len? : Int) -> Bytes? = _
-  async fn read_all(Self) -> &Data = _
+  async fn read_all(Self) -> Bytes = _
+  async fn read_all_text(Self) -> String = _
+  async fn read_all_json(Self) -> Json = _
   async fn read_until(Self, StringView) -> String? = _
 }
 
 pub(open) trait Writer {
   async fn write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-  async fn write(Self, &Data) -> Unit = _
+  async fn write(Self, BytesView) -> Unit = _
+  async fn write_text(Self, StringView) -> Unit = _
+  async fn write_json(Self, Json) -> Unit = _
   async fn write_reader(Self, &Reader) -> Unit = _
 }
 

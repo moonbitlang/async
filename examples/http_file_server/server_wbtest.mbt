@@ -32,7 +32,7 @@ async fn client(
   let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger <+ "\{conn.read_all().text()}"
+    None => logger <+ "\{conn.read_all_text()}"
     Some(f) => f(conn)
   }
 }

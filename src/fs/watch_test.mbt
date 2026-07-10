@@ -21,7 +21,8 @@ enum TestFile {
 ///|
 async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
   match self {
-    File(content) => @fs.write_file(path, content, create_mode=CreateOrTruncate)
+    File(content) =>
+      @fs.write_file(path, @utf8.encode(content), create_mode=CreateOrTruncate)
     Dir(files) => {
       @fs.mkdir(path)
       for name, file in files {
@@ -57,14 +58,14 @@ async fn watch_basic_test(
     })
     // 1. modify content of existing file at root
     log.push("writing to root file")
-    @fs.write_file("\{path}/root_file", "ABCD", create_mode=OpenExisting)
+    @fs.write_file("\{path}/root_file", b"ABCD", create_mode=OpenExisting)
     @async.sleep(150)
 
     // 2. modify content of existing file at inner directory
     log.push("writing to inner file")
     @fs.write_file(
       "\{path}/inner_dir/inner_file",
-      "EFGH",
+      b"EFGH",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -78,7 +79,7 @@ async fn watch_basic_test(
 
       // 4. modify content of newly created file at root directory
       log.push("writing to newly created root file")
-      file.write("ABCD")
+      file.write_text("ABCD")
     }
     @async.sleep(150)
 
@@ -91,7 +92,7 @@ async fn watch_basic_test(
 
       // 6. modify content of newly created file at inner directory
       log.push("writing to newly created inner file")
-      file.write("EFGH")
+      file.write_text("EFGH")
     }
     @async.sleep(150)
 
@@ -124,7 +125,7 @@ async fn watch_basic_test(
 
       // 12. modify content of newly created file at newly created inner directory
       log.push("writing to newly created inner file")
-      file.write("EFGH")
+      file.write_text("EFGH")
     }
     @async.sleep(150)
   })
@@ -238,7 +239,7 @@ async fn watch_rename_within_test(
     log.push("writing to inner_dir/inner_file2")
     @fs.write_file(
       "\{path}/inner_dir/inner_file2",
-      "efgh",
+      b"efgh",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -252,7 +253,7 @@ async fn watch_rename_within_test(
     log.push("writing to inner_dir2/inner_file2")
     @fs.write_file(
       "\{path}/inner_dir2/inner_file2",
-      "EFGH",
+      b"EFGH",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -264,7 +265,7 @@ async fn watch_rename_within_test(
 
     // 6. modify file moved across directory but still within watched tree
     log.push("writing to root_file2")
-    @fs.write_file("\{path}/root_file2", "EFGH", create_mode=OpenExisting)
+    @fs.write_file("\{path}/root_file2", b"EFGH", create_mode=OpenExisting)
     @async.sleep(150)
 
     // 7. rename file replaces existing file
@@ -357,7 +358,7 @@ async fn watch_rename_inout_test(
       }
     })
     // 1. move foreign file inside watched tree
-    @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
+    @fs.write_file("\{base_path}/foreign_file", b"1234", create_mode=CreateNew)
     log.push("moving foreign file inside watched tree")
     @fs.rename("\{base_path}/foreign_file", "\{watched_path}/moved_in_file")
     @async.sleep(150)
@@ -366,7 +367,7 @@ async fn watch_rename_inout_test(
     log.push("writing to moved_in_file")
     @fs.write_file(
       "\{watched_path}/moved_in_file",
-      "5678",
+      b"5678",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -382,7 +383,7 @@ async fn watch_rename_inout_test(
     log.push("writing to moved_in_dir/foreign_file")
     @fs.write_file(
       "\{watched_path}/moved_in_dir/foreign_file",
-      "XYZW",
+      b"XYZW",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -396,7 +397,7 @@ async fn watch_rename_inout_test(
     log.push("writing to moved_out_file")
     @fs.write_file(
       "\{base_path}/moved_out_file",
-      "1234",
+      b"1234",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -415,7 +416,7 @@ async fn watch_rename_inout_test(
     log.push("writing to moved_out_dir/foreign_file")
     @fs.write_file(
       "\{base_path}/moved_out_dir/foreign_file",
-      "xyzw",
+      b"xyzw",
       create_mode=OpenExisting,
     )
     @async.sleep(150)
@@ -427,7 +428,7 @@ async fn watch_rename_inout_test(
 
     // 11. moved in file overwrites existing file
     log.push("renaming foreign file to replace root_file")
-    @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
+    @fs.write_file("\{base_path}/foreign_file", b"1234", create_mode=CreateNew)
     @fs.rename("\{base_path}/foreign_file", "\{watched_path}/root_file")
     @async.sleep(150)
 
@@ -559,11 +560,11 @@ async fn watch_vertical_swap_test(
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{to_repr(events)}")
     log.push("modifying previous outer file")
-    @fs.write_file("\{path}/outer/inner/file", "ABCD")
+    @fs.write_file("\{path}/outer/inner/file", b"ABCD")
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{to_repr(events)}")
     log.push("modifying previous inner file")
-    @fs.write_file("\{path}/outer/file", "EFGH")
+    @fs.write_file("\{path}/outer/file", b"EFGH")
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{to_repr(events)}")
   })
@@ -639,12 +640,12 @@ async test "watch ignored path" {
 
     // 1. modify file in ignored path
     log.push("writing to ignored/file")
-    @fs.write_file("\{path}/ignored/file", "ABCD", create_mode=OpenExisting)
+    @fs.write_file("\{path}/ignored/file", b"ABCD", create_mode=OpenExisting)
     @async.sleep(150)
 
     // 2. modify file in normal path
     log.push("writing to normal/file")
-    @fs.write_file("\{path}/normal/file", "EFGH", create_mode=OpenExisting)
+    @fs.write_file("\{path}/normal/file", b"EFGH", create_mode=OpenExisting)
     @async.sleep(150)
 
     // 3. create file in ignored directory
@@ -656,7 +657,7 @@ async test "watch ignored path" {
 
       // 4. modify content of newly created file at ignored directory
       log.push("writing to newly created file in ignored directory")
-      file.write("ABCD")
+      file.write_text("ABCD")
     }
     @async.sleep(150)
 
@@ -669,7 +670,7 @@ async test "watch ignored path" {
 
       // 6. modify content of newly created file at normal directory
       log.push("writing to newly created file in normal directory")
-      file.write("EFGH")
+      file.write_text("EFGH")
     }
     @async.sleep(150)
 
@@ -707,7 +708,7 @@ async test "watch ignored path" {
 
       // 13. create new file in re-created ignored path
       log.push("writing to newly created file in ignored directory")
-      file.write("ABCD")
+      file.write_text("ABCD")
     }
     @async.sleep(150)
 
@@ -725,7 +726,7 @@ async test "watch ignored path" {
 
       // 16. create new file in re-created normal path
       log.push("writing to newly created file in normal directory")
-      file.write("EFGH")
+      file.write_text("EFGH")
     }
     @async.sleep(150)
   })

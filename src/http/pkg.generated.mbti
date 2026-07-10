@@ -10,16 +10,16 @@ import {
 
 // Values
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
-pub async fn get(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data)
+pub async fn get(String, headers? : Map[String, String], body? : BytesView, proxy? : Client) -> (Response, Bytes)
 
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
-pub async fn get_stream(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, Client)
+pub async fn get_stream(String, headers? : Map[String, String], body? : BytesView, proxy? : Client) -> (Response, Client)
 
-pub async fn post(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data)
+pub async fn post(String, BytesView, headers? : Map[String, String], proxy? : Client) -> (Response, Bytes)
 
 pub async fn post_stream(String, headers? : Map[String, String], proxy? : Client) -> Client
 
-pub async fn put(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data)
+pub async fn put(String, BytesView, headers? : Map[String, String], proxy? : Client) -> (Response, Bytes)
 
 pub async fn put_stream(String, headers? : Map[String, String], proxy? : Client) -> Client
 
@@ -57,9 +57,9 @@ pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
-pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response
-pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
-pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response
+pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : BytesView) -> Response
+pub async fn Client::post(Self, String, BytesView, extra_headers? : Map[String, String]) -> Response
+pub async fn Client::put(Self, String, BytesView, extra_headers? : Map[String, String]) -> Response
 pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[String, String]) -> Unit
 pub async fn Client::skip_response_body(Self) -> Unit
 pub impl @io.Reader for Client
@@ -141,7 +141,7 @@ pub async fn ServerConnection::read_request(Self) -> Request
 pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String], cookies? : Array[Cookie]) -> Unit
 pub async fn ServerConnection::skip_request_body(Self) -> Unit
 pub async fn ServerConnection::write_string(Self, String) -> Unit
-pub async fn ServerConnection::write_string_interpolation(Self, &@io.Data) -> Unit
+pub async fn ServerConnection::write_string_interpolation(Self, &Show) -> Unit
 pub impl @io.Reader for ServerConnection
 pub impl @io.Writer for ServerConnection
 

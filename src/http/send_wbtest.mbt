@@ -27,7 +27,7 @@ async test "send_request basic" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -57,7 +57,7 @@ async test "send_request stream" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -310,16 +310,16 @@ async test "send_request stream2" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      sender.write("abcd")
+      sender.write_text("abcd")
       @async.sleep(50)
-      sender.write("efgh")
+      sender.write_text("efgh")
       @async.sleep(50)
-      sender.write("ijkl")
+      sender.write_text("ijkl")
       sender.end_body()
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -357,7 +357,7 @@ async test "send invalid header" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -388,14 +388,14 @@ async test "send fixed length" {
         "Content-Length": total_size.to_string(),
       })
       sender
-      ..write(header)
+      ..write_text(header)
       ..write_reader(license_file)
-      ..write(trailer)
+      ..write_text(trailer)
       .end_body()
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Content-Length: 11397\r
@@ -717,7 +717,7 @@ async test "send_response cookies" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 OK\r
         #|Set-Cookie: Cookie1=value1\r
@@ -740,7 +740,7 @@ async test "send_request empty body" {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers={})
-      sender..write("").end_body()
+      sender..write_text("").end_body()
       let _ = sender.send_request(Head, "/", extra_headers={})
       sender.end_body()
       let _ = sender.send_request(Post, "/", extra_headers={})
@@ -748,7 +748,7 @@ async test "send_request empty body" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Accept-Encoding: gzip,identity\r
@@ -776,17 +776,17 @@ async test "send_response empty body" {
       let _ = sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
       let _ = sender.send_response(200, "OK", cookies=[], request_method=Head, extra_headers={})
-      sender..write("").end_body()
+      sender..write_text("").end_body()
       let _ = sender.send_response(102, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
       let _ = sender.send_response(204, "OK", cookies=[], request_method=Get, extra_headers={})
-      sender..write("").end_body()
+      sender..write_text("").end_body()
       let _ = sender.send_response(304, "OK", cookies=[], request_method=Get, extra_headers={})
       sender.end_body()
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 OK\r
         #|Content-Length: 0\r
@@ -820,7 +820,7 @@ async test "sender persistent header" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r

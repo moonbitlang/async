@@ -15,13 +15,13 @@
 ///|
 async test "https request" {
   let (_, result) = @http.get("https://www.moonbitlang.com")
-  assert_true(result.text().has_prefix("<!doctype html>"))
+  assert_true(@utf8.decode(result).has_prefix("<!doctype html>"))
 }
 
 ///|
 async test "http request" {
   let (_, result) = @http.get("http://www.example.org")
-  assert_true(result.text().has_prefix("<!doctype html>"))
+  assert_true(@utf8.decode(result).has_prefix("<!doctype html>"))
 }
 
 ///|
@@ -65,7 +65,7 @@ async test "manual Accept-Encoding" {
     let (_, result2) = @http.get("http://\{test_server.addr}", headers={
       "Accept-Encoding": "gzip",
     })
-    assert_not_eq(result1.binary().length(), result2.binary().length())
+    assert_not_eq(result1.length(), result2.length())
     json_inspect(log, content=[
       "server received: Some(\"gzip,identity\")", "server received: Some(\"gzip\")",
     ])

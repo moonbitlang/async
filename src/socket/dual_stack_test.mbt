@@ -31,7 +31,7 @@ async test "Only_V4 server" {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
-        let msg = conn.read_all().text()
+        let msg = conn.read_all_text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       })
     }
@@ -42,7 +42,7 @@ async test "Only_V4 server" {
         err => raise err
       }
       defer conn.close()
-      conn.write("message")
+      conn.write_text("message")
     }
 
     for protocol in all_protocol_preferences {
@@ -88,7 +88,7 @@ async test "Only_V6 server" {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
-        let msg = conn.read_all().text()
+        let msg = conn.read_all_text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       })
     }
@@ -99,7 +99,7 @@ async test "Only_V6 server" {
         err => raise err
       }
       defer conn.close()
-      conn.write("message")
+      conn.write_text("message")
     }
 
     for protocol in all_protocol_preferences {
@@ -142,14 +142,14 @@ async test "dual stack server" {
         let addr_str = addr.to_string()
         guard addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
-        let msg = conn.read_all().text()
+        let msg = conn.read_all_text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       })
     }
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~)
       defer conn.close()
-      conn.write("message")
+      conn.write_text("message")
     }
 
     for protocol in all_protocol_preferences {

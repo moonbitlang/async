@@ -208,7 +208,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   }
   if trust is CustomPemFile(root_cert) {
     try {
-      let pem = @fs.read_file(root_cert).text()
+      let pem = @utf8.decode(@fs.read_file(root_cert))
       for cert in decode_pem_certificates(pem) {
         if context.add_root_certificate(cert) is err && err != 0 {
           raise TlsError(@os_error.errno_to_string(err))
@@ -293,7 +293,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   pfx_file~ : String,
 ) -> Tls {
   let context = Schannel::new()
-  let pfx_content = @fs.read_file(pfx_file).binary()
+  let pfx_content = @fs.read_file(pfx_file)
   if context.init_server(pfx_content) is err && err != 0 {
     context.free()
     raise TlsError(@os_error.errno_to_string(err))

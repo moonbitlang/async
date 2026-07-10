@@ -25,7 +25,7 @@ async test "ReadableStream roundtrip" {
     group.spawn_bg() <| () => {
       defer w.close()
       async fn write(msg : String) {
-        w.write(msg)
+        w.write_text(msg)
         log.push("writer: \{msg} at tick #\{tick()}")
       }
       write("message1")
@@ -57,7 +57,7 @@ async test "ReadableStream read cancelled" {
   defer w.close()
   defer r.close()
   json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=null)
-  w.write("message")
+  w.write_text("message")
   json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=[
     ["message"],
   ])
@@ -70,10 +70,10 @@ async test "ReadableStream write cancelled" {
   let r = @js_async.ReadableStream::from_js(r)
   defer w.close()
   defer r.close()
-  w.write("message1")
-  w.write("message2")
+  w.write_text("message1")
+  w.write_text("message2")
   json_inspect(
-    @async.with_timeout_opt(300, () => w.write("message3")),
+    @async.with_timeout_opt(300, () => w.write_text("message3")),
     content=null,
   )
   for _ in 0..<2 {
@@ -81,7 +81,7 @@ async test "ReadableStream write cancelled" {
   }
   @async.with_task_group() <| group => {
     group.spawn_bg(() => msgs.push(r.read_some()))
-    json_inspect(@async.with_timeout_opt(300, () => w.write("message4")), content=[
+    json_inspect(@async.with_timeout_opt(300, () => w.write_text("message4")), content=[
       null,
     ])
   }

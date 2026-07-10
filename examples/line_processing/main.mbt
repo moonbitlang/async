@@ -39,9 +39,12 @@ async fn process_lines(
     }
     if keep {
       if show_name {
-        output..write(name).write(":")
+        output..write_text(name).write_text(":")
       }
-      output..write(line_prefix(line_no))..write(line).write("\n")
+      output
+      ..write_text(line_prefix(line_no))
+      ..write_text(line)
+      .write_text("\n")
     }
     line_no += 1
   }

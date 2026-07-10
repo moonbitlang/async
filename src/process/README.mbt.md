@@ -14,7 +14,7 @@ Execute commands and collect their output:
 async test "simple command execution" {
   let (exit_code, output) = @process.collect_stdout("echo", ["Hello, World!"])
   inspect(exit_code, content="0")
-  let text = output.text()
+  let text = @utf8.decode(output)
   inspect(text.has_prefix("Hello"), content="true")
 }
 
@@ -63,7 +63,7 @@ Capture stdout from a process:
 async test "collect stdout" {
   let (code, output) = @process.collect_stdout("printf", ["test output"])
   inspect(code, content="0")
-  inspect(output.text(), content="test output")
+  inspect(@utf8.decode(output), content="test output")
 }
 
 ///|
@@ -73,7 +73,7 @@ async test "collect stdout with args" {
     "-c", "echo 'line 1'; echo 'line 2'",
   ])
   inspect(code, content="0")
-  let text = output.text()
+  let text = @utf8.decode(output)
   inspect(text.contains("line 1"), content="true")
   inspect(text.contains("line 2"), content="true")
 }
@@ -91,7 +91,7 @@ async test "collect stderr" {
     "-c", "printf 'error message' >&2",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="error message")
+  inspect(@utf8.decode(output), content="error message")
 }
 ```
 
@@ -107,8 +107,8 @@ async test "collect both streams" {
     "-c", "printf 'out msg'; printf 'err msg' >&2",
   ])
   inspect(code, content="0")
-  inspect(stdout.text(), content="out msg")
-  inspect(stderr.text(), content="err msg")
+  inspect(@utf8.decode(stdout), content="out msg")
+  inspect(@utf8.decode(stderr), content="err msg")
 }
 ```
 
@@ -124,7 +124,7 @@ async test "collect merged output" {
     "-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcdef")
+  inspect(@utf8.decode(output), content="abcdef")
 }
 ```
 
@@ -142,7 +142,7 @@ async test "read from process with pipe" {
     let (reader, writer) = @process.read_from_process()
     defer reader.close()
     let _ = @process.spawn(group, "echo", ["Hello from process"], stdout=writer)
-    let output = reader.read_all().text()
+    let output = reader.read_all_text()
     inspect(output.has_prefix("Hello"), content="true")
   })
 }
@@ -172,7 +172,7 @@ async test "write to process with pipe" {
     })
     group.spawn_bg(() => {
       defer we_read.close()
-      let output = we_read.read_all().text()
+      let output = we_read.read_all_text()
       inspect(output.contains("test input"), content="true")
     })
   })
@@ -191,7 +191,7 @@ Use a file as process input:
 async test "redirect input from file" {
   @async.with_task_group(root => {
     let input_file = "_build/process_test_input.txt"
-    @fs.write_file(input_file, "file content", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, b"file content", create_mode=CreateOrTruncate)
     root.add_defer(() => @fs.remove(input_file))
     let (code, output) = @process.collect_stdout(
       "cat",
@@ -199,7 +199,7 @@ async test "redirect input from file" {
       stdin=@process.redirect_from_file(input_file),
     )
     inspect(code, content="0")
-    inspect(output.text(), content="file content")
+    inspect(@utf8.decode(output), content="file content")
   })
 }
 ```
@@ -224,7 +224,7 @@ async test "redirect output to file" {
       ),
     )
     inspect(code, content="0")
-    let content = @fs.read_file(output_file).text()
+    let content = @utf8.decode(@fs.read_file(output_file))
     inspect(content.has_prefix("test output"), content="true")
   })
 }
@@ -241,7 +241,7 @@ async test "file to file redirection" {
   @async.with_task_group(root => {
     let input_file = "_build/process_redirect_in.txt"
     let output_file = "_build/process_redirect_out.txt"
-    @fs.write_file(input_file, "redirect test", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, b"redirect test", create_mode=CreateOrTruncate)
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     let _ = @process.run(
@@ -253,7 +253,7 @@ async test "file to file redirection" {
         create_mode=CreateOrTruncate,
       ),
     )
-    inspect(@fs.read_file(output_file).text(), content="redirect test")
+    inspect(@utf8.decode(@fs.read_file(output_file)), content="redirect test")
   })
 }
 ```
@@ -272,7 +272,7 @@ async test "set environment variable" {
     "MY_VAR": "my_value",
   })
   inspect(code, content="0")
-  inspect(output.text().trim(), content="my_value")
+  inspect(@utf8.decode(output).trim(), content="my_value")
 }
 
 ///|
@@ -284,7 +284,7 @@ async test "multiple environment variables" {
     extra_env={ "VAR1": "first", "VAR2": "second" },
   )
   inspect(code, content="0")
-  inspect(output.text().trim(), content="first-second")
+  inspect(@utf8.decode(output).trim(), content="first-second")
 }
 ```
 
@@ -303,7 +303,7 @@ async test "isolated environment" {
     inherit_env=false,
   )
   inspect(code, content="0")
-  let text = output.text()
+  let text = @utf8.decode(output)
   inspect(text.contains("ONLY_VAR=only_value"), content="true")
   // Parent environment variables won't be present
   inspect(text.contains("PATH="), content="false")
@@ -322,7 +322,7 @@ Execute processes in a specific directory:
 async test "set working directory" {
   let (code, output) = @process.collect_stdout("pwd", [], cwd="src")
   inspect(code, content="0")
-  let text = output.text().trim()
+  let text = @utf8.decode(output).trim()
   // Check that the path ends with "src" (works across OSes)
   inspect(text.has_suffix("src"), content="true")
 }
@@ -332,7 +332,7 @@ async test "set working directory" {
 async test "relative path in cwd" {
   let (code, output) = @process.collect_stdout("ls", [], cwd="src")
   inspect(code, content="0")
-  let text = output.text()
+  let text = @utf8.decode(output)
   // Should list contents of src directory
   let has_content = text.length() > 0
   inspect(has_content, content="true")
@@ -404,7 +404,7 @@ async test "merge stdout and stderr" {
       stdout=writer,
       stderr=writer,
     )
-    let output = reader.read_all().text()
+    let output = reader.read_all_text()
     inspect(output.contains("to stdout"), content="true")
     inspect(output.contains("to stderr"), content="true")
   })
@@ -423,7 +423,7 @@ async test "multiple processes to one pipe" {
     let (reader, writer) = @pipe.pipe()
     root.spawn_bg(no_wait=true, () => {
       defer reader.close()
-      let output = reader.read_all().text()
+      let output = reader.read_all_text()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })

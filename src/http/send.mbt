@@ -277,7 +277,7 @@ async fn Sender::send_headers(
     } else if forbidden_headers.contains(k_lower) {
       continue
     }
-    self..write(k)..write(b": ")..write(v).write(b"\r\n")
+    self..write_text(k)..write(b": ")..write_text(v).write(b"\r\n")
   }
   content_length
 }
@@ -304,7 +304,7 @@ async fn Sender::send_request(
     Patch => self.write(b"PATCH ")
   }
   let content_length = self
-    ..write(path)
+    ..write_text(path)
     ..write(b" HTTP/1.1\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
@@ -342,7 +342,7 @@ async fn Sender::send_response(
     ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
     ..write(b" ")
-    ..write(reason)
+    ..write_text(reason)
     ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)

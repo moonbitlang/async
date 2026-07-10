@@ -76,9 +76,9 @@ async fn perform_request(
   uri : String,
   meth : RequestMethod,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : BytesView,
   proxy? : Client,
-) -> (Response, &@io.Data) {
+) -> (Response, Bytes) {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
   defer client.close()
@@ -100,9 +100,9 @@ async fn perform_request(
 pub async fn get(
   uri : String,
   headers? : Map[String, String] = {},
-  body? : &@io.Data = b"",
+  body? : BytesView = b"",
   proxy? : Client,
-) -> (Response, &@io.Data) {
+) -> (Response, Bytes) {
   perform_request(uri, Get, headers, body, proxy?)
 }
 
@@ -110,10 +110,10 @@ pub async fn get(
 /// Similar to `get`, but performs a `PUT` request instead.
 pub async fn put(
   uri : String,
-  content : &@io.Data,
+  content : BytesView,
   headers? : Map[String, String] = {},
   proxy? : Client,
-) -> (Response, &@io.Data) {
+) -> (Response, Bytes) {
   perform_request(uri, Put, headers, content, proxy?)
 }
 
@@ -121,10 +121,10 @@ pub async fn put(
 /// Similar to `get`, but performs a `POST` request instead.
 pub async fn post(
   uri : String,
-  content : &@io.Data,
+  content : BytesView,
   headers? : Map[String, String] = {},
   proxy? : Client,
-) -> (Response, &@io.Data) {
+) -> (Response, Bytes) {
   perform_request(uri, Post, headers, content, proxy?)
 }
 
@@ -142,7 +142,7 @@ pub async fn post(
 pub async fn get_stream(
   uri : String,
   headers? : Map[String, String] = {},
-  body? : &@io.Data = b"",
+  body? : BytesView = b"",
   proxy? : Client,
 ) -> (Response, Client) {
   let (protocol, host, path) = resolve_url(uri)

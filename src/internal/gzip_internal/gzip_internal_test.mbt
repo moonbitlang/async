@@ -322,7 +322,7 @@ test "gzip encoder hash table survives history wrap" {
 ///|
 #cfg(target="native")
 async test "gzip encode min input source file" {
-  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt")
   let compressed = encode(data, input_step=Min)
   let data2 = decode(compressed, expected_len=data.length())
   assert_eq(data, data2)
@@ -331,7 +331,7 @@ async test "gzip encode min input source file" {
 ///|
 #cfg(target="native")
 async test "gzip encode min output source file" {
-  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt")
   let compressed = encode(data, output_step=Min)
   let data2 = decode(compressed, expected_len=data.length())
   assert_eq(data, data2)
@@ -340,7 +340,7 @@ async test "gzip encode min output source file" {
 ///|
 #cfg(target="native")
 async test "gzip decode min input source file" {
-  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt")
   let compressed = encode(data)
   let data2 = decode(compressed, expected_len=data.length(), input_step=Min)
   assert_eq(data, data2)
@@ -349,7 +349,7 @@ async test "gzip decode min input source file" {
 ///|
 #cfg(target="native")
 async test "gzip decode min output source file" {
-  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt")
   let compressed = encode(data)
   let data2 = decode(compressed, expected_len=data.length(), output_step=Min)
   assert_eq(data, data2)

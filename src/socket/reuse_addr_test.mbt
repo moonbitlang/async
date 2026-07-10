@@ -26,14 +26,14 @@ async test "reuse addr" {
         port = server.addr.port()
         let (conn, _) = server.accept()
         defer conn.close()
-        conn.write("abcd")
+        conn.write_text("abcd")
       }
     }
     for _ in 0..<2 {
       @async.sleep(100)
       let conn = @socket.Tcp::connect(@socket.Addr::parse("127.0.0.1:\{port}"))
       defer conn.close()
-      inspect(conn.read_all().text(), content="abcd")
+      inspect(conn.read_all_text(), content="abcd")
     }
   }
 }

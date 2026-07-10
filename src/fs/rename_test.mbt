@@ -23,12 +23,12 @@ async test "rename basic" {
     sync=Full,
   )
   defer file.close()
-  file.write("abcd")
-  inspect(@fs.read_file(old_path).text(), content="abcd")
+  file.write_text("abcd")
+  inspect(@utf8.decode(@fs.read_file(old_path)), content="abcd")
   @fs.rename(old_path, new_path)
-  inspect(@fs.read_file(new_path).text(), content="abcd")
+  inspect(@utf8.decode(@fs.read_file(new_path)), content="abcd")
   file.write_at(b"ABCD", position=0)
-  inspect(@fs.read_file(new_path).text(), content="ABCD")
+  inspect(@utf8.decode(@fs.read_file(new_path)), content="ABCD")
   inspect(@fs.exists(old_path), content="false")
   @fs.remove(new_path)
 }
@@ -37,7 +37,7 @@ async test "rename basic" {
 async test "rename replace" {
   let old_path = "_build/rename_replace_test_old"
   let new_path = "_build/rename_replace_test_new"
-  @fs.write_file(new_path, "xyzw", create_mode=CreateOrTruncate)
+  @fs.write_file(new_path, b"xyzw", create_mode=CreateOrTruncate)
   let old_file = @fs.open(
     old_path,
     mode=WriteOnly,
@@ -47,17 +47,17 @@ async test "rename replace" {
   defer old_file.close()
   let new_file = @fs.open(new_path, mode=ReadOnly, create_mode=OpenExisting)
   defer new_file.close()
-  old_file.write("abcd")
-  inspect(@fs.read_file(old_path).text(), content="abcd")
-  inspect(@fs.read_file(new_path).text(), content="xyzw")
+  old_file.write_text("abcd")
+  inspect(@utf8.decode(@fs.read_file(old_path)), content="abcd")
+  inspect(@utf8.decode(@fs.read_file(new_path)), content="xyzw")
   @test_util.assert_raise_async <| () => {
     @fs.rename(old_path, new_path, replace=false)
   }
   @fs.rename(old_path, new_path, replace=true)
-  inspect(@fs.read_file(new_path).text(), content="abcd")
-  inspect(new_file.read_all().text(), content="xyzw")
+  inspect(@utf8.decode(@fs.read_file(new_path)), content="abcd")
+  inspect(new_file.read_all_text(), content="xyzw")
   old_file.write_at(b"ABCD", position=0)
-  inspect(@fs.read_file(new_path).text(), content="ABCD")
+  inspect(@utf8.decode(@fs.read_file(new_path)), content="ABCD")
   inspect(@fs.exists(old_path), content="false")
   @fs.remove(new_path)
 }

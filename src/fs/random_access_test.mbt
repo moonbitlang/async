@@ -16,22 +16,22 @@
 async test "write_at" {
   let path = "_build/write_at_test"
   // initialize
-  @fs.write_file(path, "abcdef", create_mode=CreateOrTruncate, sync=Full)
+  @fs.write_file(path, b"abcdef", create_mode=CreateOrTruncate, sync=Full)
   // first read
-  inspect(@fs.read_file(path).text(), content="abcdef")
+  inspect(@utf8.decode(@fs.read_file(path)), content="abcdef")
   // update content
   {
     let w = @fs.open(path, mode=WriteOnly)
     defer w.close()
     w.write_at(b"56", position=w.size() - 2)
     w.write_at(b"34", position=2)
-    w.write("12") // still write from the start
+    w.write_text("12") // still write from the start
   }
   // read content
   {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    inspect(r.read_all().text(), content="123456")
+    inspect(r.read_all_text(), content="123456")
   }
   @fs.remove(path)
 }
@@ -39,7 +39,7 @@ async test "write_at" {
 ///|
 async test "read_at" {
   let path = "_build/read_at_test"
-  @fs.write_file(path, "abcdef", create_mode=CreateOrTruncate, sync=Full)
+  @fs.write_file(path, b"abcdef", create_mode=CreateOrTruncate, sync=Full)
   {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()

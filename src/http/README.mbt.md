@@ -10,12 +10,12 @@ Simple HTTP request can be made in just one line:
 async test {
   let (response, body) = @http.get("https://www.moonbitlang.com")
   inspect(response.code, content="200")
-  assert_true(body.text().has_prefix("<!doctype html>"))
+  assert_true(@utf8.decode(body).has_prefix("<!doctype html>"))
 }
 ```
 
-You can use use `body.text()` to get a `String` (decoded via UTF8)
-or `body.json()` for a `Json` from the response body.
+The response body is returned as raw `Bytes`. Decode it with `@utf8.decode`
+or parse the decoded text with `@json.parse` when needed.
 
 ## Generic HTTP client
 Sometimes, the simple one-time `@http.get` etc. is insufficient,
@@ -48,7 +48,7 @@ async test {
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")
   let body = client.read_all()
-  assert_true(body.text().has_prefix("<!doctype html>"))
+  assert_true(@utf8.decode(body).has_prefix("<!doctype html>"))
 }
 ```
 
@@ -81,7 +81,9 @@ Here's an example server that returns 404 to every request:
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
   @http.Server(listen_addr).run_forever((request, _body, conn) => {
-    conn..send_response(404, "NotFound").write("`\{request.path}` not found")
+    conn
+    ..send_response(404, "NotFound")
+    .write_text("`\{request.path}` not found")
   })
 }
 ```

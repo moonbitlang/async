@@ -36,7 +36,7 @@ async test "open file for reading" {
   @fs.write_file(test_file, b"Hello, MoonBit!", create_mode=CreateOrTruncate)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
-  let content = file.read_all().text()
+  let content = file.read_all_text()
   @fs.remove(test_file)
   inspect(content, content="Hello, MoonBit!")
 }
@@ -62,7 +62,7 @@ async test "open with append mode" {
   let file = @fs.open(test_file, mode=WriteOnly, append=true)
   file.write(b"Second line\n")
   file.close()
-  let content = @fs.read_file(test_file).text()
+  let content = @utf8.decode(@fs.read_file(test_file))
   @fs.remove(test_file)
   inspect(content, content="First line\nSecond line\n")
 }
@@ -101,7 +101,7 @@ async test "read_file - read entire file" {
   @fs.write_file(test_file, b"Hello, MoonBit!", create_mode=CreateOrTruncate)
   let content = @fs.read_file(test_file)
   @fs.remove(test_file)
-  inspect(content.text(), content="Hello, MoonBit!")
+  inspect(@utf8.decode(content), content="Hello, MoonBit!")
 }
 
 ///|
@@ -127,7 +127,7 @@ async test "read_all from file" {
   let data = file.read_all()
   file.close()
   @fs.remove(test_file)
-  inspect(data.text(), content="Complete content")
+  inspect(@utf8.decode(data), content="Complete content")
 }
 
 ///|
@@ -156,7 +156,7 @@ Write data to files using various methods:
 async test "write_file - write entire file" {
   let test_file = "_build/test_write.txt"
   @fs.write_file(test_file, b"File content", create_mode=CreateOrTruncate)
-  let content = @fs.read_file(test_file).text()
+  let content = @utf8.decode(@fs.read_file(test_file))
   @fs.remove(test_file)
   inspect(content, content="File content")
 }
@@ -172,7 +172,7 @@ async test "write with sync modes" {
     sync=Data,
     create_mode=CreateOrTruncate,
   )
-  let content = @fs.read_file(test_file).text()
+  let content = @utf8.decode(@fs.read_file(test_file))
   @fs.remove(test_file)
   inspect(content, content="Synced data")
 }
@@ -185,7 +185,7 @@ async test "write using File methods" {
   file.write(b"Line 1\n")
   file.write(b"Line 2\n")
   file.close()
-  let content = @fs.read_file(test_file).text()
+  let content = @utf8.decode(@fs.read_file(test_file))
   @fs.remove(test_file)
   inspect(content, content="Line 1\nLine 2\n")
 }
@@ -241,12 +241,12 @@ async test "write at specific position" {
   {
     let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
     defer file.close()
-    file.write("abcdef")
+    file.write_text("abcdef")
     file.write_at(b"CD", position=2)
   }
 
   // read 3 bytes at position 5
-  inspect(@fs.read_file(test_file).text(), content="abCDef")
+  inspect(@utf8.decode(@fs.read_file(test_file)), content="abCDef")
   @fs.remove(test_file)
 }
 

@@ -26,8 +26,8 @@ async fn node_gzip(mode : String, input : Bytes) -> Bytes {
     }
     let (code, stdout, stderr) = runner.wait()
     assert_eq(code, 0)
-    assert_eq(stderr.binary().length(), 0)
-    stdout.binary()
+    assert_eq(stderr.length(), 0)
+    stdout
   }
 }
 
@@ -41,7 +41,7 @@ async fn encode_with_moonbit(input : Bytes) -> Bytes {
       @gzip.Encoder(w)..write(input).end()
     }
     defer r.close()
-    r.read_all().binary()
+    r.read_all()
   }
 }
 
@@ -55,7 +55,7 @@ async fn decode_with_moonbit(input : Bytes) -> Bytes {
       w.write(input)
     }
     defer r.close()
-    @gzip.Decoder(r).read_all().binary()
+    @gzip.Decoder(r).read_all()
   }
 }
 
@@ -82,14 +82,14 @@ async test "encode decode roundtrip" {
         operating_system=b'\x03',
       )
       for chunk in source_chunks {
-        encoder.write(chunk)
+        encoder.write_text(chunk)
         @async.sleep(10)
       }
       encoder.end()
     }
 
     let decoder = @gzip.Decoder(compressed_r)
-    inspect(decoder.read_all().text(), content="hello gzip world")
+    inspect(decoder.read_all_text(), content="hello gzip world")
     compressed_r.close()
   }
 }
@@ -107,7 +107,7 @@ async test "encoder uses valid blocks across large writes" {
     }
 
     let decoder = @gzip.Decoder(compressed_r)
-    inspect(decoder.read_all().binary() == payload, content="true")
+    inspect(decoder.read_all() == payload, content="true")
     compressed_r.close()
   }
 }
@@ -123,11 +123,11 @@ async test "encoder emits output when flushed" {
       let encoder = @gzip.Encoder(w)
       log.push("encoder ready")
       log.push("write plain ab")
-      encoder.write("ab")
+      encoder.write_text("ab")
       encoder.flush()
       @async.sleep(60)
       log.push("write plain cd")
-      encoder.write("cd")
+      encoder.write_text("cd")
       encoder.flush()
       @async.sleep(60)
       log.push("end")
@@ -234,7 +234,7 @@ async test "decoder supports reads smaller than writer chunks" {
 ///|
 #cfg(target="native")
 async test "node compatibility on source text file" {
-  let input = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let input = @fs.read_file("src/internal/gzip_internal/decoder.mbt")
   assert_node_compatibility(input)
 }
 

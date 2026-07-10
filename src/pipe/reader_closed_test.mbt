@@ -18,5 +18,5 @@ async test "reader closed" {
   defer w.close()
   r.close()
   @async.sleep(100)
-  @test_util.assert_raise_async(() => w.write("abcd"))
+  @test_util.assert_raise_async(() => w.write_text("abcd"))
 }

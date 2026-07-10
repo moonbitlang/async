@@ -371,7 +371,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   let conn = TlsConnectionHandle::new().check_new()
   try {
     if trust is CustomPemFile(path) {
-      let pem = @fs.read_file(path).text()
+      let pem = @utf8.decode(@fs.read_file(path))
       for cert in decode_pem_certificates(pem) {
         let status = conn.add_root_certificate(cert)
         if status != 0 {
@@ -422,7 +422,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
             "pfx_file is required for TLS servers on Windows hosts",
           )
       }
-      let pfx_content = @fs.read_file(pfx_file).binary()
+      let pfx_content = @fs.read_file(pfx_file)
       conn.set_server_pfx(pfx_content)
     } else {
       let private_key_file = match private_key_file {

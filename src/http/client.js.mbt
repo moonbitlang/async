@@ -272,7 +272,7 @@ pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Map[String, String] = {},
-  body? : &@io.Data,
+  body? : BytesView,
 ) -> Response {
   self.request(Get, path, extra_headers~)
   if body is Some(body) {
@@ -286,7 +286,7 @@ pub async fn Client::get(
 pub async fn Client::put(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : BytesView,
   extra_headers? : Map[String, String] = {},
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
@@ -297,7 +297,7 @@ pub async fn Client::put(
 pub async fn Client::post(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : BytesView,
   extra_headers? : Map[String, String] = {},
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()

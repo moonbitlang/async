@@ -33,7 +33,7 @@ async test "read_all basic" {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => writer(log, w))
-    inspect(r.read_all().text(), content="abcdefghijkl")
+    inspect(r.read_all_text(), content="abcdefghijkl")
   }
 }
 
@@ -46,6 +46,19 @@ async test "read_all large data" {
       defer w.close()
       w.write(Bytes::make(4097, 0))
     }
-    inspect(r.read_all().binary().length(), content="4097")
+    inspect(r.read_all().length(), content="4097")
+  }
+}
+
+///|
+async test "read_all preserves arbitrary bytes" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w.write(b"\xff\x00\x80")
+    }
+    assert_eq(r.read_all(), b"\xff\x00\x80")
   }
 }

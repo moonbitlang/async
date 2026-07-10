@@ -260,7 +260,7 @@ pub async fn collect_stdout(
   stderr? : &ProcessOutput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
@@ -296,7 +296,7 @@ pub async fn collect_stderr(
   stdout? : &ProcessOutput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
@@ -332,7 +332,7 @@ pub async fn collect_output(
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data, &@io.Data) {
+) -> (Int, Bytes, Bytes) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group() <| group => {
@@ -375,7 +375,7 @@ pub async fn collect_output_merged(
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int, Bytes) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()

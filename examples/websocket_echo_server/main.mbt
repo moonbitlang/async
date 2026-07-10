@@ -50,12 +50,12 @@ async fn start_echo_server(port? : Int = 9001) -> Unit {
         let msg = ws.recv()
         match msg.kind {
           Text => {
-            let text = msg.read_all().text()
+            let text = msg.read_all_text()
             println("Received text \{text.char_length()} chars")
             ws.send_text(text)
           }
           Binary => {
-            let data = msg.read_all().binary()
+            let data = msg.read_all()
             println("Received binary data (\{data.length()} bytes)")
             ws.send_binary(data)
           }

@@ -26,13 +26,13 @@ async test "getsockname TCP" {
       let (conn, peer_addr) = server.accept()
       defer conn.close()
       assert_eq(conn.addr, server_addr)
-      inspect(conn.read_all().text(), content="abcd")
+      inspect(conn.read_all_text(), content="abcd")
       peer_addr
     })
     let client_addr = group.spawn(() => {
       let client = @socket.Tcp::connect(server_addr)
       defer client.close()
-      client.write("abcd")
+      client.write_text("abcd")
       client.addr
     })
     assert_eq(client_addr_from_server.wait(), client_addr.wait())

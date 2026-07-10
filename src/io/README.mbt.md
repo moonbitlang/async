@@ -8,7 +8,7 @@ Asynchronous I/O abstraction for MoonBit. This package provides fundamental abst
 - [Core Traits](#core-traits)
   - [Reader Trait](#reader-trait)
   - [Writer Trait](#writer-trait)
-  - [Data Trait](#data-trait)
+  - [Byte and Text Data](#byte-and-text-data)
 - [wrap in-memory data into reader](#wrap-in-memory-data-into-reader)
 - [Buffered I/O](#buffered-io)
   - [BufferedReader](#bufferedreader)
@@ -42,7 +42,7 @@ async test "quick start pipeline" {
 
     // Read everything that arrives and print it as text.
     defer reader.close()
-    let message = reader.read_all().text()
+    let message = reader.read_all_text()
     inspect(message, content="Hello, MoonBit!\n")
   })
 }
@@ -52,18 +52,18 @@ This pattern generalises to sockets, files, and any type that implements the `Re
 
 ## Core Traits
 
-### Data Trait
+### Byte and Text Data
 
-`Data` is a lightweight trait for types that can be read/write via IO endpoints.
-On the sender side, `Data` is implemented by `Bytes`, `BytesView`, `String`, `StringView` and `Json`.
-If an API accepts `&Data` as input (for example `Writer::write`), any value of the above types can be passed directly.
-On the receiver side, the trait object type `&Data` provides helper methods `.binary()`, `.text()` and `.json()`,
-which converts receive data to raw binary/UTF-8 encoded string/UTF-8 encoded JSON string in respect.
-This allows convenient conversion of received data to various formats.
+I/O streams fundamentally transfer bytes. `Writer::write` accepts a `BytesView`,
+which can represent an entire `Bytes` value or a zero-copy slice of one.
+`Reader::read_all` returns the raw content as `Bytes`.
+
+Text and JSON conversions are explicit: use `write_text`/`read_all_text` for
+UTF-8 text and `write_json`/`read_all_json` for JSON.
 
 ```moonbit check
 ///|
-async test "data as binary" {
+async test "raw bytes" {
   @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
@@ -72,30 +72,25 @@ async test "data as binary" {
       // Send raw binary bytes.
       w.write(b"binary data")
     })
-    let data = r.read_all()
-    let binary = data.binary()
-    inspect(@utf8.decode(binary), content="binary data")
+    assert_eq(r.read_all(), b"binary data")
   })
 }
 
 ///|
-async test "data as text" {
+async test "UTF-8 text" {
   @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
     root.spawn_bg(() => {
       defer w.close()
-      // Send UTF-8 encoded string
-      w.write("Hello, MoonBit!")
+      w.write_text("Hello, MoonBit!")
     })
-    let data = r.read_all()
-    // Decoding happens lazily when `.text()` is invoked.
-    inspect(data.text(), content="Hello, MoonBit!")
+    inspect(r.read_all_text(), content="Hello, MoonBit!")
   })
 }
 
 ///|
-async test "data as json" {
+async test "JSON" {
   @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     defer r.close()
@@ -103,12 +98,9 @@ async test "data as json" {
       defer w.close()
       // send UTF-8 encoded JSON string
       let data : Json = { "name": "John", "age": 30 }
-      w.write(data)
+      w.write_json(data)
     })
-    let data = r.read_all()
-    let json = data.json()
-    // `json_inspect` asserts that the parsed JSON matches the expected structure.
-    json_inspect(json, content={ "name": "John", "age": 30 })
+    json_inspect(r.read_all_json(), content={ "name": "John", "age": 30 })
   })
 }
 ```
@@ -120,7 +112,8 @@ The `Reader` trait exposes three complementary levels of granularity:
 - `read` performs a best-effort read into an existing buffer and is ideal for incremental protocols. A zero return value indicates EOF.
 - `read_exactly` loops until it fills the requested number of bytes or raises `ReaderClosed`, which is helpful when parsing fixed-width frames.
 - `read_some` read the next chunk of data once any new data is available
-- `read_all` drains the stream into memory, returning a `&Data` handle for convenient conversion to text, JSON, or binary.
+- `read_all` drains the stream into memory and returns the raw `Bytes`.
+- `read_all_text` and `read_all_json` drain the stream and decode UTF-8 text or JSON explicitly.
 - `read_until` read UTF-8 encoded string from the input until a separator is reached
 
 Each example below shows how a reader pairs with `@io.pipe()` and includes inline comments that highlight the important steps.
@@ -175,11 +168,11 @@ async test "read_some - read next chunk of data" {
     root.spawn_bg(() => {
       defer w.close()
       // the writer supplieds data in two chunks
-      w.write("abcd")
+      w.write_text("abcd")
       @async.sleep(200)
-      w.write("efgh")
+      w.write_text("efgh")
       @async.sleep(200)
-      w.write("ijkl")
+      w.write_text("ijkl")
     })
     debug_inspect(
       r.read_some(),
@@ -221,10 +214,9 @@ async test "read_all - read entire content" {
       defer w.close()
       w.write(b"Complete content")
     })
-    // `read_all` accumulates everything into a `&Data` handle.
+    // `read_all` accumulates everything into raw bytes.
     let data = r.read_all()
-    // Convert to text on demand.
-    inspect(data.text(), content="Complete content")
+    inspect(@utf8.decode(data), content="Complete content")
   })
 }
 
@@ -238,7 +230,7 @@ async test "read_all large data" {
       // Large payloads can be streamed without precomputing the size.
       w.write(Bytes::make(4097, 0))
     })
-    inspect(r.read_all().binary().length(), content="4097")
+    inspect(r.read_all().length(), content="4097")
   })
 }
 
@@ -266,8 +258,8 @@ async test "read_until - read text from stream until a separator is found" {
     defer r.close()
     root.spawn_bg(() => {
       defer w.close()
-      w.write("abcd|")
-      w.write("defg")
+      w.write_text("abcd|")
+      w.write_text("defg")
     })
     // read until the separator "|" is met. The separator will be consumed as well
     debug_inspect(
@@ -299,7 +291,7 @@ async test "read_until - used to read file line by line" {
     lines.push(line)
   }
   inspect(lines.length(), content="202")
-  assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
+  assert_eq(lines.join("\n") + "\n", @utf8.decode(@fs.read_file("LICENSE")))
 }
 ```
 
@@ -313,19 +305,19 @@ The reader reaches EOF when the callback returns normally. If the callback raise
 ///|
 async test "MemoryReader - generate reader content in memory" {
   let r = @io.MemoryReader() <| w => {
-    w.write("hello, ")
+    w.write_text("hello, ")
     @async.sleep(10)
-    w.write("MoonBit")
+    w.write_text("MoonBit")
   }
   defer r.close()
-  inspect(r.read_all().text(), content="hello, MoonBit")
+  inspect(r.read_all_text(), content="hello, MoonBit")
 }
 
 ///|
 async test "MemoryReader - stream generated chunks" {
   let r = @io.MemoryReader() <| w => {
     for part in ["ab", "cd", "ef"] {
-      w.write(part)
+      w.write_text(part)
       @async.sleep(10)
     }
   }
@@ -356,8 +348,9 @@ async test "MemoryReader - stream generated chunks" {
 
 `Writer` focuses on pushing bytes downstream. The three key helpers build on top of the fundamental `write_once` contract:
 
-- `write_once` performs a single best-effort write and returns how many bytes were accepted. Note that partial write is allowed for `write_once`: only a portion of data may be succesfully written. End users should not call `write_once` directly in general.
-- `write` encodes and writes a `&Data` to the writer, is will keep calling `write_once` until all data are succesfully written. This is the most common helper users should use.
+- `write_once` performs a single best-effort write and returns how many bytes were accepted. Partial writes are allowed, but a non-empty request must accept at least one byte and must never report more than the requested length. End users should not call `write_once` directly in general.
+- `write` writes a `BytesView`, repeatedly calling `write_once` until all bytes are written.
+- `write_text` UTF-8 encodes a string before writing it, while `write_json` serializes JSON as UTF-8.
 - `write_reader` streams from any `Reader`, making it perfect for relaying pipes, sockets, or files without copying into intermediate strings.
 
 The snippets below demonstrate each mode with progressive complexity.
@@ -377,7 +370,7 @@ async test "write to writer" {
     })
     // `read_all` collapses everything for verification.
     let data = r.read_all()
-    inspect(data.text(), content="Hello, World!")
+    inspect(@utf8.decode(data), content="Hello, World!")
   })
 }
 
@@ -394,7 +387,7 @@ async test "write_once - single write operation" {
       inspect(written, content="9")
     })
     let content = r.read_all()
-    inspect(content.text(), content="Test data")
+    inspect(@utf8.decode(content), content="Test data")
   })
 }
 
@@ -410,7 +403,7 @@ async test "write large data" {
     })
     root.spawn_bg(() => {
       defer r.close()
-      inspect(r.read_all().binary().length(), content="16384")
+      inspect(r.read_all().length(), content="16384")
     })
   })
 }
@@ -469,9 +462,9 @@ async test "write string" {
     root.spawn_bg(() => {
       defer w.close()
       // Unicode data is transparently encoded via UTF-8.
-      w.write("abcd中文☺")
+      w.write_text("abcd中文☺")
     })
-    inspect(r.read_all().text(), content="abcd中文☺")
+    inspect(r.read_all_text(), content="abcd中文☺")
   })
 }
 ```
@@ -492,13 +485,13 @@ async test "BufferedWriter - basic buffering" {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log <+ "2 bytes written\n"
-      w.write("ab")
+      w.write_text("ab")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("cd")
+      w.write_text("cd")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("ef")
+      w.write_text("ef")
       // Force the remaining bytes out of the buffer.
       w.flush()
     })
@@ -536,7 +529,7 @@ async test "BufferedWriter::new with custom size" {
       w.flush()
     })
     let data = r.read_all()
-    inspect(data.text(), content="test")
+    inspect(@utf8.decode(data), content="test")
   })
 }
 
@@ -555,7 +548,7 @@ async test "BufferedWriter::flush - commit buffered data" {
       w.flush()
     })
     let data = r.read_all()
-    inspect(data.text(), content="buffermore")
+    inspect(@utf8.decode(data), content="buffermore")
   })
 }
 
@@ -622,28 +615,18 @@ Efficient asynchronous I/O is mostly about balancing throughput and memory usage
 Trait for reading data from a source. Methods include:
 - `read(buffer, offset?, max_len?)` - Read data into buffer
 - `read_exactly(len)` - Read exact number of bytes
-- `read_all()` - Read entire content
+- `read_all()` - Read entire content as raw bytes
+- `read_all_text()` - Read entire content as UTF-8 text
+- `read_all_json()` - Read and parse UTF-8 encoded JSON
 
 ### Writer
 
 Trait for writing data to a destination. Methods include:
 - `write_once(data, offset~, len~)` - Single write operation
-- `write(data)` - Write data (may require multiple operations)
+- `write(data)` - Write a byte view (may require multiple operations)
+- `write_text(text)` - UTF-8 encode and write text
+- `write_json(value)` - Serialize and write JSON
 - `write_reader(reader)` - Copy data from reader to writer
-
-### Data
-
-Trait for abstracting various data formats. Implementations:
-- `Bytes` - Raw binary data
-- `BytesView` - View of binary data
-- `String` - UTF-8 encoded string
-- `StringView` - View of string
-- `Json` - JSON data
-
-Helper methods for received data:
-- `binary()` - Extract raw binary data
-- `text()` - Decode as UTF-8 string
-- `json()` - Decode as JSON
 
 ### BufferedReader
 
@@ -673,6 +656,8 @@ A buffered writer with fixed-size buffer. Methods include:
 - `flush()` - Commit buffered data
 - `write_once(data, offset~, len~)` - Single write operation
 - `write(data)` - Write data
+- `write_text(text)` - UTF-8 encode and write text
+- `write_json(value)` - Serialize and write JSON
 - `write_reader(reader)` - Copy from reader
 
 ### Encoding
@@ -689,7 +674,6 @@ Error raised when attempting to read from a closed reader.
 1. **Only one reader/writer at the same time**. Attempting to read from/write to the same reader/writer from multiple tasks easily lead to race condition.
   When multiple readers/writers are needed, it is recommended to adapt the actor pattern by spawning a dedicated reader/writer task and use `@aqueue.Queue` to distribute data atomically.
 2. **Use buffered I/O for performance**: Wrap readers and writers with `BufferedReader` and `BufferedWriter` when performing many small reads or writes.
-3. **Pick the right data view and cache the result**: Prefer `.text()` for UTF-8, `.json()` for structured payloads, and `.binary()` when forwarding raw bytes.
-  `.text()` and `.json()` methods need to perform decoding and parsing, so users should cache the result of these conversion methods instead of calling them repeatedly
+3. **Keep byte and text operations explicit**: Use `read_all()`/`write()` for raw bytes and the text or JSON helpers only when decoding or encoding is intended.
 
 For more examples and detailed usage, explore the test suites in this package—they double as executable documentation.

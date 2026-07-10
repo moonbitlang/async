@@ -30,10 +30,12 @@ struct BufferedWriter[W] {
 
 ///|
 /// Create a buffered writer with fixed buffer size `size`.
+/// `size` must be positive.
 pub fn[W] BufferedWriter::new(
   writer : W,
   size? : Int = 1024,
 ) -> BufferedWriter[W] {
+  guard size > 0 else { abort("BufferedWriter capacity must be positive") }
   { writer, buf: FixedArray::make(size, 0), len: 0 }
 }
 

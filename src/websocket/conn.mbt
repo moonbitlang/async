@@ -689,7 +689,7 @@ pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
 /// Convenient helper for sending a single text message.
 /// To send large message lazily, see `start_message`.
 pub async fn Conn::send_text(self : Conn, text : StringView) -> Unit {
-  self..start_message(Text)..write(text).end_message()
+  self..start_message(Text)..write_text(text).end_message()
 }
 
 ///|

@@ -23,7 +23,7 @@ async test "bad client" {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
         let result = @test_util.expect_error_async <| () => {
-          let result = ws.recv().read_all().text()
+          let result = ws.recv().read_all_text()
           ws.send_text(result)
           result
         }
@@ -44,7 +44,7 @@ async test "bad client" {
             http_client.write(frame)
           }
         }
-        ignore(ws_client.recv().read_all().text())
+        ignore(ws_client.recv().read_all_text())
       }
     }
 

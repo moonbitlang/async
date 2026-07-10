@@ -107,26 +107,26 @@ fn Cookie::parse(line : StringView) -> Cookie raise {
 ///|
 #cfg(any(target="native", target="wasm"))
 async fn[W : @io.Writer] Cookie::write_to(cookie : Cookie, w : W) -> Unit {
-  w..write(cookie.name)..write("=").write(cookie.value)
+  w..write_text(cookie.name)..write_text("=").write_text(cookie.value)
   if cookie.path is Some(path) {
-    w..write("; Path=").write(path)
+    w..write_text("; Path=").write_text(path)
   }
   if cookie.expires_raw is Some(expires_raw) {
-    w..write("; Expires=").write(expires_raw)
+    w..write_text("; Expires=").write_text(expires_raw)
   }
   if cookie.max_age is Some(max_age) {
-    w..write("; Max-Age=").write(max_age.to_string())
+    w..write_text("; Max-Age=").write_text(max_age.to_string())
   }
   if cookie.domain is Some(domain) {
-    w..write("; Domain=").write(domain)
+    w..write_text("; Domain=").write_text(domain)
   }
   if cookie.secure {
-    w.write("; Secure")
+    w.write_text("; Secure")
   }
   if cookie.http_only {
-    w.write("; HttpOnly")
+    w.write_text("; HttpOnly")
   }
   for ext in cookie.extensions {
-    w..write("; ").write(ext)
+    w..write_text("; ").write_text(ext)
   }
 }

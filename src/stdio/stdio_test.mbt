@@ -39,7 +39,7 @@ async test "redirect_file" {
     stdout=@process.redirect_to_file(out_file, create_mode=CreateOrTruncate),
   )
   inspect(code, content="0")
-  assert_eq(@fs.read_file(out_file).text(), @fs.read_file("moon.mod").text())
+  assert_eq(@fs.read_file(out_file), @fs.read_file("moon.mod"))
 }
 
 ///|
@@ -61,7 +61,7 @@ async test "redirect pipe" {
     }
     defer we_read.close()
     inspect(
-      we_read.read_all().text(),
+      we_read.read_all_text(),
       content=(
         #|abcd
         #|defg
@@ -89,7 +89,7 @@ async test "stdio cancel" {
     }
     defer we_write.close()
     defer we_read.close()
-    we_write.write("abcd")
+    we_write.write_text("abcd")
     debug_inspect(
       we_read.read_some(),
       content=(
@@ -97,10 +97,7 @@ async test "stdio cancel" {
       ),
     )
     @async.sleep(750)
-    inspect(
-      we_read.read_all().text().trim(chars="\r\n"),
-      content="TimeoutError",
-    )
+    inspect(we_read.read_all_text().trim(chars="\r\n"), content="TimeoutError")
   }
 }
 
@@ -115,11 +112,11 @@ async test "stdout and stderr are the same" {
     }
     {
       defer we_write.close()
-      we_write.write("abcd")
+      we_write.write_text("abcd")
     }
     let (_, output) = cat_task.wait()
     inspect(
-      output.text(),
+      @utf8.decode(output),
       content=(
         #|abcd
       ),

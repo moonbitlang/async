@@ -329,7 +329,7 @@ async test "flock advisory" {
   let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, create_mode=CreateOrTruncate, "abcd")
+    @fs.write_file(file_name, create_mode=CreateOrTruncate, b"abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
@@ -342,7 +342,7 @@ async test "flock advisory" {
     )
     @async.sleep(250)
     log.push("attempting to read")
-    log.push("read from file: \{file.read_all().text()}")
+    log.push("read from file: \{file.read_all_text()}")
   }
   json_inspect(log, content=[
     "child: acquired lock", "attempting to read", "read from file: abcd", "child: releasing lock",

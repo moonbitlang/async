@@ -29,19 +29,22 @@ async test "timestamp for path" {
   }
   let path = "/tmp/timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
-    @fs.write_file(path, "1234", sync=Full)
+    @fs.write_file(path, b"1234", sync=Full)
     let atime_2 = @fs.atime(path)
     let mtime_2 = @fs.mtime(path)
     let ctime_2 = @fs.ctime(path)
     assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
     assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
     @async.sleep(600)
-    inspect(@fs.read_file(path, sync_timestamp=true).text(), content="1234")
+    inspect(
+      @utf8.decode(@fs.read_file(path, sync_timestamp=true)),
+      content="1234",
+    )
     let atime_3 = @fs.atime(path)
     let mtime_3 = @fs.mtime(path)
     let ctime_3 = @fs.ctime(path)
@@ -63,12 +66,12 @@ async test "timestamp for path" {
 async test "mtime for path" {
   let path = "_build/timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
-    @fs.write_file(path, "1234", sync=Full)
+    @fs.write_file(path, b"1234", sync=Full)
     let mtime_2 = @fs.mtime(path)
     let ctime_2 = @fs.ctime(path)
     assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
@@ -86,7 +89,7 @@ async test "timestamp for opened file" {
   }
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
@@ -100,7 +103,7 @@ async test "timestamp for opened file" {
     assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
     assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
     @async.sleep(600)
-    inspect(file.read_all().text(), content="1234")
+    inspect(file.read_all_text(), content="1234")
     file.sync()
     let atime_3 = file.atime()
     let mtime_3 = file.mtime()
@@ -123,7 +126,7 @@ async test "timestamp for opened file" {
 async test "mtime for opened file" {
   let path = "_build/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate, sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()

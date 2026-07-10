@@ -23,7 +23,7 @@ async test "basic create" {
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    r.read_all().text()
+    r.read_all_text()
   }
   @fs.remove(path)
   inspect(
@@ -55,7 +55,7 @@ async test "create or append" {
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
-    r.read_all().text()
+    r.read_all_text()
   }
   @fs.remove(path)
   inspect(result, content="abcdefgh")
@@ -65,7 +65,7 @@ async test "create or append" {
 async test "wrapper test" {
   let path = "_build/fs_wrapper_test"
   @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate)
-  let result = @fs.read_file(path).text()
+  let result = @utf8.decode(@fs.read_file(path))
   @fs.remove(path)
   inspect(result, content="abcd")
 }
@@ -83,9 +83,9 @@ async test "create_mode test" {
       let file = @fs.create(path, allow_existing=false)
       defer file.close()
       group.add_defer(() => @fs.remove(path))
-      file.write("abcd")
+      file.write_text("abcd")
     }
-    inspect(@fs.read_file(path).text(), content="abcd")
+    inspect(@utf8.decode(@fs.read_file(path)), content="abcd")
     @test_util.assert_raise_async(() => @fs.create(path, allow_existing=false))
     @test_util.assert_raise_async <| () => {
       @fs.open(path, mode=WriteOnly, create_mode=CreateNew)
@@ -93,26 +93,26 @@ async test "create_mode test" {
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
       defer file.close()
-      file.write("AB")
+      file.write_text("AB")
     }
-    inspect(@fs.read_file(path).text(), content="ABcd")
+    inspect(@utf8.decode(@fs.read_file(path)), content="ABcd")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=OpenOrCreate)
       defer file.close()
-      file.write("XY")
+      file.write_text("XY")
     }
-    inspect(@fs.read_file(path).text(), content="XYcd")
+    inspect(@utf8.decode(@fs.read_file(path)), content="XYcd")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate)
       defer file.close()
-      file.write("12")
+      file.write_text("12")
     }
-    inspect(@fs.read_file(path).text(), content="12")
+    inspect(@utf8.decode(@fs.read_file(path)), content="12")
     {
       let file = @fs.open(path, mode=WriteOnly, create_mode=TruncateExisting)
       defer file.close()
-      file.write("34")
+      file.write_text("34")
     }
-    inspect(@fs.read_file(path).text(), content="34")
+    inspect(@utf8.decode(@fs.read_file(path)), content="34")
   }
 }

@@ -96,7 +96,7 @@ async test "cancel process hard" {
     })
     root.spawn_bg() <| () => {
       defer r.close()
-      inspect(r.read_all().text(), content="")
+      inspect(r.read_all_text(), content="")
     }
     @async.sleep(500)
     let t0 = @env.now()
@@ -128,7 +128,7 @@ async test "orphan process" {
     inspect(@utf8.decode(r.read_exactly(5)), content="first")
     task.cancel()
     log <+ "cancelling task running process\n"
-    inspect(r.read_all().text(), content="second")
+    inspect(r.read_all_text(), content="second")
   }
   inspect(
     log.to_string(),
@@ -159,7 +159,7 @@ async test "kill children on hard cancel" {
     @async.TimeoutError => ()
     err => raise err
   }
-  inspect(r.read_all().text().trim(), content="")
+  inspect(r.read_all_text().trim(), content="")
 }
 
 ///|
@@ -180,5 +180,5 @@ async test "do not kill orphan children on hard cancel" {
     @async.TimeoutError => ()
     err => raise err
   }
-  inspect(r.read_all().text().trim(), content="after sleep")
+  inspect(r.read_all_text().trim(), content="after sleep")
 }

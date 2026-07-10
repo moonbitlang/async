@@ -18,7 +18,7 @@ async test "MemoryReader basic" {
   let r = @io.MemoryReader() <| w => {
     for data in ["abcd", "1234", "xyzw"] {
       log.push("writing \{data}")
-      w.write(data)
+      w.write_text(data)
       @async.sleep(150)
     }
   }
@@ -37,7 +37,7 @@ async test "MemoryReader cancel" {
   let log = []
   let r = @io.MemoryReader() <| w => {
     for i = 0; ; i = i + 1 {
-      try w.write("#\{i}") catch {
+      try w.write_text("#\{i}") catch {
         err => {
           log.push("`write` fail with \{err}")
           raise err
@@ -67,7 +67,7 @@ async test "MemoryReader failure" {
     raise Failure::Failure("failure")
   }
   defer r.close()
-  try r.read_all().text() catch {
+  try r.read_all_text() catch {
     err =>
       inspect(
         err,

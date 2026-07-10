@@ -117,11 +117,13 @@ pub impl @io.Writer for ServerConnection with fn write_once(
 }
 
 ///|
+/// Write the display representation of a value used in string interpolation.
+/// Use `write` for raw bytes and `write_json` for JSON wire data.
 pub async fn ServerConnection::write_string_interpolation(
   self : ServerConnection,
-  data : &@io.Data,
+  data : &Show,
 ) -> Unit {
-  self.write(data)
+  self.write_text(data.to_string())
 }
 
 ///|
@@ -131,7 +133,7 @@ pub async fn ServerConnection::write_string(
   self : ServerConnection,
   s : String,
 ) -> Unit {
-  @io.Writer::write(self, s)
+  self.write_text(s)
 }
 
 ///|
