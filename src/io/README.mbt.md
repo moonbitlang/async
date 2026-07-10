@@ -11,7 +11,6 @@ Asynchronous I/O abstraction for MoonBit. This package provides fundamental abst
   - [Data Trait](#data-trait)
 - [wrap in-memory data into reader](#wrap-in-memory-data-into-reader)
 - [Buffered I/O](#buffered-io)
-  - [BufferedReader](#bufferedreader)
   - [BufferedWriter](#bufferedwriter)
 - [Working with Task Groups and Pipes](#working-with-task-groups-and-pipes)
 - [Flow Control & Buffering Strategies](#flow-control--buffering-strategies)
@@ -611,8 +610,7 @@ async test "BufferedWriter::write_reader - buffered copy" {
 Efficient asynchronous I/O is mostly about balancing throughput and memory usage. Some guiding principles:
 
 - **Prefer streaming copies for large payloads.** `Writer::write_reader` efficiently bridges readers and writers without allocating entire buffers up front.
-- **Tune buffer sizes per transport.** A 4 KB buffer is often enough for network sockets, whereas disk-backed streams may benefit from larger chunks. Use `BufferedWriter::new(size=...)` and `BufferedReader::SEGMENT_SIZE` multiples strategically.
-- **Avoid a lot of small drops.** `BufferedReader::drop` and `BufferedReader::read` are expensive operations, as they need to copy data when advancing the reader stream. It is recommended to use `op_as_view` to extract data and batch small `read` operations into a single `drop` call at the end when reading multiple small data fragments. `drop` should still be called from time to time, though, to reduce the memory consumption of `BufferedReader`.
+- **Tune write buffer sizes per transport.** A 4 KB buffer is often enough for network sockets, whereas disk-backed streams may benefit from larger chunks. Use `BufferedWriter::new(size=...)` to select an appropriate size.
 - **Flush deliberately.** Frequent flushes lower latency but reduce batching efficiency; schedule them at protocol boundaries (e.g., end of a response frame).
 
 ## Types Reference
@@ -621,8 +619,11 @@ Efficient asynchronous I/O is mostly about balancing throughput and memory usage
 
 Trait for reading data from a source. Methods include:
 - `read(buffer, offset?, max_len?)` - Read data into buffer
+- `drop(len)` - Consume and discard up to `len` bytes
 - `read_exactly(len)` - Read exact number of bytes
+- `read_some(max_len?)` - Read the next available chunk
 - `read_all()` - Read entire content
+- `read_until(separator)` - Read UTF-8 text up to a separator or EOF, consuming the separator when present
 
 ### Writer
 
@@ -645,20 +646,6 @@ Helper methods for received data:
 - `text()` - Decode as UTF-8 string
 - `json()` - Decode as JSON
 
-### BufferedReader
-
-A buffered reader that wraps around a normal reader. Methods include:
-- `new(reader)` - Create new buffered reader
-- `read(buffer, offset?, max_len?)` - Read data
-- `read_exactly(len)` - Read exact number of bytes
-- `read_all()` - Read entire content
-- `op_get(index)` - Access byte by index
-- `op_as_view(start?, end~)` - Get slice as view
-- `drop(n)` - Drop first n bytes
-- `find(target)` - Find substring (raises error if not found)
-- `find_opt(target)` - Find substring (returns None if not found)
-- `read_line()` - Read line until newline
-
 ### MemoryReader
 
 A reader backed by an async in-memory writer callback. Methods include:
@@ -675,11 +662,6 @@ A buffered writer with fixed-size buffer. Methods include:
 - `write(data)` - Write data
 - `write_reader(reader)` - Copy from reader
 
-### Encoding
-
-Encoding format for text operations:
-- `UTF8` - UTF-8 encoding
-
 ### ReaderClosed
 
 Error raised when attempting to read from a closed reader.
@@ -688,7 +670,7 @@ Error raised when attempting to read from a closed reader.
 
 1. **Only one reader/writer at the same time**. Attempting to read from/write to the same reader/writer from multiple tasks easily lead to race condition.
   When multiple readers/writers are needed, it is recommended to adapt the actor pattern by spawning a dedicated reader/writer task and use `@aqueue.Queue` to distribute data atomically.
-2. **Use buffered I/O for performance**: Wrap readers and writers with `BufferedReader` and `BufferedWriter` when performing many small reads or writes.
+2. **Use buffered I/O for performance**: Readers manage their read-ahead buffers internally; wrap writers with `BufferedWriter` when performing many small writes.
 3. **Pick the right data view and cache the result**: Prefer `.text()` for UTF-8, `.json()` for structured payloads, and `.binary()` when forwarding raw bytes.
   `.text()` and `.json()` methods need to perform decoding and parsing, so users should cache the result of these conversion methods instead of calling them repeatedly
 
