@@ -61,7 +61,7 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
   if (handle >= 0) {
     siginfo_t info;
     info.si_pid = 0;
-    int ret = waitid(P_PIDFD, handle, &info, WEXITED | WSTOPPED | WNOHANG);
+    int ret = waitid(P_PIDFD, handle, &info, WEXITED | WNOHANG);
 
     if (ret < 0)
       return -1;
