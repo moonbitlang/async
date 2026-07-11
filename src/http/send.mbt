@@ -39,6 +39,21 @@ let forbidden_headers : Set[String] = Set::from_array([
 ])
 
 ///|
+fn sanitize_header_value(s : String) -> String {
+  if s.contains("\r") || s.contains("\n") {
+    let buf = StringBuilder::new()
+    for c in s {
+      if c != '\r' && c != '\n' {
+        buf.write_char(c)
+      }
+    }
+    buf.to_string()
+  } else {
+    s
+  }
+}
+
+///|
 fn[W : @io.Writer] Sender::new(
   w : W,
   headers? : Map[String, String] = Map([]),
@@ -52,9 +67,9 @@ fn[W : @io.Writer] Sender::new(
         has_accept_encoding = true
       }
       header_text
-      ..write_string_utf8(k)
+      ..write_string_utf8(sanitize_header_value(k))
       ..write_bytes(b": ")
-      ..write_string_utf8(v)
+      ..write_string_utf8(sanitize_header_value(v))
       .write_bytes(b"\r\n")
     }
   }
@@ -277,7 +292,11 @@ async fn Sender::send_headers(
     } else if forbidden_headers.contains(k_lower) {
       continue
     }
-    self..write(k)..write(b": ")..write(v).write(b"\r\n")
+    self
+    ..write(sanitize_header_value(k))
+    ..write(b": ")
+    ..write(sanitize_header_value(v))
+    .write(b"\r\n")
   }
   content_length
 }
@@ -342,7 +361,7 @@ async fn Sender::send_response(
     ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
     ..write(b" ")
-    ..write(reason)
+    ..write(sanitize_header_value(reason))
     ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
