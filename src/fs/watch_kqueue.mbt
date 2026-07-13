@@ -63,7 +63,7 @@ fn KqueueWatcher::KqueueWatcher(
       is_async=true,
       read_only=true,
     ),
-    watched: {},
+    watched: Map([]),
     watcher,
     event_buffer: @c_buffer.new(event_buffer_len),
     event_buffer_len,

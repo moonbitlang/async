@@ -43,7 +43,7 @@ extern "C" fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get
 fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang/async" "stdio/get_stdio_handle"
 
 ///|
-let stdio_handles : Map[@fd_util.Fd, IoHandle] = {}
+let stdio_handles : Map[@fd_util.Fd, IoHandle] = Map([])
 
 ///|
 fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {

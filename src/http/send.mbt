@@ -41,7 +41,7 @@ let forbidden_headers : Set[String] = Set::from_array([
 ///|
 fn[W : @io.Writer] Sender::new(
   w : W,
-  headers? : Map[String, String] = {},
+  headers? : Map[String, String] = Map([]),
 ) -> Sender {
   let header_text = Buffer()
   let mut has_accept_encoding = false

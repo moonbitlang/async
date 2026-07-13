@@ -229,7 +229,7 @@ impl @io.Reader for Reader with fn _get_internal_buffer(self) {
 async fn Reader::read_headers(
   self : Reader,
 ) -> (Map[String, String], Array[Cookie]) {
-  let headers = {}
+  let headers = Map([])
   let cookies = []
   for ;; {
     guard self.transport.read_until("\r\n") is Some(header_line) else {

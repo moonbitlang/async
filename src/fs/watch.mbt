@@ -269,7 +269,7 @@ pub async fn Watcher::Watcher(
     backend: None,
     root_id,
     base_path: path,
-    watched: {},
+    watched: Map([]),
     pending_remove: Set([]),
     ignored_paths,
     report_child_event,
@@ -295,11 +295,11 @@ pub async fn Watcher::Watcher(
       identity: root_id,
       paths: Set([]),
       is_dir: true,
-      children: {},
+      children: Map([]),
       modified: true,
-      children_to_scan: {},
-      changed_entries: {},
-      children_with_events: {},
+      children_to_scan: Map([]),
+      changed_entries: Map([]),
+      children_with_events: Map([]),
     }
     self.watched[root_id] = root
     self.synchronize_tree(context~)
@@ -346,7 +346,7 @@ fn Watcher::emit_events_for_file(
     // so no extra information about event detail is recorded for regular files.
     on_event(None, Modify(path))
   }
-  let events : Map[FileIdentity, FsEvent] = {}
+  let events : Map[FileIdentity, FsEvent] = Map([])
   for name, prev_id in file.changed_entries {
     let curr_id = file.children.get(name)
     let path = rel_path(path, name)
@@ -503,7 +503,7 @@ async fn Watcher::wait_aux(
 /// it is guaranteed that no event will be consumed.
 pub async fn Watcher::wait(self : Watcher) -> Array[FsEvent] {
   let events = []
-  let pending_rename : Map[FileIdentity, FsEvent] = {}
+  let pending_rename : Map[FileIdentity, FsEvent] = Map([])
   fn on_event(rename_id, event : FsEvent) {
     guard rename_id is Some(id) &&
       !(self.watched.get(id) is Some({ is_dir: true, .. })) else {
@@ -571,11 +571,11 @@ async fn Watcher::get_file_at(
     identity,
     paths: Set([]),
     is_dir,
-    children: {},
+    children: Map([]),
     modified: is_dir, // new directory need rescan
-    children_to_scan: {},
-    changed_entries: {},
-    children_with_events: {},
+    children_to_scan: Map([]),
+    changed_entries: Map([]),
+    children_with_events: Map([]),
   }
   self.watched[identity] = new_file
   new_file

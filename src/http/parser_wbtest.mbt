@@ -550,7 +550,7 @@ async test "read_response HEAD 200 (no body)" {
 
 ///|
 test "should_read_body_until_close - true cases" {
-  let headers_no_length : Map[String, String] = {}
+  let headers_no_length : Map[String, String] = Map([])
 
   // 200 OK with no length headers
   inspect(
@@ -602,7 +602,7 @@ test "should_read_body_until_close - true cases" {
 
 ///|
 test "should_read_body_until_close - false cases (bodyless status codes)" {
-  let headers_no_length : Map[String, String] = {}
+  let headers_no_length : Map[String, String] = Map([])
 
   // 1xx informational responses
   inspect(
@@ -670,7 +670,7 @@ test "should_read_body_until_close - false cases (headers present)" {
 
 ///|
 test "should_read_body_until_close - false cases (body already determined)" {
-  let headers_no_length : Map[String, String] = {}
+  let headers_no_length : Map[String, String] = Map([])
 
   // Body is Fixed (already determined by Content-Length)
   inspect(
@@ -693,7 +693,7 @@ test "should_read_body_until_close - false cases (body already determined)" {
 
 ///|
 test "should_read_body_until_close - false cases (CONNECT requests)" {
-  let headers_no_length : Map[String, String] = {}
+  let headers_no_length : Map[String, String] = Map([])
 
   // Successful CONNECT (2xx) responses become tunnels with no HTTP body
   inspect(
@@ -726,7 +726,7 @@ test "should_read_body_until_close - false cases (CONNECT requests)" {
 
 ///|
 test "should_read_body_until_close - false cases (HEAD requests)" {
-  let headers_no_length : Map[String, String] = {}
+  let headers_no_length : Map[String, String] = Map([])
 
   // HEAD responses never have a message body, regardless of status code
   inspect(

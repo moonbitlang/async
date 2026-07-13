@@ -172,7 +172,7 @@ fn Conn::new(
     is_first_frame: true,
     write_buf: FixedArray::make(max_frame_size, 0),
     write_len: 0,
-    pings: {},
+    pings: Map([]),
   }
 }
 

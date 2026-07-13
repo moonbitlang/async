@@ -34,7 +34,7 @@
 pub async fn spawn_orphan(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -121,7 +121,7 @@ pub async fn wait_pid(pid : Int) -> Int {
 pub async fn run(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -205,7 +205,7 @@ pub async fn[X] spawn(
   group : @async.TaskGroup[X],
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -254,7 +254,7 @@ pub async fn[X] spawn(
 pub async fn collect_stdout(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
@@ -290,7 +290,7 @@ pub async fn collect_stdout(
 pub async fn collect_stderr(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
@@ -327,7 +327,7 @@ pub async fn collect_stderr(
 pub async fn collect_output(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
@@ -370,7 +370,7 @@ pub async fn collect_output(
 pub async fn collect_output_merged(
   cmd : StringView,
   args : Array[String],
-  extra_env? : Map[String, String] = {},
+  extra_env? : Map[String, String] = Map([]),
   inherit_env? : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,

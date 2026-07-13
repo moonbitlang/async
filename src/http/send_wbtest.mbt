@@ -712,7 +712,13 @@ async test "send_response cookies" {
     group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
-      let _ = sender.send_response(200, "OK", cookies~, request_method=Get, extra_headers={})
+      let _ = sender.send_response(
+        200,
+        "OK",
+        cookies~,
+        request_method=Get,
+        extra_headers=Map([]),
+      )
       sender.end_body()
     }
     defer r.close()
@@ -739,11 +745,11 @@ async test "send_request empty body" {
     group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
-      let _ = sender.send_request(Get, "/", extra_headers={})
+      let _ = sender.send_request(Get, "/", extra_headers=Map([]))
       sender..write("").end_body()
-      let _ = sender.send_request(Head, "/", extra_headers={})
+      let _ = sender.send_request(Head, "/", extra_headers=Map([]))
       sender.end_body()
-      let _ = sender.send_request(Post, "/", extra_headers={})
+      let _ = sender.send_request(Post, "/", extra_headers=Map([]))
       sender.end_body()
     }
     defer r.close()
@@ -773,15 +779,45 @@ async test "send_response empty body" {
     group.spawn_bg() <| () => {
       defer w.close()
       let sender = Sender::new(w)
-      let _ = sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={})
+      let _ = sender.send_response(
+        200,
+        "OK",
+        cookies=[],
+        request_method=Get,
+        extra_headers=Map([]),
+      )
       sender.end_body()
-      let _ = sender.send_response(200, "OK", cookies=[], request_method=Head, extra_headers={})
+      let _ = sender.send_response(
+        200,
+        "OK",
+        cookies=[],
+        request_method=Head,
+        extra_headers=Map([]),
+      )
       sender..write("").end_body()
-      let _ = sender.send_response(102, "OK", cookies=[], request_method=Get, extra_headers={})
+      let _ = sender.send_response(
+        102,
+        "OK",
+        cookies=[],
+        request_method=Get,
+        extra_headers=Map([]),
+      )
       sender.end_body()
-      let _ = sender.send_response(204, "OK", cookies=[], request_method=Get, extra_headers={})
+      let _ = sender.send_response(
+        204,
+        "OK",
+        cookies=[],
+        request_method=Get,
+        extra_headers=Map([]),
+      )
       sender..write("").end_body()
-      let _ = sender.send_response(304, "OK", cookies=[], request_method=Get, extra_headers={})
+      let _ = sender.send_response(
+        304,
+        "OK",
+        cookies=[],
+        request_method=Get,
+        extra_headers=Map([]),
+      )
       sender.end_body()
     }
     defer r.close()
@@ -815,7 +851,7 @@ async test "sender persistent header" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      let _ = sender.send_request(Get, "/", extra_headers={})
+      let _ = sender.send_request(Get, "/", extra_headers=Map([]))
       sender.end_body()
     }
     defer r.close()
