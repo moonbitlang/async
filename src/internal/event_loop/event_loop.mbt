@@ -86,15 +86,15 @@ fn EventLoop::new() -> EventLoop raise {
     let extra = PlatformEventLoopExtra::new()
     {
       bus,
-      fds: {},
+      fds: Map([]),
       extra,
       notify_recv,
       max_worker_count: 1024,
       job_id: 0,
       job_queue: @deque.Deque([]),
       idle_workers: @deque.Deque([]),
-      running_workers: {},
-      jobs: {},
+      running_workers: Map([]),
+      jobs: Map([]),
       timers: @sorted_set.SortedSet([]),
       main: None,
       killed_by_signal: None,

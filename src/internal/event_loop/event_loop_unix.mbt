@@ -30,7 +30,7 @@ type PlatformEventLoopExtra = UnixEventLoopExtra
 ///|
 #cfg(not(platform="windows"))
 fn UnixEventLoopExtra::new() -> UnixEventLoopExtra {
-  { pids: {}, completed_jobs_buffer: FixedArray::make(1024, 0) }
+  { pids: Map([]), completed_jobs_buffer: FixedArray::make(1024, 0) }
 }
 
 ///|

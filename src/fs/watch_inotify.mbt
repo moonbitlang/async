@@ -47,7 +47,7 @@ fn InotifyWatcher::InotifyWatcher(
       kind=Unknown,
       is_async=true,
     ),
-    watched: {},
+    watched: Map([]),
     watcher,
     event_processor: None,
     waiter: None,
