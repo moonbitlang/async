@@ -51,6 +51,7 @@ options(
     "pkg.generated.mbti": [ "native" ],
     "random_access_test.mbt": [ "native", "wasm" ],
     "read_all_test.mbt": [ "native", "wasm" ],
+    "read_file_wbtest.mbt": [ "native", "wasm" ],
     "realpath_test.mbt": [ "native" ],
     "rename_test.mbt": [ "native", "wasm" ],
     "stat_test.mbt": [ "native" ],

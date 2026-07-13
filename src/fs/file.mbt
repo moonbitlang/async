@@ -466,6 +466,92 @@ pub async fn File::ctime(self : File) -> (Int64, Int) {
 }
 
 ///|
+/// Read a regular file using its current size as an allocation hint.
+///
+/// The size is not treated as EOF: pseudo files such as procfs entries may
+/// report a size of zero, and a regular file may grow while it is being read.
+/// Once the hinted region is full, keep reading in larger chunks until the
+/// underlying file actually reports EOF.
+async fn[R : @io.Reader] read_all_with_size_hint(
+  reader : R,
+  hinted_size : Int,
+) -> &@io.Data {
+  let hinted = FixedArray::make(hinted_size, b'0')
+  let mut hinted_len = 0
+  while hinted_len < hinted_size {
+    let n = reader.read(
+      hinted,
+      offset=hinted_len,
+      max_len=hinted_size - hinted_len,
+    )
+    if n == 0 {
+      return hinted.unsafe_reinterpret_as_bytes()[:hinted_len].to_owned()
+    }
+    hinted_len += n
+  }
+
+  // The size returned by stat is only a hint. Probe for a real EOF without
+  // allocating a large tail buffer in the common case.
+  let probe = FixedArray::make(1, b'0')
+  let probe_len = reader.read(probe, offset=0, max_len=1)
+  if probe_len == 0 {
+    return hinted.unsafe_reinterpret_as_bytes()
+  }
+
+  // Retain data appended after the stat call, as well as data from zero-sized
+  // pseudo files such as entries in procfs.
+  let chunk_size = 64 * 1024
+  let chunks = []
+  let mut chunk = FixedArray::make(chunk_size, b'0')
+  chunk.unsafe_blit(0, probe, 0, probe_len)
+  let mut chunk_len = probe_len
+  while reader.read(chunk, offset=chunk_len, max_len=chunk.length() - chunk_len)
+        is n &&
+        n > 0 {
+    chunk_len += n
+    if chunk_len == chunk.length() {
+      chunks.push(chunk)
+      chunk = FixedArray::make(chunk_size, b'0')
+      chunk_len = 0
+    }
+  }
+  let tail_size = chunks.length().to_int64() * chunk_size.to_int64() +
+    chunk_len.to_int64()
+  guard hinted_size.to_int64() <= @int.MAX_VALUE.to_int64() - tail_size else {
+    raise Failure::Failure("@fs.read_file(): file is too large")
+  }
+  let total_size = hinted_size + tail_size.to_int()
+  let result = FixedArray::make(total_size, b'0')
+  result.unsafe_blit(0, hinted, 0, hinted_size)
+  for i, buf in chunks {
+    result.unsafe_blit(hinted_size + i * chunk_size, buf, 0, chunk_size)
+  }
+  result.unsafe_blit(
+    hinted_size + chunks.length() * chunk_size,
+    chunk,
+    0,
+    chunk_len,
+  )
+  result.unsafe_reinterpret_as_bytes()
+}
+
+///|
+async fn File::read_regular_to_end(self : File) -> &@io.Data {
+  let size = self.size() catch {
+    err if @async.is_being_cancelled() => raise err
+    // A size is only an optimization hint. Some handles may be classified as
+    // regular but not support querying a size, so preserve the streaming path.
+    @os_error.OSError(_) => return self.read_all()
+    err => raise err
+  }
+  guard size >= 0L && size <= @int.MAX_VALUE.to_int64() else {
+    return self.read_all()
+  }
+  @coroutine.check_cancellation()
+  read_all_with_size_hint(self, size.to_int())
+}
+
+///|
 /// Read the contents of the file located at `path`.
 /// If `sync_timestamp` is `true` (`false` by default),
 /// `read_file` will block until timestamp change is written to the file system.
@@ -475,7 +561,11 @@ pub async fn read_file(
 ) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
   defer file.close()
-  let result = file.read_all()
+  let result = if file.kind() is Regular {
+    file.read_regular_to_end()
+  } else {
+    file.read_all()
+  }
   if sync_timestamp {
     file.io.fsync(only_data=false, context="@fs.read_file(sync_timestamp=true)")
   }
