@@ -84,7 +84,7 @@ pub fn Client::close(self : Client) -> Unit {
 ///|
 fn Client::connect(
   host : String,
-  headers? : Map[String, String] = {},
+  headers? : Map[String, String] = Map([]),
   protocol? : Protocol = Https,
   proxy? : Client,
 ) -> Client {
@@ -115,7 +115,7 @@ fn Client::connect(
 #label_migration(verify, fill=false, msg="verify is unsupported on Windows")
 pub async fn Client::Client(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Map[String, String] = Map([]),
   proxy? : Client,
   verify? : Bool = true,
 ) -> Client {
@@ -167,7 +167,7 @@ pub async fn Client::end_request(self : Client) -> Response {
   self.response_body = Some(
     @js_async.ReadableStream::from_js(js_response.body()),
   )
-  let headers = {}
+  let headers = Map([])
   for entry in js_response.headers().to_array() {
     headers[entry[0].to_lower()] = entry[1]
   }
@@ -221,7 +221,7 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Map[String, String] = Map([]),
 ) -> Unit {
   guard self.request is None
   let protocol = match self.protocol {
@@ -271,7 +271,7 @@ pub async fn Client::request(
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Map[String, String] = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -287,7 +287,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Map[String, String] = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -298,7 +298,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Map[String, String] = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }

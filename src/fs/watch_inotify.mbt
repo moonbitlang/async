@@ -52,7 +52,7 @@ fn InotifyWatcher::InotifyWatcher(
     event_processor: None,
     waiter: None,
     err: None,
-    debounce_timer: @async.Timer(debounce_timeout),
+    debounce_timer: Timer(debounce_timeout),
     max_debounce_delay,
   }
   self.event_processor = Some(

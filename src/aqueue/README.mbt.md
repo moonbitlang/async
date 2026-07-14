@@ -42,7 +42,7 @@ control returns.
 async test "quick start" {
   let log = []
   @async.with_task_group <| group => {
-    let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+    let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
     group.spawn_bg() <| () => {
       for i in 0..<3 {
         q.put(i)
@@ -86,7 +86,7 @@ this only when you trust the consumer to keep up.
 ```moonbit check
 ///|
 async test "unbounded never blocks" {
-  let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+  let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   for i in 0..<1000 {
     q.put(i)
   }
@@ -343,7 +343,7 @@ suberror MyDone derive(Debug)
 
 ///|
 async test "custom close error" {
-  let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+  let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   q.close(error=MyDone)
   debug_inspect(@test_util.expect_error_async(() => q.get()), content="MyDone")
 }
@@ -389,7 +389,7 @@ stream. Below, two producers feed numbered items into one consumer.
 async test "fan-in merges multiple producers" {
   let received = []
   @async.with_task_group <| group => {
-    let q : @aqueue.Queue[String] = @aqueue.Queue(kind=Unbounded)
+    let q : @aqueue.Queue[String] = Queue(kind=Unbounded)
     // Producer A puts items at time 0, 100, 200 ms.
     group.spawn_bg() <| () => {
       for i in 0..<3 {
@@ -428,7 +428,7 @@ simply close the queue with `clear=false` (the default):
 async test "fan-out distributes work to a pool" {
   let work_by_worker : Array[Array[Int]] = [[], [], []]
   @async.with_task_group <| group => {
-    let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Blocking(1))
+    let q : @aqueue.Queue[Int] = Queue(kind=Blocking(1))
     for w in 0..<3 {
       group.spawn_bg(allow_failure=true) <| () => {
         for ;; {
@@ -468,7 +468,7 @@ wait order explicit.
 async test "readers are woken FIFO" {
   let log = []
   @async.with_task_group(root => {
-    let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+    let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
     // Reader 1 starts waiting at ~0 ms.
     root.spawn_bg(() => log.push("r1 got \{q.get()}"))
     // Reader 2 starts waiting at ~50 ms.

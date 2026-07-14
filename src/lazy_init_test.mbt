@@ -38,7 +38,7 @@ async test "lazy init basic" {
 
 ///|
 async test "lazy init failure" {
-  let x : @async.Lazy[Unit] = @async.Lazy(() => {
+  let x : @async.Lazy[Unit] = Lazy(() => {
     @async.sleep(200)
     raise Failure::Failure("msg")
   })

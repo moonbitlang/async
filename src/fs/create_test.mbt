@@ -74,7 +74,7 @@ async test "wrapper test" {
 async test "create_mode test" {
   let path = "_build/create_exclusive_test"
   @async.with_task_group() <| group => {
-    for create_mode in [@fs.OpenExisting, @fs.TruncateExisting] {
+    for create_mode in [@fs.OpenExisting, TruncateExisting] {
       @test_util.assert_raise_async <| () => {
         @fs.open(path, mode=WriteOnly, create_mode~)
       }

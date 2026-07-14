@@ -4,7 +4,8 @@ import {
 
 supported_targets = "-all+native"
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   "native-stub": [ "stub.c" ],
 )
