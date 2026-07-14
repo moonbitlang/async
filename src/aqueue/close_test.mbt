@@ -113,7 +113,7 @@ async test "close zero buffered with blocking put" {
 
 ///|
 async test "close with blocking get" {
-  let q : @aqueue.Queue[Int] = @async.Queue(kind=Unbounded)
+  let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   @async.with_task_group() <| group => {
     let start = @env.now()
     group.spawn_bg() <| () => {
@@ -132,7 +132,7 @@ async test "close with blocking get" {
 
 ///|
 async test "close with completed get" {
-  let q : @aqueue.Queue[Int] = @async.Queue(kind=Unbounded)
+  let q : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       debug_inspect(

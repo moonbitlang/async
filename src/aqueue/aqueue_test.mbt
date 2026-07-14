@@ -81,7 +81,7 @@ async test "aqueue multi-reader" {
 ///|
 async test "aqueue cancellation" {
   let log = StringBuilder::new()
-  let queue : @aqueue.Queue[Int] = @aqueue.Queue(kind=Unbounded)
+  let queue : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   @async.with_timeout(350, () => {
     let x = queue.get() catch {
       err => {

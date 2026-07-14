@@ -35,6 +35,12 @@ impl Transport for @http.ServerConnection with fn close(self) {
 }
 
 ///|
+extend &Transport with @io.Reader::{read, read_exactly}
+
+///|
+extend &Transport with @io.Writer::{write}
+
+///|
 /// A WebSocket connection
 struct Conn {
   mut closed : WebSocketError?
@@ -161,7 +167,7 @@ fn Conn::new(
     read_mask: None,
     mask_offset: 0,
     utf8_remaining: -1,
-    write_lock: @semaphore.Semaphore(1),
+    write_lock: Semaphore(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
       MAX_HEADER_SIZE + MASK_SIZE

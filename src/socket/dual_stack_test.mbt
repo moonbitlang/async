@@ -14,10 +14,10 @@
 
 ///|
 let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
-  @socket.FavorV4,
-  @socket.OnlyV4,
-  @socket.FavorV6,
-  @socket.OnlyV6,
+  FavorV4,
+  OnlyV4,
+  FavorV6,
+  OnlyV6,
 ]
 
 ///|

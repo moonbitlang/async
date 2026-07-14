@@ -7,6 +7,4 @@ import {
 
 supported_targets = "-all+native"
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")
