@@ -90,7 +90,11 @@ pub(all) struct FileIdentity {
   file_id : UInt64
 } derive(Eq, Hash)
 
-type IoHandle
+pub struct IoHandle {
+  mut read_offset : Int64
+  mut write_offset : Int64
+  // private fields
+}
 pub async fn IoHandle::accept_unix(Self, Bytes, context~ : String) -> Self
 pub async fn IoHandle::bind(Self, Bytes, context~ : String) -> Unit
 pub fn IoHandle::close(Self) -> Unit

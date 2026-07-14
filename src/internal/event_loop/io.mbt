@@ -24,14 +24,14 @@ priv enum IoStatus {
 ///|
 /// A managed file descriptor/`HANDLE`,
 /// capable of performing async IO operations.
-struct IoHandle {
-  mut fd : @fd_util.Fd
-  kind : @fd_util.FileKind
+pub struct IoHandle {
+  priv mut fd : @fd_util.Fd
+  priv kind : @fd_util.FileKind
   /// - `is_async=true`: support native async operations through the event bus.
   ///   This usually means the fd is non blocking (Unix) or overlapped (Windows)
   /// - `is_async=false`: all operations are blocking and go through the thread pool
-  is_async : Bool
-  mut read : IoStatus
+  priv is_async : Bool
+  priv mut read : IoStatus
   /// The current offset for reading.
   /// A negative value indicates that the underlying object does not support random access.
   ///
@@ -41,7 +41,7 @@ struct IoHandle {
   /// - On Unix-like systems, read/write share the same file pointer.
   /// - On Windows, random access read/write will change the file pointer for synchronous handle.
   mut read_offset : Int64
-  mut write : IoStatus
+  priv mut write : IoStatus
   /// Similar to `read_offset`, but for the write end of the object.
   mut write_offset : Int64
 }

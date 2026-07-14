@@ -144,6 +144,7 @@ impl Reader with fn read_some(self, max_len?) {
 #doc(hidden)
 pub async fn[R : Reader] read_all(
   reader : R,
+  prefix_list? : FixedArray[BytesView] = [],
   chunk_size? : Int = 4096,
 ) -> Bytes {
   let buffer_list = []
@@ -158,15 +159,28 @@ pub async fn[R : Reader] read_all(
       offset = 0
     }
   }
-  if buffer_list.length() >= (@int.MAX_VALUE - offset) / chunk_size {
+  let prefix_len = for prefix in prefix_list; len = 0 {
+    continue len + prefix.length()
+  } nobreak {
+    len
+  }
+  if buffer_list.length() >= (@int.MAX_VALUE - offset - prefix_len) / chunk_size {
     raise Failure::Failure("@io.read_all(): data length exceed range of `Int`")
   }
-  let total_size = buffer_list.length() * chunk_size + offset
+  let total_size = prefix_len + buffer_list.length() * chunk_size + offset
   let result = FixedArray::make(total_size, b'0')
-  for i, buf in buffer_list {
-    result.unsafe_blit(i * chunk_size, buf, 0, chunk_size)
+  for prefix in prefix_list; len = 0; len = len + prefix.length() {
+    result.blit_from_bytesview(0, prefix)
   }
-  result.unsafe_blit(buffer_list.length() * chunk_size, buffer, 0, offset)
+  for i, buf in buffer_list {
+    result.unsafe_blit(prefix_len + i * chunk_size, buf, 0, chunk_size)
+  }
+  result.unsafe_blit(
+    prefix_len + buffer_list.length() * chunk_size,
+    buffer,
+    0,
+    offset,
+  )
   result.unsafe_reinterpret_as_bytes()
 }
 
