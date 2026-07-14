@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/int",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/io_buffer",
 }

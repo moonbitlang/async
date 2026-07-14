@@ -158,6 +158,9 @@ pub async fn[R : Reader] read_all(
       offset = 0
     }
   }
+  if buffer_list.length() >= (@int.MAX_VALUE - offset) / chunk_size {
+    raise Failure::Failure("@io.read_all(): data length exceed range of `Int`")
+  }
   let total_size = buffer_list.length() * chunk_size + offset
   let result = FixedArray::make(total_size, b'0')
   for i, buf in buffer_list {
