@@ -40,16 +40,20 @@ let forbidden_headers : Set[String] = Set::from_array([
 
 ///|
 fn sanitize_header_value(s : String) -> String {
-  if s.contains("\r") || s.contains("\n") {
-    let buf = StringBuilder::new()
+  for c in s.code_units(); crlf_count = 0 {
+    if c is ('\r' | '\n') {
+      continue crlf_count + 1
+    }
+  } nobreak {
+    guard crlf_count > 0 else {
+      // fast path: no CRLF detected, return immediately
+      s
+    }
+    let buf = StringBuilder::new(size_hint=s.length() - crlf_count)
     for c in s {
-      if c != '\r' && c != '\n' {
-        buf.write_char(c)
-      }
+      buf.write_char(c)
     }
     buf.to_string()
-  } else {
-    s
   }
 }
 
