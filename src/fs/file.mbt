@@ -208,6 +208,36 @@ pub impl @io.Reader for File with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub impl @io.Reader for File with fn read_all(self) {
+  guard self.io.kind() is Regular else { @io.read_all(self) }
+  let size = (self.size() - self.io.read_offset) catch {
+    _ => return @io.read_all(self)
+  }
+  guard size > 0 && size < @int.MAX_VALUE.to_int64() else { @io.read_all(self) }
+  let size_hint = size.to_int()
+  let buf = FixedArray::make(size_hint, b'\x00')
+  let n = self.read(buf, offset=0, max_len=size_hint)
+  if n is 0 {
+    return b""
+  }
+  // The only reliable way to detect EOF is `read` returning `0`,
+  // even for regular files. So do a simple EOF probe here.
+  let eof_probe = FixedArray::make(1, b'\x00')
+  if self.read(eof_probe, offset=0, max_len=1) is 0 {
+    // happy path, the file size is accurate
+    return buf.unsafe_reinterpret_as_bytes()[:n].to_owned()
+  }
+  @io.read_all(
+    self,
+    prefix_list=[
+      buf.unsafe_reinterpret_as_bytes()[:n],
+      eof_probe.unsafe_reinterpret_as_bytes(),
+    ],
+    chunk_size=1 << 16, // 64k
+  )
+}
+
+///|
 /// Read from a file at the offset given by `position`.
 /// Only seekable files (e.g. regular files and block devices) support this operation,
 /// calling `read_at` on unsupported file, such as pipe or socket, result in error.
