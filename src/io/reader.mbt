@@ -140,29 +140,39 @@ impl Reader with fn read_some(self, max_len?) {
 }
 
 ///|
-/// Read all remaining content from the reader.
-/// The return value is a `&io.Data` object, which can be converted to different formats
-/// using `.binary()`, `.text()` or `.json()`.
-impl Reader with fn read_all(self) {
+#internal(internal, "for internal use only")
+#doc(hidden)
+pub async fn[R : Reader] read_all(
+  reader : R,
+  chunk_size? : Int = 4096,
+) -> Bytes {
   let buffer_list = []
-  let mut buffer = FixedArray::make(1024, b'0')
+  let mut buffer = FixedArray::make(chunk_size, b'\x00')
   let mut offset = 0
-  while self.read(buffer, offset~, max_len=buffer.length() - offset) is n &&
+  while reader.read(buffer, offset~, max_len=buffer.length() - offset) is n &&
         n > 0 {
     offset += n
     if offset == buffer.length() {
       buffer_list.push(buffer)
-      buffer = FixedArray::make(1024, b'0')
+      buffer = FixedArray::make(chunk_size, b'0')
       offset = 0
     }
   }
-  let total_size = buffer_list.length() * 1024 + offset
+  let total_size = buffer_list.length() * chunk_size + offset
   let result = FixedArray::make(total_size, b'0')
   for i, buf in buffer_list {
-    result.unsafe_blit(i * 1024, buf, 0, 1024)
+    result.unsafe_blit(i * chunk_size, buf, 0, chunk_size)
   }
-  result.unsafe_blit(buffer_list.length() * 1024, buffer, 0, offset)
+  result.unsafe_blit(buffer_list.length() * chunk_size, buffer, 0, offset)
   result.unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// Read all remaining content from the reader.
+/// The return value is a `&io.Data` object, which can be converted to different formats
+/// using `.binary()`, `.text()` or `.json()`.
+impl Reader with fn read_all(self) {
+  read_all(self)
 }
 
 ///|
