@@ -215,6 +215,6 @@ pub fn[X] Promise::from_async(
       signal.on_abort(() => coro.cancel())
     }
   })
-  @coroutine.reschedule()
+  @event_loop.reschedule()
   promise.cast()
 }
