@@ -226,6 +226,9 @@ impl @io.Reader for Reader with fn _get_internal_buffer(self) {
 }
 
 ///|
+extend Reader with @io.Reader::{_direct_read, _get_internal_buffer, drop}
+
+///|
 async fn Reader::read_headers(
   self : Reader,
 ) -> (Map[String, String], Array[Cookie]) {

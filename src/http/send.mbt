@@ -242,6 +242,9 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
 }
 
 ///|
+extend Sender with @io.Writer::{write_once, write, write_reader}
+
+///|
 async fn Sender::end_body(self : Sender) -> Unit {
   match self.mode {
     SendingHeader | PassThrough =>
