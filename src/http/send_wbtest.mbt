@@ -53,7 +53,8 @@ async test "send_request stream" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      sender..write_reader(file).end_body()
+      @io.Writer::write_reader(sender, file)
+      sender.end_body()
     }
     defer r.close()
     inspect(
@@ -310,11 +311,11 @@ async test "send_request stream2" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      sender.write("abcd")
+      @io.Writer::write(sender, "abcd")
       @async.sleep(50)
-      sender.write("efgh")
+      @io.Writer::write(sender, "efgh")
       @async.sleep(50)
-      sender.write("ijkl")
+      @io.Writer::write(sender, "ijkl")
       sender.end_body()
     }
     defer r.close()
@@ -387,11 +388,10 @@ async test "send fixed length" {
       let _ = sender.send_request(Get, "/", extra_headers={
         "Content-Length": total_size.to_string(),
       })
-      sender
-      ..write(header)
-      ..write_reader(license_file)
-      ..write(trailer)
-      .end_body()
+      @io.Writer::write(sender, header)
+      @io.Writer::write_reader(sender, license_file)
+      @io.Writer::write(sender, trailer)
+      sender.end_body()
     }
     defer r.close()
     inspect(
@@ -627,9 +627,9 @@ async test "sender write incorrect length" {
       "Content-Length": "39",
     })
     let data = Bytes::make(20, b'\x00')
-    sender.write(data)
+    @io.Writer::write(sender, data)
     debug_inspect(
-      @test_util.expect_error_async(() => sender.write(data)),
+      @test_util.expect_error_async(() => @io.Writer::write(sender, data)),
       content=(
         #|IncorrectBodyLength
       ),
@@ -655,7 +655,9 @@ async test "sender write_reader incorrect length" {
       "Content-Length": "2048",
     })
     debug_inspect(
-      @test_util.expect_error_async(() => sender.write_reader(license_file)),
+      @test_util.expect_error_async(() => {
+        @io.Writer::write_reader(sender, license_file)
+      }),
       content=(
         #|IncorrectBodyLength
       ),
@@ -746,7 +748,8 @@ async test "send_request empty body" {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers=Map([]))
-      sender..write("").end_body()
+      @io.Writer::write(sender, "")
+      sender.end_body()
       let _ = sender.send_request(Head, "/", extra_headers=Map([]))
       sender.end_body()
       let _ = sender.send_request(Post, "/", extra_headers=Map([]))
@@ -794,7 +797,8 @@ async test "send_response empty body" {
         request_method=Head,
         extra_headers=Map([]),
       )
-      sender..write("").end_body()
+      @io.Writer::write(sender, "")
+      sender.end_body()
       let _ = sender.send_response(
         102,
         "OK",
@@ -810,7 +814,8 @@ async test "send_response empty body" {
         request_method=Get,
         extra_headers=Map([]),
       )
-      sender..write("").end_body()
+      @io.Writer::write(sender, "")
+      sender.end_body()
       let _ = sender.send_response(
         304,
         "OK",

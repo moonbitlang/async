@@ -68,12 +68,12 @@ pub impl @io.Reader for ServerConnection with fn _direct_read(
   offset~,
   max_len~,
 ) {
-  self.reader._direct_read(buf, offset~, max_len~)
+  @io.Reader::_direct_read(self.reader, buf, offset~, max_len~)
 }
 
 ///|
 pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
-  self.reader._get_internal_buffer()
+  @io.Reader::_get_internal_buffer(self.reader)
 }
 
 ///|
@@ -113,7 +113,7 @@ pub impl @io.Writer for ServerConnection with fn write_once(
   len~,
 ) {
   guard !(self.sender.mode is SendingHeader)
-  self.sender.write_once(buf, offset~, len~)
+  @io.Writer::write_once(self.sender, buf, offset~, len~)
 }
 
 ///|
@@ -137,7 +137,7 @@ pub async fn ServerConnection::write_string(
 ///|
 pub impl @io.Writer for ServerConnection with fn write_reader(self, reader) {
   guard !(self.sender.mode is SendingHeader)
-  self.sender.write_reader(reader)
+  @io.Writer::write_reader(self.sender, reader)
 }
 
 ///|

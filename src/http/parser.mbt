@@ -186,7 +186,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
       self.body = Chunked(remaining)
       if produced == 0 {
-        self._direct_read(buf, offset~, max_len~)
+        @io.Reader::_direct_read(self, buf, offset~, max_len~)
       } else {
         produced
       }
@@ -206,7 +206,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
       self.body = Chunked(remaining)
       if produced == 0 {
-        self._direct_read(buf, offset~, max_len~)
+        @io.Reader::_direct_read(self, buf, offset~, max_len~)
       } else {
         produced
       }
@@ -412,7 +412,7 @@ async fn Reader::skip_body(self : Reader) -> Unit {
   if self.body is Empty {
     return
   }
-  while self.drop(1024) == 1024 {
+  while @io.Reader::drop(self, 1024) == 1024 {
 
   }
 }

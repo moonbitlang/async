@@ -47,7 +47,7 @@ async test "read_request basic" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -78,7 +78,7 @@ async test "read_request fixed body" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -109,7 +109,7 @@ async test "read_request fixed body early EOF" {
     let input = Reader::new(r)
     let _request = input.read_request()
     debug_inspect(
-      @test_util.expect_error_async(() => input.read_all().binary()),
+      @test_util.expect_error_async(() => @io.Reader::read_all(input).binary()),
       content=(
         #|ReaderClosed
       ),
@@ -139,7 +139,7 @@ async test "read_request chunked" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -180,7 +180,7 @@ async test "read_request stream" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    while input.read_some() is Some(data) {
+    while @io.Reader::read_some(input) is Some(data) {
       let data = @utf8.decode(data)
       log.write_string("received \{data} from body\n")
     }
@@ -237,10 +237,12 @@ async test "multiple request" {
     let input = Reader::new(r)
     let request = input.read_request()
     log_request(request, log)
-    log..write_string(input.read_all().text()).write_string("\n\n=========\n\n")
+    log
+    ..write_string(@io.Reader::read_all(input).text())
+    .write_string("\n\n=========\n\n")
     let request = input.read_request()
     log_request(request, log)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -284,7 +286,7 @@ async test "read_response basic" {
       auto_decompress=true,
     )
     log_response(response, log)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -320,7 +322,7 @@ async test "read_response passthrough fallback (no length headers)" {
     log_response(response, log)
 
     // Read body via PassThrough fallback (reads until EOF/connection close)
-    log.write_string(input.read_all().text())
+    log.write_string(@io.Reader::read_all(input).text())
   }
   inspect(
     log.to_string(),
@@ -355,7 +357,7 @@ async test "read_response 204 No Content (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not PassThrough
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -392,7 +394,7 @@ async test "read_response 205 Reset Content (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -428,7 +430,7 @@ async test "read_response 304 Not Modified (no body)" {
       auto_decompress=true,
     )
     log_response(response, log)
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -463,7 +465,7 @@ async test "read_response 100 Continue (no body)" {
       auto_decompress=true,
     )
     log_response(response, log)
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -497,7 +499,7 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
     )
     log_response(response, log)
     // Body should be Empty, not WaitConnectionClose
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -533,7 +535,7 @@ async test "read_response HEAD 200 (no body)" {
     )
     log_response(response, log)
     // Body should be Empty, not Fixed(1234)
-    let body_text = input.read_all().text()
+    let body_text = @io.Reader::read_all(input).text()
     log <+ "body: "
     log.write_string(body_text)
   }
@@ -784,7 +786,7 @@ async test "gzip split between chunks" {
     )
     inspect(response.code, content="200")
     inspect(
-      r.read_all().text(),
+      @io.Reader::read_all(r).text(),
       content=(
         #|A simple message to compress
       ),

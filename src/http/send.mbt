@@ -143,7 +143,7 @@ impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
       )
       self.send_len += NON_EMPTY_MESSAGE_HEADER_END.length()
       self.mode = SendingBody
-      self.write_once(buf, offset~, len~)
+      @io.Writer::write_once(self, buf, offset~, len~)
     }
     SendingBody => {
       // Reserve enough space for chunk length and '\r\n' in the buffer,
@@ -215,7 +215,7 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
       )
       self.send_len += NON_EMPTY_MESSAGE_HEADER_END.length()
       self.mode = SendingBody
-      self.write_reader(reader)
+      @io.Writer::write_reader(self, reader)
     }
     SendingBody => {
       self.flush()
@@ -250,7 +250,8 @@ async fn Sender::end_body(self : Sender) -> Unit {
     SendingFixed(_) => raise IncorrectBodyLength
     WaitingBody if self.should_have_empty_body => {
       self.mode = SendingHeader
-      self..write(b"\r\n").flush()
+      @io.Writer::write(self, b"\r\n")
+      self.flush()
     }
     WaitingBody =>
       if self.send_len + EMPTY_MESSAGE_HEADER_END.length() >
@@ -296,11 +297,10 @@ async fn Sender::send_headers(
     } else if forbidden_headers.contains(k_lower) {
       continue
     }
-    self
-    ..write(sanitize_header_value(k))
-    ..write(b": ")
-    ..write(sanitize_header_value(v))
-    .write(b"\r\n")
+    @io.Writer::write(self, sanitize_header_value(k))
+    @io.Writer::write(self, b": ")
+    @io.Writer::write(self, sanitize_header_value(v))
+    @io.Writer::write(self, b"\r\n")
   }
   content_length
 }
@@ -316,29 +316,28 @@ async fn Sender::send_request(
   guard self.mode is SendingHeader
   self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
-    Get => self.write(b"GET ")
-    Head => self.write(b"HEAD ")
-    Post => self.write(b"POST ")
-    Put => self.write(b"PUT ")
-    Delete => self.write(b"DELETE ")
-    Connect => self.write(b"CONNECT ")
-    Options => self.write(b"OPTIONS ")
-    Trace => self.write(b"TRACE ")
-    Patch => self.write(b"PATCH ")
+    Get => @io.Writer::write(self, b"GET ")
+    Head => @io.Writer::write(self, b"HEAD ")
+    Post => @io.Writer::write(self, b"POST ")
+    Put => @io.Writer::write(self, b"PUT ")
+    Delete => @io.Writer::write(self, b"DELETE ")
+    Connect => @io.Writer::write(self, b"CONNECT ")
+    Options => @io.Writer::write(self, b"OPTIONS ")
+    Trace => @io.Writer::write(self, b"TRACE ")
+    Patch => @io.Writer::write(self, b"PATCH ")
   }
-  let content_length = self
-    ..write(path)
-    ..write(b" HTTP/1.1\r\n")
-    ..write(self.headers)
-    .send_headers(extra_headers)
+  @io.Writer::write(self, path)
+  @io.Writer::write(self, b" HTTP/1.1\r\n")
+  @io.Writer::write(self, self.headers)
+  let content_length = self.send_headers(extra_headers)
   let auto_decompress = !self.has_accept_encoding &&
     extra_headers.keys().find_first(k => k.to_lower() is "accept-encoding")
     is None
   if auto_decompress {
-    self.write(b"Accept-Encoding: gzip,identity\r\n")
+    @io.Writer::write(self, b"Accept-Encoding: gzip,identity\r\n")
   }
   if content_length is Some(len) {
-    self.write(b"\r\n")
+    @io.Writer::write(self, b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
     self.mode = WaitingBody
@@ -361,21 +360,20 @@ async fn Sender::send_response(
     Connect => self.should_have_empty_body = code is (100..<300 | 304)
     _ => self.should_have_empty_body = code is (100..<200 | 204 | 205 | 304)
   }
-  let content_length = self
-    ..write(b"HTTP/1.1 ")
-    ..write(encode_int(code, base=10))
-    ..write(b" ")
-    ..write(sanitize_header_value(reason))
-    ..write(b"\r\n")
-    ..write(self.headers)
-    .send_headers(extra_headers)
+  @io.Writer::write(self, b"HTTP/1.1 ")
+  @io.Writer::write(self, encode_int(code, base=10))
+  @io.Writer::write(self, b" ")
+  @io.Writer::write(self, sanitize_header_value(reason))
+  @io.Writer::write(self, b"\r\n")
+  @io.Writer::write(self, self.headers)
+  let content_length = self.send_headers(extra_headers)
   for cookie in cookies {
-    self.write(b"Set-Cookie: ")
+    @io.Writer::write(self, b"Set-Cookie: ")
     cookie.write_to(self)
-    self.write(b"\r\n")
+    @io.Writer::write(self, b"\r\n")
   }
   if content_length is Some(len) {
-    self.write(b"\r\n")
+    @io.Writer::write(self, b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
     self.mode = WaitingBody
