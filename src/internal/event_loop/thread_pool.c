@@ -2661,24 +2661,34 @@ static
 void sigwait_job_worker(struct job *job) {
   struct sigwait_job *sigwait_job = (struct sigwait_job*)job;
 
+  // Block all signals for the `sigwait` job.
+  // Cancellation is performed via `SIGUSR2`, which is in the wait set.
+  sigset_t all_signals, prev_mask;
+  sigfillset(&all_signals);
+  pthread_sigmask(SIG_SETMASK, &all_signals, &prev_mask);
+
   siginfo_t info;
   while (1) {
     int sig;
     int err = sigwait(&sigwait_job->signals, &sig);
     if (err > 0) {
       job->err = err;
-      return;
+      goto cleanup;
     }
 
     if (sig == SIGUSR2)
-      break;
+      goto cleanup;
 
     sig |= 1 << 31;
     do {
       if (write(pool.notify_send, &sig, sizeof(int)) > 0)
-        break;
+        goto cleanup;
     } while (errno == EINTR);
   }
+
+cleanup:
+  // Restore the mask of the worker thread, in case it get reused
+  pthread_sigmask(SIG_SETMASK, &prev_mask, 0);
 }
 
 MOONBIT_FFI_EXPORT
