@@ -88,6 +88,9 @@ impl @io.Writer for DummyWriter with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
+extend DummyWriter with @io.Writer::{write}
+
+///|
 async test "write cancel" {
   let log = StringBuilder::new()
   let writer = { logger: log, base_timeout: 300 }

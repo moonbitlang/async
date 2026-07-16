@@ -13,6 +13,9 @@
 // limitations under the License.
 
 ///|
+extend Reader with @io.Reader::{read_some, read_all}
+
+///|
 fn log_headers(headers : Map[String, String], logger : &Logger) -> Unit {
   for k, v in headers {
     logger <+ "\{k}: \{v}\n"
