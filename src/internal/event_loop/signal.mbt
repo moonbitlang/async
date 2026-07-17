@@ -76,17 +76,23 @@ priv enum SignalHandler {
 ///|
 #cfg(not(platform="windows"))
 fn setup_signal_handler_unix() -> @coroutine.Coroutine {
+  guard curr_loop.val is Some(evloop)
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
   @coroutine.spawn() <| () => {
     let context = "sigwait thread"
     fn cancel(job_id) raise {
-      guard curr_loop.val is Some(evloop)
       evloop.cancel_job_in_worker(job_id, context~)
     }
     let job = Job::sigwait(all_signals)
     defer job.free()
+    // We want to exclude the signal waiting task from dead lock detection.
+    // Since we do not execute coroutines with nested call stack,
+    // when the main loop is running, the sigwait task must be suspended,
+    // so whenever `blocked_task` is read, the `-= 1` here
+    // will cancel a `+= 1` caused by `evloop.suspend()` in the sigwait task.
+    evloop.blocked_tasks -= 1
     ignore <| perform_job_in_worker(job, context~, cancel~)
   }
 }
@@ -98,6 +104,8 @@ async fn EventLoop::terminate_signal_handler_unix(
   sigwait_task : @coroutine.Coroutine,
 ) -> Unit {
   sigwait_task.cancel()
+  // Undo the `-= 1` in `setup_sigwait_signal_handler`.
+  evloop.blocked_tasks += 1
   @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
     @coroutine.Cancelled => ()
     err => raise err

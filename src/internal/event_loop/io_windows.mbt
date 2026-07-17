@@ -55,12 +55,13 @@ async fn IoHandle::wait_read_result(
   io_result : IoResult,
   context~ : String,
 ) -> Unit {
+  guard curr_loop.val is Some(evloop)
   guard handle.read is Idle
   handle.read = Waiting(@coroutine.current_coroutine())
   defer {
     handle.read = Idle
   }
-  @coroutine.suspend() catch {
+  evloop.suspend() catch {
     _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
@@ -72,12 +73,13 @@ async fn IoHandle::wait_write_result(
   io_result : IoResult,
   context~ : String,
 ) -> Unit {
+  guard curr_loop.val is Some(evloop)
   guard handle.write is Idle
   handle.write = Waiting(@coroutine.current_coroutine())
   defer {
     handle.write = Idle
   }
-  @coroutine.suspend() catch {
+  evloop.suspend() catch {
     _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
