@@ -118,7 +118,6 @@ pub async fn can_execute(path : StringView) -> Bool {
 ///
 /// If the path contains cyclic symbolic link,
 /// an error will be raised.
-#cfg(target="native")
 pub async fn realpath(path : StringView) -> String {
   @event_loop.realpath(path, context="@fs.realpath()")
 }
