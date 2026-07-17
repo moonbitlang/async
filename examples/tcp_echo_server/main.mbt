@@ -14,7 +14,9 @@
 
 ///|
 async fn main {
-  @socket.TcpServer(@socket.Addr::parse("0.0.0.0:42000")).run_forever((conn, _) => {
-    conn.write_reader(conn)
-  })
+  @socket.TcpServer(@socket.Addr::parse("0.0.0.0:42000"), reuse_addr=true).run_forever((
+      conn,
+      _,
+    ) => conn.write_reader(conn),
+  )
 }
