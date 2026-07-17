@@ -50,8 +50,12 @@ async test "mkdir recursive" {
 }
 
 ///|
-#cfg(platform="windows")
 async test "mkdir recursive windows" {
+  // Wasm learns the host platform at runtime instead of through MoonBit target
+  // cfg, so keep this test present and select it using moonrun's host platform.
+  if !(@event_loop.platform is Windows) {
+    return
+  }
   @async.with_task_group() <| group => {
     let base_path = "_build\\recursive_mkdir_windows"
     let path = "\{base_path}\\test\\\\directory"

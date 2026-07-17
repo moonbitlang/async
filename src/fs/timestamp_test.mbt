@@ -59,8 +59,11 @@ async test "timestamp for path" {
 
 ///|
 // `atime` is not reliable on Windows, so this keeps Windows coverage to mtime.
-#cfg(platform="windows")
+// Wasm learns the host platform at runtime instead of through MoonBit target cfg.
 async test "mtime for path" {
+  if !(@event_loop.platform is Windows) {
+    return
+  }
   let path = "_build/timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
@@ -119,8 +122,11 @@ async test "timestamp for opened file" {
 
 ///|
 // `atime` is not reliable on Windows, so this keeps Windows coverage to mtime.
-#cfg(platform="windows")
+// Wasm learns the host platform at runtime instead of through MoonBit target cfg.
 async test "mtime for opened file" {
+  if !(@event_loop.platform is Windows) {
+    return
+  }
   let path = "_build/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
     @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
