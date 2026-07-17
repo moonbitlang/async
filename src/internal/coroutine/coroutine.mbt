@@ -93,10 +93,6 @@ pub async fn suspend() -> Unit {
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
-  scheduler.blocking += 1
-  defer {
-    scheduler.blocking -= 1
-  }
   async_suspend() <| fn(ok_cont, err_cont) {
     guard coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)

@@ -22,7 +22,7 @@ let _ignore_unused_import : Unit = {
 
 ///|
 pub fn reschedule() -> Unit {
-  guard !@coroutine.no_more_work() else {  }
+  guard !@coroutine.all_coroutines().is_empty() else {  }
   @coroutine.reschedule()
   // Instead of looping blockingly until there is no ready task,
   // we only perform one round of scheduling here

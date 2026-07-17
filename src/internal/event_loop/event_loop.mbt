@@ -300,7 +300,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
       Ref::protect(check_fd_leak, false, () => self.cleanup())
       // In case the event loop has encountered some fatal error,
       // propagate the error to relevant coroutines.
-      while !@coroutine.no_more_work() {
+      while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
         @coroutine.reschedule()
       }
       raise err
