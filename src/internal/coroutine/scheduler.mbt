@@ -18,6 +18,7 @@ priv struct Scheduler {
   mut curr_coro : Coroutine?
   mut blocking : Int
   run_later : @deque.Deque[Coroutine]
+  all_coros : Set[Coroutine]
 }
 
 ///|
@@ -26,6 +27,7 @@ let scheduler : Scheduler = {
   curr_coro: None,
   blocking: 0,
   run_later: Deque([]),
+  all_coros: Set([]),
 }
 
 ///|
@@ -65,4 +67,9 @@ pub fn reschedule() -> Unit {
     }
     scheduler.curr_coro = last_coro
   }
+}
+
+///|
+pub fn all_coroutines() -> Set[Coroutine] {
+  scheduler.all_coros
 }

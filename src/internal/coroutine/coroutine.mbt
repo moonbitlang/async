@@ -128,11 +128,13 @@ pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
         coro.wake()
       }
       coro.downstream.clear()
+      scheduler.all_coros.remove(coro)
     }
   }
 
   coro.state = Suspend(ok_cont=run, err_cont=_ => ())
   scheduler.run_later.push_back(coro)
+  scheduler.all_coros.add(coro)
   coro
 }
 
