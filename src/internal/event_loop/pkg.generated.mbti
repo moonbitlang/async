@@ -9,15 +9,9 @@ import {
 }
 
 // Values
-pub let _SIGBREAK : Int
-
-pub let _SIGHUP : Int
-
-pub let _SIGINT : Int
-
-pub let _SIGTERM : Int
-
 pub async fn access(StringView, Access, context~ : String) -> Int
+
+pub let all_signals : ReadOnlyArray[Int]
 
 pub let check_fd_leak : @ref.Ref[Bool]
 

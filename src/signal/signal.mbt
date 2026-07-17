@@ -26,15 +26,13 @@ pub(all) enum Signal {
 } derive(Debug)
 
 ///|
+fn Signal::index(sig : Signal) -> Int = "%identity"
+
+///|
 /// Convert a signal to its underlying signal code in the OS.
 /// The result of this function is platform-dependent.
 pub fn Signal::to_int(signal : Signal) -> Int {
-  match signal {
-    SIGINT => @event_loop._SIGINT
-    SIGTERM => @event_loop._SIGTERM
-    SIGHUP => @event_loop._SIGHUP
-    SIGBREAK => @event_loop._SIGBREAK
-  }
+  @event_loop.all_signals[signal.index()]
 }
 
 ///|
