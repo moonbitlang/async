@@ -17,8 +17,6 @@ pub fn has_immediately_ready_task() -> Bool
 
 pub fn is_being_cancelled() -> Bool
 
-pub fn no_more_work() -> Bool
-
 pub async fn pause() -> Unit
 
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X

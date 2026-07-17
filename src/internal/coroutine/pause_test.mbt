@@ -33,7 +33,7 @@ test "coroutine ping-pong" {
       }
     })
   })
-  while !@coroutine.no_more_work() {
+  while @coroutine.has_immediately_ready_task() {
     @coroutine.reschedule()
   }
   coro.unwrap()
