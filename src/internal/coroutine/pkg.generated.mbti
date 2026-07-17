@@ -3,9 +3,12 @@ package "moonbitlang/async/internal/coroutine"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/set",
 }
 
 // Values
+pub fn all_coroutines() -> @set.Set[Coroutine]
+
 pub fn check_cancellation() -> Unit raise
 
 pub fn current_coroutine() -> Coroutine
