@@ -14,8 +14,7 @@
 
 ///|
 #cfg(target="native")
-#borrow(name)
-extern "C" fn get_signal_by_name(name : Bytes) -> Int = "moonbitlang_async_get_signal_by_name"
+extern "C" fn get_signal_by_index(index : Int) -> Int = "moonbitlang_async_get_signal_by_index"
 
 ///|
 #cfg(target="wasm")
@@ -23,55 +22,9 @@ extern "C" fn get_signal_by_name(name : Bytes) -> Int = "moonbitlang_async_get_s
 fn get_signal_by_index(index : Int) -> Int = "moonbitlang/async" "signal/get_signal_by_index"
 
 ///|
-#cfg(target="wasm")
-let sigint_index : Int = 0
-
-///|
-#cfg(target="wasm")
-let sigterm_index : Int = 1
-
-///|
-#cfg(target="wasm")
-let sighup_index : Int = 2
-
-///|
-#cfg(target="wasm")
-let sigbreak_index : Int = 3
-
-///|
-#cfg(target="native")
-pub let _SIGINT : Int = get_signal_by_name(b"SIGINT")
-
-///|
-#cfg(target="wasm")
-pub let _SIGINT : Int = get_signal_by_index(sigint_index)
-
-///|
-#cfg(target="native")
-pub let _SIGTERM : Int = get_signal_by_name(b"SIGTERM")
-
-///|
-#cfg(target="wasm")
-pub let _SIGTERM : Int = get_signal_by_index(sigterm_index)
-
-///|
-#cfg(target="native")
-pub let _SIGHUP : Int = get_signal_by_name(b"SIGHUP")
-
-///|
-#cfg(target="wasm")
-pub let _SIGHUP : Int = get_signal_by_index(sighup_index)
-
-///|
-#cfg(target="native")
-pub let _SIGBREAK : Int = get_signal_by_name(b"SIGBREAK")
-
-///|
-#cfg(target="wasm")
-pub let _SIGBREAK : Int = get_signal_by_index(sigbreak_index)
-
-///|
-let all_signals : ReadOnlyArray[Int] = [_SIGINT, _SIGTERM, _SIGHUP, _SIGBREAK]
+pub let all_signals : ReadOnlyArray[Int] = ReadOnlyArray::makei(
+  4, get_signal_by_index,
+)
 
 ///|
 pub suberror KilledBySignal {
@@ -83,7 +36,9 @@ pub suberror KilledBySignal {
 #borrow(all_signals, signals)
 extern "C" fn set_global_cancellation_signals_ffi(
   all_signals : ReadOnlyArray[Int],
+  all_signals_len : Int,
   signals : ReadOnlyArray[Int],
+  signals_len : Int,
 ) -> Unit = "moonbitlang_async_set_global_cancellation_signals"
 
 ///|
@@ -101,14 +56,6 @@ fn set_global_cancellation_signals_ffi(
 let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 
 ///|
-#cfg(target="native")
-pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
-  global_signal_handler_initialized.val = true
-  set_global_cancellation_signals_ffi(all_signals, signals)
-}
-
-///|
-#cfg(target="wasm")
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
   global_signal_handler_initialized.val = true
   set_global_cancellation_signals_ffi(
@@ -120,8 +67,15 @@ pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
 }
 
 ///|
+#warnings("-unused_constructor")
+priv enum SignalHandler {
+  SigwaitHandler(@coroutine.Coroutine)
+  ConsoleControlHandler
+}
+
+///|
 #cfg(not(platform="windows"))
-fn setup_sigwait_signal_handler() -> @coroutine.Coroutine {
+fn setup_signal_handler_unix() -> @coroutine.Coroutine {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
@@ -139,7 +93,7 @@ fn setup_sigwait_signal_handler() -> @coroutine.Coroutine {
 
 ///|
 #cfg(not(platform="windows"))
-async fn EventLoop::terminate_sigwait_signal_handler(
+async fn EventLoop::terminate_signal_handler_unix(
   evloop : EventLoop,
   sigwait_task : @coroutine.Coroutine,
 ) -> Unit {
@@ -164,7 +118,7 @@ fn set_console_control_handler(add : Int) -> Int = "moonbitlang/async" "signal/s
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
-fn setup_console_control_signal_handler() -> Unit raise {
+fn setup_signal_handler_windows() -> Unit raise {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
@@ -175,7 +129,7 @@ fn setup_console_control_signal_handler() -> Unit raise {
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
-fn EventLoop::terminate_console_control_signal_handler(
+fn EventLoop::terminate_signal_handler_windows(
   evloop : EventLoop,
 ) -> Unit raise {
   if set_console_control_handler(0) is 0 {
@@ -188,49 +142,45 @@ fn EventLoop::terminate_console_control_signal_handler(
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-fn setup_signal_handler() -> @coroutine.Coroutine {
-  setup_sigwait_signal_handler()
+fn setup_signal_handler() -> SignalHandler {
+  SigwaitHandler(setup_signal_handler_unix())
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
-  sigwait_task : @coroutine.Coroutine,
+  handler : SignalHandler,
 ) -> Unit {
-  evloop.terminate_sigwait_signal_handler(sigwait_task)
+  guard handler is SigwaitHandler(sigwait_task)
+  evloop.terminate_signal_handler_unix(sigwait_task)
 }
 
 ///|
 #cfg(platform="windows")
-fn setup_signal_handler() -> Unit raise {
-  setup_console_control_signal_handler()
+fn setup_signal_handler() -> SignalHandler raise {
+  setup_signal_handler_windows()
+  ConsoleControlHandler
 }
 
 ///|
 #cfg(platform="windows")
 fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
-  _ : Unit,
+  handler : SignalHandler,
 ) -> Unit raise {
-  evloop.terminate_console_control_signal_handler()
-}
-
-///|
-#cfg(target="wasm")
-priv enum SignalHandler {
-  Sigwait(@coroutine.Coroutine)
-  ConsoleControl
+  guard handler is ConsoleControlHandler
+  evloop.terminate_signal_handler_windows()
 }
 
 ///|
 #cfg(target="wasm")
 fn setup_signal_handler() -> SignalHandler raise {
   if platform is Windows {
-    setup_console_control_signal_handler()
-    ConsoleControl
+    setup_signal_handler_windows()
+    ConsoleControlHandler
   } else {
-    Sigwait(setup_sigwait_signal_handler())
+    SigwaitHandler(setup_signal_handler_unix())
   }
 }
 
@@ -241,8 +191,8 @@ async fn EventLoop::terminate_signal_handler(
   signal_handler : SignalHandler,
 ) -> Unit {
   match signal_handler {
-    Sigwait(sigwait_task) =>
-      evloop.terminate_sigwait_signal_handler(sigwait_task)
-    ConsoleControl => evloop.terminate_console_control_signal_handler()
+    SigwaitHandler(sigwait_task) =>
+      evloop.terminate_signal_handler_unix(sigwait_task)
+    ConsoleControlHandler => evloop.terminate_signal_handler_windows()
   }
 }

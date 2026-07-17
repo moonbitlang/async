@@ -28,18 +28,22 @@
 
 #endif
 
+enum SignalCode {
+  SIGINT_CODE = 0,
+  SIGTERM_CODE = 1,
+  SIGHUP_CODE = 2,
+  SIGBREAK_CODE = 3
+};
+
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_signal_by_name(const char *name) {
-  if (0 == strcmp(name, "SIGINT")) {
-    return CTRL_C_EVENT;
-  } else if (0 == strcmp(name, "SIGBREAK")) {
-    return CTRL_BREAK_EVENT;
-  } else if (0 == strcmp(name, "SIGHUP")) {
-    return CTRL_CLOSE_EVENT;
-  } else {
-    return -1;
+int moonbitlang_async_get_signal_by_index(int32_t code) {
+  switch (code) {
+    case SIGINT_CODE: return CTRL_C_EVENT;
+    case SIGBREAK_CODE: return CTRL_BREAK_EVENT;
+    case SIGHUP_CODE: return CTRL_CLOSE_EVENT;
+    default: return -1;
   }
 }
 
@@ -54,9 +58,14 @@ extern int interested_console_ctrl_event;
 BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type);
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_set_global_cancellation_signals(int *all_signals, int *signals) {
+void moonbitlang_async_set_global_cancellation_signals(
+  int32_t *all_signals,
+  int32_t all_signals_length,
+  int32_t *signals,
+  int32_t signals_length
+) {
   int new_mask = 0;
-  for (int i = 0; i < Moonbit_array_length(signals); ++i) {
+  for (int i = 0; i < signals_length; ++i) {
     if (signals[i] < 0) continue;
     new_mask |= 1 << signals[i];
   }
@@ -71,27 +80,29 @@ int moonbitlang_async_set_console_control_handler(int32_t add) {
 #else // #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_signal_by_name(const char *name) {
-  if (0 == strcmp(name, "SIGINT")) {
-    return SIGINT;
-  } else if (0 == strcmp(name, "SIGTERM")) {
-    return SIGTERM;
-  } else if (0 == strcmp(name, "SIGHUP")) {
-    return SIGHUP;
-  } else {
-    return -1;
+int moonbitlang_async_get_signal_by_index(int32_t code) {
+  switch (code) {
+    case SIGINT_CODE: return SIGINT;
+    case SIGTERM_CODE: return SIGTERM;
+    case SIGHUP_CODE: return SIGHUP;
+    default: return -1;
   }
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_set_global_cancellation_signals(int *all_signals, int *signals) {
+void moonbitlang_async_set_global_cancellation_signals(
+  int32_t *all_signals,
+  int32_t all_signals_length,
+  int32_t *signals,
+  int32_t signals_length
+) {
   sigset_t set;
   pthread_sigmask(SIG_SETMASK, 0, &set);
-  for (int i = 0; i < Moonbit_array_length(all_signals); ++i) {
+  for (int i = 0; i < all_signals_length; ++i) {
     if (all_signals[i] < 0) continue;
     sigdelset(&set, all_signals[i]);
   }
-  for (int i = 0; i < Moonbit_array_length(signals); ++i) {
+  for (int i = 0; i < signals_length; ++i) {
     if (signals[i] < 0) continue;
     sigaddset(&set, signals[i]);
   }
