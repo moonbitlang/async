@@ -2669,7 +2669,8 @@ void sigwait_job_worker(struct job *job) {
 
   siginfo_t info;
   while (1) {
-    int sig;
+    int sig = 0;
+    errno = 0;
     int err = sigwait(&sigwait_job->signals, &sig);
     if (err > 0) {
       job->err = err;
@@ -2678,6 +2679,19 @@ void sigwait_job_worker(struct job *job) {
 
     if (sig == SIGUSR2)
       goto cleanup;
+
+    // It seems that on MacOS, it is possible for `sigwait` to
+    // silently return `0` without returning a signal,
+    // and set `errno` to `EINTR`.
+    // Handle this case here by retrying.
+    if (sig == 0) {
+      if (errno == EINTR || !errno) {
+        continue;
+      } else {
+        job->err = errno;
+        goto cleanup;
+      }
+    }
 
     sig |= 1 << 31;
     do {
