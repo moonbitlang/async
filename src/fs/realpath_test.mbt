@@ -26,7 +26,6 @@ async test "realpath absolute" {
 ///|
 // These symlink scenarios are not supported on Windows. Wasm learns the host
 // platform at runtime instead of through MoonBit target cfg.
-#cfg(not(platform="windows"))
 async test "realpath link to absolute" {
   if @event_loop.platform is Windows {
     return
@@ -47,7 +46,6 @@ async test "realpath link to absolute" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "realpath link to relative" {
   if @event_loop.platform is Windows {
     return
@@ -85,7 +83,6 @@ async test "realpath link to dir absolute" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "realpath link to dir relative" {
   if @event_loop.platform is Windows {
     return
