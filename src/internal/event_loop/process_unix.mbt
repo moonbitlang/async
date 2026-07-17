@@ -62,7 +62,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
       guard evloop.extra.pids.get(self.pid) is None
       evloop.extra.pids[self.pid] = @coroutine.current_coroutine()
       defer evloop.extra.pids.remove(self.pid)
-      @coroutine.suspend()
+      evloop.suspend()
     }
   } else {
     // Linux systems where pidfd is not available.

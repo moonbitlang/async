@@ -132,7 +132,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
         guard extra.pids.get(self.pid) is None
         extra.pids[self.pid] = @coroutine.current_coroutine()
         defer extra.pids.remove(self.pid)
-        @coroutine.suspend()
+        evloop.suspend()
       }
     Windows => {
       guard self.handle is Some(io)

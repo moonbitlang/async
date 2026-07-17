@@ -46,7 +46,9 @@ priv struct EventLoop {
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
+  mut signal_handler : SignalHandler?
   mut killed_by_signal : Int?
+  mut blocked_tasks : Int
 }
 
 ///|
@@ -97,7 +99,9 @@ fn EventLoop::new() -> EventLoop raise {
       jobs: Map([]),
       timers: SortedSet([]),
       main: None,
+      signal_handler: None,
       killed_by_signal: None,
+      blocked_tasks: 0,
     }
   } catch {
     err => {
@@ -129,6 +133,7 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
     }
   }
   let signal_handler = setup_signal_handler()
+  evloop.signal_handler = Some(signal_handler)
   let main = @coroutine.spawn(() => {
     try f() catch {
       err => {
@@ -142,6 +147,15 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
   evloop.main = Some(main)
   evloop.run_forever()
   main.unwrap()
+}
+
+///|
+async fn EventLoop::suspend(evloop : EventLoop) -> Unit {
+  evloop.blocked_tasks += 1
+  defer {
+    evloop.blocked_tasks -= 1
+  }
+  @coroutine.suspend()
 }
 
 ///|
@@ -261,12 +275,25 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   try {
-    while !(@coroutine.no_more_work() && self.running_workers.is_empty()) {
+    while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
       self.extra.poll(self) catch {
         @os_error.OSError(_) as err if err.is_EINTR() => continue
         err => raise err
       }
       @coroutine.reschedule()
+    }
+    let all_coros = @coroutine.all_coroutines().iter()
+    let all_coros = match self.signal_handler {
+      Some(SigwaitHandler(sigwait_task)) =>
+        all_coros.filter(coro => coro != sigwait_task)
+      None | Some(ConsoleControlHandler) => all_coros
+    }
+    let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
+    if all_coros.length() > 0 {
+      println(
+        "Dead lock detected. Tasks spawned at the following locations are still alive: \{to_repr(all_coros)}",
+      )
+      panic()
     }
   } catch {
     err => {
@@ -299,11 +326,15 @@ priv enum CancellationStatus {
 async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
 ) -> Unit {
+  guard curr_loop.val is Some(evloop)
   try cancel_func() catch {
     err => {
       // The cancellation operation itself failed.
       // Give up the cancellation and wait for completion normally.
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => evloop.suspend(),
+        resume_on_cancel=true,
+      )
       raise err
     }
   } noraise {
@@ -311,7 +342,10 @@ async fn wait_for_cancellation(
       // The cancellation operation has succeeded,
       // but the thread pool or OS may need some more time to finish all the cleanup.
       // So wait for the completion of the cleanup process here.
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => evloop.suspend(),
+        resume_on_cancel=true,
+      )
     NoWait =>
       // The cancellation operation has succeeded,
       // and the cancelled operation has already terminated.
@@ -336,9 +370,12 @@ async fn EventLoop::wait_for_job(
   defer evloop.jobs.remove(job_id)
   match cancel {
     None =>
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+      @coroutine.protect_from_cancel(
+        () => evloop.suspend(),
+        resume_on_cancel=true,
+      )
     Some(cancel_func) =>
-      @coroutine.suspend() catch {
+      evloop.suspend() catch {
         _ =>
           // The cancellation error is swallowed here,
           // because in case the operation completed before cancellation,
