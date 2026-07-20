@@ -13,14 +13,9 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript or Wasm GC backends.
-#cfg(any(target="js", target="wasm-gc"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@io.pipe)
-  ignore(@semaphore.Semaphore::release)
-  ignore(@tls.unimplemented)
-  ignore(@http.unimplemented)
-  ignore(@coroutine.Coroutine::wake)
-  ignore(@utf8.encode(""))
+test "RFC 6455 accept key" {
+  inspect(
+    generate_accept_key("dGhlIHNhbXBsZSBub25jZQ=="),
+    content="s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+  )
 }
