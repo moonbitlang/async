@@ -2014,7 +2014,8 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
 static
 HANDLE global_job_object = INVALID_HANDLE_VALUE;
 
-int32_t moonbitlang_async_init_global_job_objeect() {
+static
+BOOL init_global_job_object() {
   HANDLE job = CreateJobObjectA(NULL, NULL);
   if (job == NULL)
     return 0;
@@ -2095,6 +2096,11 @@ void spawn_job_worker(struct job *job) {
     STD_OUTPUT_HANDLE,
     STD_ERROR_HANDLE
   };
+
+  if (job->err)
+    // Handle error from initializing global job object,
+    // see `moonbitlang_async_make_spawn_job` below.
+    return;
 
   struct spawn_job *spawn_job = (struct spawn_job *)job;
 
@@ -2283,6 +2289,13 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->no_console_window = no_console_window;
   job->is_orphan = is_orphan;
   job->result = INVALID_HANDLE_VALUE;
+
+  if (global_job_object == INVALID_HANDLE_VALUE && !init_global_job_object())
+    // To avoid race condition, we must initialize the global job object
+    // in the main thread. However job spawning functions cannot report error,
+    // so we delay the error reporting to the thread pool job
+    job->job.err = errno;
+
   return job;
 }
 
