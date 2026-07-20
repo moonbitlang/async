@@ -25,13 +25,18 @@ pub async fn spawn(
   is_orphan~ : Bool,
   context~ : String,
 ) -> Process {
-  let job = Job::spawn(
+  let (cwd, has_cwd) = match cwd {
+    None => (@os_string.empty, false)
+    Some(cwd) => (cwd, true)
+  }
+  let job = Job::spawn_windows(
     command_line,
     env,
     stdin,
     stdout,
     stderr,
     cwd,
+    has_cwd~,
     no_console_window~,
     is_orphan~,
   )
@@ -50,7 +55,7 @@ pub async fn spawn(
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
   guard curr_loop.val is Some(evloop)
   guard self.handle is Some(io)
-  let job = Job::wait_for_process(io.fd)
+  let job = Job::wait_for_process(io.fd, pid=self.pid)
   defer job.free()
   let _ = perform_job_in_worker(job, context~, cancel=job_id => {
     evloop.cancel_job_in_worker(job_id, context~)

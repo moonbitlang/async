@@ -8,6 +8,8 @@ import {
 // Values
 pub fn decode(@c_buffer.Buffer, offset? : Int, len? : Int) -> String
 
+pub let empty : OsString
+
 pub fn encode(StringView) -> OsString
 
 // Errors
