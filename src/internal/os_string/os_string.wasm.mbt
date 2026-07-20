@@ -60,3 +60,6 @@ pub fn decode(
   fill_string(os_str, offset, len, str, str_len)
   str
 }
+
+///|
+pub let empty : OsString = encode("")

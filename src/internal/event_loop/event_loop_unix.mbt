@@ -90,3 +90,16 @@ fn UnixEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
     }
   }
 }
+
+///|
+#cfg(not(platform="windows"))
+async fn UnixEventLoopExtra::wait_pid(
+  self : Self,
+  evloop : EventLoop,
+  pid : Int,
+) -> Unit {
+  guard self.pids.get(pid) is None
+  self.pids[pid] = @coroutine.current_coroutine()
+  defer self.pids.remove(pid)
+  evloop.suspend()
+}

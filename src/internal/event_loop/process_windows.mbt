@@ -13,10 +13,10 @@
 // limitations under the License.
 
 ///|
-#cfg(platform="windows")
-pub async fn spawn(
+#cfg(any(platform="windows", target="wasm"))
+pub async fn spawn_windows(
   command_line : @os_string.OsString,
-  env~ : @c_buffer.Buffer,
+  env~ : SpawnJobEnv,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
@@ -31,11 +31,11 @@ pub async fn spawn(
   }
   let job = Job::spawn_windows(
     command_line,
-    env,
-    stdin,
-    stdout,
-    stderr,
-    cwd,
+    env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
     has_cwd~,
     no_console_window~,
     is_orphan~,
@@ -51,8 +51,11 @@ pub async fn spawn(
 }
 
 ///|
-#cfg(platform="windows")
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+#cfg(any(platform="windows", target="wasm"))
+pub async fn Process::wait_pid_windows(
+  self : Process,
+  context~ : String,
+) -> Int {
   guard curr_loop.val is Some(evloop)
   guard self.handle is Some(io)
   let job = Job::wait_for_process(io.fd, pid=self.pid)

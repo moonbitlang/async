@@ -67,3 +67,40 @@ extern "C" fn get_process_result(
 #unsafe_skip_stub_check
 #borrow(out)
 fn get_process_result(handle : @fd_util.Fd, pid : Int, out : Ref[Int]) -> Int = "moonbitlang/async" "process/get_process_result"
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+type SpawnJobArgv = @c_buffer.Buffer
+
+///|
+#cfg(target="wasm")
+type SpawnJobArgv = UInt64
+
+///|
+#cfg(target="native")
+type SpawnJobEnv = @c_buffer.Buffer
+
+///|
+#cfg(target="wasm")
+type SpawnJobEnv = UInt64
+
+///|
+#cfg(platform="windows")
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+  self.wait_pid_windows(context~)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+  self.wait_pid_unix(context~)
+}
+
+///|
+#cfg(target="wasm")
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+  match platform {
+    Linux | MacOS => self.wait_pid_unix(context~)
+    Windows => self.wait_pid_windows(context~)
+  }
+}
