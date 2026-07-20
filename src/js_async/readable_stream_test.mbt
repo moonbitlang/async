@@ -18,9 +18,9 @@ async test "ReadableStream roundtrip" {
   let (r, w) = @js_async.JsReadableStream::new_pipe()
   let r = @js_async.ReadableStream::from_js(r)
   @async.with_task_group() <| group => {
-    let start = @env.now()
+    let start = @async.now()
     fn tick() {
-      ((@env.now() - start).to_int() + 50) / 200
+      ((@async.now() - start).to_int() + 50) / 200
     }
     group.spawn_bg() <| () => {
       defer w.close()

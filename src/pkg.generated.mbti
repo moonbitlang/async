@@ -18,7 +18,6 @@ pub fn is_being_cancelled() -> Bool
 
 pub fn is_cancellation_error(Error) -> Bool
 
-#deprecated
 pub fn now() -> Int64
 
 pub async fn pause() -> Unit

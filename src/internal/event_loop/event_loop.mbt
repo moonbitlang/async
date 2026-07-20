@@ -160,12 +160,14 @@ async fn EventLoop::suspend(evloop : EventLoop) -> Unit {
 
 ///|
 #cfg(target="native")
-using @env {now}
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn now() -> UInt64 = "moonbitlang/async" "time/get_ms_since_epoch"
+pub fn now() -> Int64 = "moonbitlang/async" "time/get_ms_since_epoch"
 
 ///|
 fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {

@@ -6,7 +6,6 @@ import {
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/env",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/internal/test_util",

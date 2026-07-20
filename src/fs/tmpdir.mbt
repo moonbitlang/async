@@ -15,9 +15,9 @@
 ///|
 let tmpdir_seed : @random.Rand = {
   let seed = Buffer()
-  let now = @env.now()
+  let now = @event_loop.now()
   for _ in 0..<4 {
-    seed.write_uint64_le(now)
+    seed.write_int64_le(now)
   }
   @random.Rand::chacha8(seed=seed.contents())
 }
@@ -54,7 +54,7 @@ pub async fn tmpdir(prefix~ : StringView) -> String {
   for _ in 0..<@int.MAX_VALUE {
     let hasher = Hasher()
     hasher.combine_uint64(tmpdir_seed.uint64())
-    hasher.combine_uint64(@env.now())
+    hasher.combine_int64(@event_loop.now())
     let h = hasher.finalize().reinterpret_as_uint()
     let path = StringBuilder::new()
     path.write_string(tmp_base_path)
