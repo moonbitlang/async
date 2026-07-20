@@ -48,12 +48,12 @@ pub async fn spawn(
 ///|
 #cfg(platform="windows")
 pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+  guard curr_loop.val is Some(evloop)
   guard self.handle is Some(io)
   let job = Job::wait_for_process(io.fd)
   defer job.free()
-  let _ = perform_job_in_worker(job, context~, cancel=_ => {
-    job.cancel_process_waiter()
-    NeedWait
+  let _ = perform_job_in_worker(job, context~, cancel=job_id => {
+    evloop.cancel_job_in_worker(job_id, context~)
   })
 
   let out = Ref(0)

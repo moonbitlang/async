@@ -268,10 +268,6 @@ extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_
 extern "C" fn Job::wait_for_process(handle : @fd_util.Fd) -> Job = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
-#cfg(platform="windows")
-extern "C" fn Job::cancel_process_waiter(job : Job) = "moonbitlang_async_cancel_wait_for_process_job"
-
-///|
 #owned(addr)
 extern "C" fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job = "moonbitlang_async_make_bind_job"
 
