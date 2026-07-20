@@ -33,6 +33,8 @@ pub async fn kind_of_fd(Int, context~ : String) -> @fd_util.FileKind
 
 pub async fn mkdir(StringView, mode~ : Int, context~ : String) -> Unit
 
+pub fn now() -> Int64
+
 pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (IoHandle, FileIdentity)
 
 pub let platform : Platform

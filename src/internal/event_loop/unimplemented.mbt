@@ -23,6 +23,11 @@ let _ignore_unused_import : Unit = {
 }
 
 ///|
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}
+
+///|
 type Timer
 
 ///|

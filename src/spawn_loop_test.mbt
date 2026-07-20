@@ -68,9 +68,9 @@ async test "spawn_loop retry-exponential" {
   let log = []
   @async.with_task_group() <| group => {
     let mut i = 0
-    let start = @env.now()
+    let start = @async.now()
     fn tick() {
-      (@env.now() - start + 50).to_int() / 200
+      (@async.now() - start + 50).to_int() / 200
     }
     group.spawn_loop(
       retry=ExponentialDelay(initial=200, factor=2, maximum=600),

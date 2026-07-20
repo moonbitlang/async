@@ -5,7 +5,6 @@ import {
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/env",
   "moonbitlang/async",
   "moonbitlang/async/internal/test_util",
 } for "test"

@@ -21,6 +21,11 @@ let _ignore_unused_import : Unit = {
 }
 
 ///|
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}
+
+///|
 pub fn reschedule() -> Unit {
   guard !@coroutine.all_coroutines().is_empty() else {  }
   @coroutine.reschedule()

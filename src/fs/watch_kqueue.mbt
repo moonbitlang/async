@@ -158,10 +158,10 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
   while root.is_clean() {
     self.process_events(timeout=None, context~)
   }
-  let debounce_deadline = @env.now() + self.max_debounce_delay.to_uint64()
+  let debounce_deadline = @event_loop.now() + self.max_debounce_delay.to_int64()
   for ;; {
     let t = @cmp.minimum(
-      (debounce_deadline - @env.now()).to_int(),
+      (debounce_deadline - @event_loop.now()).to_int(),
       self.debounce_timeout,
     )
     guard t > 0 else { break }
