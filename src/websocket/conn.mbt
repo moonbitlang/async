@@ -460,7 +460,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     (CloseCode::from_uint(code), reason)
   } else {
     // the `close` packet we receive is empty
-    (CloseCode::Normal, None)
+    (Normal, None)
   }
   self.closed = Some(ConnectionClosed(close_code, reason))
   if self.write_mask is Some(rand) {
