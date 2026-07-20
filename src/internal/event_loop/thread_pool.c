@@ -136,6 +136,10 @@ struct job {
 
   // finalizer for the job
   void (*free)(void *);
+
+  // Special cancellation function for the job.
+  // May be `NULL`, in this case the default one is used.
+  int32_t (*cancel_handler)(struct job*);
 };
 
 MOONBIT_FFI_EXPORT
@@ -299,17 +303,29 @@ void moonbitlang_async_worker_enter_idle(struct worker *worker) {
   worker->job = 0;
 }
 
+enum {
+  CANCELLATION_STATUS_RETRY_LATER = 0,
+  CANCELLATION_STATUS_NEED_WAIT = 1,
+};
+
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
   if (worker->waiting)
     return 1;
 
+  // invarint: `worker->job` is only manipulated in the main thread,
+  // and must be non-NULL here.
+  if (worker->job->cancel_handler)
+    return (worker->job->cancel_handler)(worker->job);
+
+  // enter default cancellation logic
+
 #ifdef _WIN32
 
   if (CancelSynchronousIo(worker->id)) {
-    return 1;
+    return CANCELLATION_STATUS_NEED_WAIT;
   } else if (GetLastError() == ERROR_NOT_FOUND) {
-    return 0;
+    return CANCELLATION_STATUS_RETRY_LATER;
   } else {
     return -1;
   }
@@ -317,7 +333,7 @@ int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
 #else
 
   pthread_kill(worker->id, SIGUSR2);
-  return 0;
+  return CANCELLATION_STATUS_RETRY_LATER;
 
 #endif
 }
@@ -518,6 +534,7 @@ struct job *make_job(
   job->err = 0;
   job->worker = worker;
   job->free = free;
+  job->cancel_handler = 0;
   return job;
 }
 
@@ -2322,6 +2339,13 @@ void free_wait_for_process_job(void *obj) {
 };
 
 static
+int32_t cancel_wait_for_process_job(struct job *obj) {
+  struct wait_for_process_job *job = (struct wait_for_process_job*)obj;
+  SetEvent(job->cancel);
+  return CANCELLATION_STATUS_NEED_WAIT;
+}
+
+static
 void wait_for_process_job_worker(struct job *job) {
   struct wait_for_process_job *wait_for_process_job = (struct wait_for_process_job*)job;
 
@@ -2340,11 +2364,8 @@ struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
   struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
   job->process = process;
   job->cancel = CreateEventA(NULL, FALSE, FALSE, NULL);
+  job->job.cancel_handler = cancel_wait_for_process_job;
   return job;
-}
-
-void moonbitlang_async_cancel_wait_for_process_job(struct wait_for_process_job *job) {
-  SetEvent(job->cancel);
 }
 
 #else
