@@ -2293,6 +2293,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   HANDLE stdout_handle,
   HANDLE stderr_handle,
   LPWSTR cwd,
+  int32_t has_cwd,
   int32_t no_console_window,
   int32_t is_orphan
 ) {
@@ -2302,7 +2303,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[0] = stdin_handle;
   job->stdio[1] = stdout_handle;
   job->stdio[2] = stderr_handle;
-  job->cwd = cwd;
+  job->cwd = has_cwd ? cwd : 0;
   job->no_console_window = no_console_window;
   job->is_orphan = is_orphan;
   job->result = INVALID_HANDLE_VALUE;
@@ -2359,7 +2360,8 @@ void wait_for_process_job_worker(struct job *job) {
 }
 
 struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
-  HANDLE process
+  HANDLE process,
+  int32_t pid
 ) {
   struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
   job->process = process;
@@ -2490,7 +2492,8 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   int stdin_fd,
   int stdout_fd,
   int stderr_fd,
-  char *cwd
+  char *cwd,
+  int32_t has_cwd
 ) {
   struct spawn_job *job = MAKE_JOB(spawn);
   job->path = path;
@@ -2500,7 +2503,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[0] = stdin_fd;
   job->stdio[1] = stdout_fd;
   job->stdio[2] = stderr_fd;
-  job->cwd = cwd;
+  job->cwd = has_cwd ? cwd : 0;
   job->pidfd = -1;
   return job;
 }
@@ -2529,7 +2532,8 @@ void wait_for_process_job_worker(struct job *job) {
 }
 
 struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
-  int pid
+  HANDLE handle,
+  int32_t pid
 ) {
   struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
   job->pid = pid;

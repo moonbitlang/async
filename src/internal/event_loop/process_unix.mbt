@@ -25,8 +25,20 @@ pub async fn spawn(
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Process {
-  let job = Job::spawn(
-    path, args, env, inherited_env_entry_count, stdin, stdout, stderr, cwd,
+  let (cwd, has_cwd) = match cwd {
+    None => (@os_string.empty, false)
+    Some(cwd) => (cwd, true)
+  }
+  let job = Job::spawn_unix(
+    path,
+    args,
+    env,
+    inherited_env_entry_count,
+    stdin,
+    stdout,
+    stderr,
+    cwd,
+    has_cwd~,
   )
   defer job.0.free()
   let pid = perform_job_in_worker(job.0, context~)
@@ -68,7 +80,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
     // Linux systems where pidfd is not available.
     // Fall back to blocking waitpid in worker thread.
     // The thread pool job will obain the exit code and reap the process.
-    let job = Job::wait_for_process(self.pid)
+    let job = Job::wait_for_process(handle, pid=self.pid)
     defer job.free()
     return perform_job_in_worker(job, context~, cancel=job_id => {
       evloop.cancel_job_in_worker(job_id, context~)

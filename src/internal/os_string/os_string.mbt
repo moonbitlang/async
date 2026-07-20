@@ -85,5 +85,8 @@ pub extern "C" fn decode(
 ) -> String = "moonbitlang_async_c_buffer_as_string"
 
 ///|
+pub let empty : OsString = encode("")
+
+///|
 #cfg(platform="windows")
 let _mute_unused_warning : Unit = ignore(@utf8.encode(""))

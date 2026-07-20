@@ -231,7 +231,7 @@ priv struct SpawnJob(Job)
 ///|
 #cfg(not(platform="windows"))
 #owned(path, args, env, cwd)
-extern "C" fn Job::spawn(
+extern "C" fn Job::spawn_unix(
   path : @os_string.OsString,
   args : @c_buffer.Buffer,
   env : @c_buffer.Buffer,
@@ -239,19 +239,21 @@ extern "C" fn Job::spawn(
   stdin : @fd_util.Fd,
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
-  cwd : @os_string.OsString?,
+  cwd : @os_string.OsString,
+  has_cwd~ : Bool,
 ) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
 #owned(command_line, env, cwd)
-extern "C" fn Job::spawn(
+extern "C" fn Job::spawn_windows(
   command_line : @os_string.OsString,
   env : @c_buffer.Buffer,
   stdin : @fd_util.Fd,
   stdout : @fd_util.Fd,
   stderr : @fd_util.Fd,
-  cwd : @os_string.OsString?,
+  cwd : @os_string.OsString,
+  has_cwd~ : Bool,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
 ) -> SpawnJob = "moonbitlang_async_make_spawn_job"
@@ -260,12 +262,8 @@ extern "C" fn Job::spawn(
 extern "C" fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn Job::wait_for_process(pid : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
-
-///|
-#cfg(platform="windows")
-extern "C" fn Job::wait_for_process(handle : @fd_util.Fd) -> Job = "moonbitlang_async_make_wait_for_process_job"
+// `handle` is used by Windows, `pid` is used by Linux
+extern "C" fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> Job = "moonbitlang_async_make_wait_for_process_job"
 
 ///|
 #owned(addr)
