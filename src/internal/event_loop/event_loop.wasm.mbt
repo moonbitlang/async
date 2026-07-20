@@ -54,3 +54,15 @@ fn PlatformEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
     Windows(extra) => extra.poll(evloop)
   }
 }
+
+///|
+async fn PlatformEventLoopExtra::wait_pid(
+  self : Self,
+  evloop : EventLoop,
+  pid : Int,
+) -> Unit {
+  match self {
+    Unix(extra) => extra.wait_pid(evloop, pid)
+    Windows(_) => panic()
+  }
+}

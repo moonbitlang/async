@@ -14,10 +14,10 @@
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn spawn(
+pub async fn spawn_unix(
   path : @os_string.OsString,
-  args : @c_buffer.Buffer,
-  env~ : @c_buffer.Buffer,
+  args : SpawnJobArgv,
+  env~ : SpawnJobEnv,
   inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
@@ -32,12 +32,12 @@ pub async fn spawn(
   let job = Job::spawn_unix(
     path,
     args,
-    env,
-    inherited_env_entry_count,
-    stdin,
-    stdout,
-    stderr,
-    cwd,
+    env~,
+    inherited_env_entry_count~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
     has_cwd~,
   )
   defer job.0.free()
@@ -53,7 +53,7 @@ pub async fn spawn(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   guard curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
 
@@ -71,10 +71,7 @@ pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
     if evloop.bus.register_pid(self.pid) {
-      guard evloop.extra.pids.get(self.pid) is None
-      evloop.extra.pids[self.pid] = @coroutine.current_coroutine()
-      defer evloop.extra.pids.remove(self.pid)
-      evloop.suspend()
+      evloop.extra.wait_pid(evloop, self.pid)
     }
   } else {
     // Linux systems where pidfd is not available.

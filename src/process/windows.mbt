@@ -182,7 +182,7 @@ async fn raw_spawn(
     env.add_entry(offset, key=k, key_len~, value=v, value_len~)
     continue offset + key_len + value_len + 2
   }
-  @event_loop.spawn(
+  @event_loop.spawn_windows(
     command_line,
     env=env.0,
     stdin~,

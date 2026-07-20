@@ -53,7 +53,7 @@ pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 
 pub async fn sleep(Int) -> Unit
 
-pub async fn spawn(@os_string.OsString, @c_buffer.Buffer, env~ : @c_buffer.Buffer, inherited_env_entry_count~ : Int, stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
+pub async fn spawn_unix(@os_string.OsString, @c_buffer.Buffer, env~ : @c_buffer.Buffer, inherited_env_entry_count~ : Int, stdin~ : Int, stdout~ : Int, stderr~ : Int, cwd~ : @os_string.OsString?, context~ : String) -> Process
 
 pub let stderr : Result[IoHandle, Error]
 
@@ -123,6 +123,7 @@ pub struct Process {
 pub fn Process::close(Self) -> Unit
 pub fn Process::from_pid(Int, context~ : String) -> Self raise
 pub async fn Process::wait_pid(Self, context~ : String) -> Int
+pub async fn Process::wait_pid_unix(Self, context~ : String) -> Int
 
 type Timer
 pub fn Timer::cancel(Self) -> Unit

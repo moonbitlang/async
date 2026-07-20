@@ -234,12 +234,12 @@ priv struct SpawnJob(Job)
 extern "C" fn Job::spawn_unix(
   path : @os_string.OsString,
   args : @c_buffer.Buffer,
-  env : @c_buffer.Buffer,
-  inherited_env_entry_count : Int,
-  stdin : @fd_util.Fd,
-  stdout : @fd_util.Fd,
-  stderr : @fd_util.Fd,
-  cwd : @os_string.OsString,
+  env~ : @c_buffer.Buffer,
+  inherited_env_entry_count~ : Int,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
   has_cwd~ : Bool,
 ) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
@@ -248,11 +248,11 @@ extern "C" fn Job::spawn_unix(
 #owned(command_line, env, cwd)
 extern "C" fn Job::spawn_windows(
   command_line : @os_string.OsString,
-  env : @c_buffer.Buffer,
-  stdin : @fd_util.Fd,
-  stdout : @fd_util.Fd,
-  stderr : @fd_util.Fd,
-  cwd : @os_string.OsString,
+  env~ : @c_buffer.Buffer,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  cwd~ : @os_string.OsString,
   has_cwd~ : Bool,
   no_console_window~ : Bool,
   is_orphan~ : Bool,

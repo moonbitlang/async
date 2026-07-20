@@ -143,7 +143,7 @@ async fn raw_spawn(
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
   ignore(no_console_window)
-  @event_loop.spawn(
+  @event_loop.spawn_unix(
     cmd,
     argv.0,
     env=env.0,
