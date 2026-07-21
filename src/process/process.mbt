@@ -62,6 +62,7 @@ pub async fn spawn_orphan(
 ///|
 /// Wait for the process with specfic ID to terminate,
 /// and return the exit code of the process.
+/// If the process is killed by a signal, the result would be `-signal_number`.
 pub async fn wait_pid(pid : Int) -> Int {
   let context = "@process.wait_pid()"
   let process = @event_loop.Process::from_pid(pid, context~)
@@ -77,6 +78,7 @@ pub async fn wait_pid(pid : Int) -> Int {
 /// `run` will block until the new process terminates,
 /// and returns the exit status of the process.
 /// To run the process in background, use `@async.spawn` or `@async.spawn_bg`.
+/// If the process is killed by a signal, the result would be `-signal_number`.
 ///
 /// If `inherit_env` is `true` (`true` by default),
 /// the new process will inherit environment variables of current process.
@@ -167,12 +169,14 @@ pub struct Process {
 
 ///|
 /// Wait for a process to terminate, return the exit code of the process
+/// If the process is killed by a signal, the result would be `-signal_number`.
 pub async fn Process::wait(self : Process) -> Int {
   self.result.wait()
 }
 
 ///|
 /// If the process already terminated, return its exit code.
+/// If the process is killed by a signal, the result would be `-signal_number`.
 /// If the process is still running, return `None`.
 pub fn Process::try_wait(self : Process) -> Int? raise {
   self.result.try_wait()
