@@ -68,7 +68,12 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
       return -1;
     }
 
-    *out = info.si_status;
+    if (info.si_code == CLD_EXITED) {
+      *out = info.si_status;
+    } else {
+      // killed by signal
+      *out = -info.si_status;
+    }
     return 0;
   }
 
@@ -89,7 +94,11 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
     return -1;
   }
 
-  *out = WEXITSTATUS(wstatus);
+  if WIFEXITED(wstatus) {
+    *out = WEXITSTATUS(wstatus);
+  } else {
+    *out = -WTERMSIG(wstatus);
+  }
   return 0;
 
 #endif // #ifdef _WIN32

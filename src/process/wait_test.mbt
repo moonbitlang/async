@@ -83,3 +83,18 @@ async test "wait exitcode STILL_ACTIVE" {
     ),
   )
 }
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "signal exit code" {
+  let sleep = sleep_prog.wait()
+  let exit_code = @async.with_task_group <| group => {
+    let proc = @process.spawn(group, sleep, ["1000", "-use-default-handler"])
+    group.spawn_bg(no_wait=true) <| () => {
+      @async.sleep(100)
+      @process.graceful_cancel(timeout=1000, signal=SIGINT)(proc.pid)
+    }
+    proc.wait()
+  }
+  assert_eq(exit_code, -@signal.SIGINT.to_int())
+}
