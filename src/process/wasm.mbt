@@ -81,10 +81,6 @@ fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang/async" "process/allocate_env_b
 
 ///|
 #unsafe_skip_stub_check
-fn OsEnv::free(self : OsEnv) -> Unit = "moonbitlang/async" "process/free_env"
-
-///|
-#unsafe_skip_stub_check
 fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang/async" "process/write_env_block"
 
 ///|
@@ -102,10 +98,6 @@ fn OsEnv::add_entry(
 ///|
 #unsafe_skip_stub_check
 fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang/async" "process/make_argv_array/unix"
-
-///|
-#unsafe_skip_stub_check
-fn OsArgv::free(self : OsArgv) -> Unit = "moonbitlang/async" "process/free_argv"
 
 ///|
 #unsafe_skip_stub_check
@@ -187,7 +179,6 @@ async fn raw_spawn(
     }
     let (env, extra_env_offset) = if inherit_env {
       let curr_env = get_curr_env()
-      defer curr_env.free()
       let curr_env_len = curr_env.length()
       let env = OsEnv::new(curr_env_len + extra_env_len)
       env.write_env_block(curr_env)
@@ -201,7 +192,6 @@ async fn raw_spawn(
       env.add_entry(offset, key=k, key_len~, value=v, value_len~)
       continue offset + key_len + value_len + 2
     }
-    defer env.free()
     @event_loop.spawn_windows(
       @os_string.encode(command_line.to_string()),
       env=env.0,
@@ -216,7 +206,6 @@ async fn raw_spawn(
   } else {
     let cmd = @os_string.encode(cmd)
     let argv = OsArgv::new(args.length() + 1)
-    defer argv.free()
     argv.add_encoded_entry(0, cmd, arg_len=cmd.to_string().length())
     for i, arg in args {
       argv.add_entry(i + 1, arg, arg_len=arg.length())
@@ -224,7 +213,6 @@ async fn raw_spawn(
     let extra_count = extra_env.length()
     let (env, inherited_env_entry_count) = if inherit_env {
       let curr_env = get_curr_env()
-      defer curr_env.free()
       let curr_env_len = curr_env.length()
       let env = OsEnv::new(curr_env_len + extra_count)
       env.write_env_block(curr_env)
@@ -237,7 +225,6 @@ async fn raw_spawn(
       let value_len = v.length()
       env.add_entry(i, key=k, key_len~, value=v, value_len~)
     }
-    defer env.free()
     @event_loop.spawn_unix(
       cmd,
       argv.0,
