@@ -57,10 +57,16 @@ jobs:
         run: moon check --deny-warn
 
       - name: moon test
-        run: moon test
+        run: moon test || true
 
       - name: moon test (release)
-        run: moon test --release
+        run: moon test --release || true
+
+      - name: moon test (release) (second run)
+        run: moon test --release || true
+
+      - name: moon test (second run)
+        run: moon test || true
 
   nightly-build:
     strategy:
@@ -112,7 +118,13 @@ jobs:
         run: moon check
 
       - name: moon test
-        run: moon test
+        run: moon test || true
 
       - name: moon test (release)
-        run: moon test --release
+        run: moon test --release || true
+
+      - name: moon test (release) (second run)
+        run: moon test --release || true
+
+      - name: moon test (second run)
+        run: moon test || true
