@@ -204,3 +204,7 @@ async fn EventLoop::terminate_signal_handler(
     ConsoleControlHandler => evloop.terminate_signal_handler_windows()
   }
 }
+
+///|
+#cfg(target="native")
+pub extern "C" fn terminate_process_by_signal(sig : Int) -> Unit = "moonbitlang_async_terminate_process_by_signal"
