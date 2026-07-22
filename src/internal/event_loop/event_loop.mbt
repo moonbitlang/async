@@ -190,7 +190,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   }
   if has_timers {
     let now = now()
-    let delta = (now.reinterpret_as_int64() - before.reinterpret_as_int64()).to_int()
+    let delta = (now - before).to_int()
     if delta - timeout >= 10 {
       println(
         "main loop polling timer drift detected: \{delta} v.s. \{timeout}",
@@ -198,8 +198,7 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
     }
     for timer in self.timers {
       if timer.expire_time <= now {
-        let delta = now.reinterpret_as_int64() -
-          timer.expire_time.reinterpret_as_int64()
+        let delta = now - timer.expire_time
         if delta.abs() >= 10 {
           println("timer drift detected: \{delta}")
         }
