@@ -277,7 +277,9 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   try {
-    while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
+    while @coroutine.has_immediately_ready_task() ||
+          self.blocked_tasks > 0 ||
+          !self.timers.is_empty() {
       self.extra.poll(self) catch {
         @os_error.OSError(_) as err if err.is_EINTR() => continue
         err => raise err

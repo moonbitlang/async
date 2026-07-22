@@ -53,9 +53,8 @@ impl Compare for Timer with fn compare(t1, t2) {
 
 ///|
 pub async fn sleep(duration : Int) -> Unit {
-  guard curr_loop.val is Some(evloop)
   let coro = @coroutine.current_coroutine()
   let timer = Timer::new(duration, () => coro.wake())
   defer timer.cancel()
-  evloop.suspend()
+  @coroutine.suspend()
 }
