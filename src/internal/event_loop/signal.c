@@ -19,12 +19,12 @@
 #ifdef _WIN32
 
 #include <windows.h>
-#include <string.h>
+#include <stdio.h>
 
 #else
 
 #include <signal.h>
-#include <string.h>
+#include <stdio.h>
 
 #endif
 
@@ -77,6 +77,14 @@ int moonbitlang_async_set_console_control_handler(int32_t add) {
   return SetConsoleCtrlHandler(moonbitlang_async_console_control_handler, add);
 }
 
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_terminate_process_by_signal(int32_t sig) {
+  // flush stdio buffers used by `println` etc.
+  fflush(0);
+
+  ExitProcess(STATUS_CONTROL_C_EXIT);
+}
+
 #else // #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
@@ -107,6 +115,19 @@ void moonbitlang_async_set_global_cancellation_signals(
     sigaddset(&set, signals[i]);
   }
   pthread_sigmask(SIG_SETMASK, &set, 0);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_terminate_process_by_signal(int32_t sig) {
+  sigset_t sigset;
+  sigemptyset(&sigset);
+  sigaddset(&sigset, sig);
+  pthread_sigmask(SIG_UNBLOCK, &sigset, 0);
+
+  // flush stdio buffers used by `println` etc.
+  fflush(0);
+
+  raise(sig);
 }
 
 #endif // #ifndef _WIN32

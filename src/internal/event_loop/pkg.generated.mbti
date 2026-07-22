@@ -63,6 +63,8 @@ pub let stdout : Result[IoHandle, Error]
 
 pub async fn symlink(StringView, StringView, force_symlink~ : Bool, context~ : String) -> Unit
 
+pub fn terminate_process_by_signal(Int) -> Unit
+
 pub fn with_event_loop(async () -> Unit) -> Unit raise
 
 // Errors
