@@ -27,7 +27,7 @@ async test "http request" {
 ///|
 async test "request cancel" {
   let start = @async.now()
-  let result = @async.with_timeout_opt(300, () => {
+  let result = @async.with_timeout_opt(200, () => {
     @http.get(
       "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
     )
@@ -36,7 +36,7 @@ async test "request cancel" {
   assert_true(result is None)
   if @env.get_env_var("MOONBIT_ASYNC_TEST_SANITIZER_ENABLED") is None {
     let delta = end - start
-    if delta >= 450 {
+    if delta >= 300 {
       raise Failure::Failure("request cancellation took too long: \{delta}ms")
     }
   }
