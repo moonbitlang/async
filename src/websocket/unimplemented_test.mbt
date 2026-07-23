@@ -13,13 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(target="wasm")
-fn init {
-  // The process package is otherwise only used by a native-only test.
-  ignore(@process.unimplemented)
-}
-
-///|
 #cfg(any(target="js", target="wasm-gc"))
 fn init {
   ignore(@async.sleep)
