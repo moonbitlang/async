@@ -57,8 +57,8 @@ fn StringBuilder::write_arg_with_windows_escape(
   // Do not add double quotes if it is unnecessary to do so.
   // This help with simple cases when the program is not using C argv syntax,
   // such as `rundll32.exe`.
-  let need_quote = for char in arg {
-    if char is (' ' | '\t' | '"') {
+  let need_quote = for char in arg.code_units() {
+    if char is (' ' | '\t' | '"' | 0) {
       break true
     }
   } nobreak {
@@ -84,6 +84,9 @@ fn StringBuilder::write_arg_with_windows_escape(
   builder.write_char('"')
   while index < arg.length() {
     match arg.code_unit_at(index) {
+      0 =>
+        // truncate on NUL in input to prevent argv injection
+        break
       '"' => {
         flush(1)
         builder <+ "\\\""
@@ -112,7 +115,6 @@ async fn raw_spawn_windows(
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
-  check_process_arguments(cmd, args, extra_env, cwd)
   let cmd = match cmd {
     [.., '.', 'e' | 'E', 'x' | 'X', 'e' | 'E']
     | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
