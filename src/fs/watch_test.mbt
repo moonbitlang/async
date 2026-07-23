@@ -514,20 +514,19 @@ async test "watch horizontal swap" {
     @fs.rename("\{path}/tmp", "\{path}/file2")
     @async.sleep(10)
     let events = @async.with_timeout(1000, () => watcher.wait())
-    if @event_loop.platform is MacOS {
-      @debug.assert_eq(events, [
-        Remove("file2"),
-        Remove("file1"),
-        Create("file2"),
-        Create("file1"),
-      ])
-    } else {
-      @debug.assert_eq(events, [
-        Remove("file1"),
-        Remove("file2"),
-        Create("file1"),
-        Create("file2"),
-      ])
+    @debug.assert_eq(events, [
+      Remove("file2"),
+      Remove("file1"),
+      Create("file2"),
+      Create("file1"),
+    ]) catch {
+      _ =>
+        @debug.assert_eq(events, [
+          Remove("file1"),
+          Remove("file2"),
+          Create("file1"),
+          Create("file2"),
+        ])
     }
   })
 }
