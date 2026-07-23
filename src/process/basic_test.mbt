@@ -65,3 +65,19 @@ async test "execute .com file" {
   }
   let _code = @string.parse_int(@utf8.decode(output[index + 1:]))
 }
+
+///|
+// Currently the Wasm runtime perform extra NUL check on Unix,
+// so passing argument with NUL will result in an error,
+// hence this test is currently disabled for Wasm1.
+// Both behavior (truncation v.s. report error) are acceptable
+// for NUL in process arguments, though.
+#cfg(target="native")
+async test "prevent NUL command injection" {
+  let prog = sleep_prog.wait()
+  let bad_arg = "abc\u{0000}def"
+  let (_, output) = @process.collect_stdout(prog, [
+    "100", "-print-after-sleep", bad_arg,
+  ])
+  inspect(output.text().trim_end(chars="\r\n"), content="abc")
+}
