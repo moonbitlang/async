@@ -117,3 +117,26 @@ async test "read_some length limit 3" {
     ),
   )
 }
+
+///|
+async test "read_some returned chunks remain stable" {
+  @async.with_task_group() <| root => {
+    let first_expected = Bytes::make(1024, b'a')
+    let second_expected = Bytes::make(1024, b'b')
+    let (r, w) = @io.pipe()
+    defer r.close()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w.write(first_expected)
+      w.write(second_expected)
+    }
+    guard r.read_some(max_len=1024) is Some(first) else {
+      fail("missing first chunk")
+    }
+    guard r.read_some(max_len=1024) is Some(second) else {
+      fail("missing second chunk")
+    }
+    assert_eq(first, first_expected)
+    assert_eq(second, second_expected)
+  }
+}

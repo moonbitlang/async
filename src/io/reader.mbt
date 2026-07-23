@@ -99,6 +99,21 @@ impl Reader with fn read_exactly(self, len) {
 }
 
 ///|
+fn ReaderBuffer::take_owned(
+  self : ReaderBuffer,
+  start : Int,
+  len : Int,
+) -> Bytes {
+  if start == 0 && len == self.buf.length() {
+    let buf = self.buf
+    self.buf = FixedArray::make(len, b'\x00')
+    buf.unsafe_reinterpret_as_bytes()
+  } else {
+    self.buf.unsafe_reinterpret_as_bytes()[start:start + len].to_owned()
+  }
+}
+
+///|
 /// `reader.read_some(max_len?)` fetch and return a chunk of data from the reader.
 /// It will return as fast as possible when new data become available.
 /// If EOF is reached, `None` is returned.
@@ -110,14 +125,13 @@ impl Reader with fn read_exactly(self, len) {
 impl Reader with fn read_some(self, max_len?) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
-    let buf_bytes = buf.buf.unsafe_reinterpret_as_bytes()
     if max_len is Some(max_len) && max_len < buf.len {
-      let data = buf_bytes[buf.start:buf.start + max_len].to_owned()
+      let data = buf.take_owned(buf.start, max_len)
       buf.start += max_len
       buf.len -= max_len
       return Some(data)
     } else {
-      let data = buf_bytes[buf.start:buf.start + buf.len].to_owned()
+      let data = buf.take_owned(buf.start, buf.len)
       buf.start = 0
       buf.len = 0
       return Some(data)
@@ -131,11 +145,11 @@ impl Reader with fn read_some(self, max_len?) {
   if max_len is Some(max_len) && max_len < n {
     buf.start = max_len
     buf.len = n - max_len
-    Some(buf.buf.unsafe_reinterpret_as_bytes()[:max_len].to_owned())
+    Some(buf.take_owned(0, max_len))
   } else {
     buf.start = 0
     buf.len = 0
-    Some(buf.buf.unsafe_reinterpret_as_bytes()[:n].to_owned())
+    Some(buf.take_owned(0, n))
   }
 }
 
