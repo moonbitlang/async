@@ -14,36 +14,29 @@
 
 ///|
 #cfg(platform="windows")
-priv struct OsEnvBlock(@c_buffer.Buffer)
+priv struct OsEnv(@c_buffer.Buffer)
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_curr_env() -> OsEnvBlock = "moonbitlang_async_get_curr_env"
+extern "C" fn get_curr_env() -> OsEnv = "moonbitlang_async_get_curr_env"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnvBlock::length(self : OsEnvBlock) -> Int = "moonbitlang_async_env_block_length"
+extern "C" fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang_async_env_block_length"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnvBlock::free(self : OsEnvBlock) -> Unit = "moonbitlang_async_free_env_block"
+extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_block"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnvBlock::new(size : Int) -> OsEnvBlock = "moonbitlang_async_allocate_env_block"
-
-///|
-#cfg(platform="windows")
-extern "C" fn OsEnvBlock::write_env_block(
-  dst : OsEnvBlock,
-  block : OsEnvBlock,
-) -> Unit = "moonbitlang_async_write_env_block"
+extern "C" fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
 #cfg(platform="windows")
 #borrow(key, value)
-extern "C" fn OsEnvBlock::add_entry(
-  dst : OsEnvBlock,
+extern "C" fn OsEnv::add_entry(
+  dst : OsEnv,
   index : Int,
   key~ : String,
   key_len~ : Int,
@@ -52,7 +45,7 @@ extern "C" fn OsEnvBlock::add_entry(
 ) -> Unit = "moonbitlang_async_env_block_add_entry"
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
   arg : StringView,
@@ -105,8 +98,8 @@ fn StringBuilder::write_arg_with_windows_escape(
 }
 
 ///|
-#cfg(platform="windows")
-async fn raw_spawn(
+#cfg(any(target="wasm", platform="windows"))
+async fn raw_spawn_windows(
   cmd : StringView,
   args : ArrayView[String],
   extra_env~ : Map[String, String],
@@ -165,16 +158,12 @@ async fn raw_spawn(
   }
   let (env, extra_env_offset) = if inherit_env {
     let curr_env = get_curr_env()
-    if curr_env.0.is_null() {
-      @os_error.check_errno(context)
-    }
-    defer curr_env.free()
     let curr_env_len = curr_env.length()
-    let env = OsEnvBlock::new(curr_env_len + extra_env_len)
+    let env = OsEnv::new(curr_env_len + extra_env_len)
     env.write_env_block(curr_env)
     (env, curr_env_len)
   } else {
-    (OsEnvBlock::new(extra_env_len), 0)
+    (OsEnv::new(extra_env_len), 0)
   }
   for k, v in extra_env; offset = extra_env_offset {
     let key_len = k.length()
@@ -185,6 +174,36 @@ async fn raw_spawn(
   @event_loop.spawn_windows(
     command_line,
     env=env.0,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    no_console_window~,
+    is_orphan~,
+    context~,
+  )
+}
+
+///|
+#cfg(platform="windows")
+async fn raw_spawn(
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env~ : Map[String, String],
+  inherit_env~ : Bool,
+  stdin~ : &ProcessInput?,
+  stdout~ : &ProcessOutput?,
+  stderr~ : &ProcessOutput?,
+  cwd~ : StringView?,
+  no_console_window~ : Bool,
+  is_orphan~ : Bool,
+  context~ : String,
+) -> @event_loop.Process {
+  raw_spawn_windows(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
     stdin~,
     stdout~,
     stderr~,

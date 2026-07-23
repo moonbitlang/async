@@ -13,33 +13,30 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
-priv struct OsEnvArray(@c_buffer.Buffer)
+#cfg(all(target="native", not(platform="windows")))
+priv struct OsEnv(@c_buffer.Buffer)
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn get_curr_env() -> OsEnvArray = "moonbitlang_async_get_curr_env"
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn get_curr_env() -> OsEnv = "moonbitlang_async_get_curr_env"
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn OsEnvArray::length(self : OsEnvArray) -> Int = "moonbitlang_async_env_block_length"
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang_async_env_block_length"
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn OsEnvArray::new(size : Int) -> OsEnvArray = "moonbitlang_async_allocate_env_block"
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_block"
 
 ///|
-#cfg(not(platform="windows"))
-extern "C" fn OsEnvArray::write_env_block(
-  dst : OsEnvArray,
-  block : OsEnvArray,
-) -> Unit = "moonbitlang_async_write_env_block"
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(key, value)
-extern "C" fn OsEnvArray::add_entry(
-  dst : OsEnvArray,
+extern "C" fn OsEnv::add_entry(
+  dst : OsEnv,
   index : Int,
   key~ : String,
   key_len~ : Int,
@@ -48,36 +45,36 @@ extern "C" fn OsEnvArray::add_entry(
 ) -> Unit = "moonbitlang_async_env_block_add_entry"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 priv struct OsArgv(@c_buffer.Buffer)
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 extern "C" fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang_async_make_argv_array"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(arg)
 extern "C" fn OsArgv::add_encoded_entry(
   self : OsArgv,
   offset : Int,
   arg : @os_string.OsString,
-  arg_len~ : Int,
+  arg_len? : Int = arg.bytes_length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_encoded_entry"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(arg)
 extern "C" fn OsArgv::add_entry(
   self : OsArgv,
   offset : Int,
   arg : String,
-  arg_len~ : Int,
+  arg_len? : Int = arg.length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_entry"
 
 ///|
 #cfg(not(platform="windows"))
-async fn raw_spawn(
+async fn raw_spawn_unix(
   cmd : StringView,
   args : ArrayView[String],
   extra_env~ : Map[String, String],
@@ -97,9 +94,9 @@ async fn raw_spawn(
     Some(cwd) => Some(@os_string.encode(cwd))
   }
   let argv = OsArgv::new(args.length() + 1)
-  argv.add_encoded_entry(0, cmd, arg_len=cmd.bytes_length())
+  argv.add_encoded_entry(0, cmd)
   for i, arg in args {
-    argv.add_entry(i + 1, arg, arg_len=arg.length())
+    argv.add_entry(i + 1, arg)
   }
   defer {
     if stdin is Some(p) {
@@ -114,25 +111,25 @@ async fn raw_spawn(
   }
   let stdin = match stdin {
     Some(pipe) => pipe.fd()
-    None => -1
+    None => @fd_util.invalid_fd
   }
   let stdout = match stdout {
     Some(pipe) => pipe.fd()
-    None => -1
+    None => @fd_util.invalid_fd
   }
   let stderr = match stderr {
     Some(pipe) => pipe.fd()
-    None => -1
+    None => @fd_util.invalid_fd
   }
   let extra_count = extra_env.length()
   let (env, inherited_env_entry_count) = if inherit_env {
     let curr_env = get_curr_env()
     let curr_env_len = curr_env.length()
-    let env = OsEnvArray::new(curr_env_len + extra_count)
+    let env = OsEnv::new(curr_env_len + extra_count)
     env.write_env_block(curr_env)
     (env, curr_env_len)
   } else {
-    (OsEnvArray::new(extra_count), 0)
+    (OsEnv::new(extra_count), 0)
   }
   for k, v in extra_env; i = inherited_env_entry_count; i = i + 1 {
     let key_len = k.length()
@@ -152,6 +149,36 @@ async fn raw_spawn(
     stdout~,
     stderr~,
     cwd~,
+    context~,
+  )
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async fn raw_spawn(
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env~ : Map[String, String],
+  inherit_env~ : Bool,
+  stdin~ : &ProcessInput?,
+  stdout~ : &ProcessOutput?,
+  stderr~ : &ProcessOutput?,
+  cwd~ : StringView?,
+  no_console_window~ : Bool,
+  is_orphan~ : Bool,
+  context~ : String,
+) -> @event_loop.Process {
+  raw_spawn_unix(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    no_console_window~,
+    is_orphan~,
     context~,
   )
 }

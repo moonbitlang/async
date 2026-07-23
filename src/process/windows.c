@@ -21,7 +21,8 @@
 
 MOONBIT_FFI_EXPORT
 LPWCH moonbitlang_async_get_curr_env() {
-  return GetEnvironmentStringsW();
+  LPWCH env = GetEnvironmentStringsW();
+  return env ? env : L"\0\0";
 }
 
 // return the size of the env block, in number of `WCHAR`,
@@ -54,11 +55,6 @@ LPWCH moonbitlang_async_allocate_env_block(int32_t size) {
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_free_env_block(LPWCH env_block) {
-  FreeEnvironmentStringsW(env_block);
-}
-
-MOONBIT_FFI_EXPORT
 void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block) {
   LPWCH cursor = env_block;
   for (int dst_offset = 0;;) {
@@ -76,6 +72,7 @@ void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block) {
     if (*cursor == 0)
       break;
   }
+  FreeEnvironmentStringsW(env_block);
 }
 
 MOONBIT_FFI_EXPORT
