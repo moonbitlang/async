@@ -282,10 +282,9 @@ async fn Reader::read_headers(
       }
       _ => ()
     }
-    match headers.get(key) {
-      None => headers[key] = value
-      Some(value0) => headers[key] = "\{value0},\{value}"
-    }
+    // Single hashmap probe (was 2: get + set). For repeated header
+    // names HTTP requires comma-joining; for new keys we just insert.
+    headers.update_or_default(key, value, value0 => "\{value0},\{value}")
   }
   (headers, cookies)
 }
