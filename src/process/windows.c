@@ -50,33 +50,65 @@ int32_t moonbitlang_async_env_block_length(LPWCH env_block) {
 MOONBIT_FFI_EXPORT
 LPWCH moonbitlang_async_allocate_env_block(int32_t size) {
   LPWCH env_block = (LPWCH)malloc((size + 1) * sizeof(WCHAR));
-  env_block[size] = 0;
   return env_block;
 }
 
+struct EnvEntry {
+  int32_t len;
+  int32_t key_len;
+};
+
+static inline
+struct EnvEntry resolve_env_entry(LPWCH block) {
+  struct EnvEntry result = { 0, -1 };
+  WCHAR c;
+  while (c = block[result.len]) {
+    if (result.key_len < 0 && c == L'=')
+      result.key_len = result.len;
+    ++result.len;
+  }
+  return result;
+}
+
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block) {
+void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block, int32_t base_offset) {
   LPWCH cursor = env_block;
-  for (int dst_offset = 0;;) {
-    int32_t block_len = 0;
-    while (cursor[block_len])
-      ++block_len;
+  for (int dst_offset = base_offset;;) {
+    struct EnvEntry entry = resolve_env_entry(cursor);
 
     // skip pseudo entries
-    if (*cursor != L'=') {
-      memcpy(dst + dst_offset, cursor, (block_len + 1) * sizeof(WCHAR));
-      dst_offset += block_len + 1;
+    if (entry.key_len <= 0)
+      goto skip_entry;
+
+    // check if an duplicated entry already exists
+    for (LPWCH cursor2 = dst; cursor2 - dst < base_offset;) {
+      struct EnvEntry existing = resolve_env_entry(cursor2);
+      if (
+        entry.key_len == existing.key_len
+        && CompareStringOrdinal(cursor2, existing.key_len, cursor, entry.key_len, TRUE)
+           == CSTR_EQUAL
+      ) {
+        goto skip_entry;
+      }
+
+      cursor2 += existing.len + 1;
     }
 
-    cursor += block_len + 1;
-    if (*cursor == 0)
+    memcpy(dst + dst_offset, cursor, (entry.len + 1) * sizeof(WCHAR));
+    dst_offset += entry.len + 1;
+
+  skip_entry:
+    cursor += entry.len + 1;
+    if (*cursor == 0) {
+      dst[dst_offset] = 0;
       break;
+    }
   }
   FreeEnvironmentStringsW(env_block);
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_env_block_add_entry(
+int32_t moonbitlang_async_env_block_add_entry(
   LPWCH env_block,
   int32_t offset,
   moonbit_string_t key,
@@ -88,6 +120,16 @@ void moonbitlang_async_env_block_add_entry(
   env_block[offset + key_len] = L'=';
   memcpy(env_block + offset + key_len + 1, value, value_len * sizeof(WCHAR));
   env_block[offset + key_len + 1 + value_len] = 0;
+
+  // handle `NUL` in key or value to prevent injection
+  int32_t entry_end = offset;
+  while (env_block[entry_end])
+    ++entry_end;
+  // In case this is the last entry we ever written,
+  // write the final NUL terminator.
+  // If subsequent entry exists, they will overwrite the NUL here.
+  env_block[entry_end + 1] = 0;
+  return entry_end - offset < key_len ? offset : entry_end + 1;
 }
 
 void moonbitlang_async_terminate_process(DWORD pid, int signal) {
