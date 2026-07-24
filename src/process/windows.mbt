@@ -52,6 +52,33 @@ extern "C" fn OsEnv::add_entry(
 ) -> Int = "moonbitlang_async_env_block_add_entry"
 
 ///|
+#cfg(platform="windows")
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  let extra_env_len = for k, v in extra_env; acc = 0 {
+    continue acc + k.length() + v.length() + 2
+  } nobreak {
+    acc
+  }
+  let (curr_env, curr_env_len) = if inherit_env {
+    let curr_env = get_curr_env()
+    (Some(curr_env), curr_env.length())
+  } else {
+    (None, 0)
+  }
+  let env = OsEnv::new(curr_env_len + extra_env_len)
+  for k, v in extra_env; offset = 0 {
+    let key_len = k.length()
+    let value_len = v.length()
+    continue env.add_entry(offset, key=k, key_len~, value=v, value_len~)
+  } nobreak {
+    if curr_env is Some(curr_env) {
+      env.write_env_block(curr_env, offset~)
+    }
+  }
+  env
+}
+
+///|
 #cfg(any(target="wasm", platform="windows"))
 fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
@@ -160,30 +187,9 @@ async fn raw_spawn_windows(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let extra_env_len = for k, v in extra_env; acc = 0 {
-    continue acc + k.length() + v.length() + 2
-  } nobreak {
-    acc
-  }
-  let (curr_env, curr_env_len) = if inherit_env {
-    let curr_env = get_curr_env()
-    (Some(curr_env), curr_env.length())
-  } else {
-    (None, 0)
-  }
-  let env = OsEnv::new(curr_env_len + extra_env_len)
-  for k, v in extra_env; offset = 0 {
-    let key_len = k.length()
-    let value_len = v.length()
-    continue env.add_entry(offset, key=k, key_len~, value=v, value_len~)
-  } nobreak {
-    if curr_env is Some(curr_env) {
-      env.write_env_block(curr_env, offset~)
-    }
-  }
   @event_loop.spawn_windows(
     command_line,
-    env=env.0,
+    env=OsEnv::make(extra_env, inherit_env~).0,
     stdin~,
     stdout~,
     stderr~,
