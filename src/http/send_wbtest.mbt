@@ -14,6 +14,7 @@
 
 ///|
 async test "send_request basic" {
+  @coroutine.set_loc()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
@@ -42,6 +43,7 @@ async test "send_request basic" {
 
 ///|
 async test "send_request stream" {
+  @coroutine.set_loc()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
@@ -301,6 +303,7 @@ async test "send_request stream" {
 
 ///|
 async test "send_request stream2" {
+  @coroutine.set_loc()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
@@ -343,6 +346,7 @@ async test "send_request stream2" {
 
 ///|
 async test "send invalid header" {
+  @coroutine.set_loc()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
@@ -372,6 +376,7 @@ async test "send invalid header" {
 
 ///|
 async test "send fixed length" {
+  @coroutine.set_loc()
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
@@ -613,6 +618,7 @@ async test "send fixed length" {
 
 ///|
 async test "sender write incorrect length" {
+  @coroutine.set_loc()
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
@@ -639,6 +645,7 @@ async test "sender write incorrect length" {
 
 ///|
 async test "sender write_reader incorrect length" {
+  @coroutine.set_loc()
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
@@ -665,6 +672,7 @@ async test "sender write_reader incorrect length" {
 
 ///|
 async test "sender end_body incorrect length" {
+  @coroutine.set_loc()
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
@@ -689,6 +697,7 @@ async test "sender end_body incorrect length" {
 
 ///|
 async test "send_response cookies" {
+  @coroutine.set_loc()
   let cookies = [
     Cookie("Cookie1", "value1"),
     Cookie(
@@ -740,6 +749,7 @@ async test "send_response cookies" {
 
 ///|
 async test "send_request empty body" {
+  @coroutine.set_loc()
   @async.with_task_group <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
@@ -774,6 +784,7 @@ async test "send_request empty body" {
 
 ///|
 async test "send_response empty body" {
+  @coroutine.set_loc()
   @async.with_task_group <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
@@ -843,6 +854,7 @@ async test "send_response empty body" {
 
 ///|
 async test "sender persistent header" {
+  @coroutine.set_loc()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {

@@ -55,16 +55,20 @@ async fn IoHandle::recvfrom_unix(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
+    handle.wait_read(loc~)
     recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     ret
@@ -77,6 +81,7 @@ async fn IoHandle::recvfrom_unix(
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
+#callsite(autofill(loc))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -84,9 +89,10 @@ pub async fn IoHandle::recvfrom(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.recvfrom_unix(buf, offset~, len~, addr~, context~)
+  handle.recvfrom_unix(buf, offset~, len~, addr~, context~, loc~)
 }
 
 ///|
@@ -114,7 +120,7 @@ fn sendto_unix_ffi(
 ) -> Int = "moonbitlang/async" "socket/sendto/unix"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn IoHandle::sendto_unix(
   handle : IoHandle,
   buf : Bytes,
@@ -122,14 +128,18 @@ async fn IoHandle::sendto_unix(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
+    handle.wait_write(loc~)
     sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
     ret
@@ -141,7 +151,8 @@ async fn IoHandle::sendto_unix(
 }
 
 ///|
-#cfg(all(target="native", not(platform="windows")))
+#cfg(not(platform="windows"))
+#callsite(autofill(loc))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
@@ -149,9 +160,10 @@ pub async fn IoHandle::sendto(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.sendto_unix(buf, offset~, len~, addr~, context~)
+  handle.sendto_unix(buf, offset~, len~, addr~, context~, loc~)
 }
 
 ///|
@@ -184,12 +196,13 @@ async fn IoHandle::connect_unix(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   if 0 == connect_unix_ffi(handle.fd, addr) {
     return
   }
   if @os_error.is_nonblocking_io_error() {
-    handle.wait_write()
+    handle.wait_write(loc~)
     let err = get_socket_err(handle.fd)
     if err < 0 {
       @os_error.check_errno(context)
@@ -203,13 +216,15 @@ async fn IoHandle::connect_unix(
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
+#callsite(autofill(loc))
 pub async fn IoHandle::connect(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
-  handle.connect_unix(addr, context~)
+  handle.connect_unix(addr, context~, loc~)
 }
 
 ///|
@@ -232,20 +247,25 @@ fn accept_unix_ffi(
 
 ///|
 #cfg(not(platform="windows"))
+#callsite(autofill(loc))
 pub async fn IoHandle::accept_unix(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> IoHandle {
   @coroutine.check_cancellation()
   let conn = accept_unix_ffi(handle.fd, addr)
   let conn = if @fd_util.fd_is_valid(conn) {
     // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(
+      () => @coroutine.pause(loc~),
+      resume_on_cancel=true,
+    )
     conn
   } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
+    handle.wait_read(loc~)
     accept_unix_ffi(handle.fd, addr)
   } else {
     conn

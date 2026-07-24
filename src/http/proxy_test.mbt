@@ -14,6 +14,7 @@
 
 ///|
 async test "passthrough mode" {
+  @coroutine.set_loc()
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
@@ -52,6 +53,7 @@ async test "passthrough mode" {
 
 ///|
 async test "passthrough mode remaining data" {
+  @coroutine.set_loc()
   @async.with_task_group() <| group => {
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let server_addr = server.addr
@@ -111,6 +113,7 @@ async fn handle_connect(
 
 ///|
 async test "proxied https request" {
+  @coroutine.set_loc()
   let log = []
   @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
@@ -133,6 +136,7 @@ async test "proxied https request" {
 
 ///|
 async test "proxied http request" {
+  @coroutine.set_loc()
   let log = []
   @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
@@ -155,6 +159,7 @@ async test "proxied http request" {
 
 ///|
 async test "proxied misc request" {
+  @coroutine.set_loc()
   let log = []
   let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let proxy_server_addr = proxy_server.addr
@@ -199,6 +204,7 @@ async test "proxied misc request" {
 
 ///|
 async test "proxy error" {
+  @coroutine.set_loc()
   let proxy_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   let port = proxy_server.addr.port()
   @async.with_task_group() <| group => {
