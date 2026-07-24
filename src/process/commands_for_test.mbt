@@ -23,14 +23,14 @@ let shell : String = if is_windows { "powershell" } else { "sh" }
 let write_stdout : String = if is_windows {
   "Write-Host -NoNewline"
 } else {
-  "printf"
+  "printf '%s'"
 }
 
 ///|
 let write_stderr : String = if is_windows {
   "& { [Console]::Error.Write($args[0]) }"
 } else {
-  "printf >&2"
+  "printf >&2 '%s'"
 }
 
 ///|
