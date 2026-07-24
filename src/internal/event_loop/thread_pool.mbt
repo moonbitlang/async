@@ -235,7 +235,6 @@ extern "C" fn Job::spawn_unix(
   path : @os_string.OsString,
   args : @c_buffer.Buffer,
   env~ : @c_buffer.Buffer,
-  inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
