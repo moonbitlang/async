@@ -61,3 +61,31 @@ async test "set_env no inherit" {
     )
   }
 }
+
+///|
+async test "set_env override" {
+  guard @env.get_env_var("HOME") is Some(_) else { fail("`$HOME` is not set") }
+  let env_var = if is_windows { "$env:HOME" } else { "$HOME" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var}"],
+    extra_env={ "HOME": "overwritten" },
+  )
+  inspect(
+    output.text().trim_end(chars="\r\n"),
+    content=(
+      #|overwritten
+    ),
+  )
+}
+
+///|
+async test "set_env injection" {
+  let env_var = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var}"],
+    extra_env={ "MAGIC_VAR": "abc\u{0000}MAGIC_VAR2=def" },
+  )
+  inspect(output.text().trim_end(chars="\r\n"))
+}
