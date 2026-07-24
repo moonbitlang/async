@@ -569,7 +569,6 @@ fn Job::spawn_unix(
   path : @os_string.OsString,
   args : UInt64,
   env~ : UInt64,
-  inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
@@ -582,7 +581,8 @@ fn Job::spawn_unix(
         path,
         args,
         env~,
-        inherited_env_entry_count~,
+        // unused on Wasm1, should be removed later
+        inherited_env_entry_count=0,
         stdin~,
         stdout~,
         stderr~,

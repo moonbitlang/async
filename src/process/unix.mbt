@@ -54,6 +54,29 @@ extern "C" fn OsEnv::add_entry(
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  let extra_count = extra_env.length()
+  let (curr_env, curr_env_len) = if inherit_env {
+    let curr_env = get_curr_env()
+    (Some(curr_env), curr_env.length())
+  } else {
+    (None, 0)
+  }
+  let env = OsEnv::new(curr_env_len + extra_count)
+  for k, v in extra_env; i = 0 {
+    let key_len = k.length()
+    let value_len = v.length()
+    continue env.add_entry(i, key=k, key_len~, value=v, value_len~)
+  } nobreak {
+    if curr_env is Some(curr_env) {
+      env.write_env_block(curr_env, start=i)
+    }
+  }
+  env
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
 priv struct OsArgv(@c_buffer.Buffer)
 
 ///|
@@ -128,23 +151,6 @@ async fn raw_spawn_unix(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let extra_count = extra_env.length()
-  let (curr_env, curr_env_len) = if inherit_env {
-    let curr_env = get_curr_env()
-    (Some(curr_env), curr_env.length())
-  } else {
-    (None, 0)
-  }
-  let env = OsEnv::new(curr_env_len + extra_count)
-  for k, v in extra_env; i = 0 {
-    let key_len = k.length()
-    let value_len = v.length()
-    continue env.add_entry(i, key=k, key_len~, value=v, value_len~)
-  } nobreak {
-    if curr_env is Some(curr_env) {
-      env.write_env_block(curr_env, start=i)
-    }
-  }
   // currently auto kill child process on hard termination is not supported on Unix,
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
@@ -152,7 +158,7 @@ async fn raw_spawn_unix(
   @event_loop.spawn_unix(
     cmd,
     argv.0,
-    env=env.0,
+    env=OsEnv::make(extra_env, inherit_env~).0,
     stdin~,
     stdout~,
     stderr~,
