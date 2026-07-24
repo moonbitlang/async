@@ -30,19 +30,53 @@ extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang_async_write_env_block"
+extern "C" fn OsEnv::write_env_block(
+  dst : OsEnv,
+  block : OsEnv,
+  offset~ : Int,
+) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
+/// Return updated offset after writing the new entry.
+/// The `dst` block should contain at least
+/// `key_len + value_len + 2` characters of space after `offset`.
 #cfg(platform="windows")
 #borrow(key, value)
 extern "C" fn OsEnv::add_entry(
   dst : OsEnv,
-  index : Int,
+  offset : Int,
   key~ : String,
   key_len~ : Int,
   value~ : String,
   value_len~ : Int,
-) -> Unit = "moonbitlang_async_env_block_add_entry"
+) -> Int = "moonbitlang_async_env_block_add_entry"
+
+///|
+#cfg(platform="windows")
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  let extra_env_len = for k, v in extra_env; acc = 0 {
+    continue acc + k.length() + v.length() + 2
+  } nobreak {
+    acc
+  }
+  let (curr_env, curr_env_len) = if inherit_env {
+    let curr_env = get_curr_env()
+    (Some(curr_env), curr_env.length())
+  } else {
+    (None, 0)
+  }
+  let env = OsEnv::new(curr_env_len + extra_env_len)
+  for k, v in extra_env; offset = 0 {
+    let key_len = k.length()
+    let value_len = v.length()
+    continue env.add_entry(offset, key=k, key_len~, value=v, value_len~)
+  } nobreak {
+    if curr_env is Some(curr_env) {
+      env.write_env_block(curr_env, offset~)
+    }
+  }
+  env
+}
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
@@ -153,29 +187,9 @@ async fn raw_spawn_windows(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let extra_env_len = for k, v in extra_env; acc = 0 {
-    continue acc + k.length() + v.length() + 2
-  } nobreak {
-    acc
-  }
-  let (env, extra_env_offset) = if inherit_env {
-    let curr_env = get_curr_env()
-    let curr_env_len = curr_env.length()
-    let env = OsEnv::new(curr_env_len + extra_env_len)
-    env.write_env_block(curr_env)
-    (env, curr_env_len)
-  } else {
-    (OsEnv::new(extra_env_len), 0)
-  }
-  for k, v in extra_env; offset = extra_env_offset {
-    let key_len = k.length()
-    let value_len = v.length()
-    env.add_entry(offset, key=k, key_len~, value=v, value_len~)
-    continue offset + key_len + value_len + 2
-  }
   @event_loop.spawn_windows(
     command_line,
-    env=env.0,
+    env=OsEnv::make(extra_env, inherit_env~).0,
     stdin~,
     stdout~,
     stderr~,

@@ -30,9 +30,17 @@ extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang_async_write_env_block"
+extern "C" fn OsEnv::write_env_block(
+  dst : OsEnv,
+  block : OsEnv,
+  start~ : Int,
+) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
+/// Add a new entry to the environment array at `index`.
+/// Return the new index after adding the new entry.
+/// The entry would be skipped if its key contain '\0'.
+/// '\0' in the value would be silently truncated.
 #cfg(all(target="native", not(platform="windows")))
 #borrow(key, value)
 extern "C" fn OsEnv::add_entry(
@@ -42,7 +50,30 @@ extern "C" fn OsEnv::add_entry(
   key_len~ : Int,
   value~ : String,
   value_len~ : Int,
-) -> Unit = "moonbitlang_async_env_block_add_entry"
+) -> Int = "moonbitlang_async_env_block_add_entry"
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  let extra_count = extra_env.length()
+  let (curr_env, curr_env_len) = if inherit_env {
+    let curr_env = get_curr_env()
+    (Some(curr_env), curr_env.length())
+  } else {
+    (None, 0)
+  }
+  let env = OsEnv::new(curr_env_len + extra_count)
+  for k, v in extra_env; i = 0 {
+    let key_len = k.length()
+    let value_len = v.length()
+    continue env.add_entry(i, key=k, key_len~, value=v, value_len~)
+  } nobreak {
+    if curr_env is Some(curr_env) {
+      env.write_env_block(curr_env, start=i)
+    }
+  }
+  env
+}
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
@@ -120,21 +151,6 @@ async fn raw_spawn_unix(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let extra_count = extra_env.length()
-  let (env, inherited_env_entry_count) = if inherit_env {
-    let curr_env = get_curr_env()
-    let curr_env_len = curr_env.length()
-    let env = OsEnv::new(curr_env_len + extra_count)
-    env.write_env_block(curr_env)
-    (env, curr_env_len)
-  } else {
-    (OsEnv::new(extra_count), 0)
-  }
-  for k, v in extra_env; i = inherited_env_entry_count; i = i + 1 {
-    let key_len = k.length()
-    let value_len = v.length()
-    env.add_entry(i, key=k, key_len~, value=v, value_len~)
-  }
   // currently auto kill child process on hard termination is not supported on Unix,
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
@@ -142,8 +158,7 @@ async fn raw_spawn_unix(
   @event_loop.spawn_unix(
     cmd,
     argv.0,
-    env=env.0,
-    inherited_env_entry_count~,
+    env=OsEnv::make(extra_env, inherit_env~).0,
     stdin~,
     stdout~,
     stderr~,

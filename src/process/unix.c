@@ -20,6 +20,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <string.h>
+#include <stdio.h>
 #include <moonbit.h>
 
 extern char **environ;
@@ -41,16 +43,6 @@ char **moonbitlang_async_allocate_env_block(int32_t size) {
   return env_block;
 }
 
-void moonbitlang_async_write_env_block(char **dst, char **env_block) {
-  for (int i = 0;; ++i) {
-    if (env_block[i] == 0)
-      return;
-
-    dst[i] = env_block[i];
-  }
-}
-
-
 int32_t moonbit_utf8_len_from_utf16(
   moonbit_string_t src,
   int32_t src_offset,
@@ -65,7 +57,7 @@ int32_t moonbit_utf8_encode_from_utf16(
   int32_t dst_offset
 );
 
-void moonbitlang_async_env_block_add_entry(
+int32_t moonbitlang_async_env_block_add_entry(
   char **env_block,
   int32_t index,
   moonbit_string_t key,
@@ -73,6 +65,10 @@ void moonbitlang_async_env_block_add_entry(
   moonbit_string_t value,
   int32_t value_len
 ) {
+  for (int i = 0; i < key_len; ++i)
+    if (key[i] == 0)
+      return index;
+
   int key_bytes = moonbit_utf8_len_from_utf16(key, 0, key_len);
   int value_bytes = moonbit_utf8_len_from_utf16(value, 0, value_len);
   // `2`: `=` + trailing NUL
@@ -82,6 +78,36 @@ void moonbitlang_async_env_block_add_entry(
   moonbit_utf8_encode_from_utf16(value, 0, value_len, entry, key_bytes + 1);
   entry[key_bytes + value_bytes + 1] = 0;
   env_block[index] = (char*)entry; 
+  return index + 1;
+}
+
+void moonbitlang_async_write_env_block(char **dst, char **env_block, int32_t base_offset) {
+  for (int i = 0, offset = base_offset;; ++i) {
+    char const *entry = env_block[i];
+    if (entry == 0) {
+      dst[offset] = 0;
+      return;
+    }
+
+    int len = strlen(entry);
+    char const *key_end = strchr(entry, '=');
+    if (key_end) {
+      for (int j = 0; j < base_offset; ++j) {
+        if (strncmp(dst[j], entry, key_end + 1 - entry) == 0)
+          goto skip_duplicated_entry;
+      }
+    } else {
+      for (int j = 0; j < base_offset; ++j)
+        if (strcmp(dst[j], entry) == 0)
+          goto skip_duplicated_entry;
+    }
+
+    char *copied = malloc(len + 1);
+    memcpy(copied, entry, len + 1);
+    dst[offset++] = copied;
+  skip_duplicated_entry:
+    ;
+  }
 }
 
 

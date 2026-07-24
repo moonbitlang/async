@@ -47,6 +47,50 @@ fn OsEnv::add_entry(
 ) -> Unit = "moonbitlang/async" "process/env_block_add_entry"
 
 ///|
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  if @event_loop.platform is Windows {
+    let extra_env_len = for k, v in extra_env; acc = 0 {
+      continue acc + k.length() + v.length() + 2
+    } nobreak {
+      acc
+    }
+    let (env, extra_env_offset) = if inherit_env {
+      let curr_env = get_curr_env()
+      let curr_env_len = curr_env.length()
+      let env = OsEnv::new(curr_env_len + extra_env_len)
+      env.write_env_block(curr_env)
+      (env, curr_env_len)
+    } else {
+      (OsEnv::new(extra_env_len), 0)
+    }
+    for k, v in extra_env; offset = extra_env_offset {
+      let key_len = k.length()
+      let value_len = v.length()
+      env.add_entry(offset, key=k, key_len~, value=v, value_len~)
+      continue offset + key_len + value_len + 2
+    }
+    env
+  } else {
+    let extra_count = extra_env.length()
+    let (env, inherited_env_entry_count) = if inherit_env {
+      let curr_env = get_curr_env()
+      let curr_env_len = curr_env.length()
+      let env = OsEnv::new(curr_env_len + extra_count)
+      env.write_env_block(curr_env)
+      (env, curr_env_len)
+    } else {
+      (OsEnv::new(extra_count), 0)
+    }
+    for k, v in extra_env; i = inherited_env_entry_count; i = i + 1 {
+      let key_len = k.length()
+      let value_len = v.length()
+      env.add_entry(i, key=k, key_len~, value=v, value_len~)
+    }
+    env
+  }
+}
+
+///|
 #unsafe_skip_stub_check
 fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang/async" "process/make_argv_array/unix"
 
