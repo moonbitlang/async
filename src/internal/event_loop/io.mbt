@@ -139,7 +139,6 @@ async fn IoHandle::read_via_worker(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard handle.read is Idle
   handle.read = Submitted
   defer {
@@ -147,12 +146,11 @@ async fn IoHandle::read_via_worker(
   }
   let job = Job::read(handle.fd, buf, offset, len, position=handle.read_offset)
   defer job.free()
-  let cancel = if platform is Windows || handle.kind.can_poll() {
-    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-  } else {
-    None
-  }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(
+    job,
+    context~,
+    cancellable=platform is Windows || handle.kind.can_poll(),
+  )
 }
 
 ///|
@@ -187,7 +185,6 @@ async fn IoHandle::write_via_worker(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard handle.write is Idle
   handle.write = Submitted
   defer {
@@ -201,12 +198,11 @@ async fn IoHandle::write_via_worker(
     position=handle.write_offset,
   )
   defer job.free()
-  let cancel = if platform is Windows || handle.kind.can_poll() {
-    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-  } else {
-    None
-  }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(
+    job,
+    context~,
+    cancellable=platform is Windows || handle.kind.can_poll(),
+  )
 }
 
 ///|
@@ -244,16 +240,10 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
   guard !handle.is_async
   let job = Job::read(handle.fd, buf, offset, len, position~)
   defer job.free()
-  let cancel = if platform is Windows {
-    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-  } else {
-    None
-  }
-  perform_job_in_worker(job, context~, cancel?)
+  perform_job_in_worker(job, context~, cancellable=platform is Windows)
 }
 
 ///|
@@ -269,7 +259,6 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
   guard !handle.is_async
   guard handle.write_offset >= 0 else {
     raise Failure::Failure(
@@ -278,10 +267,5 @@ pub async fn IoHandle::write_at(
   }
   let job = Job::write(handle.fd, buf, offset, len, position~)
   defer job.free()
-  let cancel = if platform is Windows {
-    Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-  } else {
-    None
-  }
-  ignore(perform_job_in_worker(job, context~, cancel?))
+  ignore(perform_job_in_worker(job, context~, cancellable=platform is Windows))
 }
