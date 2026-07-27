@@ -158,3 +158,61 @@ async test "worker cancel2" {
     ),
   )
 }
+
+///|
+#cfg(any(target="native", target="wasm"))
+test "max worker limit" {
+  let log = []
+  with_event_loop(max_worker_count=2, () => {
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      for i in 0..<4 {
+        group.spawn_bg() <| () => {
+          let t = (@async.now() - start).to_int() / 200
+          log.push("job #\{i} starting at tick #\{t}")
+          perform_sleep_job(200)
+          let t = (@async.now() - start).to_int() / 200
+          log.push("job #\{i} completed at tick #\{t}")
+        }
+        @async.sleep(50)
+      }
+    }
+  })
+  json_inspect(log, content=[
+    "job #0 starting at tick #0", "job #1 starting at tick #0", "job #2 starting at tick #0",
+    "job #3 starting at tick #0", "job #0 completed at tick #1", "job #1 completed at tick #1",
+    "job #2 completed at tick #2", "job #3 completed at tick #2",
+  ])
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+test "cancel queued job" {
+  let log = []
+  with_event_loop(max_worker_count=1, () => {
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      fn tick() {
+        (@async.now() - start + 50).to_int() / 100
+      }
+      group.spawn_bg() <| () => {
+        log.push("main job starting at tick #\{tick()}")
+        perform_sleep_job(300)
+        log.push("main job completed at tick #\{tick()}")
+      }
+      @async.sleep(100)
+      log.push("queued job starting at tick #\{tick()}")
+      // The job here is not cancellable once it start running.
+      // But all jobs are cancellable while they are queued.
+      try @async.with_timeout(100, () => perform_sleep_job(200)) catch {
+        _ => log.push("queued job cancelled at tick #\{tick()}")
+      } noraise {
+        _ => log.push("queued job completed at tick #\{tick()}")
+      }
+    }
+  })
+  json_inspect(log, content=[
+    "main job starting at tick #0", "queued job starting at tick #1", "queued job cancelled at tick #2",
+    "main job completed at tick #3",
+  ])
+}
