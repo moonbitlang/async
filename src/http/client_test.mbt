@@ -91,6 +91,7 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
 
 ///|
 async test "request streaming" {
+  @coroutine.set_loc()
   let log = StringBuilder::new()
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
@@ -176,6 +177,7 @@ async test "request streaming" {
 
 ///|
 async test "multiple request" {
+  @coroutine.set_loc()
   let client = @http.Client("https://www.moonbitlang.com")
   defer client.close()
   let response1 = client.get("/")

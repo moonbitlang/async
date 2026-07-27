@@ -49,7 +49,8 @@ pub fn reschedule() -> Unit {
   for _ in 0..<n {
     guard scheduler.run_later.pop_front() is Some(coro) else { break }
     coro.ready = false
-    guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
+    guard coro.state is Suspend(ok_cont~, err_cont~, loc~) else {  }
+    ignore(loc)
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)

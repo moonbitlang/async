@@ -245,7 +245,7 @@ pub async fn[X] with_task_group(
       tg.result = Some(value)
     }
   }
-  @coroutine.suspend() catch {
+  @coroutine.suspend(loc~) catch {
     err => {
       if tg.state is Running {
         tg.state = Fail(err)
@@ -254,7 +254,10 @@ pub async fn[X] with_task_group(
         for child in tg.children {
           child.cancel()
         }
-        protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+        protect_from_cancel(
+          () => @coroutine.suspend(loc~),
+          resume_on_cancel=true,
+        )
       }
     }
   }

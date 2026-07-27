@@ -17,7 +17,8 @@ pub fn has_immediately_ready_task() -> Bool
 
 pub fn is_being_cancelled() -> Bool
 
-pub async fn pause() -> Unit
+#callsite(autofill(loc))
+pub async fn pause(loc~ : SourceLoc) -> Unit
 
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
@@ -26,7 +27,8 @@ pub fn reschedule() -> Unit
 #callsite(autofill(loc))
 pub fn spawn(async () -> Unit, loc~ : SourceLoc) -> Coroutine
 
-pub async fn suspend() -> Unit
+#callsite(autofill(loc))
+pub async fn suspend(loc~ : SourceLoc) -> Unit
 
 // Errors
 pub(all) suberror Cancelled derive(@debug.Debug)

@@ -27,6 +27,7 @@ async fn IoHandle::recvfrom_windows(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let result = IoResult::for_socket_with_addr_read(
     buf,
@@ -36,11 +37,12 @@ async fn IoHandle::recvfrom_windows(
     addr~,
   )
   defer result.free()
-  handle.generic_read_windows(result, context~)
+  handle.generic_read_windows(result, context~, loc~)
 }
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -48,9 +50,10 @@ pub async fn IoHandle::recvfrom(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.recvfrom_windows(buf, offset~, len~, addr~, context~)
+  handle.recvfrom_windows(buf, offset~, len~, addr~, context~, loc~)
 }
 
 ///|
@@ -62,6 +65,7 @@ async fn IoHandle::sendto_windows(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   let result = IoResult::for_socket_with_addr_write(
     buf,
@@ -71,11 +75,12 @@ async fn IoHandle::sendto_windows(
     addr~,
   )
   defer result.free()
-  handle.generic_write_windows(result, context~)
+  handle.generic_write_windows(result, context~, loc~)
 }
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
@@ -83,9 +88,10 @@ pub async fn IoHandle::sendto(
   len~ : Int,
   addr~ : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
-  handle.sendto_windows(buf, offset~, len~, addr~, context~)
+  handle.sendto_windows(buf, offset~, len~, addr~, context~, loc~)
 }
 
 ///|
@@ -121,6 +127,7 @@ async fn IoHandle::connect_windows(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   let result = IoResult::for_connect(addr)
   defer result.free()
@@ -128,7 +135,7 @@ async fn IoHandle::connect_windows(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_write_result(result, context~)
+    handle.wait_write_result(result, context~, loc~)
     ignore(result.status(handle.fd, context~))
   }
   if setup_connected_socket_ffi(handle.fd) < 0 {
@@ -138,13 +145,15 @@ async fn IoHandle::connect_windows(
 
 ///|
 #cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::connect(
   handle : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
-  handle.connect_windows(addr, context~)
+  handle.connect_windows(addr, context~, loc~)
 }
 
 ///|
@@ -190,12 +199,14 @@ fn setup_accepted_socket_ffi(
 ) -> Int = "moonbitlang/async" "socket/setup_accepted_socket/windows"
 
 ///|
-#cfg(any(target="wasm", platform="windows"))
+#cfg(platform="windows")
+#callsite(autofill(loc))
 pub async fn IoHandle::accept_windows(
   handle : IoHandle,
   conn_sock : IoHandle,
   addr : Bytes,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   @coroutine.check_cancellation()
   let result = IoResult::for_accept(addr.length())
@@ -204,7 +215,7 @@ pub async fn IoHandle::accept_windows(
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    handle.wait_read_result(result, context~)
+    handle.wait_read_result(result, context~, loc~)
     ignore(result.status(handle.fd, context~))
   }
   result.get_accept_peer_addr(addr)

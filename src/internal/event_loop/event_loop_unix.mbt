@@ -97,9 +97,10 @@ async fn UnixEventLoopExtra::wait_pid(
   self : Self,
   evloop : EventLoop,
   pid : Int,
+  loc~ : SourceLoc,
 ) -> Unit {
   guard self.pids.get(pid) is None
   self.pids[pid] = @coroutine.current_coroutine()
   defer self.pids.remove(pid)
-  evloop.suspend()
+  evloop.suspend(loc~)
 }

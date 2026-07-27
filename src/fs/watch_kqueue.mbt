@@ -174,10 +174,12 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
 
 ///|
 #cfg(not(platform="windows"))
+#callsite(autofill(loc))
 async fn KqueueWatcher::process_events(
   self : KqueueWatcher,
   timeout~ : Int?,
   context~ : String,
+  loc~ : SourceLoc,
 ) -> Unit {
   let n = KqueueWatcher::fetch_os_event(
     self.kqueue.fd(),
@@ -189,8 +191,8 @@ async fn KqueueWatcher::process_events(
   }
   if n is 0 {
     match timeout {
-      None => self.kqueue.wait_read()
-      Some(t) => @async.with_timeout(t, () => self.kqueue.wait_read())
+      None => self.kqueue.wait_read(loc~)
+      Some(t) => @async.with_timeout(t, () => self.kqueue.wait_read(loc~))
     }
   }
   for i in 0..<n {

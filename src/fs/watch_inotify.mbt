@@ -207,7 +207,11 @@ extern "C" fn InotifyEventBuffer::has_ignore(self : Self, offset : Int) -> Bool 
 
 ///|
 #cfg(not(platform="windows"))
-async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
+#callsite(autofill(loc))
+async fn InotifyWatcher::process_events(
+  self : InotifyWatcher,
+  loc~ : SourceLoc,
+) -> Unit {
   let context = "@fs.Watcher::wait()"
   let buf_len = InotifyEventBuffer::size()
   let buf = InotifyEventBuffer(@c_buffer.new(buf_len))
@@ -221,7 +225,7 @@ async fn InotifyWatcher::process_events(self : InotifyWatcher) -> Unit {
       if self.waiter is Some(coro) {
         coro.wake()
       }
-      self.inotify.wait_read()
+      self.inotify.wait_read(loc~)
       continue
     }
     self.debounce_timer.refresh()

@@ -54,12 +54,15 @@ pub suberror TimeoutError derive(Debug, ToJson)
 /// - If `f` is still running after `timeout` milliseconds,
 ///   `with_timeout` will fail with `TimeoutError`,
 ///   or the value of `error`, if explicitly specified.
+#callsite(autofill(args_loc))
 pub async fn[X] with_timeout(
   time : Int,
   f : async () -> X,
   error? : Error = TimeoutError,
+  args_loc~ : ArgsLoc,
 ) -> X {
-  with_task_group() <| group => {
+  guard args_loc.0 is [_, Some(loc), ..]
+  with_task_group(loc~) <| group => {
     group.spawn_bg(no_wait=true) <| () => {
       sleep(time)
       raise error
@@ -78,8 +81,14 @@ pub async fn[X] with_timeout(
 ///
 /// - If `f` is still running after `timeout` milliseconds,
 /// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
-pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
-  with_task_group() <| group => {
+#callsite(autofill(args_loc))
+pub async fn[X] with_timeout_opt(
+  time : Int,
+  f : async () -> X,
+  args_loc~ : ArgsLoc,
+) -> X? {
+  guard args_loc.0 is [_, Some(loc), ..]
+  with_task_group(loc~) <| group => {
     group.spawn_bg(no_wait=true) <| () => {
       sleep(time)
       group.return_immediately(None)

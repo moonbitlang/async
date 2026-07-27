@@ -17,7 +17,11 @@ priv enum State {
   Done
   Fail(Error)
   Running
-  Suspend(ok_cont~ : (Unit) -> Unit, err_cont~ : (Error) -> Unit)
+  Suspend(
+    ok_cont~ : (Unit) -> Unit,
+    err_cont~ : (Error) -> Unit,
+    loc~ : SourceLoc
+  )
 }
 
 ///|
@@ -28,7 +32,7 @@ pub struct Coroutine {
   priv mut cancelled : Bool
   priv mut ready : Bool
   priv downstream : Set[Coroutine]
-  loc : SourceLoc
+  mut loc : SourceLoc
 }
 
 ///|
@@ -74,28 +78,30 @@ pub fn Coroutine::cancel(self : Coroutine) -> Unit {
 }
 
 ///|
-pub async fn pause() -> Unit {
+#callsite(autofill(loc))
+pub async fn pause(loc~ : SourceLoc) -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
   async_suspend() <| fn(ok_cont, err_cont) {
     guard coro.state is Running
-    coro.state = Suspend(ok_cont~, err_cont~)
+    coro.state = Suspend(ok_cont~, err_cont~, loc~)
     coro.ready = true
     scheduler.run_later.push_back(coro)
   }
 }
 
 ///|
-pub async fn suspend() -> Unit {
+#callsite(autofill(loc))
+pub async fn suspend(loc~ : SourceLoc) -> Unit {
   guard scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
   async_suspend() <| fn(ok_cont, err_cont) {
     guard coro.state is Running
-    coro.state = Suspend(ok_cont~, err_cont~)
+    coro.state = Suspend(ok_cont~, err_cont~, loc~)
   }
 }
 
@@ -128,7 +134,7 @@ pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
     }
   }
 
-  coro.state = Suspend(ok_cont=run, err_cont=_ => ())
+  coro.state = Suspend(ok_cont=run, err_cont=_ => (), loc~)
   scheduler.run_later.push_back(coro)
   scheduler.all_coros.add(coro)
   coro
@@ -191,4 +197,11 @@ pub async fn[X] protect_from_cancel(
     }
     result
   }
+}
+
+///|
+#callsite(autofill(loc))
+pub fn set_loc(loc~ : SourceLoc) -> Unit {
+  guard scheduler.curr_coro is Some(coro)
+  coro.loc = loc
 }

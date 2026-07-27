@@ -20,7 +20,8 @@ pub fn is_cancellation_error(Error) -> Bool
 
 pub fn now() -> Int64
 
-pub async fn pause() -> Unit
+#callsite(autofill(loc))
+pub async fn pause(loc~ : SourceLoc) -> Unit
 
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 

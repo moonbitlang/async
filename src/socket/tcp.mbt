@@ -127,17 +127,20 @@ pub fn TcpServer::addr(server : TcpServer) -> Addr {
 /// If `max_connections` is present,
 /// at most `max_connections` clients are allowed in parallel.
 /// New clients will only get handled after a previous client terminates.
+#callsite(autofill(args_loc))
 pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
   allow_failure? : Bool = true,
   max_connections? : Int,
+  args_loc~ : ArgsLoc,
 ) -> Unit {
   defer self.close()
   let conn_limit = match max_connections {
     None => None
     Some(n) => Some(@async.Semaphore(n))
   }
+  guard args_loc.0[1] is Some(loc)
   @async.with_task_group() <| group => {
     for ;; {
       // only accept the connection if we have enough
@@ -148,7 +151,7 @@ pub async fn TcpServer::run_forever(
       // if `accept` failed, the whole group will fail anyway,
       // so no need to release the semaphore here.
       let (conn, addr) = self.accept()
-      group.spawn_bg(allow_failure~) <| () => {
+      group.spawn_bg(allow_failure~, loc~) <| () => {
         defer conn.close()
         if conn_limit is Some(limit) {
           defer limit.release()

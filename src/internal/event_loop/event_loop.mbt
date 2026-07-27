@@ -150,12 +150,12 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
 }
 
 ///|
-async fn EventLoop::suspend(evloop : EventLoop) -> Unit {
+async fn EventLoop::suspend(evloop : EventLoop, loc~ : SourceLoc) -> Unit {
   evloop.blocked_tasks += 1
   defer {
     evloop.blocked_tasks -= 1
   }
-  @coroutine.suspend()
+  @coroutine.suspend(loc~)
 }
 
 ///|
@@ -175,11 +175,12 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   // for IO-only or compute-only tasks that never call `sleep` / `Timer`.
   // Avoids both the iterator-allocation on `self.timers.iter().head()`
   // and the redundant `ms_since_epoch()` + loop below.
+  let before = now()
   let has_timers = !self.timers.is_empty()
   let timeout = if @coroutine.has_immediately_ready_task() {
     0
   } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - now()).to_int())
+    @cmp.maximum(0, (timer.expire_time - before).to_int())
   } else {
     -1
   }
@@ -189,8 +190,18 @@ fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
   }
   if has_timers {
     let now = now()
+    let delta = (now - before).to_int()
+    if delta - timeout >= 50 {
+      println(
+        "main loop polling timer drift detected: \{delta} v.s. \{timeout}",
+      )
+    }
     for timer in self.timers {
       if timer.expire_time <= now {
+        let delta = now - timer.expire_time
+        if delta.abs() >= 50 {
+          println("timer drift detected: \{delta}")
+        }
         (timer.callback)()
       } else {
         break
@@ -329,6 +340,7 @@ priv enum CancellationStatus {
 /// even in case of cancellation.
 async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Unit {
   guard curr_loop.val is Some(evloop)
   try cancel_func() catch {
@@ -336,7 +348,7 @@ async fn wait_for_cancellation(
       // The cancellation operation itself failed.
       // Give up the cancellation and wait for completion normally.
       @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
+        () => evloop.suspend(loc~),
         resume_on_cancel=true,
       )
       raise err
@@ -347,7 +359,7 @@ async fn wait_for_cancellation(
       // but the thread pool or OS may need some more time to finish all the cleanup.
       // So wait for the completion of the cleanup process here.
       @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
+        () => evloop.suspend(loc~),
         resume_on_cancel=true,
       )
     NoWait =>
@@ -359,7 +371,7 @@ async fn wait_for_cancellation(
       // Due to some inherent race condition, the cancellaion attempt did not succeed.
       // Retry again after a small timeout.
       @coroutine.protect_from_cancel(() => sleep(10), resume_on_cancel=true)
-      wait_for_cancellation(cancel_func)
+      wait_for_cancellation(cancel_func, loc~)
     }
   }
 }
@@ -369,17 +381,18 @@ async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
   cancel? : (Int) -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
   match cancel {
     None =>
       @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
+        () => evloop.suspend(loc~),
         resume_on_cancel=true,
       )
     Some(cancel_func) =>
-      evloop.suspend() catch {
+      evloop.suspend(loc~) catch {
         _ =>
           // The cancellation error is swallowed here,
           // because in case the operation completed before cancellation,
@@ -388,7 +401,7 @@ async fn EventLoop::wait_for_job(
           // In case the cancellation succeeded,
           // the underlying operation itself should report cancelled status properly
           // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
-          wait_for_cancellation(() => cancel_func(job_id))
+          wait_for_cancellation(() => cancel_func(job_id), loc~)
       }
   }
 }
@@ -403,10 +416,12 @@ extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno
 fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
 
 ///|
+#callsite(autofill(loc))
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
   cancel? : (Int) -> CancellationStatus raise,
+  loc~ : SourceLoc,
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
@@ -424,7 +439,7 @@ async fn perform_job_in_worker(
       worker.wake(job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel?)
+  evloop.wait_for_job(job_id, cancel?, loc~)
   if job.err() is err && err > 0 {
     if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
       raise @coroutine.Cancelled
