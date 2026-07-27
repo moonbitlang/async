@@ -38,7 +38,7 @@ pub impl Eq for Coroutine with fn equal(c1, c2) {
 
 ///|
 pub impl Hash for Coroutine with fn hash_combine(self, hasher) {
-  self.coro_id.hash_combine(hasher)
+  Hash::hash_combine(self.coro_id, hasher)
 }
 
 ///|

@@ -47,7 +47,7 @@ pub fn encode(str : StringView) -> OsString {
 
 ///|
 pub impl Show for OsString with fn output(self, logger) {
-  self.to_string().output(logger)
+  Show::output(self.to_string(), logger)
 }
 
 ///|
