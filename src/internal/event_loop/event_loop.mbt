@@ -40,7 +40,7 @@ priv struct EventLoop {
   notify_recv : @fd_util.Fd
   max_worker_count : Int
   mut job_id : Int
-  job_queue : @deque.Deque[QueuedJob]
+  job_queue : Set[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
@@ -55,6 +55,17 @@ priv struct EventLoop {
 priv struct QueuedJob {
   job_id : Int
   job : Job
+  waiter : @coroutine.Coroutine
+}
+
+///|
+impl Eq for QueuedJob with fn equal(x, y) {
+  x.job_id == y.job_id
+}
+
+///|
+impl Hash for QueuedJob with fn hash_combine(job, hasher) {
+  Hash::hash_combine(job.job_id, hasher)
 }
 
 ///|
@@ -99,7 +110,7 @@ fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
       notify_recv,
       max_worker_count,
       job_id: 0,
-      job_queue: Deque([]),
+      job_queue: Set([]),
       idle_workers: Deque([]),
       running_workers: Map([]),
       jobs: Map([]),
@@ -222,7 +233,7 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
   }
   guard self.running_workers.get(job_id) is Some(worker)
   self.running_workers.remove(job_id)
-  match self.job_queue.pop_front() {
+  match self.job_queue.iter().next() {
     None => {
       worker.enter_idle()
       self.idle_workers.push_back(worker)
@@ -230,6 +241,8 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     Some(job) => {
       self.running_workers[job.job_id] = worker
       worker.wake(job.job_id, job.job)
+      self.job_queue.remove(job)
+      job.waiter.wake()
     }
   }
   if self.jobs.get(job_id) is Some(coro) {
@@ -422,8 +435,21 @@ async fn perform_job_in_worker(
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.length() >= evloop.max_worker_count =>
-      evloop.job_queue.push_back({ job_id, job })
+    None if evloop.running_workers.length() >= evloop.max_worker_count => {
+      let waiter = @coroutine.current_coroutine()
+      let queued_job = { job_id, job, waiter }
+      evloop.job_queue.add(queued_job)
+      @coroutine.suspend() catch {
+        err =>
+          // If `queued_job` is already removed, the job must have been submitted already,
+          // within the same tick as the cancellation request.
+          // In this case, swallow the cancellation to avoid problems. 
+          if evloop.job_queue.contains(queued_job) {
+            evloop.job_queue.remove(queued_job)
+            raise err
+          }
+      }
+    }
     None => {
       let worker = Worker::spawn(job_id, job)
       evloop.running_workers[job_id] = worker
