@@ -56,14 +56,10 @@ pub async fn Process::wait_pid_windows(
   self : Process,
   context~ : String,
 ) -> Int {
-  guard curr_loop.val is Some(evloop)
   guard self.handle is Some(io)
   let job = Job::wait_for_process(io.fd, pid=self.pid)
   defer job.free()
-  let _ = perform_job_in_worker(job, context~, cancel=job_id => {
-    evloop.cancel_job_in_worker(job_id, context~)
-  })
-
+  let _ = perform_job_in_worker(job, context~, cancellable=true)
   let out = Ref(0)
   let ret = get_process_result(io.fd, self.pid, out)
   if ret < 0 {

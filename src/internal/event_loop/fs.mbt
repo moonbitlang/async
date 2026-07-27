@@ -36,12 +36,7 @@ pub async fn open(
   let path_bytes = @os_string.encode(path)
   let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
   defer job.0.free()
-  fn cancel(job_id) raise {
-    guard curr_loop.val is Some(evloop)
-    evloop.cancel_job_in_worker(job_id, context~)
-  }
-
-  try perform_job_in_worker(job.0, context~, cancel~) catch {
+  try perform_job_in_worker(job.0, context~, cancellable=true) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
     err => raise err
@@ -182,15 +177,9 @@ pub async fn IoHandle::lock(
   exclusive~ : Bool,
   context~ : String,
 ) -> Unit {
-  guard curr_loop.val is Some(evloop)
   let job = Job::flock(handle.fd, exclusive)
   defer job.free()
-  perform_job_in_worker(
-    job,
-    cancel=job_id => evloop.cancel_job_in_worker(job_id, context~),
-    context~,
-  )
-  |> ignore
+  perform_job_in_worker(job, cancellable=true, context~) |> ignore
 }
 
 ///|

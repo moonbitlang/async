@@ -77,9 +77,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     // The thread pool job will obain the exit code and reap the process.
     let job = Job::wait_for_process(handle, pid=self.pid)
     defer job.free()
-    return perform_job_in_worker(job, context~, cancel=job_id => {
-      evloop.cancel_job_in_worker(job_id, context~)
-    })
+    return perform_job_in_worker(job, context~, cancellable=true)
   }
 
   let ret = get_process_result(handle, self.pid, out)

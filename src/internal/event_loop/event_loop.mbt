@@ -390,28 +390,30 @@ async fn wait_for_cancellation(
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
   job_id : Int,
-  cancel? : (Int) -> CancellationStatus raise,
+  cancellable~ : Bool,
+  context~ : String,
 ) -> Unit {
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
-  match cancel {
-    None =>
-      @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
-        resume_on_cancel=true,
-      )
-    Some(cancel_func) =>
-      evloop.suspend() catch {
-        _ =>
-          // The cancellation error is swallowed here,
-          // because in case the operation completed before cancellation,
-          // we need to return the result normally to retain cancellation safety
-          // and avoid data loss.
-          // In case the cancellation succeeded,
-          // the underlying operation itself should report cancelled status properly
-          // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
-          wait_for_cancellation(() => cancel_func(job_id))
-      }
+  if cancellable {
+    evloop.suspend() catch {
+      _ =>
+        // The cancellation error is swallowed here,
+        // because in case the operation completed before cancellation,
+        // we need to return the result normally to retain cancellation safety
+        // and avoid data loss.
+        // In case the cancellation succeeded,
+        // the underlying operation itself should report cancelled status properly
+        // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
+        wait_for_cancellation(() => {
+          evloop.cancel_job_in_worker(job_id, context~)
+        })
+    }
+  } else {
+    @coroutine.protect_from_cancel(
+      () => evloop.suspend(),
+      resume_on_cancel=true,
+    )
   }
 }
 
@@ -428,7 +430,7 @@ fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/er
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  cancel? : (Int) -> CancellationStatus raise,
+  cancellable? : Bool = false,
 ) -> Int {
   @coroutine.check_cancellation()
   guard curr_loop.val is Some(evloop)
@@ -459,7 +461,7 @@ async fn perform_job_in_worker(
       worker.wake(job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel?)
+  evloop.wait_for_job(job_id, cancellable~, context~)
   if job.err() is err && err > 0 {
     if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
       raise @coroutine.Cancelled

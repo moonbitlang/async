@@ -82,9 +82,6 @@ fn setup_signal_handler_unix() -> @coroutine.Coroutine {
   }
   @coroutine.spawn() <| () => {
     let context = "sigwait thread"
-    fn cancel(job_id) raise {
-      evloop.cancel_job_in_worker(job_id, context~)
-    }
     let job = Job::sigwait(all_signals)
     defer job.free()
     // We want to exclude the signal waiting task from dead lock detection.
@@ -93,7 +90,7 @@ fn setup_signal_handler_unix() -> @coroutine.Coroutine {
     // so whenever `blocked_task` is read, the `-= 1` here
     // will cancel a `+= 1` caused by `evloop.suspend()` in the sigwait task.
     evloop.blocked_tasks -= 1
-    ignore <| perform_job_in_worker(job, context~, cancel~)
+    ignore <| perform_job_in_worker(job, context~, cancellable=true)
   }
 }
 
