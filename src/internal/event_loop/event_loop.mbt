@@ -78,7 +78,7 @@ pub fn register_hook(
 }
 
 ///|
-fn EventLoop::new() -> EventLoop raise {
+fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
   let bus = EventBus::new()
   try {
     let notify_recv = init_thread_pool_ffi(bus)
@@ -86,12 +86,18 @@ fn EventLoop::new() -> EventLoop raise {
       @os_error.check_errno("initialize thread pool")
     }
     let extra = PlatformEventLoopExtra::new()
+    let max_worker_count = match platform {
+      Linux | MacOS =>
+        // reserve one extra worker for the global `sigwait` job
+        max_worker_count + 1
+      Windows => max_worker_count
+    }
     {
       bus,
       fds: Map([]),
       extra,
       notify_recv,
-      max_worker_count: 1024,
+      max_worker_count,
       job_id: 0,
       job_queue: Deque([]),
       idle_workers: Deque([]),
@@ -119,9 +125,12 @@ fn EventLoop::destroy(evloop : EventLoop) -> Unit {
 }
 
 ///|
-pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
+pub fn with_event_loop(
+  f : async () -> Unit,
+  max_worker_count? : Int = 1024,
+) -> Unit raise {
   guard curr_loop.val is None
-  let evloop = EventLoop::new()
+  let evloop = EventLoop::new(max_worker_count~)
   defer evloop.destroy()
   curr_loop.val = Some(evloop)
   defer {
