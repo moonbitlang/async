@@ -51,7 +51,7 @@ async test "manual Accept-Encoding" {
     group.spawn_bg(no_wait=true) <| () => {
       test_server.run_forever() <| ((req, _body, conn) => {
         let accept_encoding = req.headers.get("accept-encoding")
-        log.push("server received: \{to_repr(accept_encoding)}")
+        log.push("server received: \{Repr(accept_encoding)}")
         let file = @fs.open("LICENSE", mode=ReadOnly)
         defer file.close()
         conn.send_response(200, "OK", extra_headers={

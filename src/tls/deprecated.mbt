@@ -19,7 +19,7 @@ pub impl Show for TlsError
 ///|
 pub impl Show for TlsError with fn output(self, logger) {
   match self {
-    TlsError(msg) => logger <+ "TlsError(\{to_repr(msg)})"
+    TlsError(msg) => logger <+ "TlsError(\{Repr(msg)})"
   }
 }
 

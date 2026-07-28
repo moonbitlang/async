@@ -52,7 +52,7 @@ async fn watch_basic_test(
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
-        log.push("watcher received change: \{to_repr(events)}")
+        log.push("watcher received change: \{Repr(events)}")
       }
     })
     // 1. modify content of existing file at root
@@ -226,7 +226,7 @@ async fn watch_rename_within_test(
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
-        log.push("watcher received change: \{to_repr(events)}")
+        log.push("watcher received change: \{Repr(events)}")
       }
     })
     // 1. rename within the same directory
@@ -353,7 +353,7 @@ async fn watch_rename_inout_test(
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
-        log.push("watcher received change: \{to_repr(events)}")
+        log.push("watcher received change: \{Repr(events)}")
       }
     })
     // 1. move foreign file inside watched tree
@@ -556,15 +556,15 @@ async fn watch_vertical_swap_test(
     @fs.rename("\{path}/tmp", "\{path}/outer")
     @async.sleep(10)
     let events = @async.with_timeout(1000, () => watcher.wait())
-    log.push("watcher received change: \{to_repr(events)}")
+    log.push("watcher received change: \{Repr(events)}")
     log.push("modifying previous outer file")
     @fs.write_file("\{path}/outer/inner/file", "ABCD")
     let events = @async.with_timeout(1000, () => watcher.wait())
-    log.push("watcher received change: \{to_repr(events)}")
+    log.push("watcher received change: \{Repr(events)}")
     log.push("modifying previous inner file")
     @fs.write_file("\{path}/outer/file", "EFGH")
     let events = @async.with_timeout(1000, () => watcher.wait())
-    log.push("watcher received change: \{to_repr(events)}")
+    log.push("watcher received change: \{Repr(events)}")
   })
   log
 }
