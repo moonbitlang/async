@@ -572,9 +572,14 @@ fn Job::spawn_unix(
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
-  has_cwd~ : Bool,
+  is_orphan~ : Bool,
+  cwd~ : @os_string.OsString?,
 ) -> SpawnJob {
+  let (cwd, has_cwd) = match cwd {
+    None => (@os_string.empty, false)
+    Some(cwd) => (cwd, true)
+  }
+  ignore(is_orphan)
   SpawnJob(
     Job(
       JobHandle::spawn_unix(
@@ -617,11 +622,14 @@ fn Job::spawn_windows(
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
-  has_cwd~ : Bool,
+  cwd~ : @os_string.OsString?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
 ) -> SpawnJob {
+  let (cwd, has_cwd) = match cwd {
+    None => (@os_string.empty, false)
+    Some(cwd) => (cwd, true)
+  }
   SpawnJob(
     Job(
       JobHandle::spawn_windows(

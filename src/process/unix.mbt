@@ -162,6 +162,7 @@ async fn raw_spawn_unix(
     stdin~,
     stdout~,
     stderr~,
+    is_orphan~,
     cwd~,
     context~,
   )

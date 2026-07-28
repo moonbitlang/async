@@ -21,13 +21,10 @@ pub async fn spawn_unix(
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
+  is_orphan~ : Bool,
   cwd~ : @os_string.OsString?,
   context~ : String,
 ) -> Process {
-  let (cwd, has_cwd) = match cwd {
-    None => (@os_string.empty, false)
-    Some(cwd) => (cwd, true)
-  }
   let job = Job::spawn_unix(
     path,
     args,
@@ -36,7 +33,7 @@ pub async fn spawn_unix(
     stdout~,
     stderr~,
     cwd~,
-    has_cwd~,
+    is_orphan~,
   )
   defer job.0.free()
   let pid = perform_job_in_worker(job.0, context~)

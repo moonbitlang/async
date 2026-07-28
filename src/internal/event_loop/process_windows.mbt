@@ -25,10 +25,6 @@ pub async fn spawn_windows(
   is_orphan~ : Bool,
   context~ : String,
 ) -> Process {
-  let (cwd, has_cwd) = match cwd {
-    None => (@os_string.empty, false)
-    Some(cwd) => (cwd, true)
-  }
   let job = Job::spawn_windows(
     command_line,
     env~,
@@ -36,7 +32,6 @@ pub async fn spawn_windows(
     stdout~,
     stderr~,
     cwd~,
-    has_cwd~,
     no_console_window~,
     is_orphan~,
   )

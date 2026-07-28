@@ -2292,9 +2292,6 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   HANDLE stdin_handle,
   HANDLE stdout_handle,
   HANDLE stderr_handle,
-  LPWSTR cwd,
-  int32_t has_cwd,
-  int32_t no_console_window,
   int32_t is_orphan
 ) {
   struct spawn_job *job = MAKE_JOB(spawn);
@@ -2303,8 +2300,8 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[0] = stdin_handle;
   job->stdio[1] = stdout_handle;
   job->stdio[2] = stderr_handle;
-  job->cwd = has_cwd ? cwd : 0;
-  job->no_console_window = no_console_window;
+  job->cwd = NULL;
+  job->no_console_window = FALSE;
   job->is_orphan = is_orphan;
   job->result = INVALID_HANDLE_VALUE;
 
@@ -2321,6 +2318,14 @@ HANDLE moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
   HANDLE result = job->result;
   job->result = INVALID_HANDLE_VALUE;
   return result;
+}
+
+void moonbitlang_async_spawn_job_set_cwd(struct spawn_job *job, LPWSTR cwd) {
+  job->cwd = cwd;
+}
+
+void moonbitlang_async_spawn_job_set_no_console_window(struct spawn_job *job) {
+  job->no_console_window = TRUE;
 }
 
 // For windows, waiting for process is done via one dedicated thread per process,
@@ -2490,8 +2495,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   int stdin_fd,
   int stdout_fd,
   int stderr_fd,
-  char *cwd,
-  int32_t has_cwd
+  int32_t is_orphan
 ) {
   struct spawn_job *job = MAKE_JOB(spawn);
   job->path = path;
@@ -2500,9 +2504,13 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->stdio[0] = stdin_fd;
   job->stdio[1] = stdout_fd;
   job->stdio[2] = stderr_fd;
-  job->cwd = has_cwd ? cwd : 0;
+  job->cwd = 0;
   job->pidfd = -1;
   return job;
+}
+
+void moonbitlang_async_spawn_job_set_cwd(struct spawn_job *job, char *cwd) {
+  job->cwd = cwd;
 }
 
 // Unix wait_for_process: blocking waitpid in worker thread

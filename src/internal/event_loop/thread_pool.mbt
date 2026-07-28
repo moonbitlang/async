@@ -230,35 +230,97 @@ priv struct SpawnJob(Job)
 
 ///|
 #cfg(not(platform="windows"))
-#owned(path, args, env, cwd)
-extern "C" fn Job::spawn_unix(
+#owned(path, args, env)
+extern "C" fn Job::spawn_unix_ffi(
   path : @os_string.OsString,
   args : @c_buffer.Buffer,
   env~ : @c_buffer.Buffer,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
-  has_cwd~ : Bool,
+  is_orphan~ : Bool,
 ) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
-#owned(command_line, env, cwd)
-extern "C" fn Job::spawn_windows(
+#owned(command_line, env)
+extern "C" fn Job::spawn_windows_ffi(
   command_line : @os_string.OsString,
   env~ : @c_buffer.Buffer,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
-  has_cwd~ : Bool,
-  no_console_window~ : Bool,
   is_orphan~ : Bool,
 ) -> SpawnJob = "moonbitlang_async_make_spawn_job"
 
 ///|
+#borrow(job)
+#owned(cwd)
+extern "C" fn SpawnJob::set_cwd(job : SpawnJob, cwd : @os_string.OsString) = "moonbitlang_async_spawn_job_set_cwd"
+
+///|
+#cfg(platform="windows")
+#borrow(job)
+extern "C" fn SpawnJob::set_no_console_window(job : SpawnJob) = "moonbitlang_async_spawn_job_set_no_console_window"
+
+///|
 extern "C" fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
+
+///|
+#cfg(not(platform="windows"))
+fn Job::spawn_unix(
+  path : @os_string.OsString,
+  args : @c_buffer.Buffer,
+  env~ : @c_buffer.Buffer,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  is_orphan~ : Bool,
+  cwd~ : @os_string.OsString?,
+) -> SpawnJob {
+  let job = Job::spawn_unix_ffi(
+    path,
+    args,
+    env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    is_orphan~,
+  )
+  if cwd is Some(cwd) {
+    job.set_cwd(cwd)
+  }
+  job
+}
+
+///|
+#cfg(platform="windows")
+fn Job::spawn_windows(
+  command_line : @os_string.OsString,
+  env~ : @c_buffer.Buffer,
+  stdin~ : @fd_util.Fd,
+  stdout~ : @fd_util.Fd,
+  stderr~ : @fd_util.Fd,
+  is_orphan~ : Bool,
+  cwd~ : @os_string.OsString?,
+  no_console_window~ : Bool,
+) -> SpawnJob {
+  let job = Job::spawn_windows_ffi(
+    command_line,
+    env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    is_orphan~,
+  )
+  if cwd is Some(cwd) {
+    job.set_cwd(cwd)
+  }
+  if no_console_window {
+    job.set_no_console_window()
+  }
+  job
+}
 
 ///|
 // `handle` is used by Windows, `pid` is used by Linux
