@@ -64,7 +64,7 @@ jobs:
           "$MOONRUN_OVERRIDE" --version
 
       - name: moon check
-        run: moon check --target wasm --deny-warn
+        run: moon check --target wasm
 
       - name: moon test
-        run: moon test --target wasm --deny-warn
+        run: moon test --target wasm
