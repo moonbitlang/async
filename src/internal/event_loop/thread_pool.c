@@ -64,7 +64,8 @@
 
 typedef int HANDLE;
 typedef int SOCKET;
-#define GetLastError() errno;
+#define GetLastError() errno
+#define SetLastError(err) errno = err
 
 #endif
 
@@ -129,33 +130,44 @@ struct job {
   // should be zefo iff the job succeeds
   int32_t err;
 
-  // the worker that actually performs the job.
-  // it will receive the job itself as parameter.
-  // extra payload can be placed after the header fields in `struct job`
-  void (*worker)(struct job*);
+  // The worker that actually performs the job.
+  // it will receive the payload of the job as parameter.
+  // The return value of `worker` will become the return status of the whole job.
+  // In case of failure, `worker` should write error number to the second parameter.
+  int32_t (*worker)(void *, int32_t *);
 
   // finalizer for the job
   void (*free)(void *);
 
   // Special cancellation function for the job.
   // May be `NULL`, in this case the default one is used.
-  int32_t (*cancel_handler)(struct job*);
+  // Receive the payload of the job as parameter.
+  int32_t (*cancel_handler)(void *);
+
+  // Extra payload of the specific job,
+  // Directly inlined into `struct job` to avoid indirection.
+  char payload[];
 };
 
+// We pass jobs by payload pointer for convenience,
+// the `JOB_HEADER` macro extracts the header pointer when necessary.
+#define JOB_HEADER(payload_ptr) ((struct job*)(payload_ptr) - 1)
+
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_free_job(struct job *job) {
-  (job->free)(job);
+void moonbitlang_async_free_job(void *payload_ptr) {
+  struct job *job = JOB_HEADER(payload_ptr);
+  (job->free)(job->payload);
   free(job);
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_job_get_ret(struct job *job) {
-  return job->ret;
+int32_t moonbitlang_async_job_get_ret(void *job) {
+  return JOB_HEADER(job)->ret;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_job_get_err(struct job *job) {
-  return job->err;
+int32_t moonbitlang_async_job_get_err(void *job) {
+  return JOB_HEADER(job)->err;
 }
 
 // =======================================================
@@ -230,10 +242,8 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
 #endif
 
   while (job) {
-    job->ret = 0;
     job->err = 0;
-
-    job->worker(job);
+    job->ret = job->worker(job->payload, &job->err);
 
     self->waiting = 1;
 
@@ -279,10 +289,10 @@ MOONBIT_FFI_EXPORT
 void moonbitlang_async_wake_worker(
   struct worker *worker,
   int32_t job_id,
-  struct job *job
+  void *job
 ) {
   worker->job_id = job_id;
-  worker->job = job;
+  worker->job = job ? JOB_HEADER(job) : 0;
 
 #ifdef WAKEUP_METHOD_EVENT
   worker->waiting = 0;
@@ -316,7 +326,7 @@ int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
   // invarint: `worker->job` is only manipulated in the main thread,
   // and must be non-NULL here.
   if (worker->job->cancel_handler)
-    return (worker->job->cancel_handler)(worker->job);
+    return (worker->job->cancel_handler)(worker->job->payload);
 
   // enter default cancellation logic
 
@@ -464,11 +474,11 @@ void moonbitlang_async_destroy_thread_pool() {
 MOONBIT_FFI_EXPORT
 struct worker *moonbitlang_async_spawn_worker(
   int32_t init_job_id,
-  struct job *init_job
+  void *init_job
 ) {
   struct worker *worker = (struct worker*)malloc(sizeof(struct worker));
   worker->job_id = init_job_id;
-  worker->job = init_job;
+  worker->job = JOB_HEADER(init_job);
   worker->waiting = 0;
 
 #ifdef _WIN32
@@ -524,42 +534,43 @@ int32_t moonbitlang_async_errno_is_cancelled(int32_t err) {
 // =========================================================
 
 static
-struct job *make_job(
+void *make_job(
   int32_t size,
   void (*free)(void*),
-  void (*worker)(struct job*)
+  int32_t (*worker)(void*, int32_t*),
+  int32_t (*cancel_handler)(void*)
 ) {
   struct job *job = (struct job*)malloc(size);
   job->ret = 0;
   job->err = 0;
   job->worker = worker;
   job->free = free;
-  job->cancel_handler = 0;
-  return job;
+  job->cancel_handler = cancel_handler;
+  return job->payload;
 }
 
-#define MAKE_JOB(name) (struct name##_job*)make_job(\
-  sizeof(struct name##_job),\
-  free_##name##_job,\
-  name##_job_worker\
+#define MAKE_JOB(name, cancel_handler) (struct name##_job*)make_job(\
+  sizeof(struct job) + sizeof(struct name##_job),\
+  (void (*)(void*))free_##name##_job,\
+  (int32_t (*)(void*, int32_t*)) name##_job_worker,\
+  (int32_t (*)(void*))cancel_handler\
 )
 
 // ===== sleep job, sleep via thread pool, for testing only =====
 
 struct sleep_job {
-  struct job job;
   int duration;
 };
 
 static
-void free_sleep_job(void *job) {}
+void free_sleep_job(struct sleep_job *job) {}
 
 static
-void sleep_job_worker(struct job *job) {
+int32_t sleep_job_worker(struct sleep_job *job, int32_t *err_out) {
 #ifdef _WIN32
-  Sleep(((struct sleep_job*)job)->duration);
+  Sleep(job->duration);
 #else
-  int32_t ms = ((struct sleep_job*)job)->duration;
+  int32_t ms = job->duration;
   struct timespec duration = { ms / 1000, (ms % 1000) * 1000000 };
 
 #ifdef __MACH__
@@ -577,11 +588,13 @@ void sleep_job_worker(struct job *job) {
 #endif
 
 #endif
+
+  return 0;
 }
 
 MOONBIT_FFI_EXPORT
 struct sleep_job *moonbitlang_async_make_sleep_job(int ms) {
-  struct sleep_job *job = MAKE_JOB(sleep);
+  struct sleep_job *job = MAKE_JOB(sleep, 0);
   job->duration = ms;
   return job;
 }
@@ -589,7 +602,6 @@ struct sleep_job *moonbitlang_async_make_sleep_job(int ms) {
 // ===== read job, for reading non-pollable stuff =====
 
 struct read_job {
-  struct job job;
   HANDLE fd;
   char *buf;
   int offset;
@@ -598,68 +610,70 @@ struct read_job {
 };
 
 static
-void free_read_job(void *obj) {
-  struct read_job *job = (struct read_job*)obj;
+void free_read_job(struct read_job *job) {
   moonbit_decref(job->buf);
 }
 
 static
-void read_job_worker(struct job *job) {
-  struct read_job *read_job = (struct read_job*)job;
-
+int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
    OVERLAPPED overlapped;
    memset(&overlapped, 0, sizeof(OVERLAPPED));
-   if (read_job->position >= 0) {
-     overlapped.Offset = read_job->position & 0xffffffff;
-     overlapped.OffsetHigh = read_job->position >> 32;
+   if (job->position >= 0) {
+     overlapped.Offset = job->position & 0xffffffff;
+     overlapped.OffsetHigh = job->position >> 32;
    }
 
    DWORD bytes_transferred;
    BOOL result = ReadFile(
-     read_job->fd,
-     read_job->buf + read_job->offset,
-     read_job->len,
+     job->fd,
+     job->buf + job->offset,
+     job->len,
      &bytes_transferred,
-     read_job->position < 0 ? NULL : &overlapped
+     job->position < 0 ? NULL : &overlapped
    );
    if (result) {
-     job->ret = bytes_transferred;
+     return bytes_transferred;
    } else {
      int err = GetLastError();
      if (err == ERROR_HANDLE_EOF || err == ERROR_BROKEN_PIPE) {
-       job->ret = 0;
+       return 0;
      } else {
-       job->err = err;
+       *err_out = err;
+       return -1;
      }
    }
 
 #else
 
-  if (read_job->position < 0) {
+  int32_t ret;
+  if (job->position < 0) {
     while (1) {
-      job->ret = read(read_job->fd, read_job->buf + read_job->offset, read_job->len);
-      if (job->ret >= 0)
+      ret = read(job->fd, job->buf + job->offset, job->len);
+      if (ret >= 0)
         break;
 
       if (errno != EAGAIN && errno != EWOULDBLOCK)
         break;
 
-      struct pollfd pfd = { read_job->fd, POLL_IN, 0 };
+      struct pollfd pfd = { job->fd, POLL_IN, 0 };
       if (poll(&pfd, 1, -1) < 0)
         break;
     }
   } else {
-    job->ret = pread(
-      read_job->fd,
-      read_job->buf + read_job->offset,
-      read_job->len,
-      read_job->position
+    ret = pread(
+      job->fd,
+      job->buf + job->offset,
+      job->len,
+      job->position
     );
   }
-  if (job->ret < 0)
-    job->err = errno;
+
+  if (ret < 0)
+    *err_out = errno;
+
+  return ret;
 
 #endif
 }
@@ -671,7 +685,7 @@ struct read_job *moonbitlang_async_make_read_job(
   int len,
   int64_t position
 ) {
-  struct read_job *job = MAKE_JOB(read);
+  struct read_job *job = MAKE_JOB(read, 0);
   job->fd = fd;
   job->buf = buf;
   job->offset = offset;
@@ -683,7 +697,6 @@ struct read_job *moonbitlang_async_make_read_job(
 // ===== write job, for writing non-pollable stuff =====
 
 struct write_job {
-  struct job job;
   HANDLE fd;
   char *buf;
   int offset;
@@ -692,66 +705,63 @@ struct write_job {
 };
 
 static
-void free_write_job(void *obj) {
-  struct write_job *job = (struct write_job*)obj;
+void free_write_job(struct write_job *job) {
   moonbit_decref(job->buf);
 }
 
 static
-void write_job_worker(struct job *job) {
-  struct write_job *write_job = (struct write_job*)job;
-
+int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
    OVERLAPPED overlapped;
    memset(&overlapped, 0, sizeof(OVERLAPPED));
-   if (write_job->position >= 0) {
-     overlapped.Offset = write_job->position & 0xffffffff;
-     overlapped.OffsetHigh = write_job->position >> 32;
+   if (job->position >= 0) {
+     overlapped.Offset = job->position & 0xffffffff;
+     overlapped.OffsetHigh = job->position >> 32;
    }
 
    DWORD bytes_transferred;
    BOOL result = WriteFile(
-     write_job->fd,
-     write_job->buf + write_job->offset,
-     write_job->len,
+     job->fd,
+     job->buf + job->offset,
+     job->len,
      &bytes_transferred,
-     write_job->position < 0 ? NULL : &overlapped
+     job->position < 0 ? NULL : &overlapped
    );
    if (result)
-     job->ret = bytes_transferred;
-   else
-     job->err = GetLastError();
+     return bytes_transferred;
+   else {
+     *err_out = GetLastError();
+     return -1;
+   }
 
 #else
 
-  if (write_job->position < 0) {
+  int32_t ret;
+  if (job->position < 0) {
     while (1) {
-      job->ret = write(
-        write_job->fd,
-        write_job->buf + write_job->offset,
-        write_job->len
-      );
-      if (job->ret >= 0)
+      ret = write(job->fd, job->buf + job->offset, job->len);
+      if (ret >= 0)
         break;
 
       if (errno != EAGAIN && errno != EWOULDBLOCK)
         break;
 
-      struct pollfd pfd = { write_job->fd, POLL_OUT, 0 };
+      struct pollfd pfd = { job->fd, POLL_OUT, 0 };
       if (poll(&pfd, 1, -1) < 0)
         break;
     }
   } else {
-    job->ret = pwrite(
-      write_job->fd,
-      write_job->buf + write_job->offset,
-      write_job->len,
-      write_job->position
+    ret = pwrite(
+      job->fd,
+      job->buf + job->offset,
+      job->len,
+      job->position
     );
   }
-  if (job->ret < 0)
-    job->err = errno;
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
@@ -763,7 +773,7 @@ struct write_job *moonbitlang_async_make_write_job(
   int len,
   int64_t position
 ) {
-  struct write_job *job = MAKE_JOB(write);
+  struct write_job *job = MAKE_JOB(write, 0);
   job->fd = fd;
   job->buf = buf;
   job->offset = offset;
@@ -775,7 +785,6 @@ struct write_job *moonbitlang_async_make_write_job(
 // ===== open job =====
 
 struct open_job {
-  struct job job;
   char *filename;
   int access;
   int create_mode;
@@ -791,13 +800,12 @@ struct open_job {
 };
 
 static
-void free_open_job(void *obj) {
-  struct open_job *job = (struct open_job*)obj;
+void free_open_job(struct open_job *job) {
   moonbit_decref(job->filename);
 }
 
 static
-void open_job_worker(struct job *job) {
+int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
 #ifdef _WIN32
   static int access_flags[] = {
     GENERIC_READ,
@@ -819,83 +827,83 @@ void open_job_worker(struct job *job) {
   static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
 #endif
 
-  struct open_job *open_job = (struct open_job*)job;
-
 #ifdef _WIN32
 
   DWORD flags =
     FILE_ATTRIBUTE_NORMAL
     | FILE_FLAG_BACKUP_SEMANTICS
-    | sync_flags[open_job->sync];
+    | sync_flags[job->sync];
 
-  if (open_job->access == 3)
+  if (job->access == 3)
     flags |= FILE_FLAG_OVERLAPPED;
 
-  DWORD access_flag = access_flags[open_job->access];
-  if (open_job->append)
+  DWORD access_flag = access_flags[job->access];
+  if (job->append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
 
   while (1) {
-    open_job->result = CreateFileW(
-      (LPCWSTR)open_job->filename,
+    job->result = CreateFileW(
+      (LPCWSTR)job->filename,
       access_flag, // desired access
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
       NULL, // security attributes
-      create_modes[open_job->create_mode], // creation
+      create_modes[job->create_mode], // creation
       flags, // flags and attributes. Note that we open files in synchronous mode
       NULL // template file
     );
 
-    if (open_job->result != INVALID_HANDLE_VALUE)
+    if (job->result != INVALID_HANDLE_VALUE)
       break;
 
     // handle error
     int err = GetLastError();
     if (err != ERROR_PIPE_BUSY) {
-      job->err = err;
-      return;
+      *err_out = err;
+      return -1;
     }
 
     // We are trying to open a named pipe, but no pipe instance is available,
     // so wait until any instance is available.
     // This wait is cancellable via `CancelSynchronousIo`.
-    if (!WaitNamedPipeW((LPCWSTR)open_job->filename, NMPWAIT_WAIT_FOREVER)) {
-      job->err = GetLastError();
-      return;
+    if (!WaitNamedPipeW((LPCWSTR)job->filename, NMPWAIT_WAIT_FOREVER)) {
+      *err_out = GetLastError();
+      return -1;
     }
   }
 
   // get the kind of the file
-  if (!GetFileInformationByHandle(open_job->result, &open_job->stat)) {
-    job->err = GetLastError();
-    CloseHandle(open_job->result);
+  if (!GetFileInformationByHandle(job->result, &job->stat)) {
+    *err_out = GetLastError();
+    CloseHandle(job->result);
+    return -1;
   }
 
 #else
 
   int flags =
-    access_flags[open_job->access]
-    | sync_flags[open_job->sync]
-    | create_modes[open_job->create_mode];
-  if (open_job->append) flags |= O_APPEND;
+    access_flags[job->access]
+    | sync_flags[job->sync]
+    | create_modes[job->create_mode];
+  if (job->append) flags |= O_APPEND;
 
-  open_job->result = open(
-    open_job->filename,
+  job->result = open(
+    job->filename,
     flags | O_CLOEXEC,
-    open_job->mode
+    job->mode
   );
-  if (open_job->result < 0) {
-    job->err = errno;
-    return;
+  if (job->result < 0) {
+    *err_out = errno;
+    return -1;
   }
 
-  if (fstat(open_job->result, &open_job->stat) < 0) {
-    job->err = errno;
-    close(open_job->result);
-    return;
+  if (fstat(job->result, &job->stat) < 0) {
+    *err_out = errno;
+    close(job->result);
+    return -1;
   }
 
 #endif
+  return 0;
 }
 
 MOONBIT_FFI_EXPORT
@@ -908,7 +916,7 @@ struct open_job *moonbitlang_async_make_open_job(
   int mode
 ) {
 
-  struct open_job *job = MAKE_JOB(open);
+  struct open_job *job = MAKE_JOB(open, 0);
   job->filename = filename;
   job->access = access;
   job->create_mode = create_mode;
@@ -952,23 +960,22 @@ uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
 
 // ===== file kind of fd job, get kind of an existing fd =====
 struct kind_of_fd_job {
-  struct job job;
   HANDLE fd;
 };
 
 static
-void free_kind_of_fd_job(void *obj) {}
+void free_kind_of_fd_job(struct kind_of_fd_job *job) {}
 
 static
-void kind_of_fd_job_worker(struct job *job) {
-  struct kind_of_fd_job *kind_of_fd_job = (struct kind_of_fd_job*)job;
-  job->ret = moonbitlang_async_kind_of_fd(kind_of_fd_job->fd);
-  if (job->ret < 0)
-    job->err = GetLastError();
+int32_t kind_of_fd_job_worker(struct kind_of_fd_job *job, int32_t *err_out) {
+  int32_t ret = moonbitlang_async_kind_of_fd(job->fd);
+  if (ret < 0)
+    *err_out = GetLastError();
+  return ret;
 }
 
 struct kind_of_fd_job *moonbitlang_async_make_kind_of_fd_job(HANDLE fd) {
-  struct kind_of_fd_job *job = MAKE_JOB(kind_of_fd);
+  struct kind_of_fd_job *job = MAKE_JOB(kind_of_fd, 0);
   job->fd = fd;
   return job;
 }
@@ -976,28 +983,25 @@ struct kind_of_fd_job *moonbitlang_async_make_kind_of_fd_job(HANDLE fd) {
 // ===== file kind by path job, get kind of path on file system =====
 
 struct file_kind_by_path_job {
-  struct job job;
   HANDLE parent;
   char *path;
   int follow_symlink;
 };
 
 static
-void free_file_kind_by_path_job(void *obj) {
-  struct file_kind_by_path_job *job = (struct file_kind_by_path_job*)obj;
+void free_file_kind_by_path_job(struct file_kind_by_path_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void file_kind_by_path_job_worker(struct job *job) {
-  struct file_kind_by_path_job *file_kind_by_path_job = (struct file_kind_by_path_job*)job;
+int32_t file_kind_by_path_job_worker(struct file_kind_by_path_job *job, int32_t *err_out) {
 #ifdef _WIN32
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-  if (!file_kind_by_path_job->follow_symlink)
+  if (!job->follow_symlink)
     flags |= FILE_FLAG_OPEN_REPARSE_POINT;
 
   HANDLE handle = CreateFileW(
-    (LPCWSTR)file_kind_by_path_job->path,
+    (LPCWSTR)job->path,
     FILE_READ_ATTRIBUTES, // desired access
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
     NULL, // security attributes
@@ -1007,29 +1011,31 @@ void file_kind_by_path_job_worker(struct job *job) {
   );
 
   if (handle == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
-  job->ret = moonbitlang_async_kind_of_fd(handle);
-  if (job->ret < 0)
-    job->err = GetLastError();
+  int32_t ret = moonbitlang_async_kind_of_fd(handle);
+  if (ret < 0)
+    *err_out = GetLastError();
 
   CloseHandle(handle);
+  return ret;
 
 #else
 
   struct stat stat_obj;
   int ret = fstatat(
-    file_kind_by_path_job->parent < 0 ? AT_FDCWD : file_kind_by_path_job->parent,
-    file_kind_by_path_job->path,
+    job->parent < 0 ? AT_FDCWD : job->parent,
+    job->path,
     &stat_obj,
-    file_kind_by_path_job->follow_symlink ? 0 : AT_SYMLINK_NOFOLLOW
+    job->follow_symlink ? 0 : AT_SYMLINK_NOFOLLOW
   );
   if (ret < 0) {
-    job->err = errno;
+    *err_out = errno;
+    return -1;
   } else {
-    job->ret = moonbitlang_async_file_kind_from_stat(&stat_obj);
+    return moonbitlang_async_file_kind_from_stat(&stat_obj);
   }
 
 #endif
@@ -1040,7 +1046,7 @@ struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
   char *path,
   int follow_symlink
 ) {
-  struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path);
+  struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path, 0);
   job->parent = parent;
   job->path = path;
   job->follow_symlink = follow_symlink;
@@ -1050,37 +1056,37 @@ struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
 // ===== file size job, get size of opened file =====
 
 struct file_size_job {
-  struct job job;
   HANDLE fd;
   int64_t result;
 };
 
 static
-void free_file_size_job(void *obj) {}
+void free_file_size_job(struct file_size_job *job) {}
 
 static
-void file_size_job_worker(struct job *job) {
-  struct file_size_job *file_size_job = (struct file_size_job*)job;
+int32_t file_size_job_worker(struct file_size_job *job, int32_t *err_out) {
 #ifdef _WIN32
   LARGE_INTEGER size;
-  if (!GetFileSizeEx(file_size_job->fd, &size)) {
-    job->err = GetLastError();
-    return;
+  if (!GetFileSizeEx(job->fd, &size)) {
+    *err_out = GetLastError();
+    return -1;
   }
-  file_size_job->result = size.QuadPart;
+  job->result = size.QuadPart;
 #else
   struct stat stat;
-  job->ret = fstat(file_size_job->fd, &stat);
-  if (job->ret < 0) {
-    job->err = errno;
+  int32_t ret = fstat(job->fd, &stat);
+  if (ret < 0) {
+    *err_out = errno;
+    return ret;
   } else {
-    file_size_job->result = stat.st_size;
+    job->result = stat.st_size;
   }
 #endif
+  return 0;
 }
 
 struct file_size_job *moonbitlang_async_make_file_size_job(HANDLE fd) {
-  struct file_size_job *job = MAKE_JOB(file_size);
+  struct file_size_job *job = MAKE_JOB(file_size, 0);
   job->fd = fd;
   return job;
 }
@@ -1092,40 +1098,40 @@ int64_t moonbitlang_async_get_file_size_result(struct file_size_job *job) {
 // ===== file time job, get timestamp of opened file =====
 
 struct file_time_job {
-  struct job job;
   HANDLE fd;
   void *out;
 };
 
 static
-void free_file_time_job(void *obj) {
-  struct file_time_job *job = (struct file_time_job*)obj;
+void free_file_time_job(struct file_time_job *job) {
   moonbit_decref(job->out);
 }
 
 static
-void file_time_job_worker(struct job *job) {
-  struct file_time_job *file_time_job = (struct file_time_job*)job;
+int32_t file_time_job_worker(struct file_time_job *job, int32_t *err_out) {
 #ifdef _WIN32
   if (
     !GetFileInformationByHandleEx(
-      file_time_job->fd,
+      job->fd,
       FileBasicInfo,
-      file_time_job->out,
+      job->out,
       sizeof(FILE_BASIC_INFO)
     )
   ) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
+    return -1;
   }
 #else
-  job->ret = fstat(file_time_job->fd, file_time_job->out);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = fstat(job->fd, job->out);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 #endif
+  return 0;
 }
 
 struct file_time_job *moonbitlang_async_make_file_time_job(HANDLE fd, void *out) {
-  struct file_time_job *job = MAKE_JOB(file_time);
+  struct file_time_job *job = MAKE_JOB(file_time, 0);
   job->fd = fd;
   job->out = out;
   return job;
@@ -1134,29 +1140,26 @@ struct file_time_job *moonbitlang_async_make_file_time_job(HANDLE fd, void *out)
 // ===== file time by path job, get timestamp of path on file system =====
 
 struct file_time_by_path_job {
-  struct job job;
   char *path;
   void *out;
   int follow_symlink;
 };
 
 static
-void free_file_time_by_path_job(void *obj) {
-  struct file_time_by_path_job *job = (struct file_time_by_path_job*)obj;
+void free_file_time_by_path_job(struct file_time_by_path_job *job) {
   moonbit_decref(job->path);
   moonbit_decref(job->out);
 }
 
 static
-void file_time_by_path_job_worker(struct job *job) {
-  struct file_time_by_path_job *file_time_by_path_job = (struct file_time_by_path_job*)job;
+int32_t file_time_by_path_job_worker(struct file_time_by_path_job *job, int32_t *err_out) {
 #ifdef _WIN32
   DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-  if (!file_time_by_path_job->follow_symlink)
+  if (!job->follow_symlink)
     flags |= FILE_FLAG_OPEN_REPARSE_POINT;
 
   HANDLE handle = CreateFileW(
-    (LPCWSTR)file_time_by_path_job->path,
+    (LPCWSTR)job->path,
     FILE_READ_ATTRIBUTES, // desired access
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
     NULL, // security attributes
@@ -1165,32 +1168,37 @@ void file_time_by_path_job_worker(struct job *job) {
     NULL // template file
   );
   if (handle == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
   if (
     !GetFileInformationByHandleEx(
       handle,
       FileBasicInfo,
-      file_time_by_path_job->out,
+      job->out,
       sizeof(FILE_BASIC_INFO)
     )
   ) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
+    CloseHandle(handle);
+    return -1;
   }
 
   CloseHandle(handle);
+  return 0;
 
 #else
 
-  if (file_time_by_path_job->follow_symlink) {
-    job->ret = stat(file_time_by_path_job->path, file_time_by_path_job->out);
+  int32_t ret;
+  if (job->follow_symlink) {
+    ret = stat(job->path, job->out);
   } else {
-    job->ret = lstat(file_time_by_path_job->path, file_time_by_path_job->out);
+    ret = lstat(job->path, job->out);
   }
-  if (job->ret < 0)
-    job->err = errno;
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
@@ -1200,7 +1208,7 @@ struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
   void *out,
   int follow_symlink
 ) {
-  struct file_time_by_path_job *job = MAKE_JOB(file_time_by_path);
+  struct file_time_by_path_job *job = MAKE_JOB(file_time_by_path, 0);
   job->path = path;
   job->out = out;
   job->follow_symlink = follow_symlink;
@@ -1210,35 +1218,34 @@ struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
 // ===== chmod job, change permission of file =====
 
 struct chmod_job {
-  struct job job;
   char *path;
   int mode;
 };
 
 static
-void free_chmod_job(void *obj) {
-  struct chmod_job *job = (struct chmod_job*)obj;
+void free_chmod_job(struct chmod_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void chmod_job_worker(struct job *job) {
+int32_t chmod_job_worker(struct chmod_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
-  job->err = ERROR_NOT_SUPPORTED;
+  *err_out = ERROR_NOT_SUPPORTED;
+  return -1;
 
 #else
 
-  struct chmod_job *chmod_job = (struct chmod_job*)job;
-  job->ret = chmod(chmod_job->path, chmod_job->mode);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = chmod(job->path, job->mode);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct chmod_job *moonbitlang_async_make_chmod_job(char *path, int mode) {
-  struct chmod_job *job = MAKE_JOB(chmod);
+  struct chmod_job *job = MAKE_JOB(chmod, 0);
   job->path = path;
   job->mode = mode;
   return job;
@@ -1247,36 +1254,46 @@ struct chmod_job *moonbitlang_async_make_chmod_job(char *path, int mode) {
 // ===== fsync job, synchronize file modification to disk =====
 
 struct fsync_job {
-  struct job job;
   HANDLE fd;
   int only_data;
 };
 
 static
-void free_fsync_job(void *obj) {}
+void free_fsync_job(struct fsync_job *job) {}
 
 static
-void fsync_job_worker(struct job *job) {
-  struct fsync_job *fsync_job = (struct fsync_job*)job;
+int32_t fsync_job_worker(struct fsync_job *job, int32_t *err_out) {
 #ifdef _WIN32
-  if (!FlushFileBuffers(fsync_job->fd))
-    job->err = GetLastError();
-#elif defined(__MACH__)
-  // it seems that `fdatasync` is not available on some MacOS versions
-  job->ret = fsync(fsync_job->fd);
+
+  if (!FlushFileBuffers(job->fd)) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
+
 #else
-  if (fsync_job->only_data) {
-    job->ret = fdatasync(fsync_job->fd);
+
+#if defined(__MACH__)
+  // it seems that `fdatasync` is not available on some MacOS versions
+  int32_t ret = fsync(job->fd);
+#else
+  int32_t ret;
+  if (job->only_data) {
+    ret = fdatasync(job->fd);
   } else {
-    job->ret = fsync(fsync_job->fd);
+    ret = fsync(job->fd);
   }
 #endif
-  if (job->ret < 0)
-    job->err = errno;
+
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
+
+#endif
 }
 
 struct fsync_job *moonbitlang_async_make_fsync_job(HANDLE fd, int only_data) {
-  struct fsync_job *job = MAKE_JOB(fsync);
+  struct fsync_job *job = MAKE_JOB(fsync, 0);
   job->fd = fd;
   job->only_data = only_data;
   return job;
@@ -1284,18 +1301,15 @@ struct fsync_job *moonbitlang_async_make_fsync_job(HANDLE fd, int only_data) {
 
 // ===== flock job, place advisory lock on a file =====
 struct flock_job {
-  struct job job;
   HANDLE fd;
   int exclusive;
 };
 
 static
-void free_flock_job(void *obj) {}
+void free_flock_job(struct flock_job *job) {}
 
 static
-void flock_job_worker(struct job *job) {
-  struct flock_job *flock_job = (struct flock_job*)job;
-
+int32_t flock_job_worker(struct flock_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
   OVERLAPPED overlapped;
@@ -1311,28 +1325,32 @@ void flock_job_worker(struct job *job) {
   overlapped.Offset = 0xfffffffe;
   overlapped.OffsetHigh = 0xffffffff;
   BOOL ret = LockFileEx(
-    flock_job->fd,
-    flock_job->exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0,
+    job->fd,
+    job->exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0,
     0, // reserved
     1,
     0,
     &overlapped
   );
 
-  if (!ret)
-    job->err = GetLastError();
+  if (!ret) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
 
 #else
 
-  int ret = flock(flock_job->fd, flock_job->exclusive ? LOCK_EX : LOCK_SH);
+  int32_t ret = flock(job->fd, job->exclusive ? LOCK_EX : LOCK_SH);
   if (ret < 0)
-    job->err = errno;
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct flock_job *moonbitlang_async_make_flock_job(HANDLE fd, int exclusive) {
-  struct flock_job *job = MAKE_JOB(flock);
+  struct flock_job *job = MAKE_JOB(flock, 0);
   job->fd = fd;
   job->exclusive = exclusive;
   return job;
@@ -1341,46 +1359,47 @@ struct flock_job *moonbitlang_async_make_flock_job(HANDLE fd, int exclusive) {
 // ===== remove job, remove file from file system =====
 
 struct remove_job {
-  struct job job;
   char *path;
 };
 
 static
-void free_remove_job(void *obj) {
-  struct remove_job *job = (struct remove_job*)obj;
+void free_remove_job(struct remove_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void remove_job_worker(struct job *job) {
-  struct remove_job *remove_job = (struct remove_job*)job;
+int32_t remove_job_worker(struct remove_job *job, int32_t *err_out) {
 #ifdef _WIN32
-  DWORD attrs = GetFileAttributesW((LPCWSTR)remove_job->path);
+  DWORD attrs = GetFileAttributesW((LPCWSTR)job->path);
   if (attrs == INVALID_FILE_ATTRIBUTES) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
   BOOL ret;
   // Simulate POSIX behavior on Windows.
   // Maybe we should just merge `@fs.remove` and `@fs.rmdir`?
   if ((attrs & FILE_ATTRIBUTE_DIRECTORY) && (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) {
-    ret = RemoveDirectoryW((LPCWSTR)remove_job->path);
+    ret = RemoveDirectoryW((LPCWSTR)job->path);
   } else {
-    ret = DeleteFileW((LPCWSTR)remove_job->path);
+    ret = DeleteFileW((LPCWSTR)job->path);
   }
 
-  if (!ret)
-    job->err = GetLastError();
+  if (!ret) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
 #else
-  job->ret = remove(remove_job->path);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = remove(job->path);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 #endif
 }
 
 struct remove_job *moonbitlang_async_make_remove_job(char *path) {
-  struct remove_job *job = MAKE_JOB(remove);
+  struct remove_job *job = MAKE_JOB(remove, 0);
   job->path = path;
   return job;
 }
@@ -1388,27 +1407,24 @@ struct remove_job *moonbitlang_async_make_remove_job(char *path) {
 // ===== access job, test permission of file path =====
 
 struct access_job {
-  struct job job;
   char *path;
   int amode;
 };
 
 static
-void free_access_job(void *obj) {
-  struct access_job *job = (struct access_job*)obj;
+void free_access_job(struct access_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void access_job_worker(struct job *job) {
+int32_t access_job_worker(struct access_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
   static int access_modes[] = { 0, GENERIC_READ, GENERIC_WRITE, FILE_EXECUTE };
-  struct access_job *access_job = (struct access_job*)job;
 
   HANDLE handle = CreateFileW(
-    (LPCWSTR)access_job->path,
-    access_modes[access_job->amode],
+    (LPCWSTR)job->path,
+    access_modes[job->amode],
     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
     NULL,
     OPEN_EXISTING,
@@ -1416,24 +1432,26 @@ void access_job_worker(struct job *job) {
     NULL
   );
   if (handle == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
+    return -1;
   } else {
     CloseHandle(handle);
+    return 0;
   }
 
 #else
 
   static int access_modes[] = { F_OK, R_OK, W_OK, X_OK };
-  struct access_job *access_job = (struct access_job*)job;
-  job->ret = access(access_job->path, access_modes[access_job->amode]);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = access(job->path, access_modes[job->amode]);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
-  struct access_job *job = MAKE_JOB(access);
+  struct access_job *job = MAKE_JOB(access, 0);
   job->path = path;
   job->amode = amode;
   return job;
@@ -1441,27 +1459,23 @@ struct access_job *moonbitlang_async_make_access_job(char *path, int amode) {
 
 // ===== rename job, rename file =====
 struct rename_job {
-  struct job job;
   char *old_path;
   char *new_path;
   int32_t replace;
 };
 
 static
-void free_rename_job(void *obj) {
-  struct rename_job *job = (struct rename_job*)obj;
+void free_rename_job(struct rename_job *job) {
   moonbit_decref(job->old_path);
   moonbit_decref(job->new_path);
 }
 
 static
-void rename_job_worker(struct job *job) {
-  struct rename_job *rename_job = (struct rename_job*)job;
-
+int32_t rename_job_worker(struct rename_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
   HANDLE handle = CreateFileW(
-    (LPCWSTR)rename_job->old_path,
+    (LPCWSTR)job->old_path,
     DELETE,
     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
     NULL,
@@ -1471,19 +1485,19 @@ void rename_job_worker(struct job *job) {
   );
 
   if (handle == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
-  int new_path_len = Moonbit_array_length(rename_job->new_path);
+  int new_path_len = Moonbit_array_length(job->new_path);
   int buffer_size = sizeof(FILE_RENAME_INFO) + new_path_len * 2 + 2;
   FILE_RENAME_INFO *info = (FILE_RENAME_INFO*)malloc(buffer_size);
 
   // 3 = FILE_RENAME_REPLACE_IF_EXISTS | FILE_RENAME_POSIX_SEMANTICS 
-  info->Flags = rename_job->replace ? 3 : 0;
+  info->Flags = job->replace ? 3 : 0;
   info->RootDirectory = NULL;
   info->FileNameLength = new_path_len * 2;
-  memcpy(info->FileName, rename_job->new_path, new_path_len * 2);
+  memcpy(info->FileName, job->new_path, new_path_len * 2);
   info->FileName[new_path_len] = 0;
 
   BOOL ret = SetFileInformationByHandle(handle, FileRenameInfoEx, info, buffer_size);
@@ -1492,47 +1506,53 @@ void rename_job_worker(struct job *job) {
   free(info);
 
   if (ret)
-    return;
+    return 0;
 
   if (GetLastError() != ERROR_INVALID_PARAMETER) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
   // fallback on older systems
 
   ret = MoveFileExW(
-    (LPCWSTR)rename_job->old_path,
-    (LPCWSTR)rename_job->new_path,
-    MOVEFILE_COPY_ALLOWED | (rename_job->replace ? MOVEFILE_REPLACE_EXISTING : 0)
+    (LPCWSTR)job->old_path,
+    (LPCWSTR)job->new_path,
+    MOVEFILE_COPY_ALLOWED | (job->replace ? MOVEFILE_REPLACE_EXISTING : 0)
   );
-  if (!ret)
-    job->err = GetLastError();
+  if (!ret) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
 
 #elif defined(__MACH__)
 
-  job->ret = renameatx_np(
-    AT_FDCWD, rename_job->old_path,
-    AT_FDCWD, rename_job->new_path,
-    rename_job->replace ? 0 : RENAME_EXCL
+  int32_t ret = renameatx_np(
+    AT_FDCWD, job->old_path,
+    AT_FDCWD, job->new_path,
+    job->replace ? 0 : RENAME_EXCL
   );
-  if (job->ret < 0)
-    job->err = errno;
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #elif defined(__linux__)
 
-  job->ret = syscall(
+  int32_t ret = syscall(
     SYS_renameat2,
-    AT_FDCWD, rename_job->old_path,
-    AT_FDCWD, rename_job->new_path,
-    rename_job->replace ? 0 : RENAME_NOREPLACE
+    AT_FDCWD, job->old_path,
+    AT_FDCWD, job->new_path,
+    job->replace ? 0 : RENAME_NOREPLACE
   );
-  if (job->ret < 0)
-    job->err = errno;
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #else
 
-  job->err = ENOSYS;
+  *err_out = ENOSYS;
+  return -1;
 
 #endif
 }
@@ -1542,7 +1562,7 @@ struct rename_job *moonbitlang_async_make_rename_job(
   char *new_path,
   int32_t replace
 ) {
-  struct rename_job *job = MAKE_JOB(rename);
+  struct rename_job *job = MAKE_JOB(rename, 0);
   job->old_path = old_path;
   job->new_path = new_path;
   job->replace = replace;
@@ -1552,15 +1572,13 @@ struct rename_job *moonbitlang_async_make_rename_job(
 // ===== symlink job, create symbolic link =====
 
 struct symlink_job {
-  struct job job;
   char *target;
   char *path;
   int32_t force_symlink;
 };
 
 static
-void free_symlink_job(void *obj) {
-  struct symlink_job *job = (struct symlink_job*)obj;
+void free_symlink_job(struct symlink_job *job) {
   moonbit_decref(job->target);
   moonbit_decref(job->path);
 }
@@ -1583,20 +1601,18 @@ typedef struct {
 #endif
 
 static
-void symlink_job_worker(struct job *job) {
-  struct symlink_job *symlink_job = (struct symlink_job*)job;
-
+int32_t symlink_job_worker(struct symlink_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
-  int target_len = Moonbit_array_length(symlink_job->target);
-  LPCWSTR target = (LPCWSTR)symlink_job->target;
-  LPCWSTR path = (LPCWSTR)symlink_job->path;
+  int target_len = Moonbit_array_length(job->target);
+  LPCWSTR target = (LPCWSTR)job->target;
+  LPCWSTR path = (LPCWSTR)job->path;
 
   DWORD attrs = GetFileAttributesW(target);
   BOOL is_dir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
 
   // create NTFS junction if possible
-  if (symlink_job->force_symlink)
+  if (job->force_symlink)
     goto symlink_fallback;
 
   if (!is_dir)
@@ -1623,8 +1639,8 @@ void symlink_job_worker(struct job *job) {
   }
 
   if (!CreateDirectoryW(path, NULL)) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
   HANDLE link = CreateFileW(
@@ -1637,9 +1653,9 @@ void symlink_job_worker(struct job *job) {
     NULL
   );
   if (link == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
     RemoveDirectoryW(path);
-    return;
+    return -1;
   }
 
   DWORD substitute_name_len =
@@ -1717,28 +1733,32 @@ void symlink_job_worker(struct job *job) {
       // so the net result is still the same.
       goto symlink_fallback;
     }
-    job->err = err;
+    *err_out = err;
+    return -1;
   }
 
-  return;
+  return 0;
 
 symlink_fallback:
 
   if (
     !CreateSymbolicLinkW(
-      (LPCWSTR)symlink_job->path,
-      (LPCWSTR)symlink_job->target,
+      (LPCWSTR)job->path,
+      (LPCWSTR)job->target,
       is_dir ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0
     )
   ) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
+    return -1;
   }
+  return 0;
 
 #else
 
-  job->ret = symlink(symlink_job->target, symlink_job->path);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = symlink(job->target, job->path);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
@@ -1748,7 +1768,7 @@ struct symlink_job *moonbitlang_async_make_symlink_job(
   char *path,
   int32_t force_symlink
 ) {
-  struct symlink_job *job = MAKE_JOB(symlink);
+  struct symlink_job *job = MAKE_JOB(symlink, 0);
   job->target = target;
   job->path = path;
   job->force_symlink = force_symlink;
@@ -1758,36 +1778,37 @@ struct symlink_job *moonbitlang_async_make_symlink_job(
 // ===== mkdir job, create new directory =====
 
 struct mkdir_job {
-  struct job job;
   char *path;
   int mode;
 };
 
 static
-void free_mkdir_job(void *obj) {
-  struct mkdir_job *job = (struct mkdir_job*)obj;
+void free_mkdir_job(struct mkdir_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void mkdir_job_worker(struct job *job) {
-  struct mkdir_job *mkdir_job = (struct mkdir_job*)job;
+int32_t mkdir_job_worker(struct mkdir_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
-  if (!CreateDirectoryW((LPCWSTR)mkdir_job->path, NULL))
-    job->err = GetLastError();
+  if (!CreateDirectoryW((LPCWSTR)job->path, NULL)) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
 
 #else
 
-  job->ret = mkdir(mkdir_job->path, mkdir_job->mode);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = mkdir(job->path, job->mode);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct mkdir_job *moonbitlang_async_make_mkdir_job(char *path, int mode) {
-  struct mkdir_job *job = MAKE_JOB(mkdir);
+  struct mkdir_job *job = MAKE_JOB(mkdir, 0);
   job->path = path;
   job->mode = mode;
   return job;
@@ -1796,36 +1817,36 @@ struct mkdir_job *moonbitlang_async_make_mkdir_job(char *path, int mode) {
 // ===== rmdir job, remove directory =====
 
 struct rmdir_job {
-  struct job job;
   char *path;
 };
 
 static
-void free_rmdir_job(void *obj) {
-  struct rmdir_job *job = (struct rmdir_job*)obj;
+void free_rmdir_job(struct rmdir_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void rmdir_job_worker(struct job *job) {
-  struct rmdir_job *rmdir_job = (struct rmdir_job*)job;
-
+int32_t rmdir_job_worker(struct rmdir_job *job, int32_t *err_out) {
 #ifdef _WIN32
 
-  if (!RemoveDirectoryW((LPCWSTR)rmdir_job->path))
-    job->err = GetLastError();
+  if (!RemoveDirectoryW((LPCWSTR)job->path)) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
 
 #else
 
-  job->ret = rmdir(rmdir_job->path);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = rmdir(job->path);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct rmdir_job *moonbitlang_async_make_rmdir_job(char *path) {
-  struct rmdir_job *job = MAKE_JOB(rmdir);
+  struct rmdir_job *job = MAKE_JOB(rmdir, 0);
   job->path = path;
   return job;
 }
@@ -1833,7 +1854,6 @@ struct rmdir_job *moonbitlang_async_make_rmdir_job(char *path) {
 // ===== readdir job, read directory entry =====
 
 struct readdir_job {
-  struct job job;
   HANDLE dir;
   void *out;
   int32_t len;
@@ -1841,47 +1861,47 @@ struct readdir_job {
 };
 
 static
-void free_readdir_job(void *obj) {}
+void free_readdir_job(struct readdir_job *job) {}
 
 static
-void readdir_job_worker(struct job *job) {
-  struct readdir_job *readdir_job = (struct readdir_job*)job;
-
+int32_t readdir_job_worker(struct readdir_job *job, int32_t *err_out) {
 #ifdef _WIN32
   if (
     !GetFileInformationByHandleEx(
-      readdir_job->dir,
-      readdir_job->restart ?  FileIdBothDirectoryRestartInfo : FileIdBothDirectoryInfo,
-      readdir_job->out,
-      readdir_job->len
+      job->dir,
+      job->restart ?  FileIdBothDirectoryRestartInfo : FileIdBothDirectoryInfo,
+      job->out,
+      job->len
     )
   ) {
     if (GetLastError() == ERROR_NO_MORE_FILES)
-      job->ret = 0;
-    else
-      job->err = GetLastError();
-    return;
+      return 0;
+    else {
+      *err_out = GetLastError();
+      return -1;
+    }
   }
 
   // `GetFileInformationByHandleEx` does not support a total length
-  job->ret = readdir_job->len;
+  return job->len;
 
 #elif defined(__linux__)
 
-  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
-    job->err = errno;
-    return;
+  if (job->restart && lseek(job->dir, 0, SEEK_SET) < 0) {
+    *err_out = errno;
+    return -1;
   }
 
-  job->ret = syscall(SYS_getdents64, readdir_job->dir, readdir_job->out, readdir_job->len);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = syscall(SYS_getdents64, job->dir, job->out, job->len);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #elif defined(__MACH__)
 
-  if (readdir_job->restart && lseek(readdir_job->dir, 0, SEEK_SET) < 0) {
-    job->err = errno;
-    return;
+  if (job->restart && lseek(job->dir, 0, SEEK_SET) < 0) {
+    *err_out = errno;
+    return -1;
   }
 
   struct attrlist attr_spec = {
@@ -1893,13 +1913,15 @@ void readdir_job_worker(struct job *job) {
     0, // fileattr
     0 // forkattr
   };
-  job->ret = getattrlistbulk(readdir_job->dir, &attr_spec, readdir_job->out, readdir_job->len, 0);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = getattrlistbulk(job->dir, &attr_spec, job->out, job->len, 0);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #else
 
-  errno = ENOSYS;
+  *err_out = ENOSYS;
+  return -1;
 
 #endif
 }
@@ -1910,7 +1932,7 @@ struct readdir_job *moonbitlang_async_make_readdir_job(
   int32_t len,
   int32_t restart
 ) {
-  struct readdir_job *job = MAKE_JOB(readdir);
+  struct readdir_job *job = MAKE_JOB(readdir, 0);
   job->dir = dir;
   job->out = out;
   job->len = len;
@@ -1925,7 +1947,6 @@ struct readdir_job *moonbitlang_async_make_readdir_job(
 #endif
 
 struct realpath_job {
-  struct job job;
   char *path;
   char *result;
 #ifdef _WIN32
@@ -1935,8 +1956,7 @@ struct realpath_job {
 };
 
 static
-void free_realpath_job(void *obj) {
-  struct realpath_job *job = (struct realpath_job*)obj;
+void free_realpath_job(struct realpath_job *job) {
   moonbit_decref(job->path);
 #ifdef _WIN32
   if (job->result && job->result != (char*)job->buf)
@@ -1948,12 +1968,10 @@ void free_realpath_job(void *obj) {
 }
 
 static
-void realpath_job_worker(struct job *job) {
-  struct realpath_job *realpath_job = (struct realpath_job*)job;
-
+int32_t realpath_job_worker(struct realpath_job *job, int32_t *err_out) {
 #ifdef _WIN32
   HANDLE file = CreateFileW(
-    (LPCWSTR)realpath_job->path,
+    (LPCWSTR)job->path,
     0,
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     NULL,
@@ -1962,49 +1980,56 @@ void realpath_job_worker(struct job *job) {
     NULL
   );
   if (file == INVALID_HANDLE_VALUE) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return -1;
   }
 
   DWORD len = GetFinalPathNameByHandleW(
     file,
-    realpath_job->buf,
+    job->buf,
     REALPATH_JOB_BUFFER_LENGTH,
     FILE_NAME_NORMALIZED | VOLUME_NAME_DOS
   );
 
   if (!len) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
+    CloseHandle(file);
+    return -1;
   } else if (len < REALPATH_JOB_BUFFER_LENGTH) {
-    realpath_job->result = (char*)realpath_job->buf;
+    job->result = (char*)job->buf;
   } else {
     // include the extra NUL terminator
-    realpath_job->result = malloc((len + 1) * sizeof(WCHAR));
+    job->result = malloc((len + 1) * sizeof(WCHAR));
     len = GetFinalPathNameByHandleW(
       file,
-      (LPWSTR)realpath_job->result,
+      (LPWSTR)job->result,
       len,
       FILE_NAME_NORMALIZED | VOLUME_NAME_DOS
     );
-    if (!len)
-      job->err = GetLastError();
+    if (!len) {
+      *err_out = GetLastError();
+      CloseHandle(file);
+      return -1;
+    }
   }
 
   CloseHandle(file);
+  return 0;
 
 #else
 
-  realpath_job->result = realpath(realpath_job->path, 0);
-  if (!realpath_job->result) {
-    job->ret = -1;
-    job->err = errno;
+  job->result = realpath(job->path, 0);
+  if (!job->result) {
+    *err_out = errno;
+    return -1;
   }
+  return 0;
 
 #endif
 }
 
 struct realpath_job *moonbitlang_async_make_realpath_job(char *path) {
-  struct realpath_job *job = MAKE_JOB(realpath);
+  struct realpath_job *job = MAKE_JOB(realpath, 0);
   job->path = path;
   job->result = 0;
   return job;
@@ -2085,19 +2110,18 @@ on_error:
 }
 
 struct spawn_job {
-  struct job job;
   LPWSTR command_line;
   void *environment;
   HANDLE stdio[3];
   LPWSTR cwd;
   int32_t no_console_window;
   int32_t is_orphan;
+  int32_t init_error;
   HANDLE result;
 };
 
 static
-void free_spawn_job(void *obj) {
-  struct spawn_job *job = (struct spawn_job*)obj;
+void free_spawn_job(struct spawn_job *job) {
   moonbit_decref(job->command_line);
   free(job->environment);
   if (job->cwd)
@@ -2107,48 +2131,48 @@ void free_spawn_job(void *obj) {
 }
 
 static
-void spawn_job_worker(struct job *job) {
+int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
   static DWORD std_handle_values[] = {
     STD_INPUT_HANDLE,
     STD_OUTPUT_HANDLE,
     STD_ERROR_HANDLE
   };
 
-  if (job->err)
+  if (job->init_error) {
     // Handle error from initializing global job object,
     // see `moonbitlang_async_make_spawn_job` below.
-    return;
-
-  struct spawn_job *spawn_job = (struct spawn_job *)job;
+    *err_out = job->init_error;
+    return 0;
+  }
 
   HANDLE handles_to_inherit[3];
   DWORD number_of_handles_to_inherit = 0;
 
   for (int i = 0; i < 3; ++i) {
-    if (spawn_job->stdio[i] == INVALID_HANDLE_VALUE)
-      spawn_job->stdio[i] = GetStdHandle(std_handle_values[i]);
+    if (job->stdio[i] == INVALID_HANDLE_VALUE)
+      job->stdio[i] = GetStdHandle(std_handle_values[i]);
 
-    if (spawn_job->stdio[i] == INVALID_HANDLE_VALUE) {
-      job->err = GetLastError();
-      return;
+    if (job->stdio[i] == INVALID_HANDLE_VALUE) {
+      *err_out = GetLastError();
+      return 0;
     }
 
     for (int j = 0; j < number_of_handles_to_inherit; ++j) {
-      if (handles_to_inherit[j] == spawn_job->stdio[i])
+      if (handles_to_inherit[j] == job->stdio[i])
         goto handle_already_added;
     }
 
-    handles_to_inherit[number_of_handles_to_inherit++] = spawn_job->stdio[i];
+    handles_to_inherit[number_of_handles_to_inherit++] = job->stdio[i];
 
     if (
       !SetHandleInformation(
-        spawn_job->stdio[i],
+        job->stdio[i],
         HANDLE_FLAG_INHERIT,
         HANDLE_FLAG_INHERIT
       )
     ) {
-      job->err = GetLastError();
-      return;
+      *err_out = GetLastError();
+      return 0;
     }
   handle_already_added:
     ;
@@ -2160,16 +2184,16 @@ void spawn_job_worker(struct job *job) {
     | CREATE_UNICODE_ENVIRONMENT
     | EXTENDED_STARTUPINFO_PRESENT;
 
-  if (spawn_job->no_console_window)
+  if (job->no_console_window)
     create_flags |= CREATE_NO_WINDOW;
 
   STARTUPINFOEXW startup_info;
   memset(&startup_info, 0, sizeof(STARTUPINFOEXW));
   startup_info.StartupInfo.cb = sizeof(STARTUPINFOEXW);
   startup_info.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-  startup_info.StartupInfo.hStdInput = spawn_job->stdio[0];
-  startup_info.StartupInfo.hStdOutput = spawn_job->stdio[1];
-  startup_info.StartupInfo.hStdError = spawn_job->stdio[2];
+  startup_info.StartupInfo.hStdInput = job->stdio[0];
+  startup_info.StartupInfo.hStdOutput = job->stdio[1];
+  startup_info.StartupInfo.hStdError = job->stdio[2];
 
   SIZE_T attrs_size;
   InitializeProcThreadAttributeList(NULL, 2, 0, &attrs_size);
@@ -2182,10 +2206,10 @@ void spawn_job_worker(struct job *job) {
       &attrs_size
     )
   ) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
     DeleteProcThreadAttributeList(startup_info.lpAttributeList);
     free(startup_info.lpAttributeList);
-    return;
+    return 0;
   }
 
   if (
@@ -2199,15 +2223,15 @@ void spawn_job_worker(struct job *job) {
       NULL // reserved
     )
   ) {
-    job->err = GetLastError();
+    *err_out = GetLastError();
     DeleteProcThreadAttributeList(startup_info.lpAttributeList);
     free(startup_info.lpAttributeList);
-    return;
+    return 0;
   }
 
 #ifdef PROC_THREAD_ATTRIBUTE_JOB_LIST
 
-  if (!spawn_job->is_orphan) {
+  if (!job->is_orphan) {
     // On Windows 10 and later, there is a way to
     // atomically assign a child process to new job atomically on creation.
     // This can avoid race condition when main process is killed after `CreateProcess`,
@@ -2223,10 +2247,10 @@ void spawn_job_worker(struct job *job) {
         NULL
       )
     ) {
-      job->err = GetLastError();
+      *err_out = GetLastError();
       DeleteProcThreadAttributeList(startup_info.lpAttributeList);
       free(startup_info.lpAttributeList);
-      return;
+      return 0;
     }
   }
 
@@ -2235,7 +2259,7 @@ void spawn_job_worker(struct job *job) {
   // Notice that we are not setting `CREATE_BREAKAWAY_FROM_JOB` for orphan process here.
   // Because in case the main process is already in a job disallowing break away,
   // setting `CREATE_BREAKAWAY_FROM_JOB` will fail the `CreateProcess` call.
-  if (!spawn_job->is_orphan && global_job_object != INVALID_HANDLE_VALUE) {
+  if (!job->is_orphan && global_job_object != INVALID_HANDLE_VALUE) {
     // to avoid the child process exit too fast
     // before we assign it to the job object
     create_flags |= CREATE_SUSPENDED;
@@ -2246,13 +2270,13 @@ void spawn_job_worker(struct job *job) {
   PROCESS_INFORMATION process_info;
   BOOL result = CreateProcessW(
     NULL,
-    spawn_job->command_line,
+    job->command_line,
     NULL, // security attributes for process
     NULL, // security attributes for main thread
     TRUE, // do not inherit handle
     create_flags,
-    spawn_job->environment,
-    spawn_job->cwd,
+    job->environment,
+    job->cwd,
     (LPSTARTUPINFOW)&startup_info,
     &process_info
   );
@@ -2263,8 +2287,8 @@ void spawn_job_worker(struct job *job) {
   }
 
   if (!result) {
-    job->err = GetLastError();
-    return;
+    *err_out = GetLastError();
+    return 0;
   }
 
   if (create_flags & CREATE_SUSPENDED) {
@@ -2273,17 +2297,17 @@ void spawn_job_worker(struct job *job) {
     // So assign the new process to a job object,
     // so that it is automatically killed when the main process is killed.
     if (!AssignProcessToJobObject(global_job_object, process_info.hProcess)) {
-      job->err = GetLastError();
+      *err_out = GetLastError();
       TerminateProcess(process_info.hProcess, 1);
-      return;
+      return 0;
     }
     ResumeThread(process_info.hThread);
   }
 
   CloseHandle(process_info.hThread);
-  spawn_job->result = process_info.hProcess;
+  job->result = process_info.hProcess;
 
-  job->ret = process_info.dwProcessId;
+  return process_info.dwProcessId;
 }
 
 struct spawn_job *moonbitlang_async_make_spawn_job(
@@ -2294,7 +2318,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   HANDLE stderr_handle,
   int32_t is_orphan
 ) {
-  struct spawn_job *job = MAKE_JOB(spawn);
+  struct spawn_job *job = MAKE_JOB(spawn, 0);
   job->command_line = command_line;
   job->environment = environment;
   job->stdio[0] = stdin_handle;
@@ -2303,13 +2327,14 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   job->cwd = NULL;
   job->no_console_window = FALSE;
   job->is_orphan = is_orphan;
+  job->init_error = 0;
   job->result = INVALID_HANDLE_VALUE;
 
   if (global_job_object == INVALID_HANDLE_VALUE && !init_global_job_object())
     // To avoid race condition, we must initialize the global job object
     // in the main thread. However job spawning functions cannot report error,
     // so we delay the error reporting to the thread pool job
-    job->job.err = errno;
+    job->init_error = errno;
 
   return job;
 }
@@ -2333,52 +2358,46 @@ void moonbitlang_async_spawn_job_set_no_console_window(struct spawn_job *job) {
 // But that would make cancellation a lot trickier.
 
 struct wait_for_process_job {
-  struct job job;
   HANDLE process;
   HANDLE cancel;
 };
 
 static
-void free_wait_for_process_job(void *obj) {
-  struct wait_for_process_job *job = (struct wait_for_process_job*)obj;
+void free_wait_for_process_job(struct wait_for_process_job *job) {
   CloseHandle(job->cancel);
 };
 
 static
-int32_t cancel_wait_for_process_job(struct job *obj) {
-  struct wait_for_process_job *job = (struct wait_for_process_job*)obj;
+int32_t cancel_wait_for_process_job(struct wait_for_process_job *job) {
   SetEvent(job->cancel);
   return CANCELLATION_STATUS_NEED_WAIT;
 }
 
 static
-void wait_for_process_job_worker(struct job *job) {
-  struct wait_for_process_job *wait_for_process_job = (struct wait_for_process_job*)job;
-
-  HANDLE handles[2] = { wait_for_process_job->process, wait_for_process_job->cancel };
+int32_t wait_for_process_job_worker(struct wait_for_process_job *job, int32_t *err_out) {
+  HANDLE handles[2] = { job->process, job->cancel };
 
   DWORD result = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
   if (result == WAIT_FAILED)
-    job->err = GetLastError();
+    *err_out = GetLastError();
   else if (result == WAIT_OBJECT_0 + 1)
-    job->err = ERROR_OPERATION_ABORTED;
+    *err_out = ERROR_OPERATION_ABORTED;
+  return 0;
 }
 
 struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
   HANDLE process,
   int32_t pid
 ) {
-  struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
+  struct wait_for_process_job *job = MAKE_JOB(wait_for_process, cancel_wait_for_process_job);
   job->process = process;
   job->cancel = CreateEventA(NULL, FALSE, FALSE, NULL);
-  job->job.cancel_handler = cancel_wait_for_process_job;
   return job;
 }
 
 #else
 
 struct spawn_job {
-  struct job job;
   char *path;
   char **args;
   char **envp;
@@ -2388,8 +2407,7 @@ struct spawn_job {
 };
 
 static
-void free_spawn_job(void *obj) {
-  struct spawn_job *job = (struct spawn_job*)obj;
+void free_spawn_job(struct spawn_job *job) {
   moonbit_decref(job->path);
   for (char **cursor = job->args; *cursor; ++cursor)
     free(*cursor);
@@ -2411,16 +2429,15 @@ void free_spawn_job(void *obj) {
 // instead of hanging forever (a NULL job causes the worker thread to exit
 // without sending a completion notification).
 static
-void spawn_job_worker(struct job *job) {
-  job->err = ENOSYS;
+int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
+  *err_out = ENOSYS;
+  return 0;
 }
 
 #else // posix_spawn available
 
 static
-void spawn_job_worker(struct job *job) {
-  struct spawn_job *spawn_job = (struct spawn_job *)job;
-
+int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
   posix_spawnattr_t attr;
   posix_spawnattr_init(&attr);
   posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
@@ -2434,43 +2451,44 @@ void spawn_job_worker(struct job *job) {
   posix_spawn_file_actions_t file_actions;
   posix_spawn_file_actions_init(&file_actions);
   for (int i = 0; i < 3; ++i) {
-    int fd = spawn_job->stdio[i];
+    int fd = job->stdio[i];
     if (fd >= 0) {
-      job->err = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
-      if (job->err) goto exit;
+      *err_out = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
+      if (*err_out) goto exit;
     }
   }
-  if (spawn_job->cwd) {
-    job->err = posix_spawn_file_actions_addchdir_np(&file_actions, spawn_job->cwd);
-    if (job->err) goto exit;
+  if (job->cwd) {
+    *err_out = posix_spawn_file_actions_addchdir_np(&file_actions, job->cwd);
+    if (*err_out) goto exit;
   }
 
-  if (strchr(spawn_job->path, '/')) {
-    job->err = posix_spawn(
-      &(job->ret),
-      spawn_job->path,
+  int32_t ret = 0;
+  if (strchr(job->path, '/')) {
+    *err_out = posix_spawn(
+      &ret,
+      job->path,
       &file_actions,
       &attr,
-      spawn_job->args,
-      spawn_job->envp
+      job->args,
+      job->envp
     );
   } else {
-    job->err = posix_spawnp(
-      &(job->ret),
-      spawn_job->path,
+    *err_out = posix_spawnp(
+      &ret,
+      job->path,
       &file_actions,
       &attr,
-      spawn_job->args,
-      spawn_job->envp
+      job->args,
+      job->envp
     );
   }
 
 #ifdef __linux__
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-  if (!job->err) {
-    spawn_job->pidfd = syscall(SYS_pidfd_open, job->ret, 0);
-    if (spawn_job->pidfd < 0 && errno != ENOSYS && errno != EPERM)
-      job->err = errno;
+  if (!*err_out) {
+    job->pidfd = syscall(SYS_pidfd_open, ret, 0);
+    if (job->pidfd < 0 && errno != ENOSYS && errno != EPERM)
+      *err_out = errno;
   }
 #endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 #endif // #ifdef __linux__
@@ -2478,6 +2496,7 @@ void spawn_job_worker(struct job *job) {
 exit:
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&file_actions);
+  return ret;
 }
 
 int moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
@@ -2497,7 +2516,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
   int stderr_fd,
   int32_t is_orphan
 ) {
-  struct spawn_job *job = MAKE_JOB(spawn);
+  struct spawn_job *job = MAKE_JOB(spawn, 0);
   job->path = path;
   job->args = args;
   job->envp = envp;
@@ -2517,22 +2536,21 @@ void moonbitlang_async_spawn_job_set_cwd(struct spawn_job *job, char *cwd) {
 // Used as fallback when pidfd_open is not available (e.g. Android, older Linux)
 
 struct wait_for_process_job {
-  struct job job;
   pid_t pid;
 };
 
 static
-void free_wait_for_process_job(void *obj) {}
+void free_wait_for_process_job(struct wait_for_process_job *job) {}
 
 static
-void wait_for_process_job_worker(struct job *job) {
-  struct wait_for_process_job *wj = (struct wait_for_process_job*)job;
+int32_t wait_for_process_job_worker(struct wait_for_process_job *job, int32_t *err_out) {
   int status;
-  int ret = waitpid(wj->pid, &status, 0);
-  if (ret == wj->pid) {
-    job->ret = WEXITSTATUS(status);
+  int ret = waitpid(job->pid, &status, 0);
+  if (ret == job->pid) {
+    return WEXITSTATUS(status);
   } else {
-    job->err = errno;
+    *err_out = errno;
+    return 0;
   }
 }
 
@@ -2540,7 +2558,7 @@ struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
   HANDLE handle,
   int32_t pid
 ) {
-  struct wait_for_process_job *job = MAKE_JOB(wait_for_process);
+  struct wait_for_process_job *job = MAKE_JOB(wait_for_process, 0);
   job->pid = pid;
   return job;
 }
@@ -2549,34 +2567,31 @@ struct wait_for_process_job *moonbitlang_async_make_wait_for_process_job(
 
 // ===== bind job, bind socket to specific address =====
 struct bind_job {
-  struct job job;
   HANDLE socket;
   struct sockaddr *addr;
 };
 
 static
-void free_bind_job(void *obj) {
-  struct bind_job *job = (struct bind_job*)obj;
+void free_bind_job(struct bind_job *job) {
   moonbit_decref(job->addr);
 }
 
 static
-void bind_job_worker(struct job *job) {
-  struct bind_job *bind_job = (struct bind_job*)job;
+int32_t bind_job_worker(struct bind_job *job, int32_t *err_out) {
+  int32_t ret = bind((SOCKET)job->socket, job->addr, Moonbit_array_length(job->addr));
 
-  job->ret = bind((SOCKET)bind_job->socket, bind_job->addr, Moonbit_array_length(bind_job->addr));
-
-  if (job->ret < 0)
+  if (ret < 0)
 #ifdef _WIN32
-    job->err = GetLastError();
+    *err_out = GetLastError();
 #else
-    job->err = errno;
+    *err_out = errno;
 #endif
+  return ret;
 }
 
 MOONBIT_FFI_EXPORT
 struct bind_job *moonbitlang_async_make_bind_job(HANDLE socket, struct sockaddr *addr) {
-  struct bind_job *job = MAKE_JOB(bind);
+  struct bind_job *job = MAKE_JOB(bind, 0);
   job->socket = socket;
   job->addr = addr;
   return job;
@@ -2591,15 +2606,13 @@ typedef struct addrinfo addrinfo_t;
 #endif
 
 struct getaddrinfo_job {
-  struct job job;
   char *hostname;
   addrinfo_t *result;
   int32_t result_fetched;
 };
 
 static
-void free_getaddrinfo_job(void *obj) {
-  struct getaddrinfo_job *job = (struct getaddrinfo_job*)obj;
+void free_getaddrinfo_job(struct getaddrinfo_job *job) {
   moonbit_decref(job->hostname);
   if (job->result && !job->result_fetched) {
 #ifdef _WIN32
@@ -2611,9 +2624,7 @@ void free_getaddrinfo_job(void *obj) {
 }
 
 static
-void getaddrinfo_job_worker(struct job *job) {
-  struct getaddrinfo_job *getaddrinfo_job = (struct getaddrinfo_job*)job;
-
+int32_t getaddrinfo_job_worker(struct getaddrinfo_job *job, int32_t *err_out) {
   addrinfo_t hint = {
     AI_ADDRCONFIG, // ai_flags
     AF_UNSPEC, // ai_family, support both IPv4 and IPv6
@@ -2624,10 +2635,10 @@ void getaddrinfo_job_worker(struct job *job) {
 
 #ifdef _WIN32
   int err = GetAddrInfoW(
-    (LPCWSTR)getaddrinfo_job->hostname,
+    (LPCWSTR)job->hostname,
     0,
     &hint,
-    &(getaddrinfo_job->result)
+    &(job->result)
   );
   // https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#return-value
   switch (err) {
@@ -2637,29 +2648,29 @@ void getaddrinfo_job_worker(struct job *job) {
     case WSAHOST_NOT_FOUND:
     case WSATYPE_NOT_FOUND:
     case WSAESOCKTNOSUPPORT:
-      job->ret = err;
-      break;
+      return err;
     default:
-      job->err = err;
-      break;
+      *err_out = err;
+      return 0;
   }
 
 #else
 
-  job->ret = getaddrinfo(
-    getaddrinfo_job->hostname, 
+  int32_t ret = getaddrinfo(
+    job->hostname,
     0,
     &hint,
-    &(getaddrinfo_job->result)
+    &(job->result)
   );
-  if (job->ret == EAI_SYSTEM)
-    job->err = errno;
+  if (ret == EAI_SYSTEM)
+    *err_out = errno;
+  return ret;
 
 #endif
 }
 
 struct getaddrinfo_job *moonbitlang_async_make_getaddrinfo_job(char *hostname) {
-  struct getaddrinfo_job *job = MAKE_JOB(getaddrinfo);
+  struct getaddrinfo_job *job = MAKE_JOB(getaddrinfo, 0);
   job->hostname = hostname;
   job->result = 0;
   job->result_fetched = 0;
@@ -2693,17 +2704,14 @@ BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
 
 // ===== sigwait job, wait for specific signal =====
 struct sigwait_job {
-  struct job job;
   sigset_t signals;
 };
 
 static
-void free_sigwait_job(void *obj) {}
+void free_sigwait_job(struct sigwait_job *job) {}
 
 static
-void sigwait_job_worker(struct job *job) {
-  struct sigwait_job *sigwait_job = (struct sigwait_job*)job;
-
+int32_t sigwait_job_worker(struct sigwait_job *job, int32_t *err_out) {
   // Block all signals for the `sigwait` job.
   // Cancellation is performed via `SIGUSR2`, which is in the wait set.
   sigset_t all_signals, prev_mask;
@@ -2714,9 +2722,9 @@ void sigwait_job_worker(struct job *job) {
   while (1) {
     int sig = 0;
     errno = 0;
-    int err = sigwait(&sigwait_job->signals, &sig);
+    int err = sigwait(&job->signals, &sig);
     if (err > 0) {
-      job->err = err;
+      *err_out = err;
       goto cleanup;
     }
 
@@ -2731,7 +2739,7 @@ void sigwait_job_worker(struct job *job) {
       if (errno == EINTR || !errno) {
         continue;
       } else {
-        job->err = errno;
+        *err_out = errno;
         goto cleanup;
       }
     }
@@ -2746,11 +2754,12 @@ void sigwait_job_worker(struct job *job) {
 cleanup:
   // Restore the mask of the worker thread, in case it get reused
   pthread_sigmask(SIG_SETMASK, &prev_mask, 0);
+  return 0;
 }
 
 MOONBIT_FFI_EXPORT
 struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
-  struct sigwait_job *job = MAKE_JOB(sigwait);
+  struct sigwait_job *job = MAKE_JOB(sigwait, 0);
 
   sigemptyset(&job->signals);
   for (int i = 0; i < Moonbit_array_length(signals); ++i)
@@ -2767,35 +2776,33 @@ struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
 
 // ===== inotify_add_watch job, add path to watch with inotify =====
 struct inotify_add_watch_job {
-  struct job job;
   HANDLE inotify;
   char *path;
   int32_t is_dir;
 };
 
 static
-void free_inotify_add_watch_job(void *obj) {
-  struct inotify_add_watch_job *job = (struct inotify_add_watch_job*)obj;
+void free_inotify_add_watch_job(struct inotify_add_watch_job *job) {
   moonbit_decref(job->path);
 }
 
 static
-void inotify_add_watch_job_worker(struct job *job) {
-  struct inotify_add_watch_job *inotify_add_watch_job = (struct inotify_add_watch_job*)job;
-
+int32_t inotify_add_watch_job_worker(struct inotify_add_watch_job *job, int32_t *err_out) {
 #ifdef __linux__
 
-  uint32_t flags = inotify_add_watch_job->is_dir
+  uint32_t flags = job->is_dir
     ? IN_CREATE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE
     : IN_MODIFY;
 
-  job->ret = inotify_add_watch(inotify_add_watch_job->inotify, inotify_add_watch_job->path, flags);
-  if (job->ret < 0)
-    job->err = errno;
+  int32_t ret = inotify_add_watch(job->inotify, job->path, flags);
+  if (ret < 0)
+    *err_out = errno;
+  return ret;
 
 #else
 
-  job->err = ENOSYS;
+  *err_out = ENOSYS;
+  return 0;
 
 #endif
 }
@@ -2806,7 +2813,7 @@ struct inotify_add_watch_job *moonbitlang_async_make_inotify_add_watch_job(
   char *path,
   int32_t is_dir
 ) {
-  struct inotify_add_watch_job *job = MAKE_JOB(inotify_add_watch);
+  struct inotify_add_watch_job *job = MAKE_JOB(inotify_add_watch, 0);
 
   job->inotify = inotify;
   job->path = path;
