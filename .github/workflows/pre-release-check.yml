@@ -124,6 +124,8 @@ jobs:
   sanitizer-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      MOONBIT_NEW_NATIVE: 0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,6 +165,8 @@ jobs:
   sanitizer-check-windows:
     runs-on: windows-latest
     timeout-minutes: 10
+    env:
+      MOONBIT_NEW_NATIVE: 0
     steps:
       - name: disable auto CRLF
         run: git config --global core.autocrlf false
