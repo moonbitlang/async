@@ -317,7 +317,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
     if all_coros.length() > 0 {
       println(
-        "Dead lock detected. Tasks spawned at the following locations are still alive: \{to_repr(all_coros)}",
+        "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(all_coros)}",
       )
       panic()
     }

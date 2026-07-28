@@ -111,7 +111,7 @@ pub impl Show for URIParseError with fn output(self, logger) {
   match self {
     InvalidFormat => logger <+ "InvalidFormat"
     UnsupportedProtocol(protocol) =>
-      logger <+ "UnsupportedProtocol(\{to_repr(protocol)})"
+      logger <+ "UnsupportedProtocol(\{Repr(protocol)})"
   }
 }
 
@@ -143,7 +143,7 @@ pub impl Show for HttpProtocolError with fn output(self, logger) {
   match self {
     BadRequest => logger <+ "BadRequest"
     HttpVersionNotSupported(version) =>
-      logger <+ "HttpVersionNotSupported(\{to_repr(version)})"
+      logger <+ "HttpVersionNotSupported(\{Repr(version)})"
     NotImplemented => logger <+ "NotImplemented"
   }
 }

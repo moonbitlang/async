@@ -28,8 +28,7 @@ pub impl Show for ResolveHostnameError
 ///|
 pub impl Show for ResolveHostnameError with fn output(self, logger) {
   match self {
-    ResolveHostnameError(msg) =>
-      logger <+ "ResolveHostnameError(\{to_repr(msg)})"
+    ResolveHostnameError(msg) => logger <+ "ResolveHostnameError(\{Repr(msg)})"
   }
 }
 

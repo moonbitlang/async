@@ -75,7 +75,7 @@ pub(all) suberror OSError {
 pub impl Show for OSError with fn output(self, logger) -> Unit {
   let OSError(errno, context~) = self
   let msg = "\{context}: \{errno_to_string(errno)}"
-  logger <+ "OSError(\{to_repr(msg)})"
+  logger <+ "OSError(\{Repr(msg)})"
 }
 
 ///|
