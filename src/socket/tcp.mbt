@@ -68,11 +68,21 @@ pub struct TcpServer {
 /// and similarly a server binding to a wildcard address can bind to
 /// the remaining interfaces if a bind to a specific interface already exists.
 /// This side effect cannot be isolated, so `reuse_addr` should be used with this in mind.
+///
+/// If `reuse_port` is `true` (`false` by default),
+/// the `SO_REUSEPORT` option will be enabled on the server,
+/// letting several sockets, typically one per worker process,
+/// bind the same address at once while the kernel spreads incoming
+/// connections across them. This is the usual basis for a prefork server.
+///
+/// `SO_REUSEPORT` only exists on Linux, the BSDs and MacOS; on Windows
+/// and wasm, `reuse_port` is ignored.
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
+  reuse_port? : Bool = false,
 ) -> TcpServer {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
@@ -86,6 +96,9 @@ pub async fn TcpServer::TcpServer(
     }
     if !(@event_loop.platform is Windows) && reuse_addr {
       guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
+    }
+    if !(@event_loop.platform is Windows) && reuse_port {
+      guard allow_reuse_port(sock) >= 0 else { @os_error.check_errno(context) }
     }
     io.bind(addr.0, context~)
     if 0 != listen_ffi(sock) {
