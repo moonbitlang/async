@@ -36,6 +36,7 @@ options(
     "detect_file_kind.c",
     "signal.c",
     "stdio.c",
+    "fs.c",
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],
