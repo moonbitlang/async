@@ -140,3 +140,16 @@ int32_t moonbitlang_async_get_ENOTDIR() {
 
 #endif
 }
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_get_ENOTSUP() {
+#ifdef _WIN32
+
+  return ERROR_NOT_SUPPORTED;
+
+#else
+
+  return ENOTSUP;
+
+#endif
+}

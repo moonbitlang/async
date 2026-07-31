@@ -62,13 +62,92 @@ pub async fn open(
 
 ///|
 #cfg(target="native")
+pub async fn fstatx(
+  fd : @fd_util.Fd,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+  context~ : String,
+) -> Unit {
+  let job = Job::fstatx(fd, request, buf, buf_len)
+  defer job.free()
+  ignore <| perform_job_in_worker(job, context~)
+}
+
+///|
+#cfg(target="native")
+async fn fstatx_single(
+  fd : @fd_util.Fd,
+  request : UInt,
+  length : Int,
+  context~ : String,
+) -> ArrayView[Byte] {
+  let buf = FixedArray::make(8 + (length << 3), b'\x00')
+  fstatx(fd, request, buf, buf.length(), context~)
+  guard buf is [u32le(_), u32le(mask), .. payload]
+  guard (mask & request) != 0 else {
+    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+  }
+  payload
+}
+
+///|
+#cfg(target="native")
+pub async fn statx(
+  path : StringView,
+  parent~ : @fd_util.Fd,
+  follow_symlink~ : Bool,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+  context~ : String,
+) -> Unit {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::statx(
+    path_bytes,
+    parent~,
+    follow_symlink~,
+    request,
+    buf,
+    buf_len,
+  )
+  defer job.free()
+  try perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
+#cfg(target="native")
+async fn statx_single(
+  path : StringView,
+  parent~ : @fd_util.Fd,
+  follow_symlink~ : Bool,
+  request : UInt,
+  length : Int,
+  context~ : String,
+) -> ArrayView[Byte] {
+  let buf = FixedArray::make(8 + (length << 3), b'\x00')
+  statx(path, parent~, follow_symlink~, request, buf, buf.length(), context~)
+  guard buf is [u32le(_), u32le(mask), .. payload]
+  guard (mask & request) != 0 else {
+    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+  }
+  payload
+}
+
+///|
+#cfg(target="native")
 pub async fn kind_of_fd(
   fd : @fd_util.Fd,
   context~ : String,
 ) -> @fd_util.FileKind {
-  let job = Job::kind_of_fd(fd)
-  defer job.free()
-  perform_job_in_worker(job, context~) |> @fd_util.FileKind::unsafe_from_int
+  guard fstatx_single(fd, STAT_FILE_KIND, 1, context~) is [u64le(kind)]
+  @fd_util.FileKind::unsafe_from_int(kind.to_int())
 }
 
 ///|
@@ -76,6 +155,27 @@ pub async fn kind_of_fd(
 /// `path` will be interpreted relative to the directory pointed by `parent`,
 /// see `fstatat` for more details.
 /// `parent` is not supported on Windows.
+#cfg(target="native")
+pub async fn file_kind_by_path(
+  path : StringView,
+  parent~ : @fd_util.Fd,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> @fd_util.FileKind {
+  guard statx_single(
+      path,
+      parent~,
+      follow_symlink~,
+      STAT_FILE_KIND,
+      1,
+      context~,
+    )
+    is [u64le(kind)]
+  @fd_util.FileKind::unsafe_from_int(kind.to_int())
+}
+
+///|
+#cfg(target="wasm")
 pub async fn file_kind_by_path(
   path : StringView,
   parent~ : @fd_util.Fd,
@@ -95,6 +195,14 @@ pub async fn file_kind_by_path(
 }
 
 ///|
+#cfg(target="native")
+pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
+  guard fstatx_single(fd, STAT_FILE_SIZE, 1, context~) is [i64le(size)]
+  size
+}
+
+///|
+#cfg(target="wasm")
 pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
   let job = Job::file_size(fd)
   defer job.free()
@@ -103,10 +211,89 @@ pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
 }
 
 ///|
-pub async fn file_time(
-  fd : @fd_util.Fd,
+#cfg(target="native")
+pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  guard fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="native")
+pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  guard fstatx_single(fd, STAT_ACCESS_TIME, 2, context~)
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="native")
+pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  guard fstatx_single(fd, STAT_CHANGE_TIME, 2, context~)
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="native")
+pub async fn mtime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
   context~ : String,
-) -> @fd_util.FileTime {
+) -> (Int64, Int) {
+  guard statx_single(
+      path,
+      parent=@fd_util.invalid_fd,
+      follow_symlink~,
+      STAT_MODIFY_TIME,
+      2,
+      context~,
+    )
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="native")
+pub async fn atime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> (Int64, Int) {
+  guard statx_single(
+      path,
+      parent=@fd_util.invalid_fd,
+      follow_symlink~,
+      STAT_ACCESS_TIME,
+      2,
+      context~,
+    )
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="native")
+pub async fn ctime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> (Int64, Int) {
+  guard statx_single(
+      path,
+      parent=@fd_util.invalid_fd,
+      follow_symlink~,
+      STAT_CHANGE_TIME,
+      2,
+      context~,
+    )
+    is [i64le(sec), i64le(nsec)]
+  (sec, nsec.to_int())
+}
+
+///|
+#cfg(target="wasm")
+async fn file_time(fd : @fd_util.Fd, context~ : String) -> @fd_util.FileTime {
   let result = @fd_util.FileTime::new()
   let job = Job::file_time(fd, result)
   defer job.free()
@@ -115,7 +302,8 @@ pub async fn file_time(
 }
 
 ///|
-pub async fn file_time_by_path(
+#cfg(target="wasm")
+async fn file_time_by_path(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
@@ -132,6 +320,54 @@ pub async fn file_time_by_path(
     _ => ()
   }
   result
+}
+
+///|
+#cfg(target="wasm")
+pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  file_time(fd, context~).mtime()
+}
+
+///|
+#cfg(target="wasm")
+pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  file_time(fd, context~).atime()
+}
+
+///|
+#cfg(target="wasm")
+pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+  file_time(fd, context~).ctime()
+}
+
+///|
+#cfg(target="wasm")
+pub async fn mtime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> (Int64, Int) {
+  file_time_by_path(path, follow_symlink~, context~).mtime()
+}
+
+///|
+#cfg(target="wasm")
+pub async fn atime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> (Int64, Int) {
+  file_time_by_path(path, follow_symlink~, context~).atime()
+}
+
+///|
+#cfg(target="wasm")
+pub async fn ctime_by_path(
+  path : StringView,
+  follow_symlink~ : Bool,
+  context~ : String,
+) -> (Int64, Int) {
+  file_time_by_path(path, follow_symlink~, context~).ctime()
 }
 
 ///|
