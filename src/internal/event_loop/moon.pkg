@@ -33,7 +33,6 @@ options(
     "io_unix.c",
     "io_windows.c",
     "process.c",
-    "detect_file_kind.c",
     "signal.c",
     "stdio.c",
     "fs.c",

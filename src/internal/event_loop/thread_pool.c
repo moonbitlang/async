@@ -92,15 +92,6 @@ typedef int SOCKET;
 
 #endif
 
-// defined in `detect_file_kind.c`
-int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
-
-#ifdef _WIN32
-int32_t moonbitlang_async_kind_from_attr(DWORD attrs);
-#else
-int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
-#endif
-
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_get_platform() {
 #ifdef __linux__

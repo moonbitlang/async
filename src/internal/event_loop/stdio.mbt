@@ -14,7 +14,30 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_kind_of_fd"
+#borrow(buf)
+extern "C" fn fstatx_sync(
+  fd : @fd_util.Fd,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+) -> Int = "moonbitlang_async_fstatx_sync"
+
+///|
+#cfg(target="native")
+fn kind_of_fd_sync(
+  fd : @fd_util.Fd,
+  context~ : String,
+) -> @fd_util.FileKind raise {
+  let buf = FixedArray::make(16, b'\x00')
+  if fstatx_sync(fd, STAT_FILE_KIND, buf, buf.length()) < 0 {
+    @os_error.check_errno(context)
+  }
+  guard buf is [u32le(_), u32le(mask), i64le(kind)]
+  guard mask == STAT_FILE_KIND else {
+    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+  }
+  @fd_util.FileKind::unsafe_from_int(kind.to_int())
+}
 
 ///|
 #cfg(target="wasm")
@@ -22,6 +45,7 @@ extern "C" fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_
 fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fd_util/kind_of_fd"
 
 ///|
+#cfg(target="wasm")
 fn kind_of_fd_sync(
   fd : @fd_util.Fd,
   context~ : String,

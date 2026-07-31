@@ -23,10 +23,13 @@
 #error "Currently only MSVC is supported on Windows"
 #endif
 
+#include <winsock2.h>
 #include <windows.h>
 #include <stddef.h>
+#include <stdio.h>
 
 typedef LPWSTR os_string_t;
+#define EINVAL ERROR_INVALID_PARAMETER
 
 // #ifdef _WIN32
 #else
@@ -35,6 +38,7 @@ typedef LPWSTR os_string_t;
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -44,10 +48,13 @@ typedef LPWSTR os_string_t;
 #include <linux/fs.h>
 #include <sys/inotify.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 
 #elif defined(__MACH__)
 
+#include <sys/stat.h>
 #include <sys/attr.h>
+#include <sys/vnode.h>
 
 #endif
 
@@ -60,15 +67,6 @@ typedef char *os_string_t;
 // #ifndef _WIN32
 #endif
 
-
-// defined in `detect_file_kind.c`
-int32_t moonbitlang_async_kind_of_fd(HANDLE fd);
-
-#ifdef _WIN32
-int32_t moonbitlang_async_kind_from_attr(DWORD attrs);
-#else
-int32_t moonbitlang_async_file_kind_from_stat(struct stat *stat);
-#endif
 
 // defined in `thread_pool.c`
 MOONBIT_FFI_EXPORT
@@ -86,6 +84,824 @@ void *moonbitlang_async_make_job(
   (int32_t (*)(void*))cancel_handler\
 )
 
+
+// ===== stat related helpers =====
+
+#define STAT_FILE_KIND 0x0001
+#define STAT_FILE_SIZE 0x0002
+#define STAT_DEVICE_ID 0x0004
+#define STAT_FILE_ID   0x0008
+
+#define STAT_ACCESS_TIME 0x0010
+#define STAT_MODIFY_TIME 0x0020
+#define STAT_CHANGE_TIME 0x0040
+#define STAT_CREATE_TIME 0x0080
+
+#define STAT_SUPPORTED_PROPERTY_MASK 0x00FF
+
+enum FileKind {
+  UnknownFileKind = 0,
+  Regular = 1,
+  Directory = 2,
+  SymLink = 3,
+  Socket = 4,
+  Pipe = 5,
+  BlockDevice = 6,
+  CharDevice = 7
+};
+
+struct FileSpec {
+  enum { BY_HANDLE, BY_PATH } kind; 
+  union {
+    HANDLE fd;
+    struct {
+      os_string_t path;
+      HANDLE parent;
+      int32_t follow_symlink;
+    } path_spec;
+  };
+};
+
+struct StatOutputBuffer {
+  uint32_t length;
+  uint32_t returned_mask;
+  uint64_t properties[];
+};
+
+#ifdef __linux__
+
+// `glibc` does not expose many statx-related constants
+
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
+
+#ifndef AT_SYMLINK_NOFOLLOW
+#define AT_SYMLINK_NOFOLLOW 0x100
+#endif
+
+#ifndef AT_STATX_SYNC_AS_STAT
+#define AT_STATX_SYNC_AS_STAT 0x0000
+#endif
+
+#ifndef STATX_TYPE
+#define STATX_TYPE 0x00000001U
+#endif
+
+#ifndef STATX_SIZE
+#define STATX_SIZE 0x00000200U
+#endif
+
+#ifndef STATX_INO
+#define STATX_INO  0x00000100U
+#endif
+
+#ifndef STATX_ATIME
+#define STATX_ATIME 0x00000020U
+#endif
+
+#ifndef STATX_MTIME
+#define STATX_MTIME 0x00000040U
+#endif
+
+#ifndef STATX_CTIME
+#define STATX_CTIME 0x00000080U
+#endif
+
+#ifndef STATX_BTIME
+#define STATX_BTIME	0x00000800U	
+#endif
+
+struct linux_statx_timestamp {
+  int64_t   tv_sec;
+  uint32_t  tv_nsec;
+  int32_t   __reserved;
+};
+
+struct linux_statx {
+   uint32_t stx_mask;
+   uint32_t stx_blksize;
+   uint64_t stx_attributes;
+   uint32_t stx_nlink;
+   uint32_t stx_uid;
+   uint32_t stx_gid;
+   uint16_t stx_mode;
+   uint64_t stx_ino;
+   uint64_t stx_size;
+   uint64_t stx_blocks;
+   uint64_t stx_attributes_mask;
+
+   struct linux_statx_timestamp stx_atime;
+   struct linux_statx_timestamp stx_btime;
+   struct linux_statx_timestamp stx_ctime;
+   struct linux_statx_timestamp stx_mtime;
+
+   uint32_t stx_rdev_major;
+   uint32_t stx_rdev_minor;
+
+   uint32_t stx_dev_major;
+   uint32_t stx_dev_minor;
+
+   uint64_t unused[20];
+};
+
+#endif // #ifdef __linux__
+
+// `mask` must contain exactly one "1" bit
+static inline
+int32_t index_of_property(uint32_t mask) {
+  static const uint32_t de_bruijn_32 = 0x077CB531;
+  static const uint8_t index32[] = {0,  1,  28, 2,  29, 14, 24, 3,  30, 22, 20,
+                                    15, 25, 17, 4,  8,  31, 27, 13, 23, 21, 19,
+                                    16, 7,  26, 12, 18, 6,  11, 5,  10, 9};
+  return index32[(de_bruijn_32 * mask) >> 27];
+}
+
+// size of properties, in 64bit double words
+static
+int size_of_property[] = {
+  1, // `STAT_FILE_KIND`
+  1, // `STAT_FILE_SIZE`
+  1, // `STAT_DEVICE_ID`, unconditional in `statx`
+  1, // `STAT_FILE_ID`
+  2, // `STAT_ACCESS_TIME`
+  2, // `STAT_MODIFY_TIME`
+  2, // `STAT_CHANGE_TIME`
+  2  // `STAT_CREATE_TIME`
+};
+
+/* A generic `statx`/`getattrlist`-like function for retrieving information about OS objects.
+
+   `file` determines which object to query:
+   - if `file->kind == BY_HANDLE`, information about the fd `file->fd` is queried
+   - if `file->kind == BY_PATH`, information about the path `file->path_spec.path` is queried:
+     * if `file->path_spec.parent` is a valid fd/handle,
+       `file->path_spec.path` will be interpreted relative to this handle.
+       Not supported on Windows
+     * if `file->path_spec.follow_symlink` is non-zero,
+       and the last component of `file->path_spec.path` is a symlink,
+       the target of the symlink will be queried.
+       If `file->path_spec.follow_symlink` is zero, the symlink itself will be queried
+
+   `request` is a bitmask obtained by OR-ing `STAT_*` constants.
+   Only requested properties will be queried, to avoid redundant work.
+   The requested properties will be written to `output_buf`, whose length is `buf_len`.
+   The format of result written to `output_buf` is as follows:
+
+   - the first 32bits is an unsigned integer containing the length of result, in bytes,
+     including the length field itself
+
+   - the next 32bits is an `uint32_t` obtained by OR-ing `STAT_*` constants
+     of successfully returned properties.
+     Some requested properties may be unsupported on certain file systems,
+     in this case they will be missing from the returned bitmask.
+
+     Note that an unsupported property will still occupy space in the output buffer,
+     but the value at the position would be meaningless,
+     so callers should always check the returned bitmask.
+     As a consequence, the layout of the output buffer is fixed for any given input `request`.
+
+   - the rest of the output buffer contain a list of values for each requested property.
+     Each property is 8-byte aligned.
+     The order of supported properties and the content of their value is as follows:
+
+     - `STAT_FILE_KIND`: a `int64_t`, zero extended from `enum FileKind`,
+       holding the kind of the file
+
+     - `STAT_FILE_SIZE`: a `int64_t` holding the size of the file
+
+     - `STAT_DEVICE_ID`: a `uint64_t` holding the ID of the device containing the file.
+       Correspond to `st_dev` from `stat` on Unix-like systems,
+       or the volume serial number on Windows
+
+     - `STAT_FILE_ID`: the unique `uint64_t` id of the file in its file system.
+       Correspond to `st_ino` from `stat` on Unix-like systems,
+       or file id returned by `GetFileInformationByHandle` on Windows.
+
+     - `STAT_ACCESS_TIME`/`STAT_MODIFY_TIME`/`STAT_CHANGE_TIME`/`STAT_CREATE_TIME`:
+       two `int64_t` containing the last access/last data change/last metdata change/creation time
+       of the target file.
+       The first `int64_t` contain the second part, the second `int64_t` contain the nanosecond part
+
+   This function is designed to be backward compatible in ABI.
+   New properties can be appended in future versions of the runtime,
+   while old code invoking this function with existing properties continue to work
+   without the need for recompilation.
+ */
+static
+int32_t moonbit_generic_stat(
+  struct FileSpec *file, 
+  uint32_t request,
+  void *output_buf,
+  int32_t buf_len
+) {
+  struct StatOutputBuffer *output = (struct StatOutputBuffer*)output_buf;
+
+  if (buf_len < 8 || request & ~STAT_SUPPORTED_PROPERTY_MASK) {
+    SetLastError(EINVAL);
+    return -1;
+  }
+
+  output->returned_mask = 0;
+  output->length = 8;
+  for (uint32_t remaining_request = request; remaining_request;) {
+    uint32_t next_request = remaining_request & (~remaining_request + 1);
+    remaining_request ^= next_request;
+    output->length += size_of_property[index_of_property(next_request)] << 3; 
+  }
+
+  if (output->length > buf_len) {
+    SetLastError(EINVAL);
+    return -1;
+  }
+
+#if defined(_WIN32)
+
+#define MAKE_64(ty, hi, lo) (((ty)(hi) << 32) | (ty)(lo))
+
+   static uint32_t by_handle_info_props =
+     STAT_FILE_KIND
+     | STAT_FILE_SIZE
+     | STAT_DEVICE_ID
+     | STAT_FILE_ID
+     | STAT_ACCESS_TIME
+     | STAT_MODIFY_TIME
+     | STAT_CREATE_TIME
+     | STAT_FILE_KIND;
+
+   static uint32_t id_info_props = STAT_DEVICE_ID | STAT_FILE_ID;
+   static uint32_t attr_info_props = STAT_FILE_KIND;
+   static uint32_t basic_info_props =
+     STAT_ACCESS_TIME
+     | STAT_MODIFY_TIME
+     | STAT_CHANGE_TIME
+     | STAT_CREATE_TIME
+     | STAT_FILE_KIND;
+
+   struct {
+     uint32_t file_type;
+     DWORD    attributes;
+     int64_t  file_size;
+     uint64_t dev_id;
+     uint64_t file_id;
+     int64_t access_time;
+     int64_t modify_time;
+     int64_t change_time;
+     int64_t create_time;
+   } sys_stat;
+
+   HANDLE handle;
+   if (file->kind == BY_HANDLE) {
+     handle = file->fd;
+   } else if (file->path_spec.parent != INVALID_HANDLE_VALUE) {
+     SetLastError(ERROR_NOT_SUPPORTED);
+     return -1;
+   } else {
+     DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
+     if (!file->path_spec.follow_symlink)
+       flags |= FILE_FLAG_OPEN_REPARSE_POINT;
+
+     handle = CreateFileW(
+       file->path_spec.path,
+       FILE_READ_ATTRIBUTES, // desired access
+       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
+       NULL, // security attributes
+       OPEN_EXISTING, // creation mode
+       flags, // flags and attributes
+       NULL // template file
+     );
+     if (handle == INVALID_HANDLE_VALUE)
+       return -1;
+   }
+
+   int offset = 0;
+   uint32_t remaining_request = request;
+
+   if (request & STAT_FILE_KIND) {
+     SetLastError(0);
+     sys_stat.file_type = GetFileType(handle);
+     if (sys_stat.file_type == FILE_TYPE_UNKNOWN && GetLastError())
+       goto exit;
+
+     if (sys_stat.file_type != FILE_TYPE_DISK) {
+       // the remaining attributes are meaningless for non-disk handle
+       remaining_request ^= STAT_FILE_KIND;
+       goto write_result;
+     }
+   }
+
+   if (!(remaining_request & ~attr_info_props)) {
+     FILE_ATTRIBUTE_TAG_INFO info;
+     if (GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &info, sizeof(info))) {
+       remaining_request &= ~attr_info_props;
+       sys_stat.attributes = info.FileAttributes;
+     }
+   } else if ((remaining_request & STAT_CHANGE_TIME) || !(remaining_request & ~basic_info_props)) {
+     FILE_BASIC_INFO info;
+     if (GetFileInformationByHandleEx(handle, FileBasicInfo, &info, sizeof(info))) {
+       remaining_request &= ~basic_info_props;
+       sys_stat.attributes = info.FileAttributes;
+       sys_stat.access_time = info.LastAccessTime.QuadPart;
+       sys_stat.modify_time = info.LastWriteTime.QuadPart;
+       sys_stat.change_time = info.ChangeTime.QuadPart;
+       sys_stat.create_time = info.CreationTime.QuadPart;
+     }
+   }
+
+    if (remaining_request == STAT_FILE_SIZE) {
+      SetLastError(0);
+      DWORD lo, hi;
+      lo = GetFileSize(handle, &hi);
+      if (!(lo == INVALID_FILE_SIZE && GetLastError())) {
+        remaining_request ^= STAT_FILE_SIZE;
+        sys_stat.file_size = MAKE_64(int64_t, hi, lo);
+      }
+    } else if (remaining_request) {
+     BY_HANDLE_FILE_INFORMATION info;
+     if (GetFileInformationByHandle(handle, &info)) {
+       remaining_request &= ~by_handle_info_props;
+       sys_stat.attributes = info.dwFileAttributes;
+       sys_stat.file_size = MAKE_64(int64_t, info.nFileSizeHigh, info.nFileSizeLow);
+       sys_stat.dev_id = info.dwVolumeSerialNumber;
+       sys_stat.file_id = MAKE_64(uint64_t, info.nFileIndexHigh, info.nFileIndexLow);
+       sys_stat.access_time = MAKE_64(
+         int64_t,
+         info.ftLastAccessTime.dwHighDateTime,
+         info.ftLastAccessTime.dwLowDateTime
+       );
+       sys_stat.modify_time = MAKE_64(
+         int64_t,
+         info.ftLastWriteTime.dwHighDateTime,
+         info.ftLastWriteTime.dwLowDateTime
+       );
+       sys_stat.create_time = MAKE_64(
+         int64_t,
+         info.ftCreationTime.dwHighDateTime,
+         info.ftCreationTime.dwLowDateTime
+       );
+     }
+   }
+
+write_result:
+  while (request) {
+    uint32_t next_request = request & (~request + 1);
+    request ^= next_request;
+
+    int index = index_of_property(next_request);
+    int size = size_of_property[index];
+
+    // unsupported attribute
+    if (next_request & remaining_request) {
+      offset += size;
+      continue;
+    }
+
+    output->returned_mask |= next_request;
+
+    switch (next_request) {
+      case STAT_FILE_KIND:
+        switch (sys_stat.file_type) {
+          case FILE_TYPE_DISK: {
+            if (sys_stat.attributes & FILE_ATTRIBUTE_REPARSE_POINT)
+              output->properties[offset++] = SymLink;
+            else if (sys_stat.attributes & FILE_ATTRIBUTE_DIRECTORY)
+              output->properties[offset++] = Directory;
+            else
+              output->properties[offset++] = Regular;
+            break;
+          }
+
+          case FILE_TYPE_CHAR:
+            output->properties[offset++] = CharDevice;
+            break;
+
+          case FILE_TYPE_PIPE:
+          case FILE_TYPE_UNKNOWN: {
+            int opt = 0, opt_len = sizeof(int);
+            if (0 == getsockopt((SOCKET)handle, SOL_SOCKET, SO_TYPE, (char*)&opt, &opt_len)) {
+              output->properties[offset++] = Socket;
+            } else {
+              output->properties[offset++] = sys_stat.file_type == FILE_TYPE_PIPE ? Pipe : UnknownFileKind;
+            }
+            break;
+          }
+
+          default:
+            output->properties[offset++] = UnknownFileKind;
+            break;
+        }
+        break;
+
+      case STAT_FILE_SIZE:
+        output->properties[offset++] = sys_stat.file_size;
+        break;
+
+      case STAT_DEVICE_ID:
+        output->properties[offset++] = sys_stat.dev_id;
+        break;
+
+      case STAT_FILE_ID:
+        output->properties[offset++] = sys_stat.file_id;
+        break;
+
+      case STAT_ACCESS_TIME:
+        output->properties[offset++] = sys_stat.access_time / 10000000;
+        output->properties[offset++] = (sys_stat.access_time % 10000000) * 100;
+        break;
+
+      case STAT_MODIFY_TIME:
+        output->properties[offset++] = sys_stat.modify_time / 10000000;
+        output->properties[offset++] = (sys_stat.modify_time % 10000000) * 100;
+        break;
+
+      case STAT_CHANGE_TIME:
+        output->properties[offset++] = sys_stat.change_time / 10000000;
+        output->properties[offset++] = (sys_stat.change_time % 10000000) * 100;
+        break;
+
+      case STAT_CREATE_TIME:
+        output->properties[offset++] = sys_stat.create_time / 10000000;
+        output->properties[offset++] = (sys_stat.create_time % 10000000) * 100;
+        break;
+    }
+  }
+
+exit:
+  if (file->kind == BY_PATH) {
+    CloseHandle(handle);
+  }
+  if (output->returned_mask || file->kind == BY_PATH) {
+    // For `BY_PATH` case, the input is already validated by `CreateFileW`,
+    // so we treat empty return as all requested properties unsupported.
+    return 0;
+  }
+
+  // For by-handle request, if nothing can be returned,
+  // check if the handle is valid
+  SetLastError(0);
+  if (GetFileType(handle) == FILE_TYPE_UNKNOWN && GetLastError())
+    return -1;
+
+  return 0;
+
+#elif defined(__linux__)
+
+  static unsigned int statx_masks[] = {
+    STATX_TYPE,  // `STAT_FILE_KIND`
+    STATX_SIZE,  // `STAT_FILE_SIZE`
+    0,           // `STAT_DEVICE_ID`, unconditional in `statx`
+    STATX_INO,   // `STAT_FILE_ID`
+    STATX_ATIME, // `STAT_ACCESS_TIME`
+    STATX_MTIME, // `STAT_MODIFY_TIME`
+    STATX_CTIME, // `STAT_CHANGE_TIME`
+    STATX_BTIME  // `STAT_CREATE_TIME`
+  };
+
+  int dirfd, flags = AT_STATX_SYNC_AS_STAT;
+  const char *path;
+  if (file->kind == BY_HANDLE) {
+    dirfd = file->fd;
+    path = "";
+    flags |= AT_EMPTY_PATH;
+  } else {
+    path = file->path_spec.path;
+    dirfd = file->path_spec.parent < 0 ? AT_FDCWD : file->path_spec.parent;
+    if (!file->path_spec.follow_symlink)
+      flags |= AT_SYMLINK_NOFOLLOW;
+  }
+
+  unsigned int statx_mask = 0;
+  for (uint32_t remaining_request = request; remaining_request; ) {
+    uint32_t next_request = remaining_request & (~remaining_request + 1);
+    int index = index_of_property(next_request);
+    statx_mask |= statx_masks[index];
+    remaining_request ^= next_request;
+  }
+
+  struct linux_statx statx_info;
+  if (syscall(SYS_statx, dirfd, path, flags, statx_mask, &statx_info) < 0)
+    return -1;
+
+  int offset = 0;
+  while (request) {
+    uint32_t next_request = request & (~request + 1);
+    request ^= next_request;
+
+    int index = index_of_property(next_request);
+    unsigned int statx_mask = statx_masks[index];
+    int size = size_of_property[index];
+
+    if (statx_mask && 0 == (statx_info.stx_mask & statx_mask)) {
+      // This property is not supported.
+      // Still reserve space for it anyway to obtain a stable layout
+      offset += size;
+      continue;
+    }
+
+    output->returned_mask |= next_request;
+
+    switch (next_request) {
+      case STAT_FILE_KIND:
+        switch (statx_info.stx_mode & S_IFMT) {
+          case S_IFREG:
+            output->properties[offset++] = Regular;
+            break;
+          case S_IFDIR:
+            output->properties[offset++] = Directory;
+            break;
+          case S_IFLNK:
+            output->properties[offset++] = SymLink;
+            break;
+          case S_IFSOCK:
+            output->properties[offset++] = Socket;
+            break;
+          case S_IFIFO:
+            output->properties[offset++] = Pipe;
+            break;
+          case S_IFBLK:
+            output->properties[offset++] = BlockDevice;
+            break;
+          case S_IFCHR:
+            output->properties[offset++] = CharDevice;
+            break;
+          default:
+            output->properties[offset++] = UnknownFileKind;
+            break;
+        }
+        break;
+
+      case STAT_FILE_SIZE:
+        output->properties[offset++] = statx_info.stx_size;
+        break;
+
+      case STAT_DEVICE_ID:
+        output->properties[offset++] = makedev(statx_info.stx_dev_major, statx_info.stx_dev_minor);
+        break;
+
+      case STAT_FILE_ID:
+        output->properties[offset++] = statx_info.stx_ino;
+        break;
+
+      case STAT_ACCESS_TIME:
+        output->properties[offset++] = statx_info.stx_atime.tv_sec;
+        output->properties[offset++] = statx_info.stx_atime.tv_nsec;
+        break;
+      case STAT_MODIFY_TIME:
+        output->properties[offset++] = statx_info.stx_mtime.tv_sec;
+        output->properties[offset++] = statx_info.stx_mtime.tv_nsec;
+        break;
+      case STAT_CHANGE_TIME:
+        output->properties[offset++] = statx_info.stx_ctime.tv_sec;
+        output->properties[offset++] = statx_info.stx_ctime.tv_nsec;
+        break;
+      case STAT_CREATE_TIME:
+        output->properties[offset++] = statx_info.stx_btime.tv_sec;
+        output->properties[offset++] = statx_info.stx_btime.tv_nsec;
+        break;
+    }
+  }
+
+  return 0;
+
+#elif defined(__MACH__)
+
+  // Supported request masks, ordered by `getattrlist`'s ordering in
+  // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getattrlist.2.html
+  static uint32_t properties_ordered[] = {
+    STAT_DEVICE_ID,
+    STAT_FILE_KIND,
+    STAT_CREATE_TIME,
+    STAT_MODIFY_TIME,
+    STAT_CHANGE_TIME,
+    STAT_ACCESS_TIME,
+    STAT_FILE_ID,
+    STAT_FILE_SIZE 
+  };
+
+  static const struct attrinfo {
+    const uint32_t attr;
+    const int32_t group_index; // index of the attribute group
+    const uint32_t size;
+  } attr_info[] = {
+    { ATTR_CMN_OBJTYPE    , 0, sizeof(fsobj_type_t)    }, // STAT_FILE_KIND
+    { ATTR_FILE_DATALENGTH, 3, sizeof(int64_t)         }, // STAT_FILE_SIZE
+    { ATTR_CMN_DEVID      , 0, sizeof(dev_t)           }, // STAT_DEVICE_ID
+    { ATTR_CMN_FILEID     , 0, sizeof(uint64_t)        }, // STAT_FILE_ID
+    { ATTR_CMN_ACCTIME    , 0, sizeof(struct timespec) }, // STAT_ACCESS_TIME
+    { ATTR_CMN_MODTIME    , 0, sizeof(struct timespec) }, // STAT_MODIFY_TIME
+    { ATTR_CMN_CHGTIME    , 0, sizeof(struct timespec) }, // STAT_CHANGE_TIME
+    { ATTR_CMN_CRTIME     , 0, sizeof(struct timespec) }, // STAT_CREATE_TIME
+  };
+
+  char attr_buf[
+    sizeof(uint32_t) // length
+    + sizeof(attribute_set_t) // `ATTR_CMN_RETURNED_ATTRS`
+    + sizeof(fsobj_type_t) // `STAT_FILE_KIND`
+    + sizeof(int64_t) // `STAT_FILE_SIZE`
+    + sizeof(dev_t) // `STAT_DEVICE_ID`
+    + sizeof(uint64_t) // `STAT_FILE_ID`
+    + sizeof(struct timespec) * 4 // `STAT_{ACCESS,MODIFY,CHANGE,CREATE},_TIME`
+  ];
+
+  int offset_of_property[sizeof(attr_info) / sizeof(attr_info[0])];
+
+  struct attrlist attr_list;
+  memset(&attr_list, 0, sizeof(attr_list));
+  attr_list.bitmapcount = ATTR_BIT_MAP_COUNT;
+  attr_list.commonattr = ATTR_CMN_RETURNED_ATTRS;
+
+  for (
+    int i = 0, offset = sizeof(uint32_t) + sizeof(attribute_set_t);
+    i < sizeof(attr_info) / sizeof(attr_info[0]);
+    ++i
+  ) {
+    uint32_t const property = properties_ordered[i];
+    uint32_t const index = index_of_property(property);
+    struct attrinfo const *info = attr_info + index;
+    if (0 == (request & property))
+      continue;
+
+    (&attr_list.commonattr)[info->group_index] |= info->attr;
+    offset_of_property[index] = offset;
+    offset += info->size;
+  }
+
+  int ret;
+  unsigned long options = FSOPT_PACK_INVAL_ATTRS;
+  if (file->kind == BY_HANDLE) {
+    ret = fgetattrlist(file->fd, &attr_list, attr_buf, sizeof(attr_buf), options);
+  } else {
+    if (!file->path_spec.follow_symlink)
+      options |= FSOPT_NOFOLLOW;
+
+    if (file->path_spec.parent < 0) {
+      ret = getattrlist(file->path_spec.path, &attr_list, attr_buf, sizeof(attr_buf), options);
+    } else {
+      ret = getattrlistat(
+        file->path_spec.parent,
+        file->path_spec.path,
+        &attr_list,
+        attr_buf,
+        sizeof(attr_buf),
+        options
+      );
+    }
+  }
+
+  if (ret < 0) {
+    if (errno == EINVAL && file->kind == BY_HANDLE) {
+      // `getattrlist` only support vnode objects, for other things such as pipe and socket,
+      // fallback to `fstat`.
+      struct stat stat_obj;
+      if (fstat(file->fd, &stat_obj) < 0)
+        return -1; 
+
+      if (!(request & STAT_FILE_KIND))
+        return 0;
+
+      output->returned_mask = STAT_FILE_KIND;
+      switch (stat_obj.st_mode & S_IFMT) {
+        case S_IFREG:
+          output->properties[0] = Regular;
+          break;
+        case S_IFDIR:
+          output->properties[0] = Directory;
+          break;
+        case S_IFLNK:
+          output->properties[0] = SymLink;
+          break;
+        case S_IFSOCK:
+          output->properties[0] = Socket;
+          break;
+        case S_IFIFO:
+          output->properties[0] = Pipe;
+          break;
+        case S_IFBLK:
+          output->properties[0] = BlockDevice;
+          break;
+        case S_IFCHR:
+          output->properties[0] = CharDevice;
+          break;
+        default:
+          output->properties[0] = UnknownFileKind;
+          break;
+      }
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+
+  uint32_t attr_buf_len = *(uint32_t*)attr_buf;
+  attrgroup_t *returned_attrs = (attrgroup_t*)(attr_buf + 4);
+
+  int offset = 0;
+  while (request) {
+    uint32_t next_request = request & (~request + 1);
+    request ^= next_request;
+
+    int index = index_of_property(next_request);
+    struct attrinfo const *info = attr_info + index;
+    int size = size_of_property[index];
+    int attr_offset = offset_of_property[index];
+
+    if (0 == (info->attr & returned_attrs[info->group_index])) {
+      // This property is not supported.
+      // Still reserve space for it anyway to obtain a stable layout
+      offset += size;
+      continue;
+    }
+
+    if (attr_offset + info->size > attr_buf_len)
+      continue;
+
+    output->returned_mask |= next_request;
+    char *attr = attr_buf + attr_offset;
+
+    switch (next_request) {
+      case STAT_FILE_KIND:
+        switch (*(fsobj_type_t*)attr) {
+          case VREG:
+            output->properties[offset++] = Regular;
+            break;
+          case VDIR:
+            output->properties[offset++] = Directory;
+            break;
+          case VLNK:
+            output->properties[offset++] = SymLink;
+            break;
+          case VSOCK:
+            output->properties[offset++] = Socket;
+            break;
+          case VFIFO:
+            output->properties[offset++] = Pipe;
+            break;
+          case VBLK:
+            output->properties[offset++] = BlockDevice;
+            break;
+          case VCHR:
+            output->properties[offset++] = CharDevice;
+            break;
+          default:
+            output->properties[offset++] = UnknownFileKind;
+            break;
+        }
+        break;
+
+      case STAT_FILE_SIZE:
+        output->properties[offset++] = *(int64_t*)attr;
+        break;
+
+      case STAT_DEVICE_ID:
+        output->properties[offset++] = *(dev_t*)attr;
+        break;
+
+      case STAT_FILE_ID:
+        output->properties[offset++] = *(uint64_t*)attr;
+        break;
+
+      case STAT_ACCESS_TIME:
+      case STAT_MODIFY_TIME:
+      case STAT_CHANGE_TIME:
+      case STAT_CREATE_TIME:
+        output->properties[offset++] = ((struct timespec*)attr)->tv_sec;
+        output->properties[offset++] = ((struct timespec*)attr)->tv_nsec;
+        break;
+    }
+  }
+
+  return 0;
+
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_fstatx_sync(HANDLE fd, uint32_t request, void *buf, int32_t buf_len) {
+  struct FileSpec file;
+  file.kind = BY_HANDLE;
+  file.fd = fd;
+  return moonbit_generic_stat(&file, request, buf, buf_len);
+}
+
+static
+int32_t moonbitlang_async_statx_sync(
+  os_string_t path,
+  uint32_t request,
+  void *buf,
+  int32_t buf_len,
+  HANDLE parent,
+  int32_t follow_symlink
+) {
+  struct FileSpec file;
+  file.kind = BY_PATH;
+  file.path_spec.path = path;
+  file.path_spec.parent = parent;
+  file.path_spec.follow_symlink = follow_symlink;
+  return moonbit_generic_stat(&file, request, buf, buf_len);
+}
 
 // ===== open job =====
 
@@ -180,11 +996,14 @@ struct open_job {
   int sync_mode;
   int permission;
   HANDLE result;
-#ifdef _WIN32
-  BY_HANDLE_FILE_INFORMATION stat;
-#else
-  struct stat stat;
-#endif
+
+  struct {
+    uint32_t length;
+    uint32_t returned_mask;
+    uint64_t kind;
+    uint64_t dev_id;
+    uint64_t file_id;
+  } stat;
 };
 
 static
@@ -213,13 +1032,6 @@ int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
     return -1;
   }
 
-  // get the kind of the file
-  if (!GetFileInformationByHandle(job->result, &job->stat)) {
-    *err_out = GetLastError();
-    CloseHandle(job->result);
-    return -1;
-  }
-
 #else
 
   if (job->result < 0) {
@@ -227,14 +1039,23 @@ int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
     return -1;
   }
 
-  if (fstat(job->result, &job->stat) < 0) {
-    *err_out = errno;
-    close(job->result);
-    return -1;
-  }
-
 #endif
 
+  int ret = moonbitlang_async_fstatx_sync(
+    job->result,
+    STAT_FILE_KIND | STAT_DEVICE_ID | STAT_FILE_ID,
+    &job->stat,
+    sizeof(job->stat)
+  );
+  if (ret < 0) {
+    *err_out = GetLastError();
+#ifdef _WIN32
+    CloseHandle(job->result);
+#else
+    close(job->result);
+#endif
+    return -1;
+  }
   return 0;
 }
 
@@ -265,311 +1086,103 @@ HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
-#ifdef _WIN32
-  return moonbitlang_async_kind_from_attr(job->stat.dwFileAttributes);
-#else
-  return moonbitlang_async_file_kind_from_stat(&job->stat);
-#endif
+  return job->stat.kind;
 }
 
 MOONBIT_FFI_EXPORT
 uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
-#ifdef _WIN32
-  return job->stat.dwVolumeSerialNumber;
-#else
-  return job->stat.st_dev;
-#endif
+  return job->stat.dev_id;
 }
 
 MOONBIT_FFI_EXPORT
 uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
-#ifdef _WIN32
-  return ((uint64_t)(job->stat.nFileIndexHigh) << 32) | (uint64_t)(job->stat.nFileIndexLow);
-#else
-  return job->stat.st_ino;
-#endif
+  return job->stat.file_id;
 }
 
-// ===== file kind of fd job, get kind of an existing fd =====
+// ===== fstatx job, get properties of an existing fd =====
+struct fstatx_job {
+  HANDLE fd;
+  uint32_t request;
+  void *buf;
+  int32_t buf_len;
+};
+
+static
+void free_fstatx_job(struct fstatx_job *job) {
+  moonbit_decref(job->buf);
+}
+
+static
+int32_t fstatx_job_worker(struct fstatx_job *job, int32_t *err_out) {
+  if (moonbitlang_async_fstatx_sync(job->fd, job->request, job->buf, job->buf_len) < 0) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
+}
+
 MOONBIT_FFI_EXPORT
-struct kind_of_fd_job {
-  HANDLE fd;
-};
-
-static
-void free_kind_of_fd_job(void *obj) {}
-
-static
-int32_t kind_of_fd_job_worker(struct kind_of_fd_job *job, int32_t *err_out) {
-  int32_t ret = moonbitlang_async_kind_of_fd(job->fd);
-  if (ret < 0)
-    *err_out = GetLastError();
-
-  return ret;
-}
-
-struct kind_of_fd_job *moonbitlang_async_make_kind_of_fd_job(HANDLE fd) {
-  struct kind_of_fd_job *job = MAKE_JOB(kind_of_fd, 0);
+struct fstatx_job *moonbitlang_async_make_fstatx_job(
+  HANDLE fd,
+  uint32_t request,
+  void *buf,
+  int32_t buf_len
+) {
+  struct fstatx_job *job = MAKE_JOB(fstatx, 0);
   job->fd = fd;
+  job->request = request;
+  job->buf = buf;
+  job->buf_len = buf_len;
   return job;
 }
 
-
-// ===== file kind by path job, get kind of path on file system =====
-
-static
-int32_t moonbitlang_async_get_file_kind_by_path(
-  os_string_t path,
-  int32_t follow_symlink,
-  HANDLE parent
-) {
-#ifdef _WIN32
-
-  if (parent != INVALID_HANDLE_VALUE) {
-    SetLastError(ERROR_NOT_SUPPORTED);
-    return -1;
-  }
-
-  DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-  if (!follow_symlink)
-    flags |= FILE_FLAG_OPEN_REPARSE_POINT;
-
-  HANDLE handle = CreateFileW(
-    path,
-    FILE_READ_ATTRIBUTES, // desired access
-    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-    NULL, // security attributes
-    OPEN_EXISTING, // creation mode
-    flags, // flags and attributes
-    NULL // template file
-  );
-
-  if (handle == INVALID_HANDLE_VALUE)
-    return -1;
-
-  int32_t ret = moonbitlang_async_kind_of_fd(handle);
-  CloseHandle(handle);
-
-  return ret;
-
-#else
-
-  struct stat stat_obj;
-  int ret = fstatat(
-    parent < 0 ? AT_FDCWD : parent,
-    path,
-    &stat_obj,
-    follow_symlink ? 0 : AT_SYMLINK_NOFOLLOW
-  );
-  if (ret < 0)
-    return -1;
-
-  return moonbitlang_async_file_kind_from_stat(&stat_obj);
-
-#endif
-}
-
-struct file_kind_by_path_job {
-  HANDLE parent;
+// ===== statx job, get properties of a path=====
+struct statx_job {
   os_string_t path;
-  int follow_symlink;
+  uint32_t request;
+  void *buf;
+  int32_t buf_len;
+  HANDLE parent;
+  int32_t follow_symlink;
 };
 
 static
-void free_file_kind_by_path_job(struct file_kind_by_path_job *job) {
+void free_statx_job(struct statx_job *job) {
   moonbit_decref(job->path);
+  moonbit_decref(job->buf);
 }
 
 static
-int32_t file_kind_by_path_job_worker(struct file_kind_by_path_job *job, int32_t *err_out) {
-  int32_t ret = moonbitlang_async_get_file_kind_by_path(
+int32_t statx_job_worker(struct statx_job *job, int32_t *err_out) {
+  int32_t ret = moonbitlang_async_statx_sync(
     job->path,
-    job->follow_symlink,
-    job->parent
+    job->request,
+    job->buf,
+    job->buf_len,
+    job->parent,
+    job->follow_symlink
   );
-
   if (ret < 0)
     *err_out = GetLastError();
 
   return ret;
 }
 
-struct file_kind_by_path_job *moonbitlang_async_make_file_kind_by_path_job(
+MOONBIT_FFI_EXPORT
+struct statx_job *moonbitlang_async_make_statx_job(
+  os_string_t path,
+  uint32_t request,
+  void *buf,
+  int32_t buf_len,
   HANDLE parent,
-  os_string_t path,
-  int follow_symlink
-) {
-  struct file_kind_by_path_job *job = MAKE_JOB(file_kind_by_path, 0);
-  job->parent = parent;
-  job->path = path;
-  job->follow_symlink = follow_symlink;
-  return job;
-}
-
-// ===== file size job, get size of opened file =====
-
-static
-int64_t moonbitlang_async_get_file_size_sync(HANDLE fd) {
-#ifdef _WIN32
-
-  LARGE_INTEGER size;
-  if (!GetFileSizeEx(fd, &size))
-    return -1;
-
-  return size.QuadPart;
-
-#else
-
-  struct stat stat_obj;
-  if (fstat(fd, &stat_obj) < 0)
-    return -1;
-
-  return stat_obj.st_size;
-
-#endif
-}
-
-struct file_size_job {
-  HANDLE fd;
-  int64_t result;
-};
-
-static
-void free_file_size_job(struct file_size_job *job) {}
-
-static
-int32_t file_size_job_worker(struct file_size_job *job, int32_t *err_out) {
-  job->result = moonbitlang_async_get_file_size_sync(job->fd);
-
-  if (job->result < 0) {
-    *err_out = GetLastError();
-    return -1;
-  }
-
-  return 0;
-}
-
-struct file_size_job *moonbitlang_async_make_file_size_job(HANDLE fd) {
-  struct file_size_job *job = MAKE_JOB(file_size, 0);
-  job->fd = fd;
-  return job;
-}
-
-int64_t moonbitlang_async_get_file_size_result(struct file_size_job *job) {
-  return job->result;
-}
-
-// ===== file time job, get timestamp of opened file =====
-static
-int32_t moonbitlang_async_get_file_time_sync(HANDLE fd, void *out) {
-#ifdef _WIN32
-  BOOL ret = GetFileInformationByHandleEx(
-    fd,
-    FileBasicInfo,
-    out,
-    sizeof(FILE_BASIC_INFO)
-  );
-  return ret ? 0 : -1;
-#else
-  return fstat(fd, out);
-#endif
-}
-
-struct file_time_job {
-  HANDLE fd;
-  void *out;
-};
-
-static
-void free_file_time_job(struct file_time_job *job) {
-  moonbit_decref(job->out);
-}
-
-static
-int32_t file_time_job_worker(struct file_time_job *job, int32_t *err_out) {
-  if (moonbitlang_async_get_file_time_sync(job->fd, job->out) < 0) {
-    *err_out = GetLastError();
-    return -1;
-  }
-  return 0;
-}
-
-struct file_time_job *moonbitlang_async_make_file_time_job(HANDLE fd, void *out) {
-  struct file_time_job *job = MAKE_JOB(file_time, 0);
-  job->fd = fd;
-  job->out = out;
-  return job;
-}
-
-// ===== file time by path job, get timestamp of path on file system =====
-static
-int32_t moonbitlang_async_get_file_time_by_path(
-  os_string_t path,
-  void *out,
   int32_t follow_symlink
 ) {
-#ifdef _WIN32
-
-  DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-  if (!follow_symlink)
-    flags |= FILE_FLAG_OPEN_REPARSE_POINT;
-
-  HANDLE handle = CreateFileW(
-    path,
-    FILE_READ_ATTRIBUTES, // desired access
-    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-    NULL, // security attributes
-    OPEN_EXISTING, // creation mode
-    flags, // flags and attributes
-    NULL // template file
-  );
-  if (handle == INVALID_HANDLE_VALUE)
-    return -1;
-
-  int32_t ret = moonbitlang_async_get_file_time_sync(handle, out);
-  CloseHandle(handle);
-  return ret;
-
-#else
-
-  if (follow_symlink) {
-    return stat(path, out);
-  } else {
-    return lstat(path, out);
-  }
-
-#endif
-}
-
-struct file_time_by_path_job {
-  os_string_t path;
-  void *out;
-  int follow_symlink;
-};
-
-static
-void free_file_time_by_path_job(struct file_time_by_path_job *job) {
-  moonbit_decref(job->path);
-  moonbit_decref(job->out);
-}
-
-static
-int32_t file_time_by_path_job_worker(struct file_time_by_path_job *job, int32_t *err_out) {
-  int32_t ret = moonbitlang_async_get_file_time_by_path(job->path, job->out, job->follow_symlink);
-  if (ret < 0)
-    *err_out = GetLastError();
-
-  return ret;
-}
-
-struct file_time_by_path_job *moonbitlang_async_make_file_time_by_path_job(
-  os_string_t path,
-  void *out,
-  int follow_symlink
-) {
-  struct file_time_by_path_job *job = MAKE_JOB(file_time_by_path, 0);
+  struct statx_job *job = MAKE_JOB(statx, 0);
   job->path = path;
-  job->out = out;
+  job->request = request;
+  job->buf = buf;
+  job->buf_len = buf_len;
+  job->parent = parent;
   job->follow_symlink = follow_symlink;
   return job;
 }

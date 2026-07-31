@@ -476,7 +476,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::atime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::atime()").atime()
+  @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
 }
 
 ///|
@@ -484,7 +484,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::mtime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::mtime()").mtime()
+  @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
 }
 
 ///|
@@ -492,7 +492,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::ctime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::ctime()").ctime()
+  @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
 }
 
 ///|

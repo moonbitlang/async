@@ -132,33 +132,48 @@ extern "C" fn OpenJob::dev_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open
 extern "C" fn OpenJob::file_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
 
 ///|
-extern "C" fn Job::kind_of_fd(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_kind_of_fd_job"
+pub const STAT_FILE_KIND : UInt = 0x0001
 
 ///|
-#owned(path)
-extern "C" fn Job::file_kind_by_path(
-  parent : @fd_util.Fd,
+pub const STAT_FILE_SIZE : UInt = 0x0002
+
+///|
+pub const STAT_DEVICE_ID : UInt = 0x0004
+
+///|
+pub const STAT_FILE_ID : UInt = 0x0008
+
+///|
+pub const STAT_ACCESS_TIME : UInt = 0x0010
+
+///|
+pub const STAT_MODIFY_TIME : UInt = 0x0020
+
+///|
+pub const STAT_CHANGE_TIME : UInt = 0x0040
+
+///|
+pub const STAT_CREATE_TIME : UInt = 0x0080
+
+///|
+#owned(buf)
+extern "C" fn Job::fstatx(
+  fd : @fd_util.Fd,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+) -> Job = "moonbitlang_async_make_fstatx_job"
+
+///|
+#owned(path, buf)
+extern "C" fn Job::statx(
   path : @os_string.OsString,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+  parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_file_kind_by_path_job"
-
-///|
-extern "C" fn Job::file_size(fd : @fd_util.Fd) -> Job = "moonbitlang_async_make_file_size_job"
-
-///|
-extern "C" fn Job::get_file_size_result(job : Job) -> Int64 = "moonbitlang_async_get_file_size_result"
-
-///|
-#owned(out)
-extern "C" fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job = "moonbitlang_async_make_file_time_job"
-
-///|
-#owned(path, out)
-extern "C" fn Job::file_time_by_path(
-  path : @os_string.OsString,
-  out : @fd_util.FileTime,
-  follow_symlink~ : Bool,
-) -> Job = "moonbitlang_async_make_file_time_by_path_job"
+) -> Job = "moonbitlang_async_make_statx_job"
 
 ///|
 pub(all) enum Access {

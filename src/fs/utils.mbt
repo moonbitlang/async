@@ -37,7 +37,7 @@ pub async fn atime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.atime()").atime()
+  @event_loop.atime_by_path(path, follow_symlink~, context="@fs.atime()")
 }
 
 ///|
@@ -51,7 +51,7 @@ pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.mtime()").mtime()
+  @event_loop.mtime_by_path(path, follow_symlink~, context="@fs.mtime()")
 }
 
 ///|
@@ -65,7 +65,7 @@ pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool = true,
 ) -> (Int64, Int) {
-  @event_loop.file_time_by_path(path, follow_symlink~, context="@fs.ctime()").ctime()
+  @event_loop.ctime_by_path(path, follow_symlink~, context="@fs.ctime()")
 }
 
 ///|
