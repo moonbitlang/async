@@ -69,4 +69,3 @@ pub impl Show for MessageKind
 // Type aliases
 
 // Traits
-

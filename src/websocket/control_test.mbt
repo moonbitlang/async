@@ -136,7 +136,7 @@ async test "close test" {
     ws_client.send_close(code=Normal, reason="abcd")
     // The `close` reply should come first
     json_inspect(http_client.read_exactly(2).to_array(), content=[0x88, 6])
-    guard http_client.read_exactly(2) is [u16be(code)]
+    guard! http_client.read_exactly(2) is [u16be(code)]
     inspect(code, content="1000")
     inspect(@utf8.decode(http_client.read_exactly(4)), content="abcd")
   }

@@ -418,7 +418,7 @@ pub async fn walk(
   allow_failure? : Bool = false,
 ) -> Unit {
   let context = "@fs.walk()"
-  guard max_concurrency > 0
+  guard! max_concurrency > 0
   let sem = @async.Semaphore(max_concurrency)
   @async.with_task_group() <| fn(group) {
     fn handle_path(path : String) {

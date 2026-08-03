@@ -95,8 +95,8 @@ impl WatcherBackend for WindowsWatcher with fn wait(self) {
   if self.err is Some(err) {
     raise err
   }
-  guard self.event_processor is Some(_)
-  guard self.waiter is None
+  guard! self.event_processor is Some(_)
+  guard! self.waiter is None
   let root = self.watcher.watched[self.watcher.root_id]
   while root.is_clean() {
     self.waiter = Some(@coroutine.current_coroutine())

@@ -109,4 +109,3 @@ pub fn UdpServer::set_multicast_ttl(Self, Int) -> Unit raise
 // Type aliases
 
 // Traits
-

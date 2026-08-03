@@ -654,7 +654,7 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
   }
   defer cert.free()
   let len = cert.length()
-  guard len > 0
+  guard! len > 0
   let result = FixedArray::make(len, b'\x00')
   cert.blit_to(result, len~)
   Some(result.unsafe_reinterpret_as_bytes())

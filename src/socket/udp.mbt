@@ -95,7 +95,7 @@ pub fn UdpClient::set_multicast_interface(
   addr : Addr,
 ) -> Unit raise {
   let context = "@socket.UdpClient::set_multicast_interface()"
-  guard self.addr.family() is IPv4
+  guard! self.addr.family() is IPv4
   guard addr.family() is IPv4 else {
     raise Failure::Failure("\{context}: expected IPv4 address")
   }
@@ -113,7 +113,7 @@ pub fn UdpClient::set_multicast_interface_v6(
   self : UdpClient,
   interface : String,
 ) -> Unit raise {
-  guard self.addr.family() is IPv6
+  guard! self.addr.family() is IPv6
   let context = "@socket.UdpClient::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),
@@ -310,7 +310,7 @@ pub fn UdpServer::set_multicast_interface(
   self : UdpServer,
   addr : Addr,
 ) -> Unit raise {
-  guard self.addr.family() is IPv4
+  guard! self.addr.family() is IPv4
   set_multicast_interface(
     self.io.fd(),
     addr,
@@ -329,7 +329,7 @@ pub fn UdpServer::set_multicast_interface_v6(
   self : UdpServer,
   interface : String,
 ) -> Unit raise {
-  guard self.addr.family() is IPv6
+  guard! self.addr.family() is IPv6
   let context = "@socket.UdpServer::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),

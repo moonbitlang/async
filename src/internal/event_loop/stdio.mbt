@@ -32,7 +32,7 @@ fn kind_of_fd_sync(
   if fstatx_sync(fd, STAT_FILE_KIND, buf, buf.length()) < 0 {
     @os_error.check_errno(context)
   }
-  guard buf is [u32le(_), u32le(mask), i64le(kind)]
+  guard! buf is [u32le(_), u32le(mask), i64le(kind)]
   guard mask == STAT_FILE_KIND else {
     raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
   }
@@ -108,8 +108,8 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
   stdio_handles[fd] = handle
   register_hook(
     init=() => {
-      guard curr_loop.val is Some(evloop)
-      guard evloop.fds.get(fd) is None
+      guard! curr_loop.val is Some(evloop)
+      guard! evloop.fds.get(fd) is None
       evloop.fds[fd] = handle
     },
     exit=() => handle.detach_from_event_loop(),

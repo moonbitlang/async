@@ -214,7 +214,7 @@ pub fn Decoder::write_partial_data(
   input_offset? : Int = 0,
   input_len? : Int = input.length() - input_offset,
 ) -> Unit {
-  guard input_len < self.minimum_input_size()
+  guard! input_len < self.minimum_input_size()
   self.ensure_pending_capacity(self.raw_minimum_input_size())
   self.copy_to_pending(input, input_offset, input_len)
 }
@@ -471,7 +471,7 @@ fn Decoder::finish_stored_header(
   is_final~ : Bool,
 ) -> Unit raise {
   let start = input.index
-  guard input.input[start:] is [u16le(len), u16le(nlen), ..]
+  guard! input.input[start:] is [u16le(len), u16le(nlen), ..]
   guard (len ^ nlen) == 0xffff else {
     raise InvalidBlock("stored block length checksum mismatch")
   }
@@ -956,10 +956,10 @@ pub fn Decoder::write(
   output_offset? : Int = 0,
   output_len? : Int = output.length() - output_offset,
 ) -> (Int, Int) raise {
-  guard input_offset >= 0 && input_offset <= input.length()
-  guard input_len >= 0 && input_len <= input.length() - input_offset
-  guard output_offset >= 0 && output_offset <= output.length()
-  guard output_len >= 0 && output_len <= output.length() - output_offset
+  guard! input_offset >= 0 && input_offset <= input.length()
+  guard! input_len >= 0 && input_len <= input.length() - input_offset
+  guard! output_offset >= 0 && output_offset <= output.length()
+  guard! output_len >= 0 && output_len <= output.length() - output_offset
   if self.pending_len == 0 {
     return self.write_direct(
       input,

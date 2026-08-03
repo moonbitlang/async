@@ -25,4 +25,3 @@ pub impl[W : @io.Writer] @io.Writer for Encoder[W]
 // Type aliases
 
 // Traits
-

@@ -112,7 +112,7 @@ pub impl @io.Writer for ServerConnection with fn write_once(
   offset~,
   len~,
 ) {
-  guard !(self.sender.mode is SendingHeader)
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
@@ -136,7 +136,7 @@ pub async fn ServerConnection::write_string(
 
 ///|
 pub impl @io.Writer for ServerConnection with fn write_reader(self, reader) {
-  guard !(self.sender.mode is SendingHeader)
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 
@@ -300,7 +300,7 @@ pub async fn Server::run_forever(
 /// (i.e. not in the middle of sending a response).
 /// Unread data from the body of the last request will be discarded.
 pub async fn ServerConnection::enter_passthrough_mode(self : Self) -> Unit {
-  guard self.sender.mode is SendingHeader
+  guard! self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
 }

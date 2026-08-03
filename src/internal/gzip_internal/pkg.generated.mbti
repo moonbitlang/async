@@ -25,4 +25,3 @@ pub fn Encoder::write(Self, Bytes, FixedArray[Byte], input_offset? : Int, input_
 // Type aliases
 
 // Traits
-

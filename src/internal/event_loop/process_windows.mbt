@@ -51,7 +51,7 @@ pub async fn Process::wait_pid_windows(
   self : Process,
   context~ : String,
 ) -> Int {
-  guard self.handle is Some(io)
+  guard! self.handle is Some(io)
   let job = Job::wait_for_process(io.fd, pid=self.pid)
   defer job.free()
   let _ = perform_job_in_worker(job, context~, cancellable=true)

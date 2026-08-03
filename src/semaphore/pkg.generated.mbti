@@ -19,4 +19,3 @@ pub fn Semaphore::try_acquire(Self) -> Bool
 // Type aliases
 
 // Traits
-

@@ -310,7 +310,7 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   }
 
   // Read first two bytes
-  guard self.transport.read_exactly(2)
+  guard! self.transport.read_exactly(2)
     is [
       u1be(fin),
       u1be(rsv1),
@@ -342,13 +342,13 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
 
   // Validate payload length according to RFC 6455 Section 5.2
   if payload_len == 126L {
-    guard self.transport.read_exactly(2) is [u16be(len)]
+    guard! self.transport.read_exactly(2) is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
       self.protocol_error("Invalid payload length format")
     }
   } else if payload_len == 127L {
-    guard self.transport.read_exactly(8) is [u64be(len)]
+    guard! self.transport.read_exactly(8) is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
     if payload_len < 0L {
       self.protocol_error("Invalid payload length format")
@@ -727,7 +727,7 @@ pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
     None => @tls.rand_bytes(64)
   }
   let len = msg.length()
-  guard len <= 125
+  guard! len <= 125
   let payload_start = if self.write_mask is Some(_) { 2 + MASK_SIZE } else { 2 }
   let frame = FixedArray::make(payload_start + len, b'\x00')
   frame[0] = 0x89

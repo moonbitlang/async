@@ -26,7 +26,7 @@ async test "kind of symlink to regular" {
 
 ///|
 async test "kind of symlink to directory" {
-  guard @env.current_dir() is Some(cwd)
+  guard! @env.current_dir() is Some(cwd)
   let link_path = "_build/stat_symlink_to_dir_test"
   @fs.symlink(link_path, target="\{cwd}/_build")
   @async.with_task_group() <| group => {

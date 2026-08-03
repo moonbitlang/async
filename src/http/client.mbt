@@ -186,13 +186,13 @@ pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
 /// Writing to `@http.Client` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
 pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
-  guard !(self.sender.mode is SendingHeader)
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
 pub impl @io.Writer for Client with fn write_reader(self, reader) {
-  guard !(self.sender.mode is SendingHeader)
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 
@@ -316,7 +316,7 @@ pub async fn Client::post(
 /// (i.e. not in the middle of sending a request).
 /// Unread data from the body of the last response will be discarded.
 pub async fn Client::enter_passthrough_mode(self : Client) -> Unit {
-  guard self.sender.mode is SendingHeader
+  guard! self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
 }

@@ -76,7 +76,7 @@ priv enum SignalHandler {
 ///|
 #cfg(not(platform="windows"))
 fn setup_signal_handler_unix() -> @coroutine.Coroutine {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
@@ -157,7 +157,7 @@ async fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   handler : SignalHandler,
 ) -> Unit {
-  guard handler is SigwaitHandler(sigwait_task)
+  guard! handler is SigwaitHandler(sigwait_task)
   evloop.terminate_signal_handler_unix(sigwait_task)
 }
 
@@ -174,7 +174,7 @@ fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   handler : SignalHandler,
 ) -> Unit raise {
-  guard handler is ConsoleControlHandler
+  guard! handler is ConsoleControlHandler
   evloop.terminate_signal_handler_windows()
 }
 

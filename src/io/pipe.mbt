@@ -93,7 +93,7 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 /// Data transfer only happen when reader and writer are present at the same time.
 pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) {
   let PipeRead(self) = self
-  guard self.reader is NoReader
+  guard! self.reader is NoReader
   @coroutine.check_cancellation()
   match self.writer {
     NoWriter => {
@@ -109,7 +109,7 @@ pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) 
           return result
         err => raise err
       }
-      guard reader is HasReader(result~, ..)
+      guard! reader is HasReader(result~, ..)
       result
     }
     WriteEndClosed => 0
@@ -143,7 +143,7 @@ pub suberror PipeClosed derive(Debug, ToJson)
 /// Data transfer only happen when reader and writer are present at the same time.
 pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
   let PipeWrite(self) = self
-  guard self.writer is NoWriter
+  guard! self.writer is NoWriter
   @coroutine.check_cancellation()
   match self.reader {
     NoReader => {
@@ -160,7 +160,7 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
           return result
         err => raise err
       }
-      guard writer is HasWriter(result~, ..)
+      guard! writer is HasWriter(result~, ..)
       guard result > 0 else { raise PipeClosed }
       result
     }

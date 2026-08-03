@@ -61,7 +61,7 @@ pub fn IoHandle::kind(handle : IoHandle) -> @fd_util.FileKind {
 /// but does not close the file descriptor itself.
 /// The underlying file descriptor is returned.
 pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { return }
   evloop.fds.remove(handle.fd)
 }
@@ -98,8 +98,8 @@ pub fn IoHandle::from_fd(
   read_only? : Bool = false,
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
-  guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is None
+  guard! curr_loop.val is Some(evloop)
+  guard! evloop.fds.get(fd) is None
   if is_async {
     evloop.bus.register(fd, read_only~) catch {
       err => {
@@ -139,7 +139,7 @@ async fn IoHandle::read_via_worker(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard handle.read is Idle
+  guard! handle.read is Idle
   handle.read = Submitted
   defer {
     handle.read = Idle
@@ -185,7 +185,7 @@ async fn IoHandle::write_via_worker(
   len~ : Int,
   context~ : String,
 ) -> Int {
-  guard handle.write is Idle
+  guard! handle.write is Idle
   handle.write = Submitted
   defer {
     handle.write = Idle
@@ -240,7 +240,7 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard !handle.is_async
+  guard! !handle.is_async
   let job = Job::read(handle.fd, buf, offset, len, position~)
   defer job.free()
   perform_job_in_worker(job, context~, cancellable=platform is Windows)
@@ -259,7 +259,7 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  guard !handle.is_async
+  guard! !handle.is_async
   guard handle.write_offset >= 0 else {
     raise Failure::Failure(
       "`write_at` is not supported on non-regular file or file opened in append mode",

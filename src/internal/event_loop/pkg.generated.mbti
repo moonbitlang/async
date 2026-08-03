@@ -162,4 +162,3 @@ pub fn Timer::new(Int, () -> Unit) -> Self
 // Type aliases
 
 // Traits
-

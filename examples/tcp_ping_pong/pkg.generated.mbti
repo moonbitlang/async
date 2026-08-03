@@ -17,4 +17,3 @@ pub(all) struct Printer((String) -> Unit)
 // Type aliases
 
 // Traits
-

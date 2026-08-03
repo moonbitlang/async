@@ -580,7 +580,7 @@ async test "realpath - resolve absolute path" {
   @fs.mkdir(test_dir)
   let real_path = @fs.realpath(test_dir)
   @fs.rmdir(test_dir)
-  guard @env.current_dir() is Some(cwd)
+  guard! @env.current_dir() is Some(cwd)
   assert_true(real_path.has_prefix(cwd))
   inspect(
     // replace `\\` with `/` for Windows

@@ -502,7 +502,7 @@ pub fn Encoder::write(
   output_offset? : Int = 0,
   output_len? : Int = output.length() - output_offset,
 ) -> (Int, Int) {
-  guard !self.finished
+  guard! !self.finished
   guard input_len > 0 else { return (0, 0) }
   let mut produced = 0
   if !self.started {
@@ -535,7 +535,7 @@ pub fn Encoder::end(
   guard !self.finished else { return 0 }
   let mut produced = 0
   let trailer = self.trailer_state.snapshot()
-  guard self.minimum_output_space(end=true) <= output_len
+  guard! self.minimum_output_space(end=true) <= output_len
   if !self.started {
     produced = self.write_header(output, output_offset, produced)
   }
