@@ -28,7 +28,7 @@ pub fn pipe(
   if 0 != pipe_ffi(fds) {
     @os_error.check_errno(context)
   }
-  guard fds is [r, w]
+  guard! fds is [r, w]
   try {
     set_cloexec(r, context~)
     set_cloexec(w, context~)

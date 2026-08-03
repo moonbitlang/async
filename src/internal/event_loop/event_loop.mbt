@@ -140,7 +140,7 @@ pub fn with_event_loop(
   f : async () -> Unit,
   max_worker_count? : Int = 1024,
 ) -> Unit raise {
-  guard curr_loop.val is None
+  guard! curr_loop.val is None
   let evloop = EventLoop::new(max_worker_count~)
   defer evloop.destroy()
   curr_loop.val = Some(evloop)
@@ -231,7 +231,7 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     }
     self.killed_by_signal = Some(job_id ^ (1 << 31))
   }
-  guard self.running_workers.get(job_id) is Some(worker)
+  guard! self.running_workers.get(job_id) is Some(worker)
   self.running_workers.remove(job_id)
   match self.job_queue.iter().next() {
     None => {
@@ -352,7 +352,7 @@ priv enum CancellationStatus {
 async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
 ) -> Unit {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   try cancel_func() catch {
     err => {
       // The cancellation operation itself failed.
@@ -433,7 +433,7 @@ async fn perform_job_in_worker(
   cancellable? : Bool = false,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {

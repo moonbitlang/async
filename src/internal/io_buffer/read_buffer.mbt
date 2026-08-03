@@ -56,7 +56,7 @@ pub fn Buffer::enlarge_to(self : Buffer, n : Int) -> Unit {
 
 ///|
 pub fn Buffer::drop(self : Buffer, n : Int) -> Unit {
-  guard n <= self.len
+  guard! n <= self.len
   self.len -= n
   if self.len == 0 {
     self.start = 0

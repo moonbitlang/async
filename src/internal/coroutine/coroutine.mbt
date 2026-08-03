@@ -75,12 +75,12 @@ pub fn Coroutine::cancel(self : Coroutine) -> Unit {
 
 ///|
 pub async fn pause() -> Unit {
-  guard scheduler.curr_coro is Some(coro)
+  guard! scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
   async_suspend() <| fn(ok_cont, err_cont) {
-    guard coro.state is Running
+    guard! coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
     coro.ready = true
     scheduler.run_later.push_back(coro)
@@ -89,12 +89,12 @@ pub async fn pause() -> Unit {
 
 ///|
 pub async fn suspend() -> Unit {
-  guard scheduler.curr_coro is Some(coro)
+  guard! scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
     raise Cancelled
   }
   async_suspend() <| fn(ok_cont, err_cont) {
-    guard coro.state is Running
+    guard! coro.state is Running
     coro.state = Suspend(ok_cont~, err_cont~)
   }
 }
@@ -145,8 +145,8 @@ pub fn Coroutine::unwrap(self : Coroutine) -> Unit raise {
 
 ///|
 pub async fn Coroutine::wait(target : Coroutine) -> Unit {
-  guard scheduler.curr_coro is Some(coro)
-  guard !physical_equal(coro, target)
+  guard! scheduler.curr_coro is Some(coro)
+  guard! !physical_equal(coro, target)
   match target.state {
     Done => return
     Fail(err) => raise err
@@ -176,7 +176,7 @@ pub async fn[X] protect_from_cancel(
   f : async () -> X,
   resume_on_cancel? : Bool = false,
 ) -> X {
-  guard scheduler.curr_coro is Some(coro)
+  guard! scheduler.curr_coro is Some(coro)
   if coro.shielded {
     // already in a shield, do nothing
     f()

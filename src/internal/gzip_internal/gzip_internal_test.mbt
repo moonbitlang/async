@@ -39,7 +39,7 @@ fn encode(
       Min => encoder.minimum_output_space(end=false)
       Max => output.length() - output_offset
     }
-    guard input_len > 0 && output_len > 0
+    guard! input_len > 0 && output_len > 0
     let (consumed, produced) = encoder.write(
       data,
       input_offset~,
@@ -48,8 +48,8 @@ fn encode(
       output_offset~,
       output_len~,
     )
-    guard consumed < input_len + 1
-    guard produced < output_len + 1
+    guard! consumed < input_len + 1
+    guard! produced < output_len + 1
     input_offset += consumed
     output_offset += produced
     if step > data.length() * 2 {
@@ -94,7 +94,7 @@ fn decode(
       Min => 1
       Max => output.length() - output_offset
     }
-    guard input_len > 0 && output_len > 0
+    guard! input_len > 0 && output_len > 0
     let (consumed, produced) = decoder.write(
       compressed,
       input_offset~,
@@ -103,15 +103,15 @@ fn decode(
       output_offset~,
       output_len~,
     )
-    guard consumed < input_len + 1
-    guard produced < output_len + 1
+    guard! consumed < input_len + 1
+    guard! produced < output_len + 1
     input_offset += consumed
     output_offset += produced
     if step > max_steps {
       raise Failure::Failure("too many steps")
     }
   }
-  guard input_offset == compressed.length()
+  guard! input_offset == compressed.length()
   output.unsafe_reinterpret_as_bytes()[:output_offset].to_owned()
 }
 
@@ -165,7 +165,7 @@ test "gzip decode partial resume copied bytes" {
     output,
     output_len=output.length(),
   )
-  guard prefix_consumed == 11
+  guard! prefix_consumed == 11
   decoder.write_partial_data(compressed, input_offset=11, input_len=5)
   let (consumed, produced) = decoder.write(
     compressed,
@@ -175,8 +175,8 @@ test "gzip decode partial resume copied bytes" {
     output_offset=prefix_produced,
     output_len=output.length() - prefix_produced,
   )
-  guard 16 + consumed == compressed.length()
-  guard decoder.is_finished()
+  guard! 16 + consumed == compressed.length()
+  guard! decoder.is_finished()
   assert_eq(
     output.unsafe_reinterpret_as_bytes()[:prefix_produced + produced].to_owned(),
     expected,

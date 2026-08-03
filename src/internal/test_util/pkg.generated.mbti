@@ -15,4 +15,3 @@ pub async fn[T, E : Error] expect_error_async(async () -> T raise E, loc~ : Sour
 // Type aliases
 
 // Traits
-

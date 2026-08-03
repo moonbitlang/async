@@ -17,15 +17,15 @@
 async test "set cwd" {
   @async.with_task_group() <| root => {
     // FIXME(upstram): missing codelens here
-    guard @env.current_dir() is Some(prev_cwd)
+    guard! @env.current_dir() is Some(prev_cwd)
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg() <| () => {
       let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="test_directory", extra_env={
         "LC_ALL": "C",
       })
-      guard @env.current_dir() is Some(new_cwd)
-      guard prev_cwd == new_cwd
+      guard! @env.current_dir() is Some(new_cwd)
+      guard! prev_cwd == new_cwd
     }
     let files = r
       .read_all()

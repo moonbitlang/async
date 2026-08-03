@@ -302,7 +302,7 @@ async fn Reader::read_headers(
 /// HTTP header fields are case insensitive.
 /// In the result of `read_request`, all header fields will be in lower case.
 async fn Reader::read_request(self : Reader) -> Request {
-  guard self.body is Empty
+  guard! self.body is Empty
   guard self.transport.read_until("\r\n") is Some(request_line) else {
     raise @io.ReaderClosed
   }
@@ -380,7 +380,7 @@ async fn Reader::read_response(
   request_method~ : RequestMethod?,
 ) -> Response {
   self.auto_decompress = auto_decompress
-  guard self.body is Empty
+  guard! self.body is Empty
   guard self.transport.read_until("\r\n") is Some(response_line) else {
     raise @io.ReaderClosed
   }

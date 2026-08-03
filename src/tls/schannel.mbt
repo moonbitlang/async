@@ -408,7 +408,7 @@ extern "C" fn Schannel::write(
 #cfg(platform="windows")
 pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   let write_buf = self.transport.write_buf
-  guard write_buf.len == 0
+  guard! write_buf.len == 0
   let max_len = write_buf.buf.length() -
     write_buf.start -
     self.context.record_overhead()
@@ -526,7 +526,7 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
   }
   defer cert.free()
   let len = cert.length()
-  guard len > 0
+  guard! len > 0
   let result = FixedArray::make(len, b'\x00')
   cert.blit_to(result, len~)
   Some(result.unsafe_reinterpret_as_bytes())
@@ -537,7 +537,7 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
 fn ChannelBinding::to_bytes(self : ChannelBinding) -> Bytes {
   defer self.free()
   let len = self.length()
-  guard len > 0
+  guard! len > 0
   let buf = FixedArray::make(len, b'\x00')
   self.blit_to(buf, len~)
   buf.unsafe_reinterpret_as_bytes()

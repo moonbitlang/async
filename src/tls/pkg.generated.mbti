@@ -52,4 +52,3 @@ pub(all) enum X509FileType {
 // Type aliases
 
 // Traits
-

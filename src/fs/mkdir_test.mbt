@@ -25,7 +25,7 @@ async test "mkdir" {
 
 ///|
 async test "rmdir recursive" {
-  guard @env.current_dir() is Some(cwd)
+  guard! @env.current_dir() is Some(cwd)
   let path = "_build/rmdir_test"
   @fs.mkdir(path, permission=0o755)
   @fs.write_file("\{path}/file", "", create_mode=CreateOrTruncate)

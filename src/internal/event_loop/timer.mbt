@@ -24,7 +24,7 @@ let timer_id : Ref[Int] = { val: 0 }
 
 ///|
 pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   let expire_time = now() + duration.to_int64()
   timer_id.val += 1
   let timer = { timer_id: timer_id.val, expire_time, callback }
@@ -34,7 +34,7 @@ pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
 
 ///|
 pub fn Timer::cancel(timer : Timer) -> Unit {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   evloop.timers.remove(timer)
 }
 

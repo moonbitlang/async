@@ -49,4 +49,3 @@ pub impl Hash for Coroutine
 // Type aliases
 
 // Traits
-

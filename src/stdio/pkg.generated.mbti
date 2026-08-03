@@ -26,4 +26,3 @@ pub impl @io.Writer for Output
 // Type aliases
 
 // Traits
-

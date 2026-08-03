@@ -55,7 +55,7 @@ pub async fn open(
   } noraise {
     _ => {
       let fd = job.fd()
-      guard stat_buf
+      guard! stat_buf
         is [u32le(_), u32le(mask), i64le(kind), u64le(dev_id), u64le(file_id)]
       guard (mask & STAT_FILE_KIND) > 0 else {
         // we need at least the file kind
@@ -147,7 +147,7 @@ async fn fstatx_single(
 ) -> ArrayView[Byte] {
   let buf = FixedArray::make(8 + (length << 3), b'\x00')
   fstatx(fd, request, buf, buf.length(), context~)
-  guard buf is [u32le(_), u32le(mask), .. payload]
+  guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
     raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
   }
@@ -196,7 +196,7 @@ async fn statx_single(
 ) -> ArrayView[Byte] {
   let buf = FixedArray::make(8 + (length << 3), b'\x00')
   statx(path, parent~, follow_symlink~, request, buf, buf.length(), context~)
-  guard buf is [u32le(_), u32le(mask), .. payload]
+  guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
     raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
   }
@@ -209,7 +209,7 @@ pub async fn kind_of_fd(
   fd : @fd_util.Fd,
   context~ : String,
 ) -> @fd_util.FileKind {
-  guard fstatx_single(fd, STAT_FILE_KIND, 1, context~) is [u64le(kind)]
+  guard! fstatx_single(fd, STAT_FILE_KIND, 1, context~) is [u64le(kind)]
   @fd_util.FileKind::unsafe_from_int(kind.to_int())
 }
 
@@ -225,7 +225,7 @@ pub async fn file_kind_by_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> @fd_util.FileKind {
-  guard statx_single(
+  guard! statx_single(
       path,
       parent~,
       follow_symlink~,
@@ -260,7 +260,7 @@ pub async fn file_kind_by_path(
 ///|
 #cfg(target="native")
 pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
-  guard fstatx_single(fd, STAT_FILE_SIZE, 1, context~) is [i64le(size)]
+  guard! fstatx_single(fd, STAT_FILE_SIZE, 1, context~) is [i64le(size)]
   size
 }
 
@@ -276,7 +276,7 @@ pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
 ///|
 #cfg(target="native")
 pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  guard fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
+  guard! fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
 }
@@ -284,7 +284,7 @@ pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
 ///|
 #cfg(target="native")
 pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  guard fstatx_single(fd, STAT_ACCESS_TIME, 2, context~)
+  guard! fstatx_single(fd, STAT_ACCESS_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
 }
@@ -292,7 +292,7 @@ pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
 ///|
 #cfg(target="native")
 pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  guard fstatx_single(fd, STAT_CHANGE_TIME, 2, context~)
+  guard! fstatx_single(fd, STAT_CHANGE_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
 }
@@ -304,7 +304,7 @@ pub async fn mtime_by_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> (Int64, Int) {
-  guard statx_single(
+  guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
       follow_symlink~,
@@ -323,7 +323,7 @@ pub async fn atime_by_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> (Int64, Int) {
-  guard statx_single(
+  guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
       follow_symlink~,
@@ -342,7 +342,7 @@ pub async fn ctime_by_path(
   follow_symlink~ : Bool,
   context~ : String,
 ) -> (Int64, Int) {
-  guard statx_single(
+  guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
       follow_symlink~,
@@ -577,7 +577,7 @@ pub async fn IoHandle::readdir(
   restart~ : Bool,
   context~ : String,
 ) -> Int {
-  guard dir.read is Idle
+  guard! dir.read is Idle
   dir.read = Submitted
   defer {
     dir.read = Idle
@@ -634,7 +634,7 @@ pub async fn IoHandle::read_dir_changes(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard handle.kind is Directory
+  guard! handle.kind is Directory
   let result = IoResult::for_read_dir_changes(buf, len~)
   defer result.free()
   let n = read_dir_changes_ffi(handle.fd, result)

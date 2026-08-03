@@ -98,4 +98,3 @@ pub using @aqueue {type Queue}
 pub using @semaphore {type Semaphore}
 
 // Traits
-

@@ -72,4 +72,3 @@ pub impl ProcessInput for @stdio.Input
 trait ProcessOutput
 pub impl ProcessOutput for @pipe.PipeWrite
 pub impl ProcessOutput for @stdio.Output
-

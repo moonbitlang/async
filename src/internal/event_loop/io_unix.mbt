@@ -15,11 +15,11 @@
 ///|
 #cfg(not(platform="windows"))
 pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  guard handle.read is Idle
+  guard! handle.read is Idle
   handle.read = Waiting(@coroutine.current_coroutine())
   defer {
     handle.read = Idle
@@ -30,11 +30,11 @@ pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  guard handle.write is Idle
+  guard! handle.write is Idle
   let coro = @coroutine.current_coroutine()
   handle.write = Waiting(coro)
   defer {

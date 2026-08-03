@@ -316,7 +316,7 @@ async fn Sender::send_request(
   path : StringView,
   extra_headers~ : Map[String, String],
 ) -> Bool {
-  guard self.mode is SendingHeader
+  guard! self.mode is SendingHeader
   self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
     Get => self.write(b"GET ")
@@ -358,7 +358,7 @@ async fn Sender::send_response(
   cookies~ : Array[Cookie],
   request_method~ : RequestMethod,
 ) -> Unit {
-  guard self.mode is SendingHeader
+  guard! self.mode is SendingHeader
   match request_method {
     Head => self.should_have_empty_body = true
     Connect => self.should_have_empty_body = code is (100..<300 | 304)

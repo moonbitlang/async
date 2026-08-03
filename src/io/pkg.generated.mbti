@@ -74,4 +74,3 @@ pub(open) trait Writer {
   async fn write(Self, &Data) -> Unit = _
   async fn write_reader(Self, &Reader) -> Unit = _
 }
-

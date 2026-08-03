@@ -29,7 +29,7 @@ async test "Only_V4 server" {
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -86,7 +86,7 @@ async test "Only_V6 server" {
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -140,7 +140,7 @@ async test "dual stack server" {
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -195,7 +195,7 @@ async test "Only_V4 UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }
@@ -251,7 +251,7 @@ async test "Only_V6 UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }
@@ -304,7 +304,7 @@ async test "dual stack UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }

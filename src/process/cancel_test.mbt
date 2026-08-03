@@ -60,7 +60,7 @@ async test "cancel process timeout" {
     })
     let t_receive_graceful_termination = root.spawn(() => {
       defer r.close()
-      guard r.read_some() is Some(data)
+      guard! r.read_some() is Some(data)
       let data = @utf8.decode(data).trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
