@@ -102,7 +102,7 @@ extern "C" fn Job::write(
 ) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
-#owned(filename)
+#owned(filename, stat_buf)
 extern "C" fn Job::open(
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
@@ -114,6 +114,9 @@ extern "C" fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
+  stat_request~ : UInt,
+  stat_buf~ : FixedArray[Byte],
+  stat_buf_len~ : Int,
 ) -> OpenJob = "moonbitlang_async_make_open_job"
 
 ///|
@@ -121,15 +124,6 @@ priv struct OpenJob(Job)
 
 ///|
 extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
-
-///|
-extern "C" fn OpenJob::kind(job : OpenJob) -> @fd_util.FileKind = "moonbitlang_async_open_job_get_kind"
-
-///|
-extern "C" fn OpenJob::dev_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_dev_id"
-
-///|
-extern "C" fn OpenJob::file_id(job : OpenJob) -> UInt64 = "moonbitlang_async_open_job_get_file_id"
 
 ///|
 pub const STAT_FILE_KIND : UInt = 0x0001

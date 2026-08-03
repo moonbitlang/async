@@ -997,18 +997,15 @@ struct open_job {
   int permission;
   HANDLE result;
 
-  struct {
-    uint32_t length;
-    uint32_t returned_mask;
-    uint64_t kind;
-    uint64_t dev_id;
-    uint64_t file_id;
-  } stat;
+  uint32_t stat_request;
+  void *stat_buf;
+  int32_t stat_buf_len;
 };
 
 static
 void free_open_job(struct open_job *job) {
   moonbit_decref(job->filename);
+  moonbit_decref(job->stat_buf);
 }
 
 static
@@ -1043,9 +1040,9 @@ int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
 
   int ret = moonbitlang_async_fstatx_sync(
     job->result,
-    STAT_FILE_KIND | STAT_DEVICE_ID | STAT_FILE_ID,
-    &job->stat,
-    sizeof(job->stat)
+    job->stat_request,
+    job->stat_buf,
+    job->stat_buf_len
   );
   if (ret < 0) {
     *err_out = GetLastError();
@@ -1067,7 +1064,10 @@ struct open_job *moonbitlang_async_make_open_job(
   int create_mode,
   int append,
   int sync_mode,
-  int permission
+  int permission,
+  uint32_t stat_request,
+  void *stat_buf,
+  int32_t stat_buf_len
 ) {
   struct open_job *job = MAKE_JOB(open, 0);
   job->filename = filename;
@@ -1076,27 +1076,15 @@ struct open_job *moonbitlang_async_make_open_job(
   job->append = append;
   job->sync_mode = sync_mode;
   job->permission = permission;
+  job->stat_buf = stat_buf;
+  job->stat_buf_len = stat_buf_len;
+  job->stat_request = stat_request;
   return job;
 }
 
 MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
   return job->result;
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_open_job_get_kind(struct open_job *job) {
-  return job->stat.kind;
-}
-
-MOONBIT_FFI_EXPORT
-uint64_t moonbitlang_async_open_job_get_dev_id(struct open_job *job) {
-  return job->stat.dev_id;
-}
-
-MOONBIT_FFI_EXPORT
-uint64_t moonbitlang_async_open_job_get_file_id(struct open_job *job) {
-  return job->stat.file_id;
 }
 
 // ===== fstatx job, get properties of an existing fd =====

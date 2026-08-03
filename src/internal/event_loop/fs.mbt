@@ -20,6 +20,69 @@ pub(all) struct FileIdentity {
 } derive(Eq, Hash)
 
 ///|
+#cfg(target="native")
+pub async fn open(
+  path : StringView,
+  // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
+  access : Int,
+  // See `@fs.CreateMode` for more details
+  create~ : Int,
+  append~ : Bool,
+  // 0 => no sync, 1 => data sync, 2 => full sync
+  sync~ : Int,
+  // permission for file when new file is created
+  mode~ : Int,
+  context~ : String,
+) -> (IoHandle, FileIdentity) {
+  let path_bytes = @os_string.encode(path)
+  let stat_buf = FixedArray::make(32, b'\x00')
+  let job = Job::open(
+    path_bytes,
+    access,
+    create~,
+    append~,
+    sync~,
+    mode~,
+    stat_request=STAT_FILE_KIND | STAT_DEVICE_ID | STAT_FILE_ID,
+    stat_buf~,
+    stat_buf_len=stat_buf.length(),
+  )
+  defer job.0.free()
+  try perform_job_in_worker(job.0, context~, cancellable=true) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  } noraise {
+    _ => {
+      let fd = job.fd()
+      guard stat_buf
+        is [u32le(_), u32le(mask), i64le(kind), u64le(dev_id), u64le(file_id)]
+      guard (mask & STAT_FILE_KIND) > 0 else {
+        // we need at least the file kind
+        raise @os_error.OSError(
+          @os_error.errno_ENOTDIR,
+          context="\{context}: \{path.escape()}",
+        )
+      }
+      let kind = @fd_util.FileKind::unsafe_from_int(kind.to_int())
+      let io = IoHandle::from_fd(
+        fd,
+        kind~,
+        is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
+        read_only=access is 0,
+      )
+      if append {
+        // For append mode file descriptor, let the OS do the work.
+        // Reading is unaffected by `append`.
+        io.write_offset = -1
+      }
+      (io, { dev_id, file_id })
+    }
+  }
+}
+
+///|
+#cfg(target="wasm")
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
