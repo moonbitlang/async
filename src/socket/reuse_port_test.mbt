@@ -13,20 +13,21 @@
 // limitations under the License.
 
 ///|
-// SO_REUSEPORT is a no-op on Windows, so the shared-port bind below only
-// applies where the option exists; this test is compiled out on Windows.
-#cfg(not(platform="windows"))
+// `reuse_port_lb` only takes effect on Linux (that is where SO_REUSEPORT
+// load-balances), so the shared-port bind below is exercised there; the test is
+// compiled out elsewhere.
+#cfg(platform="linux")
 async test "reuse port" {
   @async.with_task_group() <| group => {
     let server1 = @socket.TcpServer(
       @socket.Addr::parse("127.0.0.1:0"),
-      reuse_port=true,
+      reuse_port_lb=true,
     )
     let addr = server1.addr
     // A second server binds the same port while the first is still open.
     // This only succeeds because SO_REUSEPORT is enabled; without it the
     // bind would raise with "address already in use".
-    let server2 = @socket.TcpServer(addr, reuse_port=true)
+    let server2 = @socket.TcpServer(addr, reuse_port_lb=true)
     // Close the first server so the exchange below deterministically goes
     // to server2, which is now the only socket listening on that port.
     server1.close()
