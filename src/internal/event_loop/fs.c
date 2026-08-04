@@ -55,6 +55,7 @@ typedef LPWSTR os_string_t;
 #include <sys/stat.h>
 #include <sys/attr.h>
 #include <sys/vnode.h>
+#include <malloc/malloc.h>
 
 #endif
 
@@ -1951,6 +1952,11 @@ void free_realpath_job(struct realpath_job *job) {
 #ifdef _WIN32
   if (job->result && job->result != job->buf)
     free(job->result);
+#elif defined(__MACH__)
+  if (job->result) {
+    malloc_zone_t *zone = malloc_zone_from_ptr(job->result);
+    malloc_zone_free(zone, job->result);
+  }
 #else
   if (job->result)
     free(job->result);
