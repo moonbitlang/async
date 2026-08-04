@@ -102,3 +102,22 @@ extern "C" fn Event::bytes_transferred(self : Event) -> Int = "moonbitlang_async
 
 ///|
 extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang_async_event_bus_wait"
+
+///|
+#external
+priv type EventBusWaiter
+
+///|
+extern "C" fn EventBus::spawn_waiter(
+  bus : EventBus,
+  wakeup_callback~ : FuncRef[() -> Unit],
+) -> EventBusWaiter = "moonbitlang_async_spawn_event_bus_waiter"
+
+///|
+extern "C" fn EventBusWaiter::terminate(self : Self) -> Unit = "moonbitlang_async_terminate_event_bus_waiter"
+
+///|
+extern "C" fn EventBusWaiter::get_events(self : Self) -> Int = "moonbitlang_async_event_bus_waiter_get_events"
+
+///|
+extern "C" fn EventBusWaiter::wake(self : Self) -> Unit = "moonbitlang_async_wake_event_bus_waiter"

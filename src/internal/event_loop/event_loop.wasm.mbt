@@ -48,10 +48,14 @@ fn PlatformEventLoopExtra::cleanup(self : PlatformEventLoopExtra) -> Unit {
 }
 
 ///|
-fn PlatformEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
+fn PlatformEventLoopExtra::handle_event(
+  self : Self,
+  evloop : EventLoop,
+  event : Event,
+) -> Unit raise {
   match self {
-    Unix(extra) => extra.poll(evloop)
-    Windows(extra) => extra.poll(evloop)
+    Unix(extra) => extra.handle_event(evloop, event)
+    Windows(extra) => extra.handle_event(evloop, event)
   }
 }
 

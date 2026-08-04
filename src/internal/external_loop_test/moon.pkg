@@ -1,0 +1,17 @@
+import {
+  "moonbitlang/async/cond_var",
+  "moonbitlang/async/external_loop_integration",
+  "moonbitlang/async/os_error",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/internal/event_loop",
+} for "test"
+
+supported_targets = "-all+native"
+
+options(
+  "native-stub": [ "external_loop.c" ],
+)

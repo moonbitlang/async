@@ -4,6 +4,7 @@ package "moonbitlang/async"
 import {
   "moonbitlang/async/aqueue",
   "moonbitlang/async/cond_var",
+  "moonbitlang/async/external_loop_integration",
   "moonbitlang/async/semaphore",
   "moonbitlang/core/debug",
 }
@@ -25,6 +26,8 @@ pub async fn pause() -> Unit
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
+
+pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
 pub async fn sleep(Int) -> Unit
 
