@@ -184,7 +184,14 @@ pub fn with_event_loop(
   @coroutine.reschedule()
   evloop.main = Some(main)
   if external_loop.val is Some(extloop) {
-    evloop.run_with_external_loop(extloop)
+    try evloop.run_with_external_loop(extloop) catch {
+      err => {
+        extloop.terminate()
+        raise err
+      }
+    } noraise {
+      _ => extloop.terminate()
+    }
   } else {
     evloop.run_forever()
   }
@@ -406,14 +413,10 @@ fn EventLoop::run_with_external_loop(
       while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
         @coroutine.reschedule()
       }
-      extloop.terminate()
       raise err
     }
   } noraise {
-    _ => {
-      self.cleanup()
-      extloop.terminate()
-    }
+    _ => self.cleanup()
   }
 }
 
