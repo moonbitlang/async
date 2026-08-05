@@ -143,11 +143,11 @@ let external_loop : Ref[&ExternalEventLoop?] = Ref(None)
 
 ///|
 pub fn set_external_event_loop(extloop : &ExternalEventLoop) -> Unit {
-  guard external_loop.val is None else {
-    abort("An external event loop is already set")
-  }
   if curr_loop.val is Some(evloop) && evloop.main is Some(_) {
     abort("`set_external_event_loop` called after event loop already started")
+  }
+  guard external_loop.val is None else {
+    abort("An external event loop is already set")
   }
   external_loop.val = Some(extloop)
 }
@@ -184,6 +184,7 @@ pub fn with_event_loop(
   @coroutine.reschedule()
   evloop.main = Some(main)
   if external_loop.val is Some(extloop) {
+    external_loop.val = None
     try evloop.run_with_external_loop(extloop) catch {
       err => {
         extloop.terminate()

@@ -136,7 +136,7 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
 
   mutex_lock(&waiter->lock);
 
-  for (;;) {
+  while (!waiter->cancelled) {
     // When control flow reaches here:
     // - `waiter->lock` should have been acquired
     // - `waiter->number_of_events` must be zero
@@ -158,16 +158,16 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
     waiter->wakeup_callback();
 
     mutex_lock(&waiter->lock);
-    while (waiter->number_of_events > 0) {
+    while (waiter->number_of_events > 0 && !waiter->cancelled) {
       if (cond_wait(&waiter->waker, &waiter->lock) < 0) {
         mutex_unlock(&waiter->lock);
         waiter->error = GetLastError();
         goto exit;
       }
-      if (waiter->cancelled)
-        goto exit;
     }
   }
+
+  mutex_unlock(&waiter->lock);
 
 exit:
   // `waiter->lock` must be released here
@@ -270,11 +270,13 @@ int32_t moonbitlang_async_event_bus_waiter_get_events(struct EventBusWaiter *wai
     return -1;
   }
 
-  if (waiter->number_of_events == 0)
+  int32_t n = waiter->number_of_events;
+
+  if (n == 0)
     // This can happen on initialization
     mutex_unlock(&waiter->lock);
 
-  return waiter->number_of_events;
+  return n;
 }
 
 MOONBIT_FFI_EXPORT
