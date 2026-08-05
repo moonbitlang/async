@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async/internal/external_loop_test"
+package "moonbitlang/async/external_loop_integration/internal/external_loop_test"
 
 import {
   "moonbitlang/async/external_loop_integration",

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 test "external loop mixed" {
   let main_loop = @external_loop_test.MainLoop()
   @event_loop.with_event_loop <| () => {
