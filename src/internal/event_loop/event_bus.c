@@ -243,7 +243,11 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
   cond_signal(&waiter->waker);
   mutex_unlock(&waiter->lock);
 
+#ifdef _WIN32
+  WaitForSingleObject(waiter->thread_id, INFINITE);
+#else
   pthread_join(waiter->thread_id, 0);
+#endif
 
   mutex_destroy(&waiter->lock);
   cond_destroy(&waiter->waker);
