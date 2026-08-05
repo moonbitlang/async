@@ -388,7 +388,9 @@ fn EventLoop::run_with_external_loop(
   self : Self,
   extloop : &ExternalEventLoop,
 ) -> Unit raise {
-  let waiter = self.bus.spawn_waiter(wakeup_callback=extloop.wakeup_callback())
+  let waiter = self.bus.spawn_waiter(
+    wakeup_callback=extloop.get_wakeup_callback_for_foreign_thread(),
+  )
   defer waiter.terminate()
   try {
     while self.get_next_timeout() is Some(timeout) {

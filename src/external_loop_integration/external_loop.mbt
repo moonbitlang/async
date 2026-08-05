@@ -47,15 +47,19 @@
 ///
 ///   + if `timeout` is `None`, `poll` should wait indefinitely for events
 ///
-/// - `evloop.wakeup_callback()` should return a callback function for
-///   waking up the user-provided loop. `moonbitlang/async` will use this callback
+/// - `evloop.get_wakeup_callback_for_foreign_thread()` should return a callback function
+///   for waking up the user-provided loop. `moonbitlang/async` will use this callback
 ///   to wake up the main loop when `moonbitlang/async` specific events occur.
 ///
-///   When the callback returned by `evloop.wakeup_callback()` is invoked,
-///   it MUST wake up the blocked `poll` wait, if `poll` is currently running.
+///   When the callback returned by `evloop.get_wakeup_callback_for_foreign_thread()`
+///   is invoked, it MUST wake up the blocked `poll` wait, if `poll` is currently running.
 ///   If `poll` is not running when the callback is invoked,
 ///   the callback should make the next `poll` should return immediately.
 ///   MISSED WAKEUP MAY RESULT IN PROGRAM DEAD LOCK.
+///
+///   If the wakeup callback event is implemented via some form of special event,
+///   that event itself can be ignored in `poll`. `moonbitlang/async` will
+///   check for its own events unconditionally after `poll` returns.
 ///
 ///   IMPORTANT CORRECTNESS NOTE: the returned wakeup callback will be invoked
 ///   in a dedicated thread, so the callback MUST NOT do anything other than
@@ -69,6 +73,6 @@
 ///   inside `async fn main`.
 pub(open) trait ExternalEventLoop {
   fn poll(Self, timeout? : Int) -> Unit raise
-  fn wakeup_callback(Self) -> FuncRef[() -> Unit]
+  fn get_wakeup_callback_for_foreign_thread(Self) -> FuncRef[() -> Unit]
   fn terminate(Self) -> Unit raise
 }

@@ -12,6 +12,6 @@ package "moonbitlang/async/external_loop_integration"
 // Traits
 pub(open) trait ExternalEventLoop {
   fn poll(Self, timeout? : Int) -> Unit raise
-  fn wakeup_callback(Self) -> FuncRef[() -> Unit]
+  fn get_wakeup_callback_for_foreign_thread(Self) -> FuncRef[() -> Unit]
   fn terminate(Self) -> Unit raise
 }

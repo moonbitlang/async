@@ -55,7 +55,9 @@ pub async fn MainLoop::wait(self : MainLoop) -> Unit {
 using @external_loop_integration {trait ExternalEventLoop}
 
 ///|
-pub impl ExternalEventLoop for MainLoop with fn wakeup_callback(_self) {
+pub impl ExternalEventLoop for MainLoop with fn get_wakeup_callback_for_foreign_thread(
+  _self,
+) {
   () => wakeup_main_loop()
 }
 
