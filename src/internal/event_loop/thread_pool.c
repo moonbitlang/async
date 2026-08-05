@@ -1480,8 +1480,10 @@ struct sigwait_job *moonbitlang_async_make_sigwait_job(int *signals) {
   struct sigwait_job *job = MAKE_JOB(sigwait, 0);
 
   sigemptyset(&job->signals);
-  for (int i = 0; i < Moonbit_array_length(signals); ++i)
+  for (int i = 0; i < Moonbit_array_length(signals); ++i) {
+    if (signals[i] < 0) continue;
     sigaddset(&job->signals, signals[i]);
+  }
 
   sigaddset(&job->signals, SIGUSR2);
 
