@@ -18,6 +18,7 @@ let _ignore_unused_import : Unit = {
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
+  let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
 }
 
 ///|

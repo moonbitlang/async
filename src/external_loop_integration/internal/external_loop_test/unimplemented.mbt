@@ -17,5 +17,14 @@
 pub let unimplemented : Unit = {
   let _ : (@cond_var.Cond) -> Unit = ignore
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+}
+
+///|
+#cfg(target="wasm")
+let _unused_wasm : Unit = {
   let _ : (@os_error.OSError) -> Unit = ignore
 }
+
+///|
+#cfg(any(target="js", target="wasm-gc"))
+let _unused_non_wasm : Unit = ignore(@os_error.unimplemented)

@@ -51,6 +51,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 /// `moonbitlang/async` will only spawn its waiting part in a dedicated thread.
 /// As a consequence, even if an external event loop is used,
 /// `moonbitlang/async` may still modify state of the main thread, such as changing signal mask.
+#cfg(target="native")
 pub using @event_loop {set_external_event_loop}
 
 ///|

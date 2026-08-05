@@ -16,7 +16,16 @@
 #cfg(not(target="native"))
 let _unused : Unit = {
   let _ : (@async.Mutex) -> Unit = ignore
-  let _ : (@socket.Addr) -> Unit = ignore
-  let _ : (@event_loop.IoHandle) -> Unit = ignore
+  ignore(@event_loop.sleep)
   ignore(@external_loop_test.unimplemented)
 }
+
+///|
+#cfg(target="wasm")
+let _unused_wasm : Unit = {
+  let _ : (@socket.Addr) -> Unit = ignore
+}
+
+///|
+#cfg(any(target="js", target="wasm-gc"))
+let _unused_non_wasm : Unit = ignore(@socket.unimplemented)
