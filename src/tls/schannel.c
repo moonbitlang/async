@@ -490,7 +490,7 @@ int32_t moonbitlang_async_schannel_read(
     case SEC_E_OK:
       ctx->msg_trailer = buffers[2].cbBuffer;
       ctx->bytes_read = len;
-      if (buffers[3].BufferType = SECBUFFER_EXTRA) {
+      if (buffers[3].BufferType == SECBUFFER_EXTRA) {
         ctx->bytes_read -= buffers[3].cbBuffer;
         ctx->msg_trailer -= buffers[3].cbBuffer;
       }
