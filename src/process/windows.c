@@ -33,7 +33,7 @@ int32_t moonbitlang_async_env_block_length(LPWCH env_block) {
 
   LPWCH cursor = env_block;
   int len = 0;
-  for (;;) {
+  while (*cursor) {
     int block_len = 0;
     while (cursor[block_len])
       ++block_len;
@@ -43,14 +43,19 @@ int32_t moonbitlang_async_env_block_length(LPWCH env_block) {
       len += block_len + 1;
 
     cursor += block_len + 1;
-    if (*cursor == 0)
-      break;
   }
   return len;
 }
 
 MOONBIT_FFI_EXPORT
 LPWCH moonbitlang_async_allocate_env_block(int32_t size) {
+  /* In theory, an empty environment block should be represented as L"\0"
+     (i.e. single NUL terminator for block termination).
+     However, according to https://nullprogram.com/blog/2023/08/23/,
+     `CreateProcessW` requires the second character being readable in this case
+     (the content of that character does not matter).
+     So always allocate at least two characters here. */
+  size = size == 0 ? 1 : size;
   LPWCH env_block = (LPWCH)malloc((size + 1) * sizeof(WCHAR));
   return env_block;
 }
@@ -80,7 +85,8 @@ void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block, int32_t base_
   }
 
   LPWCH cursor = env_block;
-  for (int dst_offset = base_offset;;) {
+  int dst_offset = base_offset;
+  while (*cursor) {
     struct EnvEntry entry = resolve_env_entry(cursor);
 
     // skip pseudo entries
@@ -106,11 +112,8 @@ void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block, int32_t base_
 
   skip_entry:
     cursor += entry.len + 1;
-    if (*cursor == 0) {
-      dst[dst_offset] = 0;
-      break;
-    }
   }
+  dst[dst_offset] = 0;
   FreeEnvironmentStringsW(env_block);
 }
 
