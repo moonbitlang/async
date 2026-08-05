@@ -58,3 +58,27 @@ test "external loop mixed" {
     "received main loop specific event at #3", "terminate main loop",
   ])
 }
+
+///|
+#cfg(target="native")
+test "external loop blocked on external only" {
+  let main_loop = @external_loop_test.MainLoop()
+  @event_loop.with_event_loop <| () => {
+    @async.set_external_event_loop(main_loop)
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      fn tick() {
+        (@async.now() - start + 50) / 150
+      }
+      group.spawn_bg() <| () => {
+        @external_loop_test.trigger_main_loop_event(delay=150)
+      }
+      main_loop.wait()
+      main_loop.log("main loop received custom event at #\{tick()}")
+    }
+  }
+  json_inspect(main_loop.log, content=[
+    "main loop: received custom event", "main loop received custom event at #1",
+    "terminate main loop",
+  ])
+}

@@ -393,9 +393,13 @@ fn EventLoop::run_with_external_loop(
   )
   defer waiter.terminate()
   try {
-    while self.get_next_timeout() is Some(timeout) {
-      extloop.poll(timeout?=if timeout < 0 { None } else { Some(timeout) })
-      if timeout >= 0 {
+    while !@coroutine.all_coroutines().is_empty() {
+      let timeout = match self.get_next_timeout() {
+        Some(_..<0) | None => None
+        Some(timeout) => Some(timeout)
+      }
+      extloop.poll(timeout?)
+      if !self.timers.is_empty() {
         self.handle_timers()
       }
       if waiter.get_events() is n && n > 0 {
@@ -407,7 +411,9 @@ fn EventLoop::run_with_external_loop(
       }
       @coroutine.reschedule()
     }
-    self.check_dead_lock()
+    // When running with an external event loop,
+    // the program may be blocked on some external loop specific stuff,
+    // so deadlock detection cannot work properly, and in hence disabled here
   } catch {
     err => {
       Ref::protect(check_fd_leak, false, () => self.cleanup())
