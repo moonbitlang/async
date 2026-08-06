@@ -391,6 +391,9 @@ fn EventLoop::run_with_external_loop(
   let waiter = self.bus.spawn_waiter(
     wakeup_callback=extloop.get_wakeup_callback_for_foreign_thread(),
   )
+  if waiter.0.is_null() {
+    @os_error.check_errno("runtime internal: spawn waiter")
+  }
   defer waiter.terminate()
   try {
     while !@coroutine.all_coroutines().is_empty() {
@@ -402,12 +405,15 @@ fn EventLoop::run_with_external_loop(
       if !self.timers.is_empty() {
         self.handle_timers()
       }
-      if waiter.get_events() is n && n > 0 {
+      let n = waiter.get_events()
+      if n > 0 {
         defer waiter.wake()
         for i in 0..<n {
           let event = self.bus.get_event(i)
           self.extra.handle_event(self, event)
         }
+      } else if n < 0 {
+        @os_error.check_errno("runtime internal: poll_wait")
       }
       @coroutine.reschedule()
     }

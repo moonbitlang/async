@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #include <moonbit.h>
 
 void moonbit_panic(void);
@@ -37,7 +38,6 @@ typedef CONDITION_VARIABLE cond_t;
 
 #define mutex_init(mutex)    InitializeCriticalSection(mutex)
 #define mutex_destroy(mutex) (void)0
-#define mutex_trylock(mutex) TryEnterCriticalSection(mutex)
 #define mutex_lock(mutex)    EnterCriticalSection(mutex)
 #define mutex_unlock(mutex)  LeaveCriticalSection(mutex)
 
@@ -53,6 +53,8 @@ int32_t cond_wait(cond_t *cond, mutex_t *mutex) {
 // #ifdef _WIN32
 #else
 
+#include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
@@ -72,18 +74,6 @@ typedef pthread_cond_t  cond_t;
 #define mutex_destroy(mutex) pthread_mutex_destroy(mutex)
 #define mutex_lock(mutex)    pthread_mutex_lock(mutex)
 #define mutex_unlock(mutex)  pthread_mutex_unlock(mutex)
-
-static inline
-int32_t mutex_trylock(mutex_t *mutex) {
-  int ret = pthread_mutex_trylock(mutex);
-  if (ret == EBUSY)
-    return 0;
-  else if (!ret)
-    return 1;
-
-  errno = ret;
-  return -1;
-}
 
 #define cond_init(cond)    pthread_cond_init(cond, 0)
 #define cond_destroy(cond) pthread_cond_destroy(cond)
@@ -112,13 +102,18 @@ int32_t cond_wait(cond_t *cond, mutex_t *mutex) {
 
 // defined in `epoll.c`/`kqueue.c`/`iocp.c`
 int32_t moonbitlang_async_event_bus_wait(HANDLE bus, int32_t timeout);
+int32_t moonbitlang_async_event_bus_register(HANDLE bus, HANDLE fd, int32_t read_only);
 
 struct EventBusWaiter {
   thread_id_t thread_id;
   HANDLE event_bus;
   void (*wakeup_callback)(void);
 
-  int32_t cancelled;
+#ifndef _WIN32
+  int cancel_pipe[2];
+#endif
+
+  atomic_bool cancelled;
   int32_t error;
 
   mutex_t lock;
@@ -127,7 +122,7 @@ struct EventBusWaiter {
   // The following fields, together with the static event buffer
   // in `epoll.c`/`kqueue.c`/`iocp.c`, should be protected by
   // `lock` above.
-  int32_t number_of_events;
+  _Atomic int32_t number_of_events;
 };
 
 static
@@ -146,8 +141,6 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
     if (waiter->number_of_events == 0)
       continue;
 
-    mutex_unlock(&waiter->lock);
-
     if (waiter->number_of_events < 0) {
       waiter->error = GetLastError();
       goto exit;
@@ -158,20 +151,17 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
 
     waiter->wakeup_callback();
 
-    mutex_lock(&waiter->lock);
     while (waiter->number_of_events > 0 && !waiter->cancelled) {
       if (cond_wait(&waiter->waker, &waiter->lock) < 0) {
-        mutex_unlock(&waiter->lock);
         waiter->error = GetLastError();
         goto exit;
       }
     }
   }
 
-  mutex_unlock(&waiter->lock);
 
 exit:
-  // `waiter->lock` must be released here
+  mutex_unlock(&waiter->lock);
   return 0;
 }
 
@@ -183,6 +173,24 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
   struct EventBusWaiter *waiter = (struct EventBusWaiter*)malloc(sizeof(struct EventBusWaiter));
   waiter->event_bus = bus;
   waiter->wakeup_callback = wakeup_callback;
+
+#ifndef _WIN32
+  if (pipe(waiter->cancel_pipe) < 0)
+    goto error;
+
+  for (int i = 0; i < 2; ++i) {
+    int fd = waiter->cancel_pipe[i];
+    int flags = fcntl(fd, F_GETFD);
+    if (flags < 0)
+      goto error_with_pipe;
+
+    if (!(flags & FD_CLOEXEC) && fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
+      goto error_with_pipe;
+  }
+
+  if (moonbitlang_async_event_bus_register(bus, waiter->cancel_pipe[0], 1) < 0)
+    goto error_with_pipe;
+#endif
 
   mutex_init(&waiter->lock);
   cond_init(&waiter->waker);
@@ -208,7 +216,6 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
 
   sigset_t curr_sigmask, waiter_sigmask;
   sigfillset(&waiter_sigmask);
-  sigdelset(&waiter_sigmask, SIGUSR2);
   pthread_sigmask(SIG_SETMASK, &waiter_sigmask, &curr_sigmask);
 
   pthread_create(&waiter->thread_id, &attr, &waiter_loop, waiter);
@@ -219,28 +226,45 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
 #endif
 
   return waiter;
+
+#ifndef _WIN32
+error_with_pipe:
+  close(waiter->cancel_pipe[0]);
+  close(waiter->cancel_pipe[1]);
+#endif
+
+error:
+  free(waiter);
+  return 0;
 }
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter) {
   waiter->cancelled = 1;
-  int ret = mutex_trylock(&waiter->lock);
-  if (ret < 0)
-    // Something unrecoverable happened, force-kill the program
-    moonbit_panic();
+  if (!waiter->number_of_events) {
+    /* If the waiter is currently blocked, try to wake it up.
+       Note that the code here is not atomic, so the following sequence is possible:
+      
+       - main thread see `waiter->number_of_events == 0`
+       - waiter woken and set `waiter->number_of_events` to a non-zero value
+       - main thread perform cancellation operation below
 
-  if (!ret) {
+       But this sequence is fine, because the cancellation operation below
+       would be just no-op if the waiter is not currently blocked.
+     */
 #ifdef _WIN32
     PostQueuedCompletionStatus(waiter->event_bus, 0, 0, 0);
 #else
-    pthread_kill(waiter->thread_id, SIGUSR2);
+    int32_t data = 0;
+    while (write(waiter->cancel_pipe[1], &data, sizeof(data)) < 0)
+      if (errno != EINTR)
+        // unrecoverable error
+        moonbit_panic();
 #endif
-
-    mutex_lock(&waiter->lock);
   }
 
-  // At this point `waiter->lock` must be acquired.
-  // In case the waiter is in suspended state, wake it up
+  // In case the waiter is suspended, wake it up.
+  mutex_lock(&waiter->lock);
   cond_signal(&waiter->waker);
   mutex_unlock(&waiter->lock);
 
@@ -253,17 +277,23 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
   mutex_destroy(&waiter->lock);
   cond_destroy(&waiter->waker);
 
+#ifndef _WIN32
+  close(waiter->cancel_pipe[0]);
+  close(waiter->cancel_pipe[1]);
+#endif
+
   free(waiter);
 }
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_event_bus_waiter_get_events(struct EventBusWaiter *waiter) {
-  int ret = mutex_trylock(&waiter->lock);
-  if (ret < 0)
-    return -1;
-
-  if (!ret)
+  if (!waiter->number_of_events)
     return 0;
+
+  // Only the main thread will turn `number_of_events` from non-zero to zero,
+  // So `waiter->number_of_events != 0` will not get violated
+  // in the window after the previous check and before acquiring the lock.
+  mutex_lock(&waiter->lock);
 
   if (waiter->error) {
     mutex_unlock(&waiter->lock);
@@ -271,13 +301,7 @@ int32_t moonbitlang_async_event_bus_waiter_get_events(struct EventBusWaiter *wai
     return -1;
   }
 
-  int32_t n = waiter->number_of_events;
-
-  if (n == 0)
-    // This can happen on initialization
-    mutex_unlock(&waiter->lock);
-
-  return n;
+  return waiter->number_of_events;
 }
 
 MOONBIT_FFI_EXPORT

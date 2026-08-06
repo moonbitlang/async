@@ -104,8 +104,7 @@ extern "C" fn Event::bytes_transferred(self : Event) -> Int = "moonbitlang_async
 extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang_async_event_bus_wait"
 
 ///|
-#external
-priv type EventBusWaiter
+priv struct EventBusWaiter(@c_buffer.Buffer)
 
 ///|
 extern "C" fn EventBus::spawn_waiter(
