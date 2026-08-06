@@ -57,6 +57,8 @@
 
 #ifdef __MACH__
 #include <sys/attr.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
 #endif
 
 typedef int HANDLE;
@@ -367,6 +369,32 @@ MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
   if (pool.initialized)
     abort();
+
+#ifdef __MACH__
+  mach_timebase_info_data_t timebase_info;
+  mach_timebase_info(&timebase_info);
+
+  const uint64_t NANOS_PER_MSEC = 1000000ULL;
+  double clock2abs = ((double)timebase_info.denom / (double)timebase_info.numer) * NANOS_PER_MSEC;
+
+
+  thread_time_constraint_policy_data_t policy;
+  policy.period      = 0;
+  policy.computation = (uint32_t)(5 * clock2abs); // 5 ms of work
+  policy.constraint  = (uint32_t)(10 * clock2abs);
+  policy.preemptible = FALSE;
+
+  int kr = thread_policy_set(
+    pthread_mach_thread_np(pthread_self()),
+    THREAD_TIME_CONSTRAINT_POLICY,
+    (thread_policy_t)&policy,
+    THREAD_TIME_CONSTRAINT_POLICY_COUNT
+  );
+  if (kr != KERN_SUCCESS) {
+    mach_error("thread_policy_set:", kr);
+    return -1;
+  }
+#endif
 
 #ifndef _WIN32
   sigfillset(&pool.worker_sigmask); 
