@@ -16,7 +16,6 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdatomic.h>
 #include <moonbit.h>
 
 void moonbit_panic(void);
@@ -28,6 +27,8 @@ void moonbit_panic(void);
 #endif
 
 #include <windows.h>
+
+typedef volatile int32_t atomic_int32_t;
 
 typedef HANDLE thread_id_t;
 typedef DWORD  thread_worker_result_t;
@@ -53,11 +54,14 @@ int32_t cond_wait(cond_t *cond, mutex_t *mutex) {
 // #ifdef _WIN32
 #else
 
+#include <stdatomic.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
+
+typedef _Atomic int32_t atomic_int32_t;
 
 typedef int HANDLE;
 #define GetLastError() errno
@@ -113,7 +117,7 @@ struct EventBusWaiter {
   int cancel_pipe[2];
 #endif
 
-  atomic_bool cancelled;
+  atomic_int32_t cancelled;
   int32_t error;
 
   mutex_t lock;
@@ -122,7 +126,7 @@ struct EventBusWaiter {
   // The following fields, together with the static event buffer
   // in `epoll.c`/`kqueue.c`/`iocp.c`, should be protected by
   // `lock` above.
-  _Atomic int32_t number_of_events;
+  atomic_int32_t number_of_events;
 };
 
 static
