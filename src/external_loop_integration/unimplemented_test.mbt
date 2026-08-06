@@ -24,8 +24,12 @@ let _unused : Unit = {
 #cfg(target="wasm")
 let _unused_wasm : Unit = {
   let _ : (@socket.Addr) -> Unit = ignore
+  let _ : (@pipe.PipeRead) -> Unit = ignore
 }
 
 ///|
 #cfg(any(target="js", target="wasm-gc"))
-let _unused_non_wasm : Unit = ignore(@socket.unimplemented)
+let _unused_non_wasm : Unit = {
+  ignore(@socket.unimplemented)
+  ignore(@pipe.unimplemented)
+}

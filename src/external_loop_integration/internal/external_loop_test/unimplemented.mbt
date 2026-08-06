@@ -23,8 +23,12 @@ pub let unimplemented : Unit = {
 #cfg(target="wasm")
 let _unused_wasm : Unit = {
   let _ : (@os_error.OSError) -> Unit = ignore
+  let _ : (@fd_util.Fd) -> Unit = ignore
 }
 
 ///|
 #cfg(any(target="js", target="wasm-gc"))
-let _unused_non_wasm : Unit = ignore(@os_error.unimplemented)
+let _unused_non_wasm : Unit = {
+  ignore(@os_error.unimplemented)
+  ignore(@fd_util.unimplemented)
+}
