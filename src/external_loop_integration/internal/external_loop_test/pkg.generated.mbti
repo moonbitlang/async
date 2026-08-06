@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn trigger_event(Int, Int, delay~ : Int) -> Unit
+
 pub fn trigger_main_loop_event(delay~ : Int) -> Unit
 
 // Errors

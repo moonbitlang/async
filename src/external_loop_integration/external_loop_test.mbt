@@ -82,3 +82,33 @@ test "external loop blocked on external only" {
     "terminate main loop",
   ])
 }
+
+///|
+#cfg(target="native")
+test "external loop blocked on async only" {
+  let main_loop = @external_loop_test.MainLoop()
+  @event_loop.with_event_loop <| () => {
+    @async.set_external_event_loop(main_loop)
+    @async.with_task_group <| group => {
+      let (r, w) = @pipe.pipe()
+      defer r.close()
+      defer w.close()
+      let start = @async.now()
+      fn tick() {
+        (@async.now() - start + 50) / 150
+      }
+      for i, delay in [150, 300] {
+        group.spawn_bg() <| () => {
+          @external_loop_test.trigger_event(w.fd(), i, delay~)
+        }
+      }
+      for _ in 0..<2 {
+        guard! r.read_exactly(4) is [i32le(data)]
+        main_loop.log("main loop received \{data} at #\{tick()}")
+      }
+    }
+  }
+  json_inspect(main_loop.log, content=[
+    "main loop received 0 at #1", "main loop received 1 at #2", "terminate main loop",
+  ])
+}

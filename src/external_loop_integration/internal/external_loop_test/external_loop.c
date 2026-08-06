@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <moonbit.h>
 
 #ifdef _WIN32
@@ -40,6 +41,8 @@ typedef DWORD thread_worker_result_t;
 
 typedef void* thread_worker_result_t;
 #define THREAD_PROC_CALLING_CONVENTION
+
+typedef int HANDLE;
 
 #endif
 
@@ -163,18 +166,30 @@ int32_t wait_main_loop(int32_t timeout) {
 #endif
 }
 
+struct TriggerEventWorker {
+  HANDLE pipe_w; // invalid => wake up main loop
+  int32_t data;
+  int32_t delay;
+};
+
 static
 thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(void *payload) {
-  uintptr_t delay = (uintptr_t)payload;
+  struct TriggerEventWorker *request = (struct TriggerEventWorker*)payload;
 
 #ifdef _WIN32
 
-  Sleep(delay);
-  SetEvent(main_loop.main_event);
+  Sleep(request->delay);
+
+  if (request->pipe_w == INVALID_HANDLE_VALUE) {
+    SetEvent(main_loop.main_event);
+  } else {
+    DWORD n_written;
+    WriteFile(request->pipe_w, &request->data, sizeof(request->data), &n_written, NULL);
+  }
 
 #else
 
-  struct timespec duration = { delay / 1000, (delay % 1000) * 1000000 };
+  struct timespec duration = { request->delay / 1000, (request->delay % 1000) * 1000000 };
 
 #ifdef __MACH__
   // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
@@ -188,18 +203,31 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(voi
   nanosleep(&duration, 0);
 #endif
 
-  int32_t data = 2;
-  write(main_loop.pipe_w, &data, sizeof(data));
+  if (request->pipe_w < 0) {
+    int32_t data = 2;
+    write(main_loop.pipe_w, &data, sizeof(data));
+  } else {
+    write(request->pipe_w, &request->data, sizeof(request->data));
+  }
 
 #endif
+
+  free(payload);
   return 0;
 }
 
 MOONBIT_FFI_EXPORT
-void trigger_main_loop_event(int32_t delay) {
+void trigger_event(HANDLE pipe_w, int32_t data, int32_t delay) {
+  struct TriggerEventWorker *request =
+    (struct TriggerEventWorker*)malloc(sizeof(struct TriggerEventWorker));
+
+  request->pipe_w = pipe_w;
+  request->data = data;
+  request->delay = delay;
+
 #ifdef _WIN32
 
-  CreateThread(NULL, 512, &main_loop_event_worker, (void*)(uintptr_t)delay, 0, 0);
+  CreateThread(NULL, 512, &main_loop_event_worker, request, 0, 0);
 
 #else
 
@@ -208,7 +236,7 @@ void trigger_main_loop_event(int32_t delay) {
   pthread_attr_setstacksize(&attr, 512);
 
   pthread_t tid;
-  pthread_create(&tid, &attr, &main_loop_event_worker, (void*)(uintptr_t)delay);
+  pthread_create(&tid, &attr, &main_loop_event_worker, request);
   pthread_attr_destroy(&attr);
 
 #endif

@@ -25,7 +25,16 @@ extern "C" fn wakeup_main_loop() -> Unit = "wakeup_main_loop"
 extern "C" fn wait_main_loop(timeout~ : Int) -> Int = "wait_main_loop"
 
 ///|
-pub extern "C" fn trigger_main_loop_event(delay~ : Int) -> Unit = "trigger_main_loop_event"
+pub extern "C" fn trigger_event(
+  pipe_w : @fd_util.Fd,
+  data : Int,
+  delay~ : Int,
+) -> Unit = "trigger_event"
+
+///|
+pub fn trigger_main_loop_event(delay~ : Int) -> Unit {
+  trigger_event(@fd_util.invalid_fd, 1, delay~)
+}
 
 ///|
 pub struct MainLoop {
