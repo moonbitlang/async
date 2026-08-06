@@ -34,6 +34,10 @@ typedef DWORD thread_worker_result_t;
 #include <sys/wait.h>
 #include <pthread.h>
 
+#ifdef __MACH__
+#include <sys/event.h>
+#endif
+
 typedef void* thread_worker_result_t;
 #define THREAD_PROC_CALLING_CONVENTION
 
@@ -171,7 +175,18 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(voi
 #else
 
   struct timespec duration = { delay / 1000, (delay % 1000) * 1000000 };
+
+#ifdef __MACH__
+  // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
+  // causing corrupted test result.
+  // However `kqueue` seems to have very accurate timing.
+  int kqfd = kqueue();
+  struct kevent kev;
+  kevent(kqfd, 0, 0, &kev, 1, &duration);
+  close(kqfd);
+#else
   nanosleep(&duration, 0);
+#endif
 
   int32_t data = 2;
   write(main_loop.pipe_w, &data, sizeof(data));
