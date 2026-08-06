@@ -64,6 +64,18 @@ jobs:
       - name: moon test (release)
         run: moon test --release
 
+      - name: moon test
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
+
+      - name: moon test
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
+
   nightly-build:
     strategy:
       fail-fast: false
@@ -114,6 +126,18 @@ jobs:
 
       - name: moon check
         run: moon check
+
+      - name: moon test
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
+
+      - name: moon test
+        run: moon test
+
+      - name: moon test (release)
+        run: moon test --release
 
       - name: moon test
         run: moon test
