@@ -142,15 +142,16 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
     // - `waiter->number_of_events` must be zero
     // - `waiter->state` must be `SUSPENDED`
     waiter->number_of_events = moonbitlang_async_event_bus_wait(waiter->event_bus, -1); 
+
+    if (waiter->number_of_events == 0)
+      continue;
+
     mutex_unlock(&waiter->lock);
 
     if (waiter->number_of_events < 0) {
       waiter->error = GetLastError();
       goto exit;
     }
-
-    if (waiter->number_of_events == 0)
-      continue;
 
     // `waiter->number_of_events > 0` must hold here,
     // when we wake the main thread and suspend the waiter
