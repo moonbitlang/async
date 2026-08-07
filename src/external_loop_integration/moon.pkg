@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/external_loop_integration/internal/external_loop_test",
+  "moonbitlang/async/pipe",
+} for "test"

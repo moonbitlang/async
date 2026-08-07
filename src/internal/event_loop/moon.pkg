@@ -10,6 +10,7 @@ import {
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/external_loop_integration",
 }
 
 import {
@@ -36,6 +37,7 @@ options(
     "signal.c",
     "stdio.c",
     "fs.c",
+    "event_bus.c",
   ],
   targets: {
     "cancel_before_submit_test.mbt": [ "native" ],

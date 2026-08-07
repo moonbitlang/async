@@ -2,6 +2,7 @@
 package "moonbitlang/async/internal/event_loop"
 
 import {
+  "moonbitlang/async/external_loop_integration",
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
@@ -74,6 +75,8 @@ pub async fn remove(StringView, context~ : String) -> Unit
 pub async fn rename(StringView, StringView, replace~ : Bool, context~ : String) -> Unit
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
+
+pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
 pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 

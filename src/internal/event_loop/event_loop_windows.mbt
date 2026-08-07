@@ -61,26 +61,26 @@ fn WindowsEventLoopExtra::cleanup(self : WindowsEventLoopExtra) -> Unit {
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
-fn WindowsEventLoopExtra::poll(_self : Self, evloop : EventLoop) -> Unit raise {
-  let n = evloop.wait_for_event()
-  for i in 0..<n {
-    let event = evloop.bus.get_event(i)
-    let fd = event.fd()
-    if fd == evloop.notify_recv {
-      // custom completion packet from thread pool.
-      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
-      let job_id = event.bytes_transferred()
-      evloop.handle_completed_job(job_id)
-    } else {
-      // completed IO operation on a file descriptor
-      guard evloop.fds.get(fd) is Some(io) else {  }
-      let result = event.io_result()
-      let event = result.event()
-      if event is ReadEvent && io.read is Waiting(coro) {
-        coro.wake()
-      } else if event is WriteEvent && io.write is Waiting(coro) {
-        coro.wake()
-      }
+fn WindowsEventLoopExtra::handle_event(
+  _self : Self,
+  evloop : EventLoop,
+  event : Event,
+) -> Unit {
+  let fd = event.fd()
+  if fd == evloop.notify_recv {
+    // custom completion packet from thread pool.
+    // Here we use the `dwNumberOfBytesTransferred` field to store job ID
+    let job_id = event.bytes_transferred()
+    evloop.handle_completed_job(job_id)
+  } else {
+    // completed IO operation on a file descriptor
+    guard evloop.fds.get(fd) is Some(io) else {  }
+    let result = event.io_result()
+    let event = result.event()
+    if event is ReadEvent && io.read is Waiting(coro) {
+      coro.wake()
+    } else if event is WriteEvent && io.write is Waiting(coro) {
+      coro.wake()
     }
   }
 }

@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/async/cond_var",
+  "moonbitlang/async/external_loop_integration",
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/internal/fd_util",
+}
+
+options(
+  "native-stub": [ "external_loop.c" ],
+  targets: { "main.mbt": [ "native" ] },
+)

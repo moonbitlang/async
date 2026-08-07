@@ -136,6 +136,23 @@ fn EventLoop::destroy(evloop : EventLoop) -> Unit {
 }
 
 ///|
+using @external_loop_integration {trait ExternalEventLoop}
+
+///|
+let external_loop : Ref[&ExternalEventLoop?] = Ref(None)
+
+///|
+pub fn set_external_event_loop(extloop : &ExternalEventLoop) -> Unit {
+  if curr_loop.val is Some(evloop) && evloop.main is Some(_) {
+    abort("`set_external_event_loop` called after event loop already started")
+  }
+  guard external_loop.val is None else {
+    abort("An external event loop is already set")
+  }
+  external_loop.val = Some(extloop)
+}
+
+///|
 pub fn with_event_loop(
   f : async () -> Unit,
   max_worker_count? : Int = 1024,
@@ -164,8 +181,21 @@ pub fn with_event_loop(
       _ => evloop.terminate_signal_handler(signal_handler)
     }
   })
+  @coroutine.reschedule()
   evloop.main = Some(main)
-  evloop.run_forever()
+  if external_loop.val is Some(extloop) {
+    external_loop.val = None
+    try evloop.run_with_external_loop(extloop) catch {
+      err => {
+        extloop.terminate()
+        raise err
+      }
+    } noraise {
+      _ => extloop.terminate()
+    }
+  } else {
+    evloop.run_forever()
+  }
   main.unwrap()
 }
 
@@ -190,32 +220,14 @@ pub fn now() -> Int64 {
 pub fn now() -> Int64 = "moonbitlang/async" "time/get_ms_since_epoch"
 
 ///|
-fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
-  // Short-circuit when no timers are pending: this is the common case
-  // for IO-only or compute-only tasks that never call `sleep` / `Timer`.
-  // Avoids both the iterator-allocation on `self.timers.iter().head()`
-  // and the redundant `ms_since_epoch()` + loop below.
-  let has_timers = !self.timers.is_empty()
-  let timeout = if @coroutine.has_immediately_ready_task() {
-    0
-  } else if has_timers && self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - now()).to_int())
-  } else {
-    -1
-  }
+fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
   let n = self.bus.wait(timeout~)
   if n < 0 {
-    @os_error.check_errno("runtime internal: poll_wait")
-  }
-  if has_timers {
-    let now = now()
-    for timer in self.timers {
-      if timer.expire_time <= now {
-        (timer.callback)()
-      } else {
-        break
-      }
+    if errno_is_cancelled(@os_error.get_errno()) {
+      // `EINTR`
+      return 0
     }
+    @os_error.check_errno("runtime internal: poll_wait")
   }
   n
 }
@@ -297,30 +309,64 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 }
 
 ///|
+fn EventLoop::get_next_timeout(self : Self) -> Int? {
+  if @coroutine.has_immediately_ready_task() {
+    Some(0)
+  } else if !self.timers.is_empty() {
+    guard! self.timers.iter().head() is Some(first_timer)
+    let timeout = first_timer.expire_time - now()
+    Some(@cmp.maximum(0, timeout.to_int()))
+  } else if self.blocked_tasks > 0 {
+    Some(-1)
+  } else {
+    None
+  }
+}
+
+///|
+fn EventLoop::handle_timers(self : Self) -> Unit {
+  let now = now()
+  for timer in self.timers {
+    if timer.expire_time <= now {
+      (timer.callback)()
+    } else {
+      break
+    }
+  }
+}
+
+///|
+fn EventLoop::check_dead_lock(self : Self) -> Unit {
+  let all_coros = @coroutine.all_coroutines().iter()
+  let all_coros = match self.signal_handler {
+    Some(SigwaitHandler(sigwait_task)) =>
+      all_coros.filter(coro => coro != sigwait_task)
+    None | Some(ConsoleControlHandler) => all_coros
+  }
+  let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
+  if all_coros.length() > 0 {
+    println(
+      "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(all_coros)}",
+    )
+    panic()
+  }
+}
+
+///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   try {
-    while @coroutine.has_immediately_ready_task() ||
-          self.blocked_tasks > 0 ||
-          !self.timers.is_empty() {
-      self.extra.poll(self) catch {
-        @os_error.OSError(_) as err if err.is_EINTR() => continue
-        err => raise err
+    while self.get_next_timeout() is Some(timeout) {
+      let n = self.wait_for_event(timeout~)
+      if timeout >= 0 {
+        self.handle_timers()
+      }
+      for i in 0..<n {
+        let event = self.bus.get_event(i)
+        self.extra.handle_event(self, event)
       }
       @coroutine.reschedule()
     }
-    let all_coros = @coroutine.all_coroutines().iter()
-    let all_coros = match self.signal_handler {
-      Some(SigwaitHandler(sigwait_task)) =>
-        all_coros.filter(coro => coro != sigwait_task)
-      None | Some(ConsoleControlHandler) => all_coros
-    }
-    let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
-    if all_coros.length() > 0 {
-      println(
-        "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(all_coros)}",
-      )
-      panic()
-    }
+    self.check_dead_lock()
   } catch {
     err => {
       Ref::protect(check_fd_leak, false, () => self.cleanup())
@@ -334,6 +380,70 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
   } noraise {
     _ => self.cleanup()
   }
+}
+
+///|
+#cfg(target="native")
+fn EventLoop::run_with_external_loop(
+  self : Self,
+  extloop : &ExternalEventLoop,
+) -> Unit raise {
+  let waiter = self.bus.spawn_waiter(
+    wakeup_callback=extloop.get_wakeup_callback_for_foreign_thread(),
+  )
+  if waiter.0.is_null() {
+    @os_error.check_errno("runtime internal: spawn waiter")
+  }
+  defer waiter.terminate()
+  try {
+    while !@coroutine.all_coroutines().is_empty() {
+      let timeout = match self.get_next_timeout() {
+        Some(_..<0) | None => None
+        Some(timeout) => Some(timeout)
+      }
+      extloop.poll(timeout?)
+      if !self.timers.is_empty() {
+        self.handle_timers()
+      }
+      let n = waiter.get_events()
+      if n > 0 {
+        defer waiter.wake()
+        for i in 0..<n {
+          let event = self.bus.get_event(i)
+          self.extra.handle_event(self, event)
+        }
+      } else if n < 0 {
+        @os_error.check_errno("runtime internal: poll_wait")
+      }
+      @coroutine.reschedule()
+    }
+    // When running with an external event loop,
+    // the program may be blocked on some external loop specific stuff,
+    // so deadlock detection cannot work properly, and in hence disabled here
+  } catch {
+    err => {
+      Ref::protect(check_fd_leak, false, () => self.cleanup())
+      // In case the event loop has encountered some fatal error,
+      // propagate the error to relevant coroutines.
+      while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
+        @coroutine.reschedule()
+      }
+      raise err
+    }
+  } noraise {
+    _ => self.cleanup()
+  }
+}
+
+///|
+#cfg(target="wasm")
+fn EventLoop::run_with_external_loop(
+  _self : Self,
+  _extloop : &ExternalEventLoop,
+) -> Unit raise {
+  raise Failure::Failure(
+    "external event loop integration is not supported on Wasm",
+  )
 }
 
 ///|

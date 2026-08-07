@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/external_loop_integration/internal/external_loop_test"
+
+import {
+  "moonbitlang/async/external_loop_integration",
+}
+
+// Values
+pub fn trigger_event(Int, Int, delay~ : Int) -> Unit
+
+pub fn trigger_main_loop_event(delay~ : Int) -> Unit
+
+// Errors
+
+// Types and methods
+pub struct MainLoop {
+  log : Array[String]
+  // private fields
+}
+pub fn MainLoop::MainLoop() -> Self raise
+pub fn MainLoop::log(Self, String) -> Unit
+pub async fn MainLoop::wait(Self) -> Unit
+pub impl @external_loop_integration.ExternalEventLoop for MainLoop
+
+// Type aliases
+
+// Traits

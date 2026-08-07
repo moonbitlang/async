@@ -50,43 +50,43 @@ fn UnixEventLoopExtra::cleanup(self : UnixEventLoopExtra) -> Unit {
 
 ///|
 #cfg(not(platform="windows"))
-fn UnixEventLoopExtra::poll(self : Self, evloop : EventLoop) -> Unit raise {
-  let n = evloop.wait_for_event()
-  for i in 0..<n {
-    let event = evloop.bus.get_event(i)
-    let events = event.events()
-    if (events & ProcessEvent) != 0 {
-      let pid = event.pid()
-      if self.pids.get(pid) is Some(coro) {
-        coro.wake()
-      }
-      continue
+fn UnixEventLoopExtra::handle_event(
+  self : Self,
+  evloop : EventLoop,
+  event : Event,
+) -> Unit raise {
+  let events = event.events()
+  if (events & ProcessEvent) != 0 {
+    let pid = event.pid()
+    if self.pids.get(pid) is Some(coro) {
+      coro.wake()
     }
-    let fd = event.fd()
-    if fd == evloop.notify_recv {
-      while true {
-        let bytes_transferred = fetch_completion_ffi(
-          evloop.notify_recv,
-          self.completed_jobs_buffer,
-        )
-        if bytes_transferred < 0 {
-          @os_error.check_errno("runtime internal: failed to get completed job")
-        }
-        let n = bytes_transferred / 4
-        for i in 0..<n {
-          evloop.handle_completed_job(self.completed_jobs_buffer[i])
-        }
-        if n < self.completed_jobs_buffer.length() {
-          break
-        }
+    return
+  }
+  let fd = event.fd()
+  if fd == evloop.notify_recv {
+    while true {
+      let bytes_transferred = fetch_completion_ffi(
+        evloop.notify_recv,
+        self.completed_jobs_buffer,
+      )
+      if bytes_transferred < 0 {
+        @os_error.check_errno("runtime internal: failed to get completed job")
       }
-    } else if evloop.fds.get(fd) is Some(handle) {
-      if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
-        coro.wake()
+      let n = bytes_transferred / 4
+      for i in 0..<n {
+        evloop.handle_completed_job(self.completed_jobs_buffer[i])
       }
-      if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {
-        coro.wake()
+      if n < self.completed_jobs_buffer.length() {
+        break
       }
+    }
+  } else if evloop.fds.get(fd) is Some(handle) {
+    if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
+      coro.wake()
+    }
+    if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {
+      coro.wake()
     }
   }
 }
