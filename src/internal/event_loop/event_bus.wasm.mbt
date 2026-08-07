@@ -47,10 +47,12 @@ fn EventBus::register(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only~ : Bool,
-) -> Unit raise {
+) -> Bool raise {
   if self.register_ffi(fd, read_only) < 0 {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
+  // TODO: support try-register in Wasm runtime
+  true
 }
 
 ///|

@@ -33,7 +33,7 @@ MOONBIT_FFI_EXPORT
 int moonbitlang_async_event_bus_register(HANDLE iocp, HANDLE fd, int32_t read_only) {
   if (!SetFileCompletionNotificationModes(fd, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
     return -1;
-  return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 0;
+  return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 1;
 }
 
 #define EVENT_BUFFER_SIZE 1024
