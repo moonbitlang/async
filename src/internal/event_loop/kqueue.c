@@ -46,7 +46,12 @@ void moonbitlang_async_event_bus_destroy(int kqfd) {
   close(kqfd);
 }
 
-int moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
+/* return value:
+   `-1` => failure
+   `0` => fd not supported
+   `1` => successfully registered
+ */
+int32_t moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
   // File descriptors registered with the event bus
   // should always be used in a non-blocking manner, due to our use of `EV_CLEAR`.
   // Error is intentionally omitted here, because some special file descriptors,
@@ -55,14 +60,27 @@ int moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
   if (fd_flags >= 0 && !(fd_flags & O_NONBLOCK))
     fcntl(fd, F_SETFL, fd_flags | O_NONBLOCK);
 
-  int flags = EV_ADD | EV_CLEAR;
+  int flags = EV_ADD | EV_CLEAR | EV_RECEIPT;
 
-  struct kevent events[2];
+  struct kevent events[2], receipts[2];
   EV_SET(&events[0], fd, EVFILT_READ, flags, 0, 0, 0);
   if (!read_only)
     EV_SET(&events[1], fd, EVFILT_WRITE, flags, 0, 0, 0);
 
-  return kevent(kqfd, events, read_only ? 1 : 2, 0, 0, 0);
+  int ret = kevent(kqfd, events, read_only ? 1 : 2, receipts, 2, 0);
+  if (ret < 0)
+    return ret;
+
+  /* If any of the filter (`EVFILT_READ`/`EVFILT_WRITE`) is registered,
+     treat the fd as "pollable".
+     Note that `kqueue` support registering regular file with `EVFILT_READ`,
+     but the semantic is not very useful.
+     So we still rely on `st_mode` to do filtering before `event_bus_register` */
+  for (int i = 0; i < ret; ++i)
+    if (receipts[i].data == 0)
+      return 1;
+
+  return 0;
 }
 
 // return value:

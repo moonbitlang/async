@@ -17,11 +17,10 @@
 #ifdef __linux__
 
 #include <unistd.h>
+#include <errno.h>
 #include <fcntl.h>
-#include <sys/syscall.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
-#include <linux/version.h>
 
 _Noreturn void moonbit_panic();
 
@@ -40,7 +39,12 @@ static const int ev_masks[] = {
   EPOLLIN | EPOLLOUT,
 };
 
-int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
+/* return value:
+   `-1` => failure
+   `0` => fd not supported
+   `1` => successfully registered
+ */
+int32_t moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
   // File descriptors registered with the event bus
   // should always be used in a non-blocking manner, due to our use of `EPOLLET`.
   // Error is intentionally omitted here, because some special file descriptors,
@@ -56,7 +60,13 @@ int moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
   epoll_data_t data;
   data.u64 = fd;
   struct epoll_event event = { events, data };
-  return epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+  if (ret >= 0)
+    return 1;
+  else if (errno == EPERM)
+    return 0;
+  else
+    return -1;
 }
 
 int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
