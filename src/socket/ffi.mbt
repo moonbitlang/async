@@ -201,6 +201,9 @@ extern "C" fn disable_nagle(sock : @fd_util.Fd) -> Int = "moonbitlang_async_disa
 extern "C" fn allow_reuse_addr(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_addr"
 
 ///|
+extern "C" fn allow_reuse_port(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_port"
+
+///|
 extern "C" fn enable_keepalive_ffi(
   sock : @fd_util.Fd,
   keep_idle : Int,

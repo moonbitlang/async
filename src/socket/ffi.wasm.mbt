@@ -201,6 +201,12 @@ fn disable_nagle(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/disabl
 fn allow_reuse_addr(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/allow_reuse_addr"
 
 ///|
+fn allow_reuse_port(_sock : @fd_util.Fd) -> Int {
+  // wasm has no multi-process prefork model, so SO_REUSEPORT has no meaning here.
+  0
+}
+
+///|
 #unsafe_skip_stub_check
 fn enable_keepalive_ffi(
   sock : @fd_util.Fd,
