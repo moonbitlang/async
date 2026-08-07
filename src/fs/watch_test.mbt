@@ -47,12 +47,16 @@ async fn watch_basic_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~)
+    let watcher = @fs.Watcher(path, report_child_event~, debounce_timeout=50)
+    let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
+        println(
+          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+        )
       }
     })
     // 1. modify content of existing file at root
@@ -221,12 +225,16 @@ async fn watch_rename_within_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~)
+    let watcher = @fs.Watcher(path, report_child_event~, debounce_timeout=50)
+    let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
+        println(
+          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+        )
       }
     })
     // 1. rename within the same directory
@@ -348,12 +356,20 @@ async fn watch_rename_inout_test(
     })
     let watched_path = "\{base_path}/watched"
 
-    let watcher = @fs.Watcher(watched_path, report_child_event~)
+    let watcher = @fs.Watcher(
+      watched_path,
+      report_child_event~,
+      debounce_timeout=50,
+    )
+    let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
+        println(
+          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+        )
       }
     })
     // 1. move foreign file inside watched tree
@@ -628,11 +644,13 @@ async test "watch ignored path" {
     })
 
     let watcher = @fs.Watcher(path, ignored_paths=path => path is "ignored")
+    let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
         watcher.wait_any()
         log.push("watcher received change")
+        println("watcher received change at +\{@async.now() - start}")
       }
     })
 
