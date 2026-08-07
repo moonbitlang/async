@@ -116,6 +116,25 @@ pub using @coroutine {protect_from_cancel}
 pub using @event_loop {now}
 
 ///|
+/// When `moonbitlang/async` detects a a deadlock situation
+/// (i.e. all remaining tasks are mutually blocked on each other,
+/// no one is waiting for any timer or IO),
+/// the runtime automatically panic and report error to `stderr`
+/// to avoid stucking forever.
+///
+/// This behavior can be altered by `set_deadlock_handler`.
+/// The handler will receive the source location of remaining tasks as input,
+/// the user may choose to output log via a file or other means and panic,
+/// or simply ignore the deadlock situation by setting a custom callback.
+///
+/// If the deadlock handler return normally without aborting the program,
+/// the runtime will ignore the deadlock and continue execution,
+/// disabling deadlock detection in effect.
+/// Note that the program will likely hang forever in this case.
+#cfg(any(target="native", target="wasm"))
+pub using @event_loop {set_deadlock_handler}
+
+///|
 pub using @aqueue {type Queue}
 
 ///|

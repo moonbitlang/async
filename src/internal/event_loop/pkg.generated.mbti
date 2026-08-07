@@ -76,6 +76,8 @@ pub async fn rename(StringView, StringView, replace~ : Bool, context~ : String) 
 
 pub async fn rmdir(StringView, context~ : String) -> Unit
 
+pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
+
 pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
 pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
