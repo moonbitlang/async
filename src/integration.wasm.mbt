@@ -18,7 +18,7 @@
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
     err => {
-      println(err)
+      @env_util.eprintln(err.to_string())
       exit(1)
     }
   }

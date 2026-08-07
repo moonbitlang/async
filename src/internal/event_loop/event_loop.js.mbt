@@ -19,6 +19,7 @@ let _ignore_unused_import : Unit = {
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+  ignore(@env_util.eprintln)
 }
 
 ///|

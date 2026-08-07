@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/aqueue",
   "moonbitlang/async/semaphore",
   "moonbitlang/async/cond_var",
+  "moonbitlang/async/internal/env_util",
 }
 
 import {
