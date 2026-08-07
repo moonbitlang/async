@@ -23,8 +23,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
     @event_loop.KilledBySignal(signal) =>
       @event_loop.terminate_process_by_signal(signal)
     err => {
-      // TODO: output the error to stderr
-      println(err)
+      @env_util.eprintln(err.to_string())
       exit(1)
     }
   }
@@ -63,6 +62,7 @@ extern "C" fn exit(code : Int) = "exit"
 #cfg(target="js")
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
+  ignore(@env_util.eprintln)
   let _ = @coroutine.spawn(main)
   @event_loop.reschedule()
 }
