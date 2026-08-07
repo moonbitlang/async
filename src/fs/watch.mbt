@@ -628,6 +628,9 @@ async fn Watcher::add_file_at(
     }
   }
   let location = (dir.identity, name)
+  println(
+    "new file: \{self.base_path}/\{Repr(dir.identity)}/\{name} => \{Repr(identity)}",
+  )
   let file = self.get_file_at(path~, is_dir~, identity~, context~)
   dir.children[name] = file.identity
   file.paths.add(location)

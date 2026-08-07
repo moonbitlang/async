@@ -238,6 +238,7 @@ async fn KqueueWatcher::process_events(
     let fd = self.event_buffer.fd(i)
     if self.event_buffer.has_modify(i) {
       let { identity, .. } = self.watched[fd]
+      println("received modification event for \{Repr(identity)}")
       self.watcher.mark_as_modified(identity)
     }
   }
