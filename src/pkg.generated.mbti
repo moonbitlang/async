@@ -27,6 +27,8 @@ pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> 
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
 
+pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
+
 pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
 pub async fn sleep(Int) -> Unit

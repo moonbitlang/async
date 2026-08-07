@@ -310,17 +310,15 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 }
 
 ///|
-fn EventLoop::get_next_timeout(self : Self) -> Int? {
+fn EventLoop::get_next_timeout(self : Self) -> Int {
   if @coroutine.has_immediately_ready_task() {
-    Some(0)
+    0
   } else if !self.timers.is_empty() {
     guard! self.timers.iter().head() is Some(first_timer)
     let timeout = first_timer.expire_time - now()
-    Some(@cmp.maximum(0, timeout.to_int()))
-  } else if self.blocked_tasks > 0 {
-    Some(-1)
+    @cmp.maximum(0, timeout.to_int())
   } else {
-    None
+    -1
   }
 }
 
@@ -337,6 +335,20 @@ fn EventLoop::handle_timers(self : Self) -> Unit {
 }
 
 ///|
+let deadlock_handler : Ref[(Array[SourceLoc]) -> Unit] = Ref(locs => {
+  let locs = locs.map(loc => loc.to_string())
+  @env_util.eprintln(
+    "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(locs)}",
+  )
+  panic()
+})
+
+///|
+pub fn set_deadlock_handler(f : (Array[SourceLoc]) -> Unit) -> Unit {
+  deadlock_handler.val = f
+}
+
+///|
 fn EventLoop::check_dead_lock(self : Self) -> Unit {
   let all_coros = @coroutine.all_coroutines().iter()
   let all_coros = match self.signal_handler {
@@ -344,19 +356,24 @@ fn EventLoop::check_dead_lock(self : Self) -> Unit {
       all_coros.filter(coro => coro != sigwait_task)
     None | Some(ConsoleControlHandler) => all_coros
   }
-  let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
+  let all_coros = all_coros.map(coro => coro.loc).collect()
   if all_coros.length() > 0 {
-    @env_util.eprintln(
-      "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(all_coros)}",
-    )
-    panic()
+    (deadlock_handler.val)(all_coros)
   }
 }
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
   try {
-    while self.get_next_timeout() is Some(timeout) {
+    let mut checked_deadlock = false
+    while !@coroutine.all_coroutines().is_empty() {
+      let timeout = self.get_next_timeout()
+      if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
+        // The user may decide to ignore deadlock situation,
+        // in this case we only perform the deadlock check once.
+        checked_deadlock = true
+        self.check_dead_lock()
+      }
       let n = self.wait_for_event(timeout~)
       if timeout >= 0 {
         self.handle_timers()
@@ -399,8 +416,8 @@ fn EventLoop::run_with_external_loop(
   try {
     while !@coroutine.all_coroutines().is_empty() {
       let timeout = match self.get_next_timeout() {
-        Some(_..<0) | None => None
-        Some(timeout) => Some(timeout)
+        _..<0 => None
+        timeout => Some(timeout)
       }
       extloop.poll(timeout?)
       if !self.timers.is_empty() {
