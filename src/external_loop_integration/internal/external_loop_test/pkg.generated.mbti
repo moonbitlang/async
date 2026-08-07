@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn start_pipe_burst_writer(Int, burst_count~ : Int, burst_size~ : Int, gap_us~ : Int) -> Int
+
 pub fn trigger_event(Int, Int, delay~ : Int) -> Unit
 
 pub fn trigger_main_loop_event(delay~ : Int) -> Unit

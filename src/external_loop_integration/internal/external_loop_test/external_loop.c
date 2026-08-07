@@ -241,3 +241,92 @@ void trigger_event(HANDLE pipe_w, int32_t data, int32_t delay) {
 
 #endif
 }
+
+#ifndef _WIN32
+
+struct PipeBurstWriter {
+  int pipe_w;
+  int32_t burst_count;
+  int32_t burst_size;
+  int32_t gap_us;
+};
+
+static thread_worker_result_t THREAD_PROC_CALLING_CONVENTION
+pipe_burst_writer_main(void *payload) {
+  struct PipeBurstWriter *writer = (struct PipeBurstWriter *)payload;
+  char *buffer = (char *)calloc((size_t)writer->burst_size, 1);
+
+  if (buffer != NULL) {
+    for (int32_t burst = 0; burst < writer->burst_count; ++burst) {
+      int32_t offset = 0;
+      while (offset < writer->burst_size) {
+        ssize_t written = write(
+          writer->pipe_w,
+          buffer + offset,
+          (size_t)(writer->burst_size - offset)
+        );
+        if (written > 0) {
+          offset += (int32_t)written;
+          continue;
+        }
+        if (written < 0 && errno == EINTR)
+          continue;
+        if (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+          struct pollfd pfd = { writer->pipe_w, POLL_OUT, 0 };
+          if (poll(&pfd, 1, -1) >= 0)
+            continue;
+        }
+        goto done;
+      }
+
+      if (writer->gap_us > 0) {
+        struct timespec gap = {
+          writer->gap_us / 1000000,
+          (writer->gap_us % 1000000) * 1000,
+        };
+        while (nanosleep(&gap, &gap) < 0 && errno == EINTR) {}
+      }
+    }
+  }
+
+done:
+  free(buffer);
+  close(writer->pipe_w);
+  free(writer);
+  return 0;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_external_loop_test_start_pipe_burst_writer(
+  int pipe_w,
+  int32_t burst_count,
+  int32_t burst_size,
+  int32_t gap_us
+) {
+  struct PipeBurstWriter *writer =
+    (struct PipeBurstWriter *)malloc(sizeof(struct PipeBurstWriter));
+  if (writer == NULL)
+    return -1;
+
+  writer->pipe_w = dup(pipe_w);
+  writer->burst_count = burst_count;
+  writer->burst_size = burst_size;
+  writer->gap_us = gap_us;
+  if (writer->pipe_w < 0) {
+    free(writer);
+    return -1;
+  }
+
+  pthread_t tid;
+  int ret = pthread_create(&tid, NULL, &pipe_burst_writer_main, writer);
+  if (ret != 0) {
+    close(writer->pipe_w);
+    free(writer);
+    errno = ret;
+    return -1;
+  }
+  pthread_detach(tid);
+  return 0;
+}
+
+#endif
