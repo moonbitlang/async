@@ -78,17 +78,20 @@ async test "stdio cancel" {
   @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
+    let (we_read_err, cat_write_err) = @process.read_from_process()
     group.spawn_bg() <| () => {
       let code = @process.run(
         cat,
         ["-timeout", "500"],
         stdin=cat_read,
         stdout=cat_write,
+        stderr=cat_write_err,
       )
       inspect(code, content="1")
     }
     defer we_write.close()
     defer we_read.close()
+    defer we_read_err.close()
     we_write.write("abcd")
     debug_inspect(
       we_read.read_some(),
@@ -97,8 +100,9 @@ async test "stdio cancel" {
       ),
     )
     @async.sleep(750)
+    assert_eq(we_read.read_all().text(), "")
     inspect(
-      we_read.read_all().text().trim(chars="\r\n"),
+      we_read_err.read_all().text().trim(chars="\r\n"),
       content="TimeoutError",
     )
   }

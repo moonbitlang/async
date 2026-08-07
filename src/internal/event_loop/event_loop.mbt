@@ -273,7 +273,8 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
     let leaked_handles = [
       for handle in self.fds.values() => @debug.to_string(handle.kind)
     ].join(", ")
-    abort("file descriptor leak detected: \{leaked_handles}")
+    @env_util.eprintln("file descriptor leak detected: \{leaked_handles}")
+    panic()
   }
 }
 
@@ -345,7 +346,7 @@ fn EventLoop::check_dead_lock(self : Self) -> Unit {
   }
   let all_coros = all_coros.map(coro => coro.loc.to_string()).collect()
   if all_coros.length() > 0 {
-    println(
+    @env_util.eprintln(
       "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(all_coros)}",
     )
     panic()
