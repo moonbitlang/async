@@ -139,7 +139,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         max_len~,
         limit=remaining,
       )
-      if produced is 0 {
+      if consumed is 0 {
         raise @io.ReaderClosed
       }
       let remaining = remaining - consumed
