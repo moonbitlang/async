@@ -140,3 +140,10 @@ pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno == errno_ENOTDIR
 }
+
+///|
+#unsafe_skip_stub_check
+fn get_ENOTSUP() -> Int = "moonbitlang/async" "os_error/get_ENOTSUP"
+
+///|
+pub let errno_ENOTSUP : Int = get_ENOTSUP()

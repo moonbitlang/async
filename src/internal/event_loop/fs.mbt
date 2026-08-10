@@ -20,7 +20,6 @@ pub(all) struct FileIdentity {
 } derive(Eq, Hash)
 
 ///|
-#cfg(target="native")
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
@@ -82,49 +81,6 @@ pub async fn open(
 }
 
 ///|
-#cfg(target="wasm")
-pub async fn open(
-  path : StringView,
-  // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
-  access : Int,
-  // See `@fs.CreateMode` for more details
-  create~ : Int,
-  append~ : Bool,
-  // 0 => no sync, 1 => data sync, 2 => full sync
-  sync~ : Int,
-  // permission for file when new file is created
-  mode~ : Int,
-  context~ : String,
-) -> (IoHandle, FileIdentity) {
-  let path_bytes = @os_string.encode(path)
-  let job = Job::open(path_bytes, access, create~, append~, sync~, mode~)
-  defer job.0.free()
-  try perform_job_in_worker(job.0, context~, cancellable=true) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    _ => {
-      let fd = job.fd()
-      let kind = job.kind()
-      let io = IoHandle::from_fd(
-        fd,
-        kind~,
-        is_async=access is 3 || (!(platform is Windows) && kind.can_poll()),
-        read_only=access is 0,
-      )
-      if append {
-        // For append mode file descriptor, let the OS do the work.
-        // Reading is unaffected by `append`.
-        io.write_offset = -1
-      }
-      (io, { dev_id: job.dev_id(), file_id: job.file_id() })
-    }
-  }
-}
-
-///|
-#cfg(target="native")
 pub async fn fstatx(
   fd : @fd_util.Fd,
   request : UInt,
@@ -138,7 +94,6 @@ pub async fn fstatx(
 }
 
 ///|
-#cfg(target="native")
 async fn fstatx_single(
   fd : @fd_util.Fd,
   request : UInt,
@@ -155,7 +110,6 @@ async fn fstatx_single(
 }
 
 ///|
-#cfg(target="native")
 pub async fn statx(
   path : StringView,
   parent~ : @fd_util.Fd,
@@ -185,7 +139,6 @@ pub async fn statx(
 }
 
 ///|
-#cfg(target="native")
 async fn statx_single(
   path : StringView,
   parent~ : @fd_util.Fd,
@@ -204,7 +157,6 @@ async fn statx_single(
 }
 
 ///|
-#cfg(target="native")
 pub async fn kind_of_fd(
   fd : @fd_util.Fd,
   context~ : String,
@@ -218,7 +170,6 @@ pub async fn kind_of_fd(
 /// `path` will be interpreted relative to the directory pointed by `parent`,
 /// see `fstatat` for more details.
 /// `parent` is not supported on Windows.
-#cfg(target="native")
 pub async fn file_kind_by_path(
   path : StringView,
   parent~ : @fd_util.Fd,
@@ -238,43 +189,12 @@ pub async fn file_kind_by_path(
 }
 
 ///|
-#cfg(target="wasm")
-pub async fn file_kind_by_path(
-  path : StringView,
-  parent~ : @fd_util.Fd,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> @fd_util.FileKind {
-  let path_bytes = @os_string.encode(path)
-  let job = Job::file_kind_by_path(parent, path_bytes, follow_symlink~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    result => @fd_util.FileKind::unsafe_from_int(result)
-  }
-}
-
-///|
-#cfg(target="native")
 pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
   guard! fstatx_single(fd, STAT_FILE_SIZE, 1, context~) is [i64le(size)]
   size
 }
 
 ///|
-#cfg(target="wasm")
-pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
-  let job = Job::file_size(fd)
-  defer job.free()
-  let _ = perform_job_in_worker(job, context~)
-  job.get_file_size_result()
-}
-
-///|
-#cfg(target="native")
 pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
   guard! fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
@@ -282,7 +202,6 @@ pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
 }
 
 ///|
-#cfg(target="native")
 pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
   guard! fstatx_single(fd, STAT_ACCESS_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
@@ -290,7 +209,6 @@ pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
 }
 
 ///|
-#cfg(target="native")
 pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
   guard! fstatx_single(fd, STAT_CHANGE_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
@@ -298,7 +216,6 @@ pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
 }
 
 ///|
-#cfg(target="native")
 pub async fn mtime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
@@ -317,7 +234,6 @@ pub async fn mtime_by_path(
 }
 
 ///|
-#cfg(target="native")
 pub async fn atime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
@@ -336,7 +252,6 @@ pub async fn atime_by_path(
 }
 
 ///|
-#cfg(target="native")
 pub async fn ctime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
@@ -352,85 +267,6 @@ pub async fn ctime_by_path(
     )
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
-}
-
-///|
-#cfg(target="wasm")
-async fn file_time(fd : @fd_util.Fd, context~ : String) -> @fd_util.FileTime {
-  let result = @fd_util.FileTime::new()
-  let job = Job::file_time(fd, result)
-  defer job.free()
-  let _ = perform_job_in_worker(job, context~)
-  result
-}
-
-///|
-#cfg(target="wasm")
-async fn file_time_by_path(
-  path : StringView,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> @fd_util.FileTime {
-  let path_bytes = @os_string.encode(path)
-  let result = @fd_util.FileTime::new()
-  let job = Job::file_time_by_path(path_bytes, result, follow_symlink~)
-  defer job.free()
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    _ => ()
-  }
-  result
-}
-
-///|
-#cfg(target="wasm")
-pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  file_time(fd, context~).mtime()
-}
-
-///|
-#cfg(target="wasm")
-pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  file_time(fd, context~).atime()
-}
-
-///|
-#cfg(target="wasm")
-pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
-  file_time(fd, context~).ctime()
-}
-
-///|
-#cfg(target="wasm")
-pub async fn mtime_by_path(
-  path : StringView,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> (Int64, Int) {
-  file_time_by_path(path, follow_symlink~, context~).mtime()
-}
-
-///|
-#cfg(target="wasm")
-pub async fn atime_by_path(
-  path : StringView,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> (Int64, Int) {
-  file_time_by_path(path, follow_symlink~, context~).atime()
-}
-
-///|
-#cfg(target="wasm")
-pub async fn ctime_by_path(
-  path : StringView,
-  follow_symlink~ : Bool,
-  context~ : String,
-) -> (Int64, Int) {
-  file_time_by_path(path, follow_symlink~, context~).ctime()
 }
 
 ///|

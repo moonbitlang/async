@@ -201,7 +201,9 @@ fn JobHandle::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_open_job"
+  stat_request~ : UInt,
+  stat_buf_len~ : Int,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_open_stat_job"
 
 ///|
 priv struct OpenJob(Job)
@@ -218,8 +220,23 @@ fn Job::open(
   sync~ : Int,
   // permission for file when new file is created
   mode~ : Int,
+  stat_request~ : UInt,
+  stat_buf~ : FixedArray[Byte],
+  stat_buf_len~ : Int,
 ) -> OpenJob {
-  Job(JobHandle::open(filename, access, create~, append~, sync~, mode~))
+  Job(
+    JobHandle::open(
+      filename,
+      access,
+      create~,
+      append~,
+      sync~,
+      mode~,
+      stat_request~,
+      stat_buf_len~,
+    ),
+    copy_output=job => job.get_stat_result(stat_buf, stat_buf_len),
+  )
 }
 
 ///|
@@ -233,104 +250,82 @@ fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd {
 
 ///|
 #unsafe_skip_stub_check
-fn OpenJob::kind_ffi(job : JobHandle) -> @fd_util.FileKind = "moonbitlang/async" "thread_pool/open_job_get_kind"
+#borrow(buf)
+fn JobHandle::get_stat_result(
+  self : JobHandle,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+) -> Unit = "moonbitlang/async" "thread_pool/get_stat_result"
 
 ///|
-fn OpenJob::kind(job : OpenJob) -> @fd_util.FileKind {
-  OpenJob::kind_ffi(job.0.handle)
-}
+pub const STAT_FILE_KIND : UInt = 0x0001
+
+///|
+pub const STAT_FILE_SIZE : UInt = 0x0002
+
+///|
+pub const STAT_DEVICE_ID : UInt = 0x0004
+
+///|
+pub const STAT_FILE_ID : UInt = 0x0008
+
+///|
+pub const STAT_ACCESS_TIME : UInt = 0x0010
+
+///|
+pub const STAT_MODIFY_TIME : UInt = 0x0020
+
+///|
+pub const STAT_CHANGE_TIME : UInt = 0x0040
+
+///|
+pub const STAT_CREATE_TIME : UInt = 0x0080
 
 ///|
 #unsafe_skip_stub_check
-fn OpenJob::dev_id_ffi(job : JobHandle) -> UInt64 = "moonbitlang/async" "thread_pool/open_job_get_dev_id"
+fn JobHandle::fstatx(
+  fd : @fd_util.Fd,
+  request : UInt,
+  buf_len : Int,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_fstatx_job"
 
 ///|
-fn OpenJob::dev_id(job : OpenJob) -> UInt64 {
-  OpenJob::dev_id_ffi(job.0.handle)
-}
-
-///|
-#unsafe_skip_stub_check
-fn OpenJob::file_id_ffi(job : JobHandle) -> UInt64 = "moonbitlang/async" "thread_pool/open_job_get_file_id"
-
-///|
-fn OpenJob::file_id(job : OpenJob) -> UInt64 {
-  OpenJob::file_id_ffi(job.0.handle)
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(path)
-fn JobHandle::file_kind_by_path(
-  parent : @fd_util.Fd,
-  path : @os_string.OsString,
-  path_len? : Int = path.to_string().length(),
-  follow_symlink~ : Bool,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_file_kind_by_path_job"
-
-///|
-fn Job::file_kind_by_path(
-  parent : @fd_util.Fd,
-  path : @os_string.OsString,
-  follow_symlink~ : Bool,
+fn Job::fstatx(
+  fd : @fd_util.Fd,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
 ) -> Job {
-  Job(JobHandle::file_kind_by_path(parent, path, follow_symlink~))
-}
-
-///|
-#unsafe_skip_stub_check
-fn JobHandle::file_size(fd : @fd_util.Fd) -> JobHandle = "moonbitlang/async" "thread_pool/make_file_size_job"
-
-///|
-fn Job::file_size(fd : @fd_util.Fd) -> Job {
-  Job(JobHandle::file_size(fd))
-}
-
-///|
-#unsafe_skip_stub_check
-fn JobHandle::get_file_size_result(job : JobHandle) -> Int64 = "moonbitlang/async" "thread_pool/get_file_size_result"
-
-///|
-fn Job::get_file_size_result(job : Job) -> Int64 {
-  job.handle.get_file_size_result()
-}
-
-///|
-#unsafe_skip_stub_check
-fn JobHandle::file_time(fd : @fd_util.Fd) -> JobHandle = "moonbitlang/async" "thread_pool/make_file_time_job"
-
-///|
-fn Job::file_time(fd : @fd_util.Fd, out : @fd_util.FileTime) -> Job {
-  Job(JobHandle::file_time(fd), copy_output=job => job.get_file_time_result(out))
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(path)
-fn JobHandle::file_time_by_path(
-  path : @os_string.OsString,
-  path_len? : Int = path.to_string().length(),
-  follow_symlink~ : Bool,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_file_time_by_path_job"
-
-///|
-fn Job::file_time_by_path(
-  path : @os_string.OsString,
-  out : @fd_util.FileTime,
-  follow_symlink~ : Bool,
-) -> Job {
-  Job(JobHandle::file_time_by_path(path, follow_symlink~), copy_output=job => {
-    job.get_file_time_result(out)
+  Job(JobHandle::fstatx(fd, request, buf_len), copy_output=job => {
+    job.get_stat_result(buf, buf_len)
   })
 }
 
 ///|
 #unsafe_skip_stub_check
-#borrow(out)
-fn JobHandle::get_file_time_result(
-  self : JobHandle,
-  out : @fd_util.FileTime,
-) -> Unit = "moonbitlang/async" "thread_pool/get_file_time_result"
+#borrow(path)
+fn JobHandle::statx(
+  path : @os_string.OsString,
+  path_len? : Int = path.to_string().length(),
+  request : UInt,
+  buf_len : Int,
+  parent~ : @fd_util.Fd,
+  follow_symlink~ : Bool,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_statx_job"
+
+///|
+fn Job::statx(
+  path : @os_string.OsString,
+  request : UInt,
+  buf : FixedArray[Byte],
+  buf_len : Int,
+  parent~ : @fd_util.Fd,
+  follow_symlink~ : Bool,
+) -> Job {
+  Job(JobHandle::statx(path, request, buf_len, parent~, follow_symlink~), copy_output=job => {
+    job.get_stat_result(buf, buf_len)
+  })
+}
 
 ///|
 pub(all) enum Access {
