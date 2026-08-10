@@ -80,16 +80,22 @@ async fn IoHandle::read_via_event_bus_unix(
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // Usually, the retry loop here should execute at most once.
+  // Because `wait_read` only get woken by a read-readiness event,
+  // and the subsequent `read_unix_ffi` attempt should always succeed.
+  // However, when an external loop is used,
+  // the read readiness event that wake `wait_read` up may be stale,
+  // because the event bus waiter thread is not in-sync with the main thread.
+  while @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    read_unix_ffi(handle.fd, buf, offset~, len~)
-  } else {
-    ret
-  }
-  if ret < 0 {
+    let ret = read_unix_ffi(handle.fd, buf, offset~, len~)
+    if ret >= 0 {
+      return ret
+    }
+  } nobreak {
     @os_error.check_errno(context)
+    -1
   }
-  ret
 }
 
 ///|
@@ -141,16 +147,22 @@ async fn IoHandle::write_via_event_bus_unix(
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // Usually, the retry loop here should execute at most once.
+  // Because `wait_read` only get woken by a read-readiness event,
+  // and the subsequent `read_unix_ffi` attempt should always succeed.
+  // However, when an external loop is used,
+  // the read readiness event that wake `wait_read` up may be stale,
+  // because the event bus waiter thread is not in-sync with the main thread.
+  while @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    write_unix_ffi(handle.fd, buf, offset~, len~)
-  } else {
-    ret
-  }
-  if ret < 0 {
+    let ret = write_unix_ffi(handle.fd, buf, offset~, len~)
+    if ret >= 0 {
+      return ret
+    }
+  } nobreak {
     @os_error.check_errno(context)
+    -1
   }
-  ret
 }
 
 ///|

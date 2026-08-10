@@ -63,16 +63,16 @@ async fn IoHandle::recvfrom_unix(
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  while @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
-  }
-  if ret < 0 {
+    let ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
+    if ret >= 0 {
+      return ret
+    }
+  } nobreak {
     @os_error.check_errno(context)
+    -1
   }
-  ret
 }
 
 ///|
@@ -128,16 +128,16 @@ async fn IoHandle::sendto_unix(
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  while @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
-  }
-  if ret < 0 {
+    let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
+    if ret >= 0 {
+      return ret
+    }
+  } nobreak {
     @os_error.check_errno(context)
+    -1
   }
-  ret
 }
 
 ///|
@@ -244,11 +244,16 @@ pub async fn IoHandle::accept_unix(
     // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     conn
-  } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    accept_unix_ffi(handle.fd, addr)
   } else {
-    conn
+    while @os_error.is_nonblocking_io_error() {
+      handle.wait_read()
+      let conn = accept_unix_ffi(handle.fd, addr)
+      if @fd_util.fd_is_valid(conn) {
+        break conn
+      }
+    } nobreak {
+      @fd_util.invalid_fd
+    }
   }
   if !@fd_util.fd_is_valid(conn) {
     @os_error.check_errno(context)

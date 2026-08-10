@@ -156,7 +156,9 @@ test "non-blocking read & external waiter race" {
         // The main loop will get waken by the event from the waiter thread,
         // and the stale read readiness event will wake this task up.
         // But at this point, there is still no data in the pipe,
-        // so the second `read` attempt still fail with `EAGAIN`, failing the whole test
+        // so the second `read` attempt still fail with `EAGAIN`.
+        // If we do not tolerate `EAGAIN` on the second non-blocking `read` attempt,
+        // the test will (wrongly) fail with error.
         guard r.read_some() is Some(data) else {
           fail("expected data, no data found")
         }
