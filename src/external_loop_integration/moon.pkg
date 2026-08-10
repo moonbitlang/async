@@ -3,6 +3,6 @@ import {
   "moonbitlang/async/socket",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/external_loop_integration/internal/external_loop_test",
-  "moonbitlang/async/os_error",
   "moonbitlang/async/pipe",
+  "moonbitlang/async/process",
 } for "test"

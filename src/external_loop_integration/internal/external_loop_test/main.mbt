@@ -32,18 +32,6 @@ pub extern "C" fn trigger_event(
 ) -> Unit = "trigger_event"
 
 ///|
-/// Start a foreign thread that writes repeated bursts to a duplicated pipe
-/// descriptor. The duplicate lets the caller close its own write end while the
-/// thread keeps the pipe alive until all bytes have been written.
-#cfg(all(target="native", not(platform="windows")))
-pub extern "C" fn start_pipe_burst_writer(
-  pipe_w : @fd_util.Fd,
-  burst_count~ : Int,
-  burst_size~ : Int,
-  gap_us~ : Int,
-) -> Int = "moonbitlang_async_external_loop_test_start_pipe_burst_writer"
-
-///|
 pub fn trigger_main_loop_event(delay~ : Int) -> Unit {
   trigger_event(@fd_util.invalid_fd, 1, delay~)
 }

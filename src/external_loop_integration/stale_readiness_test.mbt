@@ -18,9 +18,9 @@
 /// that event to a newly armed waiter, the pipe may already be empty and the
 /// next non-blocking read legitimately returns EAGAIN.
 ///
-/// The writer runs outside MoonBit so this test exercises the same ownership
-/// boundary as a subprocess stdout pipe without depending on a subprocess or
-/// any application code.
+/// `/bin/sh` is a real child process whose stdout is connected through
+/// `@process.read_from_process()`. This matches the descriptor ownership used
+/// by applications that consume a subprocess's stdout through the async loop.
 #cfg(all(target="native", not(platform="windows")))
 test "external loop retries stale pipe readiness" {
   let main_loop = @external_loop_test.MainLoop()
@@ -29,33 +29,39 @@ test "external loop retries stale pipe readiness" {
     let round_count = 8
     let burst_count = 256
     let burst_size = 16 * 1024
+    let burst = String::make(burst_size, 'x')
+    let writer_script =
+      #|i=0
+      #|while [ "$i" -lt "$2" ]; do
+      #|  printf '%s' "$1"
+      #|  sleep 0.00005
+      #|  i=$((i + 1))
+      #|done
+      #|
     let expected = burst_count * burst_size
     let buffer = FixedArray::make(4096, b'\x00')
-    for round in 0..<round_count {
-      let (reader, writer) = @pipe.pipe()
-      defer reader.close()
-      let started = @external_loop_test.start_pipe_burst_writer(
-        writer.fd(),
-        burst_count~,
-        burst_size~,
-        gap_us=50,
-      )
-      if started < 0 {
-        writer.close()
-        @os_error.check_errno("start pipe burst writer")
-      }
-      writer.close()
-
-      for received = 0; received < expected; {
-        let n = reader.read(buffer, offset=0, max_len=buffer.length())
-        if n == 0 {
-          fail(
-            "round \{round} reached EOF after \{received} of \{expected} bytes",
-          )
+    @async.with_task_group() <| group => {
+      for round in 0..<round_count {
+        let (reader, writer) = @process.read_from_process()
+        defer reader.close()
+        let child = @process.spawn(
+          group,
+          "/bin/sh",
+          ["-c", writer_script, "burst-writer", burst, burst_count.to_string()],
+          stdout=writer,
+        )
+        for received = 0; received < expected; {
+          let n = reader.read(buffer, offset=0, max_len=buffer.length())
+          if n == 0 {
+            fail(
+              "round \{round} reached EOF after \{received} of \{expected} bytes",
+            )
+          }
+          continue received + n
+        } nobreak {
+          assert_eq(received, expected)
         }
-        continue received + n
-      } nobreak {
-        assert_eq(received, expected)
+        assert_eq(child.wait(), 0)
       }
     }
   }
