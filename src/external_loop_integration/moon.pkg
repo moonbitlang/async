@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/socket",
   "moonbitlang/async/internal/event_loop",

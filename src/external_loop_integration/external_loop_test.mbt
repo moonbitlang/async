@@ -112,3 +112,56 @@ test "external loop blocked on async only" {
     "main loop received 0 at #1", "main loop received 1 at #2", "terminate main loop",
   ])
 }
+
+///|
+#cfg(target="native")
+test "non-blocking read & external waiter race" {
+  let main_loop = @external_loop_test.MainLoop()
+  @event_loop.with_event_loop <| () => {
+    @async.set_external_event_loop(main_loop)
+    let (r, w) = @pipe.pipe()
+    defer r.close()
+    @async.with_task_group <| group => {
+      // The following three tasks will start running at the same scheduler slice
+      group.spawn_bg() <| () => {
+        defer w.close()
+        // The `write` here will generate a read-readiness event for the pipe
+        w.write("abcd")
+        @async.sleep(150)
+        w.write("xyzw")
+      }
+      group.spawn_bg() <| () => {
+        // do some spinning here to ensure the waiter thread has generated
+        // the read readiness event before we drain the pipe
+        let start = @async.now()
+        while @async.now() - start < 10 {
+
+        }
+        // The `read` here will execute after the `write` above,
+        // so it would immediately succeed and drain all data in the pipe.
+        // At this point, the read readiness event for the pipe
+        // is still in the event bus and not yet consumed.
+        guard r.read_some() is Some(data) else {
+          fail("expected data, no data found")
+        }
+        inspect(@utf8.decode(data), content="abcd")
+      }
+      group.spawn_bg() <| () => {
+        // The `read` here has no data to read, because the pipe
+        // is already drained by the first `read` above.
+        // The first non-blocking `read` attempt here will fail with `EAGAIN`,
+        // and the task will start waiting for read readiness of the pipe.
+        //
+        // Now, the event loop will enter the next slice.
+        // The main loop will get waken by the event from the waiter thread,
+        // and the stale read readiness event will wake this task up.
+        // But at this point, there is still no data in the pipe,
+        // so the second `read` attempt still fail with `EAGAIN`, failing the whole test
+        guard r.read_some() is Some(data) else {
+          fail("expected data, no data found")
+        }
+        inspect(@utf8.decode(data), content="xyzw")
+      }
+    }
+  }
+}
