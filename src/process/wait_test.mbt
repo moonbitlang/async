@@ -85,8 +85,8 @@ async test "wait exitcode STILL_ACTIVE" {
 }
 
 ///|
-#cfg(all(target="native", not(platform="windows")))
 async test "signal exit code" {
+  guard !(@event_loop.platform is Windows) else {  }
   let sleep = sleep_prog.wait()
   let exit_code = @async.with_task_group <| group => {
     let proc = @process.spawn(group, sleep, ["1000", "-use-default-handler"])
