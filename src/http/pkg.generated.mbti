@@ -23,6 +23,8 @@ pub async fn put(String, &@io.Data, headers? : Map[String, String], proxy? : Cli
 
 pub async fn put_stream(String, headers? : Map[String, String], proxy? : Client) -> Client
 
+pub async fn request(String, RequestMethod, Map[String, String], &@io.Data, proxy? : Client) -> (Response, &@io.Data)
+
 // Errors
 pub suberror HttpProtocolError {
   BadRequest

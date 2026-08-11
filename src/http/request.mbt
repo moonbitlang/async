@@ -72,7 +72,16 @@ fn resolve_host(
 }
 
 ///|
-async fn perform_request(
+/// Perform a single HTTP request to `uri`.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn request(
   uri : String,
   meth : RequestMethod,
   headers : Map[String, String],
@@ -103,7 +112,7 @@ pub async fn get(
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Get, headers, body, proxy?)
+  request(uri, Get, headers, body, proxy?)
 }
 
 ///|
@@ -114,7 +123,7 @@ pub async fn put(
   headers? : Map[String, String] = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Put, headers, content, proxy?)
+  request(uri, Put, headers, content, proxy?)
 }
 
 ///|
@@ -125,7 +134,7 @@ pub async fn post(
   headers? : Map[String, String] = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Post, headers, content, proxy?)
+  request(uri, Post, headers, content, proxy?)
 }
 
 ///|
