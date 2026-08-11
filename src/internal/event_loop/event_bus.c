@@ -60,6 +60,7 @@ int32_t cond_wait(cond_t *cond, mutex_t *mutex) {
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
+#include <poll.h>
 
 typedef _Atomic int32_t atomic_int32_t;
 
@@ -106,7 +107,6 @@ int32_t cond_wait(cond_t *cond, mutex_t *mutex) {
 
 // defined in `epoll.c`/`kqueue.c`/`iocp.c`
 int32_t moonbitlang_async_event_bus_wait(HANDLE bus, int32_t timeout);
-int32_t moonbitlang_async_event_bus_register(HANDLE bus, HANDLE fd, int32_t read_only);
 
 struct EventBusWaiter {
   thread_id_t thread_id;
@@ -123,10 +123,33 @@ struct EventBusWaiter {
   mutex_t lock;
   cond_t waker;
 
-  // The following fields, together with the static event buffer
-  // in `epoll.c`/`kqueue.c`/`iocp.c`, should be protected by
-  // `lock` above.
-  atomic_int32_t number_of_events;
+  /* `status` should be protected by `lock` above.
+   
+     On Unix systems, instead of doing `epoll_wait`/`kevent` in the waiter thread directly,
+     we only wait for the readiness of the underlying `epoll`/`kqueue` in the waiter.
+     The actual retrieval of events are still performed in the main thread,
+     via a zero-timeout `epoll_wait`/`kevent` call.
+
+     The reason for this is that performing wait in an alternative thread introduce
+     various kinds of race condition. For example, registering a unconnected socket
+     may produce stale `EPOLLOUT | EPOLLHUP` event. Usually, a subsequent `connect`
+     call will remove that stale event, and the final `epoll_wait` will not see it.
+     However, if `epoll_wait` is performed in a dedicated thread, this kind of stale
+     event may accidentally get captured.
+
+     Hence, on Unix systems, `status` is merely a boolean hint
+     indicating whether there is any event.
+     while the static `epoll`/`kqueue` event buffer is exclusively owned by the main thread.
+
+     On Windows, we perform `GetQueuedCompletionStatusEx` in the waiter thread directly,
+     because IOCP completion packets are associated with invidual IO operations,
+     and hence has no stale event issue. Another reason is IOCP does not support peeking,
+     so we cannot use the same approach as Unix-like systems.
+
+     On Windows, `status` is the number of event is retrieved,
+     and the static buffer should also be protected by `lock` above.
+   */
+  atomic_int32_t status;
 };
 
 static
@@ -138,24 +161,40 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION waiter_loop(void *data) {
   while (!waiter->cancelled) {
     // When control flow reaches here:
     // - `waiter->lock` should have been acquired
-    // - `waiter->number_of_events` must be zero
-    // - `waiter->state` must be `SUSPENDED`
-    waiter->number_of_events = moonbitlang_async_event_bus_wait(waiter->event_bus, -1); 
+    // - `waiter->status` must be zero
+#ifdef _WIN32
+    waiter->status = moonbitlang_async_event_bus_wait(waiter->event_bus, -1); 
 
-    if (waiter->number_of_events == 0)
+    if (waiter->status == 0)
       continue;
 
-    if (waiter->number_of_events < 0) {
+    if (waiter->status < 0) {
       waiter->error = GetLastError();
       goto exit;
     }
+#else
+    struct pollfd pfds[] = {
+      { waiter->event_bus, POLLIN, 0 },
+      { waiter->cancel_pipe[0], POLLIN, 0 }
+    };
+    int ret = poll(pfds, 2, -1);
 
-    // `waiter->number_of_events > 0` must hold here,
+    if (ret < 0) {
+      waiter->error = errno;
+      goto exit;
+    }
+
+    waiter->status = pfds[0].revents & POLLIN;
+    if (!waiter->status)
+      continue;
+#endif
+
+    // `waiter->status` must be non-zero here,
     // when we wake the main thread and suspend the waiter
 
     waiter->wakeup_callback();
 
-    while (waiter->number_of_events > 0 && !waiter->cancelled) {
+    while (waiter->status && !waiter->cancelled) {
       if (cond_wait(&waiter->waker, &waiter->lock) < 0) {
         waiter->error = GetLastError();
         goto exit;
@@ -191,15 +230,12 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
     if (!(flags & FD_CLOEXEC) && fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
       goto error_with_pipe;
   }
-
-  if (moonbitlang_async_event_bus_register(bus, waiter->cancel_pipe[0], 1) < 0)
-    goto error_with_pipe;
 #endif
 
   mutex_init(&waiter->lock);
   cond_init(&waiter->waker);
 
-  waiter->number_of_events = 0;
+  waiter->status = 0;
   waiter->cancelled = 0;
   waiter->error = 0;
 
@@ -245,12 +281,12 @@ error:
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter) {
   waiter->cancelled = 1;
-  if (!waiter->number_of_events) {
+  if (!waiter->status) {
     /* If the waiter is currently blocked, try to wake it up.
        Note that the code here is not atomic, so the following sequence is possible:
       
-       - main thread see `waiter->number_of_events == 0`
-       - waiter woken and set `waiter->number_of_events` to a non-zero value
+       - main thread see `waiter->status == 0`
+       - waiter woken and set `waiter->status` to a non-zero value
        - main thread perform cancellation operation below
 
        But this sequence is fine, because the cancellation operation below
@@ -290,12 +326,20 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
 }
 
 MOONBIT_FFI_EXPORT
+void moonbitlang_async_wake_event_bus_waiter(struct EventBusWaiter *waiter) {
+  // `waiter->lock` should be acquired here
+  waiter->status = 0;
+  cond_signal(&waiter->waker);
+  mutex_unlock(&waiter->lock);
+}
+
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_event_bus_waiter_get_events(struct EventBusWaiter *waiter) {
-  if (!waiter->number_of_events)
+  if (!waiter->status)
     return 0;
 
-  // Only the main thread will turn `number_of_events` from non-zero to zero,
-  // So `waiter->number_of_events != 0` will not get violated
+  // Only the main thread will turn `status` from non-zero to zero,
+  // So `waiter->status!= 0` will not get violated
   // in the window after the previous check and before acquiring the lock.
   mutex_lock(&waiter->lock);
 
@@ -305,13 +349,22 @@ int32_t moonbitlang_async_event_bus_waiter_get_events(struct EventBusWaiter *wai
     return -1;
   }
 
-  return waiter->number_of_events;
-}
+#ifdef _WIN32
+  return waiter->status;
+#else
+  int32_t ret = moonbitlang_async_event_bus_wait(waiter->event_bus, 0);
 
-MOONBIT_FFI_EXPORT
-void moonbitlang_async_wake_event_bus_waiter(struct EventBusWaiter *waiter) {
-  // `waiter->lock` should be acquired here
-  waiter->number_of_events = 0;
-  cond_signal(&waiter->waker);
-  mutex_unlock(&waiter->lock);
+  // This may happen when there is stale event that appeared and then disappeared
+  // or some extra error happened after the waiter is woken.
+  // Our contract for `waiter_get_events` is that if it return zero or negative value,
+  // `waiter->lock` should be unlocked in the main thread,
+  // and the wait thread should keep going.
+  if (ret <= 0)
+    moonbitlang_async_wake_event_bus_waiter(waiter); 
+
+  if (ret < 0 && errno == EINTR)
+    ret = 0;
+
+  return ret;
+#endif
 }
