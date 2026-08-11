@@ -17,6 +17,7 @@
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
+    @event_loop.KilledBySignal(signal) => terminate_process_by_signal(signal)
     err => {
       @env_util.eprintln(err.to_string())
       exit(1)
@@ -27,3 +28,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 ///|
 #unsafe_skip_stub_check
 fn exit(code : Int) = "moonbitlang/async" "runtime/exit"
+
+///|
+#unsafe_skip_stub_check
+fn terminate_process_by_signal(signal : Int) = "moonbitlang/async" "runtime/terminate_process_by_signal"
