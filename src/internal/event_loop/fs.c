@@ -231,6 +231,47 @@ int size_of_property[] = {
   2  // `STAT_CREATE_TIME`
 };
 
+/* Briefly classify handles on windows based `GetFileType` and `getsockopt`.
+   Difference between regular files/directories/reparse points is not handled by this function.
+   These file types will all get represented as `Regular` here,
+   and the caller should do further classification using file attributes.
+
+   On error, `-1` is returned.
+ */
+#ifdef _WIN32
+static inline
+int32_t get_file_type_no_dir_check(HANDLE handle) {
+  SetLastError(0);
+  DWORD kind = GetFileType(handle);
+  switch (kind) {
+    case FILE_TYPE_DISK: return Regular;
+    case FILE_TYPE_CHAR: return CharDevice;
+    case FILE_TYPE_PIPE: {
+      int opt = 0, opt_len = sizeof(int);
+      if (0 == getsockopt((SOCKET)handle, SOL_SOCKET, SO_TYPE, (char*)&opt, &opt_len)) {
+        return Socket;
+      } else {
+        return Pipe;
+      }
+    }
+    case FILE_TYPE_UNKNOWN: {
+      DWORD err = GetLastError();
+      int opt = 0, opt_len = sizeof(int);
+      if (0 == getsockopt((SOCKET)handle, SOL_SOCKET, SO_TYPE, (char*)&opt, &opt_len)) {
+        return Socket;
+      } else if (err) {
+        SetLastError(err);
+        return -1;
+      } else {
+        return UnknownFileKind;
+      }
+    }
+    default:
+      return UnknownFileKind;
+  }
+}
+#endif
+
 /* A generic `statx`/`getattrlist`-like function for retrieving information about OS objects.
 
    `file` determines which object to query:
@@ -380,11 +421,11 @@ int32_t moonbit_generic_stat(
 
    if (request & STAT_FILE_KIND) {
      SetLastError(0);
-     sys_stat.file_type = GetFileType(handle);
-     if (sys_stat.file_type == FILE_TYPE_UNKNOWN && GetLastError())
+     sys_stat.file_type = get_file_type_no_dir_check(handle);
+     if (sys_stat.file_type < 0)
        goto exit;
 
-     if (sys_stat.file_type != FILE_TYPE_DISK) {
+     if (sys_stat.file_type != Regular) {
        // the remaining attributes are meaningless for non-disk handle
        remaining_request ^= STAT_FILE_KIND;
        goto write_result;
@@ -461,36 +502,14 @@ write_result:
 
     switch (next_request) {
       case STAT_FILE_KIND:
-        switch (sys_stat.file_type) {
-          case FILE_TYPE_DISK: {
-            if (sys_stat.attributes & FILE_ATTRIBUTE_REPARSE_POINT)
-              output->properties[offset++] = SymLink;
-            else if (sys_stat.attributes & FILE_ATTRIBUTE_DIRECTORY)
-              output->properties[offset++] = Directory;
-            else
-              output->properties[offset++] = Regular;
-            break;
-          }
-
-          case FILE_TYPE_CHAR:
-            output->properties[offset++] = CharDevice;
-            break;
-
-          case FILE_TYPE_PIPE:
-          case FILE_TYPE_UNKNOWN: {
-            int opt = 0, opt_len = sizeof(int);
-            if (0 == getsockopt((SOCKET)handle, SOL_SOCKET, SO_TYPE, (char*)&opt, &opt_len)) {
-              output->properties[offset++] = Socket;
-            } else {
-              output->properties[offset++] = sys_stat.file_type == FILE_TYPE_PIPE ? Pipe : UnknownFileKind;
-            }
-            break;
-          }
-
-          default:
-            output->properties[offset++] = UnknownFileKind;
-            break;
+        if (sys_stat.file_type == Regular) {
+          // further classify on-disk objects by attribute
+          if (sys_stat.attributes & FILE_ATTRIBUTE_REPARSE_POINT)
+            sys_stat.file_type = SymLink;
+          else if (sys_stat.attributes & FILE_ATTRIBUTE_DIRECTORY)
+            sys_stat.file_type = Directory;
         }
+        output->properties[offset++] = sys_stat.file_type;
         break;
 
       case STAT_FILE_SIZE:
@@ -539,8 +558,7 @@ exit:
 
   // For by-handle request, if nothing can be returned,
   // check if the handle is valid
-  SetLastError(0);
-  if (GetFileType(handle) == FILE_TYPE_UNKNOWN && GetLastError())
+  if (get_file_type_no_dir_check(handle) < 0)
     return -1;
 
   return 0;
