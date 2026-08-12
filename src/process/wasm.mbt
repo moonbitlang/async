@@ -20,74 +20,28 @@ priv struct OsEnv(UInt64)
 
 ///|
 #unsafe_skip_stub_check
-fn get_curr_env() -> OsEnv = "moonbitlang/async" "process/get_curr_env"
-
-///|
-#unsafe_skip_stub_check
-fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang/async" "process/env_block_length"
-
-///|
-#unsafe_skip_stub_check
-fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang/async" "process/allocate_env_block"
-
-///|
-#unsafe_skip_stub_check
-fn OsEnv::write_env_block(dst : OsEnv, block : OsEnv) -> Unit = "moonbitlang/async" "process/write_env_block"
+fn OsEnv::new(inherit_env : Bool) -> OsEnv = "moonbitlang/async" "process/make_env"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(key, value)
 fn OsEnv::add_entry(
   dst : OsEnv,
-  index_or_offset : Int,
   key~ : String,
   key_len~ : Int,
   value~ : String,
   value_len~ : Int,
-) -> Unit = "moonbitlang/async" "process/env_block_add_entry"
+) -> Unit = "moonbitlang/async" "process/env_add_entry"
 
 ///|
 fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
-  if @event_loop.platform is Windows {
-    let extra_env_len = for k, v in extra_env; acc = 0 {
-      continue acc + k.length() + v.length() + 2
-    } nobreak {
-      acc
-    }
-    let (env, extra_env_offset) = if inherit_env {
-      let curr_env = get_curr_env()
-      let curr_env_len = curr_env.length()
-      let env = OsEnv::new(curr_env_len + extra_env_len)
-      env.write_env_block(curr_env)
-      (env, curr_env_len)
-    } else {
-      (OsEnv::new(extra_env_len), 0)
-    }
-    for k, v in extra_env; offset = extra_env_offset {
-      let key_len = k.length()
-      let value_len = v.length()
-      env.add_entry(offset, key=k, key_len~, value=v, value_len~)
-      continue offset + key_len + value_len + 2
-    }
-    env
-  } else {
-    let extra_count = extra_env.length()
-    let (env, inherited_env_entry_count) = if inherit_env {
-      let curr_env = get_curr_env()
-      let curr_env_len = curr_env.length()
-      let env = OsEnv::new(curr_env_len + extra_count)
-      env.write_env_block(curr_env)
-      (env, curr_env_len)
-    } else {
-      (OsEnv::new(extra_count), 0)
-    }
-    for k, v in extra_env; i = inherited_env_entry_count; i = i + 1 {
-      let key_len = k.length()
-      let value_len = v.length()
-      env.add_entry(i, key=k, key_len~, value=v, value_len~)
-    }
-    env
+  let env = OsEnv::new(inherit_env)
+  for k, v in extra_env {
+    let key_len = k.length()
+    let value_len = v.length()
+    env.add_entry(key=k, key_len~, value=v, value_len~)
   }
+  env
 }
 
 ///|

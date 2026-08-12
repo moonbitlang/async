@@ -544,20 +544,32 @@ priv struct SpawnJob(Job)
 
 ///|
 #unsafe_skip_stub_check
-#borrow(path, cwd)
-fn JobHandle::spawn_unix(
+#borrow(path)
+fn JobHandle::spawn_unix_ffi(
   path : @os_string.OsString,
   path_len? : Int = path.to_string().length(),
   args : UInt64,
   env~ : UInt64,
-  inherited_env_entry_count~ : Int,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
+) -> JobHandle = "moonbitlang/async" "thread_pool/spawn_job/unix"
+
+///|
+// Use JobHandle at the Wasm boundary so the private fields nested in Job are
+// not lowered as additional import parameters.
+#unsafe_skip_stub_check
+#borrow(cwd)
+fn JobHandle::spawn_job_set_cwd(
+  job : JobHandle,
+  cwd : @os_string.OsString,
   cwd_len? : Int = cwd.to_string().length(),
-  has_cwd~ : Bool,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_spawn_job/unix"
+) -> Unit = "moonbitlang/async" "thread_pool/spawn_job/set_cwd"
+
+///|
+fn SpawnJob::set_cwd(job : SpawnJob, cwd : @os_string.OsString) -> Unit {
+  job.0.handle.spawn_job_set_cwd(cwd)
+}
 
 ///|
 fn Job::spawn_unix(
@@ -570,45 +582,40 @@ fn Job::spawn_unix(
   is_orphan~ : Bool,
   cwd~ : @os_string.OsString?,
 ) -> SpawnJob {
-  let (cwd, has_cwd) = match cwd {
-    None => (@os_string.empty, false)
-    Some(cwd) => (cwd, true)
-  }
+  // Match native Unix: hard-termination child cleanup is not supported, so
+  // orphan status does not change the spawn job.
   ignore(is_orphan)
-  SpawnJob(
-    Job(
-      JobHandle::spawn_unix(
-        path,
-        args,
-        env~,
-        // unused on Wasm1, should be removed later
-        inherited_env_entry_count=0,
-        stdin~,
-        stdout~,
-        stderr~,
-        cwd~,
-        has_cwd~,
-      ),
-    ),
+  let job = SpawnJob(
+    Job(JobHandle::spawn_unix_ffi(path, args, env~, stdin~, stdout~, stderr~)),
   )
+  if cwd is Some(cwd) {
+    job.set_cwd(cwd)
+  }
+  job
 }
 
 ///|
 #unsafe_skip_stub_check
-#borrow(command_line, cwd)
-fn JobHandle::spawn_windows(
+#borrow(command_line)
+fn JobHandle::spawn_windows_ffi(
   command_line : @os_string.OsString,
   command_line_len? : Int = command_line.to_string().length(),
   env~ : UInt64,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
-  cwd~ : @os_string.OsString,
-  cwd_len? : Int = cwd.to_string().length(),
-  has_cwd~ : Bool,
-  no_console_window~ : Bool,
   is_orphan~ : Bool,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_spawn_job/windows"
+) -> JobHandle = "moonbitlang/async" "thread_pool/spawn_job/windows"
+
+///|
+// Keep the setter on JobHandle for the same aggregate-lowering reason as cwd.
+#unsafe_skip_stub_check
+fn JobHandle::spawn_job_set_no_console_window(job : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/spawn_job/set_no_console_window"
+
+///|
+fn SpawnJob::set_no_console_window(job : SpawnJob) -> Unit {
+  job.0.handle.spawn_job_set_no_console_window()
+}
 
 ///|
 fn Job::spawn_windows(
@@ -621,31 +628,35 @@ fn Job::spawn_windows(
   no_console_window~ : Bool,
   is_orphan~ : Bool,
 ) -> SpawnJob {
-  let (cwd, has_cwd) = match cwd {
-    None => (@os_string.empty, false)
-    Some(cwd) => (cwd, true)
-  }
-  SpawnJob(
+  let job = SpawnJob(
     Job(
-      JobHandle::spawn_windows(
+      JobHandle::spawn_windows_ffi(
         command_line,
         env~,
         stdin~,
         stdout~,
         stderr~,
-        cwd~,
-        has_cwd~,
-        no_console_window~,
         is_orphan~,
       ),
     ),
   )
+  if cwd is Some(cwd) {
+    job.set_cwd(cwd)
+  }
+  if no_console_window {
+    job.set_no_console_window()
+  }
+  job
 }
 
 ///|
 #unsafe_skip_stub_check
-#borrow(job)
-fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/get_spawn_job_result_handle"
+fn JobHandle::spawn_job_result_handle(job : JobHandle) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/spawn_job_get_result_handle"
+
+///|
+fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd {
+  job.0.handle.spawn_job_result_handle()
+}
 
 ///|
 #unsafe_skip_stub_check
