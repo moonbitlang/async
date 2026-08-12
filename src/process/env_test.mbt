@@ -63,8 +63,6 @@ async test "set_env no inherit" {
 }
 
 ///|
-// TODO: port to Wasm1
-#cfg(target="native")
 async test "set_env override" {
   let name = "VAR_TO_OVERRIDE"
   @env.set_env_var(name, "old_value")
@@ -84,8 +82,6 @@ async test "set_env override" {
 }
 
 ///|
-// Currently the Wasm1 runtime has its own NUL check
-#cfg(target="native")
 async test "set_env injection key" {
   let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
   let (_, output) = @process.collect_stdout(
@@ -104,8 +100,6 @@ async test "set_env injection key" {
 }
 
 ///|
-/// Currently the Wasm1 runtime has its own NUL check
-#cfg(target="native")
 async test "set_env injection value" {
   let env_var = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
   let (_, output) = @process.collect_stdout(
