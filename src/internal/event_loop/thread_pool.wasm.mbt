@@ -644,8 +644,12 @@ fn Job::spawn_windows(
 
 ///|
 #unsafe_skip_stub_check
-#borrow(job)
-fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/get_spawn_job_result_handle"
+fn JobHandle::spawn_job_result_handle(job : JobHandle) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/spawn_job_get_result_handle"
+
+///|
+fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd {
+  job.0.handle.spawn_job_result_handle()
+}
 
 ///|
 #unsafe_skip_stub_check
