@@ -36,11 +36,11 @@ fn EventBus::destroy(self : EventBus) -> Unit = "moonbitlang/async" "event_bus/d
 
 ///|
 #unsafe_skip_stub_check
-fn EventBus::register_ffi(
+fn EventBus::try_register_ffi(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only : Bool,
-) -> Int = "moonbitlang/async" "event_bus/register"
+) -> Int = "moonbitlang/async" "event_bus/try_register"
 
 ///|
 fn EventBus::register(
@@ -48,11 +48,11 @@ fn EventBus::register(
   fd : @fd_util.Fd,
   read_only~ : Bool,
 ) -> Bool raise {
-  if self.register_ffi(fd, read_only) < 0 {
+  let ret = self.try_register_ffi(fd, read_only)
+  if ret < 0 {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
-  // TODO: support try-register in Wasm runtime
-  true
+  ret > 0
 }
 
 ///|

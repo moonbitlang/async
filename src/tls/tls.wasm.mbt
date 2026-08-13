@@ -654,11 +654,12 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 
 ///|
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
+  guard self.is_client else { None }
   let cert = self.conn.peer_certificate()
   guard !cert.is_null() else { raise TlsError(self.conn.take_error_message()) }
   defer cert.free()
   let len = tls_buffer_length(cert)
-  guard! len > 0
+  guard len > 0 else { return None }
   let result = FixedArray::make(len, b'\x00')
   cert.blit_to_bytes(dst=result, len~)
   Some(result.unsafe_reinterpret_as_bytes())
