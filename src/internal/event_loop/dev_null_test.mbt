@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "/dev/null" {
   if @event_loop.platform is Windows {
     return
