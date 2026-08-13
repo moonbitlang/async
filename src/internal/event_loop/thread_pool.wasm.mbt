@@ -679,3 +679,22 @@ fn JobHandle::sigwait(
 fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job {
   Job(JobHandle::sigwait(signals, signals.length()))
 }
+
+///|
+#unsafe_skip_stub_check
+#borrow(path)
+fn JobHandle::inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : @os_string.OsString,
+  path_len? : Int = path.to_string().length(),
+  is_dir : Bool,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_inotify_add_watch_job"
+
+///|
+fn Job::inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : @os_string.OsString,
+  is_dir : Bool,
+) -> Job {
+  Job(JobHandle::inotify_add_watch(inotify, path, is_dir))
+}

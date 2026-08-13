@@ -457,12 +457,45 @@ pub async fn inotify_add_watch(
 }
 
 ///|
+#cfg(target="wasm")
+pub async fn inotify_add_watch(
+  inotify : @fd_util.Fd,
+  path : StringView,
+  is_dir~ : Bool,
+  context~ : String,
+) -> @fd_util.Fd {
+  let path_bytes = @os_string.encode(path)
+  let job = Job::inotify_add_watch(inotify, path_bytes, is_dir)
+  defer job.free()
+  let wd = perform_job_in_worker(job, context~) catch {
+    @os_error.OSError(errno, context~) =>
+      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    err => raise err
+  }
+  wd.to_uint64()
+}
+
+///|
 #cfg(platform="windows")
 extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read_dir_changes"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn IoResultHandle::read_dir_changes_ffi(
+  fd : @fd_util.Fd,
+  result : IoResultHandle,
+) -> Int = "moonbitlang/async" "io/read_dir_changes/windows"
+
+///|
+#cfg(target="wasm")
+fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int {
+  IoResultHandle::read_dir_changes_ffi(fd, result.handle)
+}
+
+///|
 /// zero return value indicates overflow
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 pub async fn IoHandle::read_dir_changes(
   handle : IoHandle,
   buf : @c_buffer.Buffer,

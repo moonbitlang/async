@@ -162,7 +162,7 @@ pub fn Watcher::close(self : Watcher) -> Unit {
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(all(target="native", platform="windows"))
 fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
@@ -176,7 +176,7 @@ fn Watcher::new_backend(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
@@ -195,6 +195,43 @@ fn Watcher::new_backend(
       KqueueWatcher(self, debounce_timeout~, max_debounce_delay~, context~)
       as &WatcherBackend
     Windows => panic()
+  }
+}
+
+///|
+#cfg(target="wasm")
+fn Watcher::new_backend(
+  self : Watcher,
+  root : @event_loop.IoHandle,
+  root_id~ : FileIdentity,
+  debounce_timeout~ : Int,
+  max_debounce_delay~ : Int,
+  context~ : String,
+) -> &WatcherBackend raise {
+  match @event_loop.platform {
+    Linux => {
+      ignore(root_id)
+      root.close()
+      InotifyWatcher(self, debounce_timeout~, max_debounce_delay~, context~)
+      as &WatcherBackend
+    }
+    MacOS => {
+      ignore(root_id)
+      root.close()
+      KqueueWatcher(self, debounce_timeout~, max_debounce_delay~, context~)
+      as &WatcherBackend
+    }
+    Windows => {
+      ignore(context)
+      WindowsWatcher(
+        self,
+        root,
+        root_id~,
+        debounce_timeout~,
+        max_debounce_delay~,
+      )
+      as &WatcherBackend
+    }
   }
 }
 
