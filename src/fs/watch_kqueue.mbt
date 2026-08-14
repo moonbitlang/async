@@ -200,6 +200,8 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
     self.process_events(timeout=None, context~)
   }
   let debounce_deadline = @event_loop.now() + self.max_debounce_delay.to_int64()
+  let start = @async.now()
+  defer println("wait() debounce time: \{@async.now() - start} ms")
   for ;; {
     let t = @cmp.minimum(
       (debounce_deadline - @event_loop.now()).to_int(),
