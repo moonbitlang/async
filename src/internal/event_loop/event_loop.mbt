@@ -200,7 +200,7 @@ fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
   let now = now()
   let delta = now - (start + timeout.to_int64())
   if delta > 50 {
-    println("timer drift detected: \{delta} ms")
+    @env_util.eprintln("timer drift detected: \{delta} ms")
   }
   n
 }
