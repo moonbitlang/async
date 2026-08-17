@@ -215,18 +215,11 @@ fn IoResult::for_accept(addr_len : Int) -> IoResult {
 
 ///|
 #unsafe_skip_stub_check
-#borrow(buf)
-fn IoResultHandle::for_read_dir_changes(
-  buf : @c_buffer.Buffer,
-  len~ : Int,
-) -> IoResultHandle = "moonbitlang/async" "io/make_read_dir_changes_io_result/windows"
+fn IoResultHandle::for_read_dir_changes(buf : UInt64) -> IoResultHandle = "moonbitlang/async" "io/make_read_dir_changes_io_result/windows"
 
 ///|
-fn IoResult::for_read_dir_changes(
-  buf : @c_buffer.Buffer,
-  len~ : Int,
-) -> IoResult {
-  IoResult(IoResultHandle::for_read_dir_changes(buf, len~))
+fn IoResult::for_read_dir_changes(buf : UInt64) -> IoResult {
+  IoResult(IoResultHandle::for_read_dir_changes(buf))
 }
 
 ///|
