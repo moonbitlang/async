@@ -377,7 +377,10 @@ async fn Sender::send_response(
     cookie.write_to(self)
     self.write(b"\r\n")
   }
-  if content_length is Some(len) {
+  if request_method is Head {
+    self.write("\r\n")
+    self.mode = SendingFixed(remaining=0)
+  } else if content_length is Some(len) {
     self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {

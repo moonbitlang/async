@@ -868,3 +868,58 @@ async test "sender persistent header" {
     )
   }
 }
+
+///|
+async test "HEAD response with Content-Length" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      let sender = Sender::new(w, headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
+      let _ = sender.send_response(200, "Ok", cookies=[], request_method=Head, extra_headers={
+        "Content-Length": "42",
+      })
+      sender.end_body()
+    }
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|HTTP/1.1 200 Ok\r
+        #|Host: x.y.org\r
+        #|User-Agent: MoonBit\r
+        #|Content-Length: 42\r
+        #|\r
+        #|
+      ),
+    )
+  }
+}
+
+///|
+async test "HEAD response with non-empty body" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      let sender = Sender::new(w, headers={
+        "Host": "x.y.org",
+        "User-Agent": "MoonBit",
+      })
+      let _ = sender.send_response(200, "Ok", cookies=[], request_method=Head, extra_headers={
+        "Content-Length": "4",
+      })
+      debug_inspect(
+        @test_util.expect_error_async(() => sender..write("abcd").end_body()),
+        content=(
+          #|IncorrectBodyLength
+        ),
+      )
+    }
+    defer r.close()
+    ignore(r.read_all().binary())
+  }
+}
