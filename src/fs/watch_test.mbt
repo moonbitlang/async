@@ -55,7 +55,7 @@ async fn watch_basic_test(
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
         println(
-          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+          "\{path} received change: \{Repr(events)} at +\{@async.now() - start}",
         )
       }
     })
@@ -233,7 +233,7 @@ async fn watch_rename_within_test(
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
         println(
-          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+          "\{path} received change: \{Repr(events)} at +\{@async.now() - start}",
         )
       }
     })
@@ -368,7 +368,7 @@ async fn watch_rename_inout_test(
         let events = watcher.wait()
         log.push("watcher received change: \{Repr(events)}")
         println(
-          "watcher received change: \{Repr(events)} at +\{@async.now() - start}",
+          "\{base_path} received change: \{Repr(events)} at +\{@async.now() - start}",
         )
       }
     })
@@ -650,7 +650,7 @@ async test "watch ignored path" {
       for ;; {
         watcher.wait_any()
         log.push("watcher received change")
-        println("watcher received change at +\{@async.now() - start}")
+        println("\{path} received change at +\{@async.now() - start}")
       }
     })
 
