@@ -119,22 +119,58 @@ impl WatcherBackend for WindowsWatcher with fn wait(self) {
 extern "C" fn WindowsWatcher::has_ReadDirectoryChangesExW() -> Bool = "moonbitlang_async_has_ReadDirectoryChangesExW"
 
 ///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn WindowsWatcher::has_ReadDirectoryChangesExW() -> Bool = "moonbitlang/async" "fs/watcher/windows/has_ReadDirectoryChangesExW"
+#cfg(platform="windows")
+priv struct WindowsWatcherBuf(@c_buffer.Buffer)
 
 ///|
-#cfg(any(target="wasm", platform="windows"))
-priv struct WindowsWatcherBuf(@c_buffer.Buffer)
+#cfg(target="wasm")
+priv struct WindowsWatcherBuf(UInt64)
 
 ///|
 #cfg(platform="windows")
 extern "C" fn WindowsWatcherBuf::size() -> Int = "moonbitlang_async_watcher_event_buffer_size"
 
 ///|
+#cfg(platform="windows")
+fn WindowsWatcherBuf::new() -> WindowsWatcherBuf {
+  WindowsWatcherBuf(@c_buffer.new(WindowsWatcherBuf::size()))
+}
+
+///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn WindowsWatcherBuf::size() -> Int = "moonbitlang/async" "fs/watcher/windows/basic/event_buffer_size"
+fn WindowsWatcherBuf::new() -> WindowsWatcherBuf = "moonbitlang/async" "fs/watcher/windows/buffer/new"
+
+///|
+#cfg(platform="windows")
+fn WindowsWatcherBuf::free(self : WindowsWatcherBuf) -> Unit {
+  self.0.free()
+}
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn WindowsWatcherBuf::free(self : WindowsWatcherBuf) -> Unit = "moonbitlang/async" "fs/watcher/windows/buffer/free"
+
+///|
+#cfg(platform="windows")
+async fn WindowsWatcherBuf::read(
+  self : WindowsWatcherBuf,
+  root : @event_loop.IoHandle,
+  context~ : String,
+) -> Int {
+  root.read_dir_changes(self.0, WindowsWatcherBuf::size(), context~)
+}
+
+///|
+#cfg(target="wasm")
+async fn WindowsWatcherBuf::read(
+  self : WindowsWatcherBuf,
+  root : @event_loop.IoHandle,
+  context~ : String,
+) -> Int {
+  root.read_dir_changes(self.0, context~)
+}
 
 ///|
 #cfg(platform="windows")
@@ -144,7 +180,7 @@ extern "C" fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = 
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/watcher/windows/basic/event_get_size"
+fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/watcher/windows/event_get_size"
 
 ///|
 #cfg(platform="windows")
@@ -154,27 +190,65 @@ extern "C" fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = 
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/watcher/windows/basic/event_is_modify"
+fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/watcher/windows/event_is_modify"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::get_path_len(self : Self, offset : Int) -> Int = "moonbitlang_async_watcher_event_get_path_len"
+extern "C" fn WindowsWatcherBuf::get_path_byte_len(
+  self : Self,
+  offset : Int,
+) -> Int = "moonbitlang_async_watcher_event_get_path_len"
+
+///|
+#cfg(platform="windows")
+extern "C" fn WindowsWatcherBuf::get_path_offset() -> Int = "moonbitlang_async_watcher_event_get_path_offset"
+
+///|
+#cfg(platform="windows")
+fn WindowsWatcherBuf::get_path(
+  self : WindowsWatcherBuf,
+  offset : Int,
+) -> String {
+  @os_string.decode(
+    self.0,
+    offset=offset + WindowsWatcherBuf::get_path_offset(),
+    len=self.get_path_byte_len(offset),
+  )
+}
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::get_path_len(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/watcher/windows/basic/event_get_path_len"
-
-///|
-/// Get the offset of path data inside the event
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::get_path_offset() -> Int = "moonbitlang_async_watcher_event_get_path_offset"
+fn WindowsWatcherBuf::get_path_unit_len(
+  self : WindowsWatcherBuf,
+  offset : Int,
+) -> Int = "moonbitlang/async" "fs/watcher/windows/event_path_len"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn WindowsWatcherBuf::get_path_offset() -> Int = "moonbitlang/async" "fs/watcher/windows/basic/event_get_path_offset"
+#borrow(self, path)
+fn WindowsWatcherBuf::copy_path(
+  self : WindowsWatcherBuf,
+  offset : Int,
+  path : String,
+  path_len : Int,
+) -> Unit = "moonbitlang/async" "fs/watcher/windows/event_path_copy"
+
+///|
+/// The host buffer already contains UTF-16 code units. Copy them directly so
+/// the Wasm path has the same representation as the native `memcpy` path.
+#cfg(target="wasm")
+fn WindowsWatcherBuf::get_path(
+  self : WindowsWatcherBuf,
+  offset : Int,
+) -> String {
+  let path_len = self.get_path_unit_len(offset)
+  let path = String::make(path_len, '\u{0}')
+  self.copy_path(offset, path, path_len)
+  path
+}
 
 ///|
 #cfg(platform="windows")
@@ -184,12 +258,6 @@ extern "C" fn WindowsWatcherBuf::get_file_id(
 ) -> UInt64 = "moonbitlang_async_watcher_event_get_file_id"
 
 ///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-#borrow(self)
-fn WindowsWatcherBuf::get_file_id(self : Self, offset : Int) -> UInt64 = "moonbitlang/async" "fs/watcher/windows/extended/event_get_file_id"
-
-///|
 #cfg(platform="windows")
 extern "C" fn WindowsWatcherBuf::get_parent_file_id(
   self : Self,
@@ -197,21 +265,48 @@ extern "C" fn WindowsWatcherBuf::get_parent_file_id(
 ) -> UInt64 = "moonbitlang_async_watcher_event_get_parent_file_id"
 
 ///|
+#cfg(platform="windows")
+fn WindowsWatcherBuf::has_file_ids(_self : WindowsWatcherBuf) -> Bool {
+  WindowsWatcher::has_ReadDirectoryChangesExW()
+}
+
+///|
+#cfg(platform="windows")
+fn WindowsWatcherBuf::dirty_file_id(
+  self : WindowsWatcherBuf,
+  offset : Int,
+) -> UInt64 {
+  if self.is_modify(offset) {
+    self.get_file_id(offset)
+  } else {
+    self.get_parent_file_id(offset)
+  }
+}
+
+///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::get_parent_file_id(self : Self, offset : Int) -> UInt64 = "moonbitlang/async" "fs/watcher/windows/extended/event_get_parent_file_id"
+fn WindowsWatcherBuf::has_file_ids(self : WindowsWatcherBuf) -> Bool = "moonbitlang/async" "fs/watcher/windows/event_has_file_ids"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn WindowsWatcherBuf::dirty_file_id(
+  self : WindowsWatcherBuf,
+  offset : Int,
+) -> UInt64 = "moonbitlang/async" "fs/watcher/windows/event_dirty_file_id"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
 async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
   defer self.root.close()
   let context = "@fs.Watcher::wait()"
-  let buf_len = WindowsWatcherBuf::size()
-  let buf = WindowsWatcherBuf(@c_buffer.new(buf_len))
-  defer buf.0.free()
+  let buf = WindowsWatcherBuf::new()
+  defer buf.free()
   for ;; {
-    let n = self.root.read_dir_changes(buf.0, buf_len, context~)
+    let n = buf.read(self.root, context~)
     self.debounce_timer.refresh()
     if n is 0 {
       // overflow
@@ -221,19 +316,11 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
     let mut offset = 0
     while offset < n {
       let size = buf.event_size(offset)
-      let file_id : FileIdentity = if WindowsWatcher::has_ReadDirectoryChangesExW() {
-        let file_id = if buf.is_modify(offset) {
-          buf.get_file_id(offset)
-        } else {
-          buf.get_parent_file_id(offset)
-        }
+      let dirty_identity : FileIdentity = if buf.has_file_ids() {
+        let file_id = buf.dirty_file_id(offset)
         { dev_id: self.dev_id, file_id }
       } else {
-        let path = @os_string.decode(
-          buf.0,
-          offset=offset + WindowsWatcherBuf::get_path_offset(),
-          len=buf.get_path_len(offset),
-        )
+        let path = buf.get_path(offset)
         let path = if buf.is_modify(offset) {
           path[:]
         } else {
@@ -258,9 +345,9 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
         file.close()
         file_id
       }
-      if self.watcher.watched.get(file_id) is Some(file) {
+      if self.watcher.watched.get(dirty_identity) is Some(file) {
         if !(buf.is_modify(offset) && file.is_dir) {
-          self.watcher.mark_as_modified(file_id)
+          self.watcher.mark_as_modified(dirty_identity)
         }
       }
       if size is 0 {
