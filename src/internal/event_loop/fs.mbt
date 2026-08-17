@@ -485,7 +485,7 @@ extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int =
 fn IoResultHandle::read_dir_changes_ffi(
   fd : @fd_util.Fd,
   result : IoResultHandle,
-) -> Int = "moonbitlang/async" "io/read_dir_changes/windows"
+) -> Int = "moonbitlang/async" "io/read_dir_changes/windows/basic"
 
 ///|
 #cfg(target="wasm")
