@@ -38,6 +38,10 @@ jobs:
         run: |
           moon test
 
+      - name: moon test (wasm)
+        run: |
+          moon test --target wasm
+
       - name: format diff
         run: |
           moon fmt
