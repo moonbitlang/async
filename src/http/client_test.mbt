@@ -185,3 +185,42 @@ async test "multiple request" {
   inspect(response2.code, content="200")
   assert_true(client.read_all().text().has_prefix("<!doctype html>"))
 }
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "user agent" {
+  let log = StringBuilder::new()
+  @async.with_task_group() <| group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr.port()
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((request, _body, conn) => {
+        let meth = @debug.to_string(request.meth).to_upper()
+        log <+ "server received request: \{meth} \{request.path}\n"
+        let ua = request.headers.get("user-agent").unwrap_or("none")
+        log <+ "User-Agent: \{ua}\n"
+        conn.send_response(200, "OK")
+      })
+    }
+    {
+      let (response, client) = @http.get_stream("http://localhost:\{port}")
+      defer client.close()
+      inspect(response.code, content="200")
+    }
+    let (response, client) = @http.get_stream("http://localhost:\{port}", headers={
+      "User-Agent": "my-custom-UA/4.2",
+    })
+    defer client.close()
+    inspect(response.code, content="200")
+  }
+  inspect(
+    log.to_string(),
+    content=(
+      #|server received request: GET /
+      #|User-Agent: moonbit-http-client/1.1
+      #|server received request: GET /
+      #|User-Agent: my-custom-UA/4.2
+      #|
+    ),
+  )
+}
