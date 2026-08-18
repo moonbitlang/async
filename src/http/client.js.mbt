@@ -66,7 +66,7 @@ priv struct OngoingRequest {
 struct Client {
   host : String
   protocol : Protocol
-  headers : Map[String, String]
+  headers : Headers
   mut request : OngoingRequest?
   mut response_body : @js_async.ReadableStream?
 }
@@ -82,7 +82,7 @@ pub fn Client::close(self : Client) -> Unit {
 ///|
 fn Client::connect(
   host : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   protocol? : Protocol = Https,
   proxy? : Client,
 ) -> Client {
@@ -113,7 +113,7 @@ fn Client::connect(
 #label_migration(verify, fill=false, msg="verify is unsupported on Windows")
 pub async fn Client::Client(
   uri : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   proxy? : Client,
   verify? : Bool = true,
 ) -> Client {
@@ -170,9 +170,9 @@ pub async fn Client::end_request(self : Client) -> Response {
   self.response_body = Some(
     @js_async.ReadableStream::from_js(js_response.body()),
   )
-  let headers = Map([])
+  let headers : Headers = Map([])
   for entry in js_response.headers().to_array() {
-    headers[entry[0].to_lower()] = entry[1]
+    headers[entry[0]] = entry[1]
   }
   {
     code: js_response.status(),
@@ -223,7 +223,7 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Map[String, String] = Map([]),
+  extra_headers? : Headers = Map([]),
 ) -> Unit {
   guard! self.request is None
   let protocol = match self.protocol {
@@ -245,10 +245,10 @@ pub async fn Client::request(
   }
   let headers = JsHeaders::new()
   for k, v in self.headers {
-    headers.append(k, v)
+    headers.append(k.0, v)
   }
   for k, v in extra_headers {
-    headers.append(k, v)
+    headers.append(k.0, v)
   }
   let request : OngoingRequest = { meth, uri, headers, body: @buffer.Buffer() }
   self.request = Some(request)
@@ -260,7 +260,7 @@ pub async fn Client::request(
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Map[String, String] = Map([]),
+  extra_headers? : Headers = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -276,7 +276,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = Map([]),
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -287,7 +287,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = Map([]),
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }

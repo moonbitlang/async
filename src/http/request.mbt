@@ -84,7 +84,7 @@ fn resolve_host(
 pub async fn request(
   uri : String,
   meth : RequestMethod,
-  headers : Map[String, String],
+  headers : Headers,
   body : &@io.Data,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
@@ -108,7 +108,7 @@ pub async fn request(
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get(
   uri : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, &@io.Data) {
@@ -120,7 +120,7 @@ pub async fn get(
 pub async fn put(
   uri : String,
   content : &@io.Data,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
   request(uri, Put, headers, content, proxy?)
@@ -131,7 +131,7 @@ pub async fn put(
 pub async fn post(
   uri : String,
   content : &@io.Data,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
   request(uri, Post, headers, content, proxy?)
@@ -150,7 +150,7 @@ pub async fn post(
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get_stream(
   uri : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, Client) {
@@ -182,7 +182,7 @@ pub async fn get_stream(
 /// to close the underlying connection used for the request.
 pub async fn put_stream(
   uri : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
@@ -212,7 +212,7 @@ pub async fn put_stream(
 /// to close the underlying connection used for the request.
 pub async fn post_stream(
   uri : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
