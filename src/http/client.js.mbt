@@ -56,9 +56,10 @@ extern "js" fn JsResponse::body(
 
 ///|
 priv struct OngoingRequest {
-  body_writer : @io.PipeWrite
-  abort_controller : @js_async.AbortController
-  response : @js_async.Promise[JsResponse]
+  meth : String
+  uri : String
+  body : @buffer.Buffer
+  headers : JsHeaders
 }
 
 ///|
@@ -72,10 +73,7 @@ struct Client {
 
 ///|
 pub fn Client::close(self : Client) -> Unit {
-  if self.request is Some(request) {
-    request.body_writer.close()
-    self.request = None
-  }
+  self.request = None
   if self.response_body is Some(response_body) {
     response_body.close()
   }
@@ -129,7 +127,8 @@ pub async fn Client::Client(
 ///|
 pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
   guard! self.request is Some(request)
-  request.body_writer.write_once(buf, offset~, len~)
+  request.body.write_bytes(buf[offset:offset + len])
+  len
 }
 
 ///|
@@ -160,10 +159,14 @@ pub impl @io.Reader for Client with fn _direct_read(
 pub async fn Client::end_request(self : Client) -> Response {
   guard! self.request is Some(request)
   self.request = None
-  request.body_writer.close()
-  let js_response : JsResponse = request.response.wait(
-    abort_controller=request.abort_controller,
-  )
+  let abort_controller = @js_async.AbortController::new()
+  let js_response = Client::request_ffi(
+    request.uri,
+    request.meth,
+    headers=request.headers,
+    body=request.body.contents(),
+    signal=abort_controller.signal(),
+  ).wait(abort_controller~)
   self.response_body = Some(
     @js_async.ReadableStream::from_js(js_response.body()),
   )
@@ -184,7 +187,7 @@ extern "js" fn Client::request_ffi(
   uri : String,
   meth : String,
   headers~ : JsHeaders,
-  body~ : @js_async.JsReadableStream,
+  body~ : Bytes,
   signal~ : @js_async.AbortSignal,
 ) -> @js_async.Promise[JsResponse] =
   #| (uri, method, headers, body, signal) => {
@@ -196,7 +199,6 @@ extern "js" fn Client::request_ffi(
   #|       method: method,
   #|       headers: headers,
   #|       signal: signal,
-  #|       duplex: 'half',
   #|     },
   #|   )
   #| }
@@ -248,20 +250,7 @@ pub async fn Client::request(
   for k, v in extra_headers {
     headers.append(k, v)
   }
-  let abort_controller = @js_async.AbortController::new()
-  let (body, we_write) = @js_async.JsReadableStream::new_pipe()
-  let response_promise = Client::request_ffi(
-    uri,
-    meth,
-    headers~,
-    body~,
-    signal=abort_controller.signal(),
-  )
-  let request : OngoingRequest = {
-    abort_controller,
-    body_writer: we_write,
-    response: response_promise,
-  }
+  let request : OngoingRequest = { meth, uri, headers, body: @buffer.Buffer() }
   self.request = Some(request)
 }
 
