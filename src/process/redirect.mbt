@@ -64,6 +64,24 @@ pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
 }
 
 ///|
+/// Create a temporary pipe for connecting the output of
+/// one child process to the input of another child process.
+pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise {
+  let context = "@process.pipe()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=false,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
+  (
+    TempPipeRead::{ pipe: r, closed: false },
+    TempPipeWrite::{ pipe: w, closed: false },
+  )
+}
+
+///|
 pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
   self.io.close()
 }

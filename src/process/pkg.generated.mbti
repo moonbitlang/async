@@ -23,6 +23,8 @@ pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> Cancellation
 
 pub fn hard_cancel() -> CancellationHandler
 
+pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise
+
 pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
 
 pub async fn redirect_from_file(String) -> &ProcessInput
