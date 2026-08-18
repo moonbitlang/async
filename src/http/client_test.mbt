@@ -90,6 +90,14 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
 }
 
 ///|
+#cfg(not(target="js"))
+let is_js : Bool = false
+
+///|
+#cfg(target="js")
+let is_js : Bool = true
+
+///|
 async test "request streaming" {
   let log = StringBuilder::new()
   @async.with_task_group() <| group => {
@@ -140,38 +148,76 @@ async test "request streaming" {
     // so that the port occupied by the server can be reused immediately.
     @async.sleep(200)
   }
-  inspect(
-    log,
-    content=(
-      #|client sending GET request
-      #|server received request: GET /get
-      #|server: sending GET response part 1
-      #|client received: GET response part 1
-      #|server: sending GET response part 2
-      #|client received: GET response part 2
-      #|client sending PUT request
-      #|client: sending PUT data part 1
-      #|server received request: PUT /put
-      #|server received: PUT data part 1
-      #|client: sending PUT data part 2
-      #|server received: PUT data part 2
-      #|server: sending PUT response part 1
-      #|client received: PUT response part 1
-      #|server: sending PUT response part 2
-      #|client received: PUT response part 2
-      #|client sending POST request
-      #|client: sending POST data part 1
-      #|server received request: POST /post
-      #|server received: POST data part 1
-      #|client: sending POST data part 2
-      #|server received: POST data part 2
-      #|server: sending POST response part 1
-      #|client received: POST response part 1
-      #|server: sending POST response part 2
-      #|client received: POST response part 2
-      #|
-    ),
-  )
+  if is_js {
+    // On JS backend, streaming request body is not supported,
+    // so we can only buffer the whole request body before sending.
+    // This will result is different evaluation order behavior here.
+    inspect(
+      log,
+      content=(
+        #|client sending GET request
+        #|server received request: GET /get
+        #|server: sending GET response part 1
+        #|client received: GET response part 1
+        #|server: sending GET response part 2
+        #|client received: GET response part 2
+        #|client sending PUT request
+        #|client: sending PUT data part 1
+        #|client: sending PUT data part 2
+        #|server received request: PUT /put
+        #|server received: PUT data part 1
+        #|PUT data part 2
+        #|server: sending PUT response part 1
+        #|client received: PUT response part 1
+        #|server: sending PUT response part 2
+        #|client received: PUT response part 2
+        #|client sending POST request
+        #|client: sending POST data part 1
+        #|client: sending POST data part 2
+        #|server received request: POST /post
+        #|server received: POST data part 1
+        #|POST data part 2
+        #|server: sending POST response part 1
+        #|client received: POST response part 1
+        #|server: sending POST response part 2
+        #|client received: POST response part 2
+        #|
+      ),
+    )
+  } else {
+    inspect(
+      log,
+      content=(
+        #|client sending GET request
+        #|server received request: GET /get
+        #|server: sending GET response part 1
+        #|client received: GET response part 1
+        #|server: sending GET response part 2
+        #|client received: GET response part 2
+        #|client sending PUT request
+        #|client: sending PUT data part 1
+        #|server received request: PUT /put
+        #|server received: PUT data part 1
+        #|client: sending PUT data part 2
+        #|server received: PUT data part 2
+        #|server: sending PUT response part 1
+        #|client received: PUT response part 1
+        #|server: sending PUT response part 2
+        #|client received: PUT response part 2
+        #|client sending POST request
+        #|client: sending POST data part 1
+        #|server received request: POST /post
+        #|server received: POST data part 1
+        #|client: sending POST data part 2
+        #|server received: POST data part 2
+        #|server: sending POST response part 1
+        #|client received: POST response part 1
+        #|server: sending POST response part 2
+        #|client received: POST response part 2
+        #|
+      ),
+    )
+  }
 }
 
 ///|
