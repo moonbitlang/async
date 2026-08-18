@@ -62,6 +62,42 @@ async test "redirect to file" {
 }
 
 ///|
+async test "merge multiple to file" {
+  @async.with_task_group() <| root => {
+    let output_file = "_build/process_redirect_merge_multiple_test_out.txt"
+    root.add_defer(() => @fs.remove(output_file))
+    let w = @process.redirect_to_file(
+      output_file,
+      shared=true,
+      create_mode=CreateOrTruncate,
+    )
+    @async.with_task_group <| group => {
+      defer w.close()
+      let _ = @process.spawn(
+        group,
+        shell,
+        ["-c", "\{write_stdout} abcd"],
+        stdout=w,
+        extra_env={ "LANG": "en_US.UTF-8" },
+      )
+      let _ = @process.spawn(
+        group,
+        shell,
+        ["-c", "sleep 1; \{write_stdout} efgh"],
+        stdout=w,
+        extra_env={ "LANG": "en_US.UTF-8" },
+      )
+    }
+    inspect(
+      @fs.read_file(output_file).text(),
+      content=(
+        #|abcdefgh
+      ),
+    )
+  }
+}
+
+///|
 async test "merge stdout and stderr" {
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
@@ -74,6 +110,27 @@ async test "merge stdout and stderr" {
       stderr=w,
     )
     inspect(r.read_all().text(), content="abcdefgh")
+  }
+}
+
+///|
+async test "merge stdout and stderr to file" {
+  @async.with_task_group() <| group => {
+    let output_file = "_build/process_redirect_merge_test_out.txt"
+    group.add_defer(() => @fs.remove(output_file))
+    let w = @process.redirect_to_file(output_file, create_mode=CreateOrTruncate)
+    let _ = @process.run(
+      shell,
+      ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],
+      stdout=w,
+      stderr=w,
+    )
+    inspect(
+      @fs.read_file(output_file).text(),
+      content=(
+        #|abcdefgh
+      ),
+    )
   }
 }
 
