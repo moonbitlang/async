@@ -119,7 +119,7 @@ async fn IoHandle::generic_read_windows(
   let n = if n >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
@@ -198,7 +198,7 @@ async fn IoHandle::generic_write_windows(
   if n >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.

@@ -60,7 +60,7 @@ async fn IoHandle::recvfrom_unix(
   if ret >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -125,7 +125,7 @@ async fn IoHandle::sendto_unix(
 ) -> Int {
   let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -242,7 +242,7 @@ pub async fn IoHandle::accept_unix(
   let conn = if @fd_util.fd_is_valid(conn) {
     // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     conn
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read()

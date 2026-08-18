@@ -17,15 +17,18 @@ async test "protect_from_cancel" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
-      @async.protect_from_cancel(() => {
-        @async.sleep(400) catch {
-          err => {
-            log.write_string("critial job cancelled with error \{err}\n")
-            raise err
+      try {
+        @async.protect_from_cancel <| () => {
+          @async.sleep(400) catch {
+            err => {
+              log.write_string("critial job cancelled with error \{err}\n")
+              raise err
+            }
           }
         }
         log <+ "critical job finished\n"
-      }) catch {
+        @coroutine.check_cancellation()
+      } catch {
         err => {
           log <+ "job cancelled after critical part\n"
           raise err

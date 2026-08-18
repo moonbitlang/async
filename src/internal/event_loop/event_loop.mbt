@@ -485,10 +485,7 @@ async fn wait_for_cancellation(
     err => {
       // The cancellation operation itself failed.
       // Give up the cancellation and wait for completion normally.
-      @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
-        resume_on_cancel=true,
-      )
+      @coroutine.protect_from_cancel(() => evloop.suspend())
       raise err
     }
   } noraise {
@@ -496,10 +493,7 @@ async fn wait_for_cancellation(
       // The cancellation operation has succeeded,
       // but the thread pool or OS may need some more time to finish all the cleanup.
       // So wait for the completion of the cleanup process here.
-      @coroutine.protect_from_cancel(
-        () => evloop.suspend(),
-        resume_on_cancel=true,
-      )
+      @coroutine.protect_from_cancel(() => evloop.suspend())
     NoWait =>
       // The cancellation operation has succeeded,
       // and the cancelled operation has already terminated.
@@ -508,7 +502,7 @@ async fn wait_for_cancellation(
     RetryLater => {
       // Due to some inherent race condition, the cancellaion attempt did not succeed.
       // Retry again after a small timeout.
-      @coroutine.protect_from_cancel(() => sleep(10), resume_on_cancel=true)
+      @coroutine.protect_from_cancel(() => sleep(10))
       wait_for_cancellation(cancel_func)
     }
   }
@@ -538,10 +532,7 @@ async fn EventLoop::wait_for_job(
         })
     }
   } else {
-    @coroutine.protect_from_cancel(
-      () => evloop.suspend(),
-      resume_on_cancel=true,
-    )
+    @coroutine.protect_from_cancel(() => evloop.suspend())
   }
 }
 

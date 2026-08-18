@@ -172,9 +172,10 @@ pub fn Coroutine::check_error(coro : Coroutine) -> Unit raise {
 }
 
 ///|
+#label_migration(resume_on_cancel, fill=false, msg="`resume_on_cancel=false` is deprecated, because it may result in data loss")
 pub async fn[X] protect_from_cancel(
   f : async () -> X,
-  resume_on_cancel? : Bool = false,
+  resume_on_cancel? : Bool = true,
 ) -> X {
   guard! scheduler.curr_coro is Some(coro)
   if coro.shielded {
