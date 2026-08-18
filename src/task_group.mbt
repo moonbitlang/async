@@ -254,7 +254,7 @@ pub async fn[X] with_task_group(
         for child in tg.children {
           child.cancel()
         }
-        protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
+        protect_from_cancel(@coroutine.suspend)
       }
     }
   }

@@ -77,7 +77,7 @@ async fn IoHandle::read_via_event_bus_unix(
   if ret >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {
@@ -138,7 +138,7 @@ async fn IoHandle::write_via_event_bus_unix(
   if ret >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     return ret
   }
   let ret = if @os_error.is_nonblocking_io_error() {

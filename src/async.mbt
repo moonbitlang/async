@@ -95,11 +95,10 @@ pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
 /// Things waiting for current task, such as the task group,
 /// will also wait until `f` finish.
 ///
-/// If `resume_on_cancel` is `false` (`false` by default),
-/// cancellation will be delayed until `f` returns.
-/// If `resume_on_cancel` is `true`, the program will resume normally
-/// after `f` returns, even if current task is cancelled.
-/// The next unprotected async operation will still get cancelled, though.
+/// The program will resume normally after `f` returns,
+/// even if current task is cancelled.
+/// The task will remain in cancelled state, though.
+/// So the next unprotected async operation will get cancelled immediately.
 ///
 /// This function should be use with extra care and only when absolutely necessary,
 /// because it will break other abstraction such as `with_timeout`.

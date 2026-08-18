@@ -477,7 +477,7 @@ pub async fn IoHandle::read_dir_changes(
   if n >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
+    @coroutine.protect_from_cancel(@coroutine.pause)
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)

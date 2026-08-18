@@ -70,10 +70,7 @@ async test "spawn after cancelled" {
           // emulate a non-cancellable job,
           // or a job that happens to be completed on cancellation,
           // such that discarding the result may lead to data loss
-          @async.protect_from_cancel(
-            () => @async.sleep(300),
-            resume_on_cancel=true,
-          )
+          @async.protect_from_cancel(() => @async.sleep(300))
           // even if control flow enters here normally,
           // current task and the whole group may be in a cancelled state
           group.spawn_bg(allow_failure=true) <| () => {

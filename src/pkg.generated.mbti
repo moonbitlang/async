@@ -23,6 +23,7 @@ pub fn now() -> Int64
 
 pub async fn pause() -> Unit
 
+#label_migration(resume_on_cancel, fill=false, msg="`resume_on_cancel=false` is deprecated, because it may result in data loss")
 pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
