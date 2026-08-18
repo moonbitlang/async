@@ -63,6 +63,10 @@ async fn Client::connect(
     Plain(@socket.Tcp::connect_to_host(hostname, port~))
   }
   headers["Host"] = host.to_owned()
+  // TODO: case insensitive check
+  if !headers.contains("User-Agent") {
+    headers["User-Agent"] = "moonbit-http-client/1.1"
+  }
   let (tls, reader, sender) = match (protocol, transport) {
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
@@ -241,6 +245,11 @@ pub async fn Client::end_request(self : Client) -> Response {
 ///
 /// - Host
 /// - Transfer-Encoding
+///
+/// The following headers can only be set globally for each client on initialization,
+/// and must not be set on a per-request basis:
+///
+/// - User-Agent
 ///
 /// If `Content-Length` is present in `extra_headers`,
 /// it should be the total length of the request body.

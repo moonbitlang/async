@@ -186,8 +186,8 @@ pub async fn put_stream(
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, proxy?)
-  try client.request(Put, path, extra_headers=headers) catch {
+  let client = Client::connect(host, protocol~, headers~, proxy?)
+  try client.request(Put, path) catch {
     err => {
       client.close()
       raise err
@@ -216,8 +216,8 @@ pub async fn post_stream(
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, proxy?)
-  try client.request(Post, path, extra_headers=headers) catch {
+  let client = Client::connect(host, protocol~, headers~, proxy?)
+  try client.request(Post, path) catch {
     err => {
       client.close()
       raise err
