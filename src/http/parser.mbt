@@ -229,10 +229,8 @@ impl @io.Reader for Reader with fn _get_internal_buffer(self) {
 extend Reader with @io.Reader::{_direct_read, _get_internal_buffer, drop}
 
 ///|
-async fn Reader::read_headers(
-  self : Reader,
-) -> (Map[String, String], Array[Cookie]) {
-  let headers = Map([])
+async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
+  let headers : Headers = Map([])
   let cookies = []
   for ;; {
     guard self.transport.read_until("\r\n") is Some(header_line) else {
@@ -243,7 +241,7 @@ async fn Reader::read_headers(
       break
     }
     guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
-    let key = header_line[:colon_index].to_lower().to_owned()
+    let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
     guard colon_index + 1 < header_line.length() else { raise BadRequest }
     let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
       colon_index + 2
@@ -251,36 +249,32 @@ async fn Reader::read_headers(
       colon_index + 1
     }
     let value = header_line[value_start:].to_owned()
-    match key {
-      "content-length" => {
-        guard !(self.body is Fixed(_)) else { raise BadRequest }
-        let len = @string.parse_int(value, base=10)
-        if self.body is Empty && len > 0 {
-          self.body = Fixed(len)
-        }
-        // if automatic decompression is enabled, avoid reporting a wrong content-length value
-        if self.gzip is Some(_) {
-          continue
-        }
+    if key == "Content-Length" {
+      guard !(self.body is Fixed(_)) else { raise BadRequest }
+      let len = @string.parse_int(value, base=10)
+      if self.body is Empty && len > 0 {
+        self.body = Fixed(len)
       }
-      "transfer-encoding" => {
-        guard !(self.body is Chunked(_)) else { raise BadRequest }
-        guard value.to_lower() is "chunked" else { raise NotImplemented }
-        self.body = Chunked(0)
-      }
-      "content-encoding" if self.auto_decompress => {
-        guard self.gzip is None else { raise BadRequest }
-        guard value.to_lower() is "gzip" else { raise NotImplemented }
-        self.gzip = Some(@gzip.Decoder())
-        // if automatic decompression is enabled, avoid reporting a wrong content-length value
-        headers.remove("content-length")
+      // if automatic decompression is enabled, avoid reporting a wrong content-length value
+      if self.gzip is Some(_) {
         continue
       }
-      "set-cookie" => {
-        cookies.push(Cookie::parse(value))
-        continue
+    } else if key == "Transfer-Encoding" {
+      guard !(self.body is Chunked(_)) else { raise BadRequest }
+      guard CaseInsensitiveString(value) == "chunked" else {
+        raise NotImplemented
       }
-      _ => ()
+      self.body = Chunked(0)
+    } else if key == "Content-Encoding" && self.auto_decompress {
+      guard self.gzip is None else { raise BadRequest }
+      guard CaseInsensitiveString(value) == "gzip" else { raise NotImplemented }
+      self.gzip = Some(@gzip.Decoder())
+      // if automatic decompression is enabled, avoid reporting a wrong content-length value
+      headers.remove("Content-Length")
+      continue
+    } else if key == "Set-Cookie" {
+      cookies.push(Cookie::parse(value))
+      continue
     }
     match headers.get(key) {
       None => headers[key] = value
@@ -298,9 +292,6 @@ async fn Reader::read_headers(
 ///
 /// After `read_request` successfully returned,
 /// the HTTP reader itself can be used to extract the body of the request.
-///
-/// HTTP header fields are case insensitive.
-/// In the result of `read_request`, all header fields will be in lower case.
 async fn Reader::read_request(self : Reader) -> Request {
   guard! self.body is Empty
   guard self.transport.read_until("\r\n") is Some(request_line) else {
@@ -341,7 +332,7 @@ async fn Reader::read_request(self : Reader) -> Request {
 /// - Not a response to a HEAD request (which never has a message body)
 fn should_read_body_until_close(
   code : Int,
-  headers : Map[String, String],
+  headers : Headers,
   current_body : BodyKind,
   request_method : RequestMethod?,
 ) -> Bool {
@@ -355,8 +346,8 @@ fn should_read_body_until_close(
     return false
   }
   current_body is Empty &&
-  headers.get("content-length") is None &&
-  headers.get("transfer-encoding") is None &&
+  headers.get("Content-Length") is None &&
+  headers.get("Transfer-Encoding") is None &&
   code >= 200 &&
   code != 204 &&
   code != 205 &&
@@ -371,9 +362,6 @@ fn should_read_body_until_close(
 ///
 /// After `read_response` successfully returned,
 /// the HTTP reader itself can be used to extract the body of the response.
-///
-/// HTTP header fields are case insensitive.
-/// In the result of `read_response`, all header fields will be in lower case.
 async fn Reader::read_response(
   self : Reader,
   auto_decompress~ : Bool,

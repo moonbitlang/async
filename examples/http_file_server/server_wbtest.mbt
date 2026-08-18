@@ -101,8 +101,8 @@ async test "basic" {
     content=(
       #|client: GET /http_file_server
       #|HTTP/1.1 200 OK
-      #|content-type: text/html
-      #|transfer-encoding: chunked
+      #|Content-Type: text/html
+      #|Transfer-Encoding: chunked
       #|<!DOCTYPE html><html><head></head><body>
       #|<h1>/http_file_server</h1>
       #|<div style="margin: 1em; font-size: 15pt">
@@ -115,8 +115,8 @@ async test "basic" {
       #|
       #|client: GET /moon.mod
       #|HTTP/1.1 200 OK
-      #|content-type: appliaction/octet-stream
-      #|content-length: 304
+      #|Content-Type: appliaction/octet-stream
+      #|Content-Length: 304
       #|name = "moonbitlang/async_examples"
       #|
       #|version = "0.3.0"
@@ -141,9 +141,9 @@ async test "basic" {
       #|
       #|
       #|HTTP/1.1 200 OK
-      #|content-type: application/octet-stream
-      #|content-disposition: filename=http_file_server.zip
-      #|transfer-encoding: chunked
+      #|Content-Type: application/octet-stream
+      #|Content-Disposition: filename=http_file_server.zip
+      #|Transfer-Encoding: chunked
       #|http_file_server/
       #|http_file_server/main.mbt
       #|http_file_server/moon.pkg

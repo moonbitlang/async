@@ -16,7 +16,7 @@
 extend Reader with @io.Reader::{read_some, read_all}
 
 ///|
-fn log_headers(headers : Map[String, String], logger : &Logger) -> Unit {
+fn log_headers(headers : Headers, logger : &Logger) -> Unit {
   for k, v in headers {
     logger <+ "\{k}: \{v}\n"
   }
@@ -56,8 +56,8 @@ async test "read_request basic" {
     log.to_string(),
     content=(
       #|Get /
-      #|host: x.y.org
-      #|user-agent: MoonBit
+      #|Host: x.y.org
+      #|User-Agent: MoonBit
       #|
     ),
   )
@@ -87,9 +87,9 @@ async test "read_request fixed body" {
     log.to_string(),
     content=(
       #|Get /
-      #|host: x.y.org
-      #|user-agent: MoonBit
-      #|content-length: 7
+      #|Host: x.y.org
+      #|User-Agent: MoonBit
+      #|Content-Length: 7
       #|message
     ),
   )
@@ -148,9 +148,9 @@ async test "read_request chunked" {
     log.to_string(),
     content=(
       #|Get /
-      #|host: x.y.org
-      #|user-agent: MoonBit
-      #|transfer-encoding: chunked
+      #|Host: x.y.org
+      #|User-Agent: MoonBit
+      #|Transfer-Encoding: chunked
       #|abcdabcdefghijklmnop
     ),
   )
@@ -192,9 +192,9 @@ async test "read_request stream" {
     log.to_string(),
     content=(
       #|Get /
-      #|host: x.y.org
-      #|user-agent: MoonBit
-      #|transfer-encoding: chunked
+      #|Host: x.y.org
+      #|User-Agent: MoonBit
+      #|Transfer-Encoding: chunked
       #|writing data...
       #|received abcd from body
       #|writing data...
@@ -249,9 +249,9 @@ async test "multiple request" {
     log.to_string(),
     content=(
       #|Get /
-      #|host: x.y.org
-      #|user-agent: MoonBit
-      #|transfer-encoding: chunked
+      #|Host: x.y.org
+      #|User-Agent: MoonBit
+      #|Transfer-Encoding: chunked
       #|writing data...
       #|writing data...
       #|writing data...
@@ -260,9 +260,9 @@ async test "multiple request" {
       #|=========
       #|
       #|Get /
-      #|host: z.w.org
-      #|user-agent: MoonBit
-      #|content-length: 8
+      #|Host: z.w.org
+      #|User-Agent: MoonBit
+      #|Content-Length: 8
       #|message2
     ),
   )
@@ -293,7 +293,7 @@ async test "read_response basic" {
     log.to_string(),
     content=(
       #|200 OK
-      #|content-length: 7
+      #|Content-Length: 7
       #|message
     ),
   )
@@ -329,8 +329,8 @@ async test "read_response passthrough fallback (no length headers)" {
     log.to_string(),
     content=(
       #|200 OK
-      #|connection: close
-      #|content-type: text/plain
+      #|Connection: close
+      #|Content-Type: text/plain
       #|Hello, World!
     ),
   )
@@ -366,8 +366,8 @@ async test "read_response 204 No Content (no body)" {
     log.to_string(),
     content=(
       #|204 No Content
-      #|connection: keep-alive
-      #|date: Mon, 15 Feb 2026 00:00:00 GMT
+      #|Connection: keep-alive
+      #|Date: Mon, 15 Feb 2026 00:00:00 GMT
       #|body: 
     ),
   )
@@ -403,8 +403,8 @@ async test "read_response 205 Reset Content (no body)" {
     log.to_string(),
     content=(
       #|205 Reset Content
-      #|connection: keep-alive
-      #|date: Mon, 15 Feb 2026 00:00:00 GMT
+      #|Connection: keep-alive
+      #|Date: Mon, 15 Feb 2026 00:00:00 GMT
       #|body: 
     ),
   )
@@ -439,9 +439,9 @@ async test "read_response 304 Not Modified (no body)" {
     log.to_string(),
     content=(
       #|304 Not Modified
-      #|connection: keep-alive
-      #|etag: "abc123"
-      #|cache-control: max-age=3600
+      #|Connection: keep-alive
+      #|ETag: "abc123"
+      #|Cache-Control: max-age=3600
       #|body: 
     ),
   )
@@ -544,8 +544,8 @@ async test "read_response HEAD 200 (no body)" {
     log.to_string(),
     content=(
       #|200 OK
-      #|content-length: 1234
-      #|content-type: text/html
+      #|Content-Length: 1234
+      #|Content-Type: text/html
       #|body: 
     ),
   )
@@ -553,7 +553,7 @@ async test "read_response HEAD 200 (no body)" {
 
 ///|
 test "should_read_body_until_close - true cases" {
-  let headers_no_length : Map[String, String] = Map([])
+  let headers_no_length : Headers = Map([])
 
   // 200 OK with no length headers
   inspect(
@@ -605,7 +605,7 @@ test "should_read_body_until_close - true cases" {
 
 ///|
 test "should_read_body_until_close - false cases (bodyless status codes)" {
-  let headers_no_length : Map[String, String] = Map([])
+  let headers_no_length : Headers = Map([])
 
   // 1xx informational responses
   inspect(
@@ -645,23 +645,21 @@ test "should_read_body_until_close - false cases (bodyless status codes)" {
 ///|
 test "should_read_body_until_close - false cases (headers present)" {
   // Content-Length present
-  let headers_with_length : Map[String, String] = { "content-length": "42" }
+  let headers_with_length : Headers = { "content-length": "42" }
   inspect(
     should_read_body_until_close(200, headers_with_length, Empty, None),
     content="false",
   )
 
   // Transfer-Encoding present
-  let headers_with_transfer : Map[String, String] = {
-    "transfer-encoding": "chunked",
-  }
+  let headers_with_transfer : Headers = { "transfer-encoding": "chunked" }
   inspect(
     should_read_body_until_close(200, headers_with_transfer, Empty, None),
     content="false",
   )
 
   // Both present
-  let headers_with_both : Map[String, String] = {
+  let headers_with_both : Headers = {
     "content-length": "42",
     "transfer-encoding": "chunked",
   }
@@ -673,7 +671,7 @@ test "should_read_body_until_close - false cases (headers present)" {
 
 ///|
 test "should_read_body_until_close - false cases (body already determined)" {
-  let headers_no_length : Map[String, String] = Map([])
+  let headers_no_length : Headers = Map([])
 
   // Body is Fixed (already determined by Content-Length)
   inspect(
@@ -696,7 +694,7 @@ test "should_read_body_until_close - false cases (body already determined)" {
 
 ///|
 test "should_read_body_until_close - false cases (CONNECT requests)" {
-  let headers_no_length : Map[String, String] = Map([])
+  let headers_no_length : Headers = Map([])
 
   // Successful CONNECT (2xx) responses become tunnels with no HTTP body
   inspect(
@@ -729,7 +727,7 @@ test "should_read_body_until_close - false cases (CONNECT requests)" {
 
 ///|
 test "should_read_body_until_close - false cases (HEAD requests)" {
-  let headers_no_length : Map[String, String] = Map([])
+  let headers_no_length : Headers = Map([])
 
   // HEAD responses never have a message body, regardless of status code
   inspect(
@@ -748,7 +746,7 @@ test "should_read_body_until_close - false cases (HEAD requests)" {
   )
 
   // Even with Content-Length header, HEAD should not read body
-  let headers_with_length : Map[String, String] = { "content-length": "42" }
+  let headers_with_length : Headers = { "content-length": "42" }
   inspect(
     should_read_body_until_close(200, headers_with_length, Empty, Some(Head)),
     content="false",

@@ -36,7 +36,7 @@ fn Protocol::write_show(self : Protocol, logger : &Logger) -> Unit {
 }
 
 ///|
-fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
+fn write_headers_show(headers : Headers, logger : &Logger) -> Unit {
   logger <+ "{"
   let mut first = true
   for key, value in headers {
@@ -45,7 +45,7 @@ fn write_headers_show(headers : Map[String, String], logger : &Logger) -> Unit {
     } else {
       logger <+ ", "
     }
-    logger <+ "\{key.escape()}: \{value.escape()}"
+    logger <+ "\{key.0.escape()}: \{value.escape()}"
   }
   logger <+ "}"
 }

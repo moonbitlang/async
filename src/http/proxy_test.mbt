@@ -218,7 +218,7 @@ async test "proxy error" {
         inspect(
           err,
           content=(
-            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"content-length": "0"}})
+            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"Content-Length": "0"}})
           ),
         )
     } noraise {
