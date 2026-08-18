@@ -420,15 +420,17 @@ Run multiple processes writing to the same pipe:
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple processes to one pipe" {
   @async.with_task_group(root => {
-    let (reader, writer) = @pipe.pipe()
+    let (reader, writer) = @process.read_from_process(shared=true)
     root.spawn_bg(no_wait=true, () => {
       defer reader.close()
       let output = reader.read_all().text()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })
-    defer writer.close()
     @async.with_task_group(group => {
+      // The write must be manually closed after all children process are spawned
+      // in the shared case
+      defer writer.close()
       @process.spawn(group, "echo", ["first"], stdout=writer) |> ignore
       @process.spawn(group, "echo", ["second"], stdout=writer) |> ignore
     })
