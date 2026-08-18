@@ -25,7 +25,7 @@ pub fn hard_cancel() -> CancellationHandler
 
 pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise
 
-pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
+pub fn read_from_process(shared? : Bool) -> (ReadFromProcess, &ProcessOutput) raise
 
 pub async fn redirect_from_file(String) -> &ProcessInput
 
@@ -68,9 +68,12 @@ pub impl @io.Writer for WriteToProcess
 
 // Traits
 trait ProcessInput
+#deprecated
 pub impl ProcessInput for @pipe.PipeRead
 pub impl ProcessInput for @stdio.Input
 
 trait ProcessOutput
+#deprecated
 pub impl ProcessOutput for @pipe.PipeWrite
 pub impl ProcessOutput for @stdio.Output
+pub fn &ProcessOutput::close(Self) -> Unit

@@ -16,13 +16,13 @@
 ///|
 async test "merge multiple" {
   @async.with_task_group() <| root => {
-    let (r, w) = @pipe.pipe()
+    let (r, w) = @process.read_from_process(shared=true)
     root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       inspect(r.read_all().text(), content="abcdefgh")
     }
-    defer w.close()
     @async.with_task_group() <| group => {
+      defer w.close()
       @process.spawn(group, shell, ["-c", "\{write_stdout} abcd"], stdout=w, extra_env={
         "LANG": "en_US.UTF-8",
       })
