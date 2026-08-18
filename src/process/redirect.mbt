@@ -144,8 +144,22 @@ fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
 
 ///|
 /// Redirect the output of a process to the file at `path`.
+/// An output channel that should be passed to child process will be returned.
+///
 /// The meaning of `append`, `create_mode` and `permission` is the same as `@fs.open`,
 /// see the document of `@fs.open` for more details.
+///
+/// If `shared` is `false` (the default), the returned channel `w` is unique.
+/// In this case, `w` can only be passed to one child process
+/// (but it is ok to pass `w` to both stdout and stderr of the same process),
+/// and `w` will be closed automatically after the child process started.
+///
+/// If `shared` is `true`, the returned channel `w` is shared:
+/// it can be passed to multiple children process to merge and collect their output.
+/// In this case, `w` should be closed manually via `w.close()`
+/// after being passed to the last child process.
+/// Note that `w` can be closed immediately after the last child process *started*,
+/// there is no need to wait for the termination of the child process.
 #label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
 #label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn redirect_to_file(
@@ -155,6 +169,7 @@ pub async fn redirect_to_file(
   permission? : Int,
   create? : Int,
   truncate? : Bool = false,
+  shared? : Bool = false,
 ) -> &ProcessOutput {
   let create_mode = match create_mode {
     Some(mode) => mode
@@ -180,7 +195,7 @@ pub async fn redirect_to_file(
     mode=permission,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile(file)
+  RedirectToFile::{ io: file, shared, closed: false }
 }
 
 ///|
@@ -195,7 +210,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     mode=0,
     context="@process.redirect_from_file()",
   )
-  RedirectToFile(file)
+  RedirectToFile::{ io: file, shared: false, closed: false }
 }
 
 ///|
@@ -315,24 +330,41 @@ impl ProcessInput for TempPipeRead with fn after_spawn(self) {
 }
 
 ///|
-priv struct RedirectToFile(@event_loop.IoHandle)
+priv struct RedirectToFile {
+  io : @event_loop.IoHandle
+  shared : Bool
+  mut closed : Bool
+}
 
 ///|
 impl ProcessOutput for RedirectToFile with fn fd(self) {
-  self.0.fd()
+  self.io.fd()
+}
+
+///|
+impl ProcessOutput for RedirectToFile with fn do_close(self) {
+  if !self.closed {
+    self.closed = true
+    self.io.close()
+  }
 }
 
 ///|
 impl ProcessOutput for RedirectToFile with fn after_spawn(self) {
-  self.0.close()
+  if !self.shared {
+    ProcessOutput::do_close(self)
+  }
 }
 
 ///|
 impl ProcessInput for RedirectToFile with fn fd(self) {
-  self.0.fd()
+  self.io.fd()
 }
 
 ///|
 impl ProcessInput for RedirectToFile with fn after_spawn(self) {
-  self.0.close()
+  if !self.closed {
+    self.closed = true
+    self.io.close()
+  }
 }
