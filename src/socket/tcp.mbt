@@ -68,11 +68,24 @@ pub struct TcpServer {
 /// and similarly a server binding to a wildcard address can bind to
 /// the remaining interfaces if a bind to a specific interface already exists.
 /// This side effect cannot be isolated, so `reuse_addr` should be used with this in mind.
+///
+/// If `reuse_port_lb` is `true` (`false` by default), `SO_REUSEPORT` is enabled
+/// so several sockets — typically one per worker process — can bind the same
+/// address at once while the kernel load-balances incoming connections across
+/// them. This is the usual basis for a multi-process server: a supervisor
+/// `exec`s N workers, each binds the same address with this option, and the
+/// kernel spreads connections, so no socket needs to be shared between processes.
+///
+/// The load-balancing semantic is Linux-only. `SO_REUSEPORT` also exists on the
+/// BSDs and MacOS, but there it does not evenly distribute connections — which
+/// socket accepts a given connection is unspecified — so `reuse_port_lb` takes
+/// effect only on Linux and is ignored everywhere else (BSD, MacOS, Windows, wasm).
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
+  reuse_port_lb? : Bool = false,
 ) -> TcpServer {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
@@ -86,6 +99,9 @@ pub async fn TcpServer::TcpServer(
     }
     if !(@event_loop.platform is Windows) && reuse_addr {
       guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
+    }
+    if @event_loop.platform is Linux && reuse_port_lb {
+      guard allow_reuse_port(sock) >= 0 else { @os_error.check_errno(context) }
     }
     io.bind(addr.0, context~)
     if 0 != listen_ffi(sock) {
