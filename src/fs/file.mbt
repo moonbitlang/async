@@ -107,37 +107,18 @@ fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
 ///
 ///   The default value is `0o644` (anyone can read, only owner can write, not executable).
 ///   `permission` is currently ignored on Windows.
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn open(
   filename : StringView,
   mode~ : Mode,
   sync? : SyncMode = NoSync,
   append? : Bool = false,
-  create_mode? : CreateMode,
-  permission? : Int,
-  create? : Int,
-  truncate? : Bool = false,
+  create_mode? : CreateMode = OpenExisting,
+  permission? : Int = 0o644,
 ) -> File {
   let access = match mode {
     ReadOnly => 0
     WriteOnly => 1
     ReadWrite => 2
-  }
-  let create_mode = match create_mode {
-    Some(mode) => mode
-    None =>
-      match (create is Some(_), truncate) {
-        (true, true) => CreateOrTruncate
-        (true, false) => OpenOrCreate
-        (false, true) => TruncateExisting
-        (false, false) => OpenExisting
-      }
-  }
-  let permission = match permission {
-    Some(perm) => perm
-    None if create is Some(perm) => perm
-    None => 0o644
   }
   let sync = match sync {
     NoSync => 0
@@ -517,33 +498,14 @@ pub async fn read_file(
 /// The meaning of `sync`, `append`, `create_mode` and `permission`,
 /// is the same as `open`, except that `create_mode` is `TruncateExisting` by default.
 /// See `open` for more details.
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn write_file(
   path : StringView,
   content : &@io.Data,
-  create_mode? : CreateMode,
-  permission? : Int,
+  create_mode? : CreateMode = CreateOrTruncate,
+  permission? : Int = 0o644,
   sync? : SyncMode = Data,
   append? : Bool = false,
-  create? : Int,
-  truncate? : Bool = true,
 ) -> Unit {
-  let create_mode = match create_mode {
-    Some(mode) => mode
-    None =>
-      match (create is Some(_), truncate) {
-        (true, true) => CreateOrTruncate
-        (true, false) => OpenOrCreate
-        (false, true) => TruncateExisting
-        (false, false) => OpenExisting
-      }
-  }
-  let permission = match permission {
-    Some(perm) => perm
-    None if create is Some(perm) => perm
-    None => 0o644
-  }
   let file = open(
     path,
     mode=WriteOnly,

@@ -329,7 +329,7 @@ async test "flock advisory" {
   let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, create_mode=CreateOrTruncate, "abcd")
+    @fs.write_file(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))

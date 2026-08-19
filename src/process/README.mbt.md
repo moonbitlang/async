@@ -191,7 +191,7 @@ Use a file as process input:
 async test "redirect input from file" {
   @async.with_task_group(root => {
     let input_file = "_build/process_test_input.txt"
-    @fs.write_file(input_file, "file content", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, "file content")
     root.add_defer(() => @fs.remove(input_file))
     let (code, output) = @process.collect_stdout(
       "cat",
@@ -218,10 +218,7 @@ async test "redirect output to file" {
     let code = @process.run(
       "echo",
       ["test output"],
-      stdout=@process.redirect_to_file(
-        output_file,
-        create_mode=CreateOrTruncate,
-      ),
+      stdout=@process.redirect_to_file(output_file),
     )
     inspect(code, content="0")
     let content = @fs.read_file(output_file).text()
@@ -241,17 +238,14 @@ async test "file to file redirection" {
   @async.with_task_group(root => {
     let input_file = "_build/process_redirect_in.txt"
     let output_file = "_build/process_redirect_out.txt"
-    @fs.write_file(input_file, "redirect test", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, "redirect test")
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     let _ = @process.run(
       "cat",
       [],
       stdin=@process.redirect_from_file(input_file),
-      stdout=@process.redirect_to_file(
-        output_file,
-        create_mode=CreateOrTruncate,
-      ),
+      stdout=@process.redirect_to_file(output_file),
     )
     inspect(@fs.read_file(output_file).text(), content="redirect test")
   })

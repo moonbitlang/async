@@ -47,15 +47,12 @@ async test "redirect to file" {
     let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
-    @fs.write_file(input_file, "abcd", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, "abcd")
     let _ = @process.run(
       cat,
       [],
       stdin=@process.redirect_from_file(input_file),
-      stdout=@process.redirect_to_file(
-        output_file,
-        create_mode=CreateOrTruncate,
-      ),
+      stdout=@process.redirect_to_file(output_file),
     )
     inspect(@fs.read_file(output_file).text(), content="abcd")
   }
@@ -66,11 +63,7 @@ async test "merge multiple to file" {
   @async.with_task_group() <| root => {
     let output_file = "_build/process_redirect_merge_multiple_test_out.txt"
     root.add_defer(() => @fs.remove(output_file))
-    let w = @process.redirect_to_file(
-      output_file,
-      shared=true,
-      create_mode=CreateOrTruncate,
-    )
+    let w = @process.redirect_to_file(output_file, shared=true)
     @async.with_task_group <| group => {
       defer w.close()
       let _ = @process.spawn(
@@ -118,7 +111,7 @@ async test "merge stdout and stderr to file" {
   @async.with_task_group() <| group => {
     let output_file = "_build/process_redirect_merge_test_out.txt"
     group.add_defer(() => @fs.remove(output_file))
-    let w = @process.redirect_to_file(output_file, create_mode=CreateOrTruncate)
+    let w = @process.redirect_to_file(output_file)
     let _ = @process.run(
       shell,
       ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],

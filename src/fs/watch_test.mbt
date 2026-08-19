@@ -21,7 +21,7 @@ enum TestFile {
 ///|
 async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
   match self {
-    File(content) => @fs.write_file(path, content, create_mode=CreateOrTruncate)
+    File(content) => @fs.write_file(path, content)
     Dir(files) => {
       @fs.mkdir(path)
       for name, file in files {
@@ -558,11 +558,11 @@ async fn watch_vertical_swap_test(
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{Repr(events)}")
     log.push("modifying previous outer file")
-    @fs.write_file("\{path}/outer/inner/file", "ABCD")
+    @fs.write_file("\{path}/outer/inner/file", "ABCD", create_mode=OpenExisting)
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{Repr(events)}")
     log.push("modifying previous inner file")
-    @fs.write_file("\{path}/outer/file", "EFGH")
+    @fs.write_file("\{path}/outer/file", "EFGH", create_mode=OpenExisting)
     let events = @async.with_timeout(1000, () => watcher.wait())
     log.push("watcher received change: \{Repr(events)}")
   })

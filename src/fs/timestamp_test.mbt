@@ -29,12 +29,12 @@ async test "timestamp for path" {
   }
   let path = "/tmp/timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, "abcd", sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
-    @fs.write_file(path, "1234", sync=Full)
+    @fs.write_file(path, "1234", create_mode=OpenExisting, sync=Full)
     let atime_2 = @fs.atime(path)
     let mtime_2 = @fs.mtime(path)
     let ctime_2 = @fs.ctime(path)
@@ -66,12 +66,12 @@ async test "mtime for path" {
   }
   let path = "_build/timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, "abcd", sync=Full)
     group.add_defer(() => @fs.remove(path))
     let mtime_1 = @fs.mtime(path)
     let ctime_1 = @fs.ctime(path)
     @async.sleep(600)
-    @fs.write_file(path, "1234", sync=Full)
+    @fs.write_file(path, "1234", create_mode=OpenExisting, sync=Full)
     let mtime_2 = @fs.mtime(path)
     let ctime_2 = @fs.ctime(path)
     assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
@@ -89,7 +89,7 @@ async test "timestamp for opened file" {
   }
   let path = "/tmp/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, "abcd", sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
@@ -129,7 +129,7 @@ async test "mtime for opened file" {
   }
   let path = "_build/opened_file_timestamp_test"
   @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateOrTruncate, sync=Full)
+    @fs.write_file(path, "abcd", sync=Full)
     group.add_defer(() => @fs.remove(path))
     let file = @fs.open(path, mode=ReadWrite, sync=Full)
     defer file.close()
