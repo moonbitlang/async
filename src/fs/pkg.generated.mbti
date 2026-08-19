@@ -29,9 +29,7 @@ pub async fn mkdir(StringView, permission? : Int, recursive? : Bool) -> Unit
 
 pub async fn mtime(StringView, follow_symlink? : Bool) -> (Int64, Int)
 
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
-pub async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, create_mode? : CreateMode, permission? : Int, create? : Int, truncate? : Bool) -> File
+pub async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, create_mode? : CreateMode, permission? : Int) -> File
 
 pub async fn opendir(StringView) -> Directory
 
@@ -53,9 +51,7 @@ pub async fn tmpdir(prefix~ : StringView) -> String
 
 pub async fn walk(StringView, async (String, Array[String]) -> Unit, exclude? : (String) -> Bool, max_concurrency? : Int, allow_failure? : Bool) -> Unit
 
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
-pub async fn write_file(StringView, &@io.Data, create_mode? : CreateMode, permission? : Int, sync? : SyncMode, append? : Bool, create? : Int, truncate? : Bool) -> Unit
+pub async fn write_file(StringView, &@io.Data, create_mode? : CreateMode, permission? : Int, sync? : SyncMode, append? : Bool) -> Unit
 
 // Errors
 

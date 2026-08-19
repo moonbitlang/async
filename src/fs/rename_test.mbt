@@ -37,7 +37,7 @@ async test "rename basic" {
 async test "rename replace" {
   let old_path = "_build/rename_replace_test_old"
   let new_path = "_build/rename_replace_test_new"
-  @fs.write_file(new_path, "xyzw", create_mode=CreateOrTruncate)
+  @fs.write_file(new_path, "xyzw")
   let old_file = @fs.open(
     old_path,
     mode=WriteOnly,

@@ -160,32 +160,13 @@ fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
 /// after being passed to the last child process.
 /// Note that `w` can be closed immediately after the last child process *started*,
 /// there is no need to wait for the termination of the child process.
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn redirect_to_file(
   path : String,
   append? : Bool = false,
-  create_mode? : @fs.CreateMode,
-  permission? : Int,
-  create? : Int,
-  truncate? : Bool = false,
+  create_mode? : @fs.CreateMode = CreateOrTruncate,
+  permission? : Int = 0o644,
   shared? : Bool = false,
 ) -> &ProcessOutput {
-  let create_mode = match create_mode {
-    Some(mode) => mode
-    None =>
-      match (create is Some(_), truncate) {
-        (true, true) => CreateOrTruncate
-        (true, false) => OpenOrCreate
-        (false, true) => TruncateExisting
-        (false, false) => OpenExisting
-      }
-  }
-  let permission = match permission {
-    Some(perm) => perm
-    None if create is Some(perm) => perm
-    None => 0o644
-  }
   let (file, _) = @event_loop.open(
     path,
     1, // write only

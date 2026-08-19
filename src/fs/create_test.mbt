@@ -64,7 +64,7 @@ async test "create or append" {
 ///|
 async test "wrapper test" {
   let path = "_build/fs_wrapper_test"
-  @fs.write_file(path, b"abcd", create_mode=CreateOrTruncate)
+  @fs.write_file(path, b"abcd")
   let result = @fs.read_file(path).text()
   @fs.remove(path)
   inspect(result, content="abcd")
