@@ -34,6 +34,8 @@ pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) ->
 
 pub async fn sleep(Int) -> Unit
 
+pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> Unit) -> X
+
 #callsite(autofill(loc))
 pub async fn[X] with_task_group(async (TaskGroup[X]) -> X, loc~ : SourceLoc) -> X
 

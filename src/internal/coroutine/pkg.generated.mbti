@@ -29,6 +29,8 @@ pub fn spawn(async () -> Unit, loc~ : SourceLoc) -> Coroutine
 
 pub async fn suspend() -> Unit
 
+pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> Unit) -> X
+
 // Errors
 pub(all) suberror Cancelled derive(@debug.Debug)
 #deprecated
