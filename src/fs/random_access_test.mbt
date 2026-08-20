@@ -17,6 +17,7 @@ async test "write_at" {
   let path = "_build/write_at_test"
   // initialize
   @fs.write_file(path, "abcdef", sync=Full)
+  defer @fs.remove(path)
   // first read
   inspect(@fs.read_file(path).text(), content="abcdef")
   // update content
@@ -28,29 +29,24 @@ async test "write_at" {
     w.write("12") // still write from the start
   }
   // read content
-  {
-    let r = @fs.open(path, mode=ReadOnly)
-    defer r.close()
-    inspect(r.read_all().text(), content="123456")
-  }
-  @fs.remove(path)
+  let r = @fs.open(path, mode=ReadOnly)
+  defer r.close()
+  inspect(r.read_all().text(), content="123456")
 }
 
 ///|
 async test "read_at" {
   let path = "_build/read_at_test"
   @fs.write_file(path, "abcdef", sync=Full)
-  {
-    let r = @fs.open(path, mode=ReadOnly)
-    defer r.close()
-    json_inspect(r.read_exactly_at(2, position=r.size() - 2), content="ef")
-    json_inspect(r.read_exactly_at(2, position=2), content="cd")
-    // still read from the start
-    json_inspect(r.read_exactly(2), content="ab")
-    let buf = FixedArray::make(2, b'\x00')
-    let n = r.read_at(buf, position=5)
-    inspect(n, content="1")
-    json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="f")
-  }
-  @fs.remove(path)
+  defer @fs.remove(path)
+  let r = @fs.open(path, mode=ReadOnly)
+  defer r.close()
+  json_inspect(r.read_exactly_at(2, position=r.size() - 2), content="ef")
+  json_inspect(r.read_exactly_at(2, position=2), content="cd")
+  // still read from the start
+  json_inspect(r.read_exactly(2), content="ab")
+  let buf = FixedArray::make(2, b'\x00')
+  let n = r.read_at(buf, position=5)
+  inspect(n, content="1")
+  json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="f")
 }

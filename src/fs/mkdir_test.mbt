@@ -16,10 +16,9 @@
 async test "mkdir" {
   let path = "_build/mkdir_test"
   @fs.mkdir(path)
+  defer @fs.rmdir(path, recursive=true)
   @fs.write_file("\{path}/file", "")
   let result = @fs.readdir(path, sort=true)
-  @fs.remove("\{path}/file")
-  @fs.rmdir(path)
   debug_inspect(result, content="[\"file\"]")
 }
 
@@ -32,21 +31,20 @@ async test "rmdir recursive" {
   @fs.mkdir("\{path}/inner")
   @fs.write_file("\{path}/inner/file", "")
   @fs.symlink("\{path}/symlink", target="\{cwd}/_build")
+  defer (if @fs.exists(path) { @fs.rmdir(path, recursive=true) })
   @test_util.assert_raise_async(() => @fs.rmdir(path))
   @fs.rmdir(path, recursive=true)
 }
 
 ///|
 async test "mkdir recursive" {
-  @async.with_task_group() <| group => {
-    let base_path = "_build/recursive_mkdir"
-    let path = "\{base_path}/test//directory"
-    @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
-    json_inspect(@fs.readdir(base_path), content=["test"])
-    json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
-    json_inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
-  }
+  let base_path = "_build/recursive_mkdir"
+  let path = "\{base_path}/test//directory"
+  @fs.mkdir(path, recursive=true)
+  defer @fs.rmdir(base_path, recursive=true)
+  json_inspect(@fs.readdir(base_path), content=["test"])
+  json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
+  json_inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
 }
 
 ///|
@@ -56,13 +54,11 @@ async test "mkdir recursive windows" {
   if !(@event_loop.platform is Windows) {
     return
   }
-  @async.with_task_group() <| group => {
-    let base_path = "_build\\recursive_mkdir_windows"
-    let path = "\{base_path}\\test\\\\directory"
-    @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
-    json_inspect(@fs.readdir(base_path), content=["test"])
-    json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
-    json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
-  }
+  let base_path = "_build\\recursive_mkdir_windows"
+  let path = "\{base_path}\\test\\\\directory"
+  @fs.mkdir(path, recursive=true)
+  defer @fs.rmdir(base_path, recursive=true)
+  json_inspect(@fs.readdir(base_path), content=["test"])
+  json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
+  json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
 }

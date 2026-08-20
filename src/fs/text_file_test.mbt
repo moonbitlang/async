@@ -14,10 +14,8 @@
 
 ///|
 async test "text file" {
-  @async.with_task_group() <| root => {
-    let path = "_build/basic_text_file_test"
-    root.add_defer(() => @fs.remove(path))
-    @fs.write_file(path, "abcd")
-    inspect(@fs.read_file(path).text(), content="abcd")
-  }
+  let path = "_build/basic_text_file_test"
+  @fs.write_file(path, "abcd")
+  defer @fs.remove(path)
+  inspect(@fs.read_file(path).text(), content="abcd")
 }

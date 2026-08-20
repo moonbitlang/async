@@ -15,8 +15,9 @@
 ///|
 async test "basic create" {
   let path = "_build/basic_create_test"
+  let w = @fs.create(path, sync=Full)
+  defer @fs.remove(path)
   {
-    let w = @fs.create(path, sync=Full)
     defer w.close()
     w.write(b"abcd\n")
   }
@@ -25,7 +26,6 @@ async test "basic create" {
     defer r.close()
     r.read_all().text()
   }
-  @fs.remove(path)
   inspect(
     result,
     content=(
@@ -51,13 +51,13 @@ async test "create or append" {
   }
 
   add_data(b"abcd")
+  defer @fs.remove(path)
   add_data(b"efgh")
   let result = {
     let r = @fs.open(path, mode=ReadOnly)
     defer r.close()
     r.read_all().text()
   }
-  @fs.remove(path)
   inspect(result, content="abcdefgh")
 }
 
@@ -65,54 +65,52 @@ async test "create or append" {
 async test "wrapper test" {
   let path = "_build/fs_wrapper_test"
   @fs.write_file(path, b"abcd")
+  defer @fs.remove(path)
   let result = @fs.read_file(path).text()
-  @fs.remove(path)
   inspect(result, content="abcd")
 }
 
 ///|
 async test "create_mode test" {
   let path = "_build/create_exclusive_test"
-  @async.with_task_group() <| group => {
-    for create_mode in [@fs.OpenExisting, TruncateExisting] {
-      @test_util.assert_raise_async <| () => {
-        @fs.open(path, mode=WriteOnly, create_mode~)
-      }
-    }
-    {
-      let file = @fs.create(path, allow_existing=false)
-      defer file.close()
-      group.add_defer(() => @fs.remove(path))
-      file.write("abcd")
-    }
-    inspect(@fs.read_file(path).text(), content="abcd")
-    @test_util.assert_raise_async(() => @fs.create(path, allow_existing=false))
+  for create_mode in [@fs.OpenExisting, TruncateExisting] {
     @test_util.assert_raise_async <| () => {
-      @fs.open(path, mode=WriteOnly, create_mode=CreateNew)
+      @fs.open(path, mode=WriteOnly, create_mode~)
     }
-    {
-      let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
-      defer file.close()
-      file.write("AB")
-    }
-    inspect(@fs.read_file(path).text(), content="ABcd")
-    {
-      let file = @fs.open(path, mode=WriteOnly, create_mode=OpenOrCreate)
-      defer file.close()
-      file.write("XY")
-    }
-    inspect(@fs.read_file(path).text(), content="XYcd")
-    {
-      let file = @fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate)
-      defer file.close()
-      file.write("12")
-    }
-    inspect(@fs.read_file(path).text(), content="12")
-    {
-      let file = @fs.open(path, mode=WriteOnly, create_mode=TruncateExisting)
-      defer file.close()
-      file.write("34")
-    }
-    inspect(@fs.read_file(path).text(), content="34")
   }
+  let file = @fs.create(path, allow_existing=false)
+  defer @fs.remove(path)
+  {
+    defer file.close()
+    file.write("abcd")
+  }
+  inspect(@fs.read_file(path).text(), content="abcd")
+  @test_util.assert_raise_async(() => @fs.create(path, allow_existing=false))
+  @test_util.assert_raise_async <| () => {
+    @fs.open(path, mode=WriteOnly, create_mode=CreateNew)
+  }
+  {
+    let file = @fs.open(path, mode=WriteOnly, create_mode=OpenExisting)
+    defer file.close()
+    file.write("AB")
+  }
+  inspect(@fs.read_file(path).text(), content="ABcd")
+  {
+    let file = @fs.open(path, mode=WriteOnly, create_mode=OpenOrCreate)
+    defer file.close()
+    file.write("XY")
+  }
+  inspect(@fs.read_file(path).text(), content="XYcd")
+  {
+    let file = @fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate)
+    defer file.close()
+    file.write("12")
+  }
+  inspect(@fs.read_file(path).text(), content="12")
+  {
+    let file = @fs.open(path, mode=WriteOnly, create_mode=TruncateExisting)
+    defer file.close()
+    file.write("34")
+  }
+  inspect(@fs.read_file(path).text(), content="34")
 }

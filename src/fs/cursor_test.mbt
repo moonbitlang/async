@@ -16,6 +16,7 @@
 async test "sequential read/write have separated cursor" {
   let path = "_build/read_write_cursor_test"
   @fs.write_file(path, "abcd", sync=Full)
+  defer @fs.remove(path)
   let file = @fs.open(path, mode=ReadWrite)
   defer file.close()
   file.write(b"AB")
@@ -27,6 +28,7 @@ async test "sequential read/write have separated cursor" {
 async test "append mode only affect writing" {
   let path = "_build/append_cursor_test"
   @fs.write_file(path, "abcd", sync=Full)
+  defer @fs.remove(path)
   let file = @fs.open(path, append=true, mode=ReadWrite)
   defer file.close()
   // the read cursor should not be affected by `append`
@@ -42,6 +44,7 @@ async test "append mode only affect writing" {
 async test "append mode file does not support random access write" {
   let path = "_build/append_random_access_test"
   @fs.write_file(path, "abcd", sync=Full)
+  defer @fs.remove(path)
   let file = @fs.open(path, append=true, mode=ReadWrite)
   defer file.close()
   // random access read is not affected

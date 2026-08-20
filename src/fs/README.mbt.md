@@ -34,10 +34,10 @@ The `open` function provides flexible file opening with various modes and option
 async test "open file for reading" {
   let test_file = "_build/test_open_read.txt"
   @fs.write_file(test_file, b"Hello, MoonBit!")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
   let content = file.read_all().text()
-  @fs.remove(test_file)
   inspect(content, content="Hello, MoonBit!")
 }
 
@@ -46,9 +46,9 @@ async test "open file for reading" {
 async test "open file for writing" {
   let test_file = "_build/test_open_write.txt"
   let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
+  defer @fs.remove(test_file)
   defer file.close()
   file.write(b"Hello, World!")
-  @fs.remove(test_file)
 }
 
 ///|
@@ -57,13 +57,15 @@ async test "open with append mode" {
   let test_file = "_build/test_append.txt"
   // Create initial file
   @fs.write_file(test_file, b"First line\n")
+  defer @fs.remove(test_file)
 
   // Append to existing file
-  let file = @fs.open(test_file, mode=WriteOnly, append=true)
-  file.write(b"Second line\n")
-  file.close()
+  {
+    let file = @fs.open(test_file, mode=WriteOnly, append=true)
+    defer file.close()
+    file.write(b"Second line\n")
+  }
   let content = @fs.read_file(test_file).text()
-  @fs.remove(test_file)
   inspect(content, content="First line\nSecond line\n")
 }
 ```
@@ -81,10 +83,12 @@ The `create` function is a convenience wrapper for creating new files:
 async test "create new file" {
   let test_file = "_build/test_create.txt"
   let file = @fs.create(test_file)
-  file.write(b"New file content")
-  file.close()
+  defer @fs.remove(test_file)
+  {
+    defer file.close()
+    file.write(b"New file content")
+  }
   let exists = @fs.exists(test_file)
-  @fs.remove(test_file)
   inspect(exists, content="true")
 }
 ```
@@ -99,8 +103,8 @@ Read entire files or read data in chunks:
 async test "read_file - read entire file" {
   let test_file = "_build/test_read_file.txt"
   @fs.write_file(test_file, b"Hello, MoonBit!")
+  defer @fs.remove(test_file)
   let content = @fs.read_file(test_file)
-  @fs.remove(test_file)
   inspect(content.text(), content="Hello, MoonBit!")
 }
 
@@ -109,11 +113,11 @@ async test "read_file - read entire file" {
 async test "read in chunks using File" {
   let test_file = "_build/test_chunk_read.txt"
   @fs.write_file(test_file, b"0123456789")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
   let buf = FixedArray::make(5, b'0')
   let n = file.read(buf)
-  @fs.remove(test_file)
   inspect(n, content="5")
   inspect(@utf8.decode(buf.unsafe_reinterpret_as_bytes()), content="01234")
 }
@@ -123,10 +127,10 @@ async test "read in chunks using File" {
 async test "read_all from file" {
   let test_file = "_build/test_read_all.txt"
   @fs.write_file(test_file, b"Complete content")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
   let data = file.read_all()
-  file.close()
-  @fs.remove(test_file)
   inspect(data.text(), content="Complete content")
 }
 
@@ -135,10 +139,10 @@ async test "read_all from file" {
 async test "read_exactly specific bytes" {
   let test_file = "_build/test_read_exact.txt"
   @fs.write_file(test_file, b"1234567890")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
   let bytes = file.read_exactly(5)
-  file.close()
-  @fs.remove(test_file)
   inspect(@utf8.decode(bytes), content="12345")
 }
 ```
@@ -156,8 +160,8 @@ Write data to files using various methods:
 async test "write_file - write entire file" {
   let test_file = "_build/test_write.txt"
   @fs.write_file(test_file, b"File content")
+  defer @fs.remove(test_file)
   let content = @fs.read_file(test_file).text()
-  @fs.remove(test_file)
   inspect(content, content="File content")
 }
 
@@ -167,8 +171,8 @@ async test "write with sync modes" {
   let test_file = "_build/test_sync.txt"
   // Write with data sync
   @fs.write_file(test_file, b"Synced data", sync=Data)
+  defer @fs.remove(test_file)
   let content = @fs.read_file(test_file).text()
-  @fs.remove(test_file)
   inspect(content, content="Synced data")
 }
 
@@ -177,11 +181,13 @@ async test "write with sync modes" {
 async test "write using File methods" {
   let test_file = "_build/test_file_write.txt"
   let file = @fs.create(test_file)
-  file.write(b"Line 1\n")
-  file.write(b"Line 2\n")
-  file.close()
+  defer @fs.remove(test_file)
+  {
+    defer file.close()
+    file.write(b"Line 1\n")
+    file.write(b"Line 2\n")
+  }
   let content = @fs.read_file(test_file).text()
-  @fs.remove(test_file)
   inspect(content, content="Line 1\nLine 2\n")
 }
 
@@ -190,10 +196,10 @@ async test "write using File methods" {
 async test "write_once for single write operation" {
   let test_file = "_build/test_write_once.txt"
   let file = @fs.create(test_file)
+  defer @fs.remove(test_file)
+  defer file.close()
   let data : Bytes = b"Single write"
   let written = file.write_once(data, offset=0, len=data.length())
-  file.close()
-  @fs.remove(test_file)
   inspect(written, content="12")
 }
 ```
@@ -213,28 +219,27 @@ Read and write file from specified position:
 async test "read at specific position" {
   let test_file = "_build/read_at_test.txt"
   @fs.write_file(test_file, b"0123456789")
-  {
-    let file = @fs.open(test_file, mode=ReadOnly)
-    defer file.close()
+  defer @fs.remove(test_file)
+  let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
 
-    // read 3 bytes at position 5
-    json_inspect(file.read_exactly_at(3, position=5), content="567")
+  // read 3 bytes at position 5
+  json_inspect(file.read_exactly_at(3, position=5), content="567")
 
-    // use `read_at` to handle EOF robustly
-    let buf = FixedArray::make(10, b'\x00')
-    let n = file.read_at(buf, position=5)
-    inspect(n, content="5")
-    json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="56789")
-  }
-  @fs.remove(test_file)
+  // use `read_at` to handle EOF robustly
+  let buf = FixedArray::make(10, b'\x00')
+  let n = file.read_at(buf, position=5)
+  inspect(n, content="5")
+  json_inspect(buf.unsafe_reinterpret_as_bytes()[:n], content="56789")
 }
 
 ///|
 #cfg(target="native")
 async test "write at specific position" {
   let test_file = "_build/write_at_test.txt"
+  let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
+  defer @fs.remove(test_file)
   {
-    let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
     defer file.close()
     file.write("abcdef")
     file.write_at(b"CD", position=2)
@@ -242,7 +247,6 @@ async test "write at specific position" {
 
   // read 3 bytes at position 5
   inspect(@fs.read_file(test_file).text(), content="abCDef")
-  @fs.remove(test_file)
 }
 
 ///|
@@ -250,10 +254,10 @@ async test "write at specific position" {
 async test "size - get file size" {
   let test_file = "_build/test_size.txt"
   @fs.write_file(test_file, b"Hello")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
   let size = file.size()
-  file.close()
-  @fs.remove(test_file)
   inspect(size, content="5")
 }
 ```
@@ -275,8 +279,8 @@ Some important notes when using `read_at` and `write_at`:
 async test "mkdir - create directory" {
   let dir_path = "_build/test_mkdir"
   @fs.mkdir(dir_path, permission=0o755)
+  defer @fs.rmdir(dir_path)
   let exists = @fs.exists(dir_path)
-  @fs.rmdir(dir_path)
   inspect(exists, content="true")
 }
 
@@ -285,8 +289,8 @@ async test "mkdir - create directory" {
 async test "mkdir - create with custom permissions" {
   let dir_path = "_build/test_mkdir_perm"
   @fs.mkdir(dir_path, permission=0o700)
+  defer @fs.rmdir(dir_path)
   let kind = @fs.kind(dir_path)
-  @fs.rmdir(dir_path)
   debug_inspect(kind, content="Directory")
 }
 ```
@@ -299,6 +303,7 @@ async test "mkdir - create with custom permissions" {
 async test "readdir - read directory entries" {
   let dir_path = "_build/test_readdir"
   @fs.mkdir(dir_path, permission=0o755)
+  defer @fs.rmdir(dir_path, recursive=true)
   @fs.write_file("\{dir_path}/test1.txt", b"")
   @fs.write_file("\{dir_path}/test2.txt", b"")
   let entries = @fs.readdir(
@@ -308,7 +313,6 @@ async test "readdir - read directory entries" {
   )
   // avoid platform inconsistent ordering
   entries.sort()
-  @fs.rmdir(dir_path, recursive=true)
   json_inspect(entries, content=["test1.txt", "test2.txt"])
 }
 
@@ -317,11 +321,11 @@ async test "readdir - read directory entries" {
 async test "readdir with sorting" {
   let dir_path = "_build/test_readdir_sort"
   @fs.mkdir(dir_path, permission=0o755)
+  defer @fs.rmdir(dir_path, recursive=true)
   @fs.write_file("\{dir_path}/c.txt", b"")
   @fs.write_file("\{dir_path}/a.txt", b"")
   @fs.write_file("\{dir_path}/b.txt", b"")
   let entries = @fs.readdir(dir_path, sort=true)
-  @fs.rmdir(dir_path, recursive=true)
   json_inspect(entries, content=["a.txt", "b.txt", "c.txt"])
 }
 
@@ -330,14 +334,14 @@ async test "readdir with sorting" {
 async test "opendir and Directory::read_all" {
   let dir_path = "_build/test_opendir"
   @fs.mkdir(dir_path, permission=0o755)
+  defer @fs.rmdir(dir_path, recursive=true)
   @fs.write_file("\{dir_path}/file1.txt", b"test")
   @fs.write_file("\{dir_path}/file2.txt", b"test")
   let dir = @fs.opendir(dir_path)
+  defer dir.close()
   let entries = dir
     .read_all(include_hidden=false, include_special=false)
     ..sort()
-  dir.close()
-  @fs.rmdir(dir_path, recursive=true)
   json_inspect(entries, content=["file1.txt", "file2.txt"])
 }
 ```
@@ -352,17 +356,13 @@ Recursively traverse directory hierarchies:
 async test "walk directory tree" {
   let base = "_build/test_walk"
   @fs.mkdir(base)
+  defer @fs.rmdir(base, recursive=true)
   @fs.mkdir("\{base}/sub1")
   @fs.mkdir("\{base}/sub2")
   @fs.write_file("\{base}/file.txt", b"")
   @fs.write_file("\{base}/sub1/file1.txt", b"")
   let visited : Ref[Int] = Ref(0)
   @fs.walk(base, fn(_path, _files) { visited.val = visited.val + 1 })
-  @fs.remove("\{base}/file.txt")
-  @fs.remove("\{base}/sub1/file1.txt")
-  @fs.rmdir("\{base}/sub1")
-  @fs.rmdir("\{base}/sub2")
-  @fs.rmdir(base)
   inspect(visited.val >= 3, content="true")
 }
 
@@ -371,6 +371,7 @@ async test "walk directory tree" {
 async test "walk with max_concurrency" {
   let base = "_build/test_walk_concurrency"
   @fs.mkdir(base, permission=0o755)
+  defer @fs.rmdir(base, recursive=true)
   @fs.mkdir("\{base}/dir1", permission=0o755)
   @fs.mkdir("\{base}/dir2", permission=0o755)
   let count : Ref[Int] = Ref(0)
@@ -379,9 +380,6 @@ async test "walk with max_concurrency" {
     fn(_path, _files) { count.val = count.val + 1 },
     max_concurrency=1,
   )
-  @fs.rmdir("\{base}/dir1")
-  @fs.rmdir("\{base}/dir2")
-  @fs.rmdir(base)
   inspect(count.val >= 3, content="true")
 }
 ```
@@ -425,8 +423,8 @@ Determine the type of file system entries:
 async test "kind - regular file" {
   let test_file = "_build/test_kind_file.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let kind = @fs.kind(test_file)
-  @fs.remove(test_file)
   debug_inspect(kind, content="Regular")
 }
 
@@ -435,8 +433,8 @@ async test "kind - regular file" {
 async test "kind - directory" {
   let dir_path = "_build/test_kind_dir"
   @fs.mkdir(dir_path, permission=0o755)
+  defer @fs.rmdir(dir_path)
   let kind = @fs.kind(dir_path)
-  @fs.rmdir(dir_path)
   debug_inspect(kind, content="Directory")
 }
 
@@ -445,10 +443,10 @@ async test "kind - directory" {
 async test "File::kind method" {
   let test_file = "_build/test_file_kind.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
   let kind = file.kind()
-  file.close()
-  @fs.remove(test_file)
   debug_inspect(kind, content="Regular")
 }
 ```
@@ -463,8 +461,8 @@ Access file timestamps (atime, mtime, ctime):
 async test "atime - access time" {
   let test_file = "_build/test_atime.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let (seconds, nanoseconds) = @fs.atime(test_file)
-  @fs.remove(test_file)
   inspect(seconds > 0, content="true")
   inspect(nanoseconds >= 0, content="true")
 }
@@ -474,8 +472,8 @@ async test "atime - access time" {
 async test "mtime - modification time" {
   let test_file = "_build/test_mtime.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let (seconds, nanoseconds) = @fs.mtime(test_file)
-  @fs.remove(test_file)
   inspect(seconds > 0, content="true")
   inspect(nanoseconds >= 0, content="true")
 }
@@ -485,8 +483,8 @@ async test "mtime - modification time" {
 async test "ctime - status change time" {
   let test_file = "_build/test_ctime.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let (seconds, nanoseconds) = @fs.ctime(test_file)
-  @fs.remove(test_file)
   inspect(seconds > 0, content="true")
   inspect(nanoseconds >= 0, content="true")
 }
@@ -496,12 +494,12 @@ async test "ctime - status change time" {
 async test "File timestamp methods" {
   let test_file = "_build/test_file_times.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
+  defer file.close()
   let (atime_s, _) = file.atime()
   let (mtime_s, _) = file.mtime()
   let (ctime_s, _) = file.ctime()
-  file.close()
-  @fs.remove(test_file)
   inspect(atime_s > 0, content="true")
   inspect(mtime_s > 0, content="true")
   inspect(ctime_s > 0, content="true")
@@ -518,8 +516,8 @@ Check file access permissions:
 async test "exists - check file existence" {
   let test_file = "_build/test_exists.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let exists = @fs.exists(test_file)
-  @fs.remove(test_file)
   inspect(exists, content="true")
 }
 
@@ -535,8 +533,8 @@ async test "exists - non-existent file" {
 async test "can_read - check read permission" {
   let test_file = "_build/test_can_read.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let can_read = @fs.can_read(test_file)
-  @fs.remove(test_file)
   inspect(can_read, content="true")
 }
 
@@ -545,8 +543,8 @@ async test "can_read - check read permission" {
 async test "can_write - check write permission" {
   let test_file = "_build/test_can_write.txt"
   @fs.write_file(test_file, b"test")
+  defer @fs.remove(test_file)
   let can_write = @fs.can_write(test_file)
-  @fs.remove(test_file)
   inspect(can_write, content="true")
 }
 
@@ -555,8 +553,8 @@ async test "can_write - check write permission" {
 async test "can_execute - check execute permission" {
   let test_file = "_build/test_can_execute.txt"
   @fs.write_file(test_file, b"test", create_mode=CreateNew, permission=0o755)
+  defer @fs.remove(test_file)
   let can_execute = @fs.can_execute(test_file)
-  @fs.remove(test_file)
   inspect(can_execute, content="true")
 }
 ```
@@ -569,8 +567,8 @@ async test "can_execute - check execute permission" {
 async test "realpath - resolve absolute path" {
   let test_dir = "_build/test_realpath"
   @fs.mkdir(test_dir)
+  defer @fs.rmdir(test_dir)
   let real_path = @fs.realpath(test_dir)
-  @fs.rmdir(test_dir)
   guard! @env.current_dir() is Some(cwd)
   assert_true(real_path.has_prefix(cwd))
   inspect(
@@ -589,6 +587,7 @@ async test "realpath - resolve absolute path" {
 async test "remove - delete file" {
   let test_file = "_build/test_remove.txt"
   @fs.write_file(test_file, b"test")
+  defer (if @fs.exists(test_file) { @fs.remove(test_file) })
   @fs.remove(test_file)
   let exists = @fs.exists(test_file)
   inspect(exists, content="false")

@@ -14,24 +14,18 @@
 
 ///|
 async test "tmpdir" {
-  @async.with_task_group() <| group => {
-    let t1 = @fs.tmpdir(prefix="tmp")
-    group.add_defer() <| () => {
-      @async.protect_from_cancel(() => @fs.rmdir(t1, recursive=true))
-    }
-    let t2 = @fs.tmpdir(prefix="tmp")
-    group.add_defer() <| () => {
-      @async.protect_from_cancel(() => @fs.rmdir(t2, recursive=true))
-    }
-    assert_not_eq(t1, t2)
-    assert_true(@fs.exists(t1))
-    assert_true(@fs.exists(t2))
-    @fs.write_file(
-      "\{t1}/file.txt",
-      "abcd",
-      create_mode=CreateNew,
-      permission=0o600,
-    )
-    json_inspect(@fs.readdir(t1), content=["file.txt"])
-  }
+  let t1 = @fs.tmpdir(prefix="tmp")
+  defer @fs.rmdir(t1, recursive=true)
+  let t2 = @fs.tmpdir(prefix="tmp")
+  defer @fs.rmdir(t2, recursive=true)
+  assert_not_eq(t1, t2)
+  assert_true(@fs.exists(t1))
+  assert_true(@fs.exists(t2))
+  @fs.write_file(
+    "\{t1}/file.txt",
+    "abcd",
+    create_mode=CreateNew,
+    permission=0o600,
+  )
+  json_inspect(@fs.readdir(t1), content=["file.txt"])
 }
