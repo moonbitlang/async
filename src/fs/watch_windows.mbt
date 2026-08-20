@@ -120,21 +120,23 @@ impl WatcherBackend for WindowsWatcher with fn wait(self) {
 extern "C" fn WindowsWatcher::has_ReadDirectoryChangesExW() -> Bool = "moonbitlang_async_has_ReadDirectoryChangesExW"
 
 ///|
-#cfg(platform="windows")
-priv struct WindowsWatcherBuf(@c_buffer.Buffer)
+#cfg(any(platform="windows", target="wasm"))
+using @event_loop {type WindowsWatcherBuf}
 
 ///|
-#cfg(target="wasm")
-priv struct WindowsWatcherBuf(UInt64)
-
-///|
-#cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::size() -> Int = "moonbitlang_async_watcher_event_buffer_size"
+// According to https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw,
+// the initial buffer size on the first `ReadDirectoryChangesW` call on a directory handle
+// will become the size for in-kernel event buffer of that directory handle.
+// So larger buffer size reduce change of overflow.
+// Meanwhile, the document also says that network file system does not support buffer larger than 64K,
+// so use the largest possible value (64K) here.
+#cfg(any(platform="windows", target="wasm"))
+let watcher_buffer_size : Int = 1 << 16
 
 ///|
 #cfg(platform="windows")
 fn WindowsWatcherBuf::new() -> WindowsWatcherBuf {
-  WindowsWatcherBuf(@c_buffer.new(WindowsWatcherBuf::size()))
+  WindowsWatcherBuf(@c_buffer.new(watcher_buffer_size))
 }
 
 ///|
@@ -154,23 +156,13 @@ fn WindowsWatcherBuf::free(self : WindowsWatcherBuf) -> Unit {
 fn WindowsWatcherBuf::free(self : WindowsWatcherBuf) -> Unit = "moonbitlang/async" "fs/watcher/windows/buffer/free"
 
 ///|
-#cfg(platform="windows")
+#cfg(any(platform="windows", target="wasm"))
 async fn WindowsWatcherBuf::read(
   self : WindowsWatcherBuf,
   root : @event_loop.IoHandle,
   context~ : String,
 ) -> Int {
-  root.read_dir_changes(self.0, WindowsWatcherBuf::size(), context~)
-}
-
-///|
-#cfg(target="wasm")
-async fn WindowsWatcherBuf::read(
-  self : WindowsWatcherBuf,
-  root : @event_loop.IoHandle,
-  context~ : String,
-) -> Int {
-  root.read_dir_changes(self.0, context~)
+  root.read_dir_changes(self.0, watcher_buffer_size, context~)
 }
 
 ///|
