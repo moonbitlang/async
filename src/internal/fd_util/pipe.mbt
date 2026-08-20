@@ -29,21 +29,15 @@ pub fn pipe(
     @os_error.check_errno(context)
   }
   guard! fds is [r, w]
-  try {
-    set_cloexec(r, context~)
-    set_cloexec(w, context~)
-    if read_end_is_async {
-      set_nonblocking(r, context~)
-    }
-    if write_end_is_async {
-      set_nonblocking(w, context~)
-    }
-  } catch {
-    err => {
-      close(r, kind=Pipe, context~)
-      close(w, kind=Pipe, context~)
-      raise err
-    }
+  errdefer close(r, kind=Pipe, context~)
+  errdefer close(w, kind=Pipe, context~)
+  set_cloexec(r, context~)
+  set_cloexec(w, context~)
+  if read_end_is_async {
+    set_nonblocking(r, context~)
+  }
+  if write_end_is_async {
+    set_nonblocking(w, context~)
   }
   (r, w)
 }
@@ -100,16 +94,10 @@ pub fn pipe(
   if !fd_is_valid(w) {
     @os_error.check_errno(context)
   }
-  try {
-    let r = create_named_pipe_client(name, is_async=read_end_is_async)
-    if !fd_is_valid(r) {
-      @os_error.check_errno(context)
-    }
-    (r, w)
-  } catch {
-    err => {
-      close(w, kind=Pipe, context~)
-      raise err
-    }
+  errdefer close(w, kind=Pipe, context~)
+  let r = create_named_pipe_client(name, is_async=read_end_is_async)
+  if !fd_is_valid(r) {
+    @os_error.check_errno(context)
   }
+  (r, w)
 }

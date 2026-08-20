@@ -283,6 +283,7 @@ pub async fn[X] all(
 ///
 /// `any` requires at least one task and will fail if the array is empty.
 #callsite(autofill(loc))
+#warnings("-fragile_catch_all")
 pub async fn[X] any(
   tasks : ArrayView[async () -> X],
   max_concurrent? : Int,

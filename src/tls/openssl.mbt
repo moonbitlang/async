@@ -354,20 +354,14 @@ async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
   if ctx.is_null() {
     return ctx
   }
-  try {
-    let pem = @fs.read_file(root_cert).text()
-    for cert in decode_pem_certificates(pem) {
-      if ctx.add_root_certificate(cert) != 1 {
-        raise TlsError(err_get_error())
-      }
-    }
-    ctx
-  } catch {
-    err => {
-      ctx.free()
-      raise err
+  errdefer ctx.free()
+  let pem = @fs.read_file(root_cert).text()
+  for cert in decode_pem_certificates(pem) {
+    if ctx.add_root_certificate(cert) != 1 {
+      raise TlsError(err_get_error())
     }
   }
+  ctx
 }
 
 ///|
@@ -422,31 +416,22 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     raise TlsError("failed to initialize SSL client context")
   }
   let self = Tls::from_pair(ctx, r, w, is_client=true, host~)
-  try {
-    if trust is NoVerification {
-      self.ssl.set_verify(false)
-    }
-    if host is Some(host) {
-      let host = @utf8.encode(host)
-      guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
-      if sni {
-        guard self.ssl.set_sni(host) > 0 else {
-          raise TlsError(err_get_error())
-        }
-      }
-    }
-    while self.ssl.connect() is ret && ret <= 0 {
-      self.handle_error(self.ssl.get_error(ret))
-    }
-    self.transport.flush_write()
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
-  } noraise {
-    _ => self
+  errdefer self.close()
+  if trust is NoVerification {
+    self.ssl.set_verify(false)
   }
+  if host is Some(host) {
+    let host = @utf8.encode(host)
+    guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
+    if sni {
+      guard self.ssl.set_sni(host) > 0 else { raise TlsError(err_get_error()) }
+    }
+  }
+  while self.ssl.connect() is ret && ret <= 0 {
+    self.handle_error(self.ssl.get_error(ret))
+  }
+  self.transport.flush_write()
+  self
 }
 
 ///|
@@ -477,25 +462,18 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     raise TlsError("failed to initialize SSL server context")
   }
   let self = Tls::from_pair(ctx, r, w, is_client=false, host=None)
-  try {
-    if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
-      raise TlsError(err_get_error())
-    }
-    if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
-      raise TlsError(err_get_error())
-    }
-    while self.ssl.accept() is ret && ret <= 0 {
-      self.handle_error(self.ssl.get_error(ret))
-    }
-    self.transport.flush_write()
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
-  } noraise {
-    _ => self
+  errdefer self.close()
+  if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
+    raise TlsError(err_get_error())
   }
+  if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
+    raise TlsError(err_get_error())
+  }
+  while self.ssl.accept() is ret && ret <= 0 {
+    self.handle_error(self.ssl.get_error(ret))
+  }
+  self.transport.flush_write()
+  self
 }
 
 ///|

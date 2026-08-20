@@ -91,40 +91,34 @@ pub fn register_hook(
 ///|
 fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
   let bus = EventBus::new()
-  try {
-    let notify_recv = init_thread_pool_ffi(bus)
-    if !@fd_util.fd_is_valid(notify_recv) {
-      @os_error.check_errno("initialize thread pool")
-    }
-    let extra = PlatformEventLoopExtra::new()
-    let max_worker_count = match platform {
-      Linux | MacOS =>
-        // reserve one extra worker for the global `sigwait` job
-        max_worker_count + 1
-      Windows => max_worker_count
-    }
-    {
-      bus,
-      fds: Map([]),
-      extra,
-      notify_recv,
-      max_worker_count,
-      job_id: 0,
-      job_queue: Set([]),
-      idle_workers: Deque([]),
-      running_workers: Map([]),
-      jobs: Map([]),
-      timers: SortedSet([]),
-      main: None,
-      signal_handler: None,
-      killed_by_signal: None,
-      blocked_tasks: 0,
-    }
-  } catch {
-    err => {
-      bus.destroy()
-      raise err
-    }
+  errdefer bus.destroy()
+  let notify_recv = init_thread_pool_ffi(bus)
+  if !@fd_util.fd_is_valid(notify_recv) {
+    @os_error.check_errno("initialize thread pool")
+  }
+  let extra = PlatformEventLoopExtra::new()
+  let max_worker_count = match platform {
+    Linux | MacOS =>
+      // reserve one extra worker for the global `sigwait` job
+      max_worker_count + 1
+    Windows => max_worker_count
+  }
+  {
+    bus,
+    fds: Map([]),
+    extra,
+    notify_recv,
+    max_worker_count,
+    job_id: 0,
+    job_queue: Set([]),
+    idle_workers: Deque([]),
+    running_workers: Map([]),
+    jobs: Map([]),
+    timers: SortedSet([]),
+    main: None,
+    signal_handler: None,
+    killed_by_signal: None,
+    blocked_tasks: 0,
   }
 }
 
@@ -172,27 +166,15 @@ pub fn with_event_loop(
   let signal_handler = setup_signal_handler()
   evloop.signal_handler = Some(signal_handler)
   let main = @coroutine.spawn(() => {
-    try f() catch {
-      err => {
-        evloop.terminate_signal_handler(signal_handler)
-        raise err
-      }
-    } noraise {
-      _ => evloop.terminate_signal_handler(signal_handler)
-    }
+    defer evloop.terminate_signal_handler(signal_handler)
+    f()
   })
   @coroutine.reschedule()
   evloop.main = Some(main)
   if external_loop.val is Some(extloop) {
     external_loop.val = None
-    try evloop.run_with_external_loop(extloop) catch {
-      err => {
-        extloop.terminate()
-        raise err
-      }
-    } noraise {
-      _ => extloop.terminate()
-    }
+    defer extloop.terminate()
+    evloop.run_with_external_loop(extloop)
   } else {
     evloop.run_forever()
   }
@@ -269,7 +251,7 @@ pub let check_fd_leak : Ref[Bool] = Ref(
 
 ///|
 fn EventLoop::check_fd_leak(self : Self) -> Unit {
-  if check_fd_leak.val && !self.fds.is_empty() {
+  if !self.fds.is_empty() {
     let leaked_handles = [
       for handle in self.fds.values() => @debug.to_string(handle.kind)
     ].join(", ")
@@ -279,7 +261,7 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
 }
 
 ///|
-fn EventLoop::cleanup(self : Self) -> Unit raise {
+fn EventLoop::cleanup(self : Self, should_check_fd_leak~ : Bool) -> Unit raise {
   for hook in hooks {
     if hook.exit is Some(exit) {
       exit()
@@ -298,7 +280,9 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
       context="runtime internal: close leaking fd",
     )
   }
-  self.check_fd_leak()
+  if should_check_fd_leak {
+    self.check_fd_leak()
+  }
   self.fds.clear()
   for _, coro in self.jobs {
     coro.cancel()
@@ -364,40 +348,36 @@ fn EventLoop::check_dead_lock(self : Self) -> Unit {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  try {
-    let mut checked_deadlock = false
-    while !@coroutine.all_coroutines().is_empty() {
-      let timeout = self.get_next_timeout()
-      if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
-        // The user may decide to ignore deadlock situation,
-        // in this case we only perform the deadlock check once.
-        checked_deadlock = true
-        self.check_dead_lock()
-      }
-      let n = self.wait_for_event(timeout~)
-      if timeout >= 0 {
-        self.handle_timers()
-      }
-      for i in 0..<n {
-        let event = self.bus.get_event(i)
-        self.extra.handle_event(self, event)
-      }
-      @coroutine.reschedule()
+  // In case the event loop has encountered some fatal error,
+  // propagate the error to relevant coroutines.
+  errdefer (while @coroutine.has_immediately_ready_task() ||
+                  self.blocked_tasks > 0 {
+    @coroutine.reschedule()
+  })
+  // only check for fd leak if event loop succeeded
+  let mut should_check_fd_leak = false
+  defer self.cleanup(should_check_fd_leak~)
+  let mut checked_deadlock = false
+  while !@coroutine.all_coroutines().is_empty() {
+    let timeout = self.get_next_timeout()
+    if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
+      // The user may decide to ignore deadlock situation,
+      // in this case we only perform the deadlock check once.
+      checked_deadlock = true
+      self.check_dead_lock()
     }
-    self.check_dead_lock()
-  } catch {
-    err => {
-      Ref::protect(check_fd_leak, false, () => self.cleanup())
-      // In case the event loop has encountered some fatal error,
-      // propagate the error to relevant coroutines.
-      while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
-        @coroutine.reschedule()
-      }
-      raise err
+    let n = self.wait_for_event(timeout~)
+    if timeout >= 0 {
+      self.handle_timers()
     }
-  } noraise {
-    _ => self.cleanup()
+    for i in 0..<n {
+      let event = self.bus.get_event(i)
+      self.extra.handle_event(self, event)
+    }
+    @coroutine.reschedule()
   }
+  self.check_dead_lock()
+  should_check_fd_leak = check_fd_leak.val
 }
 
 ///|
@@ -413,44 +393,37 @@ fn EventLoop::run_with_external_loop(
     @os_error.check_errno("runtime internal: spawn waiter")
   }
   defer waiter.terminate()
-  try {
-    while !@coroutine.all_coroutines().is_empty() {
-      let timeout = match self.get_next_timeout() {
-        _..<0 => None
-        timeout => Some(timeout)
-      }
-      extloop.poll(timeout?)
-      if !self.timers.is_empty() {
-        self.handle_timers()
-      }
-      let n = waiter.get_events()
-      if n > 0 {
-        defer waiter.wake()
-        for i in 0..<n {
-          let event = self.bus.get_event(i)
-          self.extra.handle_event(self, event)
-        }
-      } else if n < 0 {
-        @os_error.check_errno("runtime internal: poll_wait")
-      }
-      @coroutine.reschedule()
+  // In case the event loop has encountered some fatal error,
+  // propagate the error to relevant coroutines.
+  errdefer (while @coroutine.has_immediately_ready_task() ||
+                  self.blocked_tasks > 0 {
+    @coroutine.reschedule()
+  })
+  // only check for fd leak if event loop succeeded
+  let mut should_check_fd_leak = false
+  defer self.cleanup(should_check_fd_leak~)
+  while !@coroutine.all_coroutines().is_empty() {
+    let timeout = match self.get_next_timeout() {
+      _..<0 => None
+      timeout => Some(timeout)
     }
-    // When running with an external event loop,
-    // the program may be blocked on some external loop specific stuff,
-    // so deadlock detection cannot work properly, and in hence disabled here
-  } catch {
-    err => {
-      Ref::protect(check_fd_leak, false, () => self.cleanup())
-      // In case the event loop has encountered some fatal error,
-      // propagate the error to relevant coroutines.
-      while @coroutine.has_immediately_ready_task() || self.blocked_tasks > 0 {
-        @coroutine.reschedule()
-      }
-      raise err
+    extloop.poll(timeout?)
+    if !self.timers.is_empty() {
+      self.handle_timers()
     }
-  } noraise {
-    _ => self.cleanup()
+    let n = waiter.get_events()
+    if n > 0 {
+      defer waiter.wake()
+      for i in 0..<n {
+        let event = self.bus.get_event(i)
+        self.extra.handle_event(self, event)
+      }
+    } else if n < 0 {
+      @os_error.check_errno("runtime internal: poll_wait")
+    }
+    @coroutine.reschedule()
   }
+  should_check_fd_leak = check_fd_leak.val
 }
 
 ///|
@@ -481,14 +454,11 @@ async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
 ) -> Unit {
   guard! curr_loop.val is Some(evloop)
-  try cancel_func() catch {
-    err => {
-      // The cancellation operation itself failed.
-      // Give up the cancellation and wait for completion normally.
-      @coroutine.protect_from_cancel(() => evloop.suspend())
-      raise err
-    }
-  } noraise {
+  let status = {
+    errdefer @coroutine.protect_from_cancel(() => evloop.suspend())
+    cancel_func()
+  }
+  match status {
     NeedWait =>
       // The cancellation operation has succeeded,
       // but the thread pool or OS may need some more time to finish all the cleanup.

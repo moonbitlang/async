@@ -123,7 +123,6 @@ pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
       for coro in coro.downstream {
         coro.wake()
       }
-      coro.downstream.clear()
       scheduler.all_coros.remove(coro)
     }
   }
@@ -153,14 +152,9 @@ pub async fn Coroutine::wait(target : Coroutine) -> Unit {
     Running | Suspend(_) => ()
   }
   target.downstream.add(coro)
-  try suspend() catch {
-    err => {
-      target.downstream.remove(coro)
-      raise err
-    }
-  } noraise {
-    _ => target.unwrap()
-  }
+  defer target.downstream.remove(coro)
+  suspend()
+  target.unwrap()
 }
 
 ///|

@@ -27,6 +27,7 @@ priv struct WindowsWatcher {
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
+#warnings("-fragile_catch_all")
 fn WindowsWatcher::WindowsWatcher(
   watcher : Watcher,
   root : @event_loop.IoHandle,

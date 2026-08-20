@@ -50,12 +50,9 @@ async test "wait cancelled" {
       buf <+ "task finished\n"
     })
     root.spawn_bg() <| () => {
-      task.wait() catch {
-        err => {
-          buf.write_string("`wait` cancelled with \{err}\n")
-          raise err
-        }
-      }
+      @async.with_cancellation_handler(
+        handler=() => buf.write_string("`wait` cancelled with\n"),
+      ) <| () => { task.wait() }
     }
     @async.sleep(20)
     raise Err
@@ -65,7 +62,7 @@ async test "wait cancelled" {
   inspect(
     buf.to_string(),
     content=(
-      #|`wait` cancelled with Cancelled
+      #|`wait` cancelled with
       #|Err
     ),
   )

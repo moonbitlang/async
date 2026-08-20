@@ -75,13 +75,12 @@ async test "lazy init cancelled" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.sleep(400) catch {
-      err => {
-        log.push("lazy init cancelled at tick \{current_tick()}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
+    ) <| () => {
+      @async.sleep(400)
+      log.push("lazy init completed at tick \{current_tick()}")
     }
-    log.push("lazy init completed at tick \{current_tick()}")
   })
   debug_inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
   @async.sleep(100)
@@ -104,13 +103,12 @@ async test "lazy init multiple waiters 1" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.sleep(400) catch {
-      err => {
-        log.push("lazy init cancelled at tick \{current_tick()}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
+    ) <| () => {
+      @async.sleep(400)
+      log.push("lazy init completed at tick \{current_tick()}")
     }
-    log.push("lazy init completed at tick \{current_tick()}")
   })
   let result = @async.with_task_group(group => {
     group.spawn_bg() <| () => {
@@ -135,13 +133,12 @@ async test "lazy init multiple waiters 2" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.sleep(600) catch {
-      err => {
-        log.push("lazy init cancelled at tick \{current_tick()}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
+    ) <| () => {
+      @async.sleep(600)
+      log.push("lazy init completed at tick \{current_tick()}")
     }
-    log.push("lazy init completed at tick \{current_tick()}")
   })
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {

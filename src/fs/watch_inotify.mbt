@@ -36,6 +36,7 @@ fn InotifyWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang/async" "fs/inotify/cr
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))
+#warnings("-fragile_catch_all")
 fn InotifyWatcher::InotifyWatcher(
   watcher : Watcher,
   debounce_timeout~ : Int,

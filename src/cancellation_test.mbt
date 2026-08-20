@@ -17,14 +17,11 @@ async test "manual cancel" {
   let buf = StringBuilder::new()
   @async.with_task_group(root => {
     let task = root.spawn(() => {
-      try {
+      @async.with_cancellation_handler(
+        handler=() => buf.write_string("cancelled\n"),
+      ) <| () => {
         @async.sleep(300)
         buf <+ "task finished\n"
-      } catch {
-        err => {
-          buf.write_string("cancelled by error \{err}\n")
-          raise err
-        }
       }
     })
     @async.sleep(100)
@@ -35,7 +32,7 @@ async test "manual cancel" {
   inspect(
     buf.to_string(),
     content=(
-      #|cancelled by error Cancelled
+      #|cancelled
       #|main task exit
       #|
     ),
@@ -55,18 +52,13 @@ async test "error propagation" {
         raise Err
       }
       root.spawn_bg() <| () => {
-        try {
+        @async.with_cancellation_handler(
+          handler=() => buf.write_string("task 2 cancelled\n"),
+        ) <| () => {
           @async.sleep(200)
           buf <+ "task 2, tick 1\n"
           @async.sleep(200)
           buf <+ "task 2, tick 2\n"
-        } catch {
-          err => {
-            buf.write_string("task 2 cancelled with error \{err}\n")
-            raise err
-          }
-        } noraise {
-          _ => buf <+ "task 2 normal exit\n"
         }
       }
     })
@@ -76,7 +68,7 @@ async test "error propagation" {
     buf.to_string(),
     content=(
       #|task 2, tick 1
-      #|task 2 cancelled with error Cancelled
+      #|task 2 cancelled
       #|Err
     ),
   )
@@ -94,13 +86,11 @@ async test "multiple scope" {
             raise Err
           }
           ctx.spawn_bg() <| () => {
-            try @async.sleep(400) catch {
-              err => {
-                buf.write_string("ctx 1 task 2 cancelled with \{err}\n")
-                raise err
-              }
-            } noraise {
-              _ => buf <+ "ctx 1 task 2 finished\n"
+            @async.with_cancellation_handler(
+              handler=() => buf.write_string("ctx 1 task 2 cancelled\n"),
+            ) <| () => {
+              @async.sleep(400)
+              buf <+ "ctx 1 task 2 finished\n"
             }
           }
         }
@@ -122,13 +112,11 @@ async test "multiple scope" {
             raise Err
           }
           ctx.spawn_bg() <| () => {
-            try @async.sleep(300) catch {
-              err => {
-                buf.write_string("ctx 2 task 2 cancelled with \{err}\n")
-                raise err
-              }
-            } noraise {
-              _ => buf <+ "ctx 2 task 2 finished\n"
+            @async.with_cancellation_handler(
+              handler=() => buf.write_string("ctx 2 task 2 cancelled\n"),
+            ) <| () => {
+              @async.sleep(300)
+              buf <+ "ctx 2 task 2 finished\n"
             }
           }
         }
@@ -146,7 +134,7 @@ async test "multiple scope" {
   inspect(
     buf.to_string(),
     content=(
-      #|ctx 1 task 2 cancelled with Cancelled
+      #|ctx 1 task 2 cancelled
       #|ctx 1 received error Err
       #|ctx 2 task 2 finished
       #|ctx 2 received error Err

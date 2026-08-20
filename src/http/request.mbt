@@ -156,15 +156,9 @@ pub async fn get_stream(
 ) -> (Response, Client) {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
-  try {
-    let response = client..request(Get, path)..write(body).end_request()
-    (response, client)
-  } catch {
-    err => {
-      client.close()
-      raise err
-    }
-  }
+  errdefer client.close()
+  let response = client..request(Get, path)..write(body).end_request()
+  (response, client)
 }
 
 ///|
@@ -187,14 +181,9 @@ pub async fn put_stream(
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, protocol~, headers~, proxy?)
-  try client.request(Put, path) catch {
-    err => {
-      client.close()
-      raise err
-    }
-  } noraise {
-    _ => client
-  }
+  errdefer client.close()
+  client.request(Put, path)
+  client
 }
 
 ///|
@@ -217,12 +206,7 @@ pub async fn post_stream(
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, protocol~, headers~, proxy?)
-  try client.request(Post, path) catch {
-    err => {
-      client.close()
-      raise err
-    }
-  } noraise {
-    _ => client
-  }
+  errdefer client.close()
+  client.request(Post, path)
+  client
 }

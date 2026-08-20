@@ -49,6 +49,7 @@ fn Transport::new(reader : &@io.Reader, writer : &@io.Writer) -> Transport {
 }
 
 ///|
+#warnings("-fragile_catch_all")
 async fn Transport::read_more(self : Transport) -> Unit {
   self.read_lock.acquire()
   defer self.read_lock.release()

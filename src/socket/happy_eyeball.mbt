@@ -26,6 +26,7 @@
 ///   an IPv6 connection will only be returned if no IPv4 address is available
 /// - if `protocol` is `OnlyV6`,
 ///   `connect_to_host` will fail if no IPv4 address is available
+#warnings("-fragile_catch_all")
 pub async fn Tcp::connect_to_host(
   host : StringView,
   port~ : Int,
@@ -71,31 +72,23 @@ pub async fn Tcp::connect_to_host(
     }
   }
 
-  try {
-    match protocol {
-      NoPreference | OnlyV4 | OnlyV6 => connect_with_protocol(protocol)
-      FavorV4 => {
-        connect_with_protocol(OnlyV4)
-        if result is None {
-          connect_with_protocol(OnlyV6)
-        }
-      }
-      FavorV6 => {
+  // It is possible that the whole `connect_to_host` call is cancelled,
+  // but a connection attempt succeeded just before the cancellation.
+  // We need to properly close the result in this case.
+  errdefer (if result is Some(conn) { conn.close() })
+  match protocol {
+    NoPreference | OnlyV4 | OnlyV6 => connect_with_protocol(protocol)
+    FavorV4 => {
+      connect_with_protocol(OnlyV4)
+      if result is None {
         connect_with_protocol(OnlyV6)
-        if result is None {
-          connect_with_protocol(OnlyV4)
-        }
       }
     }
-  } catch {
-    err => {
-      // It is possible that the whole `connect_to_host` call is cancelled,
-      // but a connection attempt succeeded just before the cancellation.
-      // We need to properly close the result in this case.
-      if result is Some(conn) {
-        conn.close()
+    FavorV6 => {
+      connect_with_protocol(OnlyV6)
+      if result is None {
+        connect_with_protocol(OnlyV4)
       }
-      raise err
     }
   }
   match result {

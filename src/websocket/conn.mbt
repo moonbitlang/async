@@ -527,6 +527,7 @@ pub impl @io.Reader for Message with fn _get_internal_buffer(self) {
 }
 
 ///|
+#warnings("-fragile_catch_all")
 pub impl @io.Reader for Message with fn _direct_read(
   self,
   buf,

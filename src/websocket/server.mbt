@@ -29,48 +29,40 @@ pub async fn Conn::from_http_server(
   request : @http.Request,
   conn : @http.ServerConnection,
 ) -> Conn {
-  try {
-    async fn bad_request(msg : String) {
-      conn..send_response(400, "Bad Request")..write(msg).end_response()
-      raise InvalidHandshake(msg)
-    }
-
-    guard request.meth is Get else {
-      bad_request("Invalid request: must be GET")
-    }
-
-    // Validate WebSocket handshake headers
-    guard request.headers.get("upgrade") is Some(upgrade) &&
-      upgrade.to_lower() == "websocket" else {
-      bad_request("Missing or invalid Upgrade header")
-    }
-    guard request.headers.get("connection") is Some(connection) &&
-      connection.to_lower().contains("upgrade") else {
-      bad_request("Missing or invalid Connection header")
-    }
-    guard request.headers.get("sec-websocket-version") is Some(version) &&
-      version == "13" else {
-      bad_request("Missing or unsupported WebSocket version")
-    }
-    guard request.headers.get("sec-websocket-key") is Some(key) else {
-      bad_request("Missing Sec-WebSocket-Key header")
-    }
-
-    // Generate accept key
-    let accept_key = generate_accept_key(key)
-    conn
-    ..send_response(101, "Switching Protocols", extra_headers={
-      "Upgrade": "websocket",
-      "Connection": "Upgrade",
-      "Sec-WebSocket-Accept": accept_key,
-    })
-    ..end_response()
-    .enter_passthrough_mode()
-    Conn::new(conn, 4096, mask=None)
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  async fn bad_request(msg : String) {
+    conn..send_response(400, "Bad Request")..write(msg).end_response()
+    raise InvalidHandshake(msg)
   }
+
+  guard request.meth is Get else { bad_request("Invalid request: must be GET") }
+
+  // Validate WebSocket handshake headers
+  guard request.headers.get("upgrade") is Some(upgrade) &&
+    upgrade.to_lower() == "websocket" else {
+    bad_request("Missing or invalid Upgrade header")
+  }
+  guard request.headers.get("connection") is Some(connection) &&
+    connection.to_lower().contains("upgrade") else {
+    bad_request("Missing or invalid Connection header")
+  }
+  guard request.headers.get("sec-websocket-version") is Some(version) &&
+    version == "13" else {
+    bad_request("Missing or unsupported WebSocket version")
+  }
+  guard request.headers.get("sec-websocket-key") is Some(key) else {
+    bad_request("Missing Sec-WebSocket-Key header")
+  }
+
+  // Generate accept key
+  let accept_key = generate_accept_key(key)
+  conn
+  ..send_response(101, "Switching Protocols", extra_headers={
+    "Upgrade": "websocket",
+    "Connection": "Upgrade",
+    "Sec-WebSocket-Accept": accept_key,
+  })
+  ..end_response()
+  .enter_passthrough_mode()
+  Conn::new(conn, 4096, mask=None)
 }
