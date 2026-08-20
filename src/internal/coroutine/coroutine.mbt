@@ -193,3 +193,17 @@ pub async fn[X] protect_from_cancel(
     result
   }
 }
+
+///|
+pub async fn[X] with_cancellation_handler(
+  f : async () -> X,
+  handler~ : async () -> Unit,
+) -> X {
+  f() catch {
+    Cancelled => {
+      handler()
+      raise Cancelled
+    }
+    err => raise err
+  }
+}

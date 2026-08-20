@@ -41,6 +41,12 @@ pub fn is_cancellation_error(error : Error) -> Bool {
 }
 
 ///|
+/// `with_cancellation_handler(f, handler~)` runs the asynchronous function `f`.
+/// If `f` is cancelled and does not produce a result, `handler` will be invoked.
+/// If `f` succeed or fail with a fatal error, the result of `f` will be returned as-is.
+pub using @coroutine {with_cancellation_handler}
+
+///|
 pub suberror TimeoutError derive(Debug, ToJson)
 
 ///|
