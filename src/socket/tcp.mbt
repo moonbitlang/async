@@ -78,30 +78,24 @@ pub async fn TcpServer::TcpServer(
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
-  try {
-    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-      if 0 != set_ipv6_only(sock, !dual_stack) {
-        @os_error.check_errno(context)
-      }
-    }
-    if !(@event_loop.platform is Windows) && reuse_addr {
-      guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
-    }
-    io.bind(addr.0, context~)
-    if 0 != listen_ffi(sock) {
+  errdefer io.close()
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
       @os_error.check_errno(context)
     }
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
   }
+  if !(@event_loop.platform is Windows) && reuse_addr {
+    guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
+  }
+  io.bind(addr.0, context~)
+  if 0 != listen_ffi(sock) {
+    @os_error.check_errno(context)
+  }
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr }
 }
 
 ///|
@@ -177,17 +171,11 @@ async fn TcpServer::accept_unix(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
   let conn = self.io.accept_unix(addr.0, context="@socket.TcpServer::accept()")
-  try {
-    if disable_nagle(conn.fd()) < 0 {
-      @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-    }
-    @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  if disable_nagle(conn.fd()) < 0 {
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
+  @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
   // The local address of a server connection is the same as the listen address
   ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
 }
@@ -201,20 +189,14 @@ async fn TcpServer::accept_windows(self : TcpServer) -> (Tcp, Addr) {
   let family = self.addr.family()
   let conn_sock = make_tcp_socket(family, context~)
   let conn = @event_loop.IoHandle::from_fd(conn_sock, kind=Socket)
-  try {
-    let addr = Addr::empty(family)
-    self.io.accept_windows(conn, addr.0, context~)
-    if disable_nagle(conn_sock) < 0 {
-      @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-    }
-    // The local address of a server connection is the same as the listen address
-    ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  let addr = Addr::empty(family)
+  self.io.accept_windows(conn, addr.0, context~)
+  if disable_nagle(conn_sock) < 0 {
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
+  // The local address of a server connection is the same as the listen address
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
 }
 
 ///|
@@ -279,19 +261,13 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
   let conn = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if disable_nagle(sock) < 0 {
-      @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
-    }
-    conn.connect(addr.0, context~)
-    let addr = getsockname(sock, family, context~)
-    { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  if disable_nagle(sock) < 0 {
+    @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
+  conn.connect(addr.0, context~)
+  let addr = getsockname(sock, family, context~)
+  { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
 }
 
 ///|

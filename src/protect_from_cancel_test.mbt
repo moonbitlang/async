@@ -17,34 +17,28 @@ async test "protect_from_cancel" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
-      try {
+      @async.with_cancellation_handler(
+        handler=() => log <+ "job cancelled after critical part\n",
+      ) <| () => {
         @async.protect_from_cancel <| () => {
-          @async.sleep(400) catch {
-            err => {
-              log.write_string("critial job cancelled with error \{err}\n")
-              raise err
-            }
+          @async.with_cancellation_handler(
+            handler=() => log.write_string("critial job cancelled\n"),
+          ) <| () => {
+            @async.sleep(400)
+            log <+ "critical job finished\n"
           }
         }
-        log <+ "critical job finished\n"
-        @coroutine.check_cancellation()
-      } catch {
-        err => {
-          log <+ "job cancelled after critical part\n"
-          raise err
-        }
+        @async.sleep(200)
+        log <+ "non-critial part of job finished\n"
       }
-      @async.sleep(200)
-      log <+ "non-critial part of job finished\n"
     }
     root.spawn_bg() <| () => {
-      @async.sleep(400) catch {
-        err => {
-          log.write_string("non-critial job cancelled with error \{err}\n")
-          raise err
-        }
+      @async.with_cancellation_handler(
+        handler=() => log.write_string("non-critial job cancelled\n"),
+      ) <| () => {
+        @async.sleep(400)
+        log <+ "non-critical job finished\n"
       }
-      log <+ "non-critical job finished\n"
     }
     @async.sleep(200)
     raise Err
@@ -54,7 +48,7 @@ async test "protect_from_cancel" {
   inspect(
     log.to_string(),
     content=(
-      #|non-critial job cancelled with error Cancelled
+      #|non-critial job cancelled
       #|critical job finished
       #|job cancelled after critical part
       #|Err
@@ -241,16 +235,16 @@ async test "protect_from_cancel in cancellation handler" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
     root.spawn_bg(no_wait=true) <| () => {
-      @async.sleep(400) catch {
-        err => {
-          log.write_string("cancelled with error \{err}\n")
+      @async.with_cancellation_handler(
+        handler=() => {
+          log.write_string("cancelled\n")
           @async.protect_from_cancel() <| () => {
             @async.sleep(200)
             log <+ "critial cancellation handler terminated\n"
           }
-          raise err
-        }
-      }
+        },
+        () => @async.sleep(400),
+      )
     }
     @async.sleep(200)
     log <+ "start cancellation\n"
@@ -259,7 +253,7 @@ async test "protect_from_cancel in cancellation handler" {
     log.to_string(),
     content=(
       #|start cancellation
-      #|cancelled with error Cancelled
+      #|cancelled
       #|critial cancellation handler terminated
       #|
     ),
@@ -279,9 +273,9 @@ async test "cancel while scheduled" {
     let task1 = root.spawn(() => {
       // after calling `pause`, current coroutine would be in `run_later`,
       // and it will receive cancellation in this situation
-      @async.pause() catch {
-        err => {
-          log.write_string("`pause` cancelled with \{err}\n")
+      @async.with_cancellation_handler(
+        handler=() => {
+          log.write_string("`pause` cancelled\n")
           @async.protect_from_cancel() <| () => {
             // Now, due to `protect_from_cancel`,
             // we are allowed to suspend inside cancellation handler.
@@ -291,16 +285,16 @@ async test "cancel while scheduled" {
             @async.sleep(300)
             log <+ "async cleanup finished\n"
           }
-          raise err
-        }
-      }
+        },
+        () => @async.pause(),
+      )
     })
     root.spawn_bg(() => task1.cancel())
   }
   inspect(
     log.to_string(),
     content=(
-      #|`pause` cancelled with Cancelled
+      #|`pause` cancelled
       #|tick
       #|async cleanup finished
       #|tick

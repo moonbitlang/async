@@ -312,44 +312,33 @@ pub async fn Watcher::Watcher(
     report_child_event,
     synchronize_task: None,
   }
-  try {
-    let backend = self.new_backend(
-      root_file,
-      root_id~,
-      debounce_timeout~,
-      max_debounce_delay~,
-      context~,
-    )
-    self.backend = Some(backend)
-    let root_wd = backend.add_file(
-      path,
-      is_dir=true,
-      identity=root_id,
-      context~,
-    )
-    let root = {
-      wd: root_wd,
-      identity: root_id,
-      paths: Set([]),
-      is_dir: true,
-      children: Map([]),
-      modified: true,
-      children_to_scan: Map([]),
-      changed_entries: Map([]),
-      children_with_events: Map([]),
-    }
-    self.watched[root_id] = root
-    self.synchronize_tree(context~)
-    if !report_event_on_init {
-      self.emit_events_for_file(root, path="", on_event=(_, _) => (), context~)
-    }
-    self
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
+  errdefer self.close()
+  let backend = self.new_backend(
+    root_file,
+    root_id~,
+    debounce_timeout~,
+    max_debounce_delay~,
+    context~,
+  )
+  self.backend = Some(backend)
+  let root_wd = backend.add_file(path, is_dir=true, identity=root_id, context~)
+  let root = {
+    wd: root_wd,
+    identity: root_id,
+    paths: Set([]),
+    is_dir: true,
+    children: Map([]),
+    modified: true,
+    children_to_scan: Map([]),
+    changed_entries: Map([]),
+    children_with_events: Map([]),
   }
+  self.watched[root_id] = root
+  self.synchronize_tree(context~)
+  if !report_event_on_init {
+    self.emit_events_for_file(root, path="", on_event=(_, _) => (), context~)
+  }
+  self
 }
 
 ///|

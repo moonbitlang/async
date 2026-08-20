@@ -22,11 +22,9 @@ async test "UTF8 validation" {
       defer server.close()
       for ;; {
         let (conn, _) = server.accept()
-        let request = conn.read_request() catch {
-          err => {
-            conn.close()
-            raise err
-          }
+        let request = {
+          errdefer conn.close()
+          conn.read_request()
         }
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()

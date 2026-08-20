@@ -19,6 +19,7 @@ suberror ServerTerminate derive(Debug)
 pub(all) struct Printer((String) -> Unit)
 
 ///|
+#warnings("-fragile_catch_all")
 async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
   server.run_forever(allow_failure=false, (conn, _) => {
     println("received new connection")

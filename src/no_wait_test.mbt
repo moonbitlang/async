@@ -17,13 +17,11 @@ async test "no_wait cancelled" {
   let buf = StringBuilder::new()
   @async.with_task_group() <| root => {
     root.spawn_bg(no_wait=true) <| () => {
-      try @async.sleep(1000) catch {
-        err => {
-          buf.write_string("`no_wait` task cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => buf <+ "`no_wait` task finished successfully\n"
+      @async.with_cancellation_handler(
+        handler=() => buf.write_string("`no_wait` task cancelled\n"),
+      ) <| () => {
+        @async.sleep(1000)
+        buf <+ "`no_wait` task finished successfully\n"
       }
     }
     @async.sleep(100)
@@ -33,7 +31,7 @@ async test "no_wait cancelled" {
     buf.to_string(),
     content=(
       #|main task terminate
-      #|`no_wait` task cancelled with Cancelled
+      #|`no_wait` task cancelled
       #|
     ),
   )
@@ -44,13 +42,11 @@ async test "no_wait normal exit" {
   let buf = StringBuilder::new()
   @async.with_task_group() <| root => {
     root.spawn_bg(no_wait=true) <| () => {
-      try @async.sleep(100) catch {
-        err => {
-          buf.write_string("`no_wait` task cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => buf <+ "`no_wait` task finished successfully\n"
+      @async.with_cancellation_handler(
+        handler=() => buf.write_string("`no_wait` task cancelled\n"),
+      ) <| () => {
+        @async.sleep(100)
+        buf <+ "`no_wait` task finished successfully\n"
       }
     }
     @async.sleep(200)

@@ -97,13 +97,11 @@ async test "worker cancel1" {
       }
     }
     let task = root.spawn(() => {
-      try perform_sleep_job(1000) catch {
-        err => {
-          log.write_string("sleep cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => log <+ "done\n"
+      @async.with_cancellation_handler(
+        handler=() => log.write_string("sleep cancelled with\n"),
+      ) <| () => {
+        perform_sleep_job(1000)
+        log <+ "done\n"
       }
     })
     @async.sleep(500)
@@ -135,13 +133,11 @@ async test "worker cancel2" {
       }
     }
     root.spawn_bg(allow_failure=true) <| () => {
-      try perform_sleep_job(1000) catch {
-        err => {
-          log.write_string("sleep cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => log <+ "done\n"
+      @async.with_cancellation_handler(
+        handler=() => log.write_string("sleep cancelled\n"),
+      ) <| () => {
+        perform_sleep_job(1000)
+        log <+ "done\n"
       }
     }
     @async.sleep(600)

@@ -37,13 +37,11 @@ async test "MemoryReader cancel" {
   let log = []
   let r = @io.MemoryReader() <| w => {
     for i = 0; ; i = i + 1 {
-      try w.write("#\{i}") catch {
-        err => {
-          log.push("`write` fail with \{err}")
-          raise err
-        }
-      } noraise {
-        _ => log.push("written #\{i} successfully")
+      @async.with_cancellation_handler(
+        handler=() => log.push("`write` cancelled"),
+      ) <| () => {
+        w.write("#\{i}")
+        log.push("written #\{i} successfully")
       }
     }
   }
@@ -56,7 +54,7 @@ async test "MemoryReader cancel" {
   @async.sleep(50)
   json_inspect(log, content=[
     "written #0 successfully", "received #0", "written #1 successfully", "received #1",
-    "written #2 successfully", "received #2", "`write` fail with Cancelled",
+    "written #2 successfully", "received #2", "`write` cancelled",
   ])
 }
 

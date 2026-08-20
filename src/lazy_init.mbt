@@ -67,16 +67,13 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
   }
   let curr_coro = @coroutine.current_coroutine()
   self.waiters.add(curr_coro)
-  @coroutine.suspend() catch {
-    err => {
-      self.waiters.remove(curr_coro)
-      if self.waiters.is_empty() && self.state is Running(coro) {
-        coro.cancel()
-      }
-      raise err
+  defer {
+    self.waiters.remove(curr_coro)
+    if self.waiters.is_empty() && self.state is Running(coro) {
+      coro.cancel()
     }
   }
-  self.waiters.remove(curr_coro)
+  @coroutine.suspend()
   match self.state {
     Done(result) => result
     Fail(err) => raise err

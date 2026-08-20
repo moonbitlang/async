@@ -369,36 +369,23 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     None => ""
   }
   let conn = TlsConnectionHandle::new().check_new()
-  try {
-    if trust is CustomPemFile(path) {
-      let pem = @fs.read_file(path).text()
-      for cert in decode_pem_certificates(pem) {
-        let status = conn.add_root_certificate(cert)
-        if status != 0 {
-          raise TlsError(conn.take_error_message())
-        }
+  let self = Tls::from_pair(conn, r, w, is_client=true, host~)
+  errdefer self.close()
+  if trust is CustomPemFile(path) {
+    let pem = @fs.read_file(path).text()
+    for cert in decode_pem_certificates(pem) {
+      let status = conn.add_root_certificate(cert)
+      if status != 0 {
+        raise TlsError(conn.take_error_message())
       }
     }
-    let status = conn.set_client(host_name, sni~, trust.mode())
-    if status != 0 {
-      raise TlsError(conn.take_error_message())
-    }
-  } catch {
-    err => {
-      conn.free()
-      raise err
-    }
   }
-  let self = Tls::from_pair(conn, r, w, is_client=true, host~)
-  try {
-    self.connect()
-    self
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
+  let status = conn.set_client(host_name, sni~, trust.mode())
+  if status != 0 {
+    raise TlsError(conn.take_error_message())
   }
+  self.connect()
+  self
 }
 
 ///|
@@ -413,72 +400,57 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   pfx_file? : String,
 ) -> Tls {
   let conn = TlsConnectionHandle::new().check_new()
-  try {
-    let status = if @event_loop.platform is Windows {
-      let pfx_file = match pfx_file {
-        Some(pfx_file) => pfx_file
-        None =>
-          raise TlsError(
-            "pfx_file is required for TLS servers on Windows hosts",
-          )
-      }
-      let pfx_content = @fs.read_file(pfx_file).binary()
-      conn.set_server_pfx(pfx_content)
-    } else {
-      let private_key_file = match private_key_file {
-        Some(private_key_file) => private_key_file
-        None =>
-          raise TlsError(
-            "private_key_file is required for TLS servers on non-Windows hosts",
-          )
-      }
-      let certificate_file = match certificate_file {
-        Some(certificate_file) => certificate_file
-        None =>
-          raise TlsError(
-            "certificate_file is required for TLS servers on non-Windows hosts",
-          )
-      }
-      let private_key_type = match private_key_type {
-        Some(private_key_type) => private_key_type
-        None =>
-          raise TlsError(
-            "private_key_type is required for TLS servers on non-Windows hosts",
-          )
-      }
-      let certificate_type = match certificate_type {
-        Some(certificate_type) => certificate_type
-        None =>
-          raise TlsError(
-            "certificate_type is required for TLS servers on non-Windows hosts",
-          )
-      }
-      conn.set_server_files(
-        @os_string.encode(private_key_file),
-        private_key_type,
-        @os_string.encode(certificate_file),
-        certificate_type,
-      )
-    }
-    if status != 0 {
-      raise TlsError(conn.take_error_message())
-    }
-  } catch {
-    err => {
-      conn.free()
-      raise err
-    }
-  }
   let self = Tls::from_pair(conn, r, w, is_client=false, host=None)
-  try {
-    self.accept()
-    self
-  } catch {
-    err => {
-      self.close()
-      raise err
+  errdefer self.close()
+  let status = if @event_loop.platform is Windows {
+    let pfx_file = match pfx_file {
+      Some(pfx_file) => pfx_file
+      None =>
+        raise TlsError("pfx_file is required for TLS servers on Windows hosts")
     }
+    let pfx_content = @fs.read_file(pfx_file).binary()
+    conn.set_server_pfx(pfx_content)
+  } else {
+    let private_key_file = match private_key_file {
+      Some(private_key_file) => private_key_file
+      None =>
+        raise TlsError(
+          "private_key_file is required for TLS servers on non-Windows hosts",
+        )
+    }
+    let certificate_file = match certificate_file {
+      Some(certificate_file) => certificate_file
+      None =>
+        raise TlsError(
+          "certificate_file is required for TLS servers on non-Windows hosts",
+        )
+    }
+    let private_key_type = match private_key_type {
+      Some(private_key_type) => private_key_type
+      None =>
+        raise TlsError(
+          "private_key_type is required for TLS servers on non-Windows hosts",
+        )
+    }
+    let certificate_type = match certificate_type {
+      Some(certificate_type) => certificate_type
+      None =>
+        raise TlsError(
+          "certificate_type is required for TLS servers on non-Windows hosts",
+        )
+    }
+    conn.set_server_files(
+      @os_string.encode(private_key_file),
+      private_key_type,
+      @os_string.encode(certificate_file),
+      certificate_type,
+    )
   }
+  if status != 0 {
+    raise TlsError(conn.take_error_message())
+  }
+  self.accept()
+  self
 }
 
 ///|

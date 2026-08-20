@@ -46,27 +46,21 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
-  try {
-    let dst_addr = if addr.is_multicast() {
-      if @event_loop.platform is Windows {
-        let local_addr = Addr::any(family)
-        io.bind(local_addr.0, context~)
-      }
-      Some(addr)
-    } else if 0 != connect_ffi(sock, addr) {
-      @os_error.check_errno(context)
-      None
-    } else {
-      None
+  errdefer io.close()
+  let dst_addr = if addr.is_multicast() {
+    if @event_loop.platform is Windows {
+      let local_addr = Addr::any(family)
+      io.bind(local_addr.0, context~)
     }
-    let local_addr = getsockname(sock, family, context~)
-    { io, addr: local_addr, dst_addr }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
+    Some(addr)
+  } else if 0 != connect_ffi(sock, addr) {
+    @os_error.check_errno(context)
+    None
+  } else {
+    None
   }
+  let local_addr = getsockname(sock, family, context~)
+  { io, addr: local_addr, dst_addr }
 }
 
 ///|
@@ -223,24 +217,18 @@ pub async fn UdpServer::UdpServer(
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-      if 0 != set_ipv6_only(sock, !dual_stack) {
-        @os_error.check_errno(context)
-      }
-    }
-    io.bind(addr.0, context~)
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr, is_multicast_only: false }
-  } catch {
-    err => {
-      io.close()
-      raise err
+  errdefer io.close()
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
+      @os_error.check_errno(context)
     }
   }
+  io.bind(addr.0, context~)
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr, is_multicast_only: false }
 }
 
 ///|
@@ -274,25 +262,19 @@ pub async fn UdpServer::multicast(
   }
   let sock = make_udp_socket(family, multicast=true, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if @event_loop.platform is Windows {
-      let local_addr = Addr::new(0, multi_addr.port())
-      io.bind(local_addr.0, context~)
-    } else {
-      io.bind(multi_addr.0, context~)
-    }
-    join_multicast_group(sock, multi_addr, interface_addr, context~)
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr, is_multicast_only: true }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
+  errdefer io.close()
+  if @event_loop.platform is Windows {
+    let local_addr = Addr::new(0, multi_addr.port())
+    io.bind(local_addr.0, context~)
+  } else {
+    io.bind(multi_addr.0, context~)
   }
+  join_multicast_group(sock, multi_addr, interface_addr, context~)
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr, is_multicast_only: true }
 }
 
 ///|

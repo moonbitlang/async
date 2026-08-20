@@ -83,12 +83,10 @@ async test "aqueue cancellation" {
   let log = StringBuilder::new()
   let queue : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   @async.with_timeout(350, () => {
-    let x = queue.get() catch {
-      err => {
-        log.write_string("`queue.get()` cancelled with \{err}\n")
-        raise err
-      }
-    }
+    let x = @async.with_cancellation_handler(
+      handler=() => log.write_string("`queue.get()` cancelled\n"),
+      () => queue.get(),
+    )
     log.write_string("get => \{x}\n")
   }) catch {
     @async.TimeoutError => ()
@@ -97,7 +95,7 @@ async test "aqueue cancellation" {
   inspect(
     log.to_string(),
     content=(
-      #|`queue.get()` cancelled with Cancelled
+      #|`queue.get()` cancelled
       #|
     ),
   )

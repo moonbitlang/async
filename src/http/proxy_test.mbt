@@ -94,10 +94,11 @@ async fn handle_connect(
     let port = @string.parse_int(request.path[index + 1:])
     @socket.Tcp::connect_to_host(host, port~)
   } catch {
-    err => {
+    err if !@async.is_being_cancelled() => {
       conn..send_response(502, "BadGateway").end_response()
       raise err
     }
+    err => raise err
   }
   defer client.close()
   log.push("proxy server: connected to \{request.path} successfully")

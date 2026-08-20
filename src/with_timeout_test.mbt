@@ -32,6 +32,7 @@ async test "with_timeout normal exit" {
 }
 
 ///|
+#warnings("-fragile_catch_all")
 async test "with_timeout failure" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
@@ -69,13 +70,10 @@ async test "with_timeout timeout" {
       log <+ "300ms tick\n"
     }
     @async.with_timeout(200, () => {
-      @async.sleep(400) catch {
-        err => {
-          log <+ "task cancelled\n"
-          raise err
-        }
+      @async.with_cancellation_handler(handler=() => log <+ "task cancelled\n") <| () => {
+        @async.sleep(400)
+        log <+ "task finished\n"
       }
-      log <+ "task finished\n"
     }) catch {
       err => log.write_string("`with_timeout` fail with \{err}\n")
     }
@@ -105,13 +103,12 @@ async test "with_timeout nested1" {
     }
     @async.with_timeout(300, () => {
       @async.with_timeout(500, () => {
-        @async.sleep(2000) catch {
-          err => {
-            log <+ "task cancelled\n"
-            raise err
-          }
+        @async.with_cancellation_handler(
+          handler=() => log <+ "task cancelled\n",
+        ) <| () => {
+          @async.sleep(2000)
+          log <+ "task finished after 2s\n"
         }
-        log <+ "task finished after 2s\n"
       }) catch {
         err => log.write_string("inner `with_timeout` fail with \{err}\n")
       }
@@ -146,13 +143,12 @@ async test "with_timeout nested2" {
     }
     @async.with_timeout(750, () => {
       @async.with_timeout(450, () => {
-        @async.sleep(2000) catch {
-          err => {
-            log <+ "task cancelled\n"
-            raise err
-          }
+        @async.with_cancellation_handler(
+          handler=() => log <+ "task cancelled\n",
+        ) <| () => {
+          @async.sleep(2000)
+          log <+ "task finished after 2s\n"
         }
-        log <+ "task finished after 2s\n"
       }) catch {
         err => log.write_string("inner `with_timeout` fail with \{err}\n")
       }
@@ -216,13 +212,12 @@ async test "with_timeout error-on-timeout" {
       }
       defer log.write_string("main task terminates\n")
       @async.with_timeout(100, error=Err) <| () => {
-        @async.sleep(2000) catch {
-          err => {
-            log <+ "task cancelled\n"
-            raise err
-          }
+        @async.with_cancellation_handler(
+          handler=() => log <+ "task cancelled\n",
+        ) <| () => {
+          @async.sleep(2000)
+          log <+ "task finished after 2s\n"
         }
-        log <+ "task finished after 2s\n"
       }
     })
   }
@@ -258,6 +253,7 @@ async test "with_timeout_opt normal exit" {
 }
 
 ///|
+#warnings("-fragile_catch_all")
 async test "with_timeout_opt failure" {
   let log = StringBuilder::new()
   @async.with_task_group(root => {
@@ -295,17 +291,11 @@ async test "with_timeout_opt timeout" {
       log.push("200ms tick")
     }
     let result = @async.with_timeout_opt(100, () => {
-      try @async.sleep(2000) catch {
-        err => {
-          log.push("task cancelled")
-          raise err
-        }
-      } noraise {
-        _ => {
-          log.push("task finished after 2s")
-          42
-        }
+      @async.with_cancellation_handler(handler=() => log.push("task cancelled")) <| () => {
+        @async.sleep(2000)
+        log.push("task finished after 2s")
       }
+      42
     })
     log.push(@debug.to_string(result))
   }

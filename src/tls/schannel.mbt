@@ -202,25 +202,6 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     None => if verify { SystemRoot } else { NoVerification }
   }
   let context = Schannel::new()
-  if context.init_client(verify=trust is SystemRoot) is err && err != 0 {
-    context.free()
-    raise TlsError(@os_error.errno_to_string(err))
-  }
-  if trust is CustomPemFile(root_cert) {
-    try {
-      let pem = @fs.read_file(root_cert).text()
-      for cert in decode_pem_certificates(pem) {
-        if context.add_root_certificate(cert) is err && err != 0 {
-          raise TlsError(@os_error.errno_to_string(err))
-        }
-      }
-    } catch {
-      err => {
-        context.free()
-        raise err
-      }
-    }
-  }
   let transport = Transport::new(reader, writer)
   let tls = {
     context,
@@ -233,19 +214,25 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     shutdown: false,
     closed: false,
   }
-  tls.connect() catch {
-    err => {
-      tls.close()
-      raise err
+  errdefer tls.close()
+  if context.init_client(verify=trust is SystemRoot) is err && err != 0 {
+    raise TlsError(@os_error.errno_to_string(err))
+  }
+  if trust is CustomPemFile(root_cert) {
+    let pem = @fs.read_file(root_cert).text()
+    for cert in decode_pem_certificates(pem) {
+      if context.add_root_certificate(cert) is err && err != 0 {
+        raise TlsError(@os_error.errno_to_string(err))
+      }
     }
   }
+  tls.connect()
   if trust is CustomPemFile(_) {
     let host = match host {
       None => None
       Some(str) => Some(@os_string.encode(str))
     }
     if tls.context.verify_peer_certificate(host) is err && err != 0 {
-      tls.close()
       raise TlsError(@os_error.errno_to_string(err))
     }
   }
@@ -310,12 +297,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     shutdown: false,
     closed: false,
   }
-  tls.accept() catch {
-    err => {
-      tls.close()
-      raise err
-    }
-  }
+  errdefer tls.close()
+  tls.accept()
   tls
 }
 

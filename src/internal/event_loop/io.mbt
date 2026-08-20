@@ -98,14 +98,10 @@ pub fn IoHandle::from_fd(
   read_only? : Bool = false,
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
+  errdefer @fd_util.close(fd, kind~, context~)
   guard! curr_loop.val is Some(evloop)
   guard! evloop.fds.get(fd) is None
-  let is_async = (is_async && evloop.bus.register(fd, read_only~)) catch {
-    err => {
-      @fd_util.close(fd, kind~, context~)
-      raise err
-    }
-  }
+  let is_async = is_async && evloop.bus.register(fd, read_only~)
   let handle = {
     fd,
     kind,

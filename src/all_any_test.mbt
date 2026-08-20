@@ -114,13 +114,12 @@ async test "all failure propagates" {
         raise Failure::Failure("Err")
       },
       () => {
-        @async.sleep(300) catch {
-          err => {
-            log.push("task #3 cancelled with \{err}")
-            raise err
-          }
+        @async.with_cancellation_handler(
+          handler=() => log.push("task #3 cancelled"),
+        ) <| () => {
+          @async.sleep(300)
+          log.push("task #3 completed")
         }
-        log.push("task #3 completed")
       },
     ])
   }
@@ -131,7 +130,7 @@ async test "all failure propagates" {
     ),
   )
   json_inspect(log, content=[
-    "task #1 completed", "task #2 failing", "task #3 cancelled with Cancelled",
+    "task #1 completed", "task #2 failing", "task #3 cancelled",
   ])
 }
 
@@ -139,23 +138,20 @@ async test "all failure propagates" {
 async test "all cancelled" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.sleep(sleep_time) catch {
-      err => {
-        log.push("task #\{idx} cancelled with \{err}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("task #\{idx} cancelled"),
+    ) <| () => {
+      @async.sleep(sleep_time)
+      log.push("task #\{idx} completed")
+      idx
     }
-    log.push("task #\{idx} completed")
-    idx
   }
 
   let result = @async.with_timeout_opt(300, () => {
     @async.all([() => task(1, 450), () => task(2, 150)])
   })
   debug_inspect(result, content="None")
-  json_inspect(log, content=[
-    "task #2 completed", "task #1 cancelled with Cancelled",
-  ])
+  json_inspect(log, content=["task #2 completed", "task #1 cancelled"])
 }
 
 ///|
@@ -184,14 +180,13 @@ async test "any basic" {
 async test "any returns first success" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.sleep(sleep_time) catch {
-      err => {
-        log.push("task #\{idx} cancelled with \{err}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("task #\{idx} cancelled"),
+    ) <| () => {
+      @async.sleep(sleep_time)
+      log.push("task #\{idx} completed")
+      idx
     }
-    log.push("task #\{idx} completed")
-    idx
   }
 
   let result = @async.any([
@@ -201,7 +196,7 @@ async test "any returns first success" {
   ])
   json_inspect(result, content=2)
   json_inspect(log, content=[
-    "task #2 completed", "task #1 cancelled with Cancelled", "task #3 cancelled with Cancelled",
+    "task #2 completed", "task #1 cancelled", "task #3 cancelled",
   ])
 }
 
@@ -211,13 +206,12 @@ async test "any failure without allow_failure" {
   let result = @test_util.expect_error_async <| () => {
     @async.any([
       () => {
-        @async.sleep(300) catch {
-          err => {
-            log.push("task #1 cancelled with \{err}")
-            raise err
-          }
+        @async.with_cancellation_handler(
+          handler=() => log.push("task #1 cancelled"),
+        ) <| () => {
+          @async.sleep(300)
+          log.push("task #1 completed")
         }
-        log.push("task #1 completed")
       },
       () => {
         @async.sleep(150)
@@ -231,7 +225,7 @@ async test "any failure without allow_failure" {
       #|Failure(Err)
     ),
   )
-  json_inspect(log, content=["task #1 cancelled with Cancelled"])
+  json_inspect(log, content=["task #1 cancelled"])
 }
 
 ///|
@@ -298,7 +292,7 @@ async test "any empty fails" {
   debug_inspect(
     @test_util.expect_error_async(() => (@async.any([]) : Unit)),
     content=(
-      #|Failure("src/all_any_test.mbt:299:42-299:56@moonbitlang/async FAILED: no tasks provided to any()")
+      #|Failure("src/all_any_test.mbt:293:42-293:56@moonbitlang/async FAILED: no tasks provided to any()")
     ),
   )
 }
@@ -307,21 +301,18 @@ async test "any empty fails" {
 async test "any cancelled" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.sleep(sleep_time) catch {
-      err => {
-        log.push("task #\{idx} cancelled with \{err}")
-        raise err
-      }
+    @async.with_cancellation_handler(
+      handler=() => log.push("task #\{idx} cancelled"),
+    ) <| () => {
+      @async.sleep(sleep_time)
+      log.push("task #\{idx} completed")
+      idx
     }
-    log.push("task #\{idx} completed")
-    idx
   }
 
   let result = @async.with_timeout_opt(200, () => {
     @async.any([() => task(1, 400), () => task(2, 400)])
   })
   debug_inspect(result, content="None")
-  json_inspect(log, content=[
-    "task #1 cancelled with Cancelled", "task #2 cancelled with Cancelled",
-  ])
+  json_inspect(log, content=["task #1 cancelled", "task #2 cancelled"])
 }

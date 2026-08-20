@@ -46,22 +46,15 @@ async fn Client::connect(
 ) -> Client {
   let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
-    try {
-      let response = proxy
-        ..request(Connect, "\{hostname}:\{port}")
-        .end_request()
-      guard response.code is (200..<300) else { raise ProxyError(response) }
-      proxy..skip_response_body().enter_passthrough_mode()
-    } catch {
-      err => {
-        proxy.close()
-        raise err
-      }
-    }
+    errdefer proxy.close()
+    let response = proxy..request(Connect, "\{hostname}:\{port}").end_request()
+    guard response.code is (200..<300) else { raise ProxyError(response) }
+    proxy..skip_response_body().enter_passthrough_mode()
     Proxy(proxy)
   } else {
     Plain(@socket.Tcp::connect_to_host(hostname, port~))
   }
+  errdefer transport.close()
   headers["Host"] = host.to_owned()
   // TODO: case insensitive check
   if !headers.contains("User-Agent") {
@@ -71,23 +64,13 @@ async fn Client::connect(
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~) catch {
-        err => {
-          transport.close()
-          raise err
-        }
-      }
+      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~) catch {
-        err => {
-          transport.close()
-          raise err
-        }
-      }
+      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }

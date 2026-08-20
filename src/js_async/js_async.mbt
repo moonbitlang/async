@@ -146,12 +146,8 @@ pub async fn[X] Promise::wait(
     waiter.coro = None
   }
   if abort_controller is Some(controller) {
-    @coroutine.suspend() catch {
-      err => {
-        controller.abort()
-        raise err
-      }
-    }
+    errdefer controller.abort()
+    @coroutine.suspend()
   } else {
     @coroutine.protect_from_cancel(@coroutine.suspend)
   }
