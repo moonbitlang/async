@@ -322,12 +322,14 @@ pub async fn remove(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   let job = Job::remove(path_bytes)
   defer job.free()
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    _ => ()
+  @coroutine.protect_from_cancel <| () => {
+    try perform_job_in_worker(job, context~) catch {
+      @os_error.OSError(errno, context~) =>
+        raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+      err => raise err
+    } noraise {
+      _ => ()
+    }
   }
 }
 
@@ -396,12 +398,14 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   let job = Job::rmdir(path_bytes)
   defer job.free()
-  try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
-    err => raise err
-  } noraise {
-    _ => ()
+  @coroutine.protect_from_cancel <| () => {
+    try perform_job_in_worker(job, context~) catch {
+      @os_error.OSError(errno, context~) =>
+        raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+      err => raise err
+    } noraise {
+      _ => ()
+    }
   }
 }
 
