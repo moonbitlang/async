@@ -66,3 +66,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   let _ = @coroutine.spawn(main)
   @event_loop.reschedule()
 }
+
+///|
+#cfg(all(not(target="native"), not(target="wasm")))
+let _unused_import : Unit = ignore(@env_util.eprintln)
