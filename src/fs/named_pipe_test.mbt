@@ -20,17 +20,15 @@ extern "C" fn mkfifo(path : @os_string.OsString, mode : Int) -> Int = "mkfifo"
 ///|
 #cfg(not(platform="windows"))
 async test "cancel named fifo open" {
-  @async.with_task_group() <| group => {
-    let path = "_build/cancel_open_test"
-    if mkfifo(@os_string.encode(path), 0o644) < 0 {
-      @os_error.check_errno("mkfifo")
-    }
-    group.add_defer(() => @fs.remove(path))
-    let result = @async.with_timeout_opt(500, () => {
-      @fs.open(path, mode=ReadOnly).close()
-    })
-    debug_inspect(result, content="None")
+  let path = "_build/cancel_open_test"
+  if mkfifo(@os_string.encode(path), 0o644) < 0 {
+    @os_error.check_errno("mkfifo")
   }
+  defer @fs.remove(path)
+  let result = @async.with_timeout_opt(500, () => {
+    @fs.open(path, mode=ReadOnly).close()
+  })
+  debug_inspect(result, content="None")
 }
 
 ///|
