@@ -54,6 +54,8 @@ pub async fn mkdir(
 /// files and directories in `path` will be removed recursively.
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
+///
+/// This function is not cancellable.
 pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
   let context = "@fs.rmdir()"
   if recursive {
@@ -64,13 +66,15 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
     }
     let dir = opendir_aux(path, context~)
     defer dir.close()
-    while dir.next_aux(include_special=false, include_hidden=true, context~)
-          is Some(ent) {
-      let child_path = "\{base}/\{ent.name}"
-      if ent.is_dir {
-        rmdir(child_path, recursive=true)
-      } else {
-        @event_loop.remove(child_path, context~)
+    @async.protect_from_cancel <| () => {
+      while dir.next_aux(include_special=false, include_hidden=true, context~)
+            is Some(ent) {
+        let child_path = "\{base}/\{ent.name}"
+        if ent.is_dir {
+          rmdir(child_path, recursive=true)
+        } else {
+          @event_loop.remove(child_path, context~)
+        }
       }
     }
   }
