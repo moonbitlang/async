@@ -56,10 +56,19 @@ pub async fn Process::wait(Self) -> Int
 
 type ReadFromProcess
 pub fn ReadFromProcess::close(Self) -> Unit
+pub async fn ReadFromProcess::drop(Self, Int) -> Int
+pub async fn ReadFromProcess::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn ReadFromProcess::read_all(Self) -> &@io.Data
+pub async fn ReadFromProcess::read_exactly(Self, Int) -> Bytes
+pub async fn ReadFromProcess::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn ReadFromProcess::read_until(Self, StringView) -> String?
 pub impl @io.Reader for ReadFromProcess
 
 type WriteToProcess
 pub fn WriteToProcess::close(Self) -> Unit
+pub async fn WriteToProcess::write(Self, &@io.Data) -> Unit
+pub async fn WriteToProcess::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn WriteToProcess::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Writer for WriteToProcess
 
 // Type aliases

@@ -63,6 +63,9 @@ pub impl Show for OsString with fn to_string(self) {
 }
 
 ///|
+pub extend OsString with Show::{to_string}
+
+///|
 /// `len`, if present, is the number of bytes to decode in `os_str`.
 /// The default value is determined using `strlen` or `wcslen`.
 #cfg(not(platform="windows"))

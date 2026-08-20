@@ -123,6 +123,16 @@ pub impl @io.Reader for ReadFromProcess with fn _direct_read(
 }
 
 ///|
+pub extend ReadFromProcess with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
+}
+
+///|
 pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
   let WriteToProcess(io) = self
   io.close()
@@ -138,6 +148,9 @@ pub impl @io.Writer for WriteToProcess with fn write_once(
   let WriteToProcess(io) = self
   io.write(buf, offset~, len~, context="@process.WriteToProcess::write()")
 }
+
+///|
+pub extend WriteToProcess with @io.Writer::{write_once, write, write_reader}
 
 ///|
 fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"

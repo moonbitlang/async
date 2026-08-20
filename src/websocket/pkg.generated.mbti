@@ -51,12 +51,21 @@ pub async fn Conn::send_binary(Self, BytesView) -> Unit
 pub async fn Conn::send_close(Self, code? : CloseCode, reason? : String) -> Unit
 pub async fn Conn::send_text(Self, StringView) -> Unit
 pub fn Conn::start_message(Self, MessageKind) -> Unit
+pub async fn Conn::write(Self, &@io.Data) -> Unit
+pub async fn Conn::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn Conn::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Writer for Conn
 
 pub struct Message {
   kind : MessageKind
   // private fields
 }
+pub async fn Message::drop(Self, Int) -> Int
+pub async fn Message::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn Message::read_all(Self) -> &@io.Data
+pub async fn Message::read_exactly(Self, Int) -> Bytes
+pub async fn Message::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn Message::read_until(Self, StringView) -> String?
 pub impl @io.Reader for Message
 
 pub(all) enum MessageKind {

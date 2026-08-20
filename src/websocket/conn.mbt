@@ -613,6 +613,16 @@ pub impl @io.Reader for Message with fn _direct_read(
 }
 
 ///|
+pub extend Message with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
+}
+
+///|
 /// Start sending a new message to the server.
 /// The content of the message can be sent by using the `self` as a `@io.Writer`
 /// after calling `start_message`.
@@ -691,6 +701,9 @@ pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
   self.write_len += len
   len
 }
+
+///|
+pub extend Conn with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Convenient helper for sending a single text message.

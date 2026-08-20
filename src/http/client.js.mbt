@@ -132,6 +132,9 @@ pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
+pub extend Client with @io.Writer::{write_once, write, write_reader}
+
+///|
 #warnings("-unused_async")
 pub async fn Client::flush(_ : Client) -> Unit {
   // no need to flush in JS backend
@@ -153,6 +156,16 @@ pub impl @io.Reader for Client with fn _direct_read(
 ) {
   guard! self.response_body is Some(stream)
   stream._direct_read(buf, offset~, max_len~)
+}
+
+///|
+pub extend Client with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
 }
 
 ///|

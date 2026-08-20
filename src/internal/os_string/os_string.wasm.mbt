@@ -21,14 +21,12 @@ pub fn encode(str : StringView) -> OsString {
 }
 
 ///|
-pub impl Show for OsString with fn output(self, logger) {
-  Show::output(self.to_string(), logger)
-}
-
-///|
 pub impl Show for OsString with fn to_string(self) {
   self.0
 }
+
+///|
+pub extend OsString with Show::{to_string}
 
 ///|
 #unsafe_skip_stub_check
