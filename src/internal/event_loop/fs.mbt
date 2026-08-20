@@ -494,53 +494,31 @@ fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int {
 }
 
 ///|
-/// zero return value indicates overflow
 #cfg(platform="windows")
+pub(all) struct WindowsWatcherBuf(@c_buffer.Buffer)
+
+///|
+#cfg(target="wasm")
+pub(all) struct WindowsWatcherBuf(UInt64)
+
+///|
+/// zero return value indicates overflow
+#cfg(any(platform="windows", target="wasm"))
 pub async fn IoHandle::read_dir_changes(
   handle : IoHandle,
-  buf : @c_buffer.Buffer,
+  buf : WindowsWatcherBuf,
   len : Int,
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
   guard! handle.kind is Directory
-  let result = IoResult::for_read_dir_changes(buf, len~)
+  let result = IoResult::for_read_dir_changes(buf.0, len~)
   defer result.free()
   let n = read_dir_changes_ffi(handle.fd, result)
   if n >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
     @coroutine.protect_from_cancel(@coroutine.pause)
-    n
-  } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read_result(result, context~)
-    result.status(handle.fd, context~) catch {
-      @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
-      err => raise err
-    }
-  } else {
-    @os_error.check_errno(context)
-    panic()
-  }
-}
-
-///|
-/// zero return value indicates overflow
-#cfg(target="wasm")
-pub async fn IoHandle::read_dir_changes(
-  handle : IoHandle,
-  buf : UInt64,
-  context~ : String,
-) -> Int {
-  @coroutine.check_cancellation()
-  guard! handle.kind is Directory
-  let result = IoResult::for_read_dir_changes(buf)
-  defer result.free()
-  let n = read_dir_changes_ffi(handle.fd, result)
-  if n >= 0 {
-    // The `pause` here prevent a busy loop from exhausting the whole program,
-    // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause, resume_on_cancel=true)
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
