@@ -166,6 +166,16 @@ pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub extend Client with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
+}
+
+///|
 /// Write data to the body of the request currently being sent.
 /// Must be called after `send_request`.
 /// `end_request` must be called after all content of response body has been sent.
@@ -182,6 +192,9 @@ pub impl @io.Writer for Client with fn write_reader(self, reader) {
   guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
+
+///|
+pub extend Client with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Flush buffered data in the request body being sent, if any.

@@ -62,6 +62,7 @@ type Client
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn Client::Client(String, headers? : Map[CaseInsensitiveString, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self
 pub fn Client::close(Self) -> Unit
+pub async fn Client::drop(Self, Int) -> Int
 pub async fn Client::end_request(Self) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit
@@ -69,8 +70,16 @@ pub async fn Client::flush(Self) -> Unit
 pub async fn Client::get(Self, String, extra_headers? : Map[CaseInsensitiveString, String], body? : &@io.Data) -> Response
 pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[CaseInsensitiveString, String]) -> Response
 pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[CaseInsensitiveString, String]) -> Response
+pub async fn Client::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn Client::read_all(Self) -> &@io.Data
+pub async fn Client::read_exactly(Self, Int) -> Bytes
+pub async fn Client::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn Client::read_until(Self, StringView) -> String?
 pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[CaseInsensitiveString, String]) -> Unit
 pub async fn Client::skip_response_body(Self) -> Unit
+pub async fn Client::write(Self, &@io.Data) -> Unit
+pub async fn Client::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn Client::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for Client
 pub impl @io.Writer for Client
 
@@ -142,13 +151,22 @@ pub async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnec
 type ServerConnection
 pub fn ServerConnection::client_addr(Self) -> @socket.Addr
 pub fn ServerConnection::close(Self) -> Unit
+pub async fn ServerConnection::drop(Self, Int) -> Int
 pub async fn ServerConnection::end_response(Self) -> Unit
 pub async fn ServerConnection::enter_passthrough_mode(Self) -> Unit
 pub async fn ServerConnection::flush(Self) -> Unit
 pub fn ServerConnection::new(@socket.Tcp, headers? : Map[CaseInsensitiveString, String]) -> Self
+pub async fn ServerConnection::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn ServerConnection::read_all(Self) -> &@io.Data
+pub async fn ServerConnection::read_exactly(Self, Int) -> Bytes
 pub async fn ServerConnection::read_request(Self) -> Request
+pub async fn ServerConnection::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn ServerConnection::read_until(Self, StringView) -> String?
 pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[CaseInsensitiveString, String], cookies? : Array[Cookie]) -> Unit
 pub async fn ServerConnection::skip_request_body(Self) -> Unit
+pub async fn ServerConnection::write(Self, &@io.Data) -> Unit
+pub async fn ServerConnection::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn ServerConnection::write_reader(Self, &@io.Reader) -> Unit
 pub async fn ServerConnection::write_string(Self, String) -> Unit
 pub async fn ServerConnection::write_string_interpolation(Self, &@io.Data) -> Unit
 pub impl @io.Reader for ServerConnection
