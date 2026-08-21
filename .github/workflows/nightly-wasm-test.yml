@@ -1,0 +1,77 @@
+name: nightly wasm test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  wasm-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest"]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: disable auto CRLF
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - name: install (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: install (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        env:
+          MOONBIT_INSTALL_VERSION: nightly
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: build moonrun
+        shell: bash
+        run: |
+          moonrun_root="$PWD/.moonrun"
+          cargo install --git https://github.com/moonbitlang/moon --branch main --locked --root "$moonrun_root" --bin moonrun moonrun
+          moonrun_path="$moonrun_root/bin/moonrun"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            moonrun_path="${moonrun_path}.exe"
+            echo "MOONRUN_OVERRIDE=$(cygpath -w "$moonrun_path")" >> "$GITHUB_ENV"
+          else
+            echo "MOONRUN_OVERRIDE=$moonrun_path" >> "$GITHUB_ENV"
+          fi
+          "$moonrun_path" --version
+
+      - name: moon version
+        shell: bash
+        run: |
+          moon version --all
+          "$MOONRUN_OVERRIDE" --version
+
+      - name: moon check
+        run: moon check --target wasm
+
+      - name: moon test
+        run: |
+          TOTAL=10
+          FAILED_DEBUG=0
+          FAILED_RELEASE=0
+          for _ in $(seq 1 $TOTAL); do
+            moon test --target wasm || FAILED_DEBUG=$((FAILED_DEBUG + 1))
+            moon test --target wasm --release || FAILED_RELEASE=$((FAILED_RELEASE + 1))
+          done
