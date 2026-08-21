@@ -33,70 +33,6 @@ int moonbitlang_async_get_errno() {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_nonblocking_io_error(int err) {
-#ifdef _WIN32
-  return err == ERROR_IO_INCOMPLETE || err == ERROR_IO_PENDING;
-#else
-  return err == EAGAIN || err == EINPROGRESS || err == EWOULDBLOCK;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_EINTR(int err) {
-#ifdef _WIN32
-  // TODO: alertable wait?
-  return 0;
-#else
-  return err == EINTR;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_ENOENT(int err) {
-#ifdef _WIN32
-  return err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND;
-#else
-  return err == ENOENT;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_EEXIST(int err) {
-#ifdef _WIN32
-  return err == ERROR_FILE_EXISTS || err == ERROR_ALREADY_EXISTS;
-#else
-  return err == EEXIST;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_EACCES(int err) {
-#ifdef _WIN32
-  return err == ERROR_ACCESS_DENIED;
-#else
-  return err == EACCES;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_ECONNREFUSED(int err) {
-#ifdef _WIN32
-  return err == ERROR_CONNECTION_REFUSED;
-#else
-  return err == ECONNREFUSED;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_is_ERROR_NOTIFY_ENUM_DIR(int err) {
-#ifdef _WIN32
-  return err == ERROR_NOTIFY_ENUM_DIR;
-#else
-  return 0;
-#endif
-}
-
-MOONBIT_FFI_EXPORT
 char *moonbitlang_async_errno_to_string(int err) {
 #ifdef _WIN32
   LPWSTR result = 0;
@@ -125,31 +61,5 @@ MOONBIT_FFI_EXPORT
 void moonbitlang_async_free_errno_str(void *ptr) {
 #ifdef _WIN32
   LocalFree(ptr);
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_get_ENOTDIR() {
-#ifdef _WIN32
-
-  return ERROR_DIRECTORY;
-
-#else
-
-  return ENOTDIR;
-
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_get_ENOTSUP() {
-#ifdef _WIN32
-
-  return ERROR_NOT_SUPPORTED;
-
-#else
-
-  return ENOTSUP;
-
 #endif
 }
