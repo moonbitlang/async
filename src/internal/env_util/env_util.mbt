@@ -35,3 +35,23 @@ pub extern "C" fn eprintln(msg : String) -> Unit = "moonbitlang_async_eprintln"
 pub fn eprintln(msg : String) -> Unit {
   println(msg)
 }
+
+///|
+pub(all) enum Platform {
+  Linux = 0
+  MacOS = 1
+  Windows = 2
+}
+
+///|
+#cfg(target="native")
+extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_platform() -> Platform = "moonbitlang/async" "runtime/get_platform"
+
+///|
+#cfg(any(target="native", target="wasm"))
+pub let platform : Platform = get_platform()

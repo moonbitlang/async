@@ -6,9 +6,16 @@ pub let current_process : UInt
 
 pub fn eprintln(String) -> Unit
 
+pub let platform : Platform
+
 // Errors
 
 // Types and methods
+pub(all) enum Platform {
+  Linux
+  MacOS
+  Windows
+}
 
 // Type aliases
 
