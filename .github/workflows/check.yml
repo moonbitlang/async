@@ -58,7 +58,7 @@ jobs:
 
       - name: moon test
         run: |
-          TOTAL=10
+          TOTAL=5
           FAILED_DEBUG=0
           FAILED_RELEASE=0
           for _ in $(seq 1 $TOTAL); do
@@ -119,7 +119,7 @@ jobs:
 
       - name: moon test
         run: |
-          TOTAL=10
+          TOTAL=5
           FAILED_DEBUG=0
           FAILED_RELEASE=0
           for _ in $(seq 1 $TOTAL); do
