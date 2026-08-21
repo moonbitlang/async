@@ -4,6 +4,7 @@ package "moonbitlang/async/internal/event_loop"
 import {
   "moonbitlang/async/external_loop_integration",
   "moonbitlang/async/internal/c_buffer",
+  "moonbitlang/async/internal/env_util",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/core/ref",
@@ -64,7 +65,7 @@ pub fn now() -> Int64
 
 pub async fn open(StringView, Int, create~ : Int, append~ : Bool, sync~ : Int, mode~ : Int, context~ : String) -> (IoHandle, FileIdentity)
 
-pub let platform : Platform
+pub let platform : @env_util.Platform
 
 pub async fn realpath(StringView, context~ : String) -> String
 
@@ -144,12 +145,6 @@ pub async fn IoHandle::sendto(Self, Bytes, offset~ : Int, len~ : Int, addr~ : By
 pub async fn IoHandle::wait_read(Self) -> Unit
 pub async fn IoHandle::write(Self, Bytes, offset~ : Int, len~ : Int, context~ : String) -> Int
 pub async fn IoHandle::write_at(Self, Bytes, offset~ : Int, len~ : Int, position~ : Int64, context~ : String) -> Unit
-
-pub(all) enum Platform {
-  Linux
-  MacOS
-  Windows
-}
 
 pub struct Process {
   pid : Int
