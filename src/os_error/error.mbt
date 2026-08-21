@@ -13,28 +13,29 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
 
 ///|
-extern "C" fn errno_is_nonblocking_io_error(errno : Int) -> Bool = "moonbitlang_async_is_nonblocking_io_error"
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+pub fn get_errno() -> Int = "moonbitlang/async" "os_error/get_errno"
 
 ///|
-extern "C" fn errno_is_EINTR(errno : Int) -> Bool = "moonbitlang_async_is_EINTR"
-
-///|
-extern "C" fn errno_is_ENOENT(errno : Int) -> Bool = "moonbitlang_async_is_ENOENT"
-
-///|
-extern "C" fn errno_is_EEXIST(errno : Int) -> Bool = "moonbitlang_async_is_EEXIST"
-
-///|
-extern "C" fn errno_is_EACCES(errno : Int) -> Bool = "moonbitlang_async_is_EACCES"
-
-///|
-extern "C" fn errno_is_ECONNREFUSED(errno : Int) -> Bool = "moonbitlang_async_is_ECONNREFUSED"
-
-///|
-extern "C" fn errno_is_ERROR_NOTIFY_ENUM_DIR(errno : Int) -> Bool = "moonbitlang_async_is_ERROR_NOTIFY_ENUM_DIR"
+fn errno_is_nonblocking_io_error(errno : Int) -> Bool {
+  match @env_util.platform {
+    Linux =>
+      errno == linux_EAGAIN ||
+      errno == linux_EINPROGRESS ||
+      errno == linux_EWOULDBLOCK
+    MacOS =>
+      errno == macos_EAGAIN ||
+      errno == macos_EINPROGRESS ||
+      errno == macos_EWOULDBLOCK
+    Windows =>
+      errno == windows_ERROR_IO_INCOMPLETE || errno == windows_ERROR_IO_PENDING
+  }
+}
 
 ///|
 pub fn is_nonblocking_io_error() -> Bool {
@@ -42,10 +43,23 @@ pub fn is_nonblocking_io_error() -> Bool {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_errno_to_string"
 
 ///|
+#unsafe_skip_stub_check
+#cfg(target="wasm")
+fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang/async" "os_error/errno_to_string"
+
+///|
+#cfg(target="native")
 extern "C" fn free_errno_str(str : @c_buffer.Buffer) = "moonbitlang_async_free_errno_str"
+
+///|
+#unsafe_skip_stub_check
+#cfg(target="wasm")
+#owned(str)
+fn free_errno_str(str : @c_buffer.Buffer) -> Unit = "moonbitlang/async" "os_error/free_errno_str"
 
 ///|
 #internal(internal, "for internal use only")
@@ -76,42 +90,69 @@ pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
 ///|
 pub fn OSError::is_EINTR(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_EINTR(errno)
+  match @env_util.platform {
+    Linux => errno == linux_EINTR
+    MacOS => errno == macos_EINTR
+    Windows => false
+  }
 }
 
 ///|
 /// Detect whether the error is the `ENOENT` (no such file or directory) error.
 pub fn OSError::is_ENOENT(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_ENOENT(errno)
+  match @env_util.platform {
+    Linux => errno == linux_ENOENT
+    MacOS => errno == macos_ENOENT
+    Windows =>
+      errno == windows_ERROR_FILE_NOT_FOUND ||
+      errno == windows_ERROR_PATH_NOT_FOUND
+  }
 }
 
 ///|
 /// Detect whether the error is the `EEXIST` (already exists) error.
 pub fn OSError::is_EEXIST(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_EEXIST(errno)
+  match @env_util.platform {
+    Linux => errno == linux_EEXIST
+    MacOS => errno == macos_EEXIST
+    Windows =>
+      errno == windows_ERROR_FILE_EXISTS ||
+      errno == windows_ERROR_ALREADY_EXISTS
+  }
 }
 
 ///|
 /// Detect whether the error is the `EACCES` (permission denied) error.
 pub fn OSError::is_EACCES(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_EACCES(errno)
+  match @env_util.platform {
+    Linux => errno == linux_EACCES
+    MacOS => errno == macos_EACCES
+    Windows => errno == windows_ERROR_ACCESS_DENIED
+  }
 }
 
 ///|
 /// Detect whether the error is the `ECONNREFUSED` (connection refused) error.
 pub fn OSError::is_ECONNREFUSED(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_ECONNREFUSED(errno)
+  match @env_util.platform {
+    Linux => errno == linux_ECONNREFUSED
+    MacOS => errno == macos_ECONNREFUSED
+    Windows => errno == windows_ERROR_CONNECTION_REFUSED
+  }
 }
 
 ///|
-/// Detect whether the error is the `ECONNREFUSED` (connection refused) error.
+/// Detect whether the error is the Windows `ERROR_NOTIFY_ENUM_DIR` error.
 pub fn OSError::is_ERROR_NOTIFY_ENUM_DIR(err : OSError) -> Bool {
   let OSError(errno, ..) = err
-  errno_is_ERROR_NOTIFY_ENUM_DIR(errno)
+  match @env_util.platform {
+    Linux | MacOS => false
+    Windows => errno == windows_ERROR_NOTIFY_ENUM_DIR
+  }
 }
 
 ///|
@@ -123,10 +164,11 @@ pub fn check_errno(context : String) -> Unit raise OSError {
 }
 
 ///|
-extern "C" fn get_ENOTDIR() -> Int = "moonbitlang_async_get_ENOTDIR"
-
-///|
-pub let errno_ENOTDIR : Int = get_ENOTDIR()
+pub let errno_ENOTDIR : Int = match @env_util.platform {
+  Linux => linux_ENOTDIR
+  MacOS => macos_ENOTDIR
+  Windows => windows_ERROR_DIRECTORY
+}
 
 ///|
 pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
@@ -135,7 +177,8 @@ pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
 }
 
 ///|
-extern "C" fn get_ENOTSUP() -> Int = "moonbitlang_async_get_ENOTSUP"
-
-///|
-pub let errno_ENOTSUP : Int = get_ENOTSUP()
+pub let errno_ENOTSUP : Int = match @env_util.platform {
+  Linux => linux_ENOTSUP
+  MacOS => macos_ENOTSUP
+  Windows => windows_ERROR_NOT_SUPPORTED
+}

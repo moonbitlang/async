@@ -13,11 +13,31 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
-#coverage.skip
-pub let unimplemented : Unit = {
-  ignore(@c_buffer.unimplemented)
-  ignore(@os_string.unimplemented)
-  ignore(@env_util.eprintln)
-}
+let macos_EINTR : Int = 4
+
+///|
+let macos_ENOENT : Int = 2
+
+///|
+let macos_EEXIST : Int = 17
+
+///|
+let macos_EACCES : Int = 13
+
+///|
+let macos_ECONNREFUSED : Int = 61
+
+///|
+let macos_ENOTDIR : Int = 20
+
+///|
+let macos_ENOTSUP : Int = 45
+
+///|
+let macos_EAGAIN : Int = 35
+
+///|
+let macos_EINPROGRESS : Int = 36
+
+///|
+let macos_EWOULDBLOCK : Int = macos_EAGAIN
