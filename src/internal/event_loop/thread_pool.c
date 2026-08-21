@@ -870,10 +870,10 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     if (job->stdio[i] == INVALID_HANDLE_VALUE)
       job->stdio[i] = GetStdHandle(std_handle_values[i]);
 
-    if (job->stdio[i] == INVALID_HANDLE_VALUE) {
-      *err_out = GetLastError();
-      return 0;
-    }
+    if (job->stdio[i] == INVALID_HANDLE_VALUE || job->stdio[i] == NULL)
+      // On Windows, no stdio channel is a valid & common case
+      // for GUI applications.
+      goto handle_already_added;
 
     for (int j = 0; j < number_of_handles_to_inherit; ++j) {
       if (handles_to_inherit[j] == job->stdio[i])
