@@ -14,7 +14,7 @@
 
 ///|
 async test "no_wait cancelled" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg(no_wait=true) <| () => {
       @async.with_cancellation_handler(
@@ -39,7 +39,7 @@ async test "no_wait cancelled" {
 
 ///|
 async test "no_wait normal exit" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg(no_wait=true) <| () => {
       @async.with_cancellation_handler(

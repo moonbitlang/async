@@ -49,7 +49,7 @@ fn sanitize_header_value(s : String) -> String {
       // fast path: no CRLF detected, return immediately
       s
     }
-    let buf = StringBuilder::new(size_hint=s.length() - crlf_count)
+    let buf = StringBuilder(size_hint=s.length() - crlf_count)
     for c in s {
       buf.write_char(c)
     }

@@ -56,7 +56,7 @@ pub async fn tmpdir(prefix~ : StringView) -> String {
     hasher.combine_uint64(tmpdir_seed.uint64())
     hasher.combine_int64(@event_loop.now())
     let h = hasher.finalize().reinterpret_as_uint()
-    let path = StringBuilder::new()
+    let path = StringBuilder()
     path.write_string(tmp_base_path)
     path.write_stringview(prefix)
     path.write_char('.')

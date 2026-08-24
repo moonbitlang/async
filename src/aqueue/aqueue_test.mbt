@@ -14,7 +14,7 @@
 
 ///|
 async test "aqueue basic" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg() <| () => {
@@ -52,7 +52,7 @@ async test "aqueue basic" {
 
 ///|
 async test "aqueue multi-reader" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg() <| () => {
@@ -80,7 +80,7 @@ async test "aqueue multi-reader" {
 
 ///|
 async test "aqueue cancellation" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let queue : @aqueue.Queue[Int] = Queue(kind=Unbounded)
   @async.with_timeout(350, () => {
     let x = @async.with_cancellation_handler(
@@ -104,7 +104,7 @@ async test "aqueue cancellation" {
 ///|
 async test "aqueue cancellation no_swallow" {
   // `get` should not swallow the value
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| group => {
     let q = @aqueue.Queue(kind=Unbounded)
     let get_task = group.spawn(() => log.write_string("get() => \{q.get()}\n"))
@@ -125,7 +125,7 @@ async test "aqueue cancellation no_swallow" {
 
 ///|
 async test "aqueue fairness" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let queue = @aqueue.Queue(kind=Unbounded)
     root.spawn_bg() <| () => {
@@ -161,7 +161,7 @@ async test "aqueue fairness" {
 
 ///|
 async test "aqueue fairness2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let queue = @aqueue.Queue(kind=Unbounded)
     queue.put(1)

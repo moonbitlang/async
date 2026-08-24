@@ -15,7 +15,7 @@
 ///|
 #cfg(any(target="wasm", platform="windows"))
 fn test_arg(arg : String) -> String {
-  StringBuilder::new()..write_arg_with_windows_escape(arg).to_string()
+  StringBuilder()..write_arg_with_windows_escape(arg).to_string()
 }
 
 ///|

@@ -32,7 +32,7 @@ async fn perform_sleep_job(t : Int) -> Unit {
 
 ///|
 async test "worker basic" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {
@@ -57,7 +57,7 @@ async test "worker basic" {
 
 ///|
 async test "worker multiple" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {
@@ -88,7 +88,7 @@ async test "worker multiple" {
 
 ///|
 async test "worker cancel1" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<4 {
@@ -124,7 +124,7 @@ async test "worker cancel1" {
 
 ///|
 async test "worker cancel2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {

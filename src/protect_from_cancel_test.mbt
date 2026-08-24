@@ -14,7 +14,7 @@
 
 ///|
 async test "protect_from_cancel" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.with_cancellation_handler(
@@ -58,7 +58,7 @@ async test "protect_from_cancel" {
 
 ///|
 async test "protect_from_cancel wait" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -96,7 +96,7 @@ async test "protect_from_cancel wait" {
 
 ///|
 async test "protect_from_cancel with_timeout" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -127,7 +127,7 @@ async test "protect_from_cancel with_timeout" {
 
 ///|
 async test "protect_from_cancel fail" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let result : Error = @test_util.expect_error_async <| () => {
     (
       @async.with_task_group(root => {
@@ -160,7 +160,7 @@ async test "protect_from_cancel fail" {
 
 ///|
 async test "protect_from_cancel nested1" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -193,7 +193,7 @@ async test "protect_from_cancel nested1" {
 
 ///|
 async test "protect_from_cancel nested2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -232,7 +232,7 @@ async test "protect_from_cancel nested2" {
 
 ///|
 async test "protect_from_cancel in cancellation handler" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg(no_wait=true) <| () => {
       @async.with_cancellation_handler(
@@ -262,7 +262,7 @@ async test "protect_from_cancel in cancellation handler" {
 
 ///|
 async test "cancel while scheduled" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<2 {
@@ -305,7 +305,7 @@ async test "cancel while scheduled" {
 
 ///|
 async test "error in async cancel" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<2 {

@@ -14,7 +14,7 @@
 
 ///|
 async test "basic sleep" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       @async.sleep(100)

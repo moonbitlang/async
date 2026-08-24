@@ -197,14 +197,14 @@ pub impl @io.Reader for File with fn read_all(self) {
   guard size > 0 && size < @int.MAX_VALUE.to_int64() else { @io.read_all(self) }
   let size_hint = size.to_int()
   let buf = FixedArray::make(size_hint, b'\x00')
-  let n = self.read(buf, offset=0, max_len=size_hint)
+  let n = @io.Reader::read(self, buf, offset=0, max_len=size_hint)
   if n is 0 {
     return b""
   }
   // The only reliable way to detect EOF is `read` returning `0`,
   // even for regular files. So do a simple EOF probe here.
   let eof_probe = FixedArray::make(1, b'\x00')
-  if self.read(eof_probe, offset=0, max_len=1) is 0 {
+  if @io.Reader::read(self, eof_probe, offset=0, max_len=1) is 0 {
     // happy path, the file size is accurate
     return buf.unsafe_reinterpret_as_bytes()[:n].to_owned()
   }
@@ -487,7 +487,7 @@ pub async fn read_file(
 ) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
   defer file.close()
-  let result = file.read_all()
+  let result = @io.Reader::read_all(file)
   if sync_timestamp {
     file.io.fsync(only_data=false, context="@fs.read_file(sync_timestamp=true)")
   }
@@ -516,5 +516,5 @@ pub async fn write_file(
     permission~,
   )
   defer file.close()
-  file.write(content.binary())
+  @io.Writer::write(file, content.binary())
 }

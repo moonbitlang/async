@@ -29,7 +29,7 @@ async test "walk sequential" {
 ///|
 async test "walk parallel" {
   @async.sleep(300)
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let mut i = 0
   @fs.walk("test_directory", max_concurrency=2, (path, _) => {
     i = i + 1
@@ -53,7 +53,7 @@ async test "walk parallel" {
 
 ///|
 async test "walk failure" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   debug_inspect(
     @test_util.expect_error_async <| () => {
       @fs.walk("test_directory", max_concurrency=1, (path, _) => {
@@ -76,7 +76,7 @@ async test "walk failure" {
 
 ///|
 async test "walk allow_failure" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @fs.walk("test_directory", allow_failure=true, max_concurrency=1, (path, _) => {
     log.write_string("handling \{path}\n")
     raise Failure::Failure("failure when handling directory")

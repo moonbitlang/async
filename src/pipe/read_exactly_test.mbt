@@ -14,7 +14,7 @@
 
 ///|
 async test "read_exactly" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
   }
@@ -56,7 +56,7 @@ async test "read_exactly" {
 
 ///|
 async test "read_exactly failure" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   fn log(msg) {
     buf..write_string(msg).write_char('\n')
   }

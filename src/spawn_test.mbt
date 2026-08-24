@@ -14,7 +14,7 @@
 
 ///|
 async test "spawn error1" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let result = @test_util.expect_error_async <| () => {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {
@@ -38,7 +38,7 @@ async test "spawn error1" {
 
 ///|
 async test "spawn error2" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let result = @test_util.expect_error_async <| () => {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {

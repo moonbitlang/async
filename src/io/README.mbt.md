@@ -416,7 +416,7 @@ async test "write large data" {
 
 ///|
 async test "write_reader - copy from reader to writer" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
@@ -484,7 +484,7 @@ async test "write string" {
 ```moonbit check
 ///|
 async test "BufferedWriter - basic buffering" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     root.spawn_bg(() => {
@@ -560,7 +560,7 @@ async test "BufferedWriter::flush - commit buffered data" {
 
 ///|
 async test "BufferedWriter::write_reader - buffered copy" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()

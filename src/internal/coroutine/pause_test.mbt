@@ -14,7 +14,7 @@
 
 ///|
 test "coroutine ping-pong" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let coro = @coroutine.spawn(() => {
     @async.with_task_group(group => {
       group.spawn_bg() <| () => {

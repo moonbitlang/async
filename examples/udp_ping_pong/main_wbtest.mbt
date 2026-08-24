@@ -14,7 +14,7 @@
 
 ///|
 async test "main" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   fn println(msg) -> Unit {
     log..write_string(msg).write_string("\n")
   }

@@ -154,7 +154,7 @@ async fn raw_spawn_windows(
     | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
     _ => cmd + ".exe"
   }
-  let command_line = StringBuilder::new()
+  let command_line = StringBuilder()
   command_line.write_arg_with_windows_escape(cmd)
   for arg in args {
     command_line..write_char(' ').write_arg_with_windows_escape(arg)

@@ -14,7 +14,7 @@
 
 ///|
 async test "wait basic" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -43,7 +43,7 @@ async test "wait basic" {
 
 ///|
 async test "wait cancelled" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group(root => {
     let task = root.spawn(() => {
       @async.sleep(1000)
@@ -70,7 +70,7 @@ async test "wait cancelled" {
 
 ///|
 async test "try_wait" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let task = root.spawn(no_wait=true, () => {
       @async.sleep(450)

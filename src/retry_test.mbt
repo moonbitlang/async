@@ -14,7 +14,7 @@
 
 ///|
 async test "retry immediate" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let mut i = 0
   @async.retry(Immediate) <| () => {
     log.write_string("tick \{i}\n")
@@ -79,7 +79,7 @@ async test "retry exponential" {
 
 ///|
 async test "retry cancelled1" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let mut i = 0
   @async.with_timeout(500, () => {
     @async.retry(Immediate) <| () => {
@@ -104,7 +104,7 @@ async test "retry cancelled1" {
 
 ///|
 async test "retry cancelled2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let mut i = 0
   @async.with_timeout(500, () => {
     @async.retry(FixedDelay(200)) <| () => {
@@ -129,7 +129,7 @@ async test "retry cancelled2" {
 
 ///|
 async test "retry fatal_error" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   fn fatal_error(err) {
     !(err is @async.TimeoutError)
   }
