@@ -39,7 +39,7 @@ async test "return_immediately nested" {
 
 ///|
 async test "return_immediately error on cancel" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let err = @test_util.expect_error_async <| () => {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {

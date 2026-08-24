@@ -34,7 +34,7 @@ async test "with_timeout normal exit" {
 ///|
 #warnings("-fragile_catch_all")
 async test "with_timeout failure" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -63,7 +63,7 @@ async test "with_timeout failure" {
 
 ///|
 async test "with_timeout timeout" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(300)
@@ -93,7 +93,7 @@ async test "with_timeout timeout" {
 
 ///|
 async test "with_timeout nested1" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
@@ -133,7 +133,7 @@ async test "with_timeout nested1" {
 
 ///|
 async test "with_timeout nested2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(300)
@@ -172,7 +172,7 @@ async test "with_timeout nested2" {
 
 ///|
 async test "with_timeout error_on_cancel" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let err = @test_util.expect_error_async <| () => {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {
@@ -203,7 +203,7 @@ async test "with_timeout error_on_cancel" {
 
 ///|
 async test "with_timeout error-on-timeout" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let err = @test_util.expect_error_async <| () => {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {
@@ -255,7 +255,7 @@ async test "with_timeout_opt normal exit" {
 ///|
 #warnings("-fragile_catch_all")
 async test "with_timeout_opt failure" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)

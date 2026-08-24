@@ -29,7 +29,9 @@ extern "js" fn JsHeaders::append(
   #| (headers, name, value) => headers.append(name, value)
 
 ///|
-extern "js" fn JsHeaders::to_array(headers : JsHeaders) -> Array[Array[String]] =
+extern "js" fn JsHeaders::to_array(
+  headers : JsHeaders,
+) -> FixedArray[FixedArray[String]] =
   #| (headers) => Array.from(headers.entries())
 
 ///|
@@ -263,7 +265,7 @@ pub async fn Client::request(
   for k, v in extra_headers {
     headers.append(k.0, v)
   }
-  let request : OngoingRequest = { meth, uri, headers, body: @buffer.Buffer() }
+  let request : OngoingRequest = { meth, uri, headers, body: Buffer() }
   self.request = Some(request)
 }
 

@@ -16,7 +16,7 @@
 ///|
 async test "cancel process" {
   let test_prog = sleep_prog.wait()
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
@@ -112,7 +112,7 @@ async test "cancel process hard" {
 
 ///|
 async test "orphan process" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {

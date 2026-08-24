@@ -56,7 +56,7 @@ pub fn MemoryReader::close(self : MemoryReader) -> Unit {
 
 ///|
 pub impl Reader for MemoryReader with fn _get_internal_buffer(self) {
-  self.reader._get_internal_buffer()
+  Reader::_get_internal_buffer(self.reader)
 }
 
 ///|
@@ -66,7 +66,7 @@ pub impl Reader for MemoryReader with fn _direct_read(
   offset~,
   max_len~,
 ) {
-  let n = self.reader._direct_read(buf, offset~, max_len~)
+  let n = Reader::_direct_read(self.reader, buf, offset~, max_len~)
   self.writer.check_error()
   n
 }

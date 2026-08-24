@@ -99,7 +99,7 @@ let is_js : Bool = true
 
 ///|
 async test "request streaming" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
@@ -235,7 +235,7 @@ async test "multiple request" {
 ///|
 #cfg(any(target="native", target="wasm"))
 async test "user agent" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| group => {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()

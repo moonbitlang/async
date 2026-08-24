@@ -47,7 +47,7 @@ pub fn MainLoop::MainLoop() -> MainLoop raise {
   if init_main_loop() < 0 {
     @os_error.check_errno("init main loop")
   }
-  { log: [], main_loop_event: @cond_var.Cond() }
+  { log: [], main_loop_event: Cond() }
 }
 
 ///|

@@ -47,7 +47,7 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 
 ///|
 async test "one way" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()
@@ -100,7 +100,7 @@ async test "one way" {
 
 ///|
 async test "echo" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (client_read_from_server, server_write_to_client) = @pipe.pipe()
     let (server_read_from_client, client_write_to_server) = @pipe.pipe()

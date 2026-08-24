@@ -48,7 +48,7 @@ async fn main {
       guard file is "moon.pkg" else {  }
       let full_path = "\{path}/\{file}"
       let content = @fs.read_file(full_path).text().split("\n")
-      let transformed = StringBuilder::new()
+      let transformed = StringBuilder()
       let mut found = false
       for line in content {
         transformed..write_stringview(line).write_char('\n')
