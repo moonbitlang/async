@@ -10,6 +10,7 @@ import {
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 import {

@@ -17,6 +17,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/gzip" @gzip_stream,
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 import {

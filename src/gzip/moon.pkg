@@ -11,4 +11,5 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/async/process",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/internal/test_util",
 } for "test"
