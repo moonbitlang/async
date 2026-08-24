@@ -37,3 +37,13 @@ pub async fn[T, E : Error] assert_raise_async(
     _ => fail("expected error, but no error is raised", loc~)
   }
 }
+
+///|
+#cfg(target="native")
+pub extern "C" fn increase_current_thread_priority() -> Unit = "moonbitlang_async_increase_current_thread_priority"
+
+///|
+#cfg(not(target="native"))
+pub fn increase_current_thread_priority() -> Unit {
+
+}
