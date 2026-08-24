@@ -21,6 +21,10 @@ import {
   "moonbitlang/async/internal/test_util",
 } for "test"
 
+import {
+  "moonbitlang/async/internal/test_util",
+} for "wbtest"
+
 options(
   "max-concurrent-tests": 5,
   "native-stub": [ "unix.c", "windows.c" ],

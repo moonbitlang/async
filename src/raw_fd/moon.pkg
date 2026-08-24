@@ -10,6 +10,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/socket",
   "moonbitlang/async/os_error",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 supported_targets = "-all+native"

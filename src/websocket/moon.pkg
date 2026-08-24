@@ -23,6 +23,7 @@ import {
 
 import {
   "moonbitlang/core/test",
+  "moonbitlang/async/internal/test_util",
 } for "wbtest"
 
 options(

@@ -20,10 +20,12 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 import {
   "moonbitlang/async",
+  "moonbitlang/async/internal/test_util",
 } for "wbtest"
 
 options(
