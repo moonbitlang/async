@@ -28,6 +28,11 @@
 #include <ws2tcpip.h>
 #include <stddef.h>
 
+/* This object uses winsock (`bind`, `GetAddrInfoW`, ...), so it must carry
+   its own default-library directive: a test binary may pull this object
+   without `io_windows.obj`, whose pragma otherwise supplied `ws2_32`. */
+#pragma comment(lib, "ws2_32.lib")
+
 #else
 
 #include <pthread.h>
