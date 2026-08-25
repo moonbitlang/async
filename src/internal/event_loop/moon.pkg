@@ -11,6 +11,7 @@ import {
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/env_util",
+  "moonbitlang/async/job/types" @job_types,
   "moonbitlang/async/external_loop_integration",
 }
 

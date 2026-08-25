@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/job/types" @job_types,
+}
+
+supported_targets = "-all+native+wasm"
+
+options(
+  targets: { "job.native.mbt": [ "native" ], "job.wasm.mbt": [ "wasm" ] },
+)

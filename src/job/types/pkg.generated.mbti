@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/job/types"
+
+// Values
+
+// Errors
+
+// Types and methods
+#external
+pub type Job
+
+// Type aliases
+
+// Traits

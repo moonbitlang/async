@@ -61,8 +61,19 @@ extern "C" fn fetch_completion_ffi(
 ) -> Int = "moonbitlang_async_fetch_completion"
 
 ///|
-#external
-priv type Job
+type Job = @job_types.Job
+
+///|
+/// Schedule a native binding Job while keeping it alive through `finish`.
+pub async fn[X] with_native_job(
+  job : Job,
+  finish : (Int) -> X raise,
+  context~ : String,
+) -> X {
+  defer job.free()
+  let ret = perform_job_in_worker(job, context~)
+  finish(ret)
+}
 
 ///|
 extern "C" fn Job::free(self : Job) -> Unit = "moonbitlang_async_free_job"

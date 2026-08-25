@@ -7,6 +7,7 @@ import {
   "moonbitlang/async/internal/env_util",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/job/types",
   "moonbitlang/core/ref",
 }
 
@@ -100,6 +101,8 @@ pub async fn symlink(StringView, StringView, force_symlink~ : Bool, context~ : S
 pub fn terminate_process_by_signal(Int) -> Unit
 
 pub fn with_event_loop(async () -> Unit, max_worker_count? : Int) -> Unit raise
+
+pub async fn[X] with_native_job(@types.Job, (Int) -> X raise, context~ : String) -> X
 
 // Errors
 pub suberror KilledBySignal {
