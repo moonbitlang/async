@@ -139,7 +139,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         max_len~,
         limit=remaining,
       )
-      if consumed is 0 {
+      if consumed is 0 && produced is 0 {
         raise @io.ReaderClosed
       }
       let remaining = remaining - consumed
@@ -152,7 +152,11 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       } else {
         Fixed(remaining)
       }
-      produced
+      if produced == 0 && !(self.body is Empty) {
+        self._direct_read(buf, offset~, max_len~)
+      } else {
+        produced
+      }
     }
     Chunked(0) => {
       guard self.transport.read_until("\r\n") is Some(len_str) else {
