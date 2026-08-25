@@ -117,7 +117,7 @@ HANDLE moonbitlang_async_open_pid_handle(int32_t pid) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 
   int pidfd = syscall(SYS_pidfd_open, pid, 0);
-  if (pidfd < 0 && errno == ENOSYS || errno == EPERM)
+  if (pidfd < 0 && (errno == ENOSYS || errno == EPERM))
     // some container environments do not support `pidfd` even on Linux >= 5.3.0
     errno = 0;
 
