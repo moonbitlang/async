@@ -1,6 +1,29 @@
-# Guidelines for coding agents
+This is the official async runtime for [MoonBit](docs.moonbitlang.com).
 
-## Socket DNS test troubleshooting
+# Overview
+
+This library implements a single threaded asynchronous model,
+with structured concurrency API for managing asynchronous tasks.
+
+- scheduler etc. for userland coroutine is in `src/internal/coroutine`.
+  Coroutines are all cancellable.
+  Cancellation is implemented as a persistent mark on each coroutine.
+  Cancelled code will receive a special error on cancellation,
+  so that they can run cleanup code on cancellation.
+  Swallowing the cancellation signal does not revert the cancelled state of current coroutine,
+  and subsequent asynchronous operations will still get cancelled immediately
+- event loop for IO etc. is in `src/internal/event_loop`.
+  The event loop uses `epoll`/`kqueue`/`IOCP` on Linux/MacOS/Windows,
+  Operations that are natively asynchronous, such as socket IO,
+  are performed through the event loop directly.
+  Blocking operations such as regular file IO are dispatched to a thread pool
+- async control flow operations are in `src`.
+  The main control flow primitive is structural task group.
+  A task group will only terminate after all its children have terminated,
+  and will automatically cancel remaining children when necessary.
+  See `src/task_group.mbt` for semantic details.
+
+# Socket DNS test troubleshooting
 
 Some agent or sandboxed environments proxy DNS and outbound network access. In
 those environments, public hostnames may resolve to addresses in `198.18.0.0/15`
