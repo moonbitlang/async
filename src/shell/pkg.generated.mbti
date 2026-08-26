@@ -12,9 +12,24 @@ import {
 // Types and methods
 type Cmd derive(@debug.Debug)
 pub fn Cmd::Cmd(String, Array[String], cwd? : String, env? : Map[String, String], inherit_env? : Bool, stdin? : Stdin, stdout? : Redirect, stderr? : Redirect) -> Self
+pub async fn Cmd::each_line(Self, async (String) -> Unit, timeout_ms? : Int, max_line_bytes? : Int) -> Int
+pub async fn Cmd::output(Self, timeout_ms? : Int, max_output_bytes? : Int) -> Output
+pub async fn Cmd::run(Self, timeout_ms? : Int) -> Unit
+pub async fn Cmd::status(Self, timeout_ms? : Int) -> Int
+
+type Output derive(@debug.Debug)
+pub fn Output::check(Self) -> Unit raise
+pub fn Output::exit_code(Self) -> Int
+pub fn Output::stderr(Self) -> String
+pub fn Output::stdout(Self) -> String
+pub fn Output::stdout_bytes(Self) -> Bytes
 
 type Pipeline derive(@debug.Debug)
 pub fn Pipeline::Pipeline(Array[Cmd]) -> Self
+pub async fn Pipeline::each_line(Self, async (String) -> Unit, timeout_ms? : Int, max_line_bytes? : Int) -> Int
+pub async fn Pipeline::output(Self, timeout_ms? : Int, max_output_bytes? : Int) -> Output
+pub async fn Pipeline::run(Self, timeout_ms? : Int) -> Unit
+pub async fn Pipeline::status(Self, timeout_ms? : Int) -> Int
 
 pub(all) enum Redirect {
   Capture
