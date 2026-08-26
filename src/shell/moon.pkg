@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/process",
+  "moonbitlang/async/fs",
   "moonbitlang/async/stdio",
   "moonbitlang/async/internal/env_util",
   "moonbitlang/core/buffer",
@@ -11,6 +12,7 @@ import {
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/internal/env_util",
   "moonbitlang/core/env",
   "moonbitlang/async/internal/test_util",
 } for "test"

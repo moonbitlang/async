@@ -6,6 +6,7 @@ import {
 }
 
 // Values
+pub async fn glob(String, cwd? : String) -> Array[String]
 
 // Errors
 
