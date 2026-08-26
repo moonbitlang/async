@@ -86,6 +86,10 @@ extern "js" fn AbortSignal::on_abort(
   #| (signal, f) => signal.addEventListener('abort', f, { once: true })
 
 ///|
+extern "js" fn AbortSignal::aborted(signal : AbortSignal) -> Bool =
+  #| (signal) => signal.aborted
+
+///|
 extern "js" fn JsValue::then(
   promise : JsValue,
   resolve : (JsValue) -> Unit,
@@ -209,6 +213,11 @@ pub fn[X] Promise::from_async(
     })
     if abort_signal is Some(signal) {
       signal.on_abort(() => coro.cancel())
+      // An abort event fired before listener registration is not replayed.
+      // Register first, then inspect the sticky state to cover both orderings.
+      if signal.aborted() {
+        coro.cancel()
+      }
     }
   })
   @event_loop.reschedule()
