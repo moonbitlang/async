@@ -68,6 +68,35 @@ async test "Promise::from_async cancellation 3" {
 }
 
 ///|
+extern "js" fn rejection_name(
+  promise : @js_async.Promise[Unit],
+) -> @js_async.Promise[String] =
+  #| async (promise) => {
+  #|   try {
+  #|     await promise
+  #|     return 'resolved'
+  #|   } catch (error) {
+  #|     return error.name
+  #|   }
+  #| }
+
+///|
+async test "Promise::from_async observes an already aborted signal" {
+  let controller = @js_async.AbortController::new()
+  controller.abort()
+  let mut worker_finished = false
+  let promise = @js_async.Promise::from_async(
+    abort_signal=controller.signal(),
+    () => {
+      @async.sleep(100)
+      worker_finished = true
+    },
+  )
+  inspect(rejection_name(promise).wait(), content="AbortError")
+  assert_false(worker_finished)
+}
+
+///|
 async test "read dir" {
   let files = (fsPromises.readdir)("src/js_async/", {
     encoding: "utf8",
