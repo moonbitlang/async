@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/debug",
+}
+
+supported_targets = "native+wasm"
+
+options(
+  "max-concurrent-tests": 5,
+)
