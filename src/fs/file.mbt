@@ -425,6 +425,13 @@ pub async fn File::size(self : File) -> Int64 {
 }
 
 ///|
+/// Get the size of the file at the specific path.
+/// Can only be applied to a regular file.
+pub async fn file_size(path : StringView) -> Int64 {
+  @event_loop.file_size_of_path(path, context="@fs.file_size()")
+}
+
+///|
 /// Convert a file to directory.
 /// If the file is not a directory, an error will be raised.
 ///

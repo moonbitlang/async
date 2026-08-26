@@ -47,6 +47,8 @@ pub async fn file_kind_by_path(StringView, parent~ : Int, follow_symlink~ : Bool
 
 pub async fn file_size(Int, context~ : String) -> Int64
 
+pub async fn file_size_of_path(StringView, context~ : String) -> Int64
+
 pub async fn fstatx(Int, UInt, FixedArray[Byte], Int, context~ : String) -> Unit
 
 pub async fn getaddrinfo(StringView, context~ : String) -> Result[AddrInfo, String]
