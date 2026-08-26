@@ -93,13 +93,12 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
     // see the code for `read_job_worker`/`write_job_worker` in `thread_pool.c` for more details.
     is_async: false,
     read: Idle,
-    // Even when a stdio channel is a regular file, its file description — and
-    // therefore its file position — is shared with the parent and possibly
-    // with sibling processes. Positioned I/O from a private offset would
-    // overwrite from the start of the file, ignore where the parent left the
-    // cursor, and bypass `O_APPEND`/`FILE_APPEND_DATA` on a channel that was
-    // redirected in append mode. Use the file description's own position
-    // instead, as ordinary processes do.
+    // The tricky case here is regular file.
+    // When the user access a file via the `@fs.File` interface.
+    // we maintain independent private read/write offset etc. to provide better semantic.
+    // However, when the user is accessing a file via the `@stdio` interface,
+    // we should simply provide whatever the OS provides,
+    // respecting internal file pointer, append mode setting etc.
     read_offset: -1,
     write: Idle,
     write_offset: -1,
