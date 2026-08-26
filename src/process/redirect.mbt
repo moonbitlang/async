@@ -211,7 +211,28 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
 /// An entity that can be used to redirect stdin of a process
 trait ProcessInput {
   fn fd(Self) -> @fd_util.Fd raise
+  /// Close the input channel.
+  /// May be called automatically via `after_spawn`, or manually via `.close()`
+  fn do_close(Self) -> Unit = _
   fn after_spawn(Self) -> Unit = _
+}
+
+///|
+/// Close an input channel that will not be passed to a child process.
+/// A channel is closed automatically once it is passed to a child process,
+/// so this is only needed when a channel has been created
+/// but spawning the process that would consume it fails or is abandoned.
+/// Closing is idempotent, and a no-op for channels that only borrow
+/// their file descriptor, such as `@stdio.stdin`.
+#doc(hidden)
+#deprecated
+pub fn &ProcessInput::close(self : &ProcessInput) -> Unit {
+  self.do_close()
+}
+
+///|
+impl ProcessInput with fn do_close(_) {
+  ()
 }
 
 ///|
@@ -316,11 +337,16 @@ impl ProcessInput for TempPipeRead with fn fd(self) {
 }
 
 ///|
-impl ProcessInput for TempPipeRead with fn after_spawn(self) {
+impl ProcessInput for TempPipeRead with fn do_close(self) {
   if !self.closed {
     self.closed = true
     self.pipe.close()
   }
+}
+
+///|
+impl ProcessInput for TempPipeRead with fn after_spawn(self) {
+  ProcessInput::do_close(self)
 }
 
 ///|
@@ -356,9 +382,14 @@ impl ProcessInput for RedirectToFile with fn fd(self) {
 }
 
 ///|
-impl ProcessInput for RedirectToFile with fn after_spawn(self) {
+impl ProcessInput for RedirectToFile with fn do_close(self) {
   if !self.closed {
     self.closed = true
     self.io.close()
   }
+}
+
+///|
+impl ProcessInput for RedirectToFile with fn after_spawn(self) {
+  ProcessInput::do_close(self)
 }
