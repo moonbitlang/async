@@ -18,7 +18,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
-    timeout-minutes: 10
+    # The test suite cold-builds a few small `moonx` tool packages on every
+    # fresh runner; give the full-matrix build jobs headroom for that.
+    timeout-minutes: 15
     steps:
       - name: disable auto CRLF
         if: ${{ matrix.os == 'windows-latest' }}
@@ -70,7 +72,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
-    timeout-minutes: 10
+    # The test suite cold-builds a few small `moonx` tool packages on every
+    # fresh runner; give the full-matrix build jobs headroom for that.
+    timeout-minutes: 15
     steps:
       - name: disable auto CRLF
         if: ${{ matrix.os == 'windows-latest' }}
