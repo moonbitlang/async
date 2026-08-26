@@ -28,6 +28,8 @@
 #include <ws2tcpip.h>
 #include <stddef.h>
 
+#pragma comment(lib, "ws2_32.lib")
+
 #else
 
 #include <pthread.h>
@@ -1204,9 +1206,13 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
 #ifdef __linux__
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
   if (!*err_out) {
+    /* A failed `pidfd_open` — `EMFILE` under descriptor pressure, or
+       `ENOSYS`/`EPERM` in some containers — must not turn a successful spawn
+       into an error: the child is already running, and reporting failure
+       here would let it escape ownership, unkilled and unreaped. Leave the
+       handle invalid instead; `wait_pid` falls back to a blocking `waitpid`
+       in a worker thread when there is no pidfd. */
     job->pidfd = syscall(SYS_pidfd_open, ret, 0);
-    if (job->pidfd < 0 && errno != ENOSYS && errno != EPERM)
-      *err_out = errno;
   }
 #endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 #endif // #ifdef __linux__
