@@ -81,19 +81,34 @@ extern "js" fn rejection_name(
   #| }
 
 ///|
+extern "js" fn abort_listener_count(signal : @js_async.AbortSignal) -> Int =
+  #| (signal) => require('node:events').getEventListeners(signal, 'abort').length
+
+///|
+async test "Promise::from_async removes its abort listener after completion" {
+  let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
+  let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
+    @async.sleep(100)
+  })
+  inspect(abort_listener_count(signal), content="1")
+  promise.wait()
+  inspect(abort_listener_count(signal), content="0")
+}
+
+///|
 async test "Promise::from_async observes an already aborted signal" {
   let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
   controller.abort()
   let mut worker_finished = false
-  let promise = @js_async.Promise::from_async(
-    abort_signal=controller.signal(),
-    () => {
-      @async.sleep(100)
-      worker_finished = true
-    },
-  )
+  let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
+    @async.sleep(100)
+    worker_finished = true
+  })
   inspect(rejection_name(promise).wait(), content="AbortError")
   assert_false(worker_finished)
+  inspect(abort_listener_count(signal), content="0")
 }
 
 ///|
