@@ -60,6 +60,26 @@ extern "js" fn Server::create(
   #|   const server = http.createServer()
   #|   server.on('request', (req, response) => {
   #|     logger(`server received request: ${req.method} ${req.url}\n`)
+  #|     if (req.url === '/no-content') {
+  #|       response.statusCode = 204
+  #|       response.end()
+  #|       return
+  #|     }
+  #|     if (req.url === '/reset-content') {
+  #|       response.statusCode = 205
+  #|       response.end()
+  #|       return
+  #|     }
+  #|     if (req.url === '/not-modified') {
+  #|       response.statusCode = 304
+  #|       response.end()
+  #|       return
+  #|     }
+  #|     if (req.method === 'HEAD') {
+  #|       response.statusCode = 200
+  #|       response.end()
+  #|       return
+  #|     }
   #|     req.on('data', (data) => {
   #|       logger(`server received: ${data}`)
   #|     })
@@ -87,6 +107,30 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
   let server = Server::create(msg => log.write_string(msg)).wait()
   group.add_defer(() => server.close())
   server.port()
+}
+
+///|
+#cfg(target="js")
+async test "responses with null Web API bodies are empty readable streams" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let client = @http.Client("http://localhost:\{port}")
+    defer client.close()
+    for
+      request in [
+        (@http.Get, "/no-content", 204),
+        (@http.Get, "/reset-content", 205),
+        (@http.Get, "/not-modified", 304),
+        (@http.Head, "/head", 200),
+      ] {
+      let (meth, path, expected_status) = request
+      client.request(meth, path)
+      let response = client.end_request()
+      assert_eq(response.code, expected_status)
+      assert_eq(client.read_all().text(), "")
+    }
+  }
 }
 
 ///|

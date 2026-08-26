@@ -54,7 +54,9 @@ extern "js" fn JsResponse::headers(response : JsResponse) -> JsHeaders =
 extern "js" fn JsResponse::body(
   response : JsResponse,
 ) -> @js_async.JsReadableStream =
-  #| (response) => response.body
+  #| (response) => response.body ?? new ReadableStream({
+  #|   start(controller) { controller.close() },
+  #| })
 
 ///|
 priv struct OngoingRequest {
