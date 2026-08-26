@@ -302,39 +302,23 @@ fn validate_output_limit(limit : Int) -> Unit raise ShellError {
 /// `None` means the child inherits the parent's descriptor. `capture` is the
 /// descriptor this run reads from, and is absent when the caller keeps nothing.
 ///
-/// A file opened here is recorded in `created`, so that if a later setup step
-/// fails before the spawn that would consume it, the handle is closed rather
-/// than leaked. The spawn itself closes it through `after_spawn`.
-async fn resolve_redirect(
+/// File redirections are lazy process descriptors: the file is opened by
+/// `@process.spawn`, and spawn closes the parent copy on success or failure.
+fn resolve_redirect(
   redirect : Redirect,
   capture : &@process.ProcessOutput?,
-  created : Array[&@process.ProcessOutput],
 ) -> &@process.ProcessOutput? {
   match redirect {
     Capture => capture
     Inherit => None
-    ToFile(path) => {
-      let file = @process.redirect_to_file(path, create_mode=CreateOrTruncate)
-      created.push(file)
-      Some(file)
-    }
-    AppendToFile(path) => {
-      let file = @process.redirect_to_file(
-        path,
-        append=true,
-        create_mode=OpenOrCreate,
+    ToFile(path) =>
+      Some(@process.redirect_to_file(path, create_mode=CreateOrTruncate))
+    AppendToFile(path) =>
+      Some(
+        @process.redirect_to_file(path, append=true, create_mode=OpenOrCreate),
       )
-      created.push(file)
-      Some(file)
-    }
-    Discard => {
-      let file = @process.redirect_to_file(
-        null_device,
-        create_mode=OpenExisting,
-      )
-      created.push(file)
-      Some(file)
-    }
+    Discard =>
+      Some(@process.redirect_to_file(null_device, create_mode=OpenExisting))
   }
 }
 
@@ -504,12 +488,6 @@ fn take_line(
 }
 
 ///|
-#warnings("-deprecated")
-fn close_process_input(input : &@process.ProcessInput) -> Unit {
-  input.close()
-}
-
-///|
 async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
   let commands = pipeline.commands
   let count = commands.length()
@@ -524,10 +502,10 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
   // instead of blocking. `read_from_process` and `write_to_process` keep the
   // child's end blocking, which is the whole point of using them here.
   //
-  // Passing a process-owned end to `spawn` transfers that end: `after_spawn`
-  // closes the parent's copy on success or failure. A junction is created
-  // immediately before its producer is spawned, keeping any unconsumed input
-  // end local to that one junction if the producer itself fails to spawn.
+  // Redirection descriptors are lazy: a pipe or file is only opened while
+  // `spawn` is preparing the child, and `spawn` closes the parent's child-side
+  // copy on success or failure. This lets setup build descriptors freely
+  // without a failure cleanup list for unconsumed child redirections.
   let capture_stderr = sink is Buffer(_)
   @async.with_task_group() <| group => {
     let captured = Ref(0)
@@ -537,26 +515,6 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
     }
     let mut stdout_task : @async.Task[Bytes]? = None
     let stderr_tasks : Array[@async.Task[Bytes]?] = []
-    //
-    // A child-side end exists before the spawn that consumes it, so a failing
-    // setup step — an output file that cannot be opened, a pipe that cannot
-    // be created — would otherwise leak every end already made. Closing an
-    // end is idempotent, and a no-op for a borrowed one such as the parent's
-    // own stdin, so the cleanup is simply: record every end ever created, and
-    // on failure close them all. Ends a spawn has consumed were already
-    // closed by its `after_spawn` hook — on success and on failure alike —
-    // and closing them again does nothing.
-    let created_inputs : Array[&@process.ProcessInput] = []
-    let created_outputs : Array[&@process.ProcessOutput] = []
-    errdefer {
-      for input in created_inputs {
-        close_process_input(input)
-      }
-      for output in created_outputs {
-        output.close()
-      }
-    }
-    //
     // Standard input for the first stage: a file the child reads itself, the
     // parent's own descriptor, or a pipe this task fills.
     let first_input : &@process.ProcessInput = match commands[0].stdin {
@@ -570,7 +528,6 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
         child_end
       }
     }
-    created_inputs.push(first_input)
     let processes : Array[@process.Process] = []
     let mut next_stdin : &@process.ProcessInput? = None
     for index, cmd in commands {
@@ -590,13 +547,10 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
       let stdout = if index + 1 < count {
         let (child_stdin, child_stdout) = @process.pipe()
         next_stdin = Some(child_stdin)
-        created_inputs.push(child_stdin)
-        created_outputs.push(child_stdout)
         Some(child_stdout)
       } else {
         let final_capture = if !(sink is Inherited) && cmd.stdout is Capture {
           let (reader, child_stdout) = @process.read_from_process()
-          created_outputs.push(child_stdout)
           match sink {
             Buffer(_) =>
               stdout_task = Some(
@@ -616,13 +570,12 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
         } else {
           None
         }
-        resolve_redirect(cmd.stdout, final_capture, created_outputs)
+        resolve_redirect(cmd.stdout, final_capture)
       }
       //
       // Each reader starts before its child, so a full pipe never stalls one.
       let stderr_capture = if capture_stderr && cmd.stderr is Capture {
         let (reader, child_stderr) = @process.read_from_process()
-        created_outputs.push(child_stderr)
         stderr_tasks.push(
           Some(
             group.spawn(() => {
@@ -636,7 +589,7 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
         stderr_tasks.push(None)
         None
       }
-      let stderr = resolve_redirect(cmd.stderr, stderr_capture, created_outputs)
+      let stderr = resolve_redirect(cmd.stderr, stderr_capture)
       processes.push(spawn_stage(group, cmd, stdin, stdout, stderr))
     }
     let exit_codes = [ for child in processes => child.wait() ]
