@@ -247,13 +247,16 @@ to capture in memory and write the file yourself.
 
 ```mbt check
 ///|
-#cfg(all(target="native", not(platform="windows")))
 async test {
   let directory = @fs.tmpdir(prefix="shell-readme")
   let path = "\{directory}/log.txt"
-  @shell.Cmd("printf", ["one\n"], stdout=ToFile(path)).run()
-  @shell.Cmd("printf", ["two\n"], stdout=AppendToFile(path)).run()
-  let back = @shell.Cmd("cat", [], stdin=FromFile(path)).output()
+  @shell.Cmd("moonx", ["bobzhang/printf@0.1.1", "one\n"], stdout=ToFile(path)).run()
+  @shell.Cmd(
+    "moonx",
+    ["bobzhang/printf@0.1.1", "two\n"],
+    stdout=AppendToFile(path),
+  ).run()
+  let back = @shell.Cmd("moonx", ["bobzhang/cat@0.1.0"], stdin=FromFile(path)).output()
   assert_eq(back.stdout(), "one\ntwo\n")
   @fs.rmdir(directory, recursive=true)
 }
