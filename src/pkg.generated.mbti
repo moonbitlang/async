@@ -60,6 +60,7 @@ type Lazy[X]
 #as_free_fn(lazy_init, deprecated)
 #callsite(autofill(loc))
 pub fn[X] Lazy::Lazy(async () -> X, loc~ : SourceLoc) -> Self[X]
+pub fn[X] Lazy::try_wait(Self[X]) -> X? raise
 pub async fn[X] Lazy::wait(Self[X]) -> X
 
 type Mutex

@@ -41,3 +41,6 @@ let linux_EINPROGRESS : Int = 115
 
 ///|
 let linux_EWOULDBLOCK : Int = linux_EAGAIN
+
+///|
+let linux_EPIPE : Int = 32

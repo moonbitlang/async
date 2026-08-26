@@ -164,40 +164,50 @@ async fn raw_spawn_windows(
     None => None
     Some(cwd) => Some(@os_string.encode(cwd))
   }
-  defer {
+  errdefer {
     if stdin is Some(p) {
-      p.after_spawn()
+      p.on_failure()
     }
-    if stdout is Some(p) {
-      p.after_spawn()
+    if stdout is Some(p) && !p.is_shared() {
+      p.on_failure()
     }
-    if stderr is Some(p) {
-      p.after_spawn()
+    if stderr is Some(p) && !p.is_shared() {
+      p.on_failure()
     }
   }
-  let stdin = match stdin {
+  let stdin_fd = match stdin {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let stdout = match stdout {
+  let stdout_fd = match stdout {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let stderr = match stderr {
+  let stderr_fd = match stderr {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  @event_loop.spawn_windows(
+  let process = @event_loop.spawn_windows(
     command_line,
     env=OsEnv::make(extra_env, inherit_env~).0,
-    stdin~,
-    stdout~,
-    stderr~,
+    stdin=stdin_fd,
+    stdout=stdout_fd,
+    stderr=stderr_fd,
     cwd~,
     no_console_window~,
     is_orphan~,
     context~,
   )
+  if stdin is Some(p) {
+    p.on_success()
+  }
+  if stdout is Some(p) && !p.is_shared() {
+    p.on_success()
+  }
+  if stderr is Some(p) && !p.is_shared() {
+    p.on_success()
+  }
+  process
 }
 
 ///|

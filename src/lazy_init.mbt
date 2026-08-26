@@ -82,6 +82,18 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 }
 
 ///|
+/// Return the result of a lazy value if is already computed,
+/// or return `None` if the result is not immediately available.
+/// Fail with the same error if the initialization process failed.
+pub fn[X] Lazy::try_wait(self : Lazy[X]) -> X? raise {
+  match self.state {
+    Done(result) => Some(result)
+    Fail(err) => raise err
+    Running(_) | Uninitialized => None
+  }
+}
+
+///|
 /// Create a new lazily initialized value by passing an async initialization function.
 /// The function `f` will be started in the background automatically
 /// when someone request for the result of the lazy value.

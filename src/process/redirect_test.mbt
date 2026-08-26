@@ -171,3 +171,31 @@ async test "failure before spawn" {
   }
   assert_true(err is (@os_error.OSError(_) as err) && err.is_ENOENT())
 }
+
+///|
+async test "pipe failure on first spawn" {
+  let cat = cat.wait()
+  let (r, w) = @process.pipe()
+  defer w.close()
+  let err = @test_util.expect_error_async <| () => {
+    @async.with_task_group <| group => {
+      let _ = @process.spawn(group, "no_such_program", [], stdout=w)
+      let _ = @process.spawn(group, cat, [], stdin=r)
+    }
+  }
+  assert_true(err is (@os_error.OSError(_) as err) && err.is_ENOENT())
+}
+
+///|
+async test "pipe failure on second spawn" {
+  let cat = cat.wait()
+  let (r, w) = @process.pipe()
+  defer w.close()
+  let err = @test_util.expect_error_async <| () => {
+    @async.with_task_group <| group => {
+      let _ = @process.spawn(group, cat, [], stdin=r)
+      let _ = @process.spawn(group, "no_such_program", [], stdout=w)
+    }
+  }
+  assert_true(err is (@os_error.OSError(_) as err) && err.is_ENOENT())
+}

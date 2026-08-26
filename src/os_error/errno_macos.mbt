@@ -41,3 +41,6 @@ let macos_EINPROGRESS : Int = 36
 
 ///|
 let macos_EWOULDBLOCK : Int = macos_EAGAIN
+
+///|
+let macos_EPIPE : Int = 32

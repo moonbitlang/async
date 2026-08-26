@@ -182,3 +182,10 @@ pub let errno_ENOTSUP : Int = match @env_util.platform {
   MacOS => macos_ENOTSUP
   Windows => windows_ERROR_NOT_SUPPORTED
 }
+
+///|
+pub let errno_EPIPE : Int = match @env_util.platform {
+  Linux => linux_EPIPE
+  MacOS => macos_EPIPE
+  Windows => windows_ERROR_BROKEN_PIPE
+}
