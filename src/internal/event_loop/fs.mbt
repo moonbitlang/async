@@ -195,6 +195,20 @@ pub async fn file_size(fd : @fd_util.Fd, context~ : String) -> Int64 {
 }
 
 ///|
+pub async fn file_size_of_path(path : StringView, context~ : String) -> Int64 {
+  guard! statx_single(
+      path,
+      parent=@fd_util.invalid_fd,
+      follow_symlink=false,
+      STAT_FILE_SIZE,
+      1,
+      context~,
+    )
+    is [i64le(size)]
+  size
+}
+
+///|
 pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
   guard! fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]

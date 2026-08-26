@@ -559,6 +559,18 @@ async test "can_execute - check execute permission" {
 }
 ```
 
+### File Size
+```moonbit nocheck
+///|
+#cfg(target="native")
+async test "get file size by path" {
+  let test_file = "_build/test_size_by_path.txt"
+  @fs.write_file(test_file, b"Hello")
+  inspect(@fs.file_size(test_file), content="5")
+}
+```
+
+
 ## Path Operations
 
 ```moonbit check
