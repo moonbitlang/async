@@ -35,6 +35,8 @@ enum SignalCode {
   SIGBREAK_CODE = 3
 };
 
+void moonbitlang_async_notify_event_loop(int32_t data);
+
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
@@ -51,11 +53,17 @@ int moonbitlang_async_get_signal_by_index(int32_t code) {
 // according to https://learn.microsoft.com/en-us/windows/console/handlerroutine,
 // and a set of console contron events can easily fix into a single byte.
 // So there is no need for atomic integer here
-extern int interested_console_ctrl_event;
+static
+int interested_console_ctrl_event = 0;
 
-// the actual console control handler is in `thread_pool.c`,
-// because it need to refer to the event loop's IO completion port
-BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type);
+BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
+  if (interested_console_ctrl_event & (1 << ctrl_type)) {
+    moonbitlang_async_notify_event_loop(ctrl_type | (1 << 31));
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
 
 MOONBIT_FFI_EXPORT
 void moonbitlang_async_set_global_cancellation_signals(

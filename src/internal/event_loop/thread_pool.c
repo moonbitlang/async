@@ -214,6 +214,17 @@ typedef void* thread_worker_result_t;
 
 #endif
 
+void moonbitlang_async_notify_event_loop(int32_t data) {
+#ifdef _WIN32
+  PostQueuedCompletionStatus(pool.notify_send, data, (ULONG_PTR)pool.notify_recv, 0);
+#else
+  do {
+    if (write(pool.notify_send, &data, sizeof(data)) > 0)
+      break;
+  } while (errno == EINTR);
+#endif
+}
+
 static
 thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
   int sig;
@@ -235,19 +246,7 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
 
     self->waiting = 1;
 
-#ifdef _WIN32
-    PostQueuedCompletionStatus(
-      pool.notify_send,
-      job_id,
-      (ULONG_PTR)pool.notify_recv,
-      0
-    );
-#else
-    do {
-      if (write(pool.notify_send, &job_id, sizeof(int)) > 0)
-        break;
-    } while (errno == EINTR);
-#endif
+    moonbitlang_async_notify_event_loop(job_id);
 
 #ifdef WAKEUP_METHOD_EVENT
     WaitForSingleObject(self->event, INFINITE);
@@ -1406,26 +1405,7 @@ addrinfo_t *moonbitlang_async_get_getaddrinfo_result(struct getaddrinfo_job *job
   return job->result;
 }
 
-#ifdef _WIN32
-
-int interested_console_ctrl_event = 0;
-
-BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
-  if (interested_console_ctrl_event & (1 << ctrl_type)) {
-    PostQueuedCompletionStatus(
-      pool.notify_send,
-      ctrl_type | (1 << 31),
-      (ULONG_PTR)pool.notify_recv,
-      0
-    );
-    return TRUE;
-  } else {
-    return FALSE;
-  }
-}
-
-#else // #ifdef _WIN32
-
+#ifndef _WIN32
 // ===== sigwait job, wait for specific signal =====
 struct sigwait_job {
   sigset_t signals;
