@@ -29,6 +29,7 @@ async fn main {
   let mut msg_after_sleep = None
   let mut msg_finally = None
   let mut use_default_handler = false
+  let mut wait_on_init = false
   for args = @env.args()[1:] {
     match args {
       [] => break
@@ -55,6 +56,10 @@ async fn main {
         use_default_handler = true
         continue rest
       }
+      ["-wait-on-init", .. rest] => {
+        wait_on_init = true
+        continue rest
+      }
       [['-', ..] as flag, ..] => fail("unrecognized argument \{flag}")
       [t, .. rest] => {
         time = @string.parse_int(t)
@@ -62,14 +67,15 @@ async fn main {
       }
     }
   }
+  defer (if msg_finally is Some(msg) { println(msg) })
+  if wait_on_init {
+    ignore(@stdio.stdin.read_some())
+  }
   if !use_default_handler {
     @signal.set_global_cancellation_signals([])
     register_termination_handler()
   }
-  {
-    defer (if msg_finally is Some(msg) { println(msg) })
-    @async.sleep(time)
-  }
+  @async.sleep(time)
   if msg_after_sleep is Some(msg) {
     println(msg)
   }

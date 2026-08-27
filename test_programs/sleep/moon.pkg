@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/env",
   "moonbitlang/async",
   "moonbitlang/async/signal",
+  "moonbitlang/async/stdio",
 }
 
 supported_targets = "-all+native"
