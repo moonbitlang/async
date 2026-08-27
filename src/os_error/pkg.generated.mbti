@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/os_error"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn check_errno(String) -> Unit raise OSError
 
@@ -27,6 +31,7 @@ pub fn OSError::is_ENOTDIR(Self) -> Bool
 pub fn OSError::is_ERROR_NOTIFY_ENUM_DIR(Self) -> Bool
 pub fn OSError::is_nonblocking_io_error(Self) -> Bool
 pub impl Show for OSError
+pub impl @debug.Debug for OSError
 
 // Types and methods
 
