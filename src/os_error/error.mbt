@@ -82,6 +82,15 @@ pub impl Show for OSError with fn output(self, logger) -> Unit {
 }
 
 ///|
+pub impl Debug for OSError with fn to_repr(self) {
+  let OSError(errno, context~) = self
+  Repr::opaque_(
+    "@os_error.OSError",
+    Repr::string("\{context}: \{errno_to_string(errno)}"),
+  )
+}
+
+///|
 pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
   let OSError(errno, ..) = err
   errno_is_nonblocking_io_error(errno)
