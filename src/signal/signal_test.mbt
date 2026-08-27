@@ -124,3 +124,59 @@ async test "cancel with SIGHUP" {
     "cancelling task running process", "from process: before exit", "process terminates",
   ])
 }
+
+///|
+async test "change cancellation signal set in the middle #1" {
+  let test_prog = sleep_prog.wait()
+  let log = []
+  @async.with_task_group() <| group => {
+    let (r1, w1) = @process.write_to_process()
+    defer w1.close()
+    let (r2, w2) = @process.read_from_process()
+    group.spawn_bg() <| () => {
+      defer r2.close()
+      while r2.read_some() is Some(data) {
+        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+        log.push("from process: \{data}")
+      }
+    }
+    let proc = @process.spawn(group, test_prog, stdin=r1, stdout=w2, [
+      "2000", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
+    ])
+    @async.sleep(250)
+    proc.cancel()
+    log.push("cancelling task running process")
+    @async.sleep(250)
+  }
+  json_inspect(log, content=[
+    "cancelling task running process", "from process: before exit",
+  ])
+}
+
+///|
+async test "change cancellation signal set in the middle #2" {
+  let test_prog = sleep_prog.wait()
+  let log = []
+  @async.with_task_group() <| group => {
+    let (r1, w1) = @process.write_to_process()
+    defer w1.close()
+    let (r2, w2) = @process.read_from_process()
+    group.spawn_bg() <| () => {
+      defer r2.close()
+      while r2.read_some() is Some(data) {
+        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+        log.push("from process: \{data}")
+      }
+    }
+    let proc = @process.spawn(group, test_prog, stdin=r1, stdout=w2, [
+      "500", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
+    ])
+    w1.write("whatever")
+    @async.sleep(250)
+    proc.cancel()
+    log.push("cancelling task running process")
+  }
+  json_inspect(log, content=[
+    "cancelling task running process", "from process: received termination signal",
+  ])
+}
