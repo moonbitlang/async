@@ -128,26 +128,26 @@ async fn raw_spawn_unix(
   for i, arg in args {
     argv.add_entry(i + 1, arg)
   }
-  defer {
+  errdefer {
     if stdin is Some(p) {
-      p.after_spawn()
+      p.on_failure()
     }
-    if stdout is Some(p) {
-      p.after_spawn()
+    if stdout is Some(p) && !p.is_shared() {
+      p.on_failure()
     }
-    if stderr is Some(p) {
-      p.after_spawn()
+    if stderr is Some(p) && !p.is_shared() {
+      p.on_failure()
     }
   }
-  let stdin = match stdin {
+  let stdin_fd = match stdin {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let stdout = match stdout {
+  let stdout_fd = match stdout {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let stderr = match stderr {
+  let stderr_fd = match stderr {
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
@@ -155,17 +155,27 @@ async fn raw_spawn_unix(
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
   ignore(no_console_window)
-  @event_loop.spawn_unix(
+  let process = @event_loop.spawn_unix(
     cmd,
     argv.0,
     env=OsEnv::make(extra_env, inherit_env~).0,
-    stdin~,
-    stdout~,
-    stderr~,
+    stdin=stdin_fd,
+    stdout=stdout_fd,
+    stderr=stderr_fd,
     is_orphan~,
     cwd~,
     context~,
   )
+  if stdin is Some(p) {
+    p.on_success()
+  }
+  if stdout is Some(p) && !p.is_shared() {
+    p.on_success()
+  }
+  if stderr is Some(p) && !p.is_shared() {
+    p.on_success()
+  }
+  process
 }
 
 ///|

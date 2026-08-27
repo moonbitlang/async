@@ -44,3 +44,6 @@ let windows_ERROR_DIRECTORY : Int = 267
 
 ///|
 let windows_ERROR_NOT_SUPPORTED : Int = 50
+
+///|
+let windows_ERROR_BROKEN_PIPE : Int = 109

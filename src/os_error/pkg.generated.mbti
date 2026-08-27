@@ -12,6 +12,8 @@ pub let errno_ENOTDIR : Int
 
 pub let errno_ENOTSUP : Int
 
+pub let errno_EPIPE : Int
+
 pub fn errno_to_string(Int) -> String
 
 pub fn get_errno() -> Int
