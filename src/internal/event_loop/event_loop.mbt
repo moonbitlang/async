@@ -81,12 +81,6 @@ fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
     @os_error.check_errno("initialize thread pool")
   }
   let extra = PlatformEventLoopExtra::new()
-  let max_worker_count = match platform {
-    Linux | MacOS =>
-      // reserve one extra worker for the global `sigwait` job
-      max_worker_count + 1
-    Windows => max_worker_count
-  }
   {
     bus,
     fds: Map([]),
