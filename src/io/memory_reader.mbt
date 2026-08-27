@@ -43,7 +43,7 @@ pub fn MemoryReader::MemoryReader(
     defer w.close()
     f(w)
   }
-  { reader: r, writer }
+  { reader: r, writer, }
 }
 
 ///|

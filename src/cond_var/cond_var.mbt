@@ -38,7 +38,7 @@ struct Cond {
 /// Create a new condition variable.
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { waiters: Deque([]) }
+  { waiters: Deque([]), }
 }
 
 ///|
@@ -49,7 +49,7 @@ pub fn Cond::Cond() -> Cond {
 /// in this case, an cancellation will be raised from `wait`.
 pub async fn Cond::wait(cond : Cond) -> Unit {
   let coro = @coroutine.current_coroutine()
-  let waiter = { woken: false, coro: Some(coro) }
+  let waiter = { woken: false, coro: Some(coro), }
   cond.waiters.push_back(waiter)
   @coroutine.suspend() catch {
     _ if waiter.woken => ()

@@ -82,7 +82,7 @@ async test "read dir" {
 ///|
 async test "read file" {
   let content = @js_async.run_promise(signal => {
-    (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal })
+    (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal, })
   })
   inspect(
     content,

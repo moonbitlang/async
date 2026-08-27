@@ -52,7 +52,7 @@ pub async fn Cmd::output(
   max_output_bytes? : Int = default_max_output_bytes,
 ) -> Output {
   validate_output_limit(max_output_bytes)
-  Pipeline::{ commands: [self] }.execute(Buffer(max_output_bytes), timeout_ms)
+  Pipeline::{ commands: [self], }.execute(Buffer(max_output_bytes), timeout_ms)
 }
 
 ///|
@@ -70,7 +70,7 @@ pub async fn Cmd::output(
 /// }
 /// ```
 pub async fn Cmd::status(self : Cmd, timeout_ms? : Int) -> Int {
-  Pipeline::{ commands: [self] }.execute(Inherited, timeout_ms).exit_code
+  Pipeline::{ commands: [self], }.execute(Inherited, timeout_ms).exit_code
 }
 
 ///|
@@ -93,7 +93,7 @@ pub async fn Cmd::status(self : Cmd, timeout_ms? : Int) -> Int {
 /// }
 /// ```
 pub async fn Cmd::run(self : Cmd, timeout_ms? : Int) -> Unit {
-  Pipeline::{ commands: [self] }.execute(Inherited, timeout_ms).check()
+  Pipeline::{ commands: [self], }.execute(Inherited, timeout_ms).check()
 }
 
 ///|
@@ -134,7 +134,7 @@ pub async fn Cmd::each_line(
   max_line_bytes? : Int = default_max_output_bytes,
 ) -> Int {
   validate_output_limit(max_line_bytes)
-  Pipeline::{ commands: [self] }.execute(
+  Pipeline::{ commands: [self], }.execute(
     Lines(on_line, max_line_bytes),
     timeout_ms,
   ).exit_code

@@ -330,7 +330,7 @@ async fn Directory::next_aux(
     }
   }
   let file_id = dir.buf.entry_file_id(offset)
-  let entry = { name, is_dir, file_id }
+  let entry = { name, is_dir, file_id, }
   // Native file watching consumes this private field. Wasm keeps the same
   // entry shape even though watch support is not compiled there yet.
   ignore(entry.file_id)

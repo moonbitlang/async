@@ -69,7 +69,7 @@ pub fn register_hook(
   init? : () -> Unit raise,
   exit? : () -> Unit raise,
 ) -> Unit {
-  hooks.push({ init, exit })
+  hooks.push({ init, exit, })
 }
 
 ///|
@@ -506,7 +506,7 @@ async fn perform_job_in_worker(
   match evloop.idle_workers.pop_front() {
     None if evloop.running_workers.length() >= evloop.max_worker_count => {
       let waiter = @coroutine.current_coroutine()
-      let queued_job = { job_id, job, waiter }
+      let queued_job = { job_id, job, waiter, }
       evloop.job_queue.add(queued_job)
       @coroutine.suspend() catch {
         err =>

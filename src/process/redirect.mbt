@@ -57,8 +57,8 @@ pub fn read_from_process(
   let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
   let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
   (
-    { io: r, read_buf: @io.ReaderBuffer::new() },
-    TempPipeWrite::{ pipe: w, shared, closed: false },
+    { io: r, read_buf: @io.ReaderBuffer::new(), },
+    TempPipeWrite::{ pipe: w, shared, closed: false, },
   )
 }
 
@@ -76,7 +76,7 @@ pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
   )
   let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
   let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
-  (TempPipeRead::{ pipe: r, closed: false }, w)
+  (TempPipeRead::{ pipe: r, closed: false, }, w)
 }
 
 ///|
@@ -92,8 +92,8 @@ pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise {
   let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
   let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
   (
-    TempPipeRead::{ pipe: r, closed: false },
-    TempPipeWrite::{ pipe: w, shared: false, closed: false },
+    TempPipeRead::{ pipe: r, closed: false, },
+    TempPipeWrite::{ pipe: w, shared: false, closed: false, },
   )
 }
 
@@ -189,7 +189,7 @@ pub async fn redirect_to_file(
     mode=permission,
     context="@process.redirect_to_file()",
   )
-  RedirectToFile::{ io: file, shared, closed: false }
+  RedirectToFile::{ io: file, shared, closed: false, }
 }
 
 ///|
@@ -204,7 +204,7 @@ pub async fn redirect_from_file(path : String) -> &ProcessInput {
     mode=0,
     context="@process.redirect_from_file()",
   )
-  RedirectToFile::{ io: file, shared: false, closed: false }
+  RedirectToFile::{ io: file, shared: false, closed: false, }
 }
 
 ///|

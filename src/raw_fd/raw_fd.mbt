@@ -33,7 +33,7 @@ pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
   let is_async = @fd_util.fd_is_nonblocking(fd, context~)
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~) }
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~), }
 }
 
 ///|
@@ -48,7 +48,7 @@ pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
 pub async fn RawFd::RawFd(fd : @fd_util.Fd) -> RawFd {
   let context = "@raw_fd.RawFd::new()"
   let kind = @event_loop.kind_of_fd(fd, context~)
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false) }
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false), }
 }
 
 ///|
@@ -110,7 +110,7 @@ pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
   let kind = @event_loop.kind_of_fd(fd, context~)
   let is_async = @fd_util.fd_is_nonblocking(fd, context~)
   let read_buf = @io.ReaderBuffer::new()
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~), read_buf }
+  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~), read_buf, }
 }
 
 ///|
@@ -125,7 +125,11 @@ pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
   let context = "@raw_fd.RawFdStream()"
   let kind = @event_loop.kind_of_fd(fd, context~)
   let read_buf = @io.ReaderBuffer::new()
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false), read_buf }
+  {
+    fd,
+    io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false),
+    read_buf,
+  }
 }
 
 ///|

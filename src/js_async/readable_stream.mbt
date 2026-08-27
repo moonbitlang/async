@@ -32,7 +32,7 @@ extern "js" fn StreamReader::read_ffi(
 async fn StreamReader::read(reader : StreamReader) -> Bytes? {
   match reader.read_ffi().wait() {
     { done: true, .. } => None
-    { done: false, value } => Some(value)
+    { done: false, value, } => Some(value)
   }
 }
 
@@ -112,7 +112,7 @@ pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
       w.write(chunk)
     }
   })
-  { read_end: r, worker }
+  { read_end: r, worker, }
 }
 
 ///|

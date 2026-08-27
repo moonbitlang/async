@@ -60,7 +60,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
     None
   }
   let local_addr = getsockname(sock, family, context~)
-  { io, addr: local_addr, dst_addr }
+  { io, addr: local_addr, dst_addr, }
 }
 
 ///|
@@ -228,7 +228,7 @@ pub async fn UdpServer::UdpServer(
   // the OS will assign a random port for us,
   // in this case, we need to retrieve the actual port via `getsockname`.
   let addr = getsockname(sock, family, context~)
-  { io, addr, is_multicast_only: false }
+  { io, addr, is_multicast_only: false, }
 }
 
 ///|
@@ -274,7 +274,7 @@ pub async fn UdpServer::multicast(
   // the OS will assign a random port for us,
   // in this case, we need to retrieve the actual port via `getsockname`.
   let addr = getsockname(sock, family, context~)
-  { io, addr, is_multicast_only: true }
+  { io, addr, is_multicast_only: true, }
 }
 
 ///|

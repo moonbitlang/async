@@ -43,7 +43,7 @@ pub async fn spawn_unix(
   } else {
     Some(IoHandle::from_fd(pidfd, kind=Unknown, read_only=true))
   }
-  { pid, handle }
+  { pid, handle, }
 }
 
 ///|

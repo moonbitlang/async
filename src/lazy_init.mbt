@@ -97,5 +97,5 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 #alias(new, deprecated)
 #callsite(autofill(loc))
 pub fn[X] Lazy::Lazy(f : async () -> X, loc~ : SourceLoc) -> Lazy[X] {
-  { worker: f, waiters: Set([]), state: Uninitialized, loc }
+  { worker: f, waiters: Set([]), state: Uninitialized, loc, }
 }

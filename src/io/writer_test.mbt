@@ -93,7 +93,7 @@ extend DummyWriter with @io.Writer::{write}
 ///|
 async test "write cancel" {
   let log = StringBuilder()
-  let writer = { logger: log, base_timeout: 300 }
+  let writer = { logger: log, base_timeout: 300, }
   @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang

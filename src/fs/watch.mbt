@@ -691,7 +691,7 @@ async fn Watcher::scan_dir(
   defer dir_obj.close()
   while dir_obj.next_aux(include_special=false, include_hidden=true, context~)
         is Some(ent) {
-    let new_file_id = { ..dir_id, file_id: ent.file_id }
+    let new_file_id = { ..dir_id, file_id: ent.file_id, }
     self.add_file_at(
       dir,
       ent.name,

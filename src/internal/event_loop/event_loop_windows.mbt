@@ -35,7 +35,7 @@ fn WindowsEventLoopExtra::new() -> Self raise {
   if init_WSA_ffi() != 0 {
     @os_error.check_errno("initialize WSA")
   }
-  WindowsEventLoopExtra::{  }
+  WindowsEventLoopExtra::{ }
 }
 
 ///|

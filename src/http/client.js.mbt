@@ -91,7 +91,7 @@ fn Client::connect(
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
-  { host, headers, protocol, request: None, response_body: None }
+  { host, headers, protocol, request: None, response_body: None, }
 }
 
 ///|
@@ -267,7 +267,7 @@ pub async fn Client::request(
   for k, v in extra_headers {
     headers.append(k.0, v)
   }
-  let request : OngoingRequest = { meth, uri, headers, body: Buffer() }
+  let request : OngoingRequest = { meth, uri, headers, body: Buffer(), }
   self.request = Some(request)
 }
 

@@ -251,7 +251,7 @@ pub async fn[X] spawn(
       err => raise err
     }
   })
-  { pid, result }
+  { pid, result, }
 }
 
 ///|

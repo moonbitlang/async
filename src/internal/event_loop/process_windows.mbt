@@ -42,7 +42,7 @@ pub async fn spawn_windows(
     kind=Unknown,
     is_async=false,
   )
-  { pid, handle: Some(handle) }
+  { pid, handle: Some(handle), }
 }
 
 ///|

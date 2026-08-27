@@ -363,7 +363,7 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   } else {
     None
   }
-  { opcode, fin: fin != 0, payload_len }
+  { opcode, fin: fin != 0, payload_len, }
 }
 
 ///|
@@ -516,7 +516,7 @@ pub async fn Conn::recv(self : Conn) -> Message {
       }
     }
   }
-  let message = { kind, conn: self, state: Active }
+  let message = { kind, conn: self, state: Active, }
   self.curr_message = Some(message)
   message
 }
