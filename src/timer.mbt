@@ -54,7 +54,7 @@ pub struct Timer {
 #alias(new, deprecated)
 pub fn Timer::Timer(duration : Int) -> Timer {
   let expire_time = now() + duration.to_int64()
-  { state: Detached, duration, expire_time, waiters: Set([]) }
+  { state: Detached, duration, expire_time, waiters: Set([]), }
 }
 
 ///|

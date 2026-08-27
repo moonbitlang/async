@@ -97,7 +97,7 @@ priv struct Job {
 
 ///|
 fn Job::Job(handle : JobHandle, copy_output? : (JobHandle) -> Unit) -> Job {
-  { handle, copy_output }
+  { handle, copy_output, }
 }
 
 ///|

@@ -34,7 +34,7 @@ pub fn[W] BufferedWriter::new(
   writer : W,
   size? : Int = 1024,
 ) -> BufferedWriter[W] {
-  { writer, buf: FixedArray::make(size, 0), len: 0 }
+  { writer, buf: FixedArray::make(size, 0), len: 0, }
 }
 
 ///|

@@ -24,7 +24,7 @@ struct Mutex {
 /// Create a new mutex.
 /// The mutex is initially in released state.
 pub fn Mutex::Mutex() -> Mutex {
-  { semaphore: Semaphore(1) }
+  { semaphore: Semaphore(1), }
 }
 
 ///|

@@ -49,7 +49,7 @@ pub fn Semaphore::Semaphore(
     abort("size of semaphore must be positive")
   }
   guard! initial_value >= 0 && initial_value <= size
-  { value: initial_value, size, waiters: Deque([]) }
+  { value: initial_value, size, waiters: Deque([]), }
 }
 
 ///|
@@ -91,7 +91,10 @@ pub async fn Semaphore::acquire(self : Semaphore) -> Unit {
   if self.value > 0 {
     self.value -= 1
   } else {
-    let waiter = { coro: Some(@coroutine.current_coroutine()), acquired: false }
+    let waiter = {
+      coro: Some(@coroutine.current_coroutine()),
+      acquired: false,
+    }
     self.waiters.push_back(waiter)
     @coroutine.suspend() catch {
       _ if waiter.acquired => ()

@@ -75,7 +75,7 @@ pub async fn open(
         // Reading is unaffected by `append`.
         io.write_offset = -1
       }
-      (io, { dev_id, file_id })
+      (io, { dev_id, file_id, })
     }
   }
 }

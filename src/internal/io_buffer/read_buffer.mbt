@@ -22,7 +22,7 @@ pub(all) struct Buffer {
 ///|
 #as_free_fn
 pub fn Buffer::new(size : Int) -> Buffer {
-  { buf: FixedArray::make(size, 0), start: 0, len: 0 }
+  { buf: FixedArray::make(size, 0), start: 0, len: 0, }
 }
 
 ///|

@@ -68,5 +68,5 @@ struct Pipeline {
 /// }
 /// ```
 pub fn Pipeline::Pipeline(commands : Array[Cmd]) -> Pipeline {
-  { commands: commands.copy() }
+  { commands: commands.copy(), }
 }

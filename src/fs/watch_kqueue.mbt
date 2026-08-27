@@ -133,7 +133,7 @@ impl WatcherBackend for KqueueWatcher with fn add_file(
     file.close()
     @os_error.check_errno("\{context}: \{path.escape()}")
   }
-  self.watched[fd] = { identity, io: file }
+  self.watched[fd] = { identity, io: file, }
   fd
 }
 

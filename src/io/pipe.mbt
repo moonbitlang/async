@@ -60,7 +60,7 @@ struct PipeWrite(Pipe)
 /// Data written to the write end can be obtained from the read end.
 /// Useful for testing and converting writer-based function to reader.
 pub fn pipe() -> (PipeRead, PipeWrite) {
-  let p = { reader: NoReader, writer: NoWriter, read_buf: ReaderBuffer::new() }
+  let p = { reader: NoReader, writer: NoWriter, read_buf: ReaderBuffer::new(), }
   (PipeRead(p), PipeWrite(p))
 }
 

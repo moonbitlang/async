@@ -189,7 +189,7 @@ pub fn[G, X] TaskGroup::spawn(
     allow_failure~,
     loc~,
   )
-  { value, coro }
+  { value, coro, }
 }
 
 ///|

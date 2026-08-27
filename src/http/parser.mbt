@@ -323,7 +323,7 @@ async fn Reader::read_request(self : Reader) -> Request {
   }
   let (headers, cookies) = self.read_headers()
   guard cookies.length() is 0 else { raise BadRequest }
-  { meth, path, headers }
+  { meth, path, headers, }
 }
 
 ///|
@@ -397,7 +397,7 @@ async fn Reader::read_response(
     self.body = Empty
   }
 
-  { code, reason, headers, cookies }
+  { code, reason, headers, cookies, }
 }
 
 ///|

@@ -50,7 +50,7 @@ pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
     )
     |> Some
   }
-  { pid, handle }
+  { pid, handle, }
 }
 
 ///|

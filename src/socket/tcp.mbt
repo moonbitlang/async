@@ -95,7 +95,7 @@ pub async fn TcpServer::TcpServer(
   // the OS will assign a random port for us,
   // in this case, we need to retrieve the actual port via `getsockname`.
   let addr = getsockname(sock, family, context~)
-  { io, addr }
+  { io, addr, }
 }
 
 ///|
@@ -177,7 +177,7 @@ async fn TcpServer::accept_unix(self : TcpServer) -> (Tcp, Addr) {
   }
   @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
   // The local address of a server connection is the same as the listen address
-  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
 }
 
 ///|
@@ -196,7 +196,7 @@ async fn TcpServer::accept_windows(self : TcpServer) -> (Tcp, Addr) {
     @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
   // The local address of a server connection is the same as the listen address
-  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
 }
 
 ///|
@@ -267,7 +267,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
   }
   conn.connect(addr.0, context~)
   let addr = getsockname(sock, family, context~)
-  { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
+  { io: conn, addr, read_buf: @io.ReaderBuffer::new(), }
 }
 
 ///|

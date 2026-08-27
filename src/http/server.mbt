@@ -224,7 +224,7 @@ pub async fn Server::Server(
   headers? : Headers = Map([]),
 ) -> Server {
   let server = @socket.TcpServer(addr, dual_stack?, reuse_addr?)
-  { addr: server.addr, server, headers }
+  { addr: server.addr, server, headers, }
 }
 
 ///|

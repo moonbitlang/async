@@ -311,7 +311,7 @@ async fn WindowsWatcher::event_handler(self : WindowsWatcher) -> Unit {
       let size = buf.event_size(offset)
       let dirty_identity : FileIdentity = if buf.has_file_ids() {
         let file_id = buf.dirty_file_id(offset)
-        { dev_id: self.dev_id, file_id }
+        { dev_id: self.dev_id, file_id, }
       } else {
         let path = buf.get_path(offset)
         let path = if buf.is_modify(offset) {

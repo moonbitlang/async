@@ -34,7 +34,7 @@ fn IoResult::IoResult(
   handle : IoResultHandle,
   copy_output? : (IoResultHandle, Int) -> Unit,
 ) -> IoResult {
-  { handle, copy_output }
+  { handle, copy_output, }
 }
 
 ///|

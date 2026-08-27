@@ -80,7 +80,7 @@ fn build_huffman_tree(lengths : FixedArray[Int]) -> HuffmanTree raise {
       table[index] = packed
     }
   }
-  { table, max_bits }
+  { table, max_bits, }
 }
 
 ///|

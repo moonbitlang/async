@@ -134,7 +134,7 @@ pub async fn open(
     mode=permission,
     context="@fs.open()",
   )
-  { io, read_buf: @io.ReaderBuffer::new() }
+  { io, read_buf: @io.ReaderBuffer::new(), }
 }
 
 ///|
