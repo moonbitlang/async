@@ -74,8 +74,11 @@ priv enum SignalHandler {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(target="wasm")
 fn setup_signal_handler_unix() -> @coroutine.Coroutine {
+  // This is the old implementation that reuse worker thread pool.
+  // Native backend has already migrated to more robust implementation.
+  // TODO: port Wasm1 as well.
   guard! curr_loop.val is Some(evloop)
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
@@ -95,11 +98,22 @@ fn setup_signal_handler_unix() -> @coroutine.Coroutine {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn start_signal_handler_ffi() -> Unit = "moonbitlang_async_start_signal_handler"
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn terminate_signal_handler_ffi() -> Unit = "moonbitlang_async_terminate_signal_handler"
+
+///|
+#cfg(target="wasm")
 async fn EventLoop::terminate_signal_handler_unix(
   evloop : EventLoop,
   sigwait_task : @coroutine.Coroutine,
 ) -> Unit {
+  // This is the old implementation that reuse worker thread pool.
+  // Native backend has already migrated to more robust implementation.
+  // TODO: port Wasm1 as well.
   sigwait_task.cancel()
   // Undo the `-= 1` in `setup_sigwait_signal_handler`.
   evloop.blocked_tasks += 1
@@ -148,17 +162,25 @@ fn EventLoop::terminate_signal_handler_windows(
 ///|
 #cfg(all(target="native", not(platform="windows")))
 fn setup_signal_handler() -> SignalHandler {
-  SigwaitHandler(setup_signal_handler_unix())
+  if !global_signal_handler_initialized.val {
+    set_global_cancellation_signals(all_signals)
+  }
+  start_signal_handler_ffi()
+  ConsoleControlHandler
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-async fn EventLoop::terminate_signal_handler(
+fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   handler : SignalHandler,
-) -> Unit {
-  guard! handler is SigwaitHandler(sigwait_task)
-  evloop.terminate_signal_handler_unix(sigwait_task)
+) -> Unit raise {
+  guard! handler is ConsoleControlHandler
+  global_signal_handler_initialized.val = false
+  terminate_signal_handler_ffi()
+  if evloop.killed_by_signal is Some(signal) {
+    raise KilledBySignal(signal)
+  }
 }
 
 ///|
@@ -175,6 +197,7 @@ fn EventLoop::terminate_signal_handler(
   handler : SignalHandler,
 ) -> Unit raise {
   guard! handler is ConsoleControlHandler
+  global_signal_handler_initialized.val = false
   evloop.terminate_signal_handler_windows()
 }
 
@@ -195,6 +218,7 @@ async fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   signal_handler : SignalHandler,
 ) -> Unit {
+  global_signal_handler_initialized.val = false
   match signal_handler {
     SigwaitHandler(sigwait_task) =>
       evloop.terminate_signal_handler_unix(sigwait_task)

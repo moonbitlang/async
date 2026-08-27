@@ -348,11 +348,6 @@ extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_
 
 ///|
 #cfg(not(platform="windows"))
-#borrow(signals)
-extern "C" fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job = "moonbitlang_async_make_sigwait_job"
-
-///|
-#cfg(not(platform="windows"))
 #owned(path)
 extern "C" fn Job::inotify_add_watch(
   inotify : @fd_util.Fd,
