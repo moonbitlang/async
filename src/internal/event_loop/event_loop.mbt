@@ -149,12 +149,19 @@ pub fn with_event_loop(
   })
   @coroutine.reschedule()
   evloop.main = Some(main)
-  if external_loop.val is Some(extloop) {
-    external_loop.val = None
-    defer extloop.terminate()
-    evloop.run_with_external_loop(extloop)
-  } else {
-    evloop.run_forever()
+  try {
+    if external_loop.val is Some(extloop) {
+      external_loop.val = None
+      defer extloop.terminate()
+      evloop.run_with_external_loop(extloop)
+    } else {
+      evloop.run_forever()
+    }
+  } catch {
+    err => {
+      @env_util.eprintln("fatal runtime error: \{err}")
+      panic()
+    }
   }
   main.unwrap()
 }
@@ -239,7 +246,7 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
 }
 
 ///|
-fn EventLoop::cleanup(self : Self, should_check_fd_leak~ : Bool) -> Unit raise {
+fn EventLoop::cleanup(self : Self) -> Unit raise {
   for hook in hooks {
     if hook.exit is Some(exit) {
       exit()
@@ -258,7 +265,7 @@ fn EventLoop::cleanup(self : Self, should_check_fd_leak~ : Bool) -> Unit raise {
       context="runtime internal: close leaking fd",
     )
   }
-  if should_check_fd_leak {
+  if check_fd_leak.val {
     self.check_fd_leak()
   }
   self.fds.clear()
@@ -326,15 +333,6 @@ fn EventLoop::check_dead_lock(self : Self) -> Unit {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  // In case the event loop has encountered some fatal error,
-  // propagate the error to relevant coroutines.
-  errdefer (while @coroutine.has_immediately_ready_task() ||
-                  self.blocked_tasks > 0 {
-    @coroutine.reschedule()
-  })
-  // only check for fd leak if event loop succeeded
-  let mut should_check_fd_leak = false
-  defer self.cleanup(should_check_fd_leak~)
   let mut checked_deadlock = false
   while !@coroutine.all_coroutines().is_empty() {
     let timeout = self.get_next_timeout()
@@ -354,8 +352,7 @@ fn EventLoop::run_forever(self : Self) -> Unit raise {
     }
     @coroutine.reschedule()
   }
-  self.check_dead_lock()
-  should_check_fd_leak = check_fd_leak.val
+  self.cleanup()
 }
 
 ///|
@@ -371,15 +368,6 @@ fn EventLoop::run_with_external_loop(
     @os_error.check_errno("runtime internal: spawn waiter")
   }
   defer waiter.terminate()
-  // In case the event loop has encountered some fatal error,
-  // propagate the error to relevant coroutines.
-  errdefer (while @coroutine.has_immediately_ready_task() ||
-                  self.blocked_tasks > 0 {
-    @coroutine.reschedule()
-  })
-  // only check for fd leak if event loop succeeded
-  let mut should_check_fd_leak = false
-  defer self.cleanup(should_check_fd_leak~)
   while !@coroutine.all_coroutines().is_empty() {
     let timeout = match self.get_next_timeout() {
       _..<0 => None
@@ -401,7 +389,7 @@ fn EventLoop::run_with_external_loop(
     }
     @coroutine.reschedule()
   }
-  should_check_fd_leak = check_fd_leak.val
+  self.cleanup()
 }
 
 ///|
