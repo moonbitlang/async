@@ -126,6 +126,7 @@ jobs:
     timeout-minutes: 10
     env:
       MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
     steps:
       - uses: actions/checkout@v4
         with:
@@ -148,11 +149,6 @@ jobs:
         run: |
           moon update
 
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
-
       - name: setup sanitizer check
         run: |
           moon run --debug test_programs/setup_sanitizer_check
@@ -167,6 +163,7 @@ jobs:
     timeout-minutes: 10
     env:
       MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
     steps:
       - name: disable auto CRLF
         run: git config --global core.autocrlf false
@@ -195,12 +192,6 @@ jobs:
       - name: moon update
         run: |
           moon update
-
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          $out_path = Convert-Path ~/.moon/lib/libmoonbitrun.o
-          cl.exe dummy_libmoonbitrun.c /c /Fo: $out_path
 
       - name: setup sanitizer check
         run: |
