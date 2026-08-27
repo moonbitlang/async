@@ -31,7 +31,7 @@ priv struct EventLoop {
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
   mut signal_handler : SignalHandler?
-  mut killed_by_signal : Int?
+  mut err : Error?
   mut blocked_tasks : Int
 }
 
@@ -95,7 +95,7 @@ fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
     timers: SortedSet([]),
     main: None,
     signal_handler: None,
-    killed_by_signal: None,
+    err: None,
     blocked_tasks: 0,
   }
 }
@@ -156,11 +156,18 @@ pub fn with_event_loop(
   } else {
     evloop.run_forever()
   }
-  main.unwrap()
+  if evloop.err is Some(err) {
+    raise err
+  } else {
+    main.unwrap()
+  }
 }
 
 ///|
 async fn EventLoop::suspend(evloop : EventLoop) -> Unit {
+  if evloop.err is Some(err) {
+    raise err
+  }
   evloop.blocked_tasks += 1
   defer {
     evloop.blocked_tasks -= 1
@@ -201,7 +208,7 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     if self.main is Some(main) {
       main.cancel()
     }
-    self.killed_by_signal = Some(job_id ^ (1 << 31))
+    self.err = Some(KilledBySignal(job_id ^ (1 << 31)))
   }
   guard! self.running_workers.get(job_id) is Some(worker)
   self.running_workers.remove(job_id)
@@ -239,26 +246,34 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
 }
 
 ///|
-fn EventLoop::cleanup(self : Self, should_check_fd_leak~ : Bool) -> Unit raise {
+fn EventLoop::cleanup(self : Self) -> Unit raise {
+  if self.err is Some(err) {
+    // In case the event loop has encountered some fatal error,
+    // propagate the error to relevant coroutines.
+    if self.main is Some(main) {
+      main.cancel()
+    }
+    while !@coroutine.all_coroutines().is_empty() {
+      if !@coroutine.has_immediately_ready_task() {
+        @env_util.eprintln("fatal runtime error: \{err}")
+        panic()
+      }
+      @coroutine.reschedule()
+    }
+  }
   for hook in hooks {
     if hook.exit is Some(exit) {
       exit()
     }
   }
   for fd, handle in self.fds {
-    if handle.read is Waiting(coro) {
-      coro.cancel()
-    }
-    if handle.write is Waiting(coro) {
-      coro.cancel()
-    }
     @fd_util.close(
       fd,
       kind=handle.kind,
       context="runtime internal: close leaking fd",
     )
   }
-  if should_check_fd_leak {
+  if self.err is None && check_fd_leak.val {
     self.check_fd_leak()
   }
   self.fds.clear()
@@ -326,36 +341,30 @@ fn EventLoop::check_dead_lock(self : Self) -> Unit {
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  // In case the event loop has encountered some fatal error,
-  // propagate the error to relevant coroutines.
-  errdefer (while @coroutine.has_immediately_ready_task() ||
-                  self.blocked_tasks > 0 {
-    @coroutine.reschedule()
-  })
-  // only check for fd leak if event loop succeeded
-  let mut should_check_fd_leak = false
-  defer self.cleanup(should_check_fd_leak~)
   let mut checked_deadlock = false
-  while !@coroutine.all_coroutines().is_empty() {
-    let timeout = self.get_next_timeout()
-    if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
-      // The user may decide to ignore deadlock situation,
-      // in this case we only perform the deadlock check once.
-      checked_deadlock = true
-      self.check_dead_lock()
+  try {
+    while !@coroutine.all_coroutines().is_empty() {
+      let timeout = self.get_next_timeout()
+      if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
+        // The user may decide to ignore deadlock situation,
+        // in this case we only perform the deadlock check once.
+        checked_deadlock = true
+        self.check_dead_lock()
+      }
+      let n = self.wait_for_event(timeout~)
+      if timeout >= 0 {
+        self.handle_timers()
+      }
+      for i in 0..<n {
+        let event = self.bus.get_event(i)
+        self.extra.handle_event(self, event)
+      }
+      @coroutine.reschedule()
     }
-    let n = self.wait_for_event(timeout~)
-    if timeout >= 0 {
-      self.handle_timers()
-    }
-    for i in 0..<n {
-      let event = self.bus.get_event(i)
-      self.extra.handle_event(self, event)
-    }
-    @coroutine.reschedule()
+  } catch {
+    err => self.err = Some(err)
   }
-  self.check_dead_lock()
-  should_check_fd_leak = check_fd_leak.val
+  self.cleanup()
 }
 
 ///|
@@ -371,37 +380,32 @@ fn EventLoop::run_with_external_loop(
     @os_error.check_errno("runtime internal: spawn waiter")
   }
   defer waiter.terminate()
-  // In case the event loop has encountered some fatal error,
-  // propagate the error to relevant coroutines.
-  errdefer (while @coroutine.has_immediately_ready_task() ||
-                  self.blocked_tasks > 0 {
-    @coroutine.reschedule()
-  })
-  // only check for fd leak if event loop succeeded
-  let mut should_check_fd_leak = false
-  defer self.cleanup(should_check_fd_leak~)
-  while !@coroutine.all_coroutines().is_empty() {
-    let timeout = match self.get_next_timeout() {
-      _..<0 => None
-      timeout => Some(timeout)
-    }
-    extloop.poll(timeout?)
-    if !self.timers.is_empty() {
-      self.handle_timers()
-    }
-    let n = waiter.get_events()
-    if n > 0 {
-      defer waiter.wake()
-      for i in 0..<n {
-        let event = self.bus.get_event(i)
-        self.extra.handle_event(self, event)
+  try {
+    while !@coroutine.all_coroutines().is_empty() {
+      let timeout = match self.get_next_timeout() {
+        _..<0 => None
+        timeout => Some(timeout)
       }
-    } else if n < 0 {
-      @os_error.check_errno("runtime internal: poll_wait")
+      extloop.poll(timeout?)
+      if !self.timers.is_empty() {
+        self.handle_timers()
+      }
+      let n = waiter.get_events()
+      if n > 0 {
+        defer waiter.wake()
+        for i in 0..<n {
+          let event = self.bus.get_event(i)
+          self.extra.handle_event(self, event)
+        }
+      } else if n < 0 {
+        @os_error.check_errno("runtime internal: poll_wait")
+      }
+      @coroutine.reschedule()
     }
-    @coroutine.reschedule()
+  } catch {
+    err => self.err = Some(err)
   }
-  should_check_fd_leak = check_fd_leak.val
+  self.cleanup()
 }
 
 ///|
@@ -501,6 +505,9 @@ async fn perform_job_in_worker(
 ) -> Int {
   @coroutine.check_cancellation()
   guard! curr_loop.val is Some(evloop)
+  if evloop.err is Some(err) {
+    raise err
+  }
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {

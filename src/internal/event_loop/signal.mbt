@@ -117,13 +117,7 @@ async fn EventLoop::terminate_signal_handler_unix(
   sigwait_task.cancel()
   // Undo the `-= 1` in `setup_sigwait_signal_handler`.
   evloop.blocked_tasks += 1
-  @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
-    @coroutine.Cancelled => ()
-    err => raise err
-  }
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
+  @coroutine.protect_from_cancel(() => sigwait_task.wait())
 }
 
 ///|
@@ -154,9 +148,6 @@ fn EventLoop::terminate_signal_handler_windows(
   if set_console_control_handler(0) is 0 {
     @os_error.check_errno("terminate_signal_handler()")
   }
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
 }
 
 ///|
@@ -172,15 +163,12 @@ fn setup_signal_handler() -> SignalHandler {
 ///|
 #cfg(all(target="native", not(platform="windows")))
 fn EventLoop::terminate_signal_handler(
-  evloop : EventLoop,
+  _evloop : EventLoop,
   handler : SignalHandler,
-) -> Unit raise {
+) -> Unit {
   guard! handler is ConsoleControlHandler
   global_signal_handler_initialized.val = false
   terminate_signal_handler_ffi()
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
 }
 
 ///|
