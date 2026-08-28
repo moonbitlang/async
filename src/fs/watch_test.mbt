@@ -47,7 +47,7 @@ async fn watch_basic_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~, debounce_timeout=50)
+    let watcher = @fs.Watcher(path, report_child_event~)
     let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
@@ -225,7 +225,7 @@ async fn watch_rename_within_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~, debounce_timeout=50)
+    let watcher = @fs.Watcher(path, report_child_event~)
     let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
@@ -356,11 +356,7 @@ async fn watch_rename_inout_test(
     })
     let watched_path = "\{base_path}/watched"
 
-    let watcher = @fs.Watcher(
-      watched_path,
-      report_child_event~,
-      debounce_timeout=50,
-    )
+    let watcher = @fs.Watcher(watched_path, report_child_event~)
     let start = @async.now()
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
