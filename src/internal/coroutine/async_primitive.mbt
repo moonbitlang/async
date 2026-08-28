@@ -18,4 +18,10 @@ async fn[T, E : Error] async_suspend(
 ) -> T raise E = "%async.suspend"
 
 ///|
-fn run_async(f : async () -> Unit noraise) = "%async.run"
+fn run_async(f : async () -> Unit noraise + nocancel) = "%async.run"
+
+///|
+async fn capture_cancellation(
+  f : async () -> Unit,
+  handler~ : async () -> Unit nocancel,
+) -> Unit nocancel = "%async.capture_cancellation"
