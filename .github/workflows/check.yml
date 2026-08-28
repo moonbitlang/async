@@ -61,14 +61,10 @@ jobs:
       - name: moon test
         run: |
           TOTAL=5
-          FAILED_DEBUG=0
-          FAILED_RELEASE=0
           for _ in $(seq 1 $TOTAL); do
-            moon test || FAILED_DEBUG=$((FAILED_DEBUG + 1))
-            moon test --release || FAILED_RELEASE=$((FAILED_RELEASE + 1))
+            moon test
+            moon test --release
           done
-          echo "debug: ${FAILED_DEBUG} failed out of ${TOTAL}"
-          echo "release: ${FAILED_RELEASE} failed out of ${TOTAL}"
 
   nightly-build:
     strategy:
@@ -124,11 +120,7 @@ jobs:
       - name: moon test
         run: |
           TOTAL=5
-          FAILED_DEBUG=0
-          FAILED_RELEASE=0
           for _ in $(seq 1 $TOTAL); do
-            moon test || FAILED_DEBUG=$((FAILED_DEBUG + 1))
-            moon test --release || FAILED_RELEASE=$((FAILED_RELEASE + 1))
+            moon test
+            moon test --release
           done
-          echo "debug: ${FAILED_DEBUG} failed out of ${TOTAL}"
-          echo "release: ${FAILED_RELEASE} failed out of ${TOTAL}"
