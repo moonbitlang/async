@@ -115,7 +115,7 @@ pub fn spawn(f : async () -> Unit, loc~ : SourceLoc) -> Coroutine {
   fn run(_) {
     run_async() <| () => {
       coro.shielded = false
-      try f() catch {
+      try capture_cancellation(f, handler=() => ()) catch {
         err => coro.state = Fail(err)
       } noraise {
         _ => coro.state = Done
