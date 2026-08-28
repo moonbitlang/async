@@ -102,6 +102,7 @@ priv struct WatchedFile {
   /// The collect pass set this field while the scan pass reset it after scanning.
   /// The status of this list should be based on the latest progress of the scan pass.
   mut modified : Bool
+  mut mtime : (Int64, Int)
 
   // the following fields are for directory only
 
@@ -329,6 +330,7 @@ pub async fn Watcher::Watcher(
     is_dir: true,
     children: Map([]),
     modified: true,
+    mtime: @event_loop.mtime_by_path(path, follow_symlink=false, context~),
     children_to_scan: Map([]),
     changed_entries: Map([]),
     children_with_events: Map([]),
@@ -598,6 +600,7 @@ async fn Watcher::get_file_at(
     paths: Set([]),
     is_dir,
     children: Map([]),
+    mtime: @event_loop.mtime_by_path(full_path, follow_symlink=false, context~),
     modified: is_dir, // new directory need rescan
     children_to_scan: Map([]),
     changed_entries: Map([]),
@@ -743,6 +746,17 @@ async fn Watcher::synchronize_file(
     file.modified = false
     if file.is_dir {
       self.scan_dir(file, path~, context~)
+    } else {
+      let mtime = @event_loop.mtime_by_path(
+        "\{self.base_path}/\{path}",
+        follow_symlink=false,
+        context~,
+      )
+      if mtime == file.mtime {
+        println("\{path} is modified, but its `mtime` has not changed")
+      } else {
+        file.mtime = mtime
+      }
     }
   } else if file.children_to_scan.iter().next() is Some((name, child_id)) {
     let child = self.watched[child_id]
