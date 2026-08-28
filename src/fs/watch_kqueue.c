@@ -72,9 +72,6 @@ int moonbitlang_async_kqueue_watcher_add_file(int kq, int fd, int32_t is_dir) {
 #ifdef __MACH__
   struct kevent event;
   int events_to_watch = NOTE_WRITE;
-  if (!is_dir) {
-    events_to_watch |= NOTE_EXTEND;
-  }
   EV_SET(
     &event,
     fd,
