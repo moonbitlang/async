@@ -62,8 +62,14 @@ extern "C" fn exit(code : Int) = "exit"
 #cfg(target="js")
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
-  ignore(@env_util.eprintln)
-  let _ = @coroutine.spawn(main)
+  let _ = @coroutine.spawn <| () => {
+    main() catch {
+      err => {
+        @env_util.eprintln(err.to_string())
+        panic()
+      }
+    }
+  }
   @event_loop.reschedule()
 }
 
