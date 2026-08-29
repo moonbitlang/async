@@ -104,6 +104,17 @@ int moonbitlang_async_allow_reuse_addr(HANDLE sock) {
 }
 
 MOONBIT_FFI_EXPORT
+int moonbitlang_async_allow_reuse_port(HANDLE sock) {
+#ifdef SO_REUSEPORT
+  int reuse_port = 1;
+  return setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(int));
+#else
+  (void)sock;
+  return 0;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_make_udp_socket(int family, int32_t multicast) {
 #ifdef _WIN32
   SOCKET sock = WSASocket(
