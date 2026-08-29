@@ -97,6 +97,22 @@ async test "Promise::from_async removes its abort listener after completion" {
 }
 
 ///|
+async test "Promise::from_async removes its abort listener after rejection" {
+  let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
+  let promise : @js_async.Promise[Unit] = @js_async.Promise::from_async(
+    abort_signal=signal,
+    () => {
+      @async.sleep(100)
+      raise Failure::Failure("expected")
+    },
+  )
+  inspect(abort_listener_count(signal), content="1")
+  ignore(@test_util.expect_error_async(() => promise.wait()))
+  inspect(abort_listener_count(signal), content="0")
+}
+
+///|
 async test "Promise::from_async observes an already aborted signal" {
   let controller = @js_async.AbortController::new()
   let signal = controller.signal()
