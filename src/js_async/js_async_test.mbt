@@ -117,27 +117,16 @@ async test "Promise::from_async observes an already aborted signal" {
   let controller = @js_async.AbortController::new()
   let signal = controller.signal()
   controller.abort()
+  let mut worker_started = false
   let mut worker_finished = false
   let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
+    worker_started = true
     @async.sleep(100)
     worker_finished = true
   })
   inspect(rejection_name(promise).wait(), content="AbortError")
+  assert_true(worker_started)
   assert_false(worker_finished)
-  inspect(abort_listener_count(signal), content="0")
-}
-
-///|
-async test "Promise::from_async does not start for an already aborted signal" {
-  let controller = @js_async.AbortController::new()
-  let signal = controller.signal()
-  controller.abort()
-  let mut worker_started = false
-  let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
-    worker_started = true
-  })
-  inspect(rejection_name(promise).wait(), content="AbortError")
-  assert_false(worker_started)
   inspect(abort_listener_count(signal), content="0")
 }
 

@@ -227,10 +227,7 @@ pub fn[X] Promise::from_async(
           coro.cancel()
         }
       }
-      try {
-        @coroutine.check_cancellation()
-        f()
-      } catch {
+      try f() catch {
         @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
           reject(JsValue::abort_error())
         err => reject(JsValue::make(err.to_string()))
