@@ -21,6 +21,7 @@
 #else
 
 #include <errno.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -40,6 +41,20 @@ typedef int HANDLE;
 #endif
 
 #include <moonbit.h>
+
+#ifndef _WIN32
+static
+void log_wait_eagain(const char *call, HANDLE handle, int32_t pid) {
+  fprintf(
+    stderr,
+    "moonbitlang/async: %s reported pid %d is still running; setting EAGAIN (handle=%d)\n",
+    call,
+    pid,
+    handle
+  );
+  fflush(stderr);
+}
+#endif
 
 
 MOONBIT_FFI_EXPORT
@@ -64,6 +79,7 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
       return -1;
 
     if (info.si_pid == 0) {
+      log_wait_eagain("waitid(P_PIDFD, WNOHANG)", handle, pid);
       errno = EAGAIN;
       return -1;
     }
@@ -90,6 +106,7 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
     return -1;
 
   if (ret == 0) {
+    log_wait_eagain("waitpid(WNOHANG)", handle, pid);
     errno = EAGAIN;
     return -1;
   }
