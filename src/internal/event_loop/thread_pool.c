@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 #include <time.h>
 #if !defined(__ANDROID__) || __ANDROID_API__ >= 28
@@ -1126,6 +1127,17 @@ struct spawn_job {
 };
 
 static
+void log_spawn_eagain(const char *call, struct spawn_job *job) {
+  fprintf(
+    stderr,
+    "moonbitlang/async: %s returned EAGAIN while spawning `%s`\n",
+    call,
+    job->path
+  );
+  fflush(stderr);
+}
+
+static
 void free_spawn_job(struct spawn_job *job) {
   moonbit_decref(job->path);
   for (char **cursor = job->args; *cursor; ++cursor)
@@ -1173,12 +1185,20 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     int fd = job->stdio[i];
     if (fd >= 0) {
       *err_out = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
-      if (*err_out) goto exit;
+      if (*err_out) {
+        if (*err_out == EAGAIN)
+          log_spawn_eagain("posix_spawn_file_actions_adddup2", job);
+        goto exit;
+      }
     }
   }
   if (job->cwd) {
     *err_out = posix_spawn_file_actions_addchdir_np(&file_actions, job->cwd);
-    if (*err_out) goto exit;
+    if (*err_out) {
+      if (*err_out == EAGAIN)
+        log_spawn_eagain("posix_spawn_file_actions_addchdir_np", job);
+      goto exit;
+    }
   }
 
   int32_t ret = 0;
@@ -1191,6 +1211,8 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
       job->args,
       job->envp
     );
+    if (*err_out == EAGAIN)
+      log_spawn_eagain("posix_spawn", job);
   } else {
     *err_out = posix_spawnp(
       &ret,
@@ -1200,6 +1222,8 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
       job->args,
       job->envp
     );
+    if (*err_out == EAGAIN)
+      log_spawn_eagain("posix_spawnp", job);
   }
 
 #ifdef __linux__
