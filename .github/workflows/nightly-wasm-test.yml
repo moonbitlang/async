@@ -90,6 +90,18 @@ jobs:
               cat "$file" || true
             fi
           done
+          echo "current cgroup:"
+          cat /proc/self/cgroup || true
+          while IFS=: read -r _ _ path; do
+            cg="/sys/fs/cgroup${path}"
+            echo "cgroup: $cg"
+            for file in pids.current pids.max pids.events; do
+              if [ -e "$cg/$file" ]; then
+                printf '%s: ' "$cg/$file"
+                cat "$cg/$file" || true
+              fi
+            done
+          done < /proc/self/cgroup
           ps -eLf | wc -l || true
           ps -eo pid,ppid,nlwp,stat,comm --sort=pid | tail -n 40 || true
           echo "::endgroup::"
