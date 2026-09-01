@@ -66,5 +66,33 @@ jobs:
       - name: moon check
         run: moon check --target wasm
 
+      - name: dump process limits
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          echo "::group::process limits"
+          uname -a || true
+          id || true
+          nproc || true
+          getconf _NPROCESSORS_ONLN || true
+          getconf CHILD_MAX || true
+          ulimit -a || true
+          cat /proc/self/limits || true
+          sysctl kernel.pid_max kernel.threads-max || true
+          for file in \
+            /sys/fs/cgroup/pids.current \
+            /sys/fs/cgroup/pids.max \
+            /sys/fs/cgroup/*/pids.current \
+            /sys/fs/cgroup/*/pids.max
+          do
+            if [ -e "$file" ]; then
+              printf '%s: ' "$file"
+              cat "$file" || true
+            fi
+          done
+          ps -eLf | wc -l || true
+          ps -eo pid,ppid,nlwp,stat,comm --sort=pid | tail -n 40 || true
+          echo "::endgroup::"
+
       - name: moon test
         run: moon test --target wasm
