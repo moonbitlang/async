@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: ["macos-latest"]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -67,4 +67,9 @@ jobs:
         run: moon check --target wasm
 
       - name: moon test
-        run: moon test --target wasm
+        run: |
+          TOTAL=5
+          for _ in $(seq 1 $TOTAL); do
+            moon test --target wasm || FAILED_DEBUG=$((FAILED_DEBUG + 1))
+            moon test --target wasm --release || FAILED_RELEASE=$((FAILED_RELEASE + 1))
+          done

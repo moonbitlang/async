@@ -200,6 +200,10 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
     self.process_events(timeout=None, context~)
   }
   let debounce_deadline = @event_loop.now() + self.max_debounce_delay.to_int64()
+  let start = @async.now()
+  defer println(
+    "\{self.watcher.base_path}: wait() debounce time: \{@async.now() - start} ms",
+  )
   for ;; {
     let t = @cmp.minimum(
       (debounce_deadline - @event_loop.now()).to_int(),
@@ -238,6 +242,9 @@ async fn KqueueWatcher::process_events(
     let fd = self.event_buffer.fd(i)
     if self.event_buffer.has_modify(i) {
       let { identity, .. } = self.watched[fd]
+      println(
+        "\{self.watcher.base_path}: received modification event for \{Repr(identity)}",
+      )
       self.watcher.mark_as_modified(identity)
     }
   }

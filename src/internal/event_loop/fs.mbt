@@ -17,7 +17,7 @@
 pub(all) struct FileIdentity {
   dev_id : UInt64
   file_id : UInt64
-} derive(Eq, Hash)
+} derive(Eq, Hash, Debug)
 
 ///|
 pub async fn open(
