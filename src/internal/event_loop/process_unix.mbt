@@ -79,6 +79,18 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
 
   let ret = get_process_result(handle, self.pid, out)
   if ret < 0 {
+    if platform is Linux {
+      let err_code = @os_error.get_errno()
+      let err = @os_error.OSError(err_code, context~)
+      if err.is_nonblocking_io_error() {
+        @env_util.eprintln(
+          "moonbitlang/async: get_process_result returned EAGAIN after pidfd readiness; pid=\{self.pid}, handle=\{handle}, errno=\{err_code}, context=\{context}",
+        )
+      }
+      if err_code != 0 {
+        raise err
+      }
+    }
     if platform is MacOS {
       // On MacOS, when `kevent` report `ESRCH`,
       // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
