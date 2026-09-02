@@ -10,6 +10,41 @@ env:
   MOONBIT_ASYNC_CHECK_FD_LEAK: 1
 
 jobs:
+  pidfd-epoll-waitid-repro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: system info
+        shell: bash
+        run: |
+          uname -a
+          gcc --version
+          getconf CHILD_MAX || true
+          ulimit -u || true
+          cat /proc/self/limits || true
+
+      - name: build pidfd repro
+        run: |
+          gcc -O2 -Wall -Wextra -pthread \
+            tools/pidfd_epoll_waitid_repro.c \
+            -o /tmp/pidfd_epoll_waitid_repro
+          gcc -O1 -g -Wall -Wextra -fsanitize=address \
+            -fno-omit-frame-pointer -pthread \
+            tools/pidfd_epoll_waitid_repro.c \
+            -o /tmp/pidfd_epoll_waitid_repro_asan
+
+      - name: run pidfd repro
+        shell: bash
+        run: |
+          /tmp/pidfd_epoll_waitid_repro 2000 0 1 2
+          /tmp/pidfd_epoll_waitid_repro 2000 2 1 2
+          /tmp/pidfd_epoll_waitid_repro 2000 3 1 1
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 1000 0 1 2
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 1000 2 1 2
+          /tmp/pidfd_epoll_waitid_repro_asan 50 7 1 2
+
   stable-build:
     strategy:
       fail-fast: false
