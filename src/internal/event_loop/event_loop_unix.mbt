@@ -84,6 +84,7 @@ fn UnixEventLoopExtra::handle_event(
   } else if evloop.fds.get(fd) is Some(handle) {
     if handle.is_async is Some(id) && id == event.registration_id() {
       if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
+        handle.read_ready_seq += 1
         coro.wake()
       }
       if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {

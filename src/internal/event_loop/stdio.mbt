@@ -93,6 +93,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
     // see the code for `read_job_worker`/`write_job_worker` in `thread_pool.c` for more details.
     is_async: None,
     read: Idle,
+    read_ready_seq: 0,
     // The tricky case here is regular file.
     // When the user access a file via the `@fs.File` interface.
     // we maintain independent private read/write offset etc. to provide better semantic.

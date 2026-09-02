@@ -48,11 +48,29 @@ pub async fn spawn_unix(
 
 ///|
 #cfg(not(platform="windows"))
+fn Process::log_pidfd_wait_resume(
+  self : Process,
+  io : IoHandle,
+  stage : String,
+  observed_read_event~ : Bool,
+) -> Unit {
+  let registration_id = match io.is_async {
+    Some(id) => "\{id}"
+    None => "None"
+  }
+  @env_util.eprintln(
+    "moonbitlang/async: pidfd wait resumed; stage=\{stage}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}",
+  )
+}
+
+///|
+#cfg(not(platform="windows"))
 pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   guard! curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
 
   let out = Ref(0)
+  let last_wait_observed_read_event = Ref(false)
 
   if platform is Linux && self.handle is Some(io) {
     let ret = get_process_result(handle, self.pid, out, is_probe=true)
@@ -62,7 +80,11 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    io.wait_read()
+    let observed = io.wait_read_observed_event()
+    last_wait_observed_read_event.val = observed
+    if !observed {
+      self.log_pidfd_wait_resume(io, "initial", observed_read_event=observed)
+    }
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
     if evloop.bus.register_pid(self.pid) {
@@ -87,9 +109,21 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
           // Work around this race condition by waiting again after a small timeout.
           sleep(10)
         Linux => {
-          @env_util.eprintln("retrying `wait`")
           guard! self.handle is Some(io)
-          io.wait_read()
+          self.log_pidfd_wait_resume(
+            io,
+            "waitid_not_ready",
+            observed_read_event=last_wait_observed_read_event.val,
+          )
+          let observed = io.wait_read_observed_event()
+          last_wait_observed_read_event.val = observed
+          if !observed {
+            self.log_pidfd_wait_resume(
+              io,
+              "retry",
+              observed_read_event=observed,
+            )
+          }
         }
         Windows => panic()
       }

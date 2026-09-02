@@ -14,17 +14,25 @@
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+async fn IoHandle::wait_read_observed_event(handle : IoHandle) -> Bool {
   guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
   guard! handle.read is Idle
+  let seq_before = handle.read_ready_seq
   handle.read = Waiting(@coroutine.current_coroutine())
   defer {
     handle.read = Idle
   }
   evloop.suspend()
+  handle.read_ready_seq != seq_before
+}
+
+///|
+#cfg(not(platform="windows"))
+pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+  ignore(handle.wait_read_observed_event())
 }
 
 ///|
