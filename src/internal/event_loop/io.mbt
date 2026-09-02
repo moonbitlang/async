@@ -27,10 +27,11 @@ priv enum IoStatus {
 pub struct IoHandle {
   priv mut fd : @fd_util.Fd
   priv kind : @fd_util.FileKind
-  /// - `is_async=true`: support native async operations through the event bus.
-  ///   This usually means the fd is non blocking (Unix) or overlapped (Windows)
+  /// - `is_async=Some(id)`: support native async operations through the event bus.
+  ///   This usually means the fd is non blocking (Unix) or overlapped (Windows).
+  ///   The attached ID is used to avoid stale event from reused fd number.
   /// - `is_async=false`: all operations are blocking and go through the thread pool
-  priv is_async : Bool
+  priv is_async : Int?
   priv mut read : IoStatus
   /// The current offset for reading.
   /// A negative value indicates that the underlying object does not support random access.
@@ -101,7 +102,11 @@ pub fn IoHandle::from_fd(
   errdefer @fd_util.close(fd, kind~, context~)
   guard! curr_loop.val is Some(evloop)
   guard! evloop.fds.get(fd) is None
-  let is_async = is_async && evloop.bus.register(fd, read_only~)
+  let is_async = if is_async {
+    evloop.bus.register(fd, read_only~)
+  } else {
+    None
+  }
   let handle = {
     fd,
     kind,
@@ -156,7 +161,7 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let n = if handle.is_async {
+  let n = if handle.is_async is Some(_) {
     /// The implementation of `read_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
     handle.read_via_event_bus(buf, offset~, len~, context~)
@@ -208,7 +213,7 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let n = if handle.is_async {
+  let n = if handle.is_async is Some(_) {
     /// The implementation of `write_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
     handle.write_via_event_bus(buf, offset~, len~, context~)
@@ -234,7 +239,7 @@ pub async fn IoHandle::read_at(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard! !handle.is_async
+  guard! handle.is_async is None
   let job = Job::read(handle.fd, buf, offset, len, position~)
   defer job.free()
   perform_job_in_worker(job, context~, cancellable=platform is Windows)
@@ -253,7 +258,7 @@ pub async fn IoHandle::write_at(
   context~ : String,
 ) -> Unit {
   @coroutine.check_cancellation()
-  guard! !handle.is_async
+  guard! handle.is_async is None
   guard handle.write_offset >= 0 else {
     raise Failure::Failure(
       "`write_at` is not supported on non-regular file or file opened in append mode",

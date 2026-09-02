@@ -52,6 +52,8 @@ void moonbitlang_async_event_bus_destroy(int kqfd) {
    `1` => successfully registered
  */
 int32_t moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only) {
+  static int32_t registration_id = 1;
+
   // File descriptors registered with the event bus
   // should always be used in a non-blocking manner, due to our use of `EV_CLEAR`.
   // Error is intentionally omitted here, because some special file descriptors,
@@ -63,9 +65,9 @@ int32_t moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only
   int flags = EV_ADD | EV_CLEAR | EV_RECEIPT;
 
   struct kevent events[2], receipts[2];
-  EV_SET(&events[0], fd, EVFILT_READ, flags, 0, 0, 0);
+  EV_SET(&events[0], fd, EVFILT_READ, flags, 0, 0, registration_id);
   if (!read_only)
-    EV_SET(&events[1], fd, EVFILT_WRITE, flags, 0, 0, 0);
+    EV_SET(&events[1], fd, EVFILT_WRITE, flags, 0, 0, registration_id);
 
   int ret = kevent(kqfd, events, read_only ? 1 : 2, receipts, 2, 0);
   if (ret < 0)
@@ -78,7 +80,7 @@ int32_t moonbitlang_async_event_bus_register(int kqfd, int fd, int32_t read_only
      So we still rely on `st_mode` to do filtering before `event_bus_register` */
   for (int i = 0; i < ret; ++i)
     if (receipts[i].data == 0)
-      return 1;
+      return registration_id++;
 
   return 0;
 }
@@ -127,6 +129,10 @@ struct kevent *moonbitlang_async_event_list_get(int kqfd, int index) {
 
 int moonbitlang_async_event_get_fd(struct kevent *ev) {
   return ev->ident;
+}
+
+int32_t moonbitlang_async_event_get_registration_id(struct kevent *ev) {
+  return ev->udata;
 }
 
 int moonbitlang_async_event_get_events(struct kevent *ev) {

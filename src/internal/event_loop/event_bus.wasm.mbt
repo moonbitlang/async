@@ -47,12 +47,16 @@ fn EventBus::register(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only~ : Bool,
-) -> Bool raise {
+) -> Int? raise {
   let ret = self.try_register_ffi(fd, read_only)
   if ret < 0 {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
-  ret > 0
+  if ret > 0 {
+    Some(ret)
+  } else {
+    None
+  }
 }
 
 ///|
@@ -84,6 +88,12 @@ fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang/asy
 ///|
 #unsafe_skip_stub_check
 fn Event::fd(event : Event) -> @fd_util.Fd = "moonbitlang/async" "event_bus/event_fd"
+
+///|
+fn Event::registration_id(_event : Event) -> Int {
+  // TODO: port to Wasm1
+  1
+}
 
 ///|
 #unsafe_skip_stub_check

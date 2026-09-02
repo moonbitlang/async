@@ -47,18 +47,22 @@ extern "C" fn EventBus::register_ffi(
 
 ///|
 /// Try to register the file descriptor with the event bus,
-/// return `true` if the file descriptor is succesfully registered,
-/// `false` if the fd is not supported.
+/// return a unique ID for this registration if the file descriptor is succesfully registered,
+/// `None` if the fd is not supported.
 fn EventBus::register(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only~ : Bool,
-) -> Bool raise {
+) -> Int? raise {
   let ret = self.register_ffi(fd, read_only)
   if ret < 0 {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::register()")
   }
-  ret > 0
+  if ret > 0 {
+    Some(ret)
+  } else {
+    None
+  }
 }
 
 ///|
@@ -86,6 +90,9 @@ extern "C" fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moon
 
 ///|
 extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
+
+///|
+extern "C" fn Event::registration_id(self : Event) -> Int = "moonbitlang_async_event_get_registration_id"
 
 ///|
 #cfg(not(platform="windows"))

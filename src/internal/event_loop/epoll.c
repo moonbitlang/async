@@ -45,6 +45,8 @@ static const int ev_masks[] = {
    `1` => successfully registered
  */
 int32_t moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
+  static int32_t registration_id = 1;
+
   // File descriptors registered with the event bus
   // should always be used in a non-blocking manner, due to our use of `EPOLLET`.
   // Error is intentionally omitted here, because some special file descriptors,
@@ -58,11 +60,12 @@ int32_t moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only
     events |= EPOLLOUT;
 
   epoll_data_t data;
-  data.u64 = fd;
+  data.u64 = (uint64_t)fd | ((uint64_t)registration_id << 32);
+
   struct epoll_event event = { events, data };
   int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
   if (ret >= 0)
-    return 1;
+    return registration_id++;
   else if (errno == EPERM)
     return 0;
   else
@@ -86,7 +89,11 @@ struct epoll_event* moonbitlang_async_event_list_get(int epfd, int index) {
 }
 
 int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
-  return ev->data.u64;
+  return ev->data.u64 & 0xFFFFFFFF;
+}
+
+int32_t moonbitlang_async_event_get_registration_id(struct epoll_event *ev) {
+  return ev->data.u64 >> 32;
 }
 
 int moonbitlang_async_event_get_events(struct epoll_event *ev) {
