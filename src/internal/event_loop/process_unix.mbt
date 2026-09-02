@@ -55,7 +55,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   let out = Ref(0)
 
   if platform is Linux && self.handle is Some(io) {
-    let ret = get_process_result(handle, self.pid, out)
+    let ret = get_process_result(handle, self.pid, out, is_probe=true)
     if ret >= 0 {
       return out.val
     }
@@ -77,7 +77,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     return perform_job_in_worker(job, context~, cancellable=true)
   }
 
-  let ret = get_process_result(handle, self.pid, out)
+  let ret = get_process_result(handle, self.pid, out, is_probe=false)
   if ret < 0 {
     if platform is Linux {
       let err_code = @os_error.get_errno()
@@ -97,7 +97,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
       // Work around this race condition by waiting again after a small timeout.
       while @os_error.is_nonblocking_io_error() {
         sleep(10)
-        let ret = get_process_result(handle, self.pid, out)
+        let ret = get_process_result(handle, self.pid, out, is_probe=false)
         if ret >= 0 {
           return out.val
         }

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <ctype.h>
 #ifdef _WIN32
 
 #include <windows.h>
@@ -40,10 +41,11 @@ typedef int HANDLE;
 #endif
 
 #include <moonbit.h>
+#include <stdio.h>
 
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *out) {
+int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *out, int32_t is_probe) {
 #ifdef _WIN32
 
   // On Windows, `get_process_result` should only be called when the process has exited.
@@ -60,10 +62,15 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
     info.si_pid = 0;
     int ret = waitid(P_PIDFD, handle, &info, WEXITED | WNOHANG);
 
-    if (ret < 0)
+    if (ret < 0) {
+      if (!is_probe) 
+        fprintf(stderr, "waitid() failure\n");
       return -1;
+    }
 
     if (info.si_pid == 0) {
+      if (!is_probe) 
+        fprintf(stderr, "waitid() return `info.si_pid == 0`\n");
       errno = EAGAIN;
       return -1;
     }
@@ -86,10 +93,15 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
   */
   int wstatus;
   int ret = waitpid(pid, &wstatus, WNOHANG);
-  if (ret < 0)
+  if (ret < 0) {
+    if (!is_probe) 
+      fprintf(stderr, "waitpid() failure\n");
     return -1;
+  }
 
   if (ret == 0) {
+    if (!is_probe) 
+      fprintf(stderr, "waitpid() return 0\n");
     errno = EAGAIN;
     return -1;
   }
