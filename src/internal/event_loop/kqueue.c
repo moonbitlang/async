@@ -151,4 +151,8 @@ int moonbitlang_async_event_get_events(struct kevent *ev) {
   return 0;
 }
 
+int moonbitlang_async_event_get_raw_events(struct kevent *ev) {
+  return ev->flags;
+}
+
 #endif
