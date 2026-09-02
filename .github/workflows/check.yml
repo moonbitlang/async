@@ -67,6 +67,9 @@ jobs:
           ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 5000 8 1 2 32 "$cat_prog"
           /tmp/pidfd_epoll_waitid_repro 10000 9 1 0 1
           ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 5000 9 1 0 1
+          /tmp/pidfd_epoll_waitid_repro 10000 10 1 2 1 0
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 5000 10 1 2 1 6
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 2000 10 1 2 1 8 "$cat_prog"
 
   stable-build:
     strategy:

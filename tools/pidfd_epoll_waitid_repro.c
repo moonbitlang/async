@@ -77,6 +77,10 @@ struct race_context {
   atomic_int waitid_status;
 };
 
+struct spin_waitid_context {
+  int pidfd;
+};
+
 static int xpidfd_open(pid_t pid, unsigned int flags) {
   return (int)syscall(SYS_pidfd_open, pid, flags);
 }
@@ -726,6 +730,275 @@ static int run_two_thread_race(int iterations, int use_epollet) {
   return (epoll_timeouts || errors) ? 1 : 0;
 }
 
+static void *spin_waitid_thread_main(void *arg) {
+  struct spin_waitid_context *ctx = arg;
+
+  for (;;) {
+    siginfo_t si;
+    memset(&si, 0, sizeof si);
+    errno = 0;
+    int ret = waitid(
+      P_PIDFD,
+      ctx->pidfd,
+      &si,
+      WEXITED | WNOHANG | WNOWAIT
+    );
+    if (ret < 0) {
+      return (void *)(intptr_t)(errno ? errno : EIO);
+    }
+    if (si.si_pid != 0) {
+      return NULL;
+    }
+  }
+}
+
+static int run_spin_waitid_after_epoll(
+  int iterations,
+  int use_epollet,
+  int spawn_method,
+  int child_mode
+) {
+  int ready = 0;
+  int empty = 0;
+  int eagain = 0;
+  int wait_errors = 0;
+  int spinner_errors = 0;
+  int epoll_timeouts = 0;
+  int errors = 0;
+
+  printf(
+    "pidfd epoll plus spinning waitid repro: iterations=%d epollet=%d "
+    "spawn_method=%d child_mode=%d pid=%ld external_child=%s\n",
+    iterations,
+    use_epollet,
+    spawn_method,
+    child_mode,
+    (long)getpid(),
+    external_child_path ? external_child_path : "(none)"
+  );
+
+  for (int i = 0; i < iterations; i++) {
+    struct child_slot child = {
+      .pid = -1,
+      .pidfd = -1,
+      .stdin_fd = -1,
+      .stdout_fd = -1,
+      .iteration = i,
+      .done = 0,
+    };
+
+    int err = spawn_child_slot(child_mode, spawn_method, &child);
+    if (err != 0) {
+      errno = err;
+      perror("spawn_child_slot spin");
+      errors++;
+      close_child(&child);
+      continue;
+    }
+
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    if (epfd < 0) {
+      perror("epoll_create1 spin");
+      errors++;
+      close_child(&child);
+      continue;
+    }
+
+    int flags = fcntl(child.pidfd, F_GETFL);
+    if (flags >= 0 && !(flags & O_NONBLOCK)) {
+      if (fcntl(child.pidfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("fcntl spin O_NONBLOCK");
+        errors++;
+        close(epfd);
+        close_child(&child);
+        continue;
+      }
+    }
+
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof ev);
+    ev.events = EPOLLIN | EPOLLRDHUP | (use_epollet ? EPOLLET : 0);
+    ev.data.fd = child.pidfd;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, child.pidfd, &ev) < 0) {
+      perror("epoll_ctl spin");
+      errors++;
+      close(epfd);
+      close_child(&child);
+      continue;
+    }
+
+    struct spin_waitid_context ctx = { .pidfd = child.pidfd };
+    pthread_t spinner;
+    err = pthread_create(&spinner, NULL, spin_waitid_thread_main, &ctx);
+    if (err != 0) {
+      errno = err;
+      perror("pthread_create spin");
+      errors++;
+      close(epfd);
+      close_child(&child);
+      continue;
+    }
+
+    if (child_mode == 8) {
+      static const char payload[] = "alpha\nbeta\ngamma";
+      err = write_all(child.stdin_fd, payload, sizeof(payload) - 1);
+      if (err != 0) {
+        errno = err;
+        perror("write spin external child stdin");
+        errors++;
+        kill(child.pid, SIGKILL);
+      }
+      close_if_open(&child.stdin_fd);
+    } else if (child_mode == 2 || child_mode == 5) {
+      usleep(100);
+      kill(child.pid, SIGKILL);
+    }
+
+    struct epoll_event event;
+    memset(&event, 0, sizeof event);
+    errno = 0;
+    int epoll_ret = epoll_wait(epfd, &event, 1, 5000);
+    int epoll_errno = errno;
+
+    siginfo_t si;
+    memset(&si, 0, sizeof si);
+    errno = 0;
+    int wait_ret = -1;
+    int wait_errno = 0;
+    if (epoll_ret > 0) {
+      wait_ret = waitid(P_PIDFD, child.pidfd, &si, WEXITED | WNOHANG);
+      wait_errno = errno;
+    }
+
+    int outcome = 0;
+    if (epoll_ret < 0) {
+      wait_errors++;
+      outcome = 1;
+    } else if (epoll_ret == 0) {
+      epoll_timeouts++;
+      outcome = 2;
+    } else if (wait_ret < 0) {
+      wait_errors++;
+      if (wait_errno == EAGAIN) {
+        eagain++;
+      }
+      outcome = 3;
+    } else if (si.si_pid == 0) {
+      empty++;
+      outcome = 4;
+    } else {
+      ready++;
+      child.done = 1;
+      outcome = 5;
+    }
+
+    void *spinner_result = NULL;
+    pthread_join(spinner, &spinner_result);
+    int spinner_errno = (int)(intptr_t)spinner_result;
+
+    if (outcome == 1) {
+      fprintf(
+        stderr,
+        "SPIN_EPOLL_ERROR iter=%d pid=%ld pidfd=%d errno=%d(%s)\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        epoll_errno,
+        strerror(epoll_errno)
+      );
+    } else if (outcome == 2) {
+      fprintf(
+        stderr,
+        "SPIN_TIMEOUT iter=%d pid=%ld pidfd=%d spinner_errno=%d(%s)\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        spinner_errno,
+        strerror(spinner_errno)
+      );
+    } else if (outcome == 3) {
+      fprintf(
+        stderr,
+        "SPIN_WAIT_ERROR iter=%d pid=%ld pidfd=%d events=0x%x ret=%d "
+        "errno=%d(%s) spinner_errno=%d(%s)\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        event.events,
+        wait_ret,
+        wait_errno,
+        strerror(wait_errno),
+        spinner_errno,
+        strerror(spinner_errno)
+      );
+    } else if (outcome == 4) {
+      fprintf(
+        stderr,
+        "SPIN_EMPTY_AFTER_EPOLL iter=%d pid=%ld pidfd=%d events=0x%x "
+        "si_code=%d si_status=%d spinner_errno=%d(%s)\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        event.events,
+        si.si_code,
+        si.si_status,
+        spinner_errno,
+        strerror(spinner_errno)
+      );
+    }
+
+    if (spinner_errno != 0 && !(child.done && spinner_errno == ECHILD)) {
+      spinner_errors++;
+    }
+
+    if (!child.done) {
+      waitid(P_PIDFD, child.pidfd, &si, WEXITED);
+      child.done = 1;
+    }
+    close(epfd);
+    close_child(&child);
+
+    if ((i + 1) % 1000 == 0 || i + 1 == iterations) {
+      printf(
+        "spin progress %d/%d ready=%d empty=%d eagain=%d wait_errors=%d "
+        "spinner_errors=%d timeouts=%d errors=%d\n",
+        i + 1,
+        iterations,
+        ready,
+        empty,
+        eagain,
+        wait_errors,
+        spinner_errors,
+        epoll_timeouts,
+        errors
+      );
+      fflush(stdout);
+    }
+  }
+
+  printf(
+    "spin done iterations=%d ready=%d empty=%d eagain=%d wait_errors=%d "
+    "spinner_errors=%d timeouts=%d errors=%d\n",
+    iterations,
+    ready,
+    empty,
+    eagain,
+    wait_errors,
+    spinner_errors,
+    epoll_timeouts,
+    errors
+  );
+
+  return (
+    empty ||
+    eagain ||
+    wait_errors ||
+    spinner_errors ||
+    epoll_timeouts ||
+    errors
+  ) ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
   self_path = argv[0];
   if (argc > 1 && strcmp(argv[1], "--child") == 0) {
@@ -737,7 +1010,9 @@ int main(int argc, char **argv) {
   int use_epollet = argc > 3 ? atoi(argv[3]) : 1;
   int spawn_method = argc > 4 ? atoi(argv[4]) : 0;
   int parallelism = argc > 5 ? atoi(argv[5]) : 1;
-  external_child_path = argc > 6 ? argv[6] : NULL;
+  int spin_child_mode = argc > 6 ? atoi(argv[6]) : 0;
+  external_child_path = mode == 10 ? (argc > 7 ? argv[7] : NULL) :
+    (argc > 6 ? argv[6] : NULL);
 
   if (iterations <= 0 || parallelism <= 0) {
     fprintf(stderr, "iterations and parallelism must be positive\n");
@@ -749,8 +1024,22 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  if (mode == 10 && spin_child_mode == 8 && !external_child_path) {
+    fprintf(stderr, "mode 10 child_mode 8 requires external child path argument\n");
+    return 2;
+  }
+
   if (mode == 9) {
     return run_two_thread_race(iterations, use_epollet);
+  }
+
+  if (mode == 10) {
+    return run_spin_waitid_after_epoll(
+      iterations,
+      use_epollet,
+      spawn_method,
+      spin_child_mode
+    );
   }
 
   printf(
