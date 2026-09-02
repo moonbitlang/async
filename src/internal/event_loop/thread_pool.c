@@ -376,7 +376,7 @@ HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
 
   sigset_t signals_to_block;
   sigemptyset(&signals_to_block);
-  sigaddset(&signals_to_block, SIGCHLD);
+  // sigaddset(&signals_to_block, SIGCHLD);
 
 #ifdef WAKEUP_METHOD_SIGNAL
   sigemptyset(&pool.wakeup_signal);
