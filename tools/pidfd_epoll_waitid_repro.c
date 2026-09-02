@@ -16,8 +16,10 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
+#include <sched.h>
 #include <signal.h>
 #include <spawn.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,19 +38,43 @@
 extern char **environ;
 
 static const char *self_path;
+static const char *external_child_path;
 
 struct spawn_result {
   int mode;
   pid_t pid;
   int pidfd;
+  int stdin_fd;
+  int stdout_fd;
   int error;
 };
 
 struct child_slot {
   pid_t pid;
   int pidfd;
+  int stdin_fd;
+  int stdout_fd;
   int iteration;
   int done;
+};
+
+struct race_context {
+  int epfd;
+  int pidfd;
+  atomic_int epoll_ret;
+  atomic_int epoll_errno;
+  atomic_int epoll_events;
+  atomic_long epoll_ns;
+  atomic_int epoll_probe_ret;
+  atomic_int epoll_probe_errno;
+  atomic_int epoll_probe_pid;
+  atomic_int epoll_probe_code;
+  atomic_int epoll_probe_status;
+  atomic_long waitid_ns;
+  atomic_int waitid_errno;
+  atomic_int waitid_pid;
+  atomic_int waitid_code;
+  atomic_int waitid_status;
 };
 
 static int xpidfd_open(pid_t pid, unsigned int flags) {
@@ -59,6 +85,42 @@ static long now_ns(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return ts.tv_sec * 1000000000L + ts.tv_nsec;
+}
+
+static void close_if_open(int *fd) {
+  if (*fd >= 0) {
+    close(*fd);
+    *fd = -1;
+  }
+}
+
+static int write_all(int fd, const char *buf, size_t len) {
+  while (len > 0) {
+    ssize_t n = write(fd, buf, len);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      return errno;
+    }
+    buf += n;
+    len -= (size_t)n;
+  }
+  return 0;
+}
+
+static void drain_fd(int fd) {
+  char buf[4096];
+  for (;;) {
+    ssize_t n = read(fd, buf, sizeof buf);
+    if (n > 0) {
+      continue;
+    }
+    if (n < 0 && errno == EINTR) {
+      continue;
+    }
+    break;
+  }
 }
 
 static void *short_thread_main(void *arg) {
@@ -134,6 +196,86 @@ static void *spawn_in_thread_main(void *arg) {
 
 static void *posix_spawn_in_thread_main(void *arg) {
   struct spawn_result *result = arg;
+  if (result->mode == 8) {
+    if (!external_child_path) {
+      result->error = EINVAL;
+      return NULL;
+    }
+
+    int stdin_pipe[2] = { -1, -1 };
+    int stdout_pipe[2] = { -1, -1 };
+    if (pipe(stdin_pipe) < 0 || pipe(stdout_pipe) < 0) {
+      result->error = errno;
+      close_if_open(&stdin_pipe[0]);
+      close_if_open(&stdin_pipe[1]);
+      close_if_open(&stdout_pipe[0]);
+      close_if_open(&stdout_pipe[1]);
+      return NULL;
+    }
+
+    posix_spawn_file_actions_t file_actions;
+    int err = posix_spawn_file_actions_init(&file_actions);
+    if (err != 0) {
+      result->error = err;
+      close_if_open(&stdin_pipe[0]);
+      close_if_open(&stdin_pipe[1]);
+      close_if_open(&stdout_pipe[0]);
+      close_if_open(&stdout_pipe[1]);
+      return NULL;
+    }
+
+    err = posix_spawn_file_actions_adddup2(&file_actions, stdin_pipe[0], 0);
+    if (err == 0) {
+      err = posix_spawn_file_actions_adddup2(&file_actions, stdout_pipe[1], 1);
+    }
+    if (err == 0) {
+      err = posix_spawn_file_actions_addclose(&file_actions, stdin_pipe[1]);
+    }
+    if (err == 0) {
+      err = posix_spawn_file_actions_addclose(&file_actions, stdout_pipe[0]);
+    }
+    if (err != 0) {
+      result->error = err;
+      posix_spawn_file_actions_destroy(&file_actions);
+      close_if_open(&stdin_pipe[0]);
+      close_if_open(&stdin_pipe[1]);
+      close_if_open(&stdout_pipe[0]);
+      close_if_open(&stdout_pipe[1]);
+      return NULL;
+    }
+
+    char *cat_argv[] = { (char *)external_child_path, NULL };
+    pid_t pid = -1;
+    err = posix_spawn(
+      &pid,
+      external_child_path,
+      &file_actions,
+      NULL,
+      cat_argv,
+      environ
+    );
+    posix_spawn_file_actions_destroy(&file_actions);
+    if (err != 0) {
+      result->error = err;
+      close_if_open(&stdin_pipe[0]);
+      close_if_open(&stdin_pipe[1]);
+      close_if_open(&stdout_pipe[0]);
+      close_if_open(&stdout_pipe[1]);
+      return NULL;
+    }
+
+    close_if_open(&stdin_pipe[0]);
+    close_if_open(&stdout_pipe[1]);
+    result->pid = pid;
+    result->stdin_fd = stdin_pipe[1];
+    result->stdout_fd = stdout_pipe[0];
+    result->pidfd = xpidfd_open(pid, 0);
+    if (result->pidfd < 0) {
+      result->error = errno;
+    }
+    return NULL;
+  }
+
   char *true_argv[] = { (char *)"true", NULL };
   char *sleep_argv[] = { (char *)"sleep", (char *)"60", NULL };
   char *self_exit_argv[] = {
@@ -186,11 +328,17 @@ static void *posix_spawn_in_thread_main(void *arg) {
 }
 
 static int spawn_child(int mode, int spawn_method, pid_t *pid, int *pidfd) {
+  if (mode == 8) {
+    return EINVAL;
+  }
+
   if (spawn_method == 1 || spawn_method == 2) {
     struct spawn_result result = {
       .mode = mode,
       .pid = -1,
       .pidfd = -1,
+      .stdin_fd = -1,
+      .stdout_fd = -1,
       .error = 0,
     };
     pthread_t thread;
@@ -212,6 +360,8 @@ static int spawn_child(int mode, int spawn_method, pid_t *pid, int *pidfd) {
         kill(result.pid, SIGKILL);
         waitpid(result.pid, NULL, 0);
       }
+      close_if_open(&result.stdin_fd);
+      close_if_open(&result.stdout_fd);
       return result.error;
     }
     *pid = result.pid;
@@ -237,18 +387,332 @@ static int spawn_child(int mode, int spawn_method, pid_t *pid, int *pidfd) {
   return 0;
 }
 
+static int spawn_child_slot(int mode, int spawn_method, struct child_slot *child) {
+  child->stdin_fd = -1;
+  child->stdout_fd = -1;
+
+  if (mode != 8) {
+    return spawn_child(mode, spawn_method, &child->pid, &child->pidfd);
+  }
+
+  if (spawn_method != 2) {
+    return EINVAL;
+  }
+
+  struct spawn_result result = {
+    .mode = mode,
+    .pid = -1,
+    .pidfd = -1,
+    .stdin_fd = -1,
+    .stdout_fd = -1,
+    .error = 0,
+  };
+  pthread_t thread;
+  int err = pthread_create(&thread, NULL, posix_spawn_in_thread_main, &result);
+  if (err != 0) {
+    return err;
+  }
+  err = pthread_join(thread, NULL);
+  if (err != 0) {
+    return err;
+  }
+  if (result.error) {
+    if (result.pid > 0) {
+      kill(result.pid, SIGKILL);
+      waitpid(result.pid, NULL, 0);
+    }
+    close_if_open(&result.stdin_fd);
+    close_if_open(&result.stdout_fd);
+    return result.error;
+  }
+  child->pid = result.pid;
+  child->pidfd = result.pidfd;
+  child->stdin_fd = result.stdin_fd;
+  child->stdout_fd = result.stdout_fd;
+  return 0;
+}
+
 static void close_child(struct child_slot *child) {
   if (child->done) {
+    close_if_open(&child->stdin_fd);
+    if (child->stdout_fd >= 0) {
+      drain_fd(child->stdout_fd);
+      close_if_open(&child->stdout_fd);
+    }
+    close_if_open(&child->pidfd);
     return;
   }
   child->done = 1;
+  close_if_open(&child->stdin_fd);
   if (child->pid > 0) {
     kill(child->pid, SIGKILL);
     waitpid(child->pid, NULL, 0);
   }
-  if (child->pidfd >= 0) {
-    close(child->pidfd);
+  if (child->stdout_fd >= 0) {
+    drain_fd(child->stdout_fd);
+    close_if_open(&child->stdout_fd);
   }
+  if (child->pidfd >= 0) {
+    close_if_open(&child->pidfd);
+  }
+}
+
+static void *race_epoll_thread_main(void *arg) {
+  struct race_context *ctx = arg;
+  struct epoll_event ev;
+  memset(&ev, 0, sizeof ev);
+
+  errno = 0;
+  int ret = epoll_wait(ctx->epfd, &ev, 1, 5000);
+  long observed_ns = now_ns();
+  atomic_store(&ctx->epoll_ret, ret);
+  atomic_store(&ctx->epoll_errno, errno);
+  atomic_store(&ctx->epoll_events, ret > 0 ? (int)ev.events : 0);
+  atomic_store(&ctx->epoll_ns, observed_ns);
+
+  if (ret > 0) {
+    siginfo_t si;
+    memset(&si, 0, sizeof si);
+    errno = 0;
+    int wait_ret = waitid(
+      P_PIDFD,
+      ctx->pidfd,
+      &si,
+      WEXITED | WNOHANG | WNOWAIT
+    );
+    atomic_store(&ctx->epoll_probe_ret, wait_ret);
+    atomic_store(&ctx->epoll_probe_errno, errno);
+    atomic_store(&ctx->epoll_probe_pid, si.si_pid);
+    atomic_store(&ctx->epoll_probe_code, si.si_code);
+    atomic_store(&ctx->epoll_probe_status, si.si_status);
+  }
+
+  return NULL;
+}
+
+static void *race_waitid_thread_main(void *arg) {
+  struct race_context *ctx = arg;
+
+  for (;;) {
+    siginfo_t si;
+    memset(&si, 0, sizeof si);
+    errno = 0;
+    int ret = waitid(
+      P_PIDFD,
+      ctx->pidfd,
+      &si,
+      WEXITED | WNOHANG | WNOWAIT
+    );
+    if (ret < 0) {
+      atomic_store(&ctx->waitid_errno, errno);
+      atomic_store(&ctx->waitid_ns, now_ns());
+      return NULL;
+    }
+    if (si.si_pid != 0) {
+      atomic_store(&ctx->waitid_pid, si.si_pid);
+      atomic_store(&ctx->waitid_code, si.si_code);
+      atomic_store(&ctx->waitid_status, si.si_status);
+      atomic_store(&ctx->waitid_ns, now_ns());
+      return NULL;
+    }
+    sched_yield();
+  }
+}
+
+static int run_two_thread_race(int iterations, int use_epollet) {
+  int epoll_wins = 0;
+  int waitid_wins = 0;
+  int ties = 0;
+  int epoll_probe_empty = 0;
+  int epoll_timeouts = 0;
+  int errors = 0;
+
+  printf(
+    "pidfd epoll/waitid two-thread race: iterations=%d epollet=%d pid=%ld\n",
+    iterations,
+    use_epollet,
+    (long)getpid()
+  );
+
+  for (int i = 0; i < iterations; i++) {
+    struct child_slot child = {
+      .pid = -1,
+      .pidfd = -1,
+      .stdin_fd = -1,
+      .stdout_fd = -1,
+      .iteration = i,
+      .done = 0,
+    };
+
+    int err = spawn_child_slot(2, 0, &child);
+    if (err != 0) {
+      errno = err;
+      perror("spawn_child_slot race");
+      errors++;
+      close_child(&child);
+      continue;
+    }
+
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    if (epfd < 0) {
+      perror("epoll_create1 race");
+      errors++;
+      close_child(&child);
+      continue;
+    }
+
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof ev);
+    ev.events = EPOLLIN | EPOLLRDHUP | (use_epollet ? EPOLLET : 0);
+    ev.data.fd = child.pidfd;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, child.pidfd, &ev) < 0) {
+      perror("epoll_ctl race");
+      errors++;
+      close(epfd);
+      close_child(&child);
+      continue;
+    }
+
+    struct race_context ctx;
+    memset(&ctx, 0, sizeof ctx);
+    ctx.epfd = epfd;
+    ctx.pidfd = child.pidfd;
+
+    pthread_t epoll_thread;
+    pthread_t waitid_thread;
+    int epoll_thread_started = 0;
+    int waitid_thread_started = 0;
+    err = pthread_create(&epoll_thread, NULL, race_epoll_thread_main, &ctx);
+    if (err == 0) {
+      epoll_thread_started = 1;
+    }
+    if (err == 0) {
+      err = pthread_create(&waitid_thread, NULL, race_waitid_thread_main, &ctx);
+      if (err == 0) {
+        waitid_thread_started = 1;
+      }
+    }
+    if (err != 0) {
+      errno = err;
+      perror("pthread_create race");
+      errors++;
+      kill(child.pid, SIGKILL);
+      waitpid(child.pid, NULL, 0);
+      child.done = 1;
+      if (epoll_thread_started) {
+        pthread_join(epoll_thread, NULL);
+      }
+      if (waitid_thread_started) {
+        pthread_join(waitid_thread, NULL);
+      }
+      close(epfd);
+      close_child(&child);
+      continue;
+    }
+
+    usleep(100);
+    kill(child.pid, SIGKILL);
+
+    pthread_join(epoll_thread, NULL);
+    pthread_join(waitid_thread, NULL);
+
+    long epoll_ns = atomic_load(&ctx.epoll_ns);
+    long waitid_ns = atomic_load(&ctx.waitid_ns);
+    int epoll_ret = atomic_load(&ctx.epoll_ret);
+    int epoll_errno = atomic_load(&ctx.epoll_errno);
+    int waitid_errno = atomic_load(&ctx.waitid_errno);
+    int probe_pid = atomic_load(&ctx.epoll_probe_pid);
+
+    if (epoll_ret == 0) {
+      epoll_timeouts++;
+      fprintf(
+        stderr,
+        "RACE_TIMEOUT iter=%d pid=%ld pidfd=%d waitid_pid=%d waitid_errno=%d\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        atomic_load(&ctx.waitid_pid),
+        waitid_errno
+      );
+    } else if (epoll_ret < 0 || waitid_errno != 0) {
+      errors++;
+      fprintf(
+        stderr,
+        "RACE_ERROR iter=%d pid=%ld pidfd=%d epoll_ret=%d "
+        "epoll_errno=%d(%s) waitid_errno=%d(%s)\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        epoll_ret,
+        epoll_errno,
+        strerror(epoll_errno),
+        waitid_errno,
+        strerror(waitid_errno)
+      );
+    } else if (probe_pid == 0) {
+      epoll_probe_empty++;
+      fprintf(
+        stderr,
+        "RACE_EPOLL_PROBE_EMPTY iter=%d pid=%ld pidfd=%d events=0x%x "
+        "epoll_ns=%ld waitid_ns=%ld waitid_pid=%d waitid_code=%d "
+        "waitid_status=%d\n",
+        i,
+        (long)child.pid,
+        child.pidfd,
+        atomic_load(&ctx.epoll_events),
+        epoll_ns,
+        waitid_ns,
+        atomic_load(&ctx.waitid_pid),
+        atomic_load(&ctx.waitid_code),
+        atomic_load(&ctx.waitid_status)
+      );
+    }
+
+    if (epoll_ns < waitid_ns) {
+      epoll_wins++;
+    } else if (waitid_ns < epoll_ns) {
+      waitid_wins++;
+    } else {
+      ties++;
+    }
+
+    siginfo_t si;
+    memset(&si, 0, sizeof si);
+    waitid(P_PIDFD, child.pidfd, &si, WEXITED);
+    child.done = 1;
+    close(epfd);
+    close_child(&child);
+
+    if ((i + 1) % 1000 == 0 || i + 1 == iterations) {
+      printf(
+        "race progress %d/%d epoll_wins=%d waitid_wins=%d ties=%d "
+        "probe_empty=%d timeouts=%d errors=%d\n",
+        i + 1,
+        iterations,
+        epoll_wins,
+        waitid_wins,
+        ties,
+        epoll_probe_empty,
+        epoll_timeouts,
+        errors
+      );
+      fflush(stdout);
+    }
+  }
+
+  printf(
+    "race done iterations=%d epoll_wins=%d waitid_wins=%d ties=%d "
+    "probe_empty=%d timeouts=%d errors=%d\n",
+    iterations,
+    epoll_wins,
+    waitid_wins,
+    ties,
+    epoll_probe_empty,
+    epoll_timeouts,
+    errors
+  );
+
+  return (epoll_timeouts || errors) ? 1 : 0;
 }
 
 int main(int argc, char **argv) {
@@ -262,21 +726,32 @@ int main(int argc, char **argv) {
   int use_epollet = argc > 3 ? atoi(argv[3]) : 1;
   int spawn_method = argc > 4 ? atoi(argv[4]) : 0;
   int parallelism = argc > 5 ? atoi(argv[5]) : 1;
+  external_child_path = argc > 6 ? argv[6] : NULL;
 
   if (iterations <= 0 || parallelism <= 0) {
     fprintf(stderr, "iterations and parallelism must be positive\n");
     return 2;
   }
 
+  if (mode == 8 && !external_child_path) {
+    fprintf(stderr, "mode 8 requires external child path argument\n");
+    return 2;
+  }
+
+  if (mode == 9) {
+    return run_two_thread_race(iterations, use_epollet);
+  }
+
   printf(
     "pidfd epoll/waitid repro: iterations=%d mode=%d epollet=%d "
-    "spawn_method=%d parallelism=%d pid=%ld\n",
+    "spawn_method=%d parallelism=%d pid=%ld external_child=%s\n",
     iterations,
     mode,
     use_epollet,
     spawn_method,
     parallelism,
-    (long)getpid()
+    (long)getpid(),
+    external_child_path ? external_child_path : "(none)"
   );
 
   int spurious = 0;
@@ -301,6 +776,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < batch; i++) {
       children[i].pid = -1;
       children[i].pidfd = -1;
+      children[i].stdin_fd = -1;
+      children[i].stdout_fd = -1;
       children[i].iteration = first + i;
     }
 
@@ -313,12 +790,7 @@ int main(int argc, char **argv) {
     }
 
     for (int i = 0; i < batch; i++) {
-      int err = spawn_child(
-        mode,
-        spawn_method,
-        &children[i].pid,
-        &children[i].pidfd
-      );
+      int err = spawn_child_slot(mode, spawn_method, &children[i]);
       if (err != 0) {
         errno = err;
         perror("spawn_child");
@@ -361,6 +833,23 @@ int main(int argc, char **argv) {
         free(children);
         free(events);
         return 1;
+      }
+
+      if (mode == 8) {
+        static const char payload[] = "alpha\nbeta\ngamma";
+        err = write_all(children[i].stdin_fd, payload, sizeof(payload) - 1);
+        if (err != 0) {
+          errno = err;
+          perror("write external child stdin");
+          for (int j = 0; j <= i; j++) {
+            close_child(&children[j]);
+          }
+          close(epfd);
+          free(children);
+          free(events);
+          return 1;
+        }
+        close_if_open(&children[i].stdin_fd);
       }
     }
 
