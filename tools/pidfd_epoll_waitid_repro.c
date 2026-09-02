@@ -561,6 +561,17 @@ static int run_two_thread_race(int iterations, int use_epollet) {
       continue;
     }
 
+    int flags = fcntl(child.pidfd, F_GETFL);
+    if (flags >= 0 && !(flags & O_NONBLOCK)) {
+      if (fcntl(child.pidfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("fcntl race O_NONBLOCK");
+        errors++;
+        close(epfd);
+        close_child(&child);
+        continue;
+      }
+    }
+
     struct epoll_event ev;
     memset(&ev, 0, sizeof ev);
     ev.events = EPOLLIN | EPOLLRDHUP | (use_epollet ? EPOLLET : 0);
