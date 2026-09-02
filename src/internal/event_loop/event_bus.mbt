@@ -105,6 +105,17 @@ fn Event::pid(self : Event) -> Int {
 extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
 
 ///|
+#cfg(platform="linux")
+extern "C" fn Event::raw_events(self : Event) -> Int = "moonbitlang_async_event_get_raw_events"
+
+///|
+#cfg(not(platform="linux"))
+fn Event::raw_events(self : Event) -> Int {
+  ignore(self)
+  0
+}
+
+///|
 #cfg(platform="windows")
 extern "C" fn Event::io_result(self : Event) -> IoResult = "moonbitlang_async_event_get_io_result"
 

@@ -59,7 +59,7 @@ fn Process::log_pidfd_wait_resume(
     None => "None"
   }
   @env_util.eprintln(
-    "moonbitlang/async: pidfd wait resumed; stage=\{stage}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}",
+    "moonbitlang/async: pidfd wait resumed; stage=\{stage}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}, last_read_event_mask=\{io.last_read_event_mask}, last_read_event_raw=\{io.last_read_event_raw}",
   )
 }
 

@@ -85,6 +85,8 @@ fn UnixEventLoopExtra::handle_event(
     if handle.is_async is Some(id) && id == event.registration_id() {
       if (events & ReadEvent) != 0 && handle.read is Waiting(coro) {
         handle.read_ready_seq += 1
+        handle.last_read_event_mask = events
+        handle.last_read_event_raw = event.raw_events()
         coro.wake()
       }
       if (events & WriteEvent) != 0 && handle.write is Waiting(coro) {

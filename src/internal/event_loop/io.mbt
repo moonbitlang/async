@@ -34,6 +34,8 @@ pub struct IoHandle {
   priv is_async : Int?
   priv mut read : IoStatus
   priv mut read_ready_seq : Int
+  priv mut last_read_event_mask : Int
+  priv mut last_read_event_raw : Int
   /// The current offset for reading.
   /// A negative value indicates that the underlying object does not support random access.
   ///
@@ -114,6 +116,8 @@ pub fn IoHandle::from_fd(
     is_async,
     read: Idle,
     read_ready_seq: 0,
+    last_read_event_mask: 0,
+    last_read_event_raw: 0,
     read_offset: if kind is Regular {
       0
     } else {

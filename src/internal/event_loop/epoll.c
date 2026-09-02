@@ -109,4 +109,8 @@ int moonbitlang_async_event_get_events(struct epoll_event *ev) {
   return result;
 }
 
+int moonbitlang_async_event_get_raw_events(struct epoll_event *ev) {
+  return ev->events;
+}
+
 #endif

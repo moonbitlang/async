@@ -94,6 +94,8 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
     is_async: None,
     read: Idle,
     read_ready_seq: 0,
+    last_read_event_mask: 0,
+    last_read_event_raw: 0,
     // The tricky case here is regular file.
     // When the user access a file via the `@fs.File` interface.
     // we maintain independent private read/write offset etc. to provide better semantic.
