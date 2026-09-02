@@ -79,17 +79,23 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
 
   let ret = get_process_result(handle, self.pid, out, is_probe=false)
   if ret < 0 {
-    if platform is (MacOS | Linux) {
-      // On MacOS, when `kevent` report `ESRCH`,
-      // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
-      // Work around this race condition by waiting again after a small timeout.
-      while @os_error.is_nonblocking_io_error() {
-        sleep(10)
-        @env_util.eprintln("retrying `wait`")
-        let ret = get_process_result(handle, self.pid, out, is_probe=false)
-        if ret >= 0 {
-          return out.val
+    while @os_error.is_nonblocking_io_error() {
+      match platform {
+        MacOS =>
+          // On MacOS, when `kevent` report `ESRCH`,
+          // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
+          // Work around this race condition by waiting again after a small timeout.
+          sleep(10)
+        Linux => {
+          @env_util.eprintln("retrying `wait`")
+          guard! self.handle is Some(io)
+          io.wait_read()
         }
+        Windows => panic()
+      }
+      let ret = get_process_result(handle, self.pid, out, is_probe=false)
+      if ret >= 0 {
+        return out.val
       }
     }
     @os_error.check_errno(context)
