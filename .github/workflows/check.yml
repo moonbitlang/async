@@ -38,12 +38,12 @@ jobs:
       - name: run pidfd repro
         shell: bash
         run: |
-          /tmp/pidfd_epoll_waitid_repro 40000 0 1 2
-          /tmp/pidfd_epoll_waitid_repro 40000 2 1 2
-          /tmp/pidfd_epoll_waitid_repro 40000 3 1 1
-          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 20000 0 1 2
-          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 20000 2 1 2
-          /tmp/pidfd_epoll_waitid_repro_asan 1000 7 1 2
+          /tmp/pidfd_epoll_waitid_repro 40000 0 1 2 64
+          /tmp/pidfd_epoll_waitid_repro 40000 2 1 2 64
+          /tmp/pidfd_epoll_waitid_repro 40000 3 1 1 64
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 20000 0 1 2 64
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_epoll_waitid_repro_asan 20000 2 1 2 64
+          /tmp/pidfd_epoll_waitid_repro_asan 1000 7 1 2 16
 
   stable-build:
     strategy:

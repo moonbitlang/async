@@ -44,6 +44,13 @@ struct spawn_result {
   int error;
 };
 
+struct child_slot {
+  pid_t pid;
+  int pidfd;
+  int iteration;
+  int done;
+};
+
 static int xpidfd_open(pid_t pid, unsigned int flags) {
   return (int)syscall(SYS_pidfd_open, pid, flags);
 }
@@ -178,6 +185,72 @@ static void *posix_spawn_in_thread_main(void *arg) {
   return NULL;
 }
 
+static int spawn_child(int mode, int spawn_method, pid_t *pid, int *pidfd) {
+  if (spawn_method == 1 || spawn_method == 2) {
+    struct spawn_result result = {
+      .mode = mode,
+      .pid = -1,
+      .pidfd = -1,
+      .error = 0,
+    };
+    pthread_t thread;
+    int err = pthread_create(
+      &thread,
+      NULL,
+      spawn_method == 1 ? spawn_in_thread_main : posix_spawn_in_thread_main,
+      &result
+    );
+    if (err != 0) {
+      return err;
+    }
+    err = pthread_join(thread, NULL);
+    if (err != 0) {
+      return err;
+    }
+    if (result.error) {
+      if (result.pid > 0) {
+        kill(result.pid, SIGKILL);
+        waitpid(result.pid, NULL, 0);
+      }
+      return result.error;
+    }
+    *pid = result.pid;
+    *pidfd = result.pidfd;
+    return 0;
+  }
+
+  *pid = fork();
+  if (*pid < 0) {
+    return errno;
+  }
+  if (*pid == 0) {
+    child_body(mode);
+  }
+
+  *pidfd = xpidfd_open(*pid, 0);
+  if (*pidfd < 0) {
+    int err = errno;
+    kill(*pid, SIGKILL);
+    waitpid(*pid, NULL, 0);
+    return err;
+  }
+  return 0;
+}
+
+static void close_child(struct child_slot *child) {
+  if (child->done) {
+    return;
+  }
+  child->done = 1;
+  if (child->pid > 0) {
+    kill(child->pid, SIGKILL);
+    waitpid(child->pid, NULL, 0);
+  }
+  if (child->pidfd >= 0) {
+    close(child->pidfd);
+  }
+}
+
 int main(int argc, char **argv) {
   self_path = argv[0];
   if (argc > 1 && strcmp(argv[1], "--child") == 0) {
@@ -188,19 +261,21 @@ int main(int argc, char **argv) {
   int mode = argc > 2 ? atoi(argv[2]) : 0;
   int use_epollet = argc > 3 ? atoi(argv[3]) : 1;
   int spawn_method = argc > 4 ? atoi(argv[4]) : 0;
+  int parallelism = argc > 5 ? atoi(argv[5]) : 1;
 
-  if (iterations <= 0) {
-    fprintf(stderr, "iterations must be positive\n");
+  if (iterations <= 0 || parallelism <= 0) {
+    fprintf(stderr, "iterations and parallelism must be positive\n");
     return 2;
   }
 
   printf(
     "pidfd epoll/waitid repro: iterations=%d mode=%d epollet=%d "
-    "spawn_method=%d pid=%ld\n",
+    "spawn_method=%d parallelism=%d pid=%ld\n",
     iterations,
     mode,
     use_epollet,
     spawn_method,
+    parallelism,
     (long)getpid()
   );
 
@@ -209,186 +284,207 @@ int main(int argc, char **argv) {
   int wait_errors = 0;
   int epoll_timeouts = 0;
 
-  for (int i = 0; i < iterations; i++) {
-    pid_t pid;
-    int pidfd;
-    if (spawn_method == 1 || spawn_method == 2) {
-      struct spawn_result result = {
-        .mode = mode,
-        .pid = -1,
-        .pidfd = -1,
-        .error = 0,
-      };
-      pthread_t thread;
-      int err = pthread_create(
-        &thread,
-        NULL,
-        spawn_method == 1 ? spawn_in_thread_main : posix_spawn_in_thread_main,
-        &result
-      );
-      if (err != 0) {
-        errno = err;
-        perror("pthread_create spawn");
-        return 1;
-      }
-      err = pthread_join(thread, NULL);
-      if (err != 0) {
-        errno = err;
-        perror("pthread_join spawn");
-        return 1;
-      }
-      if (result.error) {
-        errno = result.error;
-        perror("thread fork/pidfd_open");
-        if (result.pid > 0) {
-          kill(result.pid, SIGKILL);
-          waitpid(result.pid, NULL, 0);
-        }
-        return 1;
-      }
-      pid = result.pid;
-      pidfd = result.pidfd;
-    } else {
-      pid = fork();
-      if (pid < 0) {
-        perror("fork");
-        return 1;
-      }
-      if (pid == 0) {
-        child_body(mode);
-      }
-
-      pidfd = xpidfd_open(pid, 0);
-      if (pidfd < 0) {
-        perror("pidfd_open");
-        kill(pid, SIGKILL);
-        waitpid(pid, NULL, 0);
-        return 1;
-      }
+  for (int first = 0; first < iterations; first += parallelism) {
+    int batch = iterations - first;
+    if (batch > parallelism) {
+      batch = parallelism;
     }
 
-    // Match moonbitlang/async: pidfd_open(..., 0), then fcntl O_NONBLOCK in
-    // event_bus_register.
-    int flags = fcntl(pidfd, F_GETFL);
-    if (flags >= 0 && !(flags & O_NONBLOCK)) {
-      if (fcntl(pidfd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        perror("fcntl O_NONBLOCK");
-        close(pidfd);
-        kill(pid, SIGKILL);
-        waitpid(pid, NULL, 0);
-        return 1;
-      }
+    struct child_slot *children = calloc(batch, sizeof(struct child_slot));
+    struct epoll_event *events = calloc(batch, sizeof(struct epoll_event));
+    if (!children || !events) {
+      perror("calloc");
+      free(children);
+      free(events);
+      return 1;
+    }
+    for (int i = 0; i < batch; i++) {
+      children[i].pid = -1;
+      children[i].pidfd = -1;
+      children[i].iteration = first + i;
     }
 
     int epfd = epoll_create1(EPOLL_CLOEXEC);
     if (epfd < 0) {
       perror("epoll_create1");
-      close(pidfd);
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
+      free(children);
+      free(events);
       return 1;
     }
 
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof ev);
-    ev.events = EPOLLIN | EPOLLRDHUP | (use_epollet ? EPOLLET : 0);
-    ev.data.u64 = ((uint64_t)(uint32_t)pidfd) |
-      ((uint64_t)(uint32_t)(i + 1) << 32);
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &ev) < 0) {
-      perror("epoll_ctl ADD");
-      close(epfd);
-      close(pidfd);
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
-      return 1;
+    for (int i = 0; i < batch; i++) {
+      int err = spawn_child(
+        mode,
+        spawn_method,
+        &children[i].pid,
+        &children[i].pidfd
+      );
+      if (err != 0) {
+        errno = err;
+        perror("spawn_child");
+        for (int j = 0; j <= i; j++) {
+          close_child(&children[j]);
+        }
+        close(epfd);
+        free(children);
+        free(events);
+        return 1;
+      }
+
+      // Match moonbitlang/async: pidfd_open(..., 0), then fcntl O_NONBLOCK in
+      // event_bus_register.
+      int flags = fcntl(children[i].pidfd, F_GETFL);
+      if (flags >= 0 && !(flags & O_NONBLOCK)) {
+        if (fcntl(children[i].pidfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+          perror("fcntl O_NONBLOCK");
+          for (int j = 0; j <= i; j++) {
+            close_child(&children[j]);
+          }
+          close(epfd);
+          free(children);
+          free(events);
+          return 1;
+        }
+      }
+
+      struct epoll_event ev;
+      memset(&ev, 0, sizeof ev);
+      ev.events = EPOLLIN | EPOLLRDHUP | (use_epollet ? EPOLLET : 0);
+      ev.data.u64 = ((uint64_t)(uint32_t)children[i].pidfd) |
+        ((uint64_t)(uint32_t)(children[i].iteration + 1) << 32);
+      if (epoll_ctl(epfd, EPOLL_CTL_ADD, children[i].pidfd, &ev) < 0) {
+        perror("epoll_ctl ADD");
+        for (int j = 0; j <= i; j++) {
+          close_child(&children[j]);
+        }
+        close(epfd);
+        free(children);
+        free(events);
+        return 1;
+      }
     }
 
     if (mode == 2 || mode == 5) {
-      // Give the child enough time to arm pause(), then hard-cancel it.
-      usleep(10 + (i % 50));
-      kill(pid, SIGKILL);
-    }
-
-    struct epoll_event out;
-    memset(&out, 0, sizeof out);
-    long start = now_ns();
-    int n = epoll_wait(epfd, &out, 1, 5000);
-    long waited_ns = now_ns() - start;
-    if (n < 0) {
-      perror("epoll_wait");
-      close(epfd);
-      close(pidfd);
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
-      return 1;
-    }
-    if (n == 0) {
-      epoll_timeouts++;
-      fprintf(
-        stderr,
-        "TIMEOUT iter=%d pid=%ld pidfd=%d waited_ms=%.3f\n",
-        i,
-        (long)pid,
-        pidfd,
-        waited_ns / 1000000.0
-      );
-      close(epfd);
-      close(pidfd);
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
-      continue;
-    }
-
-    siginfo_t si;
-    memset(&si, 0, sizeof si);
-    errno = 0;
-    int ret = waitid(P_PIDFD, pidfd, &si, WEXITED | WNOHANG);
-    int err = errno;
-    if (ret < 0) {
-      wait_errors++;
-      if (err == EAGAIN) {
-        eagain++;
+      // Give all children enough time to arm pause(), then hard-cancel them.
+      usleep(50);
+      for (int i = 0; i < batch; i++) {
+        kill(children[i].pid, SIGKILL);
       }
-      fprintf(
-        stderr,
-        "WAIT_ERROR iter=%d pid=%ld pidfd=%d events=0x%x ret=%d "
-        "errno=%d(%s) waited_ms=%.3f\n",
-        i,
-        (long)pid,
-        pidfd,
-        out.events,
-        ret,
-        err,
-        strerror(err),
-        waited_ns / 1000000.0
-      );
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
-    } else if (si.si_pid == 0) {
-      spurious++;
-      fprintf(
-        stderr,
-        "SPURIOUS iter=%d pid=%ld pidfd=%d events=0x%x si_pid=0 "
-        "si_code=%d si_status=%d waited_ms=%.3f\n",
-        i,
-        (long)pid,
-        pidfd,
-        out.events,
-        si.si_code,
-        si.si_status,
-        waited_ns / 1000000.0
-      );
-      kill(pid, SIGKILL);
-      waitpid(pid, NULL, 0);
+    }
+
+    int remaining = batch;
+    while (remaining > 0) {
+      long start = now_ns();
+      int n = epoll_wait(epfd, events, batch, 5000);
+      long waited_ns = now_ns() - start;
+      if (n < 0) {
+        perror("epoll_wait");
+        for (int i = 0; i < batch; i++) {
+          close_child(&children[i]);
+        }
+        close(epfd);
+        free(children);
+        free(events);
+        return 1;
+      }
+      if (n == 0) {
+        epoll_timeouts += remaining;
+        for (int i = 0; i < batch; i++) {
+          if (!children[i].done) {
+            fprintf(
+              stderr,
+              "TIMEOUT iter=%d pid=%ld pidfd=%d waited_ms=%.3f\n",
+              children[i].iteration,
+              (long)children[i].pid,
+              children[i].pidfd,
+              waited_ns / 1000000.0
+            );
+            close_child(&children[i]);
+          }
+        }
+        break;
+      }
+
+      for (int i = 0; i < n; i++) {
+        int iter = (int)(events[i].data.u64 >> 32) - 1;
+        int child_index = iter - first;
+        if (child_index < 0 || child_index >= batch) {
+          fprintf(
+            stderr,
+            "UNKNOWN_EVENT iter=%d events=0x%x data=0x%llx\n",
+            iter,
+            events[i].events,
+            (unsigned long long)events[i].data.u64
+          );
+          continue;
+        }
+
+        struct child_slot *child = &children[child_index];
+        if (child->done) {
+          continue;
+        }
+
+        siginfo_t si;
+        memset(&si, 0, sizeof si);
+        errno = 0;
+        int ret = waitid(P_PIDFD, child->pidfd, &si, WEXITED | WNOHANG);
+        int err = errno;
+        if (ret < 0) {
+          wait_errors++;
+          if (err == EAGAIN) {
+            eagain++;
+          }
+          fprintf(
+            stderr,
+            "WAIT_ERROR iter=%d pid=%ld pidfd=%d events=0x%x ret=%d "
+            "errno=%d(%s) waited_ms=%.3f\n",
+            child->iteration,
+            (long)child->pid,
+            child->pidfd,
+            events[i].events,
+            ret,
+            err,
+            strerror(err),
+            waited_ns / 1000000.0
+          );
+          close_child(child);
+          remaining--;
+        } else if (si.si_pid == 0) {
+          spurious++;
+          fprintf(
+            stderr,
+            "SPURIOUS iter=%d pid=%ld pidfd=%d events=0x%x si_pid=0 "
+            "si_code=%d si_status=%d waited_ms=%.3f\n",
+            child->iteration,
+            (long)child->pid,
+            child->pidfd,
+            events[i].events,
+            si.si_code,
+            si.si_status,
+            waited_ns / 1000000.0
+          );
+          close_child(child);
+          remaining--;
+        } else {
+          child->done = 1;
+          close(child->pidfd);
+          child->pidfd = -1;
+          remaining--;
+        }
+      }
     }
 
     close(epfd);
-    close(pidfd);
+    for (int i = 0; i < batch; i++) {
+      close_child(&children[i]);
+    }
+    free(children);
+    free(events);
 
-    if ((i + 1) % 1000 == 0) {
+    if ((first + batch) % 1000 == 0 || first + batch == iterations) {
       printf(
         "progress %d/%d spurious=%d eagain=%d wait_errors=%d timeouts=%d\n",
-        i + 1,
+        first + batch,
         iterations,
         spurious,
         eagain,
