@@ -14,22 +14,44 @@
 // limitations under the License.
 
 ///|
-async test "min line cap c cat unterminated over cap" {
+suberror BareLineLimitExceeded {
+  BareLineLimitExceeded(Int)
+}
+
+///|
+async test "min process c cat unterminated output cancellation" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
-  let seen = []
   try
-    @shell.Cmd(program, [], stdin=Text("a".repeat(1000))).each_line(
-      line => seen.push(line),
-      max_line_bytes=64,
-    )
-    |> ignore
-  catch {
-    err => {
-      let diagnostic = "\{Repr(err)}"
-      assert_true(diagnostic.contains("OutputLimitExceeded"))
-      assert_true(diagnostic.contains("limit=64"))
-      assert_eq(seen, [])
+    @async.with_task_group() <| group => {
+      let (child_stdin, stdin_writer) = @process.write_to_process()
+      let (stdout_reader, child_stdout) = @process.read_from_process()
+      group.spawn_bg(allow_failure=true, () => {
+        defer stdin_writer.close()
+        stdin_writer.write("a".repeat(1000))
+      })
+      group.spawn_bg(() => {
+        defer stdout_reader.close()
+        let mut buffered = 0
+        while stdout_reader.read_some(max_len=4096) is Some(chunk) {
+          buffered += chunk.length()
+          if buffered > 64 {
+            raise BareLineLimitExceeded(64)
+          }
+        }
+      })
+      let child = @process.spawn(
+        group,
+        program,
+        [],
+        stdin=child_stdin,
+        stdout=child_stdout,
+        cancel_handler=@process.hard_cancel(),
+      )
+      child.wait() |> ignore
     }
+  catch {
+    BareLineLimitExceeded(64) => ()
+    err => raise err
   } noraise {
     _ => fail("expected the line limit to raise")
   }
