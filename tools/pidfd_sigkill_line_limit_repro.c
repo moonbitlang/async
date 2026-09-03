@@ -9,12 +9,13 @@
 // This intentionally uses one child at a time.  The sequence is:
 //   spawn cat with stdin/stdout pipes
 //   register pidfd in epoll
-//   write a long unterminated line and close stdin
+//   write a long unterminated line and keep stdin open
 //   read enough stdout to "exceed the line limit", then close stdout reader
 //   probe waitid(P_PIDFD, WNOHANG), expecting not-ready
 //   send SIGKILL
 //   wait for pidfd EPOLLIN
 //   immediately call waitid(P_PIDFD, WNOHANG)
+//   close stdin after the child has been observed terminated
 
 #define _GNU_SOURCE
 
@@ -285,7 +286,6 @@ int main(int argc, char **argv) {
       errors++;
       goto cleanup;
     }
-    close_if_open(&stdin_write);
 
     char read_buf[4096];
     ssize_t nread;
@@ -368,12 +368,12 @@ int main(int argc, char **argv) {
     child_reaped = 1;
 
 cleanup:
-    close_if_open(&stdin_write);
     close_if_open(&stdout_read);
     if (pid > 0 && !child_reaped) {
       kill(pid, SIGKILL);
       waitpid(pid, NULL, 0);
     }
+    close_if_open(&stdin_write);
     close_if_open(&pidfd);
     close_if_open(&epfd);
 
