@@ -22,6 +22,9 @@
 #else
 
 #include <errno.h>
+#include <poll.h>
+#include <signal.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -69,8 +72,44 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
     }
 
     if (info.si_pid == 0) {
-      if (!is_probe) 
-        fprintf(stderr, "waitid() return `info.si_pid == 0`\n");
+      if (!is_probe) {
+        siginfo_t by_pid;
+        memset(&by_pid, 0, sizeof(by_pid));
+        errno = 0;
+        int by_pid_ret = waitid(P_PID, pid, &by_pid, WEXITED | WNOHANG | WNOWAIT);
+        int by_pid_errno = errno;
+
+        struct pollfd pfd;
+        pfd.fd = handle;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        errno = 0;
+        int poll_ret = poll(&pfd, 1, 0);
+        int poll_errno = errno;
+
+        errno = 0;
+        int kill0_ret = kill(pid, 0);
+        int kill0_errno = errno;
+
+        fprintf(
+          stderr,
+          "waitid(P_PIDFD) returned si_pid=0; pid=%d, handle=%d, "
+          "waitid(P_PID,WNOWAIT) ret=%d errno=%d si_pid=%d si_code=%d si_status=%d, "
+          "poll(pidfd) ret=%d errno=%d revents=0x%x, kill(pid,0) ret=%d errno=%d\n",
+          pid,
+          handle,
+          by_pid_ret,
+          by_pid_errno,
+          by_pid.si_pid,
+          by_pid.si_code,
+          by_pid.si_status,
+          poll_ret,
+          poll_errno,
+          pfd.revents,
+          kill0_ret,
+          kill0_errno
+        );
+      }
       errno = EAGAIN;
       return -1;
     }

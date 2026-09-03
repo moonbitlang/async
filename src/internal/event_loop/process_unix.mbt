@@ -66,6 +66,25 @@ fn Process::log_pidfd_wait_resume(
 
 ///|
 #cfg(not(platform="windows"))
+fn Process::log_pidfd_wait_step(
+  self : Process,
+  io : IoHandle,
+  stage : String,
+  context : String,
+) -> Unit {
+  if context.contains(":cleanup") {
+    let registration_id = match io.is_async {
+      Some(id) => "\{id}"
+      None => "None"
+    }
+    @env_util.eprintln(
+      "moonbitlang/async: pidfd wait step; stage=\{stage}, context=\{context}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, is_being_cancelled=\{@coroutine.is_being_cancelled()}, read_ready_seq=\{io.read_ready_seq}, last_read_event_mask=\{io.last_read_event_mask}, last_read_event_raw=\{io.last_read_event_raw}",
+    )
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
 pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   guard! curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
@@ -74,15 +93,19 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   let last_wait_observed_read_event = Ref(false)
 
   if platform is Linux && self.handle is Some(io) {
+    self.log_pidfd_wait_step(io, "start", context)
     let ret = get_process_result(handle, self.pid, out, is_probe=true)
     if ret >= 0 {
+      self.log_pidfd_wait_step(io, "probe_ready", context)
       return out.val
     }
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
+    self.log_pidfd_wait_step(io, "probe_not_ready", context)
     let observed = io.wait_read_observed_event()
     last_wait_observed_read_event.val = observed
+    self.log_pidfd_wait_step(io, "wait_read_done", context)
     if !observed {
       self.log_pidfd_wait_resume(
         io,
@@ -124,6 +147,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
           )
           let observed = io.wait_read_observed_event()
           last_wait_observed_read_event.val = observed
+          self.log_pidfd_wait_step(io, "retry_wait_read_done", context)
           if !observed {
             self.log_pidfd_wait_resume(
               io,
@@ -137,6 +161,9 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
       }
       let ret = get_process_result(handle, self.pid, out, is_probe=false)
       if ret >= 0 {
+        if self.handle is Some(io) {
+          self.log_pidfd_wait_step(io, "result_ready", context)
+        }
         return out.val
       }
     }
