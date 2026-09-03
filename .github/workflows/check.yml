@@ -45,35 +45,13 @@ jobs:
           moon build test_programs/cat --debug --target-dir _build/test_programs
           moon build test_programs/pidfd_wait_repro --debug --target-dir _build/test_programs
 
-      - name: build pidfd repro
-        run: |
-          gcc -O2 -Wall -Wextra -pthread \
-            tools/pidfd_epoll_waitid_repro.c \
-            -o /tmp/pidfd_epoll_waitid_repro
-          gcc -O1 -g -Wall -Wextra -fsanitize=address \
-            -fno-omit-frame-pointer -pthread \
-            tools/pidfd_epoll_waitid_repro.c \
-            -o /tmp/pidfd_epoll_waitid_repro_asan
-
       - name: run pidfd repro
         shell: bash
         run: |
-          /tmp/pidfd_epoll_waitid_repro 40000 0 1 2 64
-          /tmp/pidfd_epoll_waitid_repro 40000 2 1 2 64
-          /tmp/pidfd_epoll_waitid_repro 40000 3 1 1 64
-          /tmp/pidfd_epoll_waitid_repro_asan 20000 0 1 2 64
-          /tmp/pidfd_epoll_waitid_repro_asan 20000 2 1 2 64
-          /tmp/pidfd_epoll_waitid_repro_asan 1000 7 1 2 16
           cat_prog="$PWD/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
-          /tmp/pidfd_epoll_waitid_repro_asan 5000 8 1 2 32 "$cat_prog"
-          /tmp/pidfd_epoll_waitid_repro 10000 9 1 0 1
-          /tmp/pidfd_epoll_waitid_repro_asan 5000 9 1 0 1
-          /tmp/pidfd_epoll_waitid_repro 10000 10 1 2 1 0
-          /tmp/pidfd_epoll_waitid_repro_asan 5000 10 1 2 1 6
-          /tmp/pidfd_epoll_waitid_repro_asan 2000 10 1 2 1 8 "$cat_prog"
           mbt_repro="$PWD/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/pidfd_wait_repro/pidfd_wait_repro.exe"
-          "$mbt_repro" "$cat_prog" 5000 16 0
-          "$mbt_repro" "$cat_prog" 5000 16 1
+          "$mbt_repro" "$cat_prog" 50000 128 0
+          "$mbt_repro" "$cat_prog" 50000 128 1
 
   stable-build:
     strategy:
