@@ -10,6 +10,35 @@ env:
   MOONBIT_ASYNC_CHECK_FD_LEAK: 1
 
 jobs:
+  pidfd-sigkill-line-limit-repro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '>=22.4.0'
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: build repro
+        run: |
+          moon version --all
+          moon update
+          moon build test_programs/cat --debug --target-dir _build/test_programs
+          gcc -O2 -Wall -Wextra tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+
+      - name: run repro
+        run: |
+          cat_prog="$PWD/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
+          /tmp/pidfd_sigkill_line_limit_repro 10000 "$cat_prog" 1000 20
+
   sanitizer-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
