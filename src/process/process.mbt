@@ -148,14 +148,31 @@ pub async fn run(
   )
   defer process.close()
   let pid = process.pid
-  process.wait_pid(context~) catch {
+  process.wait_pid(context="\{context}:primary") catch {
     @coroutine.Cancelled as err => {
+      @env_util.eprintln(
+        "moonbitlang/async: process wait cancelled; api=run, phase=enter_cleanup, pid=\{pid}",
+      )
       let _ = @async.protect_from_cancel() <| () => {
         @async.with_task_group() <| group => {
-          group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          process.wait_pid(context~)
+          group.spawn_bg(no_wait=true, () => {
+            @env_util.eprintln(
+              "moonbitlang/async: process wait cancelled; api=run, phase=cancel_handler_start, pid=\{pid}",
+            )
+            cancel_handler(pid)
+            @env_util.eprintln(
+              "moonbitlang/async: process wait cancelled; api=run, phase=cancel_handler_done, pid=\{pid}",
+            )
+          })
+          let code = process.wait_pid(context="\{context}:cleanup")
+          @env_util.eprintln(
+            "moonbitlang/async: process wait cancelled; api=run, phase=cleanup_wait_done, pid=\{pid}, code=\{code}",
+          )
         }
       }
+      @env_util.eprintln(
+        "moonbitlang/async: process wait cancelled; api=run, phase=leave_cleanup, pid=\{pid}",
+      )
       raise err
     }
     err => raise err
@@ -238,14 +255,31 @@ pub async fn[X] spawn(
   let pid = process.pid
   let result = group.spawn(no_wait?, () => {
     defer process.close()
-    process.wait_pid(context~) catch {
+    process.wait_pid(context="\{context}:primary") catch {
       @coroutine.Cancelled as err => {
+        @env_util.eprintln(
+          "moonbitlang/async: process wait cancelled; api=spawn, phase=enter_cleanup, pid=\{pid}",
+        )
         let _ = @async.protect_from_cancel() <| () => {
           @async.with_task_group() <| group => {
-            group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-            process.wait_pid(context~)
+            group.spawn_bg(no_wait=true, () => {
+              @env_util.eprintln(
+                "moonbitlang/async: process wait cancelled; api=spawn, phase=cancel_handler_start, pid=\{pid}",
+              )
+              cancel_handler(pid)
+              @env_util.eprintln(
+                "moonbitlang/async: process wait cancelled; api=spawn, phase=cancel_handler_done, pid=\{pid}",
+              )
+            })
+            let code = process.wait_pid(context="\{context}:cleanup")
+            @env_util.eprintln(
+              "moonbitlang/async: process wait cancelled; api=spawn, phase=cleanup_wait_done, pid=\{pid}, code=\{code}",
+            )
           }
         }
+        @env_util.eprintln(
+          "moonbitlang/async: process wait cancelled; api=spawn, phase=leave_cleanup, pid=\{pid}",
+        )
         raise err
       }
       err => raise err

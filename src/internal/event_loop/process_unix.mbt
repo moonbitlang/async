@@ -52,6 +52,7 @@ fn Process::log_pidfd_wait_resume(
   self : Process,
   io : IoHandle,
   stage : String,
+  context : String,
   observed_read_event~ : Bool,
 ) -> Unit {
   let registration_id = match io.is_async {
@@ -59,7 +60,7 @@ fn Process::log_pidfd_wait_resume(
     None => "None"
   }
   @env_util.eprintln(
-    "moonbitlang/async: pidfd wait resumed; stage=\{stage}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}, last_read_event_mask=\{io.last_read_event_mask}, last_read_event_raw=\{io.last_read_event_raw}",
+    "moonbitlang/async: pidfd wait resumed; stage=\{stage}, context=\{context}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}, last_read_event_mask=\{io.last_read_event_mask}, last_read_event_raw=\{io.last_read_event_raw}",
   )
 }
 
@@ -83,7 +84,12 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     let observed = io.wait_read_observed_event()
     last_wait_observed_read_event.val = observed
     if !observed {
-      self.log_pidfd_wait_resume(io, "initial", observed_read_event=observed)
+      self.log_pidfd_wait_resume(
+        io,
+        "initial",
+        context,
+        observed_read_event=observed,
+      )
     }
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
@@ -113,6 +119,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
           self.log_pidfd_wait_resume(
             io,
             "waitid_not_ready",
+            context,
             observed_read_event=last_wait_observed_read_event.val,
           )
           let observed = io.wait_read_observed_event()
@@ -121,6 +128,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
             self.log_pidfd_wait_resume(
               io,
               "retry",
+              context,
               observed_read_event=observed,
             )
           }

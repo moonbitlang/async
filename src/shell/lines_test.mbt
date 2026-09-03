@@ -28,6 +28,13 @@ async fn lines_of(payload : String, max_line_bytes? : Int) -> Array[String] {
 }
 
 ///|
+fn log_line_cap_case(case_name : String, phase : String) -> Unit {
+  @env_util.eprintln(
+    "moonbitlang/async: lines_test line-cap case=\{case_name} phase=\{phase}",
+  )
+}
+
+///|
 async test "each_line delivers stdout incrementally, tail included" {
   // The unterminated trailing fragment is still a line.
   assert_eq(lines_of("alpha\nbeta\ngamma"), ["alpha", "beta", "gamma"])
@@ -43,10 +50,15 @@ async test "CRLF terminates a line; a lone trailing CR is data" {
 ///|
 async test "the line cap counts content, not terminators" {
   // One byte of content under a one-byte cap: the CRLF is free.
+  log_line_cap_case("crlf_under_cap", "start")
   assert_eq(lines_of("a\r\n", max_line_bytes=1), ["a"])
+  log_line_cap_case("crlf_under_cap", "done")
   // A line exactly at the cap is allowed.
+  log_line_cap_case("exact_cap", "start")
   assert_eq(lines_of("aaaaaaaa\n", max_line_bytes=8), ["aaaaaaaa"])
+  log_line_cap_case("exact_cap", "done")
   // One byte over — terminated or not, delivered lines keep the promise.
+  log_line_cap_case("terminated_over_cap", "start")
   try lines_of("ab\r\n", max_line_bytes=1) |> ignore catch {
     err =>
       debug_inspect(
@@ -58,7 +70,9 @@ async test "the line cap counts content, not terminators" {
   } noraise {
     _ => fail("expected the line limit to raise")
   }
+  log_line_cap_case("terminated_over_cap", "done")
   // A child that never emits a newline cannot grow the held line unboundedly.
+  log_line_cap_case("unterminated_over_cap", "start")
   try lines_of("a".repeat(1000), max_line_bytes=64) |> ignore catch {
     err =>
       debug_inspect(
@@ -70,6 +84,7 @@ async test "the line cap counts content, not terminators" {
   } noraise {
     _ => fail("expected the line limit to raise")
   }
+  log_line_cap_case("unterminated_over_cap", "done")
 }
 
 ///|
