@@ -18,29 +18,16 @@ jobs:
       MOONBIT_ALLOCATOR: system
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: build repro
         run: |
-          moon version --all
-          moon update
-          moon run --debug test_programs/setup_sanitizer_check
-          moon build test_programs/cat --debug --target-dir _build/test_programs
           gcc -O2 -Wall -Wextra -fsanitize=address tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+          gcc -O1 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
 
       - name: run repro
         run: |
-          cat_prog="$PWD/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
-          /tmp/pidfd_sigkill_line_limit_repro 10000 "$cat_prog" 1000 20
-          export ASAN_OPTIONS=detect_leaks=0
-          /tmp/pidfd_sigkill_line_limit_repro 10000 "$cat_prog" 1000 20
+          /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20
 
   sanitizer-check:
     runs-on: ubuntu-latest
