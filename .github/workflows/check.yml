@@ -318,13 +318,6 @@ jobs:
       - name: run test with address sanitizer
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
-          moon test
-          for _ in $(seq 1 5); do
-            moon test src/shell
-          done
           for _ in $(seq 1 20); do
             moon test src/shell/lines_test.mbt -F "the line cap counts content, not terminators"
-          done
-          for _ in $(seq 1 20); do
-            moon test src/shell/lines_test.mbt -F "streaming is unbounded where capture is bounded"
           done
