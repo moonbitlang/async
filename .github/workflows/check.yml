@@ -33,7 +33,7 @@ jobs:
           moon update
           moon run --debug test_programs/setup_sanitizer_check
           moon build test_programs/cat --debug --target-dir _build/test_programs
-          gcc -O2 -Wall -Wextra tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+          gcc -O2 -Wall -Wextra -fsanitize=address tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
 
       - name: run repro
         run: |
