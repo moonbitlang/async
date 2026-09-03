@@ -364,6 +364,7 @@ async fn[X] spawn_stage(
     stdout?,
     stderr?,
     cwd?=cmd.cwd.map(directory => directory[:]),
+    cancel_handler=@process.hard_cancel(),
   )
 }
 
