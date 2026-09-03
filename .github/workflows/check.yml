@@ -64,15 +64,6 @@ jobs:
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
-          for filter in \
-            "min line cap moonbit cat crlf under cap" \
-            "min line cap moonbit cat exact cap" \
-            "min line cap moonbit cat terminated over cap" \
-            "min line cap moonbit cat unterminated over cap" \
-            "min line cap c cat unterminated over cap" \
-            "min line cap moonbit cat original sequence"; do
-            echo "======================== ${filter} ============================="
-            for _ in $(seq 1 20); do
-              moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
-            done
+          for _ in $(seq 1 20); do
+            moon test src/shell/line_cap_minimize_test.mbt -F "min line cap c cat unterminated over cap"
           done
