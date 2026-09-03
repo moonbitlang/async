@@ -52,6 +52,7 @@ jobs:
           mbt_repro="$PWD/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/pidfd_wait_repro/pidfd_wait_repro.exe"
           "$mbt_repro" "$cat_prog" 50000 128 0
           "$mbt_repro" "$cat_prog" 50000 128 1
+          "$mbt_repro" "$cat_prog" 50000 128 2
 
   stable-build:
     strategy:

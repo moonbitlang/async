@@ -17,12 +17,16 @@
 let payload : String = "alpha\nbeta\ngamma"
 
 ///|
+let long_line_payload : String = "a".repeat(1000)
+
+///|
 fn usage() -> Unit {
   println(
     "usage: pidfd_wait_repro <cat-path> [iterations] [parallelism] [mode]",
   )
   println("  mode 0: @process.spawn with explicit stdin/stdout pipe tasks")
   println("  mode 1: @process.run with explicit stdin/stdout pipe tasks")
+  println("  mode 2: @shell.Cmd::each_line expected line-limit failure")
 }
 
 ///|
@@ -82,6 +86,26 @@ async fn run_once(cat : String) -> Unit {
 }
 
 ///|
+async fn shell_line_limit_once(cat : String) -> Unit {
+  try
+    @shell.Cmd(cat, [], stdin=Text(long_line_payload)).each_line(
+      _line => (),
+      max_line_bytes=64,
+    )
+    |> ignore
+  catch {
+    err => {
+      let diagnostic = "\{Repr(err)}"
+      if !diagnostic.contains("OutputLimitExceeded") {
+        raise err
+      }
+    }
+  } noraise {
+    _ => fail("expected @shell.Cmd::each_line to fail with OutputLimitExceeded")
+  }
+}
+
+///|
 async fn run_batch(cat : String, count : Int, mode : Int) -> Unit {
   @async.with_task_group() <| group => {
     for _ in 0..<count {
@@ -89,6 +113,7 @@ async fn run_batch(cat : String, count : Int, mode : Int) -> Unit {
         match mode {
           0 => spawn_once(cat)
           1 => run_once(cat)
+          2 => shell_line_limit_once(cat)
           _ => fail("unsupported mode \{mode}")
         }
       })
