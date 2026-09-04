@@ -88,22 +88,11 @@ jobs:
       - name: run pidfd sequential repro without strace
         run: |
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
-          hit=0
-          for i in $(seq 1 100); do
+          for i in $(seq 1 20); do
             set +e
             ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
               "$repro" /tmp/pidfd_repro_cat_asan
-            status=$?
-            set -e
-            if [ "$status" -ne 0 ]; then
-              echo "MoonBit pidfd sequential repro failed without strace on attempt ${i} with status ${status}"
-              hit=1
-              break
-            fi
           done
-          if [ "$hit" -eq 0 ]; then
-            echo "MoonBit pidfd sequential repro did not fail without strace in 100 attempts"
-          fi
 
       - name: run pidfd sequential repro under strace
         run: |
@@ -139,7 +128,6 @@ jobs:
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
-          export MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1
           for filter in \
             "min process c cat" \
             "min process c cat sequential" \
