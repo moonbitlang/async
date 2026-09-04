@@ -69,7 +69,7 @@ jobs:
           for filter in \
             "min process c cat" \
             "min process c cat sequential" \
-            "min process c cat sequential no read"; do
+            "min process c cat sequential sleep before kill"; do
             echo "======================== ${filter} ============================="
             for _ in $(seq 1 20); do
               moon test src/shell/line_cap_minimize_test.mbt -F "$filter"

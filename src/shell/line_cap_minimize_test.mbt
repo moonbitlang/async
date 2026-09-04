@@ -87,14 +87,14 @@ async test "min process c cat sequential" {
 }
 
 ///|
-async test "min process c cat sequential no read" {
+async test "min process c cat sequential sleep before kill" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
     @async.with_task_group() <| group => {
       let (child_stdin, stdin_writer) = @process.write_to_process()
       let (stdout_reader, child_stdout) = @process.read_from_process()
       defer stdout_reader.close()
-      let _child = @process.spawn(
+      let child = @process.spawn(
         group,
         program,
         [],
@@ -106,10 +106,11 @@ async test "min process c cat sequential no read" {
         defer stdin_writer.close()
         stdin_writer.write(b"a")
       }
-      (
-        {
-          raise BareLineLimitExceeded(0)
-        } : Unit)
+      if stdout_reader.read_some(max_len=1) is Some(_) {
+        @async.sleep(500)
+        raise BareLineLimitExceeded(0)
+      }
+      child.wait() |> ignore
     }
   catch {
     BareLineLimitExceeded(0) => ()
