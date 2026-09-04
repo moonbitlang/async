@@ -64,6 +64,16 @@ jobs:
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
-          for _ in $(seq 1 20); do
-            moon test src/shell/line_cap_minimize_test.mbt -F "min process c cat unterminated output cancellation"
+          for filter in \
+            "min process c cat drained stdout writer closes" \
+            "min process c cat pending stdout writer closes" \
+            "min process c cat drained stdout writer held open" \
+            "min process c cat pending stdout writer held open" \
+            "min process c cat stdout pipe unread writer held open" \
+            "min process c cat no stdout pipe writer held open" \
+            "min process sleep no pipes synthetic cancellation"; do
+            echo "======================== ${filter} ============================="
+            for _ in $(seq 1 20); do
+              moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
+            done
           done
