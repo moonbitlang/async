@@ -97,13 +97,22 @@ async test "min process c cat pending stdout writer closes" {
 }
 
 ///|
-async test "min process c cat stdout pipe unread writer closes" {
+async test "min process c cat immediate close" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
     @async.with_task_group() <| group => {
       let (child_stdin, stdin_writer) = @process.write_to_process()
       let (stdout_reader, child_stdout) = @process.read_from_process()
-      defer stdout_reader.close()
+      group.spawn_bg(allow_failure=true, () => {
+        defer stdin_writer.close()
+        stdin_writer.write("a".repeat(1000))
+      })
+      group.spawn_bg(() => {
+        defer stdout_reader.close()
+        if stdout_reader.read_some(max_len=1) is Some(_) {
+          raise BareLineLimitExceeded(0)
+        }
+      })
       let child = @process.spawn(
         group,
         program,
@@ -112,15 +121,10 @@ async test "min process c cat stdout pipe unread writer closes" {
         stdout=child_stdout,
         cancel_handler=@process.hard_cancel(),
       )
-      group.spawn_bg(() => {
-        defer stdin_writer.close()
-        stdin_writer.write("a".repeat(1000))
-        raise BareLineLimitExceeded(64)
-      })
       child.wait() |> ignore
     }
   catch {
-    BareLineLimitExceeded(64) => ()
+    BareLineLimitExceeded(0) => ()
     err => raise err
   } noraise {
     _ => fail("expected the line limit to raise")
@@ -128,12 +132,22 @@ async test "min process c cat stdout pipe unread writer closes" {
 }
 
 ///|
-async test "min process c cat stdout devnull writer closes" {
+async test "min process c cat immediate close less data" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
     @async.with_task_group() <| group => {
       let (child_stdin, stdin_writer) = @process.write_to_process()
-      let child_stdout = @process.redirect_to_file("/dev/null")
+      let (stdout_reader, child_stdout) = @process.read_from_process()
+      group.spawn_bg(allow_failure=true, () => {
+        defer stdin_writer.close()
+        stdin_writer.write(b"a")
+      })
+      group.spawn_bg(() => {
+        defer stdout_reader.close()
+        if stdout_reader.read_some(max_len=1) is Some(_) {
+          raise BareLineLimitExceeded(0)
+        }
+      })
       let child = @process.spawn(
         group,
         program,
@@ -142,15 +156,10 @@ async test "min process c cat stdout devnull writer closes" {
         stdout=child_stdout,
         cancel_handler=@process.hard_cancel(),
       )
-      group.spawn_bg(() => {
-        defer stdin_writer.close()
-        stdin_writer.write("a".repeat(1000))
-        raise BareLineLimitExceeded(64)
-      })
       child.wait() |> ignore
     }
   catch {
-    BareLineLimitExceeded(64) => ()
+    BareLineLimitExceeded(0) => ()
     err => raise err
   } noraise {
     _ => fail("expected the line limit to raise")
