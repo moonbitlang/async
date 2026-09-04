@@ -78,7 +78,7 @@ fn fetch_completion_ffi(
 ) -> Int = "moonbitlang/async" "thread_pool/fetch_completion/unix"
 
 ///|
-/// The actual job object submitted to the thread pool in runtime
+/// The actual job object submitted to the thread pool in runtime.
 priv struct JobHandle(UInt64)
 
 ///|
@@ -99,6 +99,23 @@ priv struct Job {
 fn Job::Job(handle : JobHandle, copy_output? : (JobHandle) -> Unit) -> Job {
   { handle, copy_output, }
 }
+
+///|
+/// Schedule a runtime-owned Job while keeping it alive through `finish`.
+pub async fn[X] with_wasm_job(
+  runtime_job : @job_types.Job,
+  finish : (Int) -> X raise,
+  context~ : String,
+) -> X {
+  let job = Job(JobHandle(runtime_job.into_runtime_handle()))
+  defer job.free()
+  let ret = perform_job_in_worker(job, context~)
+  finish(ret)
+}
+
+///|
+/// Lower the public Wasm Job to the runtime's integer Handle representation.
+fn @job_types.Job::into_runtime_handle(self : @job_types.Job) -> UInt64 = "%identity"
 
 ///|
 #unsafe_skip_stub_check

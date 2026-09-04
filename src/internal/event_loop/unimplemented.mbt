@@ -21,6 +21,7 @@ let _ignore_unused_import : Unit = {
   ignore(@os_error.unimplemented)
   ignore(@coroutine.is_being_cancelled)
   ignore(@env_util.eprintln)
+  let _ : (@job_types.Job) -> Unit = ignore
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
 }
 

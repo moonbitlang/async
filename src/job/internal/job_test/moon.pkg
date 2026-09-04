@@ -1,0 +1,14 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/job",
+} for "test"
+
+supported_targets = "-all+native+wasm"
+
+options(
+  "native-stub": [ "test_job.c" ],
+  targets: {
+    "job_native_test.mbt": [ "native" ],
+    "job_wasm_test.mbt": [ "wasm" ],
+  },
+)

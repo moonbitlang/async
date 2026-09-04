@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/job"
+
+import {
+  "moonbitlang/async/job/types",
+}
+
+// Values
+pub async fn[X] with_job(@types.Job, (@types.Job, Int) -> X raise, context~ : String) -> X
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @types {type Job}
+
+// Traits
