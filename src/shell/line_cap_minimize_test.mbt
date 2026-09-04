@@ -19,7 +19,7 @@ suberror BareLineLimitExceeded {
 }
 
 ///|
-async test "min process c cat drained stdout writer closes" {
+async test "min process c cat" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
     @async.with_task_group() <| group => {
@@ -27,85 +27,7 @@ async test "min process c cat drained stdout writer closes" {
       let (stdout_reader, child_stdout) = @process.read_from_process()
       group.spawn_bg(allow_failure=true, () => {
         defer stdin_writer.close()
-        stdin_writer.write("a".repeat(1000))
-      })
-      group.spawn_bg(() => {
-        defer stdout_reader.close()
-        let mut buffered = 0
-        while stdout_reader.read_some(max_len=4096) is Some(chunk) {
-          buffered += chunk.length()
-          if buffered > 64 {
-            raise BareLineLimitExceeded(64)
-          }
-        }
-      })
-      let child = @process.spawn(
-        group,
-        program,
-        [],
-        stdin=child_stdin,
-        stdout=child_stdout,
-        cancel_handler=@process.hard_cancel(),
-      )
-      child.wait() |> ignore
-    }
-  catch {
-    BareLineLimitExceeded(64) => ()
-    err => raise err
-  } noraise {
-    _ => fail("expected the line limit to raise")
-  }
-}
-
-///|
-async test "min process c cat pending stdout writer closes" {
-  guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
-  try
-    @async.with_task_group() <| group => {
-      let (child_stdin, stdin_writer) = @process.write_to_process()
-      let (stdout_reader, child_stdout) = @process.read_from_process()
-      group.spawn_bg(allow_failure=true, () => {
-        defer stdin_writer.close()
-        stdin_writer.write("a".repeat(1000))
-      })
-      group.spawn_bg(() => {
-        defer stdout_reader.close()
-        let mut buffered = 0
-        while stdout_reader.read_some(max_len=65) is Some(chunk) {
-          buffered += chunk.length()
-          if buffered > 64 {
-            raise BareLineLimitExceeded(64)
-          }
-        }
-      })
-      let child = @process.spawn(
-        group,
-        program,
-        [],
-        stdin=child_stdin,
-        stdout=child_stdout,
-        cancel_handler=@process.hard_cancel(),
-      )
-      child.wait() |> ignore
-    }
-  catch {
-    BareLineLimitExceeded(64) => ()
-    err => raise err
-  } noraise {
-    _ => fail("expected the line limit to raise")
-  }
-}
-
-///|
-async test "min process c cat immediate close" {
-  guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
-  try
-    @async.with_task_group() <| group => {
-      let (child_stdin, stdin_writer) = @process.write_to_process()
-      let (stdout_reader, child_stdout) = @process.read_from_process()
-      group.spawn_bg(allow_failure=true, () => {
-        defer stdin_writer.close()
-        stdin_writer.write("a".repeat(1000))
+        stdin_writer.write(b"a")
       })
       group.spawn_bg(() => {
         defer stdout_reader.close()
@@ -132,16 +54,45 @@ async test "min process c cat immediate close" {
 }
 
 ///|
-async test "min process c cat immediate close less data" {
+async test "min process c cat sequential read" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
     @async.with_task_group() <| group => {
       let (child_stdin, stdin_writer) = @process.write_to_process()
       let (stdout_reader, child_stdout) = @process.read_from_process()
+      defer stdout_reader.close()
       group.spawn_bg(allow_failure=true, () => {
         defer stdin_writer.close()
         stdin_writer.write(b"a")
       })
+      let child = @process.spawn(
+        group,
+        program,
+        [],
+        stdin=child_stdin,
+        stdout=child_stdout,
+        cancel_handler=@process.hard_cancel(),
+      )
+      if stdout_reader.read_some(max_len=1) is Some(_) {
+        raise BareLineLimitExceeded(0)
+      }
+      child.wait() |> ignore
+    }
+  catch {
+    BareLineLimitExceeded(0) => ()
+    err => raise err
+  } noraise {
+    _ => fail("expected the line limit to raise")
+  }
+}
+
+///|
+async test "min process c cat sequential write" {
+  guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
+  try
+    @async.with_task_group() <| group => {
+      let (child_stdin, stdin_writer) = @process.write_to_process()
+      let (stdout_reader, child_stdout) = @process.read_from_process()
       group.spawn_bg(() => {
         defer stdout_reader.close()
         if stdout_reader.read_some(max_len=1) is Some(_) {
@@ -156,6 +107,43 @@ async test "min process c cat immediate close less data" {
         stdout=child_stdout,
         cancel_handler=@process.hard_cancel(),
       )
+      {
+        defer stdin_writer.close()
+        stdin_writer.write(b"a")
+      }
+      child.wait() |> ignore
+    }
+  catch {
+    BareLineLimitExceeded(0) => ()
+    err => raise err
+  } noraise {
+    _ => fail("expected the line limit to raise")
+  }
+}
+
+///|
+async test "min process c cat sequential both" {
+  guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
+  try
+    @async.with_task_group() <| group => {
+      let (child_stdin, stdin_writer) = @process.write_to_process()
+      let (stdout_reader, child_stdout) = @process.read_from_process()
+      defer stdout_reader.close()
+      let child = @process.spawn(
+        group,
+        program,
+        [],
+        stdin=child_stdin,
+        stdout=child_stdout,
+        cancel_handler=@process.hard_cancel(),
+      )
+      {
+        defer stdin_writer.close()
+        stdin_writer.write(b"a")
+      }
+      if stdout_reader.read_some(max_len=1) is Some(_) {
+        raise BareLineLimitExceeded(0)
+      }
       child.wait() |> ignore
     }
   catch {
