@@ -68,9 +68,8 @@ jobs:
           export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
           for filter in \
             "min process c cat" \
-            "min process c cat sequential read" \
-            "min process c cat sequential write" \
-            "min process c cat sequential both"; do
+            "min process c cat sequential" \
+            "min process c cat sequential no read"; do
             echo "======================== ${filter} ============================="
             for _ in $(seq 1 20); do
               moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
