@@ -19,6 +19,11 @@ suberror BareLineLimitExceeded {
 }
 
 ///|
+fn init {
+  @signal.set_global_cancellation_signals([])
+}
+
+///|
 async test "min process c cat" {
   guard! @env.get_env_var("MOONBIT_ASYNC_C_CAT_PROG") is Some(program)
   try
