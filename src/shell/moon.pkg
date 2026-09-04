@@ -15,6 +15,7 @@ import {
   "moonbitlang/async/internal/env_util",
   "moonbitlang/core/env",
   "moonbitlang/async/internal/test_util",
+  "moonbitlang/async/signal",
 } for "test"
 
 supported_targets = "native+wasm"

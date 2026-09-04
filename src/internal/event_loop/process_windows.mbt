@@ -56,7 +56,7 @@ pub async fn Process::wait_pid_windows(
   defer job.free()
   let _ = perform_job_in_worker(job, context~, cancellable=true)
   let out = Ref(0)
-  let ret = get_process_result(io.fd, self.pid, out)
+  let ret = get_process_result(io.fd, self.pid, out, is_probe=false)
   if ret < 0 {
     @os_error.check_errno(context)
   }

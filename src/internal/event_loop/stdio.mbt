@@ -91,8 +91,11 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
     // So we play safe here and always use the thread pool for stdio channels.
     // As a consequence, the thread pool need to handle non blocking fd as well,
     // see the code for `read_job_worker`/`write_job_worker` in `thread_pool.c` for more details.
-    is_async: false,
+    is_async: None,
     read: Idle,
+    read_ready_seq: 0,
+    last_read_event_mask: 0,
+    last_read_event_raw: 0,
     // The tricky case here is regular file.
     // When the user access a file via the `@fs.File` interface.
     // we maintain independent private read/write offset etc. to provide better semantic.

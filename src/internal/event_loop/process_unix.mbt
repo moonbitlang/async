@@ -48,21 +48,46 @@ pub async fn spawn_unix(
 
 ///|
 #cfg(not(platform="windows"))
+fn Process::log_pidfd_eagain_after_readiness(
+  self : Process,
+  io : IoHandle,
+  context : String,
+  observed_read_event~ : Bool,
+) -> Unit {
+  let registration_id = match io.is_async {
+    Some(id) => "\{id}"
+    None => "None"
+  }
+  @env_util.eprintln(
+    "moonbitlang/async: waitid(P_PIDFD) returned EAGAIN after pidfd readiness; context=\{context}, pid=\{self.pid}, handle=\{io.fd}, registration_id=\{registration_id}, observed_read_event=\{observed_read_event}, read_ready_seq=\{io.read_ready_seq}, last_read_event_mask=\{io.last_read_event_mask}, last_read_event_raw=\{io.last_read_event_raw}",
+  )
+}
+
+///|
+#cfg(not(platform="windows"))
+fn pidfd_eagain_after_readiness_is_fatal() -> Bool {
+  @env.get_env_var("MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL") is Some(_)
+}
+
+///|
+#cfg(not(platform="windows"))
 pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   guard! curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
 
   let out = Ref(0)
+  let last_wait_observed_read_event = Ref(false)
 
   if platform is Linux && self.handle is Some(io) {
-    let ret = get_process_result(handle, self.pid, out)
+    let ret = get_process_result(handle, self.pid, out, is_probe=true)
     if ret >= 0 {
       return out.val
     }
     if !@os_error.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
-    io.wait_read()
+    let observed = io.wait_read_observed_event()
+    last_wait_observed_read_event.val = observed
   } else if platform is MacOS {
     // MacOS/BSD, use `kqueue` with `EVFILT_PROC`
     if evloop.bus.register_pid(self.pid) {
@@ -77,18 +102,35 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     return perform_job_in_worker(job, context~, cancellable=true)
   }
 
-  let ret = get_process_result(handle, self.pid, out)
+  let ret = get_process_result(handle, self.pid, out, is_probe=false)
   if ret < 0 {
-    if platform is MacOS {
-      // On MacOS, when `kevent` report `ESRCH`,
-      // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
-      // Work around this race condition by waiting again after a small timeout.
-      while @os_error.is_nonblocking_io_error() {
-        sleep(10)
-        let ret = get_process_result(handle, self.pid, out)
-        if ret >= 0 {
-          return out.val
+    while @os_error.is_nonblocking_io_error() {
+      match platform {
+        MacOS =>
+          // On MacOS, when `kevent` report `ESRCH`,
+          // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
+          // Work around this race condition by waiting again after a small timeout.
+          sleep(10)
+        Linux => {
+          guard! self.handle is Some(io)
+          self.log_pidfd_eagain_after_readiness(
+            io,
+            context,
+            observed_read_event=last_wait_observed_read_event.val,
+          )
+          if pidfd_eagain_after_readiness_is_fatal() {
+            fail(
+              "waitid(P_PIDFD) returned EAGAIN after pidfd readiness in \{context}",
+            )
+          }
+          let observed = io.wait_read_observed_event()
+          last_wait_observed_read_event.val = observed
         }
+        Windows => panic()
+      }
+      let ret = get_process_result(handle, self.pid, out, is_probe=false)
+      if ret >= 0 {
+        return out.val
       }
     }
     @os_error.check_errno(context)

@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 #include <time.h>
 #if !defined(__ANDROID__) || __ANDROID_API__ >= 28
@@ -375,7 +376,7 @@ HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
 
   sigset_t signals_to_block;
   sigemptyset(&signals_to_block);
-  sigaddset(&signals_to_block, SIGCHLD);
+  // sigaddset(&signals_to_block, SIGCHLD);
 
 #ifdef WAKEUP_METHOD_SIGNAL
   sigemptyset(&pool.wakeup_signal);
@@ -1125,7 +1126,6 @@ struct spawn_job {
   int pidfd;
 };
 
-static
 void free_spawn_job(struct spawn_job *job) {
   moonbit_decref(job->path);
   for (char **cursor = job->args; *cursor; ++cursor)
@@ -1173,12 +1173,14 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     int fd = job->stdio[i];
     if (fd >= 0) {
       *err_out = posix_spawn_file_actions_adddup2(&file_actions, fd, i);
-      if (*err_out) goto exit;
+      if (*err_out)
+        goto exit;
     }
   }
   if (job->cwd) {
     *err_out = posix_spawn_file_actions_addchdir_np(&file_actions, job->cwd);
-    if (*err_out) goto exit;
+    if (*err_out)
+      goto exit;
   }
 
   int32_t ret = 0;

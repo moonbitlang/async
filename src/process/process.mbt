@@ -148,12 +148,12 @@ pub async fn run(
   )
   defer process.close()
   let pid = process.pid
-  process.wait_pid(context~) catch {
+  process.wait_pid(context="\{context}:primary") catch {
     @coroutine.Cancelled as err => {
       let _ = @async.protect_from_cancel() <| () => {
         @async.with_task_group() <| group => {
           group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          process.wait_pid(context~)
+          process.wait_pid(context="\{context}:cleanup") |> ignore
         }
       }
       raise err
@@ -238,12 +238,12 @@ pub async fn[X] spawn(
   let pid = process.pid
   let result = group.spawn(no_wait?, () => {
     defer process.close()
-    process.wait_pid(context~) catch {
+    process.wait_pid(context="\{context}:primary") catch {
       @coroutine.Cancelled as err => {
         let _ = @async.protect_from_cancel() <| () => {
           @async.with_task_group() <| group => {
             group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-            process.wait_pid(context~)
+            process.wait_pid(context="\{context}:cleanup") |> ignore
           }
         }
         raise err

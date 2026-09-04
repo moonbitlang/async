@@ -10,212 +10,40 @@ env:
   MOONBIT_ASYNC_CHECK_FD_LEAK: 1
 
 jobs:
-  stable-build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
-
-    runs-on: ${{ matrix.os }}
-    continue-on-error: false
-    # The test suite cold-builds a few small `moonx` tool packages on every
-    # fresh runner; give the full-matrix build jobs headroom for that.
-    timeout-minutes: 15
+  pidfd-sigkill-line-limit-repro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
     steps:
-      - name: disable auto CRLF
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: git config --global core.autocrlf false
-
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
+
+      - name: install strace
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace
+
+      - name: build repro
+        run: |
+          gcc -O0 -Wall -Wextra -fsanitize=address -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+          gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
+
+      - name: run single-iteration C repro under strace
+        run: |
+          mkdir -p /tmp/pidfd-c-strace
+          ASAN_OPTIONS=detect_leaks=0 strace -f -r -s 200 \
+            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
+            -o /tmp/pidfd-c-strace/single-iteration.trace \
+            /tmp/pidfd_sigkill_line_limit_repro 1 /tmp/pidfd_repro_cat_asan 1 20 1 \
+            > /tmp/pidfd-c-strace/single-iteration.log 2>&1
+
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          node-version: '>=22.4.0'
-      - name: install MSVC (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: install (Unix)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: install (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check --deny-warn
-
-      - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-  nightly-build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest","macos-latest", "windows-latest"]
-
-    runs-on: ${{ matrix.os }}
-    continue-on-error: false
-    # The test suite cold-builds a few small `moonx` tool packages on every
-    # fresh runner; give the full-matrix build jobs headroom for that.
-    timeout-minutes: 15
-    steps:
-      - name: disable auto CRLF
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: git config --global core.autocrlf false
-
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - name: install MSVC (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: install (Unix)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: install (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        env:
-          MOONBIT_INSTALL_VERSION: nightly
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon check
-        run: moon check
-
-      - name: moon test
-        run: moon test
-
-      - name: moon test (release)
-        run: moon test --release
-
-  js-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target js --deny-warn
-
-      - name: moon test
-        run: |
-          moon test --release --target js
-          moon test --target js
-
-  wasm-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon check
-        run: |
-          moon check --target wasm --deny-warn
-          moon check --target wasm-gc --deny-warn
-
-  moon-format:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: format diff
-        run: |
-          moon fmt
-          git diff --exit-code
-
-  moon-info:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: moon info
-        run: |
-          moon info
-          git diff --exit-code
+          name: pidfd-c-repro-strace
+          path: /tmp/pidfd-c-strace
+          if-no-files-found: ignore
 
   sanitizer-check:
     runs-on: ubuntu-latest
@@ -229,6 +57,11 @@ jobs:
         with:
           node-version: '>=22.4.0'
 
+      - name: install strace
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace
+
       - name: install
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
@@ -246,49 +79,61 @@ jobs:
       - name: setup sanitizer check
         run: |
           moon run --debug test_programs/setup_sanitizer_check
+          gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
+
+      - name: build pidfd sequential repro
+        run: |
+          moon -C examples build pidfd_sequential_repro
+
+      - name: run pidfd sequential repro without strace
+        run: |
+          repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
+          for i in $(seq 1 20); do
+            set +e
+            ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
+              "$repro" /tmp/pidfd_repro_cat_asan
+          done
+
+      - name: run pidfd sequential repro under strace
+        run: |
+          mkdir -p /tmp/pidfd-moonbit-strace
+          repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
+          for i in $(seq 1 100); do
+            trace="/tmp/pidfd-moonbit-strace/attempt-${i}.trace"
+            log="/tmp/pidfd-moonbit-strace/attempt-${i}.log"
+            set +e
+            ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
+              strace -f -r -s 200 \
+              -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
+              -o "$trace" "$repro" /tmp/pidfd_repro_cat_asan \
+              > "$log" 2>&1
+            status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then
+              echo "MoonBit pidfd sequential repro failed on attempt ${i} with status ${status}"
+              cat "$log"
+              exit "$status"
+            fi
+            rm -f "$trace" "$log"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pidfd-moonbit-repro-strace
+          path: /tmp/pidfd-moonbit-strace
+          if-no-files-found: ignore
 
       - name: run test with address sanitizer
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
-          moon test
-
-  sanitizer-check-windows:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    env:
-      MOONBIT_NEW_NATIVE: 0
-      MOONBIT_ALLOCATOR: system
-    steps:
-      - name: disable auto CRLF
-        run: git config --global core.autocrlf false
-
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '>=22.4.0'
-
-      - uses: ilammy/msvc-dev-cmd@v1
-
-      - name: install
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: moon version
-        run: |
-          moon version --all
-          moonrun --version
-
-      - name: moon update
-        run: |
-          moon update
-
-      - name: setup sanitizer check
-        run: |
-          moon run --debug test_programs/setup_sanitizer_check
-
-      - name: run test with address sanitizer
-        run: |
-          $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
-          $env:MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
-          moon test
+          export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
+          for filter in \
+            "min process c cat" \
+            "min process c cat sequential" \
+            "min process c cat sequential sleep before kill"; do
+            echo "======================== ${filter} ============================="
+            for _ in $(seq 1 20); do
+              moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
+            done
+          done

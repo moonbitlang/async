@@ -60,13 +60,30 @@ extern "C" fn get_process_result(
   handle : @fd_util.Fd,
   pid : Int,
   out : Ref[Int],
+  is_probe~ : Bool,
 ) -> Int = "moonbitlang_async_get_process_result"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(out)
-fn get_process_result(handle : @fd_util.Fd, pid : Int, out : Ref[Int]) -> Int = "moonbitlang/async" "process/get_process_result"
+fn get_process_result_ffi(
+  handle : @fd_util.Fd,
+  pid : Int,
+  out : Ref[Int],
+) -> Int = "moonbitlang/async" "process/get_process_result"
+
+///|
+#cfg(target="wasm")
+fn get_process_result(
+  handle : @fd_util.Fd,
+  pid : Int,
+  out : Ref[Int],
+  is_probe~ : Bool,
+) -> Int {
+  ignore(is_probe)
+  get_process_result_ffi(handle, pid, out)
+}
 
 ///|
 #cfg(all(target="native", not(platform="windows")))

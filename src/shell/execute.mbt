@@ -364,9 +364,6 @@ async fn[X] spawn_stage(
     stdout?,
     stderr?,
     cwd?=cmd.cwd.map(directory => directory[:]),
-    // Cancellation — a timeout, a capture limit, a failing sibling — kills the
-    // child immediately: a sandboxed runtime never waits on an untrusted
-    // process.
     cancel_handler=@process.hard_cancel(),
   )
 }

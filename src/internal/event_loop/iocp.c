@@ -68,6 +68,11 @@ HANDLE moonbitlang_async_event_get_fd(OVERLAPPED_ENTRY *entry) {
 }
 
 MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_event_get_registration_id(OVERLAPPED_ENTRY *entry) {
+  return 1;
+}
+
+MOONBIT_FFI_EXPORT
 LPOVERLAPPED moonbitlang_async_event_get_io_result(OVERLAPPED_ENTRY *entry) {
   LPOVERLAPPED result = entry->lpOverlapped;
   return result;

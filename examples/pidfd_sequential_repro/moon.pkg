@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+  "moonbitlang/async/signal",
+}
+
+supported_targets = "+native"
+
+pkgtype(kind: "executable")
