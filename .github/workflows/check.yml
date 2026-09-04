@@ -139,6 +139,7 @@ jobs:
         run: |
           export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
+          export MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1
           for filter in \
             "min process c cat" \
             "min process c cat sequential" \
