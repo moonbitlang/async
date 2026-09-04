@@ -113,7 +113,8 @@ async test "min process c cat no data stdout pipe writer closes" {
         cancel_handler=@process.hard_cancel(),
       )
       group.spawn_bg(() => {
-        stdin_writer.close()
+        defer stdin_writer.close()
+        @async.sleep(200)
         raise BareLineLimitExceeded(64)
       })
       child.wait() |> ignore
@@ -140,7 +141,8 @@ async test "min process c cat no data no stdout pipe writer closes" {
         cancel_handler=@process.hard_cancel(),
       )
       group.spawn_bg(() => {
-        stdin_writer.close()
+        defer stdin_writer.close()
+        @async.sleep(200)
         raise BareLineLimitExceeded(64)
       })
       child.wait() |> ignore
