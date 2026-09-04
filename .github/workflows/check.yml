@@ -26,10 +26,8 @@ jobs:
 
       - name: run repro
         run: |
-          /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20 4096
-          /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20 65
-          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20 4096
-          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20 65
+          /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1 20 1
+          ASAN_OPTIONS=detect_leaks=0 /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1 20 1
 
   sanitizer-check:
     runs-on: ubuntu-latest
