@@ -65,6 +65,12 @@ fn Process::log_pidfd_eagain_after_readiness(
 
 ///|
 #cfg(not(platform="windows"))
+fn pidfd_eagain_after_readiness_is_fatal() -> Bool {
+  @env.get_env_var("MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL") is Some(_)
+}
+
+///|
+#cfg(not(platform="windows"))
 pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
   guard! curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
@@ -112,6 +118,11 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
             context,
             observed_read_event=last_wait_observed_read_event.val,
           )
+          if pidfd_eagain_after_readiness_is_fatal() {
+            fail(
+              "waitid(P_PIDFD) returned EAGAIN after pidfd readiness in \{context}",
+            )
+          }
           let observed = io.wait_read_observed_event()
           last_wait_observed_read_event.val = observed
         }

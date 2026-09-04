@@ -341,6 +341,7 @@ int main(int argc, char **argv) {
   if (stdout_read_len > 4096) {
     stdout_read_len = 4096;
   }
+  int quiet = iterations == 1;
 
   char *payload = malloc((size_t)payload_len);
   if (!payload) {
@@ -369,15 +370,17 @@ int main(int argc, char **argv) {
   int primary_probe_reaped = 0;
   int cleanup_probe_reaped = 0;
 
-  printf(
-    "pidfd SIGKILL sequential epoll repro: iterations=%d cat=%s payload_len=%d "
-    "stdout_read_len=%d pid=%ld\n",
-    iterations,
-    cat_path,
-    payload_len,
-    stdout_read_len,
-    (long)getpid()
-  );
+  if (!quiet) {
+    printf(
+      "pidfd SIGKILL sequential epoll repro: iterations=%d cat=%s payload_len=%d "
+      "stdout_read_len=%d pid=%ld\n",
+      iterations,
+      cat_path,
+      payload_len,
+      stdout_read_len,
+      (long)getpid()
+    );
+  }
 
   for (int i = 0; i < iterations; i++) {
     pid_t pid = -1;
@@ -622,7 +625,7 @@ cleanup:
     close_if_open(&pidfd);
     close_if_open(&epfd);
 
-    if ((i + 1) % 1000 == 0 || i + 1 == iterations) {
+    if (!quiet && ((i + 1) % 1000 == 0 || i + 1 == iterations)) {
       printf(
         "progress %d/%d stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d "
         "ready_before_kill=%d reaped_after_epoll=%d empty_after_epoll=%d "
@@ -645,24 +648,29 @@ cleanup:
     }
   }
 
-  printf(
-    "done stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d ready_before_kill=%d "
-    "reaped_after_epoll=%d empty_after_epoll=%d pidfd_ready_before_kill=%d "
-    "primary_probe_reaped=%d cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
-    stdout_initial_reads,
-    stdout_events,
-    killed_after_stdout,
-    ready_before_kill,
-    reaped_after_epoll,
-    empty_after_epoll,
-    pidfd_ready_before_kill,
-    primary_probe_reaped,
-    cleanup_probe_reaped,
-    epoll_timeouts,
-    errors
-  );
+  if (!quiet) {
+    printf(
+      "done stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d ready_before_kill=%d "
+      "reaped_after_epoll=%d empty_after_epoll=%d pidfd_ready_before_kill=%d "
+      "primary_probe_reaped=%d cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
+      stdout_initial_reads,
+      stdout_events,
+      killed_after_stdout,
+      ready_before_kill,
+      reaped_after_epoll,
+      empty_after_epoll,
+      pidfd_ready_before_kill,
+      primary_probe_reaped,
+      cleanup_probe_reaped,
+      epoll_timeouts,
+      errors
+    );
+  }
 
   teardown_runtime_signal_state();
   free(payload);
-  return errors == 0 ? 0 : 1;
+  if (errors != 0) {
+    return 1;
+  }
+  return empty_after_epoll == 0 ? 0 : 100;
 }

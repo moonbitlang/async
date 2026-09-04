@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async_examples/pidfd_sequential_repro"
+
+// Values
+
+// Errors
+type BareLineLimitExceeded
+
+// Types and methods
+
+// Type aliases
+
+// Traits
