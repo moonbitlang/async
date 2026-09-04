@@ -4,18 +4,18 @@
 //   gcc -O2 -Wall -Wextra tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
 //
 // Run:
-//   /tmp/pidfd_sigkill_line_limit_repro 10000 ./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe
+//   /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1000 20 4096
 //
 // This intentionally uses one child at a time.  The sequence is:
 //   spawn cat with stdin/stdout pipes
 //   register pidfd in epoll
-//   write a long unterminated line and keep stdin open
+//   write a long unterminated line
 //   read enough stdout to "exceed the line limit", then close stdout reader
+//   close stdin, so cat can also start natural EOF shutdown
 //   probe waitid(P_PIDFD, WNOHANG), expecting not-ready
 //   send SIGKILL
 //   wait for pidfd EPOLLIN
 //   immediately call waitid(P_PIDFD, WNOHANG)
-//   close stdin after the child has been observed terminated
 
 #define _GNU_SOURCE
 
@@ -205,10 +205,18 @@ int main(int argc, char **argv) {
   const char *cat_path = argc > 2 ? argv[2] : "/bin/cat";
   int payload_len = argc > 3 ? atoi(argv[3]) : 1000;
   int max_logs = argc > 4 ? atoi(argv[4]) : 20;
+  int stdout_read_len = argc > 5 ? atoi(argv[5]) : 4096;
 
-  if (iterations <= 0 || payload_len <= 64) {
-    fprintf(stderr, "usage: %s [iterations] [cat-path] [payload-len>64] [max-logs]\n", argv[0]);
+  if (iterations <= 0 || payload_len <= 64 || stdout_read_len <= 64) {
+    fprintf(
+      stderr,
+      "usage: %s [iterations] [cat-path] [payload-len>64] [max-logs] [stdout-read-len>64]\n",
+      argv[0]
+    );
     return 2;
+  }
+  if (stdout_read_len > 4096) {
+    stdout_read_len = 4096;
   }
 
   char *payload = malloc((size_t)payload_len);
@@ -225,10 +233,11 @@ int main(int argc, char **argv) {
   int errors = 0;
 
   printf(
-    "pidfd SIGKILL line-limit repro: iterations=%d cat=%s payload_len=%d pid=%ld\n",
+    "pidfd SIGKILL line-limit repro: iterations=%d cat=%s payload_len=%d stdout_read_len=%d pid=%ld\n",
     iterations,
     cat_path,
     payload_len,
+    stdout_read_len,
     (long)getpid()
   );
 
@@ -290,7 +299,7 @@ int main(int argc, char **argv) {
     char read_buf[4096];
     ssize_t nread;
     do {
-      nread = read(stdout_read, read_buf, sizeof(read_buf));
+      nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
     } while (nread < 0 && errno == EINTR);
     if (nread < 0) {
       perror("read stdout");
@@ -305,6 +314,8 @@ int main(int argc, char **argv) {
 
     // Mimic the failing reader task unwinding after detecting the line limit.
     close_if_open(&stdout_read);
+    // Mimic the stdin writer task having finished the payload and closed.
+    close_if_open(&stdin_write);
 
     siginfo_t si;
     int ret = waitid_pidfd_nohang(pidfd, &si);
@@ -369,11 +380,11 @@ int main(int argc, char **argv) {
 
 cleanup:
     close_if_open(&stdout_read);
+    close_if_open(&stdin_write);
     if (pid > 0 && !child_reaped) {
       kill(pid, SIGKILL);
       waitpid(pid, NULL, 0);
     }
-    close_if_open(&stdin_write);
     close_if_open(&pidfd);
     close_if_open(&epfd);
 
