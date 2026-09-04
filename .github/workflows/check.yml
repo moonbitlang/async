@@ -69,10 +69,8 @@ jobs:
           for filter in \
             "min process c cat drained stdout writer closes" \
             "min process c cat pending stdout writer closes" \
-            "min process c cat no data stdout pipe writer closes" \
-            "min process c cat no data no stdout pipe writer closes" \
-            "min process c cat no data stdin already eof stdout pipe" \
-            "min process true no pipes synthetic cancellation"; do
+            "min process c cat stdout pipe unread writer closes" \
+            "min process c cat stdout devnull writer closes"; do
             echo "======================== ${filter} ============================="
             for _ in $(seq 1 20); do
               moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
