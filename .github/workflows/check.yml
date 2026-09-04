@@ -21,7 +21,7 @@ jobs:
 
       - name: build repro
         run: |
-          gcc -O0 -Wall -Wextra -fsanitize=address tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+          gcc -O0 -Wall -Wextra -fsanitize=address -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
           gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
 
       - name: run repro

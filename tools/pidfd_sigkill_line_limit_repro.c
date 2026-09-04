@@ -1,7 +1,7 @@
 // Minimal pidfd/SIGKILL timing repro for the shell line-limit failure shape.
 //
 // Build:
-//   gcc -O2 -Wall -Wextra tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+//   gcc -O2 -Wall -Wextra -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
 //
 // Run:
 //   /tmp/pidfd_sigkill_line_limit_repro 10000 /tmp/pidfd_repro_cat_asan 1 20 1
@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pthread.h>
 #include <spawn.h>
 #include <signal.h>
 #include <stdint.h>
@@ -40,6 +41,105 @@
 #endif
 
 extern char **environ;
+
+static pthread_t sigwait_thread;
+static pthread_mutex_t sigwait_lock = PTHREAD_MUTEX_INITIALIZER;
+static int sigwait_thread_started = 0;
+static int sigwait_thread_cancelled = 0;
+
+static void nop_signal_handler(int signum) {
+  (void)signum;
+}
+
+static void *sigwait_thread_worker(void *data) {
+  (void)data;
+
+  sigset_t wait_set;
+  sigemptyset(&wait_set);
+  sigaddset(&wait_set, SIGUSR2);
+  pthread_sigmask(SIG_SETMASK, &wait_set, NULL);
+
+  for (;;) {
+    int sig = 0;
+    int err = sigwait(&wait_set, &sig);
+    if (err != 0) {
+      return NULL;
+    }
+
+    pthread_mutex_lock(&sigwait_lock);
+    int cancelled = sigwait_thread_cancelled;
+    pthread_mutex_unlock(&sigwait_lock);
+
+    if (cancelled) {
+      return NULL;
+    }
+  }
+}
+
+static int setup_runtime_signal_state(void) {
+  sigset_t current_mask;
+  int err = pthread_sigmask(SIG_SETMASK, NULL, &current_mask);
+  if (err != 0) {
+    return err;
+  }
+  sigdelset(&current_mask, SIGINT);
+  sigdelset(&current_mask, SIGTERM);
+#ifdef SIGHUP
+  sigdelset(&current_mask, SIGHUP);
+#endif
+  err = pthread_sigmask(SIG_SETMASK, &current_mask, NULL);
+  if (err != 0) {
+    return err;
+  }
+
+  signal(SIGPIPE, SIG_IGN);
+
+  struct sigaction act;
+  memset(&act, 0, sizeof(act));
+  act.sa_handler = nop_signal_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+  if (sigaction(SIGUSR2, &act, NULL) < 0) {
+    return errno;
+  }
+
+  sigset_t interested_signals;
+  sigemptyset(&interested_signals);
+  sigaddset(&interested_signals, SIGUSR2);
+
+  sigset_t prev_mask;
+  err = pthread_sigmask(SIG_SETMASK, &interested_signals, &prev_mask);
+  if (err != 0) {
+    return err;
+  }
+
+  err = pthread_create(&sigwait_thread, NULL, &sigwait_thread_worker, NULL);
+
+  int restore_err = pthread_sigmask(SIG_SETMASK, &prev_mask, NULL);
+  if (err != 0) {
+    return err;
+  }
+  if (restore_err != 0) {
+    return restore_err;
+  }
+
+  sigwait_thread_started = 1;
+  return 0;
+}
+
+static void teardown_runtime_signal_state(void) {
+  if (!sigwait_thread_started) {
+    return;
+  }
+
+  pthread_mutex_lock(&sigwait_lock);
+  sigwait_thread_cancelled = 1;
+  pthread_mutex_unlock(&sigwait_lock);
+
+  pthread_kill(sigwait_thread, SIGUSR2);
+  pthread_join(sigwait_thread, NULL);
+  sigwait_thread_started = 0;
+}
 
 static int xpidfd_open(pid_t pid) {
   return (int)syscall(SYS_pidfd_open, pid, 0);
@@ -248,6 +348,14 @@ int main(int argc, char **argv) {
     return 2;
   }
   memset(payload, 'a', (size_t)payload_len);
+
+  int setup_err = setup_runtime_signal_state();
+  if (setup_err != 0) {
+    errno = setup_err;
+    perror("setup runtime signal state");
+    free(payload);
+    return 2;
+  }
 
   int ready_before_kill = 0;
   int empty_after_epoll = 0;
@@ -554,6 +662,7 @@ cleanup:
     errors
   );
 
+  teardown_runtime_signal_state();
   free(payload);
   return errors == 0 ? 0 : 1;
 }
