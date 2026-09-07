@@ -207,6 +207,14 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
           0
         );
         errno = blocking_errno;
+        if (blocking_ret >= 0 && blocking_info.si_pid != 0) {
+          if (blocking_info.si_code == CLD_EXITED) {
+            *out = blocking_info.si_status;
+          } else {
+            *out = -blocking_info.si_status;
+          }
+          return 0;
+        }
       }
       errno = EAGAIN;
       return -1;
