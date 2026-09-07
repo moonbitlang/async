@@ -37,7 +37,7 @@ jobs:
             flow_mode="$5"
             delay_list="$6"
             for delay_us in ${delay_list}; do
-              echo "pidfd C repro variant=${variant_name} delay_us=${delay_us}"
+              echo "======== pidfd C repro variant=${variant_name} delay_us=${delay_us} ========"
               log="/tmp/pidfd-c-${variant_name}-${delay_us}.log"
               set +e
               "${repro_bin}" 200 "${cat_bin}" 1 0 1 "${delay_us}" "${signal_num}" "${flow_mode}" > "${log}" 2>&1
@@ -53,10 +53,9 @@ jobs:
             done
           }
 
-          run_variant system-cat /tmp/pidfd_sigkill_line_limit_repro /bin/cat 9 0 "0 25 50 75 100 125 150 175 200"
-          run_variant no-asan /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 0 "0 25 50 75 100 125 150 175 200"
-          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "0 50 100 150 200 250 300 400 500"
-          run_variant sigterm /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 15 0 "200 250 300"
+          run_variant system-cat /tmp/pidfd_sigkill_line_limit_repro /bin/cat 9 0 "0 5 10 15 20 25 30 35 40 45 50"
+          run_variant no-asan /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 0 "0 5 10 15 20 25 30 35 40 45 50"
+          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "500 750 1000 1250 1500"
           exit "${repro_status}"
 
   sanitizer-check:
