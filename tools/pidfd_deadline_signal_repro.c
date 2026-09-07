@@ -195,6 +195,7 @@ int main(int argc, char **argv) {
 
   int killed = 0;
   int kill_esrch = 0;
+  int pre_kill_probe_reaped = 0;
   int reaped_after_epoll = 0;
   int empty_after_epoll = 0;
   int epoll_timeouts = 0;
@@ -277,6 +278,19 @@ int main(int argc, char **argv) {
       goto cleanup;
     }
 
+    siginfo_t pre_kill_si;
+    int pre_kill_wait_ret = waitid_pidfd_nohang(pidfd, &pre_kill_si);
+    if (pre_kill_wait_ret < 0) {
+      perror("pre-kill waitid(P_PIDFD)");
+      errors++;
+      goto cleanup;
+    }
+    if (pre_kill_si.si_pid != 0) {
+      pre_kill_probe_reaped++;
+      child_reaped = 1;
+      goto cleanup;
+    }
+
     errno = 0;
     int kill_ret = kill(pid, SIGKILL);
     int kill_errno = errno;
@@ -351,12 +365,13 @@ cleanup:
 
     if ((i + 1) % 1000 == 0 || i + 1 == iterations) {
       printf(
-        "progress %d/%d killed=%d kill_esrch=%d reaped_after_epoll=%d "
+        "progress %d/%d killed=%d kill_esrch=%d pre_kill_probe_reaped=%d reaped_after_epoll=%d "
         "empty_after_epoll=%d epoll_timeouts=%d errors=%d\n",
         i + 1,
         iterations,
         killed,
         kill_esrch,
+        pre_kill_probe_reaped,
         reaped_after_epoll,
         empty_after_epoll,
         epoll_timeouts,
@@ -366,10 +381,11 @@ cleanup:
   }
 
   printf(
-    "done killed=%d kill_esrch=%d reaped_after_epoll=%d "
+    "done killed=%d kill_esrch=%d pre_kill_probe_reaped=%d reaped_after_epoll=%d "
     "empty_after_epoll=%d epoll_timeouts=%d errors=%d\n",
     killed,
     kill_esrch,
+    pre_kill_probe_reaped,
     reaped_after_epoll,
     empty_after_epoll,
     epoll_timeouts,
