@@ -120,7 +120,7 @@ jobs:
             "min process c cat sequential sleep before kill"; do
             echo "======================== ${filter} ============================="
             for _ in $(seq 1 20); do
-              strace -f -r -s 200 \
+              ASAN_OPTIONS=detect_leaks=0 strace -f -r -s 200 \
                 -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
                 -o /dev/null moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
             done
