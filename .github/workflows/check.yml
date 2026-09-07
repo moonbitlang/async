@@ -83,7 +83,7 @@ jobs:
 
       - name: build pidfd sequential repro
         run: |
-          moon -C examples build pidfd_sequential_repro
+          moon build examples/pidfd_sequential_repro
 
       - name: run pidfd sequential repro without strace
         run: |
