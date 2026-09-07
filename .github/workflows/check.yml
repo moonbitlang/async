@@ -36,13 +36,13 @@ jobs:
             signal_num="$4"
             flow_mode="$5"
             delay_list="$6"
-            eof_spin_us="$7"
+            eof_sleep_us="$7"
             for delay_us in ${delay_list}; do
-              echo "======== pidfd C repro variant=${variant_name} delay_us=${delay_us} eof_spin_us=${eof_spin_us:-0} ========"
+              echo "======== pidfd C repro variant=${variant_name} delay_us=${delay_us} eof_sleep_us=${eof_sleep_us:-0} ========"
               log="/tmp/pidfd-c-${variant_name}-${delay_us}.log"
               set +e
-              if [ -n "${eof_spin_us}" ]; then
-                PIDFD_REPRO_CAT_EOF_SPIN_US="${eof_spin_us}" "${repro_bin}" 200 "${cat_bin}" 1 0 1 "${delay_us}" "${signal_num}" "${flow_mode}" > "${log}" 2>&1
+              if [ -n "${eof_sleep_us}" ]; then
+                PIDFD_REPRO_CAT_EOF_SLEEP_US="${eof_sleep_us}" "${repro_bin}" 200 "${cat_bin}" 1 0 1 "${delay_us}" "${signal_num}" "${flow_mode}" > "${log}" 2>&1
               else
                 "${repro_bin}" 200 "${cat_bin}" 1 0 1 "${delay_us}" "${signal_num}" "${flow_mode}" > "${log}" 2>&1
               fi
@@ -59,7 +59,7 @@ jobs:
           }
 
           run_variant close-stdin-only-asan /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3250 3500 3750" ""
-          run_variant plain-eof-spin-3500 /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 1 "3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000" "3000"
+          run_variant plain-eof-sleep-3500 /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 1 "3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000" "3000"
           exit "${repro_status}"
 
   sanitizer-check:
