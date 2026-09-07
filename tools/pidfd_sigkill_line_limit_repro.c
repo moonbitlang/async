@@ -191,6 +191,8 @@ static int set_blocking(int fd) {
   return 0;
 }
 
+static int trace_timing_logs = 0;
+
 static void timing_log(
   const char *event,
   long long a,
@@ -198,6 +200,10 @@ static void timing_log(
   long long c,
   long long d
 ) {
+  if (!trace_timing_logs) {
+    return;
+  }
+
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   fprintf(
@@ -375,6 +381,7 @@ int main(int argc, char **argv) {
   int max_logs = argc > 4 ? atoi(argv[4]) : 20;
   int stdout_read_len = argc > 5 ? atoi(argv[5]) : 1;
   int spin_after_stdout_us = argc > 6 ? atoi(argv[6]) : 0;
+  trace_timing_logs = getenv("PIDFD_C_REPRO_TIMING") != NULL;
 
   if (
     iterations <= 0 || payload_len <= 0 || stdout_read_len <= 0 ||

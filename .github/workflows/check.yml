@@ -26,19 +26,23 @@ jobs:
 
       - name: run repro
         run: |
+          repro_status=0
           for delay_us in 0 50 100 150 200 250; do
             echo "pidfd C repro delay_us=${delay_us}"
             log="/tmp/pidfd-c-delay-${delay_us}.log"
             set +e
-            /tmp/pidfd_sigkill_line_limit_repro 200 /tmp/pidfd_repro_cat_asan 1 20 1 "${delay_us}" > "${log}" 2>&1
+            /tmp/pidfd_sigkill_line_limit_repro 200 /tmp/pidfd_repro_cat_asan 1 0 1 "${delay_us}" > "${log}" 2>&1
             status=$?
             set -e
             tail -n 3 "${log}"
-            if [ "${status}" -ne 0 ]; then
+            if [ "${status}" -eq 100 ]; then
+              repro_status=100
+            elif [ "${status}" -ne 0 ]; then
               cat "${log}"
               exit "${status}"
             fi
           done
+          exit "${repro_status}"
 
   sanitizer-check:
     runs-on: ubuntu-latest
