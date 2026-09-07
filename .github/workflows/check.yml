@@ -76,6 +76,6 @@ jobs:
             "min process c cat sequential sleep before kill"; do
             echo "======================== ${filter} ============================="
             for _ in $(seq 1 20); do
-              ASAN_OPTIONS=detect_leaks=0 moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
+              moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
             done
           done
