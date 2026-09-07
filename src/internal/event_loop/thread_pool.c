@@ -931,7 +931,11 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     return 0;
   }
 
+  // `UpdateProcThreadAttribute` rejects an empty handle list with
+  // `ERROR_BAD_LENGTH`. Having no standard handles is valid for GUI processes.
   if (
+    number_of_handles_to_inherit > 0
+    &&
     !UpdateProcThreadAttribute(
       startup_info.lpAttributeList,
       0, // reserved
