@@ -35,6 +35,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #ifndef P_PIDFD
@@ -179,6 +180,39 @@ static int set_nonblocking(int fd) {
   return 0;
 }
 
+static int set_blocking(int fd) {
+  int flags = fcntl(fd, F_GETFL);
+  if (flags < 0) {
+    return errno;
+  }
+  if ((flags & O_NONBLOCK) != 0 && fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+    return errno;
+  }
+  return 0;
+}
+
+static void timing_log(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  fprintf(
+    stderr,
+    "pidfd-c-repro-timing t=%lld.%09ld event=%s a=%lld b=%lld c=%lld d=%lld\n",
+    (long long)ts.tv_sec,
+    ts.tv_nsec,
+    event,
+    a,
+    b,
+    c,
+    d
+  );
+}
+
 static int add_epoll_fd(int epfd, int fd) {
   struct epoll_event event;
   memset(&event, 0, sizeof(event));
@@ -265,6 +299,12 @@ static int waitid_pidfd_nohang(int pidfd, siginfo_t *si) {
   return waitid(P_PIDFD, pidfd, si, WEXITED | WNOHANG);
 }
 
+static int waitid_pidfd_blocking(int pidfd, siginfo_t *si) {
+  memset(si, 0, sizeof(*si));
+  errno = 0;
+  return waitid(P_PIDFD, pidfd, si, WEXITED);
+}
+
 static void print_empty_diagnostic(int iteration, pid_t pid, int pidfd, uint32_t events) {
   siginfo_t by_pid;
   memset(&by_pid, 0, sizeof(by_pid));
@@ -305,23 +345,6 @@ static void print_empty_diagnostic(int iteration, pid_t pid, int pidfd, uint32_t
     kill0_ret,
     kill0_errno
   );
-}
-
-static int reap_pidfd(int pidfd) {
-  for (;;) {
-    siginfo_t si;
-    int ret = waitid_pidfd_nohang(pidfd, &si);
-    if (ret < 0) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return errno;
-    }
-    if (si.si_pid != 0) {
-      return 0;
-    }
-    usleep(100);
-  }
 }
 
 int main(int argc, char **argv) {
@@ -438,6 +461,14 @@ int main(int argc, char **argv) {
       goto cleanup;
     }
 
+    err = set_blocking(pidfd);
+    if (err != 0) {
+      errno = err;
+      perror("fcntl pidfd blocking");
+      errors++;
+      goto cleanup;
+    }
+
     err = add_epoll_fd(epfd, stdout_read);
     if (err != 0) {
       errno = err;
@@ -508,6 +539,7 @@ int main(int argc, char **argv) {
       for (int event_index = 0; event_index < ret; event_index++) {
         struct epoll_event event = events[event_index];
         if (event.data.fd == stdout_read) {
+          timing_log("c.epoll_wait.read_event", stdout_read, 0, event.events, i);
           stdout_events++;
           do {
             nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
@@ -530,7 +562,12 @@ int main(int argc, char **argv) {
           break;
         } else if (event.data.fd == pidfd) {
           siginfo_t si;
+          timing_log("c.epoll_wait.read_event", pidfd, 0, event.events, i);
+          timing_log("c.waitid.pidfd.nonprobe.before", pidfd, pid, 0, i);
           int wait_ret = waitid_pidfd_nohang(pidfd, &si);
+          int saved_errno = errno;
+          timing_log("c.waitid.pidfd.nonprobe.after", pidfd, wait_ret, saved_errno, si.si_pid);
+          errno = saved_errno;
           if (wait_ret < 0) {
             perror("post-epoll waitid(P_PIDFD)");
             errors++;
@@ -579,7 +616,12 @@ int main(int argc, char **argv) {
       }
     }
     if (pre_kill_ret > 0 && pre_kill_event.data.fd == pidfd) {
+      timing_log("c.epoll_wait.read_event", pidfd, 0, pre_kill_event.events, i);
+      timing_log("c.waitid.pidfd.nonprobe.before", pidfd, pid, 0, i);
       wait_ret = waitid_pidfd_nohang(pidfd, &si);
+      int saved_errno = errno;
+      timing_log("c.waitid.pidfd.nonprobe.after", pidfd, wait_ret, saved_errno, si.si_pid);
+      errno = saved_errno;
       if (wait_ret < 0) {
         perror("pre-kill post-epoll waitid(P_PIDFD)");
         errors++;
@@ -594,7 +636,13 @@ int main(int argc, char **argv) {
       }
     }
 
-    if (kill(pid, SIGKILL) < 0 && errno != ESRCH) {
+    timing_log("c.kill.sigkill.before", pid, SIGKILL, 0, i);
+    errno = 0;
+    int kill_ret = kill(pid, SIGKILL);
+    int kill_errno = errno;
+    timing_log("c.kill.sigkill.after", pid, SIGKILL, kill_ret, kill_errno);
+    errno = kill_errno;
+    if (kill_ret < 0 && errno != ESRCH) {
       perror("kill SIGKILL");
       errors++;
       goto cleanup;
@@ -621,7 +669,12 @@ int main(int argc, char **argv) {
         continue;
       }
 
+      timing_log("c.epoll_wait.read_event", pidfd, 0, event.events, i);
+      timing_log("c.waitid.pidfd.nonprobe.before", pidfd, pid, 0, i);
       wait_ret = waitid_pidfd_nohang(pidfd, &si);
+      int saved_errno = errno;
+      timing_log("c.waitid.pidfd.nonprobe.after", pidfd, wait_ret, saved_errno, si.si_pid);
+      errno = saved_errno;
       if (wait_ret < 0) {
         perror("post-epoll waitid(P_PIDFD)");
         errors++;
@@ -632,10 +685,20 @@ int main(int argc, char **argv) {
         if (empty_after_epoll <= max_logs) {
           print_empty_diagnostic(i, pid, pidfd, event.events);
         }
-        err = reap_pidfd(pidfd);
-        if (err != 0) {
-          errno = err;
-          perror("reap after empty");
+        siginfo_t blocking_si;
+        timing_log("c.waitid.pidfd.block.before", pidfd, pid, 0, i);
+        int blocking_ret = waitid_pidfd_blocking(pidfd, &blocking_si);
+        int blocking_errno = errno;
+        timing_log(
+          "c.waitid.pidfd.block.after",
+          pidfd,
+          blocking_ret,
+          blocking_errno,
+          blocking_si.si_pid
+        );
+        if (blocking_ret < 0) {
+          errno = blocking_errno;
+          perror("blocking waitid after empty");
           errors++;
         } else {
           child_reaped = 1;
