@@ -70,6 +70,17 @@ async test "wait_pid" {
 }
 
 ///|
+async test "spawn without standard handles on Windows" {
+  guard @event_loop.platform is Windows else {  }
+  let spawn = spawn_prog.wait()
+  let sleep = sleep_prog.wait()
+  inspect(
+    @process.run(spawn, ["-no-stdio", "-orphan", sleep, "0"]),
+    content="0",
+  )
+}
+
+///|
 async test "wait exitcode STILL_ACTIVE" {
   guard @event_loop.platform is Windows else {  }
   // `259` is the special value for `STILL_ACTIVE`,

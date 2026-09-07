@@ -14,7 +14,14 @@
 
 ///|
 async fn main {
-  let (is_orphan, args) = match @env.args()[1:] {
+  let args = match @env.args()[1:] {
+    ["-no-stdio", .. rest] => {
+      remove_standard_handles()
+      rest
+    }
+    args => args
+  }
+  let (is_orphan, args) = match args {
     ["-orphan", .. rest] => (true, rest)
     args => (false, args)
   }
@@ -26,3 +33,6 @@ async fn main {
     ignore(@process.run(cmd, args))
   }
 }
+
+///|
+extern "C" fn remove_standard_handles() = "remove_standard_handles"
