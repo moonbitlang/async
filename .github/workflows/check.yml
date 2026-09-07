@@ -53,7 +53,7 @@ jobs:
             done
           }
 
-          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3400 3450 3500 3600 3700 3800 3900 4000"
+          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3500 4000 4500 5000 5500 6000 6500 7000 7500"
           exit "${repro_status}"
 
   sanitizer-check:
