@@ -87,7 +87,6 @@ jobs:
 
       - name: run pidfd sequential repro under strace
         run: |
-          mkdir -p /tmp/pidfd-moonbit-strace
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
           for i in $(seq 1 100); do
             trace="/tmp/pidfd-moonbit-strace"
