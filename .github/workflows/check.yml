@@ -90,21 +90,18 @@ jobs:
           mkdir -p /tmp/pidfd-moonbit-strace
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
           for i in $(seq 1 100); do
-            trace="/tmp/pidfd-moonbit-strace/attempt-${i}.trace"
-            log="/tmp/pidfd-moonbit-strace/attempt-${i}.log"
+            trace="/tmp/pidfd-moonbit-strace"
             ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
               strace -f -r -s 200 \
               -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
               -o "$trace" "$repro" /tmp/pidfd_repro_cat_asan \
-              > "$log" 2>&1
             status=$?
             set -e
             if [ "$status" -ne 0 ]; then
               echo "MoonBit pidfd sequential repro failed on attempt ${i} with status ${status}"
-              cat "$log"
               exit "$status"
             fi
-            rm -f "$trace" "$log"
+            rm -f "$trace"
           done
 
       - uses: actions/upload-artifact@v4
