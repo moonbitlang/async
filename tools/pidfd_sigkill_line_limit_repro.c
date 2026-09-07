@@ -44,6 +44,9 @@
 
 extern char **environ;
 
+#define FLOW_DATA_THEN_CLOSE 0
+#define FLOW_CLOSE_STDIN_ONLY 1
+
 static pthread_t sigwait_thread;
 static pthread_mutex_t sigwait_lock = PTHREAD_MUTEX_INITIALIZER;
 static int sigwait_thread_started = 0;
@@ -381,15 +384,20 @@ int main(int argc, char **argv) {
   int max_logs = argc > 4 ? atoi(argv[4]) : 20;
   int stdout_read_len = argc > 5 ? atoi(argv[5]) : 1;
   int spin_after_stdout_us = argc > 6 ? atoi(argv[6]) : 0;
+  int term_signal = argc > 7 ? atoi(argv[7]) : SIGKILL;
+  int flow_mode = argc > 8 ? atoi(argv[8]) : FLOW_DATA_THEN_CLOSE;
   trace_timing_logs = getenv("PIDFD_C_REPRO_TIMING") != NULL;
 
   if (
     iterations <= 0 || payload_len <= 0 || stdout_read_len <= 0 ||
-    spin_after_stdout_us < 0
+    spin_after_stdout_us < 0 || term_signal <= 0 ||
+    (flow_mode != FLOW_DATA_THEN_CLOSE && flow_mode != FLOW_CLOSE_STDIN_ONLY)
   ) {
     fprintf(
       stderr,
-      "usage: %s [iterations] [cat-path] [payload-len>0] [max-logs] [stdout-read-len>0] [spin-after-stdout-us>=0]\n",
+      "usage: %s [iterations] [cat-path] [payload-len>0] [max-logs] "
+      "[stdout-read-len>0] [spin-after-stdout-us>=0] [signal-number>0] "
+      "[flow-mode: 0=data-then-close, 1=close-stdin-only]\n",
       argv[0]
     );
     return 2;
@@ -428,13 +436,15 @@ int main(int argc, char **argv) {
 
   if (!quiet) {
     printf(
-      "pidfd SIGKILL sequential epoll repro: iterations=%d cat=%s payload_len=%d "
-      "stdout_read_len=%d spin_after_stdout_us=%d pid=%ld\n",
+      "pidfd signal sequential epoll repro: iterations=%d cat=%s payload_len=%d "
+      "stdout_read_len=%d spin_after_stdout_us=%d signal=%d flow_mode=%d pid=%ld\n",
       iterations,
       cat_path,
       payload_len,
       stdout_read_len,
       spin_after_stdout_us,
+      term_signal,
+      flow_mode,
       (long)getpid()
     );
   }
@@ -510,14 +520,6 @@ int main(int argc, char **argv) {
       goto cleanup;
     }
 
-    err = write_all(stdin_write, payload, (size_t)payload_len);
-    if (err != 0) {
-      errno = err;
-      perror("write payload");
-      errors++;
-      goto cleanup;
-    }
-
     siginfo_t si;
     int wait_ret = waitid_pidfd_nohang(pidfd, &si);
     if (wait_ret < 0) {
@@ -531,90 +533,102 @@ int main(int argc, char **argv) {
       goto cleanup;
     }
 
-    // Mimic the writer block's defer running after write() returns.
-    close_if_open(&stdin_write);
-
-    char read_buf[4096];
-    ssize_t nread;
-    do {
-      nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
-    } while (nread < 0 && errno == EINTR);
-    if (nread > 0) {
-      stdout_initial_reads++;
-      stdout_read_done = 1;
-    } else if (nread == 0) {
-      close_if_open(&stdout_read);
-      ready_before_kill++;
-      child_reaped = 1;
-      goto cleanup;
-    } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      perror("initial read stdout");
-      errors++;
-      goto cleanup;
-    }
-
-    while (!stdout_read_done) {
-      struct epoll_event events[4];
-      int ret = epoll_wait(epfd, events, 4, 5000);
-      if (ret < 0) {
-        if (errno == EINTR) {
-          continue;
-        }
-        perror("epoll_wait");
+    if (flow_mode == FLOW_DATA_THEN_CLOSE) {
+      err = write_all(stdin_write, payload, (size_t)payload_len);
+      if (err != 0) {
+        errno = err;
+        perror("write payload");
         errors++;
         goto cleanup;
       }
-      if (ret == 0) {
-        epoll_timeouts++;
+
+      // Mimic the writer block's defer running after write() returns.
+      close_if_open(&stdin_write);
+
+      char read_buf[4096];
+      ssize_t nread;
+      do {
+        nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
+      } while (nread < 0 && errno == EINTR);
+      if (nread > 0) {
+        stdout_initial_reads++;
+        stdout_read_done = 1;
+      } else if (nread == 0) {
+        close_if_open(&stdout_read);
+        ready_before_kill++;
+        child_reaped = 1;
+        goto cleanup;
+      } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        perror("initial read stdout");
+        errors++;
         goto cleanup;
       }
 
-      for (int event_index = 0; event_index < ret; event_index++) {
-        struct epoll_event event = events[event_index];
-        if (event.data.fd == stdout_read) {
-          timing_log("c.epoll_wait.read_event", stdout_read, 0, event.events, i);
-          stdout_events++;
-          do {
-            nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
-          } while (nread < 0 && errno == EINTR);
-          if (nread < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      while (!stdout_read_done) {
+        struct epoll_event events[4];
+        int ret = epoll_wait(epfd, events, 4, 5000);
+        if (ret < 0) {
+          if (errno == EINTR) {
+            continue;
+          }
+          perror("epoll_wait");
+          errors++;
+          goto cleanup;
+        }
+        if (ret == 0) {
+          epoll_timeouts++;
+          goto cleanup;
+        }
+
+        for (int event_index = 0; event_index < ret; event_index++) {
+          struct epoll_event event = events[event_index];
+          if (event.data.fd == stdout_read) {
+            timing_log("c.epoll_wait.read_event", stdout_read, 0, event.events, i);
+            stdout_events++;
+            do {
+              nread = read(stdout_read, read_buf, (size_t)stdout_read_len);
+            } while (nread < 0 && errno == EINTR);
+            if (nread < 0) {
+              if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue;
+              }
+              perror("read stdout");
+              errors++;
+              goto cleanup;
+            }
+            if (nread == 0) {
+              close_if_open(&stdout_read);
+              ready_before_kill++;
+              child_reaped = 1;
+              goto cleanup;
+            }
+            stdout_read_done = 1;
+            break;
+          } else if (event.data.fd == pidfd) {
+            siginfo_t si;
+            timing_log("c.epoll_wait.read_event", pidfd, 0, event.events, i);
+            timing_log("c.waitid.pidfd.nonprobe.before", pidfd, pid, 0, i);
+            int wait_ret = waitid_pidfd_nohang(pidfd, &si);
+            int saved_errno = errno;
+            timing_log("c.waitid.pidfd.nonprobe.after", pidfd, wait_ret, saved_errno, si.si_pid);
+            errno = saved_errno;
+            if (wait_ret < 0) {
+              perror("post-epoll waitid(P_PIDFD)");
+              errors++;
+              goto cleanup;
+            }
+            if (si.si_pid == 0) {
+              pidfd_ready_before_kill++;
               continue;
             }
-            perror("read stdout");
-            errors++;
-            goto cleanup;
-          }
-          if (nread == 0) {
-            close_if_open(&stdout_read);
             ready_before_kill++;
             child_reaped = 1;
             goto cleanup;
           }
-          stdout_read_done = 1;
-          break;
-        } else if (event.data.fd == pidfd) {
-          siginfo_t si;
-          timing_log("c.epoll_wait.read_event", pidfd, 0, event.events, i);
-          timing_log("c.waitid.pidfd.nonprobe.before", pidfd, pid, 0, i);
-          int wait_ret = waitid_pidfd_nohang(pidfd, &si);
-          int saved_errno = errno;
-          timing_log("c.waitid.pidfd.nonprobe.after", pidfd, wait_ret, saved_errno, si.si_pid);
-          errno = saved_errno;
-          if (wait_ret < 0) {
-            perror("post-epoll waitid(P_PIDFD)");
-            errors++;
-            goto cleanup;
-          }
-          if (si.si_pid == 0) {
-            pidfd_ready_before_kill++;
-            continue;
-          }
-          ready_before_kill++;
-          child_reaped = 1;
-          goto cleanup;
         }
       }
+    } else {
+      close_if_open(&stdin_write);
     }
 
     // Mimic the failing task unwinding after read_some(max_len=1) returned data.
@@ -674,14 +688,14 @@ int main(int argc, char **argv) {
       }
     }
 
-    timing_log("c.kill.sigkill.before", pid, SIGKILL, 0, i);
+    timing_log("c.kill.sigkill.before", pid, term_signal, 0, i);
     errno = 0;
-    int kill_ret = kill(pid, SIGKILL);
+    int kill_ret = kill(pid, term_signal);
     int kill_errno = errno;
-    timing_log("c.kill.sigkill.after", pid, SIGKILL, kill_ret, kill_errno);
+    timing_log("c.kill.sigkill.after", pid, term_signal, kill_ret, kill_errno);
     errno = kill_errno;
     if (kill_ret < 0 && errno != ESRCH) {
-      perror("kill SIGKILL");
+      perror("kill termination signal");
       errors++;
       goto cleanup;
     }

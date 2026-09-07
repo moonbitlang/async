@@ -22,26 +22,40 @@ jobs:
       - name: build repro
         run: |
           gcc -O0 -Wall -Wextra -fsanitize=address -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
+          gcc -O0 -Wall -Wextra -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro_plain
           gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
+          gcc -O0 -g -fno-omit-frame-pointer -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_plain
 
       - name: run repro
         run: |
           repro_status=0
-          for delay_us in 0 50 100 150 200 250; do
-            echo "pidfd C repro delay_us=${delay_us}"
-            log="/tmp/pidfd-c-delay-${delay_us}.log"
-            set +e
-            /tmp/pidfd_sigkill_line_limit_repro 200 /tmp/pidfd_repro_cat_asan 1 0 1 "${delay_us}" > "${log}" 2>&1
-            status=$?
-            set -e
-            tail -n 3 "${log}"
-            if [ "${status}" -eq 100 ]; then
-              repro_status=100
-            elif [ "${status}" -ne 0 ]; then
-              cat "${log}"
-              exit "${status}"
-            fi
-          done
+          run_variant() {
+            variant_name="$1"
+            repro_bin="$2"
+            cat_bin="$3"
+            signal_num="$4"
+            flow_mode="$5"
+            for delay_us in 200 250 300; do
+              echo "pidfd C repro variant=${variant_name} delay_us=${delay_us}"
+              log="/tmp/pidfd-c-${variant_name}-${delay_us}.log"
+              set +e
+              "${repro_bin}" 200 "${cat_bin}" 1 0 1 "${delay_us}" "${signal_num}" "${flow_mode}" > "${log}" 2>&1
+              status=$?
+              set -e
+              tail -n 3 "${log}"
+              if [ "${status}" -eq 100 ]; then
+                repro_status=100
+              elif [ "${status}" -ne 0 ]; then
+                cat "${log}"
+                exit "${status}"
+              fi
+            done
+          }
+
+          run_variant system-cat /tmp/pidfd_sigkill_line_limit_repro /bin/cat 9 0
+          run_variant no-asan /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 0
+          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1
+          run_variant sigterm /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 15 0
           exit "${repro_status}"
 
   sanitizer-check:
