@@ -53,9 +53,9 @@ jobs:
             done
           }
 
-          run_variant system-cat /tmp/pidfd_sigkill_line_limit_repro /bin/cat 9 0 "0 5 10 15 20 25 30 35 40 45 50"
-          run_variant no-asan /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 0 "0 5 10 15 20 25 30 35 40 45 50"
-          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "500 750 1000 1250 1500"
+          run_variant system-cat /tmp/pidfd_sigkill_line_limit_repro /bin/cat 9 0 "50 55 60 65 70 75 80 85"
+          run_variant no-asan /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 0 "50 55 60 65 70 75 80 85"
+          run_variant close-stdin-only /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "1500 1750 2000 2250 2500 2750 3000"
           exit "${repro_status}"
 
   sanitizer-check:
