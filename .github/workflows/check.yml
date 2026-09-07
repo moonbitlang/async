@@ -71,10 +71,8 @@ jobs:
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
           for i in $(seq 1 300); do
             log="/tmp/pidfd-moonbit-repro/attempt-${i}.log"
-            set +e
-            ASAN_OPTIONS=detect_leaks=0 \
-              MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
-              MOONBIT_ASYNC_PIDFD_TRACE=1 \
+            MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
+            MOONBIT_ASYNC_PIDFD_TRACE=1 \
               "$repro" /tmp/pidfd_repro_cat_asan > "$log" 2>&1
             status=$?
             set -e
