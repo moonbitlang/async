@@ -81,7 +81,7 @@ jobs:
           }
 
           run_variant close-stdin-only-asan /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3250 3500 3750" ""
-          run_deadline_variant plain-deadline 10000 "40 45 50 55 60 65 70 75 80"
+          run_deadline_variant plain-deadline 10000 "70 71 72 73 74 75 76 77 78 79 80"
           exit "${repro_status}"
 
   sanitizer-check:
