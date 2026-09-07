@@ -213,6 +213,27 @@ static void timing_log(
   );
 }
 
+static void spin_wait_us(int wait_us) {
+  if (wait_us <= 0) {
+    return;
+  }
+
+  struct timespec start;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+  long long target_ns = (long long)wait_us * 1000;
+
+  for (;;) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    long long elapsed_ns =
+      (long long)(now.tv_sec - start.tv_sec) * 1000000000LL +
+      (long long)(now.tv_nsec - start.tv_nsec);
+    if (elapsed_ns >= target_ns) {
+      return;
+    }
+  }
+}
+
 static int add_epoll_fd(int epfd, int fd) {
   struct epoll_event event;
   memset(&event, 0, sizeof(event));
@@ -353,11 +374,15 @@ int main(int argc, char **argv) {
   int payload_len = argc > 3 ? atoi(argv[3]) : 1;
   int max_logs = argc > 4 ? atoi(argv[4]) : 20;
   int stdout_read_len = argc > 5 ? atoi(argv[5]) : 1;
+  int spin_after_stdout_us = argc > 6 ? atoi(argv[6]) : 0;
 
-  if (iterations <= 0 || payload_len <= 0 || stdout_read_len <= 0) {
+  if (
+    iterations <= 0 || payload_len <= 0 || stdout_read_len <= 0 ||
+    spin_after_stdout_us < 0
+  ) {
     fprintf(
       stderr,
-      "usage: %s [iterations] [cat-path] [payload-len>0] [max-logs] [stdout-read-len>0]\n",
+      "usage: %s [iterations] [cat-path] [payload-len>0] [max-logs] [stdout-read-len>0] [spin-after-stdout-us>=0]\n",
       argv[0]
     );
     return 2;
@@ -397,11 +422,12 @@ int main(int argc, char **argv) {
   if (!quiet) {
     printf(
       "pidfd SIGKILL sequential epoll repro: iterations=%d cat=%s payload_len=%d "
-      "stdout_read_len=%d pid=%ld\n",
+      "stdout_read_len=%d spin_after_stdout_us=%d pid=%ld\n",
       iterations,
       cat_path,
       payload_len,
       stdout_read_len,
+      spin_after_stdout_us,
       (long)getpid()
     );
   }
@@ -586,6 +612,11 @@ int main(int argc, char **argv) {
 
     // Mimic the failing task unwinding after read_some(max_len=1) returned data.
     close_if_open(&stdout_read);
+    if (spin_after_stdout_us > 0) {
+      timing_log("c.spin_after_stdout.before", spin_after_stdout_us, 0, 0, i);
+      spin_wait_us(spin_after_stdout_us);
+      timing_log("c.spin_after_stdout.after", spin_after_stdout_us, 0, 0, i);
+    }
 
     // Mimic process.wait_pid(context="@process.spawn():cleanup") doing its
     // initial nonblocking probe before the no_wait hard-cancel task runs.
