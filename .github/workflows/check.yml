@@ -93,7 +93,7 @@ jobs:
             ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
               strace -f -r -s 200 \
               -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
-              -o "$trace" "$repro" /tmp/pidfd_repro_cat_asan \
+              -o "$trace" "$repro" /tmp/pidfd_repro_cat_asan
             status=$?
             set -e
             if [ "$status" -ne 0 ]; then
