@@ -19,31 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: install strace
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y strace
-
       - name: build repro
         run: |
           gcc -O0 -Wall -Wextra -fsanitize=address -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro
           gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
 
-      - name: run single-iteration C repro under strace
+      - name: run repro
         run: |
-          mkdir -p /tmp/pidfd-c-strace
-          ASAN_OPTIONS=detect_leaks=0 strace -f -r -s 200 \
-            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,dup2,dup3,fcntl,epoll_create1,epoll_ctl,epoll_wait,pidfd_open,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
-            -o /tmp/pidfd-c-strace/single-iteration.trace \
-            /tmp/pidfd_sigkill_line_limit_repro 1 /tmp/pidfd_repro_cat_asan 1 20 1 \
-            > /tmp/pidfd-c-strace/single-iteration.log 2>&1
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: pidfd-c-repro-strace
-          path: /tmp/pidfd-c-strace
-          if-no-files-found: ignore
+          for i in $(seq 1 100); do
+            /tmp/pidfd_sigkill_line_limit_repro 1 /tmp/pidfd_repro_cat_asan 1 20 1
+          done
 
   sanitizer-check:
     runs-on: ubuntu-latest
@@ -56,11 +41,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '>=22.4.0'
-
-      - name: install strace
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y strace
 
       - name: install
         run: |
@@ -84,50 +64,6 @@ jobs:
       - name: build pidfd sequential repro
         run: |
           moon build examples/pidfd_sequential_repro
-
-      - name: collect one traced pidfd sequential repro run
-        run: |
-          mkdir -p /tmp/pidfd-moonbit-strace
-          repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
-          ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
-            strace -f -r -s 200 \
-            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,dup2,dup3,fcntl,epoll_create1,epoll_ctl,epoll_wait,pidfd_open,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
-            -o /tmp/pidfd-moonbit-strace/single-iteration.trace \
-            "$repro" /tmp/pidfd_repro_cat_asan \
-            > /tmp/pidfd-moonbit-strace/single-iteration.log 2>&1
-
-      - name: run pidfd sequential repro without strace
-        run: |
-          mkdir -p /tmp/pidfd-moonbit-repro
-          repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
-          for i in $(seq 1 300); do
-            log="/tmp/pidfd-moonbit-repro/attempt-${i}.log"
-            set +e
-            ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
-              "$repro" /tmp/pidfd_repro_cat_asan > "$log" 2>&1
-            status=$?
-            set -e
-            if [ "$status" -ne 0 ]; then
-              echo "MoonBit pidfd sequential repro failed on attempt ${i} with status ${status}"
-              cat "$log"
-              exit "$status"
-            fi
-            rm -f "$log"
-          done
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: pidfd-moonbit-repro-strace
-          path: /tmp/pidfd-moonbit-strace
-          if-no-files-found: ignore
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: pidfd-moonbit-repro-logs
-          path: /tmp/pidfd-moonbit-repro
-          if-no-files-found: ignore
 
       - name: run test with address sanitizer
         run: |
