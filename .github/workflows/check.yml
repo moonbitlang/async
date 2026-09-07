@@ -89,7 +89,6 @@ jobs:
         run: |
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
           for i in $(seq 1 100); do
-            set +e
             ASAN_OPTIONS=detect_leaks=0 \
               "$repro" /tmp/pidfd_repro_cat_asan
           done
