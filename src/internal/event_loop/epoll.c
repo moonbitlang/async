@@ -23,9 +23,21 @@
 #include <sys/wait.h>
 
 _Noreturn void moonbit_panic();
+void moonbitlang_async_trace_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 int moonbitlang_async_event_bus_create() {
-  return epoll_create1(EPOLL_CLOEXEC);
+  errno = 0;
+  int ret = epoll_create1(EPOLL_CLOEXEC);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.epoll_create1", ret, saved_errno, 0, 0);
+  errno = saved_errno;
+  return ret;
 }
 
 void moonbitlang_async_event_bus_destroy(int epfd) {
@@ -63,7 +75,24 @@ int32_t moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only
   data.u64 = (uint64_t)fd | ((uint64_t)registration_id << 32);
 
   struct epoll_event event = { events, data };
+  moonbitlang_async_trace_log_c(
+    "c.epoll_ctl.add.before",
+    epfd,
+    fd,
+    events,
+    registration_id
+  );
+  errno = 0;
   int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c(
+    "c.epoll_ctl.add.after",
+    epfd,
+    fd,
+    ret,
+    saved_errno
+  );
+  errno = saved_errno;
   if (ret >= 0)
     return registration_id++;
   else if (errno == EPERM)
@@ -80,7 +109,13 @@ int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
 static struct epoll_event event_buffer[EVENT_BUFFER_SIZE];
 
 int moonbitlang_async_event_bus_wait(int epfd, int timeout) {
-  return epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
+  moonbitlang_async_trace_log_c("c.epoll_wait.before", epfd, timeout, 0, 0);
+  errno = 0;
+  int ret = epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.epoll_wait.after", epfd, timeout, ret, saved_errno);
+  errno = saved_errno;
+  return ret;
 }
 
 // wrapper for handling event list

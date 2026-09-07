@@ -37,6 +37,28 @@ pub fn eprintln(msg : String) -> Unit {
 }
 
 ///|
+#cfg(target="native")
+pub extern "C" fn trace_event(
+  event : Int,
+  a : Int,
+  b : Int,
+  c : Int,
+  d : Int,
+) -> Unit = "moonbitlang_async_trace_log"
+
+///|
+#cfg(not(target="native"))
+pub fn trace_event(
+  _event : Int,
+  _a : Int,
+  _b : Int,
+  _c : Int,
+  _d : Int,
+) -> Unit {
+  ()
+}
+
+///|
 pub(all) enum Platform {
   Linux = 0
   MacOS = 1

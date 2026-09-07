@@ -46,6 +46,13 @@ typedef int HANDLE;
 #include <moonbit.h>
 #include <stdio.h>
 
+void moonbitlang_async_trace_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *out, int32_t is_probe) {
@@ -63,7 +70,31 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
   if (handle >= 0) {
     siginfo_t info;
     info.si_pid = 0;
+    moonbitlang_async_trace_log_c(
+      "c.waitid.pidfd.before",
+      handle,
+      pid,
+      is_probe,
+      0
+    );
+    errno = 0;
     int ret = waitid(P_PIDFD, handle, &info, WEXITED | WNOHANG);
+    int wait_errno = errno;
+    moonbitlang_async_trace_log_c(
+      "c.waitid.pidfd.after",
+      handle,
+      ret,
+      wait_errno,
+      info.si_pid
+    );
+    moonbitlang_async_trace_log_c(
+      "c.waitid.pidfd.info",
+      pid,
+      info.si_code,
+      info.si_status,
+      is_probe
+    );
+    errno = wait_errno;
 
     if (ret < 0) {
       if (!is_probe) 

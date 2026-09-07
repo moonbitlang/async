@@ -238,18 +238,25 @@ pub async fn[X] spawn(
   let pid = process.pid
   let result = group.spawn(no_wait?, () => {
     defer process.close()
-    process.wait_pid(context="\{context}:primary") catch {
+    @env_util.trace_event(20, pid, 0, 0, 0)
+    let exit_code = process.wait_pid(context="\{context}:primary") catch {
       @coroutine.Cancelled as err => {
+        @env_util.trace_event(21, pid, 0, 0, 0)
         let _ = @async.protect_from_cancel() <| () => {
           @async.with_task_group() <| group => {
+            @env_util.trace_event(22, pid, 0, 0, 0)
             group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-            process.wait_pid(context="\{context}:cleanup") |> ignore
+            @env_util.trace_event(23, pid, 0, 0, 0)
+            let exit_code = process.wait_pid(context="\{context}:cleanup")
+            @env_util.trace_event(24, pid, exit_code, 0, 0)
           }
         }
         raise err
       }
       err => raise err
     }
+    @env_util.trace_event(25, pid, exit_code, 0, 0)
+    exit_code
   })
   { pid, result, }
 }

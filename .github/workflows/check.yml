@@ -65,17 +65,30 @@ jobs:
         run: |
           moon build examples/pidfd_sequential_repro
 
-      - name: run test with address sanitizer
+      - name: run pidfd sequential repro with address sanitizer
         run: |
-          export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
-          export MOONBIT_ASYNC_C_CAT_PROG=/tmp/pidfd_repro_cat_asan
-          export MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1
-          for filter in \
-            "min process c cat" \
-            "min process c cat sequential" \
-            "min process c cat sequential sleep before kill"; do
-            echo "======================== ${filter} ============================="
-            for _ in $(seq 1 20); do
-              moon test src/shell/line_cap_minimize_test.mbt -F "$filter"
-            done
+          mkdir -p /tmp/pidfd-moonbit-repro
+          repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
+          for i in $(seq 1 300); do
+            log="/tmp/pidfd-moonbit-repro/attempt-${i}.log"
+            set +e
+            ASAN_OPTIONS=detect_leaks=0 \
+              MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
+              MOONBIT_ASYNC_PIDFD_TRACE=1 \
+              "$repro" /tmp/pidfd_repro_cat_asan > "$log" 2>&1
+            status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then
+              echo "MoonBit pidfd sequential repro failed on attempt ${i} with status ${status}"
+              cat "$log"
+              exit "$status"
+            fi
+            rm -f "$log"
           done
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pidfd-moonbit-repro-logs
+          path: /tmp/pidfd-moonbit-repro
+          if-no-files-found: ignore

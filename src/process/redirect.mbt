@@ -99,6 +99,7 @@ pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise {
 
 ///|
 pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
+  @env_util.trace_event(10, 0, 0, 0, 0)
   self.io.close()
 }
 
@@ -135,6 +136,7 @@ pub extend ReadFromProcess with @io.Reader::{
 ///|
 pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
   let WriteToProcess(io) = self
+  @env_util.trace_event(11, 0, 0, 0, 0)
   io.close()
 }
 
@@ -320,6 +322,7 @@ impl ProcessOutput for TempPipeWrite with fn fd(self) {
 impl ProcessOutput for TempPipeWrite with fn do_close(self) {
   if !self.closed {
     self.closed = true
+    @env_util.trace_event(13, 0, 0, 0, 0)
     self.pipe.close()
   }
 }
@@ -340,6 +343,7 @@ impl ProcessInput for TempPipeRead with fn fd(self) {
 impl ProcessInput for TempPipeRead with fn do_close(self) {
   if !self.closed {
     self.closed = true
+    @env_util.trace_event(12, 0, 0, 0, 0)
     self.pipe.close()
   }
 }

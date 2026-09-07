@@ -65,6 +65,14 @@ typedef int SOCKET;
 #define GetLastError() errno
 #define SetLastError(err) errno = err
 
+void moonbitlang_async_trace_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
+
 #endif
 
 
@@ -1213,7 +1221,17 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
        here would let it escape ownership, unkilled and unreaped. Leave the
        handle invalid instead; `wait_pid` falls back to a blocking `waitpid`
        in a worker thread when there is no pidfd. */
+    errno = 0;
     job->pidfd = syscall(SYS_pidfd_open, ret, 0);
+    int pidfd_errno = errno;
+    moonbitlang_async_trace_log_c(
+      "c.pidfd_open.after",
+      ret,
+      job->pidfd,
+      pidfd_errno,
+      0
+    );
+    errno = pidfd_errno;
   }
 #endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 #endif // #ifdef __linux__

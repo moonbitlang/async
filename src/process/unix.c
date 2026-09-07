@@ -22,9 +22,17 @@
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <moonbit.h>
 
 extern char **environ;
+void moonbitlang_async_trace_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 char **moonbitlang_async_get_curr_env() {
   return environ;
@@ -142,11 +150,21 @@ void moonbitlang_async_argv_array_add_entry(
 }
 
 void moonbitlang_async_terminate_process(pid_t pid, int signal) {
-  kill(pid, signal);
+  moonbitlang_async_trace_log_c("c.kill.before", pid, signal, 0, 0);
+  errno = 0;
+  int ret = kill(pid, signal);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.kill.after", pid, signal, ret, saved_errno);
+  errno = saved_errno;
 }
 
 void moonbitlang_async_kill_process(pid_t pid) {
-  kill(pid, SIGKILL);
+  moonbitlang_async_trace_log_c("c.kill.before", pid, SIGKILL, 0, 0);
+  errno = 0;
+  int ret = kill(pid, SIGKILL);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.kill.after", pid, SIGKILL, ret, saved_errno);
+  errno = saved_errno;
 }
 
 #endif

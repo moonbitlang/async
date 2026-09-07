@@ -21,12 +21,29 @@ async fn IoHandle::wait_read_observed_event(handle : IoHandle) -> Bool {
   }
   guard! handle.read is Idle
   let seq_before = handle.read_ready_seq
+  let registration_id = match handle.is_async {
+    Some(id) => id
+    None => 0
+  }
+  @env_util.trace_event(1, 0, registration_id, seq_before, 0)
   handle.read = Waiting(@coroutine.current_coroutine())
   defer {
     handle.read = Idle
   }
   evloop.suspend()
-  handle.read_ready_seq != seq_before
+  let observed = handle.read_ready_seq != seq_before
+  @env_util.trace_event(
+    2,
+    0,
+    registration_id,
+    handle.read_ready_seq,
+    if observed {
+      1
+    } else {
+      0
+    },
+  )
+  observed
 }
 
 ///|

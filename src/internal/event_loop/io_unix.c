@@ -20,13 +20,34 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <errno.h>
+
+void moonbitlang_async_trace_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 int moonbitlang_async_read(int fd, char *buf, int offset, int len) {
-  return read(fd, buf + offset, len);
+  moonbitlang_async_trace_log_c("c.read.before", fd, offset, len, 0);
+  errno = 0;
+  int ret = read(fd, buf + offset, len);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.read.after", fd, ret, saved_errno, 0);
+  errno = saved_errno;
+  return ret;
 }
 
 int moonbitlang_async_write(int fd, char *buf, int offset, int len) {
-  return write(fd, buf + offset, len);
+  moonbitlang_async_trace_log_c("c.write.before", fd, offset, len, 0);
+  errno = 0;
+  int ret = write(fd, buf + offset, len);
+  int saved_errno = errno;
+  moonbitlang_async_trace_log_c("c.write.after", fd, ret, saved_errno, 0);
+  errno = saved_errno;
+  return ret;
 }
 
 int moonbitlang_async_connect(int sockfd, moonbit_bytes_t addr) {
