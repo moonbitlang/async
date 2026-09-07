@@ -25,6 +25,8 @@ jobs:
           gcc -O0 -Wall -Wextra -pthread tools/pidfd_sigkill_line_limit_repro.c -o /tmp/pidfd_sigkill_line_limit_repro_plain
           gcc -O0 -g -fno-omit-frame-pointer -fsanitize=address -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_asan
           gcc -O0 -g -fno-omit-frame-pointer -Wall -Wextra tools/pidfd_repro_cat.c -o /tmp/pidfd_repro_cat_plain
+          gcc -O0 -Wall -Wextra tools/pidfd_deadline_exit_child.c -o /tmp/pidfd_deadline_exit_child
+          gcc -O0 -Wall -Wextra tools/pidfd_deadline_signal_repro.c -o /tmp/pidfd_deadline_signal_repro
 
       - name: run repro
         run: |
@@ -57,9 +59,30 @@ jobs:
               fi
             done
           }
+          run_deadline_variant() {
+            variant_name="$1"
+            deadline_lead_us="$2"
+            offset_list="$3"
+            for offset_us in ${offset_list}; do
+              echo "======== pidfd deadline repro variant=${variant_name} offset_us=${offset_us} deadline_lead_us=${deadline_lead_us} ========"
+              log="/tmp/pidfd-deadline-${variant_name}-${offset_us}.log"
+              set +e
+              /tmp/pidfd_deadline_signal_repro 200 /tmp/pidfd_deadline_exit_child "${deadline_lead_us}" "${offset_us}" 0 > "${log}" 2>&1
+              status=$?
+              set -e
+              tail -n 3 "${log}"
+              if [ "${status}" -eq 100 ]; then
+                repro_status=100
+              elif [ "${status}" -ne 0 ]; then
+                cat "${log}"
+                exit "${status}"
+              fi
+            done
+          }
 
           run_variant close-stdin-only-asan /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3250 3500 3750" ""
           run_variant plain-eof-sleep-3500 /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 1 "3300 3310 3320 3330 3340 3350 3360 3370 3380 3390 3400" "3000"
+          run_deadline_variant plain-deadline 10000 "-1000 -500 -250 -100 -50 -25 -10 0 10 25 50 100 250 500 1000"
           exit "${repro_status}"
 
   sanitizer-check:
