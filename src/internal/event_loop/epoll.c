@@ -30,6 +30,13 @@ void moonbitlang_async_trace_log_c(
   long long c,
   long long d
 );
+void moonbitlang_async_timing_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 int moonbitlang_async_event_bus_create() {
   errno = 0;
@@ -114,6 +121,24 @@ int moonbitlang_async_event_bus_wait(int epfd, int timeout) {
   int ret = epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
   int saved_errno = errno;
   moonbitlang_async_trace_log_c("c.epoll_wait.after", epfd, timeout, ret, saved_errno);
+  for (int i = 0; i < ret; ++i) {
+    if (event_buffer[i].events & (EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+      moonbitlang_async_timing_log_c(
+        "c.epoll_wait.read_event",
+        event_buffer[i].data.u64 & 0xFFFFFFFF,
+        event_buffer[i].data.u64 >> 32,
+        event_buffer[i].events,
+        i
+      );
+    }
+    moonbitlang_async_trace_log_c(
+      "c.epoll_wait.event",
+      event_buffer[i].data.u64 & 0xFFFFFFFF,
+      event_buffer[i].data.u64 >> 32,
+      event_buffer[i].events,
+      i
+    );
+  }
   errno = saved_errno;
   return ret;
 }

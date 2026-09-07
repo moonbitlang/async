@@ -193,6 +193,39 @@ void moonbitlang_async_trace_log_c(
   );
 }
 
+void moonbitlang_async_timing_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+#ifdef __linux__
+  long tid = syscall(SYS_gettid);
+#else
+  long tid = 0;
+#endif
+  unsigned long long seq =
+    atomic_fetch_add_explicit(&trace_seq, 1, memory_order_relaxed) + 1;
+
+  fprintf(
+    stderr,
+    "moonbitlang/async-timing seq=%llu t=%lld.%09ld pid=%ld tid=%ld event=%s a=%lld b=%lld c=%lld d=%lld\n",
+    seq,
+    (long long)ts.tv_sec,
+    ts.tv_nsec,
+    (long)getpid(),
+    tid,
+    event,
+    a,
+    b,
+    c,
+    d
+  );
+}
+
 void moonbitlang_async_trace_log(
   int32_t event,
   int32_t a,
@@ -211,6 +244,20 @@ void moonbitlang_async_trace_log(
   int32_t b,
   int32_t c,
   int32_t d
+) {
+  (void)event;
+  (void)a;
+  (void)b;
+  (void)c;
+  (void)d;
+}
+
+void moonbitlang_async_timing_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
 ) {
   (void)event;
   (void)a;

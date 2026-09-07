@@ -33,6 +33,13 @@ void moonbitlang_async_trace_log_c(
   long long c,
   long long d
 );
+void moonbitlang_async_timing_log_c(
+  const char *event,
+  long long a,
+  long long b,
+  long long c,
+  long long d
+);
 
 char **moonbitlang_async_get_curr_env() {
   return environ;
@@ -160,9 +167,11 @@ void moonbitlang_async_terminate_process(pid_t pid, int signal) {
 
 void moonbitlang_async_kill_process(pid_t pid) {
   moonbitlang_async_trace_log_c("c.kill.before", pid, SIGKILL, 0, 0);
+  moonbitlang_async_timing_log_c("c.kill.sigkill.before", pid, SIGKILL, 0, 0);
   errno = 0;
   int ret = kill(pid, SIGKILL);
   int saved_errno = errno;
+  moonbitlang_async_timing_log_c("c.kill.sigkill.after", pid, SIGKILL, ret, saved_errno);
   moonbitlang_async_trace_log_c("c.kill.after", pid, SIGKILL, ret, saved_errno);
   errno = saved_errno;
 }
