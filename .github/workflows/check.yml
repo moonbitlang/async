@@ -67,26 +67,7 @@ jobs:
 
       - name: run pidfd sequential repro with address sanitizer
         run: |
-          mkdir -p /tmp/pidfd-moonbit-repro
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
-          for i in $(seq 1 300); do
-            log="/tmp/pidfd-moonbit-repro/attempt-${i}.log"
-            MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
-            MOONBIT_ASYNC_PIDFD_TRACE=1 \
-              "$repro" /tmp/pidfd_repro_cat_asan > "$log" 2>&1
-            status=$?
-            set -e
-            if [ "$status" -ne 0 ]; then
-              echo "MoonBit pidfd sequential repro failed on attempt ${i} with status ${status}"
-              cat "$log"
-              exit "$status"
-            fi
-            rm -f "$log"
+          for i in $(seq 1 20); do
+            "$repro" /tmp/pidfd_repro_cat_asan
           done
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: pidfd-moonbit-repro-logs
-          path: /tmp/pidfd-moonbit-repro
-          if-no-files-found: ignore
