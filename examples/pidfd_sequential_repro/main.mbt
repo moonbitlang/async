@@ -47,7 +47,7 @@ async fn run_once(program : String) -> Unit {
       child.wait() |> ignore
     }
   catch {
-    BareLineLimitExceeded(0) => println("fail as expected")
+    BareLineLimitExceeded(0) => ()
     err => raise err
   } noraise {
     _ => fail("expected the line limit to raise")
