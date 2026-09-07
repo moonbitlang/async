@@ -14,6 +14,8 @@
 //   close stdin
 //   read one byte from child stdout, waiting on epoll only if needed
 //   close stdout reader and send SIGKILL
+//   probe waitid(P_PIDFD, WNOHANG) in the cleanup wait before SIGKILL
+//   run one zero-timeout epoll_wait before the hard-cancel task runs
 //   wait for pidfd EPOLLIN
 //   immediately call waitid(P_PIDFD, WNOHANG) after pidfd readiness
 
@@ -367,6 +369,7 @@ int main(int argc, char **argv) {
   int killed_after_stdout = 0;
   int pidfd_ready_before_kill = 0;
   int primary_probe_reaped = 0;
+  int cleanup_probe_reaped = 0;
 
   if (!quiet) {
     printf(
@@ -547,6 +550,50 @@ int main(int argc, char **argv) {
     // Mimic the failing task unwinding after read_some(max_len=1) returned data.
     close_if_open(&stdout_read);
 
+    // Mimic process.wait_pid(context="@process.spawn():cleanup") doing its
+    // initial nonblocking probe before the no_wait hard-cancel task runs.
+    wait_ret = waitid_pidfd_nohang(pidfd, &si);
+    if (wait_ret < 0) {
+      perror("cleanup probe waitid(P_PIDFD)");
+      errors++;
+      goto cleanup;
+    }
+    if (si.si_pid != 0) {
+      cleanup_probe_reaped++;
+      child_reaped = 1;
+      goto cleanup;
+    }
+
+    // Mimic the event loop polling once with timeout 0 before running the next
+    // scheduler slice that executes the hard-cancel task.
+    struct epoll_event pre_kill_event;
+    memset(&pre_kill_event, 0, sizeof(pre_kill_event));
+    int pre_kill_ret = epoll_wait(epfd, &pre_kill_event, 1, 0);
+    if (pre_kill_ret < 0) {
+      if (errno == EINTR) {
+        pre_kill_ret = 0;
+      } else {
+        perror("pre-kill epoll_wait");
+        errors++;
+        goto cleanup;
+      }
+    }
+    if (pre_kill_ret > 0 && pre_kill_event.data.fd == pidfd) {
+      wait_ret = waitid_pidfd_nohang(pidfd, &si);
+      if (wait_ret < 0) {
+        perror("pre-kill post-epoll waitid(P_PIDFD)");
+        errors++;
+        goto cleanup;
+      }
+      if (si.si_pid == 0) {
+        pidfd_ready_before_kill++;
+      } else {
+        ready_before_kill++;
+        child_reaped = 1;
+        goto cleanup;
+      }
+    }
+
     if (kill(pid, SIGKILL) < 0 && errno != ESRCH) {
       perror("kill SIGKILL");
       errors++;
@@ -616,7 +663,7 @@ cleanup:
         "progress %d/%d stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d "
         "ready_before_kill=%d reaped_after_epoll=%d empty_after_epoll=%d "
         "pidfd_ready_before_kill=%d primary_probe_reaped=%d "
-        "epoll_timeouts=%d errors=%d\n",
+        "cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
         i + 1,
         iterations,
         stdout_initial_reads,
@@ -627,6 +674,7 @@ cleanup:
         empty_after_epoll,
         pidfd_ready_before_kill,
         primary_probe_reaped,
+        cleanup_probe_reaped,
         epoll_timeouts,
         errors
       );
@@ -637,7 +685,7 @@ cleanup:
     printf(
       "done stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d ready_before_kill=%d "
       "reaped_after_epoll=%d empty_after_epoll=%d pidfd_ready_before_kill=%d "
-      "primary_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
+      "primary_probe_reaped=%d cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
       stdout_initial_reads,
       stdout_events,
       killed_after_stdout,
@@ -646,6 +694,7 @@ cleanup:
       empty_after_epoll,
       pidfd_ready_before_kill,
       primary_probe_reaped,
+      cleanup_probe_reaped,
       epoll_timeouts,
       errors
     );
