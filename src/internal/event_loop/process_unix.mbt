@@ -13,6 +13,25 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
+extern "C" fn set_blocking_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_set_blocking"
+
+///|
+#cfg(target="native")
+fn set_pidfd_blocking(fd : @fd_util.Fd, context~ : String) -> Unit raise {
+  if set_blocking_ffi(fd) < 0 {
+    @os_error.check_errno(context)
+  }
+}
+
+///|
+#cfg(target="wasm")
+fn set_pidfd_blocking(fd : @fd_util.Fd, context~ : String) -> Unit {
+  ignore(fd)
+  ignore(context)
+}
+
+///|
 #cfg(not(platform="windows"))
 pub async fn spawn_unix(
   path : @os_string.OsString,
@@ -41,7 +60,11 @@ pub async fn spawn_unix(
   let handle = if !@fd_util.fd_is_valid(pidfd) {
     None
   } else {
-    Some(IoHandle::from_fd(pidfd, kind=Unknown, read_only=true))
+    let handle = IoHandle::from_fd(pidfd, kind=Unknown, read_only=true)
+    if platform is Linux {
+      set_pidfd_blocking(pidfd, context="@process.spawn():pidfd")
+    }
+    Some(handle)
   }
   { pid, handle, }
 }
