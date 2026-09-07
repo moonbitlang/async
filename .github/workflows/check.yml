@@ -81,8 +81,7 @@ jobs:
           }
 
           run_variant close-stdin-only-asan /tmp/pidfd_sigkill_line_limit_repro /tmp/pidfd_repro_cat_asan 9 1 "3250 3500 3750" ""
-          run_variant plain-eof-sleep-3500 /tmp/pidfd_sigkill_line_limit_repro_plain /tmp/pidfd_repro_cat_plain 9 1 "3300 3310 3320 3330 3340 3350 3360 3370 3380 3390 3400" "3000"
-          run_deadline_variant plain-deadline 10000 "-1000 -500 -250 -100 -50 -25 -10 0 10 25 50 100 250 500 1000"
+          run_deadline_variant plain-deadline 10000 "0 50 250 500 1000 1500 2000 2500"
           exit "${repro_status}"
 
   sanitizer-check:
