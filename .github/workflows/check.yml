@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p /tmp/pidfd-c-strace
           ASAN_OPTIONS=detect_leaks=0 strace -f -r -s 200 \
-            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
+            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,dup2,dup3,fcntl,epoll_create1,epoll_ctl,epoll_wait,pidfd_open,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
             -o /tmp/pidfd-c-strace/single-iteration.trace \
             /tmp/pidfd_sigkill_line_limit_repro 1 /tmp/pidfd_repro_cat_asan 1 20 1 \
             > /tmp/pidfd-c-strace/single-iteration.log 2>&1
@@ -91,7 +91,7 @@ jobs:
           repro="_build/native/debug/build/moonbitlang/async_examples/pidfd_sequential_repro/pidfd_sequential_repro.exe"
           ASAN_OPTIONS=detect_leaks=0 MOONBIT_ASYNC_PIDFD_EAGAIN_FATAL=1 \
             strace -f -r -s 200 \
-            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,fcntl,epoll_ctl,epoll_wait,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
+            -e trace=clone,clone3,fork,vfork,execve,pipe,pipe2,dup2,dup3,fcntl,epoll_create1,epoll_ctl,epoll_wait,pidfd_open,read,write,close,kill,wait4,waitid,rt_sigaction,rt_sigprocmask \
             -o /tmp/pidfd-moonbit-strace/single-iteration.trace \
             "$repro" /tmp/pidfd_repro_cat_asan \
             > /tmp/pidfd-moonbit-strace/single-iteration.log 2>&1

@@ -14,7 +14,6 @@
 //   close stdin
 //   read one byte from child stdout, waiting on epoll only if needed
 //   close stdout reader and send SIGKILL
-//   probe waitid(P_PIDFD, WNOHANG), expecting not-ready
 //   wait for pidfd EPOLLIN
 //   immediately call waitid(P_PIDFD, WNOHANG) after pidfd readiness
 
@@ -368,7 +367,6 @@ int main(int argc, char **argv) {
   int killed_after_stdout = 0;
   int pidfd_ready_before_kill = 0;
   int primary_probe_reaped = 0;
-  int cleanup_probe_reaped = 0;
 
   if (!quiet) {
     printf(
@@ -556,18 +554,6 @@ int main(int argc, char **argv) {
     }
     killed_after_stdout++;
 
-    wait_ret = waitid_pidfd_nohang(pidfd, &si);
-    if (wait_ret < 0) {
-      perror("cleanup probe waitid(P_PIDFD)");
-      errors++;
-      goto cleanup;
-    }
-    if (si.si_pid != 0) {
-      cleanup_probe_reaped++;
-      child_reaped = 1;
-      goto cleanup;
-    }
-
     for (;;) {
       struct epoll_event event;
       memset(&event, 0, sizeof(event));
@@ -630,7 +616,7 @@ cleanup:
         "progress %d/%d stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d "
         "ready_before_kill=%d reaped_after_epoll=%d empty_after_epoll=%d "
         "pidfd_ready_before_kill=%d primary_probe_reaped=%d "
-        "cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
+        "epoll_timeouts=%d errors=%d\n",
         i + 1,
         iterations,
         stdout_initial_reads,
@@ -641,7 +627,6 @@ cleanup:
         empty_after_epoll,
         pidfd_ready_before_kill,
         primary_probe_reaped,
-        cleanup_probe_reaped,
         epoll_timeouts,
         errors
       );
@@ -652,7 +637,7 @@ cleanup:
     printf(
       "done stdout_initial_reads=%d stdout_events=%d killed_after_stdout=%d ready_before_kill=%d "
       "reaped_after_epoll=%d empty_after_epoll=%d pidfd_ready_before_kill=%d "
-      "primary_probe_reaped=%d cleanup_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
+      "primary_probe_reaped=%d epoll_timeouts=%d errors=%d\n",
       stdout_initial_reads,
       stdout_events,
       killed_after_stdout,
@@ -661,7 +646,6 @@ cleanup:
       empty_after_epoll,
       pidfd_ready_before_kill,
       primary_probe_reaped,
-      cleanup_probe_reaped,
       epoll_timeouts,
       errors
     );
