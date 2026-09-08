@@ -124,7 +124,11 @@ async test "cwd changes where the child runs" {
   ).output()
   inspect(output.exit_code(), content="0")
   inspect(
-    output.stdout().trim(char_set="\r\n ").has_suffix("test_directory/dir1"),
+    output
+    .stdout()
+    .trim(char_set="\r\n ")
+    .replace_all(old="\\", new="/")
+    .has_suffix("test_directory/dir1"),
     content="true",
   )
 }
