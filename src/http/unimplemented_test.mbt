@@ -15,6 +15,7 @@
 ///|
 #cfg(not(any(target="native", target="wasm")))
 let _ignore_unused_import : Unit = {
+  ignore(@debug.to_string(0))
   ignore(@async.sleep)
   ignore(@utf8.encode(""))
   ignore(@env.get_env_var)
