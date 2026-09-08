@@ -79,16 +79,23 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
 
   let ret = get_process_result(handle, self.pid, out)
   if ret < 0 {
-    if platform is MacOS {
-      // On MacOS, when `kevent` report `ESRCH`,
-      // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
-      // Work around this race condition by waiting again after a small timeout.
-      while @os_error.is_nonblocking_io_error() {
-        sleep(10)
-        let ret = get_process_result(handle, self.pid, out)
-        if ret >= 0 {
-          return out.val
-        }
+    while @os_error.is_nonblocking_io_error() {
+      match @env_util.platform {
+        Linux if self.handle is Some(io) =>
+          // On Linux, if the child process is `ptrace`'ed,
+          // we may receive spurious wakeup message from the pidfd.
+          // Work around this by retrying wait.
+          io.wait_read()
+        MacOS =>
+          // On MacOS, when `kevent` report `ESRCH`,
+          // there is a small window where `waitpid(.., WNOHANG)` may still return zero.
+          // Work around this race condition by waiting again after a small timeout.
+          sleep(10)
+        Linux | Windows => break
+      }
+      let ret = get_process_result(handle, self.pid, out)
+      if ret >= 0 {
+        return out.val
       }
     }
     @os_error.check_errno(context)
