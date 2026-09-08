@@ -18,6 +18,7 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/socket",
   "moonbitlang/async/internal/test_util",
+  "moonbitlang/core/encoding/utf8",
 } for "test"
 
 options(
