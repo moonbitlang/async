@@ -28,3 +28,8 @@ pub let unimplemented : Unit = {
   ignore(@utf8.encode(""))
   ignore(@fs.unimplemented)
 }
+
+///|
+#cfg(target="wasm")
+#coverage.skip
+pub let _ignore_unused_import : Unit = ignore(@utf8.encode(""))

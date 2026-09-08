@@ -25,6 +25,7 @@ let _unused : Unit = {
 let _unused_wasm : Unit = {
   let _ : (@socket.Addr) -> Unit = ignore
   let _ : (@pipe.PipeRead) -> Unit = ignore
+  ignore(@utf8.encode(""))
 }
 
 ///|
