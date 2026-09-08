@@ -16,6 +16,8 @@
 #cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
   ignore(@utf8.encode(""))
+  ignore(@debug.to_string(0))
+  ignore(@env.get_env_var)
   ignore(@process.unimplemented)
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }

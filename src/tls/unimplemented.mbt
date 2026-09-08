@@ -17,6 +17,8 @@
 #cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
+  ignore(@base64.encode(b""))
+  ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@bytes_util.ascii_to_string)
   ignore(@c_buffer.unimplemented)

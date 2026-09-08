@@ -17,6 +17,10 @@
 #cfg(not(target="native"))
 #coverage.skip
 pub let unimplemented : Unit = {
+  let _ : (@random.Rand) -> Unit = ignore
+  let _ : (@buffer.Buffer) -> Unit = ignore
+  ignore(@int.MAX_VALUE)
+  ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@async.sleep)
   ignore(@event_loop.Timer::new)
