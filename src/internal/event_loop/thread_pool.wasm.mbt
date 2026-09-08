@@ -69,6 +69,11 @@ fn Worker::cancel(
 }
 
 ///|
+fn Worker::check_cancellation_retry(_worker : Worker) -> Bool {
+  false
+}
+
+///|
 #unsafe_skip_stub_check
 #borrow(output)
 fn fetch_completion_ffi(

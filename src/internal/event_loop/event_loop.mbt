@@ -210,7 +210,18 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     }
     self.killed_by_signal = Some(job_id ^ (1 << 31))
   }
-  guard! self.running_workers.get(job_id) is Some(worker)
+  guard self.running_workers.get(job_id) is Some(worker) else { return }
+  // Completion message for a job may receive in two cases:
+  //
+  // - the job indeed completed
+  // - the job is being cancelled, and we need to retry cancellation
+  //
+  // `check_cancellation_retry` check the second case and perform retry automatically.
+  // If the completion message is for retry, do not wake the waiter yet.
+  if worker.check_cancellation_retry() {
+    return
+  }
+
   self.running_workers.remove(job_id)
   match self.job_queue.iter().next() {
     None => {
