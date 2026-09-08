@@ -15,6 +15,8 @@
 ///|
 #cfg(not(target="native"))
 let _unimplemented : Unit = {
+  ignore(@env.get_env_var)
+  ignore(() => @string.parse_int("0"))
   ignore(@fs.unimplemented)
   ignore(@utf8.encode(""))
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))

@@ -15,6 +15,8 @@
 ///|
 #cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
+  ignore(@debug.to_string(0))
+  ignore(() => @test.assert_raise(() => ()))
   ignore(@utf8.encode(""))
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }

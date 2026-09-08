@@ -17,6 +17,7 @@
 #cfg(not(target="native"))
 #coverage.skip
 pub let unimplemented : Unit = {
+  ignore(() => @string.parse_int("0"))
   ignore(@io.pipe)
   ignore(@event_loop.Timer::new)
   ignore(@async.sleep)

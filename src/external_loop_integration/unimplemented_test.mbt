@@ -31,6 +31,7 @@ let _unused_wasm : Unit = {
 ///|
 #cfg(any(target="js", target="wasm-gc"))
 let _unused_non_wasm : Unit = {
+  ignore(@utf8.encode(""))
   ignore(@socket.unimplemented)
   ignore(@pipe.unimplemented)
 }
