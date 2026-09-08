@@ -175,6 +175,12 @@ struct {
 #ifdef WAKEUP_METHOD_SIGNAL
   sigset_t wakeup_signal;
 #endif
+
+#ifdef _WIN32
+  DWORD current_worker;
+#else
+  pthread_key_t current_worker;
+#endif
 } pool;
 
 // The type for a worker thread
@@ -229,6 +235,12 @@ static
 thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
   int sig;
   struct worker *self = (struct worker*)data;
+
+#ifdef _WIN32
+  TlsSetValue(pool.current_worker, data);
+#else
+  pthread_setspecific(pool.current_worker, data);
+#endif
 
   int job_id = self->job_id;
   struct job *job = self->job;
@@ -292,6 +304,18 @@ void moonbitlang_async_wake_worker(
   worker->waiting = 0;
   pthread_cond_signal(&(worker->cond));
   pthread_mutex_unlock(&(worker->mutex));
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+void *moonbitlang_async_get_current_worker() {
+  if (!pool.initialized)
+    return 0;
+
+#ifdef _WIN32
+  return TlsGetValue(pool.current_worker);
+#else
+  return pthread_getspecific(pool.current_worker);
 #endif
 }
 
@@ -433,6 +457,12 @@ HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
 
 #endif
 
+#ifdef _WIN32
+  pool.current_worker = TlsAlloc();
+#else
+  pthread_key_create(&pool.current_worker, 0);
+#endif
+
   pool.initialized = 1;
   return pool.notify_recv;
 
@@ -455,6 +485,12 @@ void moonbitlang_async_destroy_thread_pool() {
   pthread_sigmask(SIG_SETMASK, &pool.old_sigmask, 0);
   close(pool.notify_recv);
   close(pool.notify_send);
+#endif
+
+#ifdef _WIN32
+  TlsFree(pool.current_worker);
+#else
+  pthread_key_delete(pool.current_worker);
 #endif
 }
 
