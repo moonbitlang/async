@@ -3,8 +3,6 @@ import {
   "moonbitlang/core/buffer",
   "moonbitlang/core/int",
   "moonbitlang/core/cmp",
-  "moonbitlang/core/deque",
-  "moonbitlang/core/sorted_set",
   "moonbitlang/async/os_error",
   "moonbitlang/async/io",
   "moonbitlang/async/internal/event_loop",

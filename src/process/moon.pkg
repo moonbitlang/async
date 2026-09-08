@@ -11,7 +11,6 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/signal",
   "moonbitlang/async/os_error",
-  "moonbitlang/core/encoding/utf8",
 }
 
 import {
@@ -19,6 +18,7 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/test_util",
+  "moonbitlang/core/encoding/utf8",
 } for "test"
 
 import {
