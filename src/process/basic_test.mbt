@@ -18,9 +18,13 @@ async test "basic_ls" {
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
-    @process.spawn(group, shell, ["-c", "\{ls} test_directory"], stdout=w, extra_env={
-      "LC_ALL": "C",
-    })
+    @process.spawn(
+      group,
+      shell,
+      ["-c", "\{ls} test_directory/dir1"],
+      stdout=w,
+      extra_env={ "LC_ALL": "C" },
+    )
     |> ignore
     let files = r
       .read_all()

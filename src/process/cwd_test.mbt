@@ -21,9 +21,13 @@ async test "set cwd" {
     let (r, w) = @process.read_from_process()
     defer r.close()
     root.spawn_bg() <| () => {
-      let _ = @process.run(shell, ["-c", ls], stdout=w, cwd="test_directory", extra_env={
-        "LC_ALL": "C",
-      })
+      let _ = @process.run(
+        shell,
+        ["-c", ls],
+        stdout=w,
+        cwd="test_directory/dir1",
+        extra_env={ "LC_ALL": "C" },
+      )
       guard! @env.current_dir() is Some(new_cwd)
       guard! prev_cwd == new_cwd
     }

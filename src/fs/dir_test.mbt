@@ -14,7 +14,7 @@
 
 ///|
 async test "read_all" {
-  let dir = @fs.opendir("test_directory")
+  let dir = @fs.opendir("test_directory/dir1")
   defer dir.close()
   let list = dir
     .read_all()
@@ -25,7 +25,7 @@ async test "read_all" {
 
 ///|
 async test "as_dir" {
-  let dir_file = @fs.open("test_directory", mode=ReadOnly)
+  let dir_file = @fs.open("test_directory/dir1", mode=ReadOnly)
   guard! dir_file.kind() is Directory
   let dir = dir_file.as_dir()
   defer dir.close()
@@ -42,7 +42,7 @@ test "readdir clear errno" {
     } noraise {
       _ => ()
     }
-    let dir = @fs.opendir("test_directory")
+    let dir = @fs.opendir("test_directory/dir1")
     defer dir.close()
     let list = dir.read_all()
     inspect(

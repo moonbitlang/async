@@ -120,11 +120,11 @@ async test "cwd changes where the child runs" {
   let output = @shell.Cmd(
     filter_prog.wait(),
     ["-print-cwd"],
-    cwd="test_directory",
+    cwd="test_directory/dir1",
   ).output()
   inspect(output.exit_code(), content="0")
   inspect(
-    output.stdout().trim(char_set="\r\n ").has_suffix("test_directory"),
+    output.stdout().trim(char_set="\r\n ").has_suffix("test_directory/dir1"),
     content="true",
   )
 }
