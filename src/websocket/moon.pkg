@@ -3,7 +3,6 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/cmp",
   "moonbitlang/core/random",
-  "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/async/io",
   "moonbitlang/async/tls",
@@ -13,7 +12,6 @@ import {
 }
 
 import {
-  "moonbitlang/core/test",
   "moonbitlang/async",
   "moonbitlang/async/socket",
   "moonbitlang/async/process",
