@@ -41,3 +41,7 @@ fn main {
     println(@utf8.decode_lossy(entry))
   }
 }
+
+///|
+#cfg(platform="windows")
+let _unused : Unit = ignore(@utf8.encode(""))
