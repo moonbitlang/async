@@ -30,6 +30,8 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+typedef volatile int32_t atomic_int32_t;
+
 #else
 
 #include <pthread.h>
@@ -38,6 +40,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdatomic.h>
 #include <errno.h>
 #include <time.h>
 #if !defined(__ANDROID__) || __ANDROID_API__ >= 28
@@ -63,6 +66,8 @@ typedef int HANDLE;
 typedef int SOCKET;
 #define GetLastError() errno
 #define SetLastError(err) errno = err
+
+typedef _Atomic int32_t atomic_int32_t;
 
 #endif
 
@@ -183,6 +188,13 @@ struct {
 #endif
 } pool;
 
+enum WorkerState {
+  Running = 0,
+  Cancelling,
+  Cancelled,
+  Waiting
+};
+
 // The type for a worker thread
 struct worker {
 #ifdef _WIN32
@@ -198,7 +210,8 @@ struct worker {
   // the job currently being processed
   struct job *job;
 
-  int waiting;
+  atomic_int32_t state;
+  atomic_int32_t inside_cancellable_region;
 
 #ifdef WAKEUP_METHOD_EVENT
   HANDLE event;
@@ -256,7 +269,8 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
     job->err = 0;
     job->ret = job->worker(job->payload, &job->err);
 
-    self->waiting = 1;
+    self->state = Waiting;
+    self->inside_cancellable_region = 0;
 
     moonbitlang_async_notify_event_loop(job_id);
 
@@ -266,7 +280,7 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
     sigwait(&pool.wakeup_signal, &sig);
 #elif defined(WAKEUP_METHOD_COND_VAR)
     pthread_mutex_lock(&(self->mutex));
-    while (self->waiting) {
+    while (self->state == Waiting) {
 #ifdef __MACH__
       // There's a bug in the MacOS's `pthread_cond_wait`,
       // see https://github.com/graphia-app/graphia/issues/33
@@ -294,29 +308,48 @@ void moonbitlang_async_wake_worker(
   worker->job = job ? JOB_HEADER(job) : 0;
 
 #ifdef WAKEUP_METHOD_EVENT
-  worker->waiting = 0;
+  worker->state = Running;
   SetEvent(worker->event);
 #elif defined(WAKEUP_METHOD_SIGNAL)
-  worker->waiting = 0;
+  worker->state = Running;
   pthread_kill(worker->id, SIGUSR1);
 #elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_lock(&(worker->mutex));
-  worker->waiting = 0;
+  worker->state = Running;
   pthread_cond_signal(&(worker->cond));
   pthread_mutex_unlock(&(worker->mutex));
 #endif
 }
 
-MOONBIT_FFI_EXPORT
-void *moonbitlang_async_get_current_worker() {
+struct worker *moonbitlang_async_get_current_worker() {
   if (!pool.initialized)
     return 0;
 
 #ifdef _WIN32
-  return TlsGetValue(pool.current_worker);
+  return (struct worker*)TlsGetValue(pool.current_worker);
 #else
-  return pthread_getspecific(pool.current_worker);
+  return (struct worker*)pthread_getspecific(pool.current_worker);
 #endif
+}
+
+int32_t moonbitlang_async_enter_cancellable_region(struct worker *worker) {
+  if (!worker)
+    return 0;
+
+  worker->inside_cancellable_region = 1;
+
+  if (worker->state == Cancelling) {
+    worker->state = Cancelled;
+    worker->inside_cancellable_region = 0;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+void moonbitlang_async_leave_cancellable_region(struct worker *worker) {
+  if (worker)
+    worker->inside_cancellable_region = 0;
 }
 
 MOONBIT_FFI_EXPORT
@@ -331,8 +364,13 @@ enum {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
-  if (worker->waiting)
-    return 1;
+  switch (worker->state) {
+    case Cancelled:
+    case Waiting:
+      return CANCELLATION_STATUS_NEED_WAIT;
+    case Running:
+      worker->state = Cancelling;
+  }
 
   // invarint: `worker->job` is only manipulated in the main thread,
   // and must be non-NULL here.
@@ -502,7 +540,8 @@ struct worker *moonbitlang_async_spawn_worker(
   struct worker *worker = (struct worker*)malloc(sizeof(struct worker));
   worker->job_id = init_job_id;
   worker->job = JOB_HEADER(init_job);
-  worker->waiting = 0;
+  worker->state = Running;
+  worker->inside_cancellable_region = 0;
 
 #ifdef _WIN32
   worker->id = CreateThread(
@@ -639,6 +678,8 @@ void free_read_job(struct read_job *job) {
 
 static
 int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
+  struct worker *worker = moonbitlang_async_get_current_worker();
+
 #ifdef _WIN32
 
    OVERLAPPED overlapped;
@@ -646,6 +687,11 @@ int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
    if (job->position >= 0) {
      overlapped.Offset = job->position & 0xffffffff;
      overlapped.OffsetHigh = job->position >> 32;
+   }
+
+   if (moonbitlang_async_enter_cancellable_region(worker)) {
+     *err_out = ERROR_OPERATION_ABORTED;
+     return -1;
    }
 
    DWORD bytes_transferred;
@@ -656,6 +702,9 @@ int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
      &bytes_transferred,
      job->position < 0 ? NULL : &overlapped
    );
+
+   moonbitlang_async_leave_cancellable_region(worker);
+
    if (result) {
      return bytes_transferred;
    } else {
@@ -673,7 +722,14 @@ int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
   int32_t ret;
   if (job->position < 0) {
     while (1) {
+      if (moonbitlang_async_enter_cancellable_region(worker)) {
+        *err_out = EINTR;
+        return -1;
+      }
+
       ret = read(job->fd, job->buf + job->offset, job->len);
+      moonbitlang_async_leave_cancellable_region(worker);
+
       if (ret >= 0)
         break;
 
@@ -681,7 +737,15 @@ int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
         break;
 
       struct pollfd pfd = { job->fd, POLL_IN, 0 };
-      if (poll(&pfd, 1, -1) < 0)
+      if (moonbitlang_async_enter_cancellable_region(worker)) {
+        *err_out = EINTR;
+        return -1;
+      }
+
+      ret = poll(&pfd, 1, -1);
+      moonbitlang_async_leave_cancellable_region(worker);
+
+      if (ret < 0)
         break;
     }
   } else {
@@ -734,6 +798,8 @@ void free_write_job(struct write_job *job) {
 
 static
 int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
+  struct worker *worker = moonbitlang_async_get_current_worker();
+
 #ifdef _WIN32
 
    OVERLAPPED overlapped;
@@ -744,6 +810,11 @@ int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
    }
 
    DWORD bytes_transferred;
+   if (moonbitlang_async_enter_cancellable_region(worker)) {
+     *err_out = ERROR_OPERATION_ABORTED;
+     return -1;
+   }
+
    BOOL result = WriteFile(
      job->fd,
      job->buf + job->offset,
@@ -751,6 +822,8 @@ int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
      &bytes_transferred,
      job->position < 0 ? NULL : &overlapped
    );
+   moonbitlang_async_leave_cancellable_region(worker);
+
    if (result)
      return bytes_transferred;
    else {
@@ -763,7 +836,14 @@ int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
   int32_t ret;
   if (job->position < 0) {
     while (1) {
+      if (moonbitlang_async_enter_cancellable_region(worker)) {
+        *err_out = EINTR;
+        return -1;
+      }
+
       ret = write(job->fd, job->buf + job->offset, job->len);
+      moonbitlang_async_leave_cancellable_region(worker);
+
       if (ret >= 0)
         break;
 
@@ -771,7 +851,15 @@ int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
         break;
 
       struct pollfd pfd = { job->fd, POLL_OUT, 0 };
-      if (poll(&pfd, 1, -1) < 0)
+      if (moonbitlang_async_enter_cancellable_region(worker)) {
+        *err_out = EINTR;
+        return -1;
+      }
+
+      ret = poll(&pfd, 1, -1);
+      moonbitlang_async_leave_cancellable_region(worker);
+
+      if (ret < 0)
         break;
     }
   } else {
@@ -1307,8 +1395,17 @@ void free_wait_for_process_job(struct wait_for_process_job *job) {}
 
 static
 int32_t wait_for_process_job_worker(struct wait_for_process_job *job, int32_t *err_out) {
+  struct worker *worker = moonbitlang_async_get_current_worker();
+
   int status;
+  if (moonbitlang_async_enter_cancellable_region(worker)) {
+    *err_out = EINTR;
+    return -1;
+  }
+
   int ret = waitpid(job->pid, &status, 0);
+  moonbitlang_async_leave_cancellable_region(worker);
+
   if (ret == job->pid) {
     return WEXITSTATUS(status);
   } else {

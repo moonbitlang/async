@@ -85,6 +85,10 @@ void *moonbitlang_async_make_job(
   (int32_t (*)(void*))cancel_handler\
 )
 
+void *moonbitlang_async_get_current_worker();
+int32_t moonbitlang_async_enter_cancellable_region(void *worker);
+void moonbitlang_async_leave_cancellable_region(void *worker);
+
 
 // ===== stat related helpers =====
 
@@ -934,6 +938,8 @@ HANDLE moonbitlang_async_open_sync(
   int32_t sync_mode,
   int32_t permission
 ) {
+  void *worker = moonbitlang_async_get_current_worker();
+
 #ifdef _WIN32
 
   static int access_flags[] = {
@@ -958,6 +964,11 @@ HANDLE moonbitlang_async_open_sync(
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
 
   while (1) {
+    if (moonbitlang_async_enter_cancellable_region(worker)) {
+      SetLastError(ERROR_OPERATION_ABORTED);
+      return INVALID_HANDLE_VALUE;
+    }
+
     HANDLE result = CreateFileW(
       filename,
       access_flag, // desired access
@@ -967,6 +978,7 @@ HANDLE moonbitlang_async_open_sync(
       flags, // flags and attributes. Note that we open files in synchronous mode
       NULL // template file
     );
+    moonbitlang_async_leave_cancellable_region(worker);
 
     if (result != INVALID_HANDLE_VALUE)
       return result;
@@ -979,7 +991,15 @@ HANDLE moonbitlang_async_open_sync(
     // We are trying to open a named pipe, but no pipe instance is available,
     // so wait until any instance is available.
     // This wait is cancellable via `CancelSynchronousIo`.
-    if (!WaitNamedPipeW(filename, NMPWAIT_WAIT_FOREVER))
+    if (moonbitlang_async_enter_cancellable_region(worker)) {
+      SetLastError(ERROR_OPERATION_ABORTED);
+      return INVALID_HANDLE_VALUE;
+    }
+
+    BOOL status = WaitNamedPipeW(filename, NMPWAIT_WAIT_FOREVER);
+    moonbitlang_async_leave_cancellable_region(worker);
+
+    if (!status)
       return INVALID_HANDLE_VALUE;
   }
 
@@ -1002,7 +1022,14 @@ HANDLE moonbitlang_async_open_sync(
     | create_modes[create_mode];
   if (append) flags |= O_APPEND;
 
-  return open(filename, flags | O_CLOEXEC, permission);
+  if (moonbitlang_async_enter_cancellable_region(worker)) {
+    errno = EINTR;
+    return -1;
+  }
+
+  int ret = open(filename, flags | O_CLOEXEC, permission);
+  moonbitlang_async_leave_cancellable_region(worker);
+  return ret;
 
 #endif
 }
@@ -1282,6 +1309,8 @@ struct fsync_job *moonbitlang_async_make_fsync_job(HANDLE fd, int only_data) {
 // ===== flock job, place advisory lock on a file =====
 static
 int32_t moonbitlang_async_flock_sync(HANDLE fd, int32_t exclusive) {
+  void *worker = moonbitlang_async_get_current_worker();
+
 #ifdef _WIN32
 
   OVERLAPPED overlapped;
@@ -1296,6 +1325,12 @@ int32_t moonbitlang_async_flock_sync(HANDLE fd, int32_t exclusive) {
   // as this region can almost never get touched by normal IO operations.
   overlapped.Offset = 0xfffffffe;
   overlapped.OffsetHigh = 0xffffffff;
+
+  if (moonbitlang_async_enter_cancellable_region(worker)) {
+    SetLastError(ERROR_OPERATION_ABORTED);
+    return -1;
+  }
+
   BOOL ret = LockFileEx(
     fd,
     exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0,
@@ -1304,12 +1339,21 @@ int32_t moonbitlang_async_flock_sync(HANDLE fd, int32_t exclusive) {
     0,
     &overlapped
   );
+  moonbitlang_async_leave_cancellable_region(worker);
 
   return ret ? 0 : -1;
 
 #else
 
-  return flock(fd, exclusive ? LOCK_EX : LOCK_SH);
+  if (moonbitlang_async_enter_cancellable_region(worker)) {
+    errno = EINTR;
+    return -1;
+  }
+
+  int ret = flock(fd, exclusive ? LOCK_EX : LOCK_SH);
+  moonbitlang_async_leave_cancellable_region(worker);
+
+  return ret;
 
 #endif
 }
