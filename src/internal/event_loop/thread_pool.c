@@ -392,9 +392,19 @@ int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
 #else
 
   pthread_kill(worker->id, SIGUSR2);
-  return CANCELLATION_STATUS_RETRY_LATER;
+  return CANCELLATION_STATUS_NEED_WAIT;
 
 #endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_worker_check_cancellation_retry(struct worker *worker) {
+  if (worker->state != Waiting) {
+    moonbitlang_async_cancel_worker(worker);
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 MOONBIT_FFI_EXPORT
@@ -420,7 +430,38 @@ void moonbitlang_async_free_worker(struct worker *worker) {
 
 #ifndef _WIN32
 static
-void nop_signal_handler(int signum) {}
+void cancellation_signal_handler(int signum) {
+  // `pthread_getspecific` is NOT async-signal-safe according to POSIX, however:
+  // - `glibc` explicitly guarantees async-signal-safety of `pthread_getspecific`
+  // - the implementation of `pthread_getspecific` in `musl` and MacOS
+  //   is just a simple TSD array indexing, which is async-signal-safe
+  // We deliberately rely on implementation specific behavior to simplify the logic.
+  // There is no POSIX-compilant way to access thread specific storage
+  // in signal handler without hack.
+  struct worker *worker = moonbitlang_async_get_current_worker();
+  if (!worker)
+    return;
+
+  if (worker->state == Cancelling && worker->inside_cancellable_region) {
+    // if the signal arrives with `inside_cancellable_region` set, there are three cases:
+    //
+    // 1. the signal arrives before entering the syscall
+    // 2. the signal interrupted the syscall
+    // 3. the signal arrives after the syscall completes normally
+    //
+    // In case (1), we cannot prevent the worker from entering the syscall,
+    // so we must send a retry request back to the main event loop.
+    int32_t data = worker->job_id;
+    // We should never do blocking `write` in signal handler.
+    // However, the number of items in the pipe is actually bounded here.
+    // Every worker can enqueue at most two items
+    // (one from this handler, one from normal completion) at the same time.
+    // So the max number of items in bounded by max worker count,
+    // which currently never exceed 1024 (not configurable by users).
+    // The default size of pipe buffer on Linux/MacOS is large enough to hold all items.
+    write(pool.notify_send, &data, sizeof(data));
+  }
+}
 
 int moonbitlang_async_event_bus_register(int event_bus, int fd, int32_t read_only);
 #endif
@@ -454,7 +495,7 @@ HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
   // 1. the program won't get killed
   // 2. blocked syscall will be interrupted
   struct sigaction act;
-  act.sa_handler = nop_signal_handler;
+  act.sa_handler = cancellation_signal_handler;
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
   sigaction(SIGUSR2, &act, NULL);

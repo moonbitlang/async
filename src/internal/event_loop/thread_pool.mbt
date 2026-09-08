@@ -53,6 +53,9 @@ fn Worker::cancel(
 }
 
 ///|
+extern "C" fn Worker::check_cancellation_retry(worker : Worker) -> Bool = "moonbitlang_async_worker_check_cancellation_retry"
+
+///|
 #cfg(not(platform="windows"))
 #borrow(output)
 extern "C" fn fetch_completion_ffi(
