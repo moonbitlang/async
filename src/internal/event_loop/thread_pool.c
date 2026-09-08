@@ -174,7 +174,6 @@ struct {
   HANDLE notify_recv;
 
 #ifndef _WIN32
-  sigset_t worker_sigmask;
   sigset_t old_sigmask;
 #endif
 #ifdef WAKEUP_METHOD_SIGNAL
@@ -263,6 +262,13 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION worker_loop(void *data) {
 #elif defined(WAKEUP_METHOD_COND_VAR)
   pthread_mutex_init(&(self->mutex), 0);
   pthread_cond_init(&(self->cond), 0);
+#endif
+
+#ifndef _WIN32
+  sigset_t cancellation_signal;
+  sigemptyset(&cancellation_signal);
+  sigaddset(&cancellation_signal, SIGUSR2);
+  pthread_sigmask(SIG_UNBLOCK, &cancellation_signal, 0);
 #endif
 
   while (job) {
@@ -472,10 +478,6 @@ HANDLE moonbitlang_async_init_thread_pool(HANDLE event_bus) {
     abort();
 
 #ifndef _WIN32
-  sigfillset(&pool.worker_sigmask); 
-  // used for cancelling blocking IO in worker thread
-  sigdelset(&pool.worker_sigmask, SIGUSR2);
-
   sigset_t signals_to_block;
   sigemptyset(&signals_to_block);
   sigaddset(&signals_to_block, SIGCHLD);
@@ -603,8 +605,9 @@ struct worker *moonbitlang_async_spawn_worker(
 #endif
 
   // make sure the worker thread has correct sigmask immediately
-  sigset_t curr_sigmask;
-  pthread_sigmask(SIG_SETMASK, &pool.worker_sigmask, &curr_sigmask);
+  sigset_t all_signals, curr_sigmask;
+  sigfillset(&all_signals);
+  pthread_sigmask(SIG_SETMASK, &all_signals, &curr_sigmask);
 
   pthread_create(&(worker->id), &attr, &worker_loop, worker);
 
