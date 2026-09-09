@@ -47,13 +47,13 @@ async test "return_immediately error on cancel" {
         root.return_immediately(())
       }
       root.spawn_bg() <| () => {
-        @async.sleep(300) catch {
-          _ => {
+        match @async.handle_cancellation(() => @async.sleep(300)) {
+          None => {
             log <+ "task cancelled, causing other error\n"
             raise Err
           }
+          Some(_) => log <+ "task finished\n"
         }
-        log <+ "task finished\n"
       }
     })
   }
@@ -75,12 +75,9 @@ async test "return_immediately recursive cancel" {
       @async.sleep(100)
       log.push("100ms tick")
     }
-    @async.with_task_group(group => {
-      group.return_immediately(()) catch {
-        _ => @async.sleep(200)
-      }
-    }) catch {
-      _ => ()
+    @async.with_task_group <| group => {
+      defer @async.sleep(200)
+      group.return_immediately(())
     }
     log.push("inner group finished")
   }

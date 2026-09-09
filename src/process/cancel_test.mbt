@@ -71,7 +71,7 @@ async test "cancel process timeout" {
     task.cancel()
     debug_inspect(
       @test_util.expect_error_async(() => task.wait()),
-      content="Cancelled",
+      content="TaskCancelled",
     )
     let t_process_terminates = @async.now()
     let t1 = t_receive_graceful_termination.wait() - t_cancel
@@ -103,7 +103,7 @@ async test "cancel process hard" {
     task.cancel()
     debug_inspect(
       @test_util.expect_error_async(() => task.wait()),
-      content="Cancelled",
+      content="TaskCancelled",
     )
     let t1 = @async.now()
     inspect((t1 - t0) / 250, content="0")

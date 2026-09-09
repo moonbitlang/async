@@ -16,8 +16,12 @@
 priv enum TaskGroupState {
   Done
   Fail(Error)
+  Cancelled
   Running
 }
+
+///|
+priv struct GroupDeferBlock(async () -> Unit nocancel)
 
 ///|
 /// A `TaskGroup` can be used to spawn children tasks that run in parallel.
@@ -37,7 +41,7 @@ struct TaskGroup[X] {
   mut waiting : Int
   mut state : TaskGroupState
   mut result : X?
-  group_defer : Array[async () -> Unit]
+  group_defer : Array[GroupDeferBlock]
 }
 
 ///|
@@ -73,8 +77,6 @@ fn[X] TaskGroup::spawn_coroutine(
     }
     f() catch {
       err if allow_failure => raise err
-      @coroutine.Cancelled as err if @coroutine.is_being_cancelled() =>
-        raise err
       err => {
         if self.state is Running {
           for child in self.children {
@@ -203,14 +205,13 @@ pub fn[G, X] TaskGroup::spawn(
 /// Group scoped defer blocks are executed in FILO order, just like normal `defer`.
 /// `with_task_group` will only exit after all group defer blocks terminate.
 ///
-/// Note that if the whole `with_task_group` is cancelled from outside,
-/// async operations in group defer block will be cancelled immediately too.
-/// Users can use `protect_from_cancel` to prevent async tasks from being cancelled.
+/// Group scoped `defer` must be `nocancel`.
+/// If cancellable code have to be run anyway, use `protect_from_cancel`.
 /// It is highly recommended to add a hard timeout to async defer block in this case,
 /// to avoid infinite hanging due to blocked operation.
 pub fn[X] TaskGroup::add_defer(
   self : TaskGroup[X],
-  block : async () -> Unit,
+  block : async () -> Unit nocancel,
 ) -> Unit {
   guard self.state is Running else {
     abort("trying to attach defer to a terminated task group")
@@ -245,16 +246,17 @@ pub async fn[X] with_task_group(
       tg.result = Some(value)
     }
   }
-  @coroutine.suspend() catch {
-    err => {
+  match @coroutine.suspend_check_cancel() {
+    Continue => ()
+    Cancelled => {
       if tg.state is Running {
-        tg.state = Fail(err)
+        tg.state = Cancelled
       }
       if !tg.children.is_empty() {
         for child in tg.children {
           child.cancel()
         }
-        protect_from_cancel(@coroutine.suspend)
+        protect_from_cancel(() => @coroutine.suspend())
       }
     }
   }
@@ -267,6 +269,7 @@ pub async fn[X] with_task_group(
   match tg.state {
     Done => tg.result.unwrap()
     Fail(err) => raise err
+    Cancelled => @coroutine.raise_cancellation_signal()
     Running => panic()
   }
 }
@@ -275,10 +278,10 @@ pub async fn[X] with_task_group(
 /// Force a task group to terminate immediately with the given result value.
 /// All child tasks in the group, including potentially the current one,
 /// will be cancelled.
-pub fn[X] TaskGroup::return_immediately(
+pub async fn[X] TaskGroup::return_immediately(
   self : TaskGroup[X],
   value : X,
-) -> Unit raise {
+) -> Unit noraise {
   if self.result is None {
     self.result = Some(value)
   }
@@ -288,9 +291,7 @@ pub fn[X] TaskGroup::return_immediately(
       child.cancel()
     }
   }
-  if @coroutine.is_being_cancelled() {
-    raise @coroutine.Cancelled
-  }
+  @coroutine.check_cancellation()
 }
 
 ///|

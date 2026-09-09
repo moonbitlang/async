@@ -117,10 +117,7 @@ async fn EventLoop::terminate_signal_handler_unix(
   sigwait_task.cancel()
   // Undo the `-= 1` in `setup_sigwait_signal_handler`.
   evloop.blocked_tasks += 1
-  @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
-    @coroutine.Cancelled => ()
-    err => raise err
-  }
+  let _ = @coroutine.protect_from_cancel(() => sigwait_task.wait())
   if evloop.killed_by_signal is Some(signal) {
     raise KilledBySignal(signal)
   }

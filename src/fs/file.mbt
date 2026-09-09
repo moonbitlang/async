@@ -398,7 +398,7 @@ pub fn File::unlock(self : File) -> Unit {
 ///|
 /// Remove the file located at `path`.
 /// This function is not cancellable.
-pub async fn remove(path : StringView) -> Unit {
+pub async fn remove(path : StringView) -> Unit nocancel {
   @event_loop.remove(path, context="@fs.remove()")
 }
 

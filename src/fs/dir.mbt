@@ -56,7 +56,10 @@ pub async fn mkdir(
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 ///
 /// This function is not cancellable.
-pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
+pub async fn rmdir(
+  path : StringView,
+  recursive? : Bool = false,
+) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
     let base = if @event_loop.platform is Windows {
@@ -64,9 +67,9 @@ pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
     } else {
       path.trim_end(chars="/")
     }
-    let dir = opendir_aux(path, context~)
-    defer dir.close()
     @async.protect_from_cancel <| () => {
+      let dir = opendir_aux(path, context~)
+      defer dir.close()
       while dir.next_aux(include_special=false, include_hidden=true, context~)
             is Some(ent) {
         let child_path = "\{base}/\{ent.name}"

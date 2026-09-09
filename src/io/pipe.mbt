@@ -101,16 +101,18 @@ pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) 
       let reader = HasReader(coro~, buf=dst, offset~, max_len~, result=0)
       self.reader = reader
       defer (if self.reader is HasReader(_) { self.reader = NoReader })
-      @coroutine.suspend() catch {
-        _ if reader is HasReader(result~, ..) && result > 0 =>
+      match @coroutine.suspend_check_cancel() {
+        Continue => {
+          guard! reader is HasReader(result~, ..)
+          result
+        }
+        Cancelled if reader is HasReader(result~, ..) && result > 0 =>
           // if data is already transferred to the reader
           // within the same scheduler round of cancellaiton,
           // swallow the cancellation to avoid data loss
           return result
-        err => raise err
+        Cancelled => @coroutine.raise_cancellation_signal()
       }
-      guard! reader is HasReader(result~, ..)
-      result
     }
     WriteEndClosed => 0
     HasWriter(_) as writer => {
@@ -121,7 +123,7 @@ pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) 
       // The pause here is not cancellable,
       // because otherwise the writer cannot have correct knowledge on what is written,
       // making writing not cancellation safe.
-      @coroutine.protect_from_cancel(@coroutine.pause)
+      @coroutine.protect_from_cancel(() => @coroutine.pause())
       len
     }
   }
@@ -151,18 +153,20 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
       let writer = HasWriter(coro~, buf~, offset~, len~, result=0)
       self.writer = writer
       defer (if self.writer is HasWriter(_) { self.writer = NoWriter })
-      @coroutine.suspend() catch {
-        _ if self.writer is HasWriter(result~, ..) && result > 0 =>
+      match @coroutine.suspend_check_cancel() {
+        Continue => {
+          guard! writer is HasWriter(result~, ..)
+          guard result > 0 else { raise PipeClosed }
+          result
+        }
+        Cancelled if self.writer is HasWriter(result~, ..) && result > 0 =>
           // if data is already transferred to the reader
           // within the same scheduler round of cancellaiton,
           // swallow the cancellation so that the writer side
           // can have correct knowledge of what is written
-          return result
-        err => raise err
+          result
+        Cancelled => @coroutine.raise_cancellation_signal()
       }
-      guard! writer is HasWriter(result~, ..)
-      guard result > 0 else { raise PipeClosed }
-      result
     }
     ReadEndClosed => raise PipeClosed
     HasReader(_) as reader => {
@@ -182,7 +186,7 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
       // The pause here is not cancellable,
       // because otherwise the writer cannot have correct knowledge on what is written,
       // making writing not cancellation safe.
-      @coroutine.protect_from_cancel(@coroutine.pause)
+      @coroutine.protect_from_cancel(() => @coroutine.pause())
       len
     }
   }

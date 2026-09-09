@@ -160,7 +160,7 @@ pub async fn[X] Promise::wait(
     errdefer controller.abort()
     @coroutine.suspend()
   } else {
-    @coroutine.protect_from_cancel(@coroutine.suspend)
+    @coroutine.protect_from_cancel(() => @coroutine.suspend())
   }
   if waiter.err is Some(err) {
     raise err
@@ -227,12 +227,11 @@ pub fn[X] Promise::from_async(
           coro.cancel()
         }
       }
-      try f() catch {
-        @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
-          reject(JsValue::abort_error())
+      try @coroutine.handle_cancellation(f) catch {
         err => reject(JsValue::make(err.to_string()))
       } noraise {
-        ret => resolve(JsValue::make(ret))
+        None => reject(JsValue::abort_error())
+        Some(ret) => resolve(JsValue::make(ret))
       }
     })
   })

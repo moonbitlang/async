@@ -70,9 +70,9 @@ async test "with_timeout timeout" {
       log <+ "300ms tick\n"
     }
     @async.with_timeout(200, () => {
-      @async.with_cancellation_handler(handler=() => log <+ "task cancelled\n") <| () => {
-        @async.sleep(400)
-        log <+ "task finished\n"
+      match @async.handle_cancellation(() => @async.sleep(400)) {
+        None => log <+ "task cancelled\n"
+        Some(_) => log <+ "task finished\n"
       }
     }) catch {
       err => log.write_string("`with_timeout` fail with \{err}\n")
@@ -102,15 +102,17 @@ async test "with_timeout nested1" {
       log <+ "400ms tick\n"
     }
     @async.with_timeout(300, () => {
-      @async.with_timeout(500, () => {
-        @async.with_cancellation_handler(
-          handler=() => log <+ "task cancelled\n",
-        ) <| () => {
-          @async.sleep(2000)
-          log <+ "task finished after 2s\n"
+      let result = @async.handle_cancellation() <| () => {
+        @async.with_timeout(500) <| () => {
+          match @async.handle_cancellation(() => @async.sleep(2000)) {
+            None => log <+ "task cancelled\n"
+            Some(_) => log <+ "task finished after 2s\n"
+          }
         }
-      }) catch {
-        err => log.write_string("inner `with_timeout` fail with \{err}\n")
+      }
+      match result {
+        None => log.write_string("inner `with_timeout` cancelled\n")
+        Some(_) => ()
       }
     }) catch {
       err => log.write_string("outer `with_timeout` fail with \{err}\n")
@@ -122,7 +124,7 @@ async test "with_timeout nested1" {
     content=(
       #|200ms tick
       #|task cancelled
-      #|inner `with_timeout` fail with Cancelled
+      #|inner `with_timeout` cancelled
       #|outer `with_timeout` fail with TimeoutError
       #|main task finished
       #|400ms tick
@@ -143,11 +145,9 @@ async test "with_timeout nested2" {
     }
     @async.with_timeout(750, () => {
       @async.with_timeout(450, () => {
-        @async.with_cancellation_handler(
-          handler=() => log <+ "task cancelled\n",
-        ) <| () => {
-          @async.sleep(2000)
-          log <+ "task finished after 2s\n"
+        match @async.handle_cancellation(() => @async.sleep(2000)) {
+          None => log <+ "task cancelled\n"
+          Some(_) => log <+ "task finished after 2s\n"
         }
       }) catch {
         err => log.write_string("inner `with_timeout` fail with \{err}\n")
@@ -180,13 +180,13 @@ async test "with_timeout error_on_cancel" {
         log <+ "200ms tick\n"
       }
       @async.with_timeout(100) <| () => {
-        @async.sleep(2000) catch {
-          _ => {
+        match @async.handle_cancellation(() => @async.sleep(2000)) {
+          None => {
             log <+ "causing other error on cancellation\n"
             raise Err
           }
+          Some(_) => log <+ "task finished after 2s\n"
         }
-        log <+ "task finished after 2s\n"
       }
       log <+ "main task finished\n"
     })
@@ -212,11 +212,9 @@ async test "with_timeout error-on-timeout" {
       }
       defer log.write_string("main task terminates\n")
       @async.with_timeout(100, error=Err) <| () => {
-        @async.with_cancellation_handler(
-          handler=() => log <+ "task cancelled\n",
-        ) <| () => {
-          @async.sleep(2000)
-          log <+ "task finished after 2s\n"
+        match @async.handle_cancellation(() => @async.sleep(2000)) {
+          None => log <+ "task cancelled\n"
+          Some(_) => log <+ "task finished after 2s\n"
         }
       }
     })
@@ -291,9 +289,9 @@ async test "with_timeout_opt timeout" {
       log.push("200ms tick")
     }
     let result = @async.with_timeout_opt(100, () => {
-      @async.with_cancellation_handler(handler=() => log.push("task cancelled")) <| () => {
-        @async.sleep(2000)
-        log.push("task finished after 2s")
+      match @async.handle_cancellation(() => @async.sleep(2000)) {
+        None => log.push("task cancelled")
+        Some(_) => log.push("task finished after 2s")
       }
       42
     })

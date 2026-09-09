@@ -48,15 +48,11 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
     Running(_) => ()
     Uninitialized => {
       let coro = @coroutine.spawn(loc=self.loc, () => {
-        try (self.worker)() catch {
-          err =>
-            if err is @coroutine.Cancelled && is_being_cancelled() {
-              self.state = Uninitialized
-            } else {
-              self.state = Fail(err)
-            }
+        try @coroutine.handle_cancellation(self.worker) catch {
+          err => self.state = Fail(err)
         } noraise {
-          ret => self.state = Done(ret)
+          None => self.state = Uninitialized
+          Some(ret) => self.state = Done(ret)
         }
         for waiter in self.waiters {
           waiter.wake()

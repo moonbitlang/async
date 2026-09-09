@@ -75,11 +75,12 @@ async test "lazy init cancelled" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.with_cancellation_handler(
-      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
-    ) <| () => {
-      @async.sleep(400)
-      log.push("lazy init completed at tick \{current_tick()}")
+    match @async.handle_cancellation(() => @async.sleep(400)) {
+      None => {
+        log.push("lazy init cancelled at tick \{current_tick()}")
+        @coroutine.check_cancellation()
+      }
+      Some(_) => log.push("lazy init completed at tick \{current_tick()}")
     }
   })
   debug_inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
@@ -103,11 +104,9 @@ async test "lazy init multiple waiters 1" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.with_cancellation_handler(
-      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
-    ) <| () => {
-      @async.sleep(400)
-      log.push("lazy init completed at tick \{current_tick()}")
+    match @async.handle_cancellation(() => @async.sleep(400)) {
+      None => log.push("lazy init cancelled at tick \{current_tick()}")
+      Some(_) => log.push("lazy init completed at tick \{current_tick()}")
     }
   })
   let result = @async.with_task_group(group => {
@@ -133,11 +132,9 @@ async test "lazy init multiple waiters 2" {
 
   let x = @async.Lazy(() => {
     log.push("lazy init started at tick \{current_tick()}")
-    @async.with_cancellation_handler(
-      handler=() => log.push("lazy init cancelled at tick \{current_tick()}"),
-    ) <| () => {
-      @async.sleep(600)
-      log.push("lazy init completed at tick \{current_tick()}")
+    match @async.handle_cancellation(() => @async.sleep(600)) {
+      None => log.push("lazy init cancelled at tick \{current_tick()}")
+      Some(_) => log.push("lazy init completed at tick \{current_tick()}")
     }
   })
   @async.with_task_group() <| group => {

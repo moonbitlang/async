@@ -36,7 +36,7 @@ test "coroutine ping-pong" {
   while @coroutine.has_immediately_ready_task() {
     @coroutine.reschedule()
   }
-  coro.unwrap()
+  guard! coro.unwrap() is Continue
   inspect(
     log.to_string(),
     content=(

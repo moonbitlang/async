@@ -32,15 +32,16 @@ fn IoResult::cancel(
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
-fn IoResult::status(
+async fn IoResult::status(
   result : IoResult,
   handle : @fd_util.Fd,
   context~ : String,
-) -> Int raise {
+) -> Int {
   let n = result.status_ffi(handle)
   if n < 0 {
-    if errno_is_cancelled(@os_error.get_errno()) {
-      raise @coroutine.Cancelled
+    if @coroutine.is_being_cancelled() &&
+      errno_is_cancelled(@os_error.get_errno()) {
+      @coroutine.raise_cancellation_signal()
     } else {
       @os_error.check_errno(context)
     }
@@ -61,8 +62,10 @@ async fn IoHandle::wait_read_result(
   defer {
     handle.read = Idle
   }
-  evloop.suspend() catch {
-    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
+  match evloop.suspend_check_cancel() {
+    Continue => ()
+    Cancelled =>
+      wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
 
@@ -79,8 +82,10 @@ async fn IoHandle::wait_write_result(
   defer {
     handle.write = Idle
   }
-  evloop.suspend() catch {
-    _ => wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
+  match evloop.suspend_check_cancel() {
+    Continue => ()
+    Cancelled =>
+      wait_for_cancellation(() => io_result.cancel(handle.fd, context~))
   }
 }
 
@@ -119,7 +124,7 @@ async fn IoHandle::generic_read_windows(
   let n = if n >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause)
+    @coroutine.protect_from_cancel(() => @coroutine.pause())
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
@@ -198,7 +203,7 @@ async fn IoHandle::generic_write_windows(
   if n >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause)
+    @coroutine.protect_from_cancel(() => @coroutine.pause())
     // It is important to note that the logic here is correct
     // only if `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` is set
     // via `SetFileCompletionNotificationModes`.
