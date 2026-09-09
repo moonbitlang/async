@@ -51,7 +51,7 @@ fn Worker::enter_idle(worker : Worker) -> Unit = "moonbitlang/async" "thread_poo
 
 ///|
 #unsafe_skip_stub_check
-fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang/async" "thread_pool/cancel_worker"
+fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang/async" "thread_pool/cancel_worker_with_retry"
 
 ///|
 fn Worker::cancel(
@@ -69,9 +69,8 @@ fn Worker::cancel(
 }
 
 ///|
-fn Worker::check_cancellation_retry(_worker : Worker) -> Bool {
-  false
-}
+#unsafe_skip_stub_check
+fn Worker::check_cancellation_retry(worker : Worker) -> Bool = "moonbitlang/async" "thread_pool/worker_check_cancellation_retry"
 
 ///|
 #unsafe_skip_stub_check

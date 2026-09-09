@@ -17,7 +17,18 @@
 extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
 
 ///|
-#cfg(target="native")
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn JobHandle::sleep(time : Int) -> JobHandle = "moonbitlang/async" "thread_pool/make_sleep_job"
+
+///|
+#cfg(target="wasm")
+fn Job::sleep(time : Int) -> Job {
+  Job(JobHandle::sleep(time))
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
 async fn perform_sleep_job(t : Int) -> Unit {
   let job = Job::sleep(t)
   defer job.free()
