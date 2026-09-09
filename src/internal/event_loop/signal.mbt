@@ -69,32 +69,8 @@ pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
 ///|
 #warnings("-unused_constructor")
 priv enum SignalHandler {
-  SigwaitHandler(@coroutine.Coroutine)
+  UnixSignalHandler
   ConsoleControlHandler
-}
-
-///|
-#cfg(target="wasm")
-fn setup_signal_handler_unix() -> @coroutine.Coroutine {
-  // This is the old implementation that reuse worker thread pool.
-  // Native backend has already migrated to more robust implementation.
-  // TODO: port Wasm1 as well.
-  guard! curr_loop.val is Some(evloop)
-  if !global_signal_handler_initialized.val {
-    set_global_cancellation_signals(all_signals)
-  }
-  @coroutine.spawn() <| () => {
-    let context = "sigwait thread"
-    let job = Job::sigwait(all_signals)
-    defer job.free()
-    // We want to exclude the signal waiting task from dead lock detection.
-    // Since we do not execute coroutines with nested call stack,
-    // when the main loop is running, the sigwait task must be suspended,
-    // so whenever `blocked_task` is read, the `-= 1` here
-    // will cancel a `+= 1` caused by `evloop.suspend()` in the sigwait task.
-    evloop.blocked_tasks -= 1
-    ignore <| perform_job_in_worker(job, context~, cancellable=true)
-  }
 }
 
 ///|
@@ -107,21 +83,13 @@ extern "C" fn terminate_signal_handler_ffi() -> Unit = "moonbitlang_async_termin
 
 ///|
 #cfg(target="wasm")
-async fn EventLoop::terminate_signal_handler_unix(
-  evloop : EventLoop,
-  sigwait_task : @coroutine.Coroutine,
-) -> Unit {
-  // This is the old implementation that reuse worker thread pool.
-  // Native backend has already migrated to more robust implementation.
-  // TODO: port Wasm1 as well.
-  sigwait_task.cancel()
-  // Undo the `-= 1` in `setup_sigwait_signal_handler`.
-  evloop.blocked_tasks += 1
-  let _ = @coroutine.protect_from_cancel(() => sigwait_task.wait())
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
-}
+#unsafe_skip_stub_check
+fn start_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/start_signal_handler"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn terminate_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/terminate_signal_handler"
 
 ///|
 #cfg(platform="windows")
@@ -163,7 +131,7 @@ fn setup_signal_handler() -> SignalHandler {
     set_global_cancellation_signals(all_signals)
   }
   start_signal_handler_ffi()
-  ConsoleControlHandler
+  UnixSignalHandler
 }
 
 ///|
@@ -172,7 +140,7 @@ fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   handler : SignalHandler,
 ) -> Unit raise {
-  guard! handler is ConsoleControlHandler
+  guard! handler is UnixSignalHandler
   global_signal_handler_initialized.val = false
   terminate_signal_handler_ffi()
   if evloop.killed_by_signal is Some(signal) {
@@ -205,20 +173,28 @@ fn setup_signal_handler() -> SignalHandler raise {
     setup_signal_handler_windows()
     ConsoleControlHandler
   } else {
-    SigwaitHandler(setup_signal_handler_unix())
+    if !global_signal_handler_initialized.val {
+      set_global_cancellation_signals(all_signals)
+    }
+    start_signal_handler_ffi()
+    UnixSignalHandler
   }
 }
 
 ///|
 #cfg(target="wasm")
-async fn EventLoop::terminate_signal_handler(
+fn EventLoop::terminate_signal_handler(
   evloop : EventLoop,
   signal_handler : SignalHandler,
-) -> Unit {
+) -> Unit raise {
   global_signal_handler_initialized.val = false
   match signal_handler {
-    SigwaitHandler(sigwait_task) =>
-      evloop.terminate_signal_handler_unix(sigwait_task)
+    UnixSignalHandler => {
+      terminate_signal_handler_ffi()
+      if evloop.killed_by_signal is Some(signal) {
+        raise KilledBySignal(signal)
+      }
+    }
     ConsoleControlHandler => evloop.terminate_signal_handler_windows()
   }
 }
