@@ -482,7 +482,10 @@ async fn Watcher::wait_aux(
     raise Failure::Failure("watcher already closed")
   }
   if self.synchronize_task is Some(task) {
-    task.wait()
+    match task.wait() {
+      Continue => ()
+      Cancelled => raise Failure("watch already closed")
+    }
   }
   let root = self.watched[self.root_id]
   while !root.has_events() {
@@ -713,8 +716,10 @@ async fn Watcher::scan_dir(
 ///|
 async fn Watcher::synchronize_tree(self : Watcher, context~ : String) -> Unit {
   if self.synchronize_task is Some(task) {
-    task.wait()
-    return
+    match task.wait() {
+      Continue => return
+      Cancelled => raise Failure("watcher already closed")
+    }
   }
   let task = @coroutine.spawn <| () => {
     defer {
@@ -726,7 +731,10 @@ async fn Watcher::synchronize_tree(self : Watcher, context~ : String) -> Unit {
     }
   }
   self.synchronize_task = Some(task)
-  task.wait()
+  match task.wait() {
+    Continue => return
+    Cancelled => raise Failure("watcher already closed")
+  }
 }
 
 ///|

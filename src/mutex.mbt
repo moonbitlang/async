@@ -39,7 +39,7 @@ pub fn Mutex::Mutex() -> Mutex {
 /// `acquire` is cancellation safe.
 /// When `acquire` is cancelled, it will never trigger any side effect.
 /// In particular, a cancelled `acquire` request will never actually acquire the mutex.
-pub async fn Mutex::acquire(self : Mutex) -> Unit {
+pub async fn Mutex::acquire(self : Mutex) -> Unit noraise {
   self.semaphore.acquire()
 }
 

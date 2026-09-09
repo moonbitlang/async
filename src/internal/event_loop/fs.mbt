@@ -332,7 +332,7 @@ pub async fn IoHandle::lock(
 }
 
 ///|
-pub async fn remove(path : StringView, context~ : String) -> Unit {
+pub async fn remove(path : StringView, context~ : String) -> Unit nocancel {
   let path_bytes = @os_string.encode(path)
   let job = Job::remove(path_bytes)
   defer job.free()
@@ -408,7 +408,7 @@ pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
 }
 
 ///|
-pub async fn rmdir(path : StringView, context~ : String) -> Unit {
+pub async fn rmdir(path : StringView, context~ : String) -> Unit nocancel {
   let path_bytes = @os_string.encode(path)
   let job = Job::rmdir(path_bytes)
   defer job.free()
@@ -536,7 +536,7 @@ pub async fn IoHandle::read_dir_changes(
   if n >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
     // and give chance for other tasks to execute.
-    @coroutine.protect_from_cancel(@coroutine.pause)
+    @coroutine.protect_from_cancel(() => @coroutine.pause())
     n
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)

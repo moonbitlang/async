@@ -21,13 +21,19 @@ struct Task[X] {
 }
 
 ///|
+/// Special error indicating a waited task is cancelled.
+/// Note that this error has nothing to do with cancellation of *current* task.
+pub suberror TaskCancelled derive(Debug)
+
+///|
 /// Wait for a task and retrieve its result value.
 /// If the task fails, `wait` will also fail with the same error.
-///
-/// If the current task is cancelled, `wait` return immediately with error.
+/// If the target task terminated due to cancellation, `wait` will raise `TaskCancelled`.
 pub async fn[X] Task::wait(self : Task[X]) -> X {
-  self.coro.wait()
-  self.value.val.unwrap()
+  match self.coro.wait() {
+    Continue => self.value.val.unwrap()
+    Cancelled => raise TaskCancelled
+  }
 }
 
 ///|

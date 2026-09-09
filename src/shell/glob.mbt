@@ -719,9 +719,7 @@ fn unescape(segment : String) -> String {
 /// entries every directory has. A pattern may still name them.
 async fn read_directory(path : String) -> Array[String] {
   @fs.readdir(path, include_hidden=true) catch {
-    // A cancelled walk must stop, not report an empty directory and carry on
-    // as though the expansion had completed.
-    error => if @async.is_cancellation_error(error) { raise error } else { [] }
+    _ => []
   }
 }
 
@@ -731,15 +729,11 @@ async fn read_directory(path : String) -> Array[String] {
 /// A glob matches the entry a directory holds, so a dangling link still
 /// matches, and a link pointing at itself must not raise `ELOOP` here.
 async fn entry_exists(path : String) -> Bool {
-  (@fs.kind(path, follow_symlink=false) catch {
-    error =>
-      if @async.is_cancellation_error(error) {
-        raise error
-      } else {
-        return false
-      }
-  })
-  is _
+  try @fs.kind(path, follow_symlink=false) catch {
+    _ => false
+  } noraise {
+    _ => true
+  }
 }
 
 ///|
@@ -749,15 +743,9 @@ async fn entry_exists(path : String) -> Bool {
 /// pointing at an ancestor from making a recursive walk run forever, and it is
 /// what a shell's globstar does.
 async fn is_real_directory(path : String) -> Bool {
-  (@fs.kind(path, follow_symlink=false) catch {
-    error =>
-      if @async.is_cancellation_error(error) {
-        raise error
-      } else {
-        return false
-      }
-  })
-  is Directory
+  (@fs.kind(path, follow_symlink=false) is Directory) catch {
+    _ => false
+  }
 }
 
 ///|
@@ -767,15 +755,9 @@ async fn is_real_directory(path : String) -> Bool {
 /// `/var/log/*` has to work where `/var` is a link, exactly as it does in a
 /// shell.
 async fn is_directory(path : String) -> Bool {
-  (@fs.kind(path) catch {
-    error =>
-      if @async.is_cancellation_error(error) {
-        raise error
-      } else {
-        return false
-      }
-  })
-  is Directory
+  (@fs.kind(path) is Directory) catch {
+    _ => false
+  }
 }
 
 ///|

@@ -131,11 +131,12 @@ pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
           coro: Some(@coroutine.current_coroutine()),
         }
         self.writers.push_back(writer)
-        @coroutine.suspend() catch {
-          _ if writer.coro is None => ()
-          err => {
+        match @coroutine.suspend_check_cancel() {
+          Continue => ()
+          Cancelled if writer.coro is None => ()
+          Cancelled => {
             writer.coro = None
-            raise err
+            @coroutine.raise_cancellation_signal()
           }
         }
         if self.closed is Some(err) {
@@ -217,13 +218,20 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
     coro: Some(@coroutine.current_coroutine()),
   }
   self.readers.push_back(reader)
-  @coroutine.suspend() catch {
-    _ if reader.value is Some(value) =>
+  match @coroutine.suspend_check_cancel() {
+    Continue =>
+      if reader.value is Some(value) {
+        value
+      } else {
+        guard! self.closed is Some(err)
+        raise err
+      }
+    Cancelled if reader.value is Some(value) =>
       // This may happen if:
       //
       // - `put` is called, the value is removed from the queue
       //   and assigned to `reader.value`
-      // - the task is called after `put`, before `get` is actually woken
+      // - the task is cancelled after `put`, before `get` is actually woken
       //
       // In this case, if we cancel `get`,
       // the value would be swollen, which is incorrect.
@@ -231,17 +239,11 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
       // while maintaining correct order.
       // So we choose to swallow the cancellation signal here,
       // which is fine because cancellation is level-triggered.
-      return value
-    err => {
+      value
+    Cancelled => {
       reader.coro = None
-      raise err
+      @coroutine.raise_cancellation_signal()
     }
-  }
-  if reader.value is Some(value) {
-    value
-  } else {
-    guard! self.closed is Some(err)
-    raise err
   }
 }
 

@@ -97,11 +97,9 @@ async test "worker cancel1" {
       }
     }
     let task = root.spawn(() => {
-      @async.with_cancellation_handler(
-        handler=() => log.write_string("sleep cancelled with\n"),
-      ) <| () => {
-        perform_sleep_job(1000)
-        log <+ "done\n"
+      match @async.handle_cancellation(() => perform_sleep_job(1000)) {
+        None => log.write_string("sleep cancelled with\n")
+        Some(_) => log <+ "done\n"
       }
     })
     @async.sleep(500)
@@ -133,11 +131,9 @@ async test "worker cancel2" {
       }
     }
     root.spawn_bg(allow_failure=true) <| () => {
-      @async.with_cancellation_handler(
-        handler=() => log.write_string("sleep cancelled\n"),
-      ) <| () => {
-        perform_sleep_job(1000)
-        log <+ "done\n"
+      match @async.handle_cancellation(() => perform_sleep_job(1000)) {
+        None => log.write_string("sleep cancelled\n")
+        Some(_) => log <+ "done\n"
       }
     }
     @async.sleep(600)

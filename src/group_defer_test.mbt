@@ -113,14 +113,6 @@ async test "group defer cancelled" {
             log <+ "protected async defer completed\n"
           }
         })
-        group.add_defer(() => {
-          @async.with_cancellation_handler(
-            handler=() => log.write_string("normal async defer cancelled\n"),
-          ) <| () => {
-            @async.sleep(200)
-            log <+ "normal async defer completed\n"
-          }
-        })
         defer log.write_string("start group termination\n")
         @async.sleep(2000)
       })
@@ -134,7 +126,6 @@ async test "group defer cancelled" {
       #|tick
       #|tick
       #|start group termination
-      #|normal async defer cancelled
       #|tick
       #|protected async defer completed
       #|group terminated

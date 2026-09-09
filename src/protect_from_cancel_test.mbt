@@ -17,27 +17,21 @@ async test "protect_from_cancel" {
   let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
-      @async.with_cancellation_handler(
-        handler=() => log <+ "job cancelled after critical part\n",
-      ) <| () => {
-        @async.protect_from_cancel <| () => {
-          @async.with_cancellation_handler(
-            handler=() => log.write_string("critial job cancelled\n"),
-          ) <| () => {
-            @async.sleep(400)
-            log <+ "critical job finished\n"
-          }
+      @async.protect_from_cancel <| () => {
+        match @async.handle_cancellation(() => @async.sleep(400)) {
+          None => log.write_string("critial job cancelled\n")
+          Some(_) => log <+ "critical job finished\n"
         }
-        @async.sleep(200)
-        log <+ "non-critial part of job finished\n"
+      }
+      match @async.handle_cancellation(() => @async.sleep(200)) {
+        None => log <+ "job cancelled after critical part\n"
+        Some(_) => log <+ "non-critial part of job finished\n"
       }
     }
     root.spawn_bg() <| () => {
-      @async.with_cancellation_handler(
-        handler=() => log.write_string("non-critial job cancelled\n"),
-      ) <| () => {
-        @async.sleep(400)
-        log <+ "non-critical job finished\n"
+      match @async.handle_cancellation(() => @async.sleep(400)) {
+        None => log.write_string("non-critial job cancelled\n")
+        Some(_) => log <+ "non-critical job finished\n"
       }
     }
     @async.sleep(200)
@@ -235,16 +229,16 @@ async test "protect_from_cancel in cancellation handler" {
   let log = StringBuilder()
   @async.with_task_group(root => {
     root.spawn_bg(no_wait=true) <| () => {
-      @async.with_cancellation_handler(
-        handler=() => {
+      match @async.handle_cancellation(() => @async.sleep(400)) {
+        None => {
           log.write_string("cancelled\n")
           @async.protect_from_cancel() <| () => {
             @async.sleep(200)
             log <+ "critial cancellation handler terminated\n"
           }
-        },
-        () => @async.sleep(400),
-      )
+        }
+        Some(_) => ()
+      }
     }
     @async.sleep(200)
     log <+ "start cancellation\n"
@@ -273,8 +267,8 @@ async test "cancel while scheduled" {
     let task1 = root.spawn(() => {
       // after calling `pause`, current coroutine would be in `run_later`,
       // and it will receive cancellation in this situation
-      @async.with_cancellation_handler(
-        handler=() => {
+      match @async.handle_cancellation(() => @async.pause()) {
+        None => {
           log.write_string("`pause` cancelled\n")
           @async.protect_from_cancel() <| () => {
             // Now, due to `protect_from_cancel`,
@@ -285,9 +279,9 @@ async test "cancel while scheduled" {
             @async.sleep(300)
             log <+ "async cleanup finished\n"
           }
-        },
-        () => @async.pause(),
-      )
+        }
+        Some(_) => ()
+      }
     })
     root.spawn_bg(() => task1.cancel())
   }
@@ -315,16 +309,15 @@ async test "error in async cancel" {
     }
     @async.with_task_group(group => {
       group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-        @async.sleep(1000) catch {
-          _ => {
-            log <+ "performing async cleanup\n"
-            @async.protect_from_cancel() <| () => {
-              @async.sleep(300)
-              log <+ "raising error from async cleanup\n"
-              raise Err
-            }
+        errdefer {
+          log <+ "performing async cleanup\n"
+          @async.protect_from_cancel() <| () => {
+            @async.sleep(300)
+            log <+ "raising error from async cleanup\n"
+            raise Err
           }
         }
+        @async.sleep(1000)
       }
       @async.sleep(150)
       log <+ "main task of inner group done\n"

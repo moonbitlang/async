@@ -163,16 +163,27 @@ pub fn with_event_loop(
       panic()
     }
   }
-  main.unwrap()
+  ignore(main.unwrap())
 }
 
 ///|
-async fn EventLoop::suspend(evloop : EventLoop) -> Unit {
+async fn EventLoop::suspend(evloop : EventLoop) -> Unit noraise {
   evloop.blocked_tasks += 1
   defer {
     evloop.blocked_tasks -= 1
   }
   @coroutine.suspend()
+}
+
+///|
+async fn EventLoop::suspend_check_cancel(
+  evloop : EventLoop,
+) -> @coroutine.SuspendResult noraise {
+  evloop.blocked_tasks += 1
+  defer {
+    evloop.blocked_tasks -= 1
+  }
+  @coroutine.suspend_check_cancel()
 }
 
 ///|
@@ -429,7 +440,7 @@ priv enum CancellationStatus {
 /// even in case of cancellation.
 async fn wait_for_cancellation(
   cancel_func : () -> CancellationStatus raise,
-) -> Unit {
+) -> Unit nocancel {
   guard! curr_loop.val is Some(evloop)
   let status = {
     errdefer @coroutine.protect_from_cancel(() => evloop.suspend())
@@ -465,8 +476,9 @@ async fn EventLoop::wait_for_job(
   evloop.jobs[job_id] = @coroutine.current_coroutine()
   defer evloop.jobs.remove(job_id)
   if cancellable {
-    evloop.suspend() catch {
-      _ =>
+    match evloop.suspend_check_cancel() {
+      Continue => ()
+      Cancelled =>
         // The cancellation error is swallowed here,
         // because in case the operation completed before cancellation,
         // we need to return the result normally to retain cancellation safety
@@ -507,15 +519,17 @@ async fn perform_job_in_worker(
       let waiter = @coroutine.current_coroutine()
       let queued_job = { job_id, job, waiter, }
       evloop.job_queue.add(queued_job)
-      @coroutine.suspend() catch {
-        err =>
+      match @coroutine.suspend_check_cancel() {
+        Continue => ()
+        Cancelled if evloop.job_queue.contains(queued_job) => {
+          evloop.job_queue.remove(queued_job)
+          @coroutine.raise_cancellation_signal()
+        }
+        Cancelled =>
           // If `queued_job` is already removed, the job must have been submitted already,
           // within the same tick as the cancellation request.
           // In this case, swallow the cancellation to avoid problems. 
-          if evloop.job_queue.contains(queued_job) {
-            evloop.job_queue.remove(queued_job)
-            raise err
-          }
+          ()
       }
     }
     None => {
@@ -530,7 +544,7 @@ async fn perform_job_in_worker(
   evloop.wait_for_job(job_id, cancellable~, context~)
   if job.err() is err && err > 0 {
     if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
-      raise @coroutine.Cancelled
+      @coroutine.raise_cancellation_signal()
     } else {
       raise @os_error.OSError(err, context~)
     }

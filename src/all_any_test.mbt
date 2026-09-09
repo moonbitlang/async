@@ -114,11 +114,9 @@ async test "all failure propagates" {
         raise Failure::Failure("Err")
       },
       () => {
-        @async.with_cancellation_handler(
-          handler=() => log.push("task #3 cancelled"),
-        ) <| () => {
-          @async.sleep(300)
-          log.push("task #3 completed")
+        match @async.handle_cancellation(() => @async.sleep(300)) {
+          None => log.push("task #3 cancelled")
+          Some(_) => log.push("task #3 completed")
         }
       },
     ])
@@ -138,13 +136,11 @@ async test "all failure propagates" {
 async test "all cancelled" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.with_cancellation_handler(
-      handler=() => log.push("task #\{idx} cancelled"),
-    ) <| () => {
-      @async.sleep(sleep_time)
-      log.push("task #\{idx} completed")
-      idx
+    match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
+      None => log.push("task #\{idx} cancelled")
+      Some(_) => log.push("task #\{idx} completed")
     }
+    idx
   }
 
   let result = @async.with_timeout_opt(300, () => {
@@ -180,13 +176,14 @@ async test "any basic" {
 async test "any returns first success" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.with_cancellation_handler(
-      handler=() => log.push("task #\{idx} cancelled"),
-    ) <| () => {
-      @async.sleep(sleep_time)
-      log.push("task #\{idx} completed")
-      idx
+    match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
+      None => {
+        log.push("task #\{idx} cancelled")
+        @coroutine.check_cancellation()
+      }
+      Some(_) => log.push("task #\{idx} completed")
     }
+    idx
   }
 
   let result = @async.any([
@@ -206,11 +203,9 @@ async test "any failure without allow_failure" {
   let result = @test_util.expect_error_async <| () => {
     @async.any([
       () => {
-        @async.with_cancellation_handler(
-          handler=() => log.push("task #1 cancelled"),
-        ) <| () => {
-          @async.sleep(300)
-          log.push("task #1 completed")
+        match @async.handle_cancellation(() => @async.sleep(300)) {
+          None => log.push("task #1 cancelled")
+          Some(_) => log.push("task #1 completed")
         }
       },
       () => {
@@ -292,7 +287,7 @@ async test "any empty fails" {
   debug_inspect(
     @test_util.expect_error_async(() => (@async.any([]) : Unit)),
     content=(
-      #|Failure("src/all_any_test.mbt:293:42-293:56@moonbitlang/async FAILED: no tasks provided to any()")
+      #|Failure("src/all_any_test.mbt:288:42-288:56@moonbitlang/async FAILED: no tasks provided to any()")
     ),
   )
 }
@@ -301,13 +296,11 @@ async test "any empty fails" {
 async test "any cancelled" {
   let log = []
   async fn task(idx : Int, sleep_time : Int) -> Int {
-    @async.with_cancellation_handler(
-      handler=() => log.push("task #\{idx} cancelled"),
-    ) <| () => {
-      @async.sleep(sleep_time)
-      log.push("task #\{idx} completed")
-      idx
+    match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
+      None => log.push("task #\{idx} cancelled")
+      Some(_) => log.push("task #\{idx} completed")
     }
+    idx
   }
 
   let result = @async.with_timeout_opt(200, () => {

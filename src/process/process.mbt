@@ -148,17 +148,18 @@ pub async fn run(
   )
   defer process.close()
   let pid = process.pid
-  process.wait_pid(context~) catch {
-    @coroutine.Cancelled as err => {
-      let _ = @async.protect_from_cancel() <| () => {
+  match @async.handle_cancellation(() => process.wait_pid(context~)) {
+    None => {
+      let ret = @async.protect_from_cancel() <| () => {
         @async.with_task_group() <| group => {
           group.spawn_bg(no_wait=true, () => cancel_handler(pid))
           process.wait_pid(context~)
         }
       }
-      raise err
+      @coroutine.check_cancellation()
+      ret
     }
-    err => raise err
+    Some(ret) => ret
   }
 }
 
@@ -238,17 +239,15 @@ pub async fn[X] spawn(
   let pid = process.pid
   let result = group.spawn(no_wait?, () => {
     defer process.close()
-    process.wait_pid(context~) catch {
-      @coroutine.Cancelled as err => {
-        let _ = @async.protect_from_cancel() <| () => {
+    match @async.handle_cancellation(() => process.wait_pid(context~)) {
+      None =>
+        @async.protect_from_cancel() <| () => {
           @async.with_task_group() <| group => {
             group.spawn_bg(no_wait=true, () => cancel_handler(pid))
             process.wait_pid(context~)
           }
         }
-        raise err
-      }
-      err => raise err
+      Some(ret) => ret
     }
   })
   { pid, result, }
