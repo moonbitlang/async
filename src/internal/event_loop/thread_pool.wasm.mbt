@@ -674,19 +674,6 @@ fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> Job {
 
 ///|
 #unsafe_skip_stub_check
-#borrow(signals)
-fn JobHandle::sigwait(
-  signals : ReadOnlyArray[Int],
-  signals_len : Int,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_sigwait_job"
-
-///|
-fn Job::sigwait(signals : ReadOnlyArray[Int]) -> Job {
-  Job(JobHandle::sigwait(signals, signals.length()))
-}
-
-///|
-#unsafe_skip_stub_check
 #borrow(path)
 fn JobHandle::inotify_add_watch(
   inotify : @fd_util.Fd,

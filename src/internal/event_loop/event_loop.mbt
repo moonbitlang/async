@@ -30,7 +30,6 @@ priv struct EventLoop {
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
-  mut signal_handler : SignalHandler?
   mut killed_by_signal : Int?
   mut blocked_tasks : Int
 }
@@ -94,7 +93,6 @@ fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
     jobs: Map([]),
     timers: SortedSet([]),
     main: None,
-    signal_handler: None,
     killed_by_signal: None,
     blocked_tasks: 0,
   }
@@ -142,7 +140,6 @@ pub fn with_event_loop(
     }
   }
   let signal_handler = setup_signal_handler()
-  evloop.signal_handler = Some(signal_handler)
   let main = @coroutine.spawn(() => {
     defer evloop.terminate_signal_handler(signal_handler)
     f()
@@ -340,13 +337,8 @@ pub fn set_deadlock_handler(f : (Array[SourceLoc]) -> Unit) -> Unit {
 }
 
 ///|
-fn EventLoop::check_dead_lock(self : Self) -> Unit {
+fn EventLoop::check_dead_lock(_self : Self) -> Unit {
   let all_coros = @coroutine.all_coroutines().iter()
-  let all_coros = match self.signal_handler {
-    Some(SigwaitHandler(sigwait_task)) =>
-      all_coros.filter(coro => coro != sigwait_task)
-    None | Some(ConsoleControlHandler) => all_coros
-  }
   let all_coros = all_coros.map(coro => coro.loc).collect()
   if all_coros.length() > 0 {
     (deadlock_handler.val)(all_coros)
