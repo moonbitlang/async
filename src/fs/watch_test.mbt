@@ -44,7 +44,7 @@ async fn make_watcher(
     report_event_on_init?,
     ignored_paths?,
     debounce_timeout=50,
-    max_debounce_delay=100,
+    max_debounce_delay=80,
   )
 }
 
