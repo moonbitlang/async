@@ -139,9 +139,9 @@ pub fn with_event_loop(
       init()
     }
   }
-  let signal_handler = setup_signal_handler()
+  setup_signal_handler()
   let main = @coroutine.spawn(() => {
-    defer evloop.terminate_signal_handler(signal_handler)
+    defer evloop.terminate_signal_handler()
     f()
   })
   @coroutine.reschedule()

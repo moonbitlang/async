@@ -67,13 +67,6 @@ pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
 }
 
 ///|
-#warnings("-unused_constructor")
-priv enum SignalHandler {
-  UnixSignalHandler
-  ConsoleControlHandler
-}
-
-///|
 #cfg(all(target="native", not(platform="windows")))
 extern "C" fn start_signal_handler_ffi() -> Unit = "moonbitlang_async_start_signal_handler"
 
@@ -90,6 +83,25 @@ fn start_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/start_signal
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 fn terminate_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/terminate_signal_handler"
+
+///|
+#cfg(not(platform="windows"))
+fn setup_signal_handler_unix() -> Unit {
+  if !global_signal_handler_initialized.val {
+    set_global_cancellation_signals(all_signals)
+  }
+  start_signal_handler_ffi()
+}
+
+///|
+#cfg(not(platform="windows"))
+fn EventLoop::terminate_signal_handler_unix(evloop : EventLoop) -> Unit raise {
+  global_signal_handler_initialized.val = false
+  terminate_signal_handler_ffi()
+  if evloop.killed_by_signal is Some(signal) {
+    raise KilledBySignal(signal)
+  }
+}
 
 ///|
 #cfg(platform="windows")
@@ -126,76 +138,45 @@ fn EventLoop::terminate_signal_handler_windows(
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-fn setup_signal_handler() -> SignalHandler {
-  if !global_signal_handler_initialized.val {
-    set_global_cancellation_signals(all_signals)
-  }
-  start_signal_handler_ffi()
-  UnixSignalHandler
+fn setup_signal_handler() -> Unit {
+  setup_signal_handler_unix()
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-fn EventLoop::terminate_signal_handler(
-  evloop : EventLoop,
-  handler : SignalHandler,
-) -> Unit raise {
-  guard! handler is UnixSignalHandler
-  global_signal_handler_initialized.val = false
-  terminate_signal_handler_ffi()
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
+  evloop.terminate_signal_handler_unix()
 }
 
 ///|
 #cfg(platform="windows")
-fn setup_signal_handler() -> SignalHandler raise {
+fn setup_signal_handler() -> Unit raise {
   setup_signal_handler_windows()
-  ConsoleControlHandler
 }
 
 ///|
 #cfg(platform="windows")
-fn EventLoop::terminate_signal_handler(
-  evloop : EventLoop,
-  handler : SignalHandler,
-) -> Unit raise {
-  guard! handler is ConsoleControlHandler
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
   global_signal_handler_initialized.val = false
   evloop.terminate_signal_handler_windows()
 }
 
 ///|
 #cfg(target="wasm")
-fn setup_signal_handler() -> SignalHandler raise {
-  if platform is Windows {
-    setup_signal_handler_windows()
-    ConsoleControlHandler
-  } else {
-    if !global_signal_handler_initialized.val {
-      set_global_cancellation_signals(all_signals)
-    }
-    start_signal_handler_ffi()
-    UnixSignalHandler
+fn setup_signal_handler() -> Unit raise {
+  match platform {
+    Linux | MacOS => setup_signal_handler_unix()
+    Windows => setup_signal_handler_windows()
   }
 }
 
 ///|
 #cfg(target="wasm")
-fn EventLoop::terminate_signal_handler(
-  evloop : EventLoop,
-  signal_handler : SignalHandler,
-) -> Unit raise {
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
   global_signal_handler_initialized.val = false
-  match signal_handler {
-    UnixSignalHandler => {
-      terminate_signal_handler_ffi()
-      if evloop.killed_by_signal is Some(signal) {
-        raise KilledBySignal(signal)
-      }
-    }
-    ConsoleControlHandler => evloop.terminate_signal_handler_windows()
+  match platform {
+    Linux | MacOS => evloop.terminate_signal_handler_unix()
+    Windows => evloop.terminate_signal_handler_windows()
   }
 }
 
