@@ -50,6 +50,7 @@ fn Worker::wake(worker : Worker, job_id : Int, job : Job) -> Unit {
 fn Worker::enter_idle(worker : Worker) -> Unit = "moonbitlang/async" "thread_pool/worker_enter_idle"
 
 ///|
+// 0: retry later; 1: keep waiting; 2: the job result is ready.
 #unsafe_skip_stub_check
 fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang/async" "thread_pool/cancel_worker_with_retry"
 
@@ -60,7 +61,9 @@ fn Worker::cancel(
 ) -> CancellationStatus raise {
   match worker.cancel_ffi() {
     0 => RetryLater
-    1 => NeedWait
+    // Retire the worker through its completion notification even if its job
+    // has already finished, as the native cancellation path does.
+    1 | 2 => NeedWait
     _ => {
       @os_error.check_errno(context)
       NoWait
@@ -69,8 +72,11 @@ fn Worker::cancel(
 }
 
 ///|
-#unsafe_skip_stub_check
-fn Worker::check_cancellation_retry(worker : Worker) -> Bool = "moonbitlang/async" "thread_pool/worker_check_cancellation_retry"
+fn Worker::check_cancellation_retry(worker : Worker) -> Bool {
+  // Use the same host call for initial cancellation and completion checks.
+  // Native also keeps waiting if a cancellation attempt reports an error.
+  worker.cancel_ffi() != 2
+}
 
 ///|
 #unsafe_skip_stub_check
