@@ -32,6 +32,23 @@ async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
 }
 
 ///|
+async fn make_watcher(
+  path : String,
+  report_child_event? : Bool,
+  report_event_on_init? : Bool,
+  ignored_paths? : (String) -> Bool,
+) -> @fs.Watcher {
+  Watcher(
+    path,
+    report_child_event?,
+    report_event_on_init?,
+    ignored_paths?,
+    debounce_timeout=50,
+    max_debounce_delay=100,
+  )
+}
+
+///|
 async fn watch_basic_test(
   path : String,
   report_child_event~ : Bool,
@@ -47,7 +64,7 @@ async fn watch_basic_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~)
+    let watcher = make_watcher(path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -221,7 +238,7 @@ async fn watch_rename_within_test(
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, report_child_event~)
+    let watcher = make_watcher(path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -348,7 +365,7 @@ async fn watch_rename_inout_test(
     })
     let watched_path = "\{base_path}/watched"
 
-    let watcher = @fs.Watcher(watched_path, report_child_event~)
+    let watcher = make_watcher(watched_path, report_child_event~)
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -507,7 +524,7 @@ async test "watch horizontal swap" {
     group.add_defer(() => {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
-    let watcher = @fs.Watcher(path)
+    let watcher = make_watcher(path)
     defer watcher.close()
     @fs.rename("\{path}/file1", "\{path}/tmp")
     @fs.rename("\{path}/file2", "\{path}/file1")
@@ -548,7 +565,7 @@ async fn watch_vertical_swap_test(
     group.add_defer(() => {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
-    let watcher = @fs.Watcher(path, report_child_event~)
+    let watcher = make_watcher(path, report_child_event~)
     defer watcher.close()
     log.push("performing vertical swapping")
     @fs.rename("\{path}/outer/inner", "\{path}/tmp")
@@ -627,7 +644,7 @@ async test "watch ignored path" {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(path, ignored_paths=path => path is "ignored")
+    let watcher = make_watcher(path, ignored_paths=path => path is "ignored")
     group.spawn_bg(no_wait=true, () => {
       defer watcher.close()
       for ;; {
@@ -772,7 +789,7 @@ async test "watch init event" {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
 
-    let watcher = @fs.Watcher(
+    let watcher = make_watcher(
       path,
       report_event_on_init=true,
       report_child_event=true,
