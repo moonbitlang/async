@@ -15,16 +15,18 @@ pub async fn[X] all(ArrayView[async () -> X], max_concurrent? : Int) -> Array[X]
 #callsite(autofill(loc))
 pub async fn[X] any(ArrayView[async () -> X], max_concurrent? : Int, allow_failure? : Bool, loc~ : SourceLoc) -> X
 
+pub async fn[X] handle_cancellation(async () -> X) -> X?
+
 pub fn is_being_cancelled() -> Bool
 
+#deprecated
 pub fn is_cancellation_error(Error) -> Bool
 
 pub fn now() -> Int64
 
-pub async fn pause() -> Unit
+pub async fn pause() -> Unit noraise
 
-#label_migration(resume_on_cancel, fill=false, msg="`resume_on_cancel=false` is deprecated, because it may result in data loss")
-pub async fn[X] protect_from_cancel(async () -> X, resume_on_cancel? : Bool) -> X
+pub async fn[X] protect_from_cancel(async () -> X) -> X nocancel
 
 pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
 
@@ -32,8 +34,9 @@ pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
 
 pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
-pub async fn sleep(Int) -> Unit
+pub async fn sleep(Int) -> Unit noraise
 
+#deprecated
 pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> Unit) -> X
 
 #callsite(autofill(loc))
@@ -45,6 +48,8 @@ pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
 pub(all) suberror BreakFromSpawnLoop
+
+pub suberror TaskCancelled derive(@debug.Debug)
 
 pub suberror TimeoutError derive(ToJson, @debug.Debug)
 #deprecated
@@ -64,7 +69,7 @@ pub async fn[X] Lazy::wait(Self[X]) -> X
 
 type Mutex
 pub fn Mutex::Mutex() -> Self
-pub async fn Mutex::acquire(Self) -> Unit
+pub async fn Mutex::acquire(Self) -> Unit noraise
 pub fn Mutex::release(Self) -> Unit
 pub fn Mutex::try_acquire(Self) -> Bool
 
@@ -80,8 +85,8 @@ pub fn[X] Task::try_wait(Self[X]) -> X? raise
 pub async fn[X] Task::wait(Self[X]) -> X
 
 type TaskGroup[X]
-pub fn[X] TaskGroup::add_defer(Self[X], async () -> Unit) -> Unit
-pub fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit raise
+pub fn[X] TaskGroup::add_defer(Self[X], async () -> Unit nocancel) -> Unit
+pub async fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit noraise
 #callsite(autofill(loc))
 pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Task[X]
 #callsite(autofill(loc))
