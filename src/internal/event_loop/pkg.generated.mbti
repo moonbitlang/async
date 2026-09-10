@@ -73,11 +73,11 @@ pub async fn realpath(StringView, context~ : String) -> String
 
 pub fn register_hook(init? : () -> Unit raise, exit? : () -> Unit raise) -> Unit
 
-pub async fn remove(StringView, context~ : String) -> Unit
+pub async fn remove(StringView, context~ : String) -> Unit nocancel
 
 pub async fn rename(StringView, StringView, replace~ : Bool, context~ : String) -> Unit
 
-pub async fn rmdir(StringView, context~ : String) -> Unit
+pub async fn rmdir(StringView, context~ : String) -> Unit nocancel
 
 pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
 
@@ -85,7 +85,7 @@ pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) ->
 
 pub fn set_global_cancellation_signals(ReadOnlyArray[Int]) -> Unit
 
-pub async fn sleep(Int) -> Unit
+pub async fn sleep(Int) -> Unit noraise
 
 pub async fn spawn_unix(@os_string.OsString, @c_buffer.Buffer, env~ : @c_buffer.Buffer, stdin~ : Int, stdout~ : Int, stderr~ : Int, is_orphan~ : Bool, cwd~ : @os_string.OsString?, context~ : String) -> Process
 

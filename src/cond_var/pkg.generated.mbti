@@ -11,7 +11,7 @@ type Cond
 pub fn Cond::Cond() -> Self
 pub fn Cond::broadcast(Self) -> Unit
 pub fn Cond::signal(Self) -> Unit
-pub async fn Cond::wait(Self) -> Unit
+pub async fn Cond::wait(Self) -> Unit noraise
 
 // Type aliases
 
