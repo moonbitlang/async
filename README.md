@@ -101,15 +101,23 @@ In `moonbitlang/async`, all asynchronous operations are by default cancellable.
 So no need to worry about accidentally creating uncancellable task.
 
 In `moonbitlang/async`, when a task is cancelled,
-it will receive an error at where it suspended.
-The cancelled task can then perform cleanup logic using `try .. catch`.
-Since most asynchronous operations may throw other error anyway,
-correct error handling automatically gives correct cancellation handling,
-so most of the time correct cancellation handling just come for free in `moonbitlang/async`.
+it will receive a special signal at where it suspended.
+This cancellation signal is similar to, but not the same as an error.
+The cancellation signal propogates like an error, and can trigger `defer` and `errdefer` blocks.
+However, `catch` can **not** capture the cancellation signal.
 
-Currently, it is not allowed to perform other asynchronous operation after a task is cancelled.
-Those operations will be cancelled immediately if current task is already cancelled.
-Spawn a task in some parent context if asynchronous cleanup is necessary.
+In most cases, users don't need to handle cancellation specially.
+Cleanup related logic inside `defer` or `errdefer`,
+while other error handlers usually don't need to handle cancellation anyway.
+If special handling of cancellation is indeed necessary,
+`@async.handle_cancellation` can be used.
+
+Cancellation is a sticky state attached to every task in `moonbitlang/async`.
+The aforementioned cancellation signal is merely a notification for the cancelled task,
+capturing that signal via `@async.handle_cancellation` does *not* revert cancellation.
+The task will stay in cancelled state,
+and the next unprotected async operation will get cancelled immediately.
+To truly protect a piece of critical code from cancellation, use `@async.protect_from_cancel`.
 
 ## Caveats
 
