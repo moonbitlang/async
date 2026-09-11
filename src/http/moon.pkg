@@ -13,7 +13,6 @@ import {
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/env",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/gzip" @gzip_stream,
