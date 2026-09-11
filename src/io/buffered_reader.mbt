@@ -66,3 +66,22 @@ async fn[R : Reader] ReaderBuffer::find_opt(
     continue len - target_len + 1
   }
 }
+
+///|
+/// Consume a complete buffered segment without entering the async reader.
+/// The returned view must be consumed before the next read mutates the buffer.
+#internal(internal, "internal buffered parser fast path")
+pub fn ReaderBuffer::take_buffered_until(
+  self : ReaderBuffer,
+  separator : Bytes,
+) -> BytesView? {
+  let available = self.buf.unsafe_reinterpret_as_bytes()[self.start:self.start +
+    self.len]
+  if available.find(separator) is Some(end) {
+    let line = available[:end]
+    self.0.drop(end + separator.length())
+    Some(line)
+  } else {
+    None
+  }
+}

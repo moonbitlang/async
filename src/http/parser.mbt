@@ -233,26 +233,70 @@ impl @io.Reader for Reader with fn _get_internal_buffer(self) {
 extend Reader with @io.Reader::{_direct_read, _get_internal_buffer, drop}
 
 ///|
+fn parse_header_line(
+  header_line : String,
+) -> (CaseInsensitiveString, String) raise {
+  guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
+  let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
+  guard colon_index + 1 < header_line.length() else { raise BadRequest }
+  let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
+    colon_index + 2
+  } else {
+    colon_index + 1
+  }
+  (key, header_line[value_start:].to_owned())
+}
+
+///|
+fn parse_ascii_header(
+  line : BytesView,
+) -> (CaseInsensitiveString, String)? raise {
+  let mut colon = -1
+  for i in 0..<line.length() {
+    let b = line[i]
+    if b >= b'\x80' {
+      return None
+    }
+    if b == b':' && colon < 0 {
+      colon = i
+    }
+  }
+  guard colon >= 0 && colon + 1 < line.length() else { raise BadRequest }
+  let value_start = if line[colon + 1] == b' ' { colon + 2 } else { colon + 1 }
+  Some(
+    (
+      CaseInsensitiveString(@utf8.decode(line[:colon])),
+      @utf8.decode(line[value_start:]),
+    ),
+  )
+}
+
+///|
 async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
   let headers : Headers = Map([])
   let cookies = []
   for ;; {
-    guard self.transport.read_until("\r\n") is Some(header_line) else {
-      raise @io.ReaderClosed
-    }
-    if header_line is "" {
-      // empty line indicates end of header
-      break
-    }
-    guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
-    let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
-    guard colon_index + 1 < header_line.length() else { raise BadRequest }
-    let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
-      colon_index + 2
+    let line = self.transport
+      ._get_internal_buffer()
+      .take_buffered_until(b"\r\n")
+    let (key, value) = if line is Some(line) {
+      if line.is_empty() {
+        break
+      }
+      if parse_ascii_header(line) is Some(fields) {
+        fields
+      } else {
+        parse_header_line(@utf8.decode(line))
+      }
     } else {
-      colon_index + 1
+      guard self.transport.read_until("\r\n") is Some(header_line) else {
+        raise @io.ReaderClosed
+      }
+      if header_line is "" {
+        break
+      }
+      parse_header_line(header_line)
     }
-    let value = header_line[value_start:].to_owned()
     if key == "Content-Length" {
       guard !(self.body is Fixed(_)) else { raise BadRequest }
       let len = @string.parse_int(value, base=10)
