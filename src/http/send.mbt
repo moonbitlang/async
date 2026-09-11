@@ -340,6 +340,39 @@ async fn Sender::send_request(
 }
 
 ///|
+// Bound the batch by both its own capacity and the available sender space, so
+// it cannot grow or retain a combined head across a blocked underlying write.
+fn Sender::can_batch_response_head(
+  self : Sender,
+  code_length : Int,
+  reason : String,
+  headers : Headers,
+) -> Bool {
+  // "HTTP/1.1 " + status code + " " + reason + CRLF.
+  let mut remaining = @cmp.minimum(256, self.send_buf.length() - self.send_len) -
+    12 -
+    code_length
+  guard remaining >= 0 && self.headers.length() <= remaining else { false }
+  remaining -= self.headers.length()
+  // A UTF-16 code unit needs at most three UTF-8 bytes, including unpaired
+  // surrogates. Check before multiplying to avoid overflow on large inputs.
+  guard reason.length() <= remaining / 3 else { false }
+  remaining -= reason.length() * 3
+  for k, v in headers {
+    if k != "Content-Length" && forbidden_headers.contains(k) {
+      continue
+    }
+    guard remaining >= 4 else { return false }
+    remaining -= 4 // ": " and CRLF
+    guard k.0.length() <= remaining / 3 else { return false }
+    remaining -= k.0.length() * 3
+    guard v.length() <= remaining / 3 else { return false }
+    remaining -= v.length() * 3
+  }
+  true
+}
+
+///|
 async fn Sender::send_response(
   self : Sender,
   code : Int,
@@ -354,14 +387,47 @@ async fn Sender::send_response(
     Connect => self.should_have_empty_body = code is (100..<300 | 304)
     _ => self.should_have_empty_body = code is (100..<200 | 204 | 205 | 304)
   }
-  let content_length = self
+  let code = encode_int(code, base=10)
+  let content_length = if self.can_batch_response_head(
+      code.length(),
+      reason,
+      extra_headers,
+    ) {
+    // Small heads cross the async writer boundary once. The preflight bound
+    // keeps this Buffer at 256 bytes and guarantees its copy fits in send_buf.
+    let head = Buffer(size_hint=256)
+    head
+    ..write_bytes(b"HTTP/1.1 ")
+    ..write_bytes(code)
+    ..write_byte(b' ')
+    ..write_string_utf8(sanitize_header_value(reason))
+    ..write_bytes(b"\r\n")
+    .write_bytes(self.headers)
+    let mut content_length = None
+    for k, v in extra_headers {
+      if k == "Content-Length" {
+        content_length = Some(@string.parse_int64(v.trim(), base=10))
+      } else if forbidden_headers.contains(k) {
+        continue
+      }
+      head
+      ..write_string_utf8(sanitize_header_value(k.0))
+      ..write_bytes(b": ")
+      ..write_string_utf8(sanitize_header_value(v))
+      .write_bytes(b"\r\n")
+    }
+    self.write(head.contents())
+    content_length
+  } else {
+    self
     ..write(b"HTTP/1.1 ")
-    ..write(encode_int(code, base=10))
+    ..write(code)
     ..write(b" ")
     ..write(sanitize_header_value(reason))
     ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
+  }
   for cookie in cookies {
     self.write(b"Set-Cookie: ")
     cookie.write_to(self)
