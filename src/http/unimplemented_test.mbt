@@ -18,7 +18,6 @@ let _ignore_unused_import : Unit = {
   ignore(@debug.to_string(0))
   ignore(@async.sleep)
   ignore(@utf8.encode(""))
-  ignore(@env.get_env_var)
   ignore((_ : @gzip_stream.Encoder[&@io.Writer]) => ())
   ignore(@fs.unimplemented)
 }
