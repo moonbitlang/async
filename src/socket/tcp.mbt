@@ -79,7 +79,8 @@ pub struct TcpServer {
 /// The load-balancing semantic is Linux-only. `SO_REUSEPORT` also exists on the
 /// BSDs and MacOS, but there it does not evenly distribute connections — which
 /// socket accepts a given connection is unspecified — so `reuse_port_lb` takes
-/// effect only on Linux and is ignored everywhere else (BSD, MacOS, Windows, wasm).
+/// effect only on Linux, including Wasm hosted by Moonrun on Linux, and is
+/// ignored everywhere else (BSD, MacOS, Windows).
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
