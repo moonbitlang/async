@@ -1,0 +1,6 @@
+options(
+  targets: {
+    "job.native.mbt": [ "native" ],
+    "job.wasm.mbt": [ "wasm", "wasm-gc", "js" ],
+  },
+)
