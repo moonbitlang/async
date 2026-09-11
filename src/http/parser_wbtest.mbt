@@ -911,3 +911,97 @@ async test "read_response parse cookie" {
     )
   }
 }
+
+///|
+test "buffered ASCII headers avoid a whole-line String" {
+  assert_eq(
+    parse_ascii_header(b"X-Test: a:b"),
+    Some((CaseInsensitiveString("X-Test"), "a:b")),
+  )
+  assert_eq(
+    parse_ascii_header(b"X-Test: "),
+    Some((CaseInsensitiveString("X-Test"), "")),
+  )
+  assert_eq(parse_ascii_header(@utf8.encode("X: 日本語")), None)
+}
+
+///|
+priv struct FragmentedHeaderReader {
+  data : Bytes
+  mut pos : Int
+  max_read : Int
+  buffer : @io.ReaderBuffer
+}
+
+///|
+impl @io.Reader for FragmentedHeaderReader with fn _get_internal_buffer(self) {
+  self.buffer
+}
+
+///|
+impl @io.Reader for FragmentedHeaderReader with fn _direct_read(
+  self,
+  dst,
+  offset~,
+  max_len~,
+) {
+  let n = @cmp.minimum(
+    @cmp.minimum(max_len, self.max_read),
+    self.data.length() - self.pos,
+  )
+  dst.blit_from_bytes(offset, self.data, self.pos, n)
+  self.pos += n
+  n
+}
+
+///|
+async test "buffered and fragmented headers preserve request boundaries" {
+  let data = @utf8.encode(
+    "GET /first HTTP/1.1\r\nX-Mixed: one\r\nx-MIXED: two\r\nX-Utf8: 日本語😀\r\nContent-Length: 3\r\n\r\nabcGET /second HTTP/1.1\r\nX-Empty: \r\n\r\n",
+  )
+  for max_read in [1, 7, 65536] {
+    let transport = FragmentedHeaderReader::{
+      data,
+      pos: 0,
+      max_read,
+      buffer: @io.ReaderBuffer::new(),
+    }
+    let reader = Reader::new(transport)
+    let request = reader.read_request()
+    assert_eq(request.path, "/first")
+    assert_eq(request.headers.get("x-mixed"), Some("one,two"))
+    assert_eq(request.headers.get("X-Utf8"), Some("日本語😀"))
+    assert_eq(reader.read_all().text(), "abc")
+    let request = reader.read_request()
+    assert_eq(request.path, "/second")
+    assert_eq(request.headers.get("X-Empty"), Some(""))
+  }
+}
+
+///|
+async test "buffered and fragmented malformed headers are rejected" {
+  for
+    header in [
+      b"NoColon", b"X:", b"X: \xff", b"Content-Length: 1\r\ncontent-length: 1", b"Transfer-Encoding: chunked\r\nTransfer-Encoding: chunked",
+    ] {
+    for max_read in [1, 65536] {
+      let b = Buffer()
+      b
+      ..write_bytes(b"GET / HTTP/1.1\r\n")
+      ..write_bytes(header)
+      .write_bytes(b"\r\n\r\n")
+      let transport = FragmentedHeaderReader::{
+        data: b.contents(),
+        pos: 0,
+        max_read,
+        buffer: @io.ReaderBuffer::new(),
+      }
+      let reader = Reader::new(transport)
+      try reader.read_request() catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected malformed header to fail")
+      }
+    }
+  }
+}
