@@ -18,6 +18,18 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true) <| () => {
     server.run_forever() <| ((request, body, conn) => {
+      match request.path {
+        "/no-response" => {
+          @async.sleep(10000)
+          return
+        }
+        "/no-response-body" => {
+          conn..send_response(200, "OK").flush()
+          @async.sleep(10000)
+          return
+        }
+        _ => ()
+      }
       let meth = @debug.to_string(request.meth).to_upper()
       log.write_string("server received request: \{meth} \{request.path}\n")
       while body.read_some() is Some(data) {
@@ -43,7 +55,10 @@ type Server
 ///|
 #cfg(target="js")
 extern "js" fn Server::close(server : Server) =
-  #| (server) => server.close()
+  #| (server) => {
+  #|   server.close()
+  #|   server.closeAllConnections()
+  #| }
 
 ///|
 #cfg(target="js")
@@ -78,6 +93,14 @@ extern "js" fn Server::create(
   #|     if (req.method === 'HEAD') {
   #|       response.statusCode = 200
   #|       response.end()
+  #|       return
+  #|     }
+  #|     if (req.url === '/no-response') {
+  #|       return
+  #|     }
+  #|     if (req.url === '/no-response-body') {
+  #|       response.statusCode = 200
+  #|       response.flushHeaders()
   #|       return
   #|     }
   #|     req.on('data', (data) => {
