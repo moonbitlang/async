@@ -74,5 +74,24 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 }
 
 ///|
+#coverage.skip
+#cfg(target="wasm-gc")
+#doc(hidden)
+pub fn run_async_main(main : async () -> Unit) -> Unit {
+  let _ = @coroutine.spawn <| () => {
+    main() catch {
+      err => {
+        @env_util.eprintln(err.to_string())
+        panic()
+      }
+    }
+  }
+  // Return to the host when only suspended coroutines remain.
+  while @coroutine.has_immediately_ready_task() {
+    @coroutine.reschedule()
+  }
+}
+
+///|
 #cfg(all(not(target="native"), not(target="wasm")))
 let _unused_import : Unit = ignore(@env_util.eprintln)
