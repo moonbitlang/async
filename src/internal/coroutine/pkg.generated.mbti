@@ -20,6 +20,8 @@ pub fn is_being_cancelled() -> Bool
 
 pub async fn pause() -> Unit noraise
 
+pub async fn pause_after_io() -> Unit noraise + nocancel
+
 pub async fn[X] protect_from_cancel(async () -> X) -> X nocancel
 
 pub async fn[X] raise_cancellation_signal() -> X noraise
