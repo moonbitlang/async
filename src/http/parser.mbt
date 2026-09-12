@@ -280,10 +280,7 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
       cookies.push(Cookie::parse(value))
       continue
     }
-    match headers.get(key) {
-      None => headers[key] = value
-      Some(value0) => headers[key] = "\{value0},\{value}"
-    }
+    headers.update_or_default(key, value, value0 => "\{value0},\{value}")
   }
   (headers, cookies)
 }
