@@ -29,6 +29,7 @@ pub fn Addr::parse(String) -> Self raise
 pub fn Addr::port(Self) -> Int
 pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
 pub impl Show for Addr
+pub impl @debug.Debug for Addr
 
 pub(all) enum IpProtocolPreference {
   OnlyV4
@@ -58,7 +59,7 @@ pub struct TcpServer {
   // private fields
 }
 #alias(new, deprecated)
-pub async fn TcpServer::TcpServer(Addr, dual_stack? : Bool, reuse_addr? : Bool) -> Self
+pub async fn TcpServer::TcpServer(Addr, dual_stack? : Bool, reuse_addr? : Bool, reuse_port_lb? : Bool) -> Self
 pub async fn TcpServer::accept(Self) -> (Tcp, Addr)
 #deprecated
 pub fn TcpServer::addr(Self) -> Addr
@@ -108,4 +109,3 @@ pub fn UdpServer::set_multicast_ttl(Self, Int) -> Unit raise
 // Type aliases
 
 // Traits
-

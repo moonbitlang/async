@@ -104,6 +104,17 @@ int moonbitlang_async_allow_reuse_addr(HANDLE sock) {
 }
 
 MOONBIT_FFI_EXPORT
+int moonbitlang_async_allow_reuse_port(HANDLE sock) {
+#ifdef SO_REUSEPORT
+  int reuse_port = 1;
+  return setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(int));
+#else
+  (void)sock;
+  return 0;
+#endif
+}
+
+MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_make_udp_socket(int family, int32_t multicast) {
 #ifdef _WIN32
   SOCKET sock = WSASocket(
@@ -112,7 +123,7 @@ HANDLE moonbitlang_async_make_udp_socket(int family, int32_t multicast) {
     0,
     NULL,
     0,
-    WSA_FLAG_OVERLAPPED
+    WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT
   );
   if (sock == INVALID_SOCKET)
     return INVALID_HANDLE_VALUE;
@@ -355,50 +366,34 @@ int moonbitlang_async_enable_keepalive(
 #endif
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_ip_addr(uint32_t ip, int port) {
-  // For IPv4, create traditional sockaddr_in structure
-  struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
-    sizeof(struct sockaddr_in),
-    0
-  );
+int32_t moonbitlang_async_ipv4_addr_size() {
+  return sizeof(struct sockaddr_in);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_ipv6_addr_size() {
+  return sizeof(struct sockaddr_in6);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_init_ip_addr(struct sockaddr_in *addr, uint32_t ip, int port) {
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
   addr->sin_addr.s_addr = htonl(ip);
-  return addr;
 }
 
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_empty_addr(int family) {
-  if (family == 4) {
-    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in),
-      0
-    );
-    addr->sa_family = AF_INET;
-    return addr;
-  } else {
-    struct sockaddr *addr = (struct sockaddr*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in6),
-      0
-    );
-    addr->sa_family = AF_INET6;
-    return addr;
-  };
-}
-
-MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_ipv6_addr(uint8_t *ip, int port, uint32_t scope_id) {
-  // For IPv6, create sockaddr_in6 structure directly
-  struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
-    sizeof(struct sockaddr_in6),
-    0
-  );
+void moonbitlang_async_init_ipv6_addr(
+  struct sockaddr_in6 *addr,
+  uint8_t *ip,
+  int port,
+  uint32_t scope_id
+) {
   addr->sin6_family = AF_INET6;
   addr->sin6_flowinfo = 0;
   addr->sin6_port = htons(port);
   memcpy(&addr->sin6_addr, ip, 16);
   addr->sin6_scope_id = scope_id;
-  return addr;
 }
 
 MOONBIT_FFI_EXPORT
@@ -435,9 +430,10 @@ int32_t moonbitlang_async_addr_is_multicast(void *addr_bytes) {
 }
 
 MOONBIT_FFI_EXPORT
-uint8_t *moonbitlang_async_addr_get_ipv6_bytes(struct sockaddr_in6 *addr) {
-  return addr->sin6_addr.s6_addr;
+int32_t moonbitlang_async_addr_get_ipv6_bytes_offset(void) {
+  return offsetof(struct sockaddr_in6, sin6_addr);
 }
+
 MOONBIT_FFI_EXPORT
 uint32_t moonbitlang_async_addr_get_ipv6_scope_id(struct sockaddr_in6 *addr) {
   return addr->sin6_scope_id;
@@ -475,31 +471,42 @@ addrinfo_t *moonbitlang_async_addrinfo_get_next(addrinfo_t *addrinfo) {
 }
 
 MOONBIT_FFI_EXPORT
-void* moonbitlang_async_addrinfo_to_addr(addrinfo_t *addrinfo, int port) {
+int32_t moonbitlang_async_addrinfo_addr_size(addrinfo_t *addrinfo) {
   if (addrinfo == NULL || addrinfo->ai_addr == NULL) {
-    return NULL;
+    return 0;
   }
 
   if (addrinfo->ai_family == AF_INET) {
-    // IPv4
-    struct sockaddr_in *addr = (struct sockaddr_in*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in),
-      0
-    );
+    return sizeof(struct sockaddr_in);
+  } else if (addrinfo->ai_family == AF_INET6) {
+    return sizeof(struct sockaddr_in6);
+  } else {
+    return 0;
+  }
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_addrinfo_fill_addr(
+  addrinfo_t *addrinfo,
+  void *addr_out,
+  int port
+) {
+  if (addrinfo == NULL || addrinfo->ai_addr == NULL) {
+    return;
+  }
+
+  if (addrinfo->ai_family == AF_INET) {
+    struct sockaddr_in *addr = (struct sockaddr_in*)addr_out;
     memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in));
     addr->sin_port = htons(port);
-    return addr;
+    return;
   } else if (addrinfo->ai_family == AF_INET6) {
-    // IPv6
-    struct sockaddr_in6 *addr = (struct sockaddr_in6*)moonbit_make_bytes(
-      sizeof(struct sockaddr_in6),
-      0
-    );
+    struct sockaddr_in6 *addr = (struct sockaddr_in6*)addr_out;
     memcpy(addr, addrinfo->ai_addr, sizeof(struct sockaddr_in6));
     addr->sin6_port = htons(port);
-    return addr;
+    return;
   } else {
-      return NULL;
+    return;
   }
 }
 
@@ -507,12 +514,6 @@ MOONBIT_FFI_EXPORT
 int moonbitlang_async_getsockname(HANDLE sock, struct sockaddr *addr_out) {
   socklen_t len = Moonbit_array_length(addr_out);
   return getsockname((SOCKET)sock, addr_out, &len);
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_getpeername(HANDLE sock, struct sockaddr *addr_out) {
-  socklen_t len = Moonbit_array_length(addr_out);
-  return getpeername((SOCKET)sock, addr_out, &len);
 }
 
 MOONBIT_FFI_EXPORT
@@ -563,7 +564,7 @@ MOONBIT_FFI_EXPORT
 void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
 #ifdef _WIN32
 
-  WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
+  static WCHAR buf[NDIS_IF_MAX_STRING_SIZE + 1];
   NET_LUID luid;
 
   int err = ConvertInterfaceIndexToLuid(index, &luid);
@@ -578,37 +579,25 @@ void *moonbitlang_async_if_indextoname(HANDLE sock, uint32_t index) {
     return 0;
   }
 
-  int len = wcslen(buf);
-  moonbit_string_t str = moonbit_make_string_raw(len);
-  memcpy(str, buf, len * sizeof(WCHAR));
-
-  return str;
+  return buf;
 
 #elif defined(__linux__)
 
-  struct ifreq ifreq;
+  static struct ifreq ifreq;
   ifreq.ifr_ifindex = index;
 
   if (ioctl(sock, SIOCGIFNAME, &ifreq) < 0)
     return 0;
 
-  int len = strlen(ifreq.ifr_name);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, ifreq.ifr_name, len);
-
-  return str;
+  return ifreq.ifr_name;
 
 #else
 
-  char buf[IF_NAMESIZE];
+  static char buf[IF_NAMESIZE];
   if (!if_indextoname(index, buf))
     return 0;
 
-  int len = strlen(buf);
-  moonbit_bytes_t str = moonbit_make_bytes_raw(len);
-  memcpy(str, buf, len);
-
-  return str;
+  return buf;
 
 #endif
 }

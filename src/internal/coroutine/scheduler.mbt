@@ -16,16 +16,16 @@
 priv struct Scheduler {
   mut coro_id : Int
   mut curr_coro : Coroutine?
-  mut blocking : Int
   run_later : @deque.Deque[Coroutine]
+  all_coros : Set[Coroutine]
 }
 
 ///|
 let scheduler : Scheduler = {
   coro_id: 0,
   curr_coro: None,
-  blocking: 0,
-  run_later: @deque.Deque([]),
+  run_later: Deque([]),
+  all_coros: Set([]),
 }
 
 ///|
@@ -39,11 +39,6 @@ pub fn has_immediately_ready_task() -> Bool {
 }
 
 ///|
-pub fn no_more_work() -> Bool {
-  scheduler.blocking == 0 && scheduler.run_later.is_empty()
-}
-
-///|
 /// Perform a new rousd of scheduling by running all ready coroutines.
 /// While running these coroutines, new coroutines may get waken or spawned,
 /// these new coroutines will *not* get executed in this run of `reschedule`.
@@ -54,15 +49,20 @@ pub fn reschedule() -> Unit {
   for _ in 0..<n {
     guard scheduler.run_later.pop_front() is Some(coro) else { break }
     coro.ready = false
-    guard coro.state is Suspend(ok_cont~, err_cont~) else {  }
+    guard coro.state is Suspend(cont) else {  }
     coro.state = Running
     let last_coro = scheduler.curr_coro
     scheduler.curr_coro = Some(coro)
     if coro.cancelled && !coro.shielded {
-      err_cont(Cancelled)
+      cont(Cancelled)
     } else {
-      ok_cont(())
+      cont(Continue)
     }
     scheduler.curr_coro = last_coro
   }
+}
+
+///|
+pub fn all_coroutines() -> Set[Coroutine] {
+  scheduler.all_coros
 }

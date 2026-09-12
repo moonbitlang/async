@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(any(target="js", target="wasm-gc"))
 fn init {
   ignore(@async.sleep)
   ignore(@aqueue.Unbounded)
   ignore(@socket.unimplemented)
   ignore(@process.unimplemented)
+  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }

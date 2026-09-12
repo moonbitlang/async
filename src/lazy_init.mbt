@@ -30,6 +30,7 @@ struct Lazy[X] {
   worker : async () -> X
   waiters : Set[@coroutine.Coroutine]
   mut state : LazyValueState[X]
+  loc : SourceLoc
 }
 
 ///|
@@ -46,16 +47,12 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
     Fail(err) => raise err
     Running(_) => ()
     Uninitialized => {
-      let coro = @coroutine.spawn(() => {
-        try (self.worker)() catch {
-          err =>
-            if err is @coroutine.Cancelled && is_being_cancelled() {
-              self.state = Uninitialized
-            } else {
-              self.state = Fail(err)
-            }
+      let coro = @coroutine.spawn(loc=self.loc, () => {
+        try @coroutine.handle_cancellation(self.worker) catch {
+          err => self.state = Fail(err)
         } noraise {
-          ret => self.state = Done(ret)
+          None => self.state = Uninitialized
+          Some(ret) => self.state = Done(ret)
         }
         for waiter in self.waiters {
           waiter.wake()
@@ -66,16 +63,13 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
   }
   let curr_coro = @coroutine.current_coroutine()
   self.waiters.add(curr_coro)
-  @coroutine.suspend() catch {
-    err => {
-      self.waiters.remove(curr_coro)
-      if self.waiters.is_empty() && self.state is Running(coro) {
-        coro.cancel()
-      }
-      raise err
+  defer {
+    self.waiters.remove(curr_coro)
+    if self.waiters.is_empty() && self.state is Running(coro) {
+      coro.cancel()
     }
   }
-  self.waiters.remove(curr_coro)
+  @coroutine.suspend()
   match self.state {
     Done(result) => result
     Fail(err) => raise err
@@ -97,6 +91,7 @@ pub async fn[X] Lazy::wait(self : Lazy[X]) -> X {
 /// always complete immediately.
 #as_free_fn(lazy_init, deprecated="use `@async.Lazy(..)` instead")
 #alias(new, deprecated)
-pub fn[X] Lazy::Lazy(f : async () -> X) -> Lazy[X] {
-  { worker: f, waiters: @set.Set([]), state: Uninitialized }
+#callsite(autofill(loc))
+pub fn[X] Lazy::Lazy(f : async () -> X, loc~ : SourceLoc) -> Lazy[X] {
+  { worker: f, waiters: Set([]), state: Uninitialized, loc, }
 }

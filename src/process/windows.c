@@ -19,18 +19,127 @@
 #include <windows.h>
 #include <moonbit.h>
 
-moonbit_string_t moonbitlang_async_get_curr_env() {
-  LPWCH env_block = GetEnvironmentStringsW();
-  if (!env_block)
-    return moonbit_make_string(0, 0);
+MOONBIT_FFI_EXPORT
+LPWCH moonbitlang_async_get_curr_env() {
+  return GetEnvironmentStringsW();
+}
 
-  int len = 1;
-  while (env_block[len - 1] != 0 || env_block[len] != 0) {
-    ++len;
+// return the size of the env block, in number of `WCHAR`,
+// excluding the final trailing NUL
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_env_block_length(LPWCH env_block) {
+  if (!env_block)
+    return 0;
+
+  LPWCH cursor = env_block;
+  int len = 0;
+  while (*cursor) {
+    int block_len = 0;
+    while (cursor[block_len])
+      ++block_len;
+
+    // skip pseudo entries
+    if (*cursor != L'=')
+      len += block_len + 1;
+
+    cursor += block_len + 1;
   }
-  moonbit_string_t result = moonbit_make_string_raw(len);
-  memcpy(result, env_block, len * sizeof(WCHAR));
+  return len;
+}
+
+MOONBIT_FFI_EXPORT
+LPWCH moonbitlang_async_allocate_env_block(int32_t size) {
+  /* In theory, an empty environment block should be represented as L"\0"
+     (i.e. single NUL terminator for block termination).
+     However, according to https://nullprogram.com/blog/2023/08/23/,
+     `CreateProcessW` requires the second character being readable in this case
+     (the content of that character does not matter).
+     So always allocate at least two characters here. */
+  size = size == 0 ? 1 : size;
+  LPWCH env_block = (LPWCH)malloc((size + 1) * sizeof(WCHAR));
+  return env_block;
+}
+
+struct EnvEntry {
+  int32_t len;
+  int32_t key_len;
+};
+
+static inline
+struct EnvEntry resolve_env_entry(LPWCH block) {
+  struct EnvEntry result = { 0, -1 };
+  WCHAR c;
+  while (c = block[result.len]) {
+    if (result.key_len < 0 && c == L'=')
+      result.key_len = result.len;
+    ++result.len;
+  }
   return result;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_write_env_block(LPWCH dst, LPWCH env_block, int32_t base_offset) {
+  if (!env_block) {
+    dst[base_offset] = 0;
+    return;
+  }
+
+  LPWCH cursor = env_block;
+  int dst_offset = base_offset;
+  while (*cursor) {
+    struct EnvEntry entry = resolve_env_entry(cursor);
+
+    // skip pseudo entries
+    if (entry.key_len <= 0)
+      goto skip_entry;
+
+    // check if an duplicated entry already exists
+    for (LPWCH cursor2 = dst; cursor2 - dst < base_offset;) {
+      struct EnvEntry existing = resolve_env_entry(cursor2);
+      if (
+        entry.key_len == existing.key_len
+        && CompareStringOrdinal(cursor2, existing.key_len, cursor, entry.key_len, TRUE)
+           == CSTR_EQUAL
+      ) {
+        goto skip_entry;
+      }
+
+      cursor2 += existing.len + 1;
+    }
+
+    memcpy(dst + dst_offset, cursor, (entry.len + 1) * sizeof(WCHAR));
+    dst_offset += entry.len + 1;
+
+  skip_entry:
+    cursor += entry.len + 1;
+  }
+  dst[dst_offset] = 0;
+  FreeEnvironmentStringsW(env_block);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_env_block_add_entry(
+  LPWCH env_block,
+  int32_t offset,
+  moonbit_string_t key,
+  int32_t key_len,
+  moonbit_string_t value,
+  int32_t value_len
+) {
+  memcpy(env_block + offset, key, key_len * sizeof(WCHAR));
+  env_block[offset + key_len] = L'=';
+  memcpy(env_block + offset + key_len + 1, value, value_len * sizeof(WCHAR));
+  env_block[offset + key_len + 1 + value_len] = 0;
+
+  // handle `NUL` in key or value to prevent injection
+  int32_t entry_end = offset;
+  while (env_block[entry_end])
+    ++entry_end;
+  // In case this is the last entry we ever written,
+  // write the final NUL terminator.
+  // If subsequent entry exists, they will overwrite the NUL here.
+  env_block[entry_end + 1] = 0;
+  return entry_end - offset < key_len ? offset : entry_end + 1;
 }
 
 void moonbitlang_async_terminate_process(DWORD pid, int signal) {

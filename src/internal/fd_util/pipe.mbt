@@ -28,22 +28,16 @@ pub fn pipe(
   if 0 != pipe_ffi(fds) {
     @os_error.check_errno(context)
   }
-  guard fds is [r, w]
-  try {
-    set_cloexec(r, context~)
-    set_cloexec(w, context~)
-    if read_end_is_async {
-      set_nonblocking(r, context~)
-    }
-    if write_end_is_async {
-      set_nonblocking(w, context~)
-    }
-  } catch {
-    err => {
-      close(r, kind=Pipe, context~)
-      close(w, kind=Pipe, context~)
-      raise err
-    }
+  guard! fds is [r, w]
+  errdefer close(r, kind=Pipe, context~)
+  errdefer close(w, kind=Pipe, context~)
+  set_cloexec(r, context~)
+  set_cloexec(w, context~)
+  if read_end_is_async {
+    set_nonblocking(r, context~)
+  }
+  if write_end_is_async {
+    set_nonblocking(w, context~)
   }
   (r, w)
 }
@@ -73,6 +67,15 @@ extern "C" fn create_named_pipe_client(
 ) -> Fd = "moonbitlang_async_create_named_pipe_client"
 
 ///|
+/// This should only be used for testing
+#cfg(platform="windows")
+pub extern "C" fn connect_named_pipe_server_sync(server : Fd) -> Unit = "moonbitlang_async_connect_named_pipe_server"
+
+///|
+#cfg(platform="windows")
+pub extern "C" fn disconnect_named_pipe_server(server : Fd) -> Unit = "moonbitlang_async_disconnect_named_pipe_server"
+
+///|
 #cfg(platform="windows")
 let pipe_id : Ref[UInt64] = Ref(0)
 
@@ -91,16 +94,10 @@ pub fn pipe(
   if !fd_is_valid(w) {
     @os_error.check_errno(context)
   }
-  try {
-    let r = create_named_pipe_client(name, is_async=read_end_is_async)
-    if !fd_is_valid(r) {
-      @os_error.check_errno(context)
-    }
-    (r, w)
-  } catch {
-    err => {
-      close(w, kind=Pipe, context~)
-      raise err
-    }
+  errdefer close(w, kind=Pipe, context~)
+  let r = create_named_pipe_client(name, is_async=read_end_is_async)
+  if !fd_is_valid(r) {
+    @os_error.check_errno(context)
   }
+  (r, w)
 }

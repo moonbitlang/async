@@ -214,7 +214,7 @@ pub fn Decoder::write_partial_data(
   input_offset? : Int = 0,
   input_len? : Int = input.length() - input_offset,
 ) -> Unit {
-  guard input_len < self.minimum_input_size()
+  guard! input_len < self.minimum_input_size()
   self.ensure_pending_capacity(self.raw_minimum_input_size())
   self.copy_to_pending(input, input_offset, input_len)
 }
@@ -401,7 +401,7 @@ fn Decoder::minimum_huffman_input_size(self : Decoder) -> Int {
 
 ///|
 fn Decoder::append_history(self : Decoder, byte : Byte) -> Unit {
-  self.history[self.history_pos] = byte
+  self.history.unsafe_set(self.history_pos, byte)
   self.history_pos = (self.history_pos + 1) & 0x7fff
   if self.history_len < 32768 {
     self.history_len += 1
@@ -417,19 +417,11 @@ fn Decoder::append_history_bytes(
 ) -> Unit {
   guard len > 0 else { return }
   let first_len = @cmp.minimum(len, 32768 - self.history_pos)
-  src.blit_to(
-    self.history,
-    src_offset~,
-    dst_offset=self.history_pos,
-    len=first_len,
-  )
+  // Callers provide a valid source range; `first_len` is capped at the end of
+  // the history ring.
+  self.history.unsafe_blit(self.history_pos, src, src_offset, first_len)
   if first_len < len {
-    src.blit_to(
-      self.history,
-      src_offset=src_offset + first_len,
-      dst_offset=0,
-      len=len - first_len,
-    )
+    self.history.unsafe_blit(0, src, src_offset + first_len, len - first_len)
   }
   self.history_pos = (self.history_pos + len) & 0x7fff
   self.history_len = @cmp.minimum(32768, self.history_len + len)
@@ -455,14 +447,21 @@ fn Decoder::write_output_byte(
   produced : Int,
   byte : Byte,
 ) -> Int {
-  output[output_offset + produced] = byte
-  self.trailer_state.update(
-    output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-    produced +
-    1],
-  )
+  output.unsafe_set(output_offset + produced, byte)
   self.append_history(byte)
   produced + 1
+}
+
+///|
+fn Decoder::update_trailer_output(
+  self : Decoder,
+  output : FixedArray[Byte],
+  output_offset : Int,
+  end : Int,
+) -> Unit {
+  self.trailer_state.update(
+    output.unsafe_reinterpret_as_bytes()[output_offset:output_offset + end],
+  )
 }
 
 ///|
@@ -472,7 +471,7 @@ fn Decoder::finish_stored_header(
   is_final~ : Bool,
 ) -> Unit raise {
   let start = input.index
-  guard input.input[start:] is [u16le(len), u16le(nlen), ..]
+  guard! input.input[start:] is [u16le(len), u16le(nlen), ..]
   guard (len ^ nlen) == 0xffff else {
     raise InvalidBlock("stored block length checksum mismatch")
   }
@@ -499,7 +498,7 @@ fn DecodeInput::read_aligned_byte(self : DecodeInput) -> Byte {
     self.bit_count -= 8
     byte
   } else {
-    let byte = self.input[self.index]
+    let byte = self.input.unsafe_get(self.index)
     self.index += 1
     byte
   }
@@ -534,29 +533,22 @@ fn Decoder::finish_trailer(self : Decoder, input : DecodeInput) -> Unit raise {
 }
 
 ///|
-fn DecodeInput::ensure_bits(
-  self : DecodeInput,
-  count : Int,
-  allow_eof~ : Bool,
-) -> (Int, Bool) raise {
+fn DecodeInput::ensure_bits(self : DecodeInput, count : Int) -> Bool {
   while self.bit_count < count {
     if self.index >= self.end {
-      guard allow_eof else {
-        raise InvalidBlock("unexpected EOF in compressed data")
-      }
-      return (self.index, false)
+      return false
     }
     self.bit_buffer = self.bit_buffer |
-      (self.input[self.index].to_uint() << self.bit_count)
+      (self.input.unsafe_get(self.index).to_uint() << self.bit_count)
     self.bit_count += 8
     self.index += 1
   }
-  (self.index, true)
+  true
 }
 
 ///|
 fn DecodeInput::read_bits(self : DecodeInput, count : Int) -> UInt raise {
-  guard self.ensure_bits(count, allow_eof=true) is (_, true) else {
+  guard self.ensure_bits(count) else {
     raise NeedMoreInput("unexpected EOF in compressed data")
   }
   let mask = if count == 32 { 0xffffffffU } else { (1U << count) - 1U }
@@ -607,23 +599,18 @@ fn Decoder::continue_copy(
       @cmp.minimum(max_len - written, self.copy_remaining),
       @cmp.minimum(self.copy_distance, 32768 - src_index),
     )
-    self.history.blit_to(
-      output,
-      src_offset=src_index,
-      dst_offset=output_offset + produced + written,
-      len=chunk,
+    // `src_index` and `chunk` are capped to the history ring, while the
+    // destination is capped to the caller's available output.
+    output.unsafe_blit(
+      output_offset + produced + written,
+      self.history,
+      src_index,
+      chunk,
     )
     self.append_history_bytes(output, output_offset + produced + written, chunk)
     self.copy_remaining -= chunk
     continue written + chunk
   } nobreak {
-    if written > 0 {
-      self.trailer_state.update(
-        output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-        produced +
-        written],
-      )
-    }
     if self.copy_remaining == 0 {
       self.copy_distance = 0
     }
@@ -637,9 +624,11 @@ fn DecodeInput::decode_symbol(
   tree : HuffmanTree,
 ) -> Int raise {
   for ;; {
-    let (_, has_more) = self.ensure_bits(tree.max_bits, allow_eof=true)
+    let has_more = self.ensure_bits(tree.max_bits)
     let lookup = (self.bit_buffer & ((1U << tree.max_bits) - 1U)).reinterpret_as_int()
-    let packed = tree.table[lookup]
+    // `table` has exactly `1 << max_bits` entries and `lookup` is masked to
+    // that range.
+    let packed = tree.table.unsafe_get(lookup)
     let bit_len = packed & 0x1f
     if bit_len > 0 && bit_len <= self.bit_count {
       self.bit_buffer = self.bit_buffer >> bit_len
@@ -661,12 +650,13 @@ fn DecodeInput::read_length(self : DecodeInput, symbol : Int) -> Int raise {
   guard index >= 0 && index < length_bases.length() else {
     raise InvalidBlock("invalid literal/length code")
   }
-  let extra_bits = length_extras[index]
+  // The range guard above covers both parallel length tables.
+  let extra_bits = length_extras.unsafe_get(index)
   if extra_bits == 0 {
-    length_bases[index]
+    length_bases.unsafe_get(index)
   } else {
     let extra = self.read_bits(extra_bits)
-    length_bases[index] + extra.reinterpret_as_int()
+    length_bases.unsafe_get(index) + extra.reinterpret_as_int()
   }
 }
 
@@ -675,12 +665,13 @@ fn DecodeInput::read_distance(self : DecodeInput, symbol : Int) -> Int raise {
   guard symbol >= 0 && symbol < distance_bases.length() else {
     raise InvalidBlock("invalid distance code")
   }
-  let extra_bits = distance_extras[symbol]
+  // The range guard above covers both parallel distance tables.
+  let extra_bits = distance_extras.unsafe_get(symbol)
   if extra_bits == 0 {
-    distance_bases[symbol]
+    distance_bases.unsafe_get(symbol)
   } else {
     let extra = self.read_bits(extra_bits)
-    distance_bases[symbol] + extra.reinterpret_as_int()
+    distance_bases.unsafe_get(symbol) + extra.reinterpret_as_int()
   }
 }
 
@@ -742,11 +733,6 @@ fn Decoder::read_stored_from_input(
     len,
   )
   self.append_history_bytes(output, output_offset + produced, len)
-  self.trailer_state.update(
-    output.unsafe_reinterpret_as_bytes()[output_offset + produced:output_offset +
-    produced +
-    len],
-  )
   let remaining = remaining - len
   if remaining == 0 {
     if is_final {
@@ -931,10 +917,11 @@ fn Decoder::write_direct(
         if input_state.end - input_state.index < self.raw_minimum_input_size() {
           break
         }
-        self.finish_trailer(input_state)
-        if self.mode is Trailer || input_state.index >= input_state.end {
-          break
+        if produced > 0 {
+          self.update_trailer_output(output, output_offset, produced)
         }
+        self.finish_trailer(input_state)
+        return (input_state.index - input_offset, produced)
       }
       Finished => break
       Blocks => {
@@ -944,6 +931,9 @@ fn Decoder::write_direct(
         self.start_next_block(input_state)
       }
     }
+  }
+  if produced > 0 {
+    self.update_trailer_output(output, output_offset, produced)
   }
   (input_state.index - input_offset, produced)
 }
@@ -966,6 +956,10 @@ pub fn Decoder::write(
   output_offset? : Int = 0,
   output_len? : Int = output.length() - output_offset,
 ) -> (Int, Int) raise {
+  guard! input_offset >= 0 && input_offset <= input.length()
+  guard! input_len >= 0 && input_len <= input.length() - input_offset
+  guard! output_offset >= 0 && output_offset <= output.length()
+  guard! output_len >= 0 && output_len <= output.length() - output_offset
   if self.pending_len == 0 {
     return self.write_direct(
       input,

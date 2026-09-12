@@ -34,7 +34,7 @@ pub fn[W] BufferedWriter::new(
   writer : W,
   size? : Int = 1024,
 ) -> BufferedWriter[W] {
-  { writer, buf: FixedArray::make(size, 0), len: 0 }
+  { writer, buf: FixedArray::make(size, 0), len: 0, }
 }
 
 ///|
@@ -55,7 +55,7 @@ pub async fn[W : Writer] BufferedWriter::flush(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with write_once(
+pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_once(
   self,
   buf,
   offset~,
@@ -71,7 +71,7 @@ pub impl[W : Writer] Writer for BufferedWriter[W] with write_once(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with write_reader(
+pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_reader(
   self,
   reader,
 ) {

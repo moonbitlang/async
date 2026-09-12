@@ -29,35 +29,36 @@ extern "C" fn init_bio_method(
 ) = "moonbitlang_async_init_bio_method"
 
 ///|
+/// Lazily load OpenSSL on first use, so a program that never touches TLS pays
+/// nothing. Every raw-symbol FFI wrapper calls this first; all other FFI runs on
+/// handles those produce, so it is transitively covered. The outcome is cached →
+/// success makes repeat calls free, failure re-raises the same error immediately.
 #cfg(not(platform="windows"))
-let openssl_loaded : Ref[Bool] = Ref(false)
-
-///|
-#cfg(not(platform="windows"))
-fn load_openssl() -> Unit {
-  if openssl_loaded.val {
-    return
-  }
-  openssl_loaded.val = true
+let load_openssl_result : Lazy[Result[Unit, Error]] = Lazy(() => {
   let major = Ref(0)
   let minor = Ref(0)
   let fix = Ref(0)
   match load_openssl_ffi(major, minor, fix) {
     0 => ()
-    1 => abort("failed to load OpenSSL")
-    2 => abort("failed to get OpenSSL version")
+    1 => return Err(TlsError("failed to load OpenSSL"))
+    2 => return Err(TlsError("failed to get OpenSSL version"))
     3 =>
-      abort("unsupported OpenSSL version \{major.val}.\{minor.val}.\{fix.val}")
-    4 => abort("failed to load some OpenSSL function")
+      return Err(
+        TlsError(
+          "unsupported OpenSSL version \{major.val}.\{minor.val}.\{fix.val}",
+        ),
+      )
+    4 => return Err(TlsError("failed to load some OpenSSL function"))
     _ => panic()
   }
-}
-
-///|
-#cfg(not(platform="windows"))
-fn init {
-  load_openssl()
   init_bio_method((bio, dst, len) => bio.read(dst, len)) <| ((bio, src, len) => {
     bio.write(src, len)
   })
+  Ok(())
+})
+
+///|
+#cfg(not(platform="windows"))
+fn load_openssl() -> Unit raise {
+  load_openssl_result.force().unwrap_or_error()
 }

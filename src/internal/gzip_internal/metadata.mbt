@@ -36,7 +36,7 @@ fn Header::new(
   extra_flags? : Byte = b'\x00',
   operating_system? : Byte = b'\xff',
 ) -> Header {
-  { mtime, extra_flags, operating_system }
+  { mtime, extra_flags, operating_system, }
 }
 
 ///|
@@ -72,7 +72,7 @@ fn Header::from_bytes(buf : BytesView) -> Header raise {
   guard flags is b'\x00' else {
     raise InvalidHeader("gzip optional header fields are not supported")
   }
-  { mtime, extra_flags, operating_system }
+  { mtime, extra_flags, operating_system, }
 }
 
 ///|
@@ -83,7 +83,7 @@ priv struct Trailer {
 
 ///|
 fn Trailer::new(crc32 : UInt, input_size : UInt) -> Trailer {
-  { crc32, input_size }
+  { crc32, input_size, }
 }
 
 ///|
@@ -105,7 +105,7 @@ fn TrailerState::new(
   crc32? : UInt = 0xffffffffU,
   input_size? : UInt = 0U,
 ) -> TrailerState {
-  { crc32, input_size }
+  { crc32, input_size, }
 }
 
 ///|
@@ -116,5 +116,5 @@ fn TrailerState::update(self : TrailerState, chunk : BytesView) -> Unit {
 
 ///|
 fn TrailerState::snapshot(self : TrailerState) -> Trailer {
-  { crc32: self.crc32 ^ 0xffffffffU, input_size: self.input_size }
+  { crc32: self.crc32 ^ 0xffffffffU, input_size: self.input_size, }
 }

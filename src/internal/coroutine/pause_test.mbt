@@ -14,7 +14,7 @@
 
 ///|
 test "coroutine ping-pong" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let coro = @coroutine.spawn(() => {
     @async.with_task_group(group => {
       group.spawn_bg() <| () => {
@@ -33,10 +33,10 @@ test "coroutine ping-pong" {
       }
     })
   })
-  while !@coroutine.no_more_work() {
+  while @coroutine.has_immediately_ready_task() {
     @coroutine.reschedule()
   }
-  coro.unwrap()
+  guard! coro.unwrap() is Continue
   inspect(
     log.to_string(),
     content=(

@@ -39,51 +39,38 @@ pub suberror ProxyError {
 ///|
 async fn Client::connect(
   host : StringView,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   protocol? : Protocol = Https,
   proxy? : Client,
   trust? : @tls.TrustedRoot = SystemRoot,
 ) -> Client {
   let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
-    try {
-      let response = proxy
-        ..request(Connect, "\{hostname}:\{port}")
-        .end_request()
-      guard response.code is (200..<300) else { raise ProxyError(response) }
-      proxy..skip_response_body().enter_passthrough_mode()
-    } catch {
-      err => {
-        proxy.close()
-        raise err
-      }
-    }
+    errdefer proxy.close()
+    let response = proxy..request(Connect, "\{hostname}:\{port}").end_request()
+    guard response.code is (200..<300) else { raise ProxyError(response) }
+    proxy..skip_response_body().enter_passthrough_mode()
     Proxy(proxy)
   } else {
     Plain(@socket.Tcp::connect_to_host(hostname, port~))
   }
+  errdefer transport.close()
   headers["Host"] = host.to_owned()
+  // TODO: case insensitive check
+  if !headers.contains("User-Agent") {
+    headers["User-Agent"] = "moonbit-http-client/1.1"
+  }
   let (tls, reader, sender) = match (protocol, transport) {
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~) catch {
-        err => {
-          transport.close()
-          raise err
-        }
-      }
+      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~) catch {
-        err => {
-          transport.close()
-          raise err
-        }
-      }
+      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }
@@ -129,7 +116,7 @@ async fn Client::connect(
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn Client::Client(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
   verify? : Bool = true,
   trust? : @tls.TrustedRoot,
@@ -164,13 +151,28 @@ pub fn Client::close(self : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   self.reader._direct_read(buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Reader for Client with _get_internal_buffer(self) {
+pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
   self.reader._get_internal_buffer()
+}
+
+///|
+pub extend Client with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
 }
 
 ///|
@@ -180,16 +182,19 @@ pub impl @io.Reader for Client with _get_internal_buffer(self) {
 ///
 /// Writing to `@http.Client` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
-pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  guard !(self.sender.mode is SendingHeader)
+pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
 }
 
 ///|
-pub impl @io.Writer for Client with write_reader(self, reader) {
-  guard !(self.sender.mode is SendingHeader)
+pub impl @io.Writer for Client with fn write_reader(self, reader) {
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
+
+///|
+pub extend Client with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Flush buffered data in the request body being sent, if any.
@@ -237,6 +242,11 @@ pub async fn Client::end_request(self : Client) -> Response {
 /// - Host
 /// - Transfer-Encoding
 ///
+/// The following headers can only be set globally for each client on initialization,
+/// and must not be set on a per-request basis:
+///
+/// - User-Agent
+///
 /// If `Content-Length` is present in `extra_headers`,
 /// it should be the total length of the request body.
 /// The request body can still be sent incrementally,
@@ -246,7 +256,7 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Unit {
   self.auto_decompress = self.sender.send_request(meth, path, extra_headers~)
   self.request_method = Some(meth)
@@ -261,10 +271,11 @@ pub async fn Client::skip_response_body(self : Client) -> Unit {
 
 ///|
 /// Perform a `GET` request to the server, see `Client::request` for more details.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -280,7 +291,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -291,7 +302,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }
@@ -310,7 +321,7 @@ pub async fn Client::post(
 /// (i.e. not in the middle of sending a request).
 /// Unread data from the body of the last response will be discarded.
 pub async fn Client::enter_passthrough_mode(self : Client) -> Unit {
-  guard self.sender.mode is SendingHeader
+  guard! self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
 }

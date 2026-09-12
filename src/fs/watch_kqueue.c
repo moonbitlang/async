@@ -1,0 +1,131 @@
+/*
+ * Copyright 2025 International Digital Economy Academy
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef _WIN32
+
+#ifdef __MACH__
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/event.h>
+#endif
+
+#include "moonbit.h"
+_Noreturn void moonbit_panic();
+
+#ifndef __MACH__
+struct kevent;
+#endif
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_kqueue_watcher_create() {
+#ifdef __MACH__
+
+  int kq = kqueue();
+  if (kq < 0)
+    return -1;
+
+  int flags = fcntl(kq, F_GETFD);
+  if (flags < 0)
+    goto on_error;
+
+  if (!(flags & FD_CLOEXEC) && fcntl(kq, F_SETFD, flags | FD_CLOEXEC))
+    goto on_error;
+
+  return kq;
+
+on_error:
+  close(kq);
+  return -1;
+
+#else
+
+  moonbit_panic();
+
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_kqueue_watcher_buffer_size() {
+#ifdef __MACH__
+  return 1024 * sizeof(struct kevent);
+#else
+  moonbit_panic();
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_kqueue_watcher_add_file(int kq, int fd, int32_t is_dir) {
+#ifdef __MACH__
+  struct kevent event;
+  int events_to_watch = NOTE_WRITE;
+  EV_SET(
+    &event,
+    fd,
+    EVFILT_VNODE,
+    EV_ADD | EV_CLEAR,
+    events_to_watch,
+    0,
+    0
+  );
+
+  return kevent(kq, &event, 1, 0, 0, 0);
+#else
+  moonbit_panic();
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_kqueue_watcher_remove_file(int kq, int fd) {
+#ifdef __MACH__
+  struct kevent event;
+  EV_SET(&event, fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
+  return kevent(kq, &event, 1, 0, 0, 0);
+#else
+  moonbit_panic();
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_kqueue_watcher_fetch_event(int kq, void *buf, int32_t buf_len) {
+#ifdef __MACH__
+  int buffer_size = buf_len / sizeof(struct kevent);
+  struct timespec timeout = { 0, 0 };
+  return kevent(kq, 0, 0, buf, buffer_size, &timeout);
+#else
+  moonbit_panic();
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_kqueue_watcher_event_get_fd(struct kevent *events, int32_t index) {
+#ifdef __MACH__
+  return events[index].ident;
+#else
+  moonbit_panic();
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_kqueue_watcher_event_has_modify(struct kevent *events, int32_t index) {
+#ifdef __MACH__
+  return (events[index].fflags & (NOTE_WRITE | NOTE_EXTEND)) != 0;
+#else
+  moonbit_panic();
+#endif
+}
+
+#endif

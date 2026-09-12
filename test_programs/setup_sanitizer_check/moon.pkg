@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")

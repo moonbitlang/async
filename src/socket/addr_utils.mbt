@@ -248,7 +248,7 @@ fn parse_port(port_str : StringView) -> Int raise InvalidAddr {
 }
 
 ///|
-fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
+fn write_ipv6_str(addr : BytesView, logger : &Logger) -> Unit {
   let mut longest_zero_group = None
   fn add_zero_group(start, end) {
     if end > start {
@@ -294,8 +294,7 @@ fn write_ipv6_str(addr : @c_buffer.Buffer, logger : &Logger) -> Unit {
     }
   }
   if is_v4_mapped {
-    logger
-      <+
+    logger <+
       "\{addr[12].to_int()}.\{addr[13].to_int()}.\{addr[14].to_int()}.\{addr[15].to_int()}"
   }
 }

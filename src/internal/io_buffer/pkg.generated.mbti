@@ -20,4 +20,3 @@ pub fn Buffer::new(Int) -> Self
 // Type aliases
 
 // Traits
-

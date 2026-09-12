@@ -17,9 +17,9 @@
 pub impl Show for TlsError
 
 ///|
-pub impl Show for TlsError with output(self, logger) {
+pub impl Show for TlsError with fn output(self, logger) {
   match self {
-    TlsError(msg) => logger <+ "TlsError(\{to_repr(msg)})"
+    TlsError(msg) => logger <+ "TlsError(\{Repr(msg)})"
   }
 }
 
@@ -28,6 +28,6 @@ pub impl Show for TlsError with output(self, logger) {
 pub impl Show for ConnectionClosed
 
 ///|
-pub impl Show for ConnectionClosed with output(_self, logger) {
+pub impl Show for ConnectionClosed with fn output(_self, logger) {
   logger <+ "ConnectionClosed"
 }

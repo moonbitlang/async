@@ -7,13 +7,15 @@ import {
 import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
+  "moonbitlang/async/internal/test_util",
 } for "test"
 
 options(
   targets: {
-    "ffi.mbt": [ "native" ],
-    "pipe.mbt": [ "native" ],
-    "read_exactly_test.mbt": [ "native" ],
-    "reader_closed_test.mbt": [ "native" ],
+    "pipe.mbt": [ "native", "wasm" ],
+    "read_exactly_test.mbt": [ "native", "wasm" ],
+    "reader_closed_test.mbt": [ "native", "wasm" ],
+    "unimplemented.mbt": [ "js", "wasm-gc" ],
+    "unimplemented_test.mbt": [ "js", "wasm-gc" ],
   },
 )

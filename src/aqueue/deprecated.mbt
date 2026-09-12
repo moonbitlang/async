@@ -17,6 +17,6 @@
 pub impl Show for QueueAlreadyClosed
 
 ///|
-pub impl Show for QueueAlreadyClosed with output(_self, logger) {
+pub impl Show for QueueAlreadyClosed with fn output(_self, logger) {
   logger <+ "QueueAlreadyClosed"
 }

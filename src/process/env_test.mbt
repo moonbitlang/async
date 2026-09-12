@@ -61,3 +61,51 @@ async test "set_env no inherit" {
     )
   }
 }
+
+///|
+async test "set_env override" {
+  let name = "VAR_TO_OVERRIDE"
+  @env.set_env_var(name, "old_value")
+  // On Windows, environment variables are case-insensitive
+  let env_var = if is_windows { "$env:\{name.to_lower()}" } else { "$\{name}" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var}"],
+    extra_env=Map([(name, "overwritten")]),
+  )
+  inspect(
+    output.text().trim_end(chars="\r\n"),
+    content=(
+      #|overwritten
+    ),
+  )
+}
+
+///|
+async test "set_env injection key" {
+  let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var}"],
+    extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
+  )
+  inspect(output.text().trim_end(chars="\r\n"))
+  let env_var2 = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var2}"],
+    extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
+  )
+  inspect(output.text().trim_end(chars="\r\n"))
+}
+
+///|
+async test "set_env injection value" {
+  let env_var = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
+  let (_, output) = @process.collect_stdout(
+    shell,
+    ["-c", "\{write_stdout} \{env_var}"],
+    extra_env={ "MAGIC_VAR": "abc\u{0000}MAGIC_VAR2=def" },
+  )
+  inspect(output.text().trim_end(chars="\r\n"))
+}

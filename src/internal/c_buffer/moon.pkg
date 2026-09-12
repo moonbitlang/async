@@ -1,4 +1,4 @@
 options(
   "native-stub": [ "stub.c" ],
-  targets: { "c_buffer.mbt": [ "native" ] },
+  targets: { "c_buffer.mbt": [ "native" ], "c_buffer.wasm.mbt": [ "wasm" ] },
 )

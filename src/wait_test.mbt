@@ -14,25 +14,21 @@
 
 ///|
 async test "wait basic" {
-  let buf = StringBuilder::new()
-  buf.write_string(
-    @debug.to_string(
-      try? @async.with_task_group(root => {
-        root.spawn_bg() <| () => {
-          @async.sleep(200)
-          buf <+ "200ms tick\n"
-          @async.sleep(200)
-          buf <+ "400ms tick\n"
-        }
-        let task = root.spawn(no_wait=true, () => {
-          @async.sleep(300)
-          buf <+ "task finished\n"
-        })
-        task.wait()
-        buf <+ "main task exit\n"
-      }),
-    ),
-  )
+  let buf = StringBuilder()
+  @async.with_task_group(root => {
+    root.spawn_bg() <| () => {
+      @async.sleep(200)
+      buf <+ "200ms tick\n"
+      @async.sleep(200)
+      buf <+ "400ms tick\n"
+    }
+    let task = root.spawn(no_wait=true, () => {
+      @async.sleep(300)
+      buf <+ "task finished\n"
+    })
+    task.wait()
+    buf <+ "main task exit\n"
+  })
   inspect(
     buf.to_string(),
     content=(
@@ -40,25 +36,23 @@ async test "wait basic" {
       #|task finished
       #|main task exit
       #|400ms tick
-      #|Ok(())
+      #|
     ),
   )
 }
 
 ///|
 async test "wait cancelled" {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   @async.with_task_group(root => {
     let task = root.spawn(() => {
       @async.sleep(1000)
       buf <+ "task finished\n"
     })
     root.spawn_bg() <| () => {
-      task.wait() catch {
-        err => {
-          buf.write_string("`wait` cancelled with \{err}\n")
-          raise err
-        }
+      match @async.handle_cancellation(() => task.wait()) {
+        None => buf.write_string("`wait` cancelled\n")
+        Some(_) => ()
       }
     }
     @async.sleep(20)
@@ -69,7 +63,7 @@ async test "wait cancelled" {
   inspect(
     buf.to_string(),
     content=(
-      #|`wait` cancelled with Cancelled
+      #|`wait` cancelled
       #|Err
     ),
   )
@@ -77,7 +71,7 @@ async test "wait cancelled" {
 
 ///|
 async test "try_wait" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let task = root.spawn(no_wait=true, () => {
       @async.sleep(450)

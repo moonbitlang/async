@@ -50,14 +50,14 @@ async fn[R : @io.Reader] Decoder::read_more_input(self : Decoder[R]) -> Unit {
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with _get_internal_buffer(
+pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _get_internal_buffer(
   self,
 ) {
   self.read_buf
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with _direct_read(
+pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
   self,
   dst,
   offset~,

@@ -20,13 +20,25 @@
 #include <moonbit.h>
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_blit_to_c(char *dst, char *src, int offset, int len) {
-  memcpy(dst, src + offset, len);
+void moonbitlang_async_blit_to_c(
+  char *dst,
+  int32_t dst_offset,
+  char *src,
+  int32_t src_offset,
+  int32_t len
+) {
+  memcpy(dst + dst_offset, src + src_offset, len);
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_blit_from_c(char *src, char *dst, int offset, int len) {
-  memcpy(dst + offset, src, len);
+void moonbitlang_async_blit_from_c(
+  char *src,
+  int32_t src_offset,
+  char *dst,
+  int32_t dst_offset,
+  int32_t len
+) {
+  memcpy(dst + dst_offset, src + src_offset, len);
 }
 
 MOONBIT_FFI_EXPORT
@@ -35,8 +47,8 @@ int moonbitlang_async_c_buffer_get(uint8_t *buf, int index) {
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_strlen(char *str) {
-  return strlen(str);
+int32_t moonbitlang_async_strlen(char *str, int32_t offset) {
+  return strlen(str + offset);
 }
 
 MOONBIT_FFI_EXPORT
@@ -44,6 +56,12 @@ char *moonbitlang_async_null_pointer() {
   return 0;
 }
 
+MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_pointer_is_null(void *ptr) {
   return ptr == 0;
+}
+
+MOONBIT_FFI_EXPORT
+void *moonbitlang_async_make_c_buffer(int32_t size) {
+  return malloc(size);
 }

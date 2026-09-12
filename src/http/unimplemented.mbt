@@ -13,10 +13,12 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+/// This package currently does not support JavaScript or wasm-gc backend
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
+  let _ : (@buffer.Buffer) -> Unit = ignore
+  ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@socket.unimplemented)
   ignore(@tls.unimplemented)

@@ -38,28 +38,28 @@ extern "C" fn SSL_CTX::free_ffi(self : SSL_CTX) = "moonbitlang_async_tls_ssl_ctx
 #borrow(der)
 extern "C" fn SSL_CTX::add_root_certificate(self : SSL_CTX, der : Bytes) -> Int = "moonbitlang_async_tls_ssl_ctx_add_root_certificate"
 
-///|
-#cfg(not(platform="windows"))
-let client_ctx : SSL_CTX = {
-  load_openssl()
-  let ctx = SSL_CTX::client(load_default_verify_path=true)
-  guard !ctx.is_null() else { abort("failed to initialize SSL client context") }
-  ctx
-}
+// Lazy singletons: the shared client/server contexts (and the system CA read
+// they trigger) are built on first use, not before a TLS connection is made.
 
 ///|
 #cfg(not(platform="windows"))
-let server_ctx : SSL_CTX = {
-  load_openssl()
-  let ctx = SSL_CTX::server()
-  guard !ctx.is_null() else { abort("failed to initialize SSL server context") }
-  ctx
-}
+let client_ctx : Lazy[SSL_CTX] = Lazy(() => {
+  SSL_CTX::client(load_default_verify_path=true)
+})
+
+///|
+#cfg(not(platform="windows"))
+let server_ctx : Lazy[SSL_CTX] = Lazy(() => SSL_CTX::server())
 
 ///|
 #cfg(not(platform="windows"))
 fn SSL_CTX::free(self : SSL_CTX) -> Unit {
-  if physical_equal(self, client_ctx) || physical_equal(self, server_ctx) {
+  // Never free the shared singletons. Compare against the CACHED contexts without
+  // forcing their creation (a `free` must not lazily spin up a context just to check).
+  if client_ctx.peek() is Some(c) && physical_equal(self, c) {
+    return
+  }
+  if server_ctx.peek() is Some(s) && physical_equal(self, s) {
     return
   }
   self.free_ffi()
@@ -98,27 +98,56 @@ extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::get_peer_certificate(self : SSL) -> Bytes? = "moonbitlang_async_tls_ssl_get_peer_certificate"
+priv struct PeerCertificate(@c_buffer.Buffer)
 
 ///|
 #cfg(not(platform="windows"))
+extern "C" fn PeerCertificate::free(self : PeerCertificate) -> Unit = "moonbitlang_async_tls_free_peer_certificate"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int = "moonbitlang_async_tls_peer_certificate_length"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(buf)
+extern "C" fn PeerCertificate::blit_to(
+  self : PeerCertificate,
+  buf : FixedArray[Byte],
+  len~ : Int,
+) -> Unit = "moonbitlang_async_tls_peer_certificate_blit_to"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(len)
+extern "C" fn PeerCertificate::server_endpoint_hash(
+  self : PeerCertificate,
+  len~ : Ref[Int],
+) -> @c_buffer.Buffer = "moonbitlang_async_tls_hash_server_endpoint_certificate"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::get_certificate(
+  self : SSL,
+  is_client~ : Bool,
+) -> PeerCertificate = "moonbitlang_async_tls_ssl_get_certificate"
+
+///|
+#cfg(not(platform="windows"))
+extern "C" fn SSL::unique_channel_binding_length(
+  self : SSL,
+  is_client~ : Bool,
+) -> Int = "moonbitlang_async_tls_ssl_unique_channel_binding_length"
+
+///|
+#cfg(not(platform="windows"))
+#borrow(buf)
 extern "C" fn SSL::unique_channel_binding(
   self : SSL,
+  buf : FixedArray[Byte],
+  len~ : Int,
   is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_unique_channel_binding"
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn SSL::server_endpoint_channel_binding(
-  self : SSL,
-  is_client~ : Bool,
-) -> Bytes? = "moonbitlang_async_tls_ssl_server_endpoint_channel_binding"
-
-///|
-pub(all) enum X509FileType {
-  PEM = 1
-  ANS1 = 2
-}
+) -> Unit = "moonbitlang_async_tls_ssl_unique_channel_binding"
 
 ///|
 #cfg(not(platform="windows"))
@@ -221,6 +250,7 @@ extern "C" fn BIO::get_endpoint(bio : BIO) -> Transport = "moonbitlang_async_tls
 extern "C" fn BIO::set_flags(bio : BIO, flags : Int) = "moonbitlang_async_tls_bio_set_flags"
 
 ///|
+// Also the sole consumer of the BIO method table `load_openssl` registers.
 #cfg(not(platform="windows"))
 #owned(data)
 extern "C" fn create_bio(data : Transport) -> BIO = "moonbitlang_async_tls_create_bio"
@@ -254,7 +284,7 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
   let len = @cmp.minimum(read_buf.len, len)
   dst.blit_from_bytes(
     src=read_buf.buf.unsafe_reinterpret_as_bytes(),
-    offset=read_buf.start,
+    src_offset=read_buf.start,
     len~,
   )
   read_buf.drop(len)
@@ -273,7 +303,7 @@ fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
     -1
   }
   let len = @cmp.minimum(len, remaining)
-  src.blit_to_bytes(dst=ep.write_buf.buf, offset=end, len~)
+  src.blit_to_bytes(dst=ep.write_buf.buf, dst_offset=end, len~)
   ep.write_buf.len += len
   len
 }
@@ -321,23 +351,17 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 #cfg(not(platform="windows"))
 async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
   let ctx = SSL_CTX::client(load_default_verify_path=false)
-  guard !ctx.is_null() else {
-    raise TlsError("failed to initialize SSL client context")
+  if ctx.is_null() {
+    return ctx
   }
-  try {
-    let pem = @fs.read_file(root_cert).text()
-    for cert in decode_pem_certificates(pem) {
-      if ctx.add_root_certificate(cert) != 1 {
-        raise TlsError(err_get_error())
-      }
-    }
-    ctx
-  } catch {
-    err => {
-      ctx.free()
-      raise err
+  errdefer ctx.free()
+  let pem = @fs.read_file(root_cert).text()
+  for cert in decode_pem_certificates(pem) {
+    if ctx.add_root_certificate(cert) != 1 {
+      raise TlsError(err_get_error())
     }
   }
+  ctx
 }
 
 ///|
@@ -379,40 +403,35 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   sni? : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
+  load_openssl()
   let trust = match trust {
     Some(trust) => trust
     None => if verify { SystemRoot } else { NoVerification }
   }
   let ctx = match trust {
-    NoVerification | SystemRoot => client_ctx
+    NoVerification | SystemRoot => client_ctx.force()
     CustomPemFile(root_cert) => SSL_CTX::client_with_custom_root(root_cert)
   }
-  let self = Tls::from_pair(ctx, r, w, is_client=true, host~)
-  try {
-    if trust is NoVerification {
-      self.ssl.set_verify(false)
-    }
-    if host is Some(host) {
-      let host = @utf8.encode(host)
-      guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
-      if sni {
-        guard self.ssl.set_sni(host) > 0 else {
-          raise TlsError(err_get_error())
-        }
-      }
-    }
-    while self.ssl.connect() is ret && ret <= 0 {
-      self.handle_error(self.ssl.get_error(ret))
-    }
-    self.transport.flush_write()
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
-  } noraise {
-    _ => self
+  guard !ctx.is_null() else {
+    raise TlsError("failed to initialize SSL client context")
   }
+  let self = Tls::from_pair(ctx, r, w, is_client=true, host~)
+  errdefer self.close()
+  if trust is NoVerification {
+    self.ssl.set_verify(false)
+  }
+  if host is Some(host) {
+    let host = @utf8.encode(host)
+    guard self.ssl.set_host(host) > 0 else { raise TlsError(err_get_error()) }
+    if sni {
+      guard self.ssl.set_sni(host) > 0 else { raise TlsError(err_get_error()) }
+    }
+  }
+  while self.ssl.connect() is ret && ret <= 0 {
+    self.handle_error(self.ssl.get_error(ret))
+  }
+  self.transport.flush_write()
+  self
 }
 
 ///|
@@ -435,28 +454,26 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> Tls {
+  load_openssl()
   let private_key_file = @utf8.encode(private_key_file)
   let certificate_file = @utf8.encode(certificate_file)
-  let self = Tls::from_pair(server_ctx, r, w, is_client=false, host=None)
-  try {
-    if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
-      raise TlsError(err_get_error())
-    }
-    if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
-      raise TlsError(err_get_error())
-    }
-    while self.ssl.accept() is ret && ret <= 0 {
-      self.handle_error(self.ssl.get_error(ret))
-    }
-    self.transport.flush_write()
-  } catch {
-    err => {
-      self.close()
-      raise err
-    }
-  } noraise {
-    _ => self
+  let ctx = server_ctx.force()
+  guard !ctx.is_null() else {
+    raise TlsError("failed to initialize SSL server context")
   }
+  let self = Tls::from_pair(ctx, r, w, is_client=false, host=None)
+  errdefer self.close()
+  if self.ssl.use_certificate_file(certificate_file, certificate_type) != 1 {
+    raise TlsError(err_get_error())
+  }
+  if self.ssl.use_private_key_file(private_key_file, private_key_type) != 1 {
+    raise TlsError(err_get_error())
+  }
+  while self.ssl.accept() is ret && ret <= 0 {
+    self.handle_error(self.ssl.get_error(ret))
+  }
+  self.transport.flush_write()
+  self
 }
 
 ///|
@@ -490,7 +507,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
   let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       break ret
@@ -520,13 +537,13 @@ pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with _get_internal_buffer(self) {
+pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
       break ret
@@ -604,11 +621,21 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
 /// Therefore the return type is `Bytes?` instead of `Bytes`.
 #cfg(not(platform="windows"))
 pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
-  let result = self.ssl.get_peer_certificate()
-  if result is None && err_peek_error_code() != 0 {
-    raise TlsError(err_get_error())
+  guard self.is_client else { None }
+  let cert = self.ssl.get_certificate(is_client=true)
+  if cert.0.is_null() {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      return None
+    }
   }
-  result
+  defer cert.free()
+  let len = cert.length()
+  guard! len > 0
+  let result = FixedArray::make(len, b'\x00')
+  cert.blit_to(result, len~)
+  Some(result.unsafe_reinterpret_as_bytes())
 }
 
 ///|
@@ -616,15 +643,17 @@ pub fn Tls::get_peer_certificate(self : Tls) -> Bytes? raise {
 /// according to RFC 5929
 #cfg(not(platform="windows"))
 pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
-  match self.ssl.unique_channel_binding(is_client=self.is_client) {
-    Some(binding) => binding
-    None =>
-      if err_peek_error_code() != 0 {
-        raise TlsError(err_get_error())
-      } else {
-        raise TlsError("tls-unique channel binding unavailable")
-      }
+  let len = self.ssl.unique_channel_binding_length(is_client=self.is_client)
+  guard len > 0 else {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      raise TlsError("tls-unique channel binding unavailable")
+    }
   }
+  let result = FixedArray::make(len, b'\x00')
+  self.ssl.unique_channel_binding(result, len~, is_client=self.is_client)
+  result.unsafe_reinterpret_as_bytes()
 }
 
 ///|
@@ -634,15 +663,25 @@ pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
 /// so `tls-unique` is the more recommended approach when available.
 #cfg(not(platform="windows"))
 pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
-  match self.ssl.server_endpoint_channel_binding(is_client=self.is_client) {
-    Some(binding) => binding
-    None =>
-      if err_peek_error_code() != 0 {
-        raise TlsError(err_get_error())
-      } else {
-        raise TlsError("tls-server-endpoint channel binding unavailable")
-      }
+  let cert = self.ssl.get_certificate(is_client=self.is_client)
+  if cert.0.is_null() {
+    if err_peek_error_code() != 0 {
+      raise TlsError(err_get_error())
+    } else {
+      raise TlsError("tls-server-endpoint channel binding unavailable")
+    }
   }
+  // for the server, the result is obtained by `SSL_get_certificate`,
+  // which should not be freed by us according to https://docs.openssl.org/3.3/man3/SSL_get_certificate
+  defer (if self.is_client { cert.free() })
+  let len = Ref(0)
+  let hash = cert.server_endpoint_hash(len~)
+  if hash.is_null() {
+    raise TlsError(err_get_error())
+  }
+  let result = FixedArray::make(len.val, b'\x00')
+  hash.blit_to_bytes(dst=result, len=len.val)
+  result.unsafe_reinterpret_as_bytes()
 }
 
 ///|

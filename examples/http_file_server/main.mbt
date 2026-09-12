@@ -21,13 +21,12 @@ async fn serve_directory(
   let files = dir.read_all()
   files.sort()
   conn.send_response(200, "OK", extra_headers={ "Content-Type": "text/html" })
-  conn
-    <+
+  conn <+
     $|<!DOCTYPE html><html><head></head><body>
     $|<h1>\{path}</h1>
     $|<div style="margin: 1em; font-size: 15pt">
     $|<a href="\{path}?download_zip">download as zip</a><br/><br/>
-  if path[:-1].rev_find("/") is Some(index) {
+  if path[:path.length() - 1].rev_find("/") is Some(index) {
     let parent : StringView = if index == 0 { "/" } else { path[:index] }
     conn <+ "<a href=\"\{parent}\">..</a><br/><br/>\n"
   }

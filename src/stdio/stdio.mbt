@@ -14,42 +14,59 @@
 
 ///|
 struct Input {
-  io : @event_loop.IoHandle
+  io : Result[@event_loop.IoHandle, Error]
   read_buf : @io.ReaderBuffer
 }
 
 ///|
-pub fn Input::fd(self : Input) -> @fd_util.Fd {
-  self.io.fd()
+/// Return the file descriptor of an input channel.
+///
+/// If the initialization of the input channel failed,
+/// for example when `stdin` does not exist (Windows) or is not a valid fd (Unix-like),
+/// This method will fail with error.
+/// So `.fd()` can be used as a way to tell if `stdin` is valid.
+pub fn Input::fd(self : Input) -> @fd_util.Fd raise {
+  self.io.unwrap_or_error().fd()
 }
 
 ///|
-pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
-  self.io.read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
+  self.io
+  .unwrap_or_error()
+  .read(buf, offset~, len=max_len, context="@stdio.Input::read()")
 }
 
 ///|
-pub impl @io.Reader for Input with _get_internal_buffer(self) {
+pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-struct Output(@event_loop.IoHandle)
+struct Output(Result[@event_loop.IoHandle, Error])
 
 ///|
-pub fn Output::fd(self : Output) -> @fd_util.Fd {
-  self.0.fd()
+/// Return the file descriptor of an output channel.
+///
+/// If the initialization of the output channel failed,
+/// for example when `stdout` does not exist (Windows) or is not a valid fd (Unix-like),
+/// This method will fail with error.
+/// So `.fd()` can be used as a way to tell if `stdout`/`stderr` is valid.
+pub fn Output::fd(self : Output) -> @fd_util.Fd raise {
+  self.0.unwrap_or_error().fd()
 }
 
 ///|
-pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
-  self.0.write(buf, offset~, len~, context="@fs.File::write()")
+pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
+  self.0
+  .unwrap_or_error()
+  .write(buf, offset~, len~, context="@stdio.Output::write()")
 }
 
 ///|
 /// The standard input channel.
-/// Using this value will result in standard input being set to non-blocking mode.
-/// The standard input will be reset to its original state after the program exits.
+///
+/// If `stdin` does not exist or is invalid,
+/// all operations on `stdin` will immediately fail with error.
 pub let stdin : Input = {
   io: @event_loop.stdin,
   read_buf: @io.ReaderBuffer::new(),
@@ -57,12 +74,14 @@ pub let stdin : Input = {
 
 ///|
 /// The standard output channel.
-/// Using this value will result in standard output being set to non-blocking mode.
-/// The standard output will be reset to its original state after the program exits.
+///
+/// If `stdout` does not exist or is invalid,
+/// all operations on `stdout` will immediately fail with error.
 pub let stdout : Output = @event_loop.stdout
 
 ///|
 /// The standard error channel.
-/// Using this value will result in standard error being set to non-blocking mode.
-/// The standard error will be reset to its original state after the program exits.
+///
+/// If `stderr` does not exist or is invalid,
+/// all operations on `stderr` will immediately fail with error.
 pub let stderr : Output = @event_loop.stderr

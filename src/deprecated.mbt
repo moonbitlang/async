@@ -17,7 +17,7 @@
 pub impl Show for TimeoutError
 
 ///|
-pub impl Show for TimeoutError with output(_self, logger) {
+pub impl Show for TimeoutError with fn output(_self, logger) {
   logger <+ "TimeoutError"
 }
 
@@ -26,6 +26,6 @@ pub impl Show for TimeoutError with output(_self, logger) {
 pub impl Show for TimerCancelled
 
 ///|
-pub impl Show for TimerCancelled with output(_self, logger) {
+pub impl Show for TimerCancelled with fn output(_self, logger) {
   logger <+ "TimerCancelled"
 }

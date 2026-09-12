@@ -13,14 +13,18 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+/// This package currently does not support JavaScript or Wasm GC backends.
+#cfg(any(target="js", target="wasm-gc"))
 #coverage.skip
 pub let unimplemented : Unit = {
+  ignore(@debug.to_string(0))
+  ignore(@cmp.minimum(0, 0))
+  let _ : (@random.Rand) -> Unit = ignore
+  ignore(@base64.encode(b""))
   ignore(@io.pipe)
   ignore(@semaphore.Semaphore::release)
   ignore(@tls.unimplemented)
   ignore(@http.unimplemented)
-  ignore(@coroutine.spawn)
+  ignore(@coroutine.Coroutine::wake)
   ignore(@utf8.encode(""))
 }

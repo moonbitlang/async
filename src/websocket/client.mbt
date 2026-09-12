@@ -32,7 +32,7 @@
 pub async fn Conn::from_http_client(
   conn : @http.Client,
   path : StringView,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : @http.Headers = Map([]),
 ) -> Conn {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
   let seed = @tls.rand_bytes(32)
@@ -44,47 +44,41 @@ pub async fn Conn::from_http_client(
   nonce.unsafe_write_uint32_le(4, rand.uint())
   nonce.unsafe_write_uint32_le(8, rand.uint())
   nonce.unsafe_write_uint32_le(12, rand.uint())
-  let key = base64_encode(nonce.unsafe_reinterpret_as_bytes())
+  let key = @base64.encode(nonce.unsafe_reinterpret_as_bytes())
   extra_headers["Connection"] = "Upgrade"
   extra_headers["Upgrade"] = "websocket"
   extra_headers["Sec-WebSocket-Key"] = key
   extra_headers["Sec-WebSocket-Version"] = "13"
-  try {
-    let response = conn..request(Get, path, extra_headers~).end_request()
-    guard response.code is 101 else {
-      raise HandshakeRejected(
-        "Server did not respond with 101 Switching Protocols: \{response.code} \{response.reason}",
-        response,
-      )
-    }
-
-    // Validate WebSocket handshake headers
-    guard response.headers.get("upgrade") is Some(upgrade) &&
-      upgrade.to_lower() == "websocket" else {
-      raise HandshakeRejected("Missing or invalid Upgrade header", response)
-    }
-    guard response.headers.get("connection") is Some(connection) &&
-      connection.to_lower().contains("upgrade") else {
-      raise HandshakeRejected("Missing or invalid Connection header", response)
-    }
-    guard response.headers.get("sec-websocket-accept") is Some(accept_key) else {
-      raise HandshakeRejected("Missing Sec-WebSocket-Accept header", response)
-    }
-    let expected_accept_key = generate_accept_key(key)
-    guard accept_key == expected_accept_key else {
-      raise HandshakeRejected(
-        "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
-        response,
-      )
-    }
-    conn.enter_passthrough_mode()
-    Conn::new(conn, 4096, mask=Some(rand))
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  let response = conn..request(Get, path, extra_headers~).end_request()
+  guard response.code is 101 else {
+    raise HandshakeRejected(
+      "Server did not respond with 101 Switching Protocols: \{response.code} \{response.reason}",
+      response,
+    )
   }
+
+  // Validate WebSocket handshake headers
+  guard response.headers.get("upgrade") is Some(upgrade) &&
+    upgrade.to_lower() == "websocket" else {
+    raise HandshakeRejected("Missing or invalid Upgrade header", response)
+  }
+  guard response.headers.get("connection") is Some(connection) &&
+    connection.to_lower().contains("upgrade") else {
+    raise HandshakeRejected("Missing or invalid Connection header", response)
+  }
+  guard response.headers.get("sec-websocket-accept") is Some(accept_key) else {
+    raise HandshakeRejected("Missing Sec-WebSocket-Accept header", response)
+  }
+  let expected_accept_key = generate_accept_key(key)
+  guard accept_key == expected_accept_key else {
+    raise HandshakeRejected(
+      "Invalid Sec-WebSocket-Accept value: \{accept_key} != \{expected_accept_key}",
+      response,
+    )
+  }
+  conn.enter_passthrough_mode()
+  Conn::new(conn, 4096, mask=Some(rand))
 }
 
 ///|
@@ -110,7 +104,7 @@ pub async fn Conn::from_http_client(
 #as_free_fn
 pub async fn Conn::connect(
   url : String,
-  headers? : Map[String, String] = {},
+  headers? : @http.Headers = Map([]),
   proxy? : @http.Client,
 ) -> Conn {
   guard url.find("://") is Some(protocol_len) else {

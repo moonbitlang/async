@@ -13,37 +13,37 @@
 // limitations under the License.
 
 ///|
-let cat : @async.Lazy[String] = @async.Lazy(() => {
+#cfg(target="native")
+let cat : @async.Lazy[String] = Lazy(() => {
   // Note: the `cat` example program lies in another MoonBit module.
   // Currently, dependencies of a module is built locally in that module,
   // so there will be no build lock conflict between this test and the `cat` program.
   let exit_code = @process.run("moon", [
-    "-C", "src/process/test_programs", "build", "--debug", "cat",
+    "build", "--debug", "test_programs/cat", "--target-dir", "_build/test_programs",
   ])
   guard exit_code is 0 else {
     fail("failed to build `cat` program: \{exit_code}")
   }
-  "./src/process/test_programs/_build/native/debug/build/cat/cat.exe"
+  "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
 })
 
 ///|
+#cfg(target="native")
 async test "redirect_file" {
   let cat = cat.wait()
   let out_file = "_build/stdio_file_test"
   let code = @process.run(
     cat,
     [],
-    stdin=@process.redirect_from_file("moon.mod.json"),
-    stdout=@process.redirect_to_file(out_file, create_mode=CreateOrTruncate),
+    stdin=@process.redirect_from_file("moon.mod"),
+    stdout=@process.redirect_to_file(out_file),
   )
   inspect(code, content="0")
-  assert_eq(
-    @fs.read_file(out_file).text(),
-    @fs.read_file("moon.mod.json").text(),
-  )
+  assert_eq(@fs.read_file(out_file).text(), @fs.read_file("moon.mod").text())
 }
 
 ///|
+#cfg(target="native")
 async test "redirect pipe" {
   @async.with_task_group() <| root => {
     let cat = cat.wait()
@@ -72,22 +72,26 @@ async test "redirect pipe" {
 }
 
 ///|
+#cfg(target="native")
 async test "stdio cancel" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process()
     let (we_read, cat_write) = @process.read_from_process()
+    let (we_read_err, cat_write_err) = @process.read_from_process()
     group.spawn_bg() <| () => {
       let code = @process.run(
         cat,
         ["-timeout", "500"],
         stdin=cat_read,
         stdout=cat_write,
+        stderr=cat_write_err,
       )
       inspect(code, content="1")
     }
     defer we_write.close()
     defer we_read.close()
+    defer we_read_err.close()
     we_write.write("abcd")
     debug_inspect(
       we_read.read_some(),
@@ -96,9 +100,41 @@ async test "stdio cancel" {
       ),
     )
     @async.sleep(750)
+    assert_eq(we_read.read_all().text(), "")
     inspect(
-      we_read.read_all().text().trim(chars="\r\n"),
+      we_read_err.read_all().text().trim(chars="\r\n"),
       content="TimeoutError",
     )
   }
+}
+
+///|
+#cfg(target="native")
+async test "stdout and stderr are the same" {
+  let cat = cat.wait()
+  let (cat_read, we_write) = @process.write_to_process()
+  @async.with_task_group <| group => {
+    let cat_task = group.spawn() <| () => {
+      @process.collect_output_merged(cat, [], stdin=cat_read)
+    }
+    {
+      defer we_write.close()
+      we_write.write("abcd")
+    }
+    let (_, output) = cat_task.wait()
+    inspect(
+      output.text(),
+      content=(
+        #|abcd
+      ),
+    )
+  }
+}
+
+///|
+#cfg(target="wasm")
+async test "stdio handles are available on wasm" {
+  ignore(@stdio.stdin.fd())
+  ignore(@stdio.stdout.fd())
+  ignore(@stdio.stderr.fd())
 }

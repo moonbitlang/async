@@ -24,4 +24,3 @@ pub impl @io.Writer for PipeWrite
 // Type aliases
 
 // Traits
-

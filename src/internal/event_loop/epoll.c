@@ -17,17 +17,18 @@
 #ifdef __linux__
 
 #include <unistd.h>
-#include <sys/syscall.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
-#include <errno.h>
-#include <linux/version.h>
 
-int moonbitlang_async_poll_create() {
-  return epoll_create1(0);
+_Noreturn void moonbit_panic();
+
+int moonbitlang_async_event_bus_create() {
+  return epoll_create1(EPOLL_CLOEXEC);
 }
 
-void moonbitlang_async_poll_destroy(int epfd) {
+void moonbitlang_async_event_bus_destroy(int epfd) {
   close(epfd);
 }
 
@@ -38,105 +39,57 @@ static const int ev_masks[] = {
   EPOLLIN | EPOLLOUT,
 };
 
-// use mask to classify different kinds of entity
-static const uint64_t pid_mask = (uint64_t)1 << 63;
+/* return value:
+   `-1` => failure
+   `0` => fd not supported
+   `1` => successfully registered
+ */
+int32_t moonbitlang_async_event_bus_register(int epfd, int fd, int32_t read_only) {
+  // File descriptors registered with the event bus
+  // should always be used in a non-blocking manner, due to our use of `EPOLLET`.
+  // Error is intentionally omitted here, because some special file descriptors,
+  // such as `inotify` instance, may not have the concept of blocking/nonblocking at all.
+  int fd_flags = fcntl(fd, F_GETFL);
+  if (fd_flags >= 0 && !(fd_flags & O_NONBLOCK))
+    fcntl(fd, F_SETFL, fd_flags | O_NONBLOCK);
 
-int moonbitlang_async_poll_register(
-  int epfd,
-  int fd,
-  int prev_events,
-  int new_events,
-  int oneshot
-) {
-  int events = ev_masks[prev_events | new_events];
-  if (oneshot)
-    events |= EPOLLONESHOT;
-
-  events |= EPOLLET;
-  events |= EPOLLRDHUP;
+  int events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+  if (!read_only)
+    events |= EPOLLOUT;
 
   epoll_data_t data;
   data.u64 = fd;
   struct epoll_event event = { events, data };
-  int op = prev_events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-  return epoll_ctl(epfd, op, fd, &event);
-}
-
-int moonbitlang_async_support_wait_pid_via_poll() {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
-  int pidfd = syscall(SYS_pidfd_open, getpid(), 0);
-  if (pidfd >= 0) {
-    close(pidfd);
+  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+  if (ret >= 0)
     return 1;
-  } else {
-    // TODO: check if `errno` is one of `ENOSYS` or `EPERM`.
+  else if (errno == EPERM)
     return 0;
-  }
-#else
-  return 0;
-#endif
-}
-
-// return value:
-// - `>= 0`: success, return the pidfd
-// - `-1`: failure
-// - `-2`: already terminated
-int moonbitlang_async_poll_register_pid(int epfd, pid_t pid) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
-
-  int pidfd = syscall(SYS_pidfd_open, pid, 0);
-  if (pidfd < 0)
+  else
     return -1;
-
-  epoll_data_t data;
-  data.u64 = pid_mask | pidfd;
-
-  struct epoll_event event = { EPOLLIN, data };
-  int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, pidfd, &event);
-  if (ret < 0) {
-    close(pidfd);
-    return -1;
-  }
-
-  return pidfd;
-
-#else
-
-  return -1;
-
-#endif
 }
 
-int moonbitlang_async_poll_remove(int epfd, int fd, int events) {
-  return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
-}
-
-int moonbitlang_async_poll_remove_pid(int epfd, int pidfd) {
-  int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, pidfd, 0);
-  close(pidfd);
-  return ret;
+int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
+  moonbit_panic();
 }
 
 #define EVENT_BUFFER_SIZE 1024
 static struct epoll_event event_buffer[EVENT_BUFFER_SIZE];
 
-int moonbitlang_async_poll_wait(int epfd, int timeout) {
+int moonbitlang_async_event_bus_wait(int epfd, int timeout) {
   return epoll_wait(epfd, event_buffer, EVENT_BUFFER_SIZE, timeout);
 }
 
 // wrapper for handling event list
-struct epoll_event* moonbitlang_async_event_list_get(int index) {
+struct epoll_event* moonbitlang_async_event_list_get(int epfd, int index) {
   return event_buffer + index;
 }
 
 int moonbitlang_async_event_get_fd(struct epoll_event *ev) {
-  return ev->data.u64 & ~pid_mask;
+  return ev->data.u64;
 }
 
 int moonbitlang_async_event_get_events(struct epoll_event *ev) {
-  if (ev->data.u64 & pid_mask)
-    return 4;
-
   if (ev->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
     return 3;
 

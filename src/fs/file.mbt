@@ -87,6 +87,10 @@ fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
 ///   see `SyncMode` for more details. The default is `NoSync`
 ///
 /// - if `append` is `true` (`false` by default), the file will be opened in append mode.
+///   Under append mode, sequential write (via the `@io.Writer` interface)
+///   will always write to the end of the file, even if the file is modified externally.
+///   The semantic of reading from the file is unaffected by `append`.
+///   Random access write (`write_at`) is forbidden for file opened in append mode.
 ///
 /// - `create_mode` specify how to handle file creation, truncation, etc.
 ///   See the type `CreateMode` for more details.
@@ -103,37 +107,18 @@ fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
 ///
 ///   The default value is `0o644` (anyone can read, only owner can write, not executable).
 ///   `permission` is currently ignored on Windows.
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn open(
   filename : StringView,
   mode~ : Mode,
   sync? : SyncMode = NoSync,
   append? : Bool = false,
-  create_mode? : CreateMode,
-  permission? : Int,
-  create? : Int,
-  truncate? : Bool = false,
+  create_mode? : CreateMode = OpenExisting,
+  permission? : Int = 0o644,
 ) -> File {
   let access = match mode {
     ReadOnly => 0
     WriteOnly => 1
     ReadWrite => 2
-  }
-  let create_mode = match create_mode {
-    Some(mode) => mode
-    None =>
-      match (create is Some(_), truncate) {
-        (true, true) => CreateOrTruncate
-        (true, false) => OpenOrCreate
-        (false, true) => TruncateExisting
-        (false, false) => OpenExisting
-      }
-  }
-  let permission = match permission {
-    Some(perm) => perm
-    None if create is Some(perm) => perm
-    None => 0o644
   }
   let sync = match sync {
     NoSync => 0
@@ -149,7 +134,7 @@ pub async fn open(
     mode=permission,
     context="@fs.open()",
   )
-  { io, read_buf: @io.ReaderBuffer::new() }
+  { io, read_buf: @io.ReaderBuffer::new(), }
 }
 
 ///|
@@ -189,13 +174,48 @@ pub async fn create(
 ///
 /// - EOF is reached before reading all requested data
 /// - the file is a named pipe, and not enough data is available
-pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
+///
+/// When reading a file via the `@io.Reader` interface,
+/// the content of the file will be read as a byte stream.
+/// The position of the read stream in the file is
+/// independent of the write stream (via the `@io.Writer` interface)
+pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
 }
 
 ///|
-pub impl @io.Reader for File with _get_internal_buffer(self) {
+pub impl @io.Reader for File with fn _get_internal_buffer(self) {
   self.read_buf
+}
+
+///|
+pub impl @io.Reader for File with fn read_all(self) {
+  guard self.io.kind() is Regular else { @io.read_all(self) }
+  let size = (self.size() - self.io.read_offset) catch {
+    _ => return @io.read_all(self)
+  }
+  guard size > 0 && size < @int.MAX_VALUE.to_int64() else { @io.read_all(self) }
+  let size_hint = size.to_int()
+  let buf = FixedArray::make(size_hint, b'\x00')
+  let n = @io.Reader::read(self, buf, offset=0, max_len=size_hint)
+  if n is 0 {
+    return b""
+  }
+  // The only reliable way to detect EOF is `read` returning `0`,
+  // even for regular files. So do a simple EOF probe here.
+  let eof_probe = FixedArray::make(1, b'\x00')
+  if @io.Reader::read(self, eof_probe, offset=0, max_len=1) is 0 {
+    // happy path, the file size is accurate
+    return buf.unsafe_reinterpret_as_bytes()[:n].to_owned()
+  }
+  @io.read_all(
+    self,
+    prefix_list=[
+      buf.unsafe_reinterpret_as_bytes()[:n],
+      eof_probe.unsafe_reinterpret_as_bytes(),
+    ],
+    chunk_size=1 << 16, // 64k
+  )
 }
 
 ///|
@@ -241,7 +261,16 @@ pub async fn File::read_exactly_at(
 }
 
 ///|
-pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
+/// If the file is opened with `append=true`,
+/// writing to the file via the `@io.Writer` interface
+/// always append content at the end of the file.
+///
+/// If the file is opened with `append=false` (the default),
+/// content written to the file via the `@io.Writer` interface
+/// will be written as a byte stream, starting at offset 0.
+/// The position of the write stream in the file is
+/// independent of the read stream (via the `@io.Reader` interface)
+pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
 
@@ -266,7 +295,7 @@ pub async fn File::write_at(
     offset=buf.start_offset(),
     len=buf.length(),
     position~,
-    context="@fs.File::read_at()",
+    context="@fs.File::write_at()",
   )
 }
 
@@ -304,10 +333,22 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang_async_errno_is_lock_violation"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
+
+///|
+#cfg(target="native")
 extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang/async" "fs/try_lock_file"
 
 ///|
 /// Try to lock a file.
@@ -336,7 +377,13 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_unlock_file"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fs/unlock_file"
 
 ///|
 /// Unlock a file that was previously locked by this process.
@@ -349,8 +396,9 @@ pub fn File::unlock(self : File) -> Unit {
 }
 
 ///|
-/// Remove the file located at `path`. `path` is encoded using UTF8.
-pub async fn remove(path : StringView) -> Unit {
+/// Remove the file located at `path`.
+/// This function is not cancellable.
+pub async fn remove(path : StringView) -> Unit nocancel {
   @event_loop.remove(path, context="@fs.remove()")
 }
 
@@ -374,6 +422,13 @@ pub async fn rename(
 /// Can only be applied to a regular file.
 pub async fn File::size(self : File) -> Int64 {
   @event_loop.file_size(self.io.fd(), context="@fs.File::size()")
+}
+
+///|
+/// Get the size of the file at the specific path.
+/// Can only be applied to a regular file.
+pub async fn file_size(path : StringView) -> Int64 {
+  @event_loop.file_size_of_path(path, context="@fs.file_size()")
 }
 
 ///|
@@ -410,7 +465,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::atime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::atime()").atime()
+  @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
 }
 
 ///|
@@ -418,7 +473,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::mtime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::mtime()").mtime()
+  @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
 }
 
 ///|
@@ -426,7 +481,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
 pub async fn File::ctime(self : File) -> (Int64, Int) {
-  @event_loop.file_time(self.io.fd(), context="@fs.File::ctime()").ctime()
+  @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
 }
 
 ///|
@@ -439,12 +494,9 @@ pub async fn read_file(
 ) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
   defer file.close()
-  let result = file.read_all()
+  let result = @io.Reader::read_all(file)
   if sync_timestamp {
-    file.io.fsync(
-      only_data=false,
-      context="@fs.File::read_file(sync_timestamp=true)",
-    )
+    file.io.fsync(only_data=false, context="@fs.read_file(sync_timestamp=true)")
   }
   result
 }
@@ -454,33 +506,14 @@ pub async fn read_file(
 /// The meaning of `sync`, `append`, `create_mode` and `permission`,
 /// is the same as `open`, except that `create_mode` is `TruncateExisting` by default.
 /// See `open` for more details.
-#label_migration(create, fill=false, msg="the option `create` is deprecated, use `create_mode` and `permission` instead")
-#label_migration(truncate, fill=false, msg="the option `truncate` is deprecated, use `create_mode` instead")
 pub async fn write_file(
   path : StringView,
   content : &@io.Data,
-  create_mode? : CreateMode,
-  permission? : Int,
+  create_mode? : CreateMode = CreateOrTruncate,
+  permission? : Int = 0o644,
   sync? : SyncMode = Data,
   append? : Bool = false,
-  create? : Int,
-  truncate? : Bool = true,
 ) -> Unit {
-  let create_mode = match create_mode {
-    Some(mode) => mode
-    None =>
-      match (create is Some(_), truncate) {
-        (true, true) => CreateOrTruncate
-        (true, false) => OpenOrCreate
-        (false, true) => TruncateExisting
-        (false, false) => OpenExisting
-      }
-  }
-  let permission = match permission {
-    Some(perm) => perm
-    None if create is Some(perm) => perm
-    None => 0o644
-  }
   let file = open(
     path,
     mode=WriteOnly,
@@ -490,5 +523,5 @@ pub async fn write_file(
     permission~,
   )
   defer file.close()
-  file.write(content.binary())
+  @io.Writer::write(file, content.binary())
 }

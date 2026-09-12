@@ -16,7 +16,7 @@
 ///|
 async test "cancel process" {
   let test_prog = sleep_prog.wait()
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
@@ -60,7 +60,7 @@ async test "cancel process timeout" {
     })
     let t_receive_graceful_termination = root.spawn(() => {
       defer r.close()
-      guard r.read_some() is Some(data)
+      guard! r.read_some() is Some(data)
       let data = @utf8.decode(data).trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
@@ -69,7 +69,10 @@ async test "cancel process timeout" {
     @async.sleep(500)
     let t_cancel = @async.now()
     task.cancel()
-    debug_inspect(try? task.wait(), content="Err(Cancelled)")
+    debug_inspect(
+      @test_util.expect_error_async(() => task.wait()),
+      content="TaskCancelled",
+    )
     let t_process_terminates = @async.now()
     let t1 = t_receive_graceful_termination.wait() - t_cancel
     let t2 = t_process_terminates - t_cancel
@@ -98,7 +101,10 @@ async test "cancel process hard" {
     @async.sleep(500)
     let t0 = @async.now()
     task.cancel()
-    debug_inspect(try? task.wait(), content="Err(Cancelled)")
+    debug_inspect(
+      @test_util.expect_error_async(() => task.wait()),
+      content="TaskCancelled",
+    )
     let t1 = @async.now()
     inspect((t1 - t0) / 250, content="0")
   }
@@ -106,7 +112,7 @@ async test "cancel process hard" {
 
 ///|
 async test "orphan process" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {

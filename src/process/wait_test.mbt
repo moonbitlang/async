@@ -15,7 +15,7 @@
 
 ///|
 async test "basic wait" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let test_prog = sleep_prog.wait()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
@@ -46,7 +46,7 @@ async test "wait exitcode" {
 
 ///|
 async test "wait_pid" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   let test_prog = sleep_prog.wait()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -67,4 +67,45 @@ async test "wait_pid" {
       #|
     ),
   )
+}
+
+///|
+async test "spawn without standard handles on Windows" {
+  guard @event_loop.platform is Windows else {  }
+  let spawn = spawn_prog.wait()
+  let sleep = sleep_prog.wait()
+  inspect(
+    @process.run(spawn, ["-no-stdio", "-orphan", sleep, "0"]),
+    content="0",
+  )
+}
+
+///|
+async test "wait exitcode STILL_ACTIVE" {
+  guard @event_loop.platform is Windows else {  }
+  // `259` is the special value for `STILL_ACTIVE`,
+  // wihch is returned by `GetExitCodeProcess` when the process is still running on Windows.
+  // However, 259 can also be a valid exit code,
+  // so we should not use it to determine whether the process has exited or not.
+  inspect(
+    @process.run(shell, ["-c", "exit 259"]),
+    content=(
+      #|259
+    ),
+  )
+}
+
+///|
+async test "signal exit code" {
+  guard !(@event_loop.platform is Windows) else {  }
+  let sleep = sleep_prog.wait()
+  let exit_code = @async.with_task_group <| group => {
+    let proc = @process.spawn(group, sleep, ["1000", "-use-default-handler"])
+    group.spawn_bg(no_wait=true) <| () => {
+      @async.sleep(100)
+      @process.graceful_cancel(timeout=1000, signal=SIGINT)(proc.pid)
+    }
+    proc.wait()
+  }
+  assert_eq(exit_code, -@signal.SIGINT.to_int())
 }

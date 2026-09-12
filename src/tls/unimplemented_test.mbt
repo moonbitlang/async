@@ -15,7 +15,16 @@
 ///|
 #cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
+  ignore(@utf8.encode(""))
   ignore(@async.sleep)
   ignore(@socket.unimplemented)
-  ignore(@pipe.unimplemented)
+  ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }
+
+///|
+#cfg(target="wasm")
+let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
+
+///|
+#cfg(not(any(target="native", target="wasm")))
+let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)

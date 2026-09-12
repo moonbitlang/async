@@ -29,7 +29,9 @@ extern "js" fn JsHeaders::append(
   #| (headers, name, value) => headers.append(name, value)
 
 ///|
-extern "js" fn JsHeaders::to_array(headers : JsHeaders) -> Array[Array[String]] =
+extern "js" fn JsHeaders::to_array(
+  headers : JsHeaders,
+) -> FixedArray[FixedArray[String]] =
   #| (headers) => Array.from(headers.entries())
 
 ///|
@@ -52,30 +54,30 @@ extern "js" fn JsResponse::headers(response : JsResponse) -> JsHeaders =
 extern "js" fn JsResponse::body(
   response : JsResponse,
 ) -> @js_async.JsReadableStream =
-  #| (response) => response.body
+  #| (response) => response.body ?? new ReadableStream({
+  #|   start(controller) { controller.close() },
+  #| })
 
 ///|
 priv struct OngoingRequest {
-  body_writer : @io.PipeWrite
-  abort_controller : @js_async.AbortController
-  response : @js_async.Promise[JsResponse]
+  meth : String
+  uri : String
+  body : @buffer.Buffer
+  headers : JsHeaders
 }
 
 ///|
 struct Client {
   host : String
   protocol : Protocol
-  headers : Map[String, String]
+  headers : Headers
   mut request : OngoingRequest?
   mut response_body : @js_async.ReadableStream?
 }
 
 ///|
 pub fn Client::close(self : Client) -> Unit {
-  if self.request is Some(request) {
-    request.body_writer.close()
-    self.request = None
-  }
+  self.request = None
   if self.response_body is Some(response_body) {
     response_body.close()
   }
@@ -84,12 +86,12 @@ pub fn Client::close(self : Client) -> Unit {
 ///|
 fn Client::connect(
   host : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   protocol? : Protocol = Https,
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
-  { host, headers, protocol, request: None, response_body: None }
+  { host, headers, protocol, request: None, response_body: None, }
 }
 
 ///|
@@ -115,7 +117,7 @@ fn Client::connect(
 #label_migration(verify, fill=false, msg="verify is unsupported on Windows")
 pub async fn Client::Client(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
   verify? : Bool = true,
 ) -> Client {
@@ -127,10 +129,14 @@ pub async fn Client::Client(
 }
 
 ///|
-pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
-  guard self.request is Some(request)
-  request.body_writer.write_once(buf, offset~, len~)
+pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
+  guard! self.request is Some(request)
+  request.body.write_bytes(buf[offset:offset + len])
+  len
 }
+
+///|
+pub extend Client with @io.Writer::{write_once, write, write_reader}
 
 ///|
 #warnings("-unused_async")
@@ -140,31 +146,50 @@ pub async fn Client::flush(_ : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with _get_internal_buffer(self) {
-  guard self.response_body is Some(stream)
+pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
+  guard! self.response_body is Some(stream)
   stream._get_internal_buffer()
 }
 
 ///|
-pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
-  guard self.response_body is Some(stream)
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  guard! self.response_body is Some(stream)
   stream._direct_read(buf, offset~, max_len~)
 }
 
 ///|
+pub extend Client with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
+}
+
+///|
 pub async fn Client::end_request(self : Client) -> Response {
-  guard self.request is Some(request)
+  guard! self.request is Some(request)
   self.request = None
-  request.body_writer.close()
-  let js_response : JsResponse = request.response.wait(
-    abort_controller=request.abort_controller,
-  )
+  let abort_controller = @js_async.AbortController::new()
+  let js_response = Client::request_ffi(
+    request.uri,
+    request.meth,
+    headers=request.headers,
+    body=request.body.contents(),
+    signal=abort_controller.signal(),
+  ).wait(abort_controller~)
   self.response_body = Some(
     @js_async.ReadableStream::from_js(js_response.body()),
   )
-  let headers = {}
+  let headers : Headers = Map([])
   for entry in js_response.headers().to_array() {
-    headers[entry[0].to_lower()] = entry[1]
+    headers[entry[0]] = entry[1]
   }
   {
     code: js_response.status(),
@@ -179,7 +204,7 @@ extern "js" fn Client::request_ffi(
   uri : String,
   meth : String,
   headers~ : JsHeaders,
-  body~ : @js_async.JsReadableStream,
+  body~ : Bytes,
   signal~ : @js_async.AbortSignal,
 ) -> @js_async.Promise[JsResponse] =
   #| (uri, method, headers, body, signal) => {
@@ -191,7 +216,6 @@ extern "js" fn Client::request_ffi(
   #|       method: method,
   #|       headers: headers,
   #|       signal: signal,
-  #|       duplex: 'half',
   #|     },
   #|   )
   #| }
@@ -216,9 +240,9 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Unit {
-  guard self.request is None
+  guard! self.request is None
   let protocol = match self.protocol {
     Http => "http://"
     Https => "https://"
@@ -238,34 +262,22 @@ pub async fn Client::request(
   }
   let headers = JsHeaders::new()
   for k, v in self.headers {
-    headers.append(k, v)
+    headers.append(k.0, v)
   }
   for k, v in extra_headers {
-    headers.append(k, v)
+    headers.append(k.0, v)
   }
-  let abort_controller = @js_async.AbortController::new()
-  let (body, we_write) = @js_async.JsReadableStream::new_pipe()
-  let response_promise = Client::request_ffi(
-    uri,
-    meth,
-    headers~,
-    body~,
-    signal=abort_controller.signal(),
-  )
-  let request : OngoingRequest = {
-    abort_controller,
-    body_writer: we_write,
-    response: response_promise,
-  }
+  let request : OngoingRequest = { meth, uri, headers, body: Buffer(), }
   self.request = Some(request)
 }
 
 ///|
 /// Perform a `GET` request to the server, see `Client::request` for more details.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -281,7 +293,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -292,7 +304,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }

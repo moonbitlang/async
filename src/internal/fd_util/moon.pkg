@@ -10,7 +10,10 @@ options(
   targets: {
     "deprecated.mbt": [ "native" ],
     "fd_util.mbt": [ "native" ],
+    "fd_util.wasm.mbt": [ "wasm" ],
     "pipe.mbt": [ "native" ],
+    "pipe.wasm.mbt": [ "wasm" ],
     "stat.mbt": [ "native" ],
+    "stat.wasm.mbt": [ "wasm" ],
   },
 )

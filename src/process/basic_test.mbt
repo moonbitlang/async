@@ -18,9 +18,13 @@ async test "basic_ls" {
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
     defer r.close()
-    @process.spawn(group, shell, ["-c", "\{ls} src/process"], stdout=w, extra_env={
-      "LC_ALL": "C",
-    })
+    @process.spawn(
+      group,
+      shell,
+      ["-c", "\{ls} test_directory/dir1"],
+      stdout=w,
+      extra_env={ "LC_ALL": "C" },
+    )
     |> ignore
     let files = r
       .read_all()
@@ -30,14 +34,7 @@ async test "basic_ls" {
       .split("\n")
       .to_array()
     files.sort()
-    json_inspect(files, content=[
-      "stub.c", "moon.pkg", "unix.mbt", "README.md", "windows.c", "process.mbt",
-      "windows.mbt", "cwd_test.mbt", "env_test.mbt", "redirect.mbt", "README.mbt.md",
-      "test_programs", "wait_test.mbt", "basic_test.mbt", "cancel_test.mbt", "helper_test.mbt",
-      "cancellation.mbt", "redirect_test.mbt", "unimplemented.mbt", "pkg.generated.mbti",
-      "commands_for_test.mbt", "unimplemented_test.mbt", "spawn_in_group_test.mbt",
-      "windows_escape_wbtest.mbt",
-    ])
+    json_inspect(files, content=["file", "inner1"])
   }
 }
 
@@ -59,4 +56,32 @@ async test "basic_cat" {
       inspect(we_read.read_all().text(), content="abcdefgh")
     }
   }
+}
+
+///|
+#cfg(platform="windows")
+async test "execute .com file" {
+  let (_, output) = @process.collect_stdout("chcp.com", [])
+  guard output.binary().chop_suffix(b"\r\n") is Some(output) &&
+    output.rev_find(b" ") is Some(index) &&
+    index + 1 < output.length() else {
+    fail("invalid output format from chcp")
+  }
+  let _code = @string.parse_int(@utf8.decode(output[index + 1:]))
+}
+
+///|
+// Currently the Wasm runtime perform extra NUL check on Unix,
+// so passing argument with NUL will result in an error,
+// hence this test is currently disabled for Wasm1.
+// Both behavior (truncation v.s. report error) are acceptable
+// for NUL in process arguments, though.
+#cfg(target="native")
+async test "prevent NUL command injection" {
+  let prog = sleep_prog.wait()
+  let bad_arg = "abc\u{0000}def"
+  let (_, output) = @process.collect_stdout(prog, [
+    "100", "-print-after-sleep", bad_arg,
+  ])
+  inspect(output.text().trim_end(chars="\r\n"), content="abc")
 }

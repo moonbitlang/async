@@ -33,7 +33,7 @@ struct ServerConnection {
 /// - Content-Length, Transfer-Encoding
 pub fn ServerConnection::new(
   conn : @socket.Tcp,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
 ) -> ServerConnection {
   {
     reader: Reader::new(conn),
@@ -62,7 +62,7 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> @socket.Addr {
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _direct_read(
+pub impl @io.Reader for ServerConnection with fn _direct_read(
   self,
   buf,
   offset~,
@@ -72,8 +72,18 @@ pub impl @io.Reader for ServerConnection with _direct_read(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
   self.reader._get_internal_buffer()
+}
+
+///|
+pub extend ServerConnection with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
 }
 
 ///|
@@ -106,14 +116,22 @@ pub async fn ServerConnection::skip_request_body(
 ///
 /// Writing to `@http.ServerConnection` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
-pub impl @io.Writer for ServerConnection with write_once(
+pub impl @io.Writer for ServerConnection with fn write_once(
   self,
   buf,
   offset~,
   len~,
 ) {
-  guard !(self.sender.mode is SendingHeader)
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_once(buf, offset~, len~)
+}
+
+///|
+pub async fn ServerConnection::write_string_interpolation(
+  self : ServerConnection,
+  data : &@io.Data,
+) -> Unit {
+  self.write(data)
 }
 
 ///|
@@ -127,10 +145,13 @@ pub async fn ServerConnection::write_string(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
-  guard !(self.sender.mode is SendingHeader)
+pub impl @io.Writer for ServerConnection with fn write_reader(self, reader) {
+  guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
+
+///|
+pub extend ServerConnection with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Flush buffered data in the response body being sent, if any.
@@ -167,7 +188,7 @@ pub async fn ServerConnection::send_response(
   self : ServerConnection,
   code : Int,
   reason : String,
-  extra_headers? : Map[String, String] = {},
+  extra_headers? : Headers = Map([]),
   cookies? : Array[Cookie] = [],
 ) -> Unit {
   self.sender.send_response(
@@ -184,7 +205,7 @@ pub async fn ServerConnection::send_response(
 pub struct Server {
   addr : @socket.Addr
   priv server : @socket.TcpServer
-  priv headers : Map[String, String]
+  priv headers : Headers
 }
 
 ///|
@@ -200,10 +221,10 @@ pub async fn Server::Server(
   addr : @socket.Addr,
   dual_stack? : Bool,
   reuse_addr? : Bool,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
 ) -> Server {
   let server = @socket.TcpServer(addr, dual_stack?, reuse_addr?)
-  { addr: server.addr, server, headers }
+  { addr: server.addr, server, headers, }
 }
 
 ///|
@@ -292,7 +313,7 @@ pub async fn Server::run_forever(
 /// (i.e. not in the middle of sending a response).
 /// Unread data from the body of the last request will be discarded.
 pub async fn ServerConnection::enter_passthrough_mode(self : Self) -> Unit {
-  guard self.sender.mode is SendingHeader
+  guard! self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
 }

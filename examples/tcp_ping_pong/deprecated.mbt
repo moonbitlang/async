@@ -17,6 +17,6 @@
 impl Show for ServerTerminate
 
 ///|
-impl Show for ServerTerminate with output(_self, logger) {
+impl Show for ServerTerminate with fn output(_self, logger) {
   logger <+ "ServerTerminate"
 }

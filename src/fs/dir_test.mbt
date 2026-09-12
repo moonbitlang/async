@@ -14,37 +14,23 @@
 
 ///|
 async test "read_all" {
-  let dir = @fs.opendir("src/fs")
+  let dir = @fs.opendir("test_directory/dir1")
   defer dir.close()
   let list = dir
     .read_all()
     .filter_map(x => if x is "target" { None } else { Some(x) })
   list.sort()
-  json_inspect(list, content=[
-    "dir.c", "stub.c", "dir.mbt", "file.mbt", "moon.pkg", "README.md", "utils.mbt",
-    "tmpdir.mbt", "dir_test.mbt", "eof_test.mbt", "README.mbt.md", "constants.mbt",
-    "lock_test.mbt", "stat_test.mbt", "walk_test.mbt", "deprecated.mbt", "mkdir_test.mbt",
-    "access_test.mbt", "create_test.mbt", "rename_test.mbt", "tmpdir_test.mbt", "read_all_test.mbt",
-    "realpath_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "text_file_test.mbt",
-    "timestamp_test.mbt", "named_pipe_test.mbt", "random_access_test.mbt", "unimplemented_test.mbt",
-  ])
+  json_inspect(list, content=["file", "inner1"])
 }
 
 ///|
 async test "as_dir" {
-  let dir_file = @fs.open("src/fs", mode=ReadOnly)
-  guard dir_file.kind() is Directory
+  let dir_file = @fs.open("test_directory/dir1", mode=ReadOnly)
+  guard! dir_file.kind() is Directory
   let dir = dir_file.as_dir()
   defer dir.close()
   let list = dir.read_all()..sort()
-  json_inspect(list, content=[
-    "dir.c", "stub.c", "dir.mbt", "file.mbt", "moon.pkg", "README.md", "utils.mbt",
-    "tmpdir.mbt", "dir_test.mbt", "eof_test.mbt", "README.mbt.md", "constants.mbt",
-    "lock_test.mbt", "stat_test.mbt", "walk_test.mbt", "deprecated.mbt", "mkdir_test.mbt",
-    "access_test.mbt", "create_test.mbt", "rename_test.mbt", "tmpdir_test.mbt", "read_all_test.mbt",
-    "realpath_test.mbt", "unimplemented.mbt", "pkg.generated.mbti", "text_file_test.mbt",
-    "timestamp_test.mbt", "named_pipe_test.mbt", "random_access_test.mbt", "unimplemented_test.mbt",
-  ])
+  json_inspect(list, content=["file", "inner1"])
 }
 
 ///|
@@ -56,13 +42,13 @@ test "readdir clear errno" {
     } noraise {
       _ => ()
     }
-    let dir = @fs.opendir("src/fs")
+    let dir = @fs.opendir("test_directory/dir1")
     defer dir.close()
     let list = dir.read_all()
     inspect(
       list.length(),
       content=(
-        #|30
+        #|2
       ),
     )
   }

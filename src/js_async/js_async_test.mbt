@@ -26,15 +26,17 @@ async test "Promise::from_async" {
 ///|
 async test "Promise::from_async cancellation" {
   let mut worker_finished = false
-  let result = try? @async.with_timeout(100, () => {
-    @js_async.run_promise() <| abort_signal => {
-      @js_async.Promise::from_async(abort_signal~) <| () => {
-        @async.sleep(200)
-        worker_finished = true
+  let result = @test_util.expect_error_async <| () => {
+    @async.with_timeout(100, () => {
+      @js_async.run_promise() <| abort_signal => {
+        @js_async.Promise::from_async(abort_signal~) <| () => {
+          @async.sleep(200)
+          worker_finished = true
+        }
       }
-    }
-  })
-  debug_inspect(result, content="Err(TimeoutError)")
+    })
+  }
+  debug_inspect(result, content="TimeoutError")
   assert_false(worker_finished)
 }
 
@@ -47,9 +49,9 @@ async test "Promise::from_async cancellation 2" {
   @async.sleep(100)
   controller.abort()
   debug_inspect(
-    try? p.wait(),
+    @test_util.expect_error_async(() => p.wait()),
     content=(
-      #|Err(<moonbitlang/async/js_async.JsError.JsError: ...>)
+      #|<moonbitlang/async/js_async.JsError.JsError: ...>
     ),
   )
 }
@@ -62,7 +64,70 @@ async test "Promise::from_async cancellation 3" {
   })
   @async.sleep(200)
   controller.abort()
-  debug_inspect(try? p.wait(), content="Ok(())")
+  p.wait()
+}
+
+///|
+extern "js" fn rejection_name(
+  promise : @js_async.Promise[Unit],
+) -> @js_async.Promise[String] =
+  #| async (promise) => {
+  #|   try {
+  #|     await promise
+  #|     return 'resolved'
+  #|   } catch (error) {
+  #|     return error.name
+  #|   }
+  #| }
+
+///|
+extern "js" fn abort_listener_count(signal : @js_async.AbortSignal) -> Int =
+  #| (signal) => require('node:events').getEventListeners(signal, 'abort').length
+
+///|
+async test "Promise::from_async removes its abort listener after completion" {
+  let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
+  let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
+    @async.sleep(100)
+  })
+  inspect(abort_listener_count(signal), content="1")
+  promise.wait()
+  inspect(abort_listener_count(signal), content="0")
+}
+
+///|
+async test "Promise::from_async removes its abort listener after rejection" {
+  let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
+  let promise : @js_async.Promise[Unit] = @js_async.Promise::from_async(
+    abort_signal=signal,
+    () => {
+      @async.sleep(100)
+      raise Failure::Failure("expected")
+    },
+  )
+  inspect(abort_listener_count(signal), content="1")
+  ignore(@test_util.expect_error_async(() => promise.wait()))
+  inspect(abort_listener_count(signal), content="0")
+}
+
+///|
+async test "Promise::from_async observes an already aborted signal" {
+  let controller = @js_async.AbortController::new()
+  let signal = controller.signal()
+  controller.abort()
+  let mut worker_started = false
+  let mut worker_finished = false
+  let promise = @js_async.Promise::from_async(abort_signal=signal, () => {
+    worker_started = true
+    @async.sleep(100)
+    worker_finished = true
+  })
+  inspect(rejection_name(promise).wait(), content="AbortError")
+  assert_true(worker_started)
+  assert_false(worker_finished)
+  inspect(abort_listener_count(signal), content="0")
 }
 
 ///|
@@ -80,7 +145,7 @@ async test "read dir" {
 ///|
 async test "read file" {
   let content = @js_async.run_promise(signal => {
-    (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal })
+    (fsPromises.readFile)("LICENSE", { encoding: "utf8", signal, })
   })
   inspect(
     content,

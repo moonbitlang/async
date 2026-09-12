@@ -13,23 +13,18 @@
 // limitations under the License.
 
 ///|
-#borrow(name)
-extern "C" fn get_signal_by_name(name : Bytes) -> Int = "moonbitlang_async_get_signal_by_name"
+#cfg(target="native")
+extern "C" fn get_signal_by_index(index : Int) -> Int = "moonbitlang_async_get_signal_by_index"
 
 ///|
-pub let _SIGINT : Int = get_signal_by_name(b"SIGINT")
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_signal_by_index(index : Int) -> Int = "moonbitlang/async" "signal/get_signal_by_index"
 
 ///|
-pub let _SIGTERM : Int = get_signal_by_name(b"SIGTERM")
-
-///|
-pub let _SIGHUP : Int = get_signal_by_name(b"SIGHUP")
-
-///|
-pub let _SIGBREAK : Int = get_signal_by_name(b"SIGBREAK")
-
-///|
-let all_signals : ReadOnlyArray[Int] = [_SIGINT, _SIGTERM, _SIGHUP, _SIGBREAK]
+pub let all_signals : ReadOnlyArray[Int] = ReadOnlyArray::makei(
+  4, get_signal_by_index,
+)
 
 ///|
 pub suberror KilledBySignal {
@@ -37,11 +32,25 @@ pub suberror KilledBySignal {
 }
 
 ///|
+#cfg(target="native")
 #borrow(all_signals, signals)
 extern "C" fn set_global_cancellation_signals_ffi(
   all_signals : ReadOnlyArray[Int],
+  all_signals_len : Int,
   signals : ReadOnlyArray[Int],
+  signals_len : Int,
 ) -> Unit = "moonbitlang_async_set_global_cancellation_signals"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(all_signals, signals)
+fn set_global_cancellation_signals_ffi(
+  all_signals : ReadOnlyArray[Int],
+  all_signals_len : Int,
+  signals : ReadOnlyArray[Int],
+  signals_len : Int,
+) -> Unit = "moonbitlang/async" "signal/set_global_cancellation_signals"
 
 ///|
 let global_signal_handler_initialized : Ref[Bool] = Ref(false)
@@ -49,36 +58,46 @@ let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 ///|
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
   global_signal_handler_initialized.val = true
-  set_global_cancellation_signals_ffi(all_signals, signals)
+  set_global_cancellation_signals_ffi(
+    all_signals,
+    all_signals.length(),
+    signals,
+    signals.length(),
+  )
 }
 
 ///|
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn start_signal_handler_ffi() -> Unit = "moonbitlang_async_start_signal_handler"
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+extern "C" fn terminate_signal_handler_ffi() -> Unit = "moonbitlang_async_terminate_signal_handler"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn start_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/start_signal_handler"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn terminate_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/terminate_signal_handler"
+
+///|
 #cfg(not(platform="windows"))
-fn setup_signal_handler() -> @coroutine.Coroutine {
+fn setup_signal_handler_unix() -> Unit {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
-  @coroutine.spawn() <| () => {
-    let context = "sigwait thread"
-    fn cancel(job_id) raise {
-      guard curr_loop.val is Some(evloop)
-      evloop.cancel_job_in_worker(job_id, context~)
-    }
-    let _ = perform_job_in_worker(Job::sigwait(all_signals), context~, cancel~)
-  }
+  start_signal_handler_ffi()
 }
 
 ///|
 #cfg(not(platform="windows"))
-async fn EventLoop::terminate_signal_handler(
-  evloop : EventLoop,
-  sigwait_task : @coroutine.Coroutine,
-) -> Unit {
-  sigwait_task.cancel()
-  @coroutine.protect_from_cancel(() => sigwait_task.wait()) catch {
-    @coroutine.Cancelled => ()
-    err => raise err
-  }
+fn EventLoop::terminate_signal_handler_unix(evloop : EventLoop) -> Unit raise {
+  global_signal_handler_initialized.val = false
+  terminate_signal_handler_ffi()
   if evloop.killed_by_signal is Some(signal) {
     raise KilledBySignal(signal)
   }
@@ -89,8 +108,13 @@ async fn EventLoop::terminate_signal_handler(
 extern "C" fn set_console_control_handler(add : Int) -> Int = "moonbitlang_async_set_console_control_handler"
 
 ///|
-#cfg(platform="windows")
-fn setup_signal_handler() -> Unit raise {
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn set_console_control_handler(add : Int) -> Int = "moonbitlang/async" "signal/set_console_control_handler"
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+fn setup_signal_handler_windows() -> Unit raise {
   if !global_signal_handler_initialized.val {
     set_global_cancellation_signals(all_signals)
   }
@@ -100,10 +124,9 @@ fn setup_signal_handler() -> Unit raise {
 }
 
 ///|
-#cfg(platform="windows")
-fn EventLoop::terminate_signal_handler(
+#cfg(any(target="wasm", platform="windows"))
+fn EventLoop::terminate_signal_handler_windows(
   evloop : EventLoop,
-  _ : Unit,
 ) -> Unit raise {
   if set_console_control_handler(0) is 0 {
     @os_error.check_errno("terminate_signal_handler()")
@@ -112,3 +135,51 @@ fn EventLoop::terminate_signal_handler(
     raise KilledBySignal(signal)
   }
 }
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+fn setup_signal_handler() -> Unit {
+  setup_signal_handler_unix()
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
+  evloop.terminate_signal_handler_unix()
+}
+
+///|
+#cfg(platform="windows")
+fn setup_signal_handler() -> Unit raise {
+  setup_signal_handler_windows()
+}
+
+///|
+#cfg(platform="windows")
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
+  global_signal_handler_initialized.val = false
+  evloop.terminate_signal_handler_windows()
+}
+
+///|
+#cfg(target="wasm")
+fn setup_signal_handler() -> Unit raise {
+  match platform {
+    Linux | MacOS => setup_signal_handler_unix()
+    Windows => setup_signal_handler_windows()
+  }
+}
+
+///|
+#cfg(target="wasm")
+fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
+  global_signal_handler_initialized.val = false
+  match platform {
+    Linux | MacOS => evloop.terminate_signal_handler_unix()
+    Windows => evloop.terminate_signal_handler_windows()
+  }
+}
+
+///|
+#cfg(target="native")
+pub extern "C" fn terminate_process_by_signal(sig : Int) -> Unit = "moonbitlang_async_terminate_process_by_signal"

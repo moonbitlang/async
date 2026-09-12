@@ -29,15 +29,42 @@ pub using @coroutine {pause}
 pub using @coroutine {is_being_cancelled}
 
 ///|
-/// `is_cancellation_error(err)` return `true`
-/// if `err` is the special error used to represent cancellation internally.
+#deprecated("`catch` can no longer capture cancellation, and cancellation is no longer represented as an error, so `is_cancellation_error` is now meaningless. Use `with_cancellation_handler` or `is_being_cancelled` instead.")
+pub fn is_cancellation_error(_ : Error) -> Bool {
+  false
+}
+
+///|
+/// `handle_cancellation(f)` runs the asynchronous function `f`.
+/// The result of `handle_cancellation(f)` is:
 ///
-/// Note that `is_cancellation_error` may not be accurate:
-/// async code may fail and raise other error during cancellation handling,
-/// in this case the error may be replaced by something else.
-/// For accurate detection of cancellation, use `is_being_cancelled` instead.
-pub fn is_cancellation_error(error : Error) -> Bool {
-  error is @coroutine.Cancelled
+/// - `Some(result)`, if `f` returns `result`
+/// - `None`, if `f` is cancelled normally
+/// - `raise err`, if `f` raises `err`
+///
+/// `handle_cancellation` can be used to react to cancellation,
+/// but it cannot be used to revert cancellation.
+/// When `handle_cancellation` returns `None`, subsequent unprotected `async` operations
+/// will still get cancelled immediately.
+/// To truly protect a piece of code from cancellation, use `protect_from_cancel` instead.
+pub using @coroutine {handle_cancellation}
+
+///|
+/// `with_cancellation_handler(f, handler~)` runs the asynchronous function `f`.
+/// If `f` is cancelled and does not produce a result, `handler` will be invoked.
+/// If `f` succeed or fail with a fatal error, the result of `f` will be returned as-is.
+#deprecated("use `handle_cancellation` instead")
+pub async fn[X] with_cancellation_handler(
+  f : async () -> X,
+  handler~ : async () -> Unit,
+) -> X {
+  match handle_cancellation(f) {
+    None => {
+      handler()
+      @coroutine.raise_cancellation_signal()
+    }
+    Some(ret) => ret
+  }
 }
 
 ///|
@@ -95,11 +122,10 @@ pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
 /// Things waiting for current task, such as the task group,
 /// will also wait until `f` finish.
 ///
-/// If `resume_on_cancel` is `false` (`false` by default),
-/// cancellation will be delayed until `f` returns.
-/// If `resume_on_cancel` is `true`, the program will resume normally
-/// after `f` returns, even if current task is cancelled.
-/// The next unprotected async operation will still get cancelled, though.
+/// The program will resume normally after `f` returns,
+/// even if current task is cancelled.
+/// The task will remain in cancelled state, though.
+/// So the next unprotected async operation will get cancelled immediately.
 ///
 /// This function should be use with extra care and only when absolutely necessary,
 /// because it will break other abstraction such as `with_timeout`.
@@ -113,9 +139,26 @@ pub using @coroutine {protect_from_cancel}
 /// `now` can be used to measure elapsed time, such as benchmarking,
 /// but the meaning of the absolute time value returned by `now`
 /// is undefined, and should not be depended on.
-pub fn now() -> Int64 {
-  @time.ms_since_epoch()
-}
+pub using @event_loop {now}
+
+///|
+/// When `moonbitlang/async` detects a a deadlock situation
+/// (i.e. all remaining tasks are mutually blocked on each other,
+/// no one is waiting for any timer or IO),
+/// the runtime automatically panic and report error to `stderr`
+/// to avoid stucking forever.
+///
+/// This behavior can be altered by `set_deadlock_handler`.
+/// The handler will receive the source location of remaining tasks as input,
+/// the user may choose to output log via a file or other means and panic,
+/// or simply ignore the deadlock situation by setting a custom callback.
+///
+/// If the deadlock handler return normally without aborting the program,
+/// the runtime will ignore the deadlock and continue execution,
+/// disabling deadlock detection in effect.
+/// Note that the program will likely hang forever in this case.
+#cfg(any(target="native", target="wasm"))
+pub using @event_loop {set_deadlock_handler}
 
 ///|
 pub using @aqueue {type Queue}
@@ -261,6 +304,7 @@ pub async fn[X] all(
 ///
 /// `any` requires at least one task and will fail if the array is empty.
 #callsite(autofill(loc))
+#warnings("-fragile_catch_all")
 pub async fn[X] any(
   tasks : ArrayView[async () -> X],
   max_concurrent? : Int,

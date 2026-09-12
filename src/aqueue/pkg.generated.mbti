@@ -36,4 +36,3 @@ pub fn[X] Queue::try_put(Self[X], X) -> Bool raise
 // Type aliases
 
 // Traits
-

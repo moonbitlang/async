@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+}
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "stub.c" ],
+)

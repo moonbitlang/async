@@ -39,13 +39,20 @@ enum IoResultKind {
   Socket,
   SocketWithAddr,
   Connect,
-  Accept
+  Accept,
+  ReadDirChanges
 };
+
+// should be the same as `ReadEvent`/`WriteEvent` in `event_bus.mbt`
+#define IO_RESULT_READ_EVENT  1
+#define IO_RESULT_WRITE_EVENT 2
 
 struct IoResult {
   OVERLAPPED overlapped;
   enum IoResultKind kind;
-  int32_t job_id;
+  // Used to identify different IO operations on the same handle (in particular read v.s. write).
+  // May be `IO_RESULT_READ_EVENT` or `IO_RESULT_WRITE_EVENT`
+  int32_t event;
 };
 
 struct FileIoResult {
@@ -98,33 +105,41 @@ struct ConnectIoResult {
 struct AcceptIoResult {
   struct IoResult header;
 
-
   // output buffer used for `AcceptEx`
   DWORD bytes_received;
-  char accept_buffer[sizeof(struct sockaddr_storage) * 2];
+  int32_t addr_len;
+  char accept_buffer[0];
+};
+
+struct ReadDirChangesIoResult {
+  struct IoResult header;
+
+  // this buffer should be allocated in C
+  char *buf;
+  int32_t len;
 };
 
 static inline
-struct IoResult *make_io_result(int job_id, enum IoResultKind kind, size_t size) {
+struct IoResult *make_io_result(int event, enum IoResultKind kind, size_t size) {
   struct IoResult *result = (struct IoResult*)malloc(size);
   memset(result, 0, sizeof(OVERLAPPED));
   result->kind = kind;
-  result->job_id = job_id;
+  result->event = event;
   return result;
 }
 
-#define MAKE_IO_RESULT(job_id, kind)\
-  (struct kind##IoResult*)make_io_result(job_id, kind, sizeof(struct kind##IoResult))
+#define MAKE_IO_RESULT(event, kind)\
+  (struct kind##IoResult*)make_io_result(event, kind, sizeof(struct kind##IoResult))
 
-MOONBIT_FFI_EXPORT
-struct FileIoResult *moonbitlang_async_make_file_io_result(
-  int32_t job_id,
+static
+struct FileIoResult *make_file_io_result(
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int64_t position
 ) {
-  struct FileIoResult *result = MAKE_IO_RESULT(job_id, File);
+  struct FileIoResult *result = MAKE_IO_RESULT(event, File);
   result->header.overlapped.Offset = position & 0xffffffff;
   result->header.overlapped.OffsetHigh = position >> 32;
   result->buf_obj = buf;
@@ -134,14 +149,34 @@ struct FileIoResult *moonbitlang_async_make_file_io_result(
 }
 
 MOONBIT_FFI_EXPORT
-struct SocketIoResult *moonbitlang_async_make_socket_io_result(
-  int32_t job_id,
+struct FileIoResult *moonbitlang_async_make_file_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int64_t position
+) {
+  return make_file_io_result(IO_RESULT_READ_EVENT, buf, offset, len, position);
+}
+
+MOONBIT_FFI_EXPORT
+struct FileIoResult *moonbitlang_async_make_file_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int64_t position
+) {
+  return make_file_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, position);
+}
+
+static
+struct SocketIoResult *make_socket_io_result(
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int32_t flags
 ) {
-  struct SocketIoResult *result = MAKE_IO_RESULT(job_id, Socket);
+  struct SocketIoResult *result = MAKE_IO_RESULT(event, Socket);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
@@ -150,15 +185,35 @@ struct SocketIoResult *moonbitlang_async_make_socket_io_result(
 }
 
 MOONBIT_FFI_EXPORT
-struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result(
-  int32_t job_id,
+struct SocketIoResult *moonbitlang_async_make_socket_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags
+) {
+  return make_socket_io_result(IO_RESULT_READ_EVENT, buf, offset, len, flags);
+}
+
+MOONBIT_FFI_EXPORT
+struct SocketIoResult *moonbitlang_async_make_socket_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags
+) {
+  return make_socket_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, flags);
+}
+
+static
+struct SocketWithAddrIoResult *make_socket_with_addr_io_result(
+  int32_t event,
   char *buf,
   int32_t offset,
   int32_t len,
   int32_t flags,
   struct sockaddr *addr
 ) {
-  struct SocketWithAddrIoResult *result = MAKE_IO_RESULT(job_id, SocketWithAddr);
+  struct SocketWithAddrIoResult *result = MAKE_IO_RESULT(event, SocketWithAddr);
   result->buf_obj = buf;
   result->buf.buf = buf + offset;
   result->buf.len = len;
@@ -171,18 +226,56 @@ struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_io_result
 }
 
 MOONBIT_FFI_EXPORT
-struct ConnectIoResult *moonbitlang_async_make_connect_io_result(
-  int32_t job_id,
+struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_read_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags,
   struct sockaddr *addr
 ) {
-  struct ConnectIoResult *result = MAKE_IO_RESULT(job_id, Connect);
+  return make_socket_with_addr_io_result(IO_RESULT_READ_EVENT, buf, offset, len, flags, addr);
+}
+
+MOONBIT_FFI_EXPORT
+struct SocketWithAddrIoResult *moonbitlang_async_make_socket_with_addr_write_io_result(
+  char *buf,
+  int32_t offset,
+  int32_t len,
+  int32_t flags,
+  struct sockaddr *addr
+) {
+  return make_socket_with_addr_io_result(IO_RESULT_WRITE_EVENT, buf, offset, len, flags, addr);
+}
+
+
+MOONBIT_FFI_EXPORT
+struct ConnectIoResult *moonbitlang_async_make_connect_io_result(struct sockaddr *addr) {
+  struct ConnectIoResult *result = MAKE_IO_RESULT(IO_RESULT_WRITE_EVENT, Connect);
   result->addr = addr;
   return result;
 }
 
 MOONBIT_FFI_EXPORT
-struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t job_id) {
-  return MAKE_IO_RESULT(job_id, Accept);
+struct AcceptIoResult *moonbitlang_async_make_accept_io_result(int32_t addr_len) {
+  struct AcceptIoResult *result = (struct AcceptIoResult*)make_io_result(
+    IO_RESULT_READ_EVENT,
+    Accept,
+    // `AcceptEx` requires 16 extra bytes per address for internal use in the buffer.
+    sizeof(struct AcceptIoResult) + (addr_len + 16) * 2
+  );
+  result->addr_len = addr_len;
+  return result;
+}
+
+MOONBIT_FFI_EXPORT
+struct ReadDirChangesIoResult *moonbitlang_async_make_read_dir_changes_io_result(
+  char *buf,
+  int32_t len
+) {
+  struct ReadDirChangesIoResult *result = MAKE_IO_RESULT(IO_RESULT_READ_EVENT, ReadDirChanges);
+  result->buf = buf;
+  result->len = len;
+  return result;
 }
 
 MOONBIT_FFI_EXPORT
@@ -202,14 +295,15 @@ void moonbitlang_async_free_io_result(struct IoResult *obj) {
     moonbit_decref(((struct ConnectIoResult*)obj)->addr);
     break;
   case Accept:
+  case ReadDirChanges:
     break;
   }
   free(obj);
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_io_result_get_job_id(struct IoResult *result) {
-  return result->job_id;
+int32_t moonbitlang_async_io_result_get_event(struct IoResult *result) {
+  return result->event;
 }
 
 MOONBIT_FFI_EXPORT
@@ -228,11 +322,17 @@ int32_t moonbitlang_async_io_result_get_status(
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handle) {
   int32_t result = CancelIoEx(handle, overlapped);
-  // cancellation failure, wait for completion packet
-  if (!result)
-    return GetLastError() == ERROR_NOT_FOUND ? 0 : -1;
+  // The cancellation operation itself failed for some reason.
+  // The caller should give up cancellation and wait for completion in this case.
+  // 
+  // `ERROR_NOT_FOUND` is an exception here,
+  // because it indicates the operation has already completed.
+  if (!result && GetLastError() != ERROR_NOT_FOUND)
+    return -1;
 
-  // no need to wait if the operation already completed
+  // The operation may have already completed before cancellation (`ERROR_NOT_FOUND`),
+  // or `CancelIoEx` may have taken effect immediately.
+  // So we should check the status of the operation immediately here.
   DWORD bytes_transferred;
   if (GetOverlappedResult(handle, overlapped, &bytes_transferred, FALSE))
     return 0;
@@ -448,10 +548,10 @@ int32_t moonbitlang_async_accept(
   return AcceptEx(
     (SOCKET)handle,
     (SOCKET)conn_sock,
-    &(result->accept_buffer),
+    result->accept_buffer,
     0,
-    sizeof(struct sockaddr_storage),
-    sizeof(struct sockaddr_storage),
+    result->addr_len + 16,
+    result->addr_len + 16,
     &(result->bytes_received),
     (LPOVERLAPPED)result
   );
@@ -477,8 +577,57 @@ int32_t moonbitlang_async_setup_accepted_socket(HANDLE listen_sock, HANDLE accep
 }
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_get_std_handle(int32_t id) {
-  return GetStdHandle(id);
+void moonbitlang_async_get_accept_peer_addr(struct AcceptIoResult *result, struct sockaddr *dst) {
+  memcpy(dst, result->accept_buffer + result->addr_len + 16, result->addr_len);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_read_dir_changes(HANDLE dir, struct ReadDirChangesIoResult *result) {
+  DWORD bytes_returned;
+#if _WIN32_WINNT >= 0x0A00
+  BOOL ret = ReadDirectoryChangesExW(
+    dir,
+    result->buf,
+    result->len,
+    TRUE,
+    FILE_NOTIFY_CHANGE_SIZE
+    | FILE_NOTIFY_CHANGE_LAST_WRITE
+    | FILE_NOTIFY_CHANGE_FILE_NAME
+    | FILE_NOTIFY_CHANGE_DIR_NAME,
+    &bytes_returned,
+    (LPOVERLAPPED)result,
+    NULL,
+    ReadDirectoryNotifyExtendedInformation
+  );
+#else
+  BOOL ret = ReadDirectoryChangesW(
+    dir,
+    result->buf,
+    result->len,
+    TRUE,
+    FILE_NOTIFY_CHANGE_SIZE
+    | FILE_NOTIFY_CHANGE_LAST_WRITE
+    | FILE_NOTIFY_CHANGE_FILE_NAME
+    | FILE_NOTIFY_CHANGE_DIR_NAME,
+    &bytes_returned,
+    (LPOVERLAPPED)result,
+    NULL
+  );
+#endif
+  if (!ret)
+    return -1;
+
+  // According to https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw,
+  // `ReadDirectoryChangesW` return `TRUE` when the completion packet is succesfully queued,
+  // which contradicts with general overlapped IO practice,
+  // where the operation should fail with `ERROR_IO_PENDING`.
+  // So `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS` probably just isn't supported by `ReadDirectoryChangesW`.
+  // HOPEFULLY Microsoft won't suddenly decide that this should work someday,
+  // because that will break the code here.
+  // Also funny enough: `bytes_returned` will actually be written to some meaningful value immediately.
+  // So we cannot use that to decide if the operation has completed immediately (it probably just never will).
+  SetLastError(ERROR_IO_PENDING);
+  return -1;
 }
 
 #endif // #ifdef _WIN32

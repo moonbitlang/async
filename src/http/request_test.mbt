@@ -25,20 +25,40 @@ async test "http request" {
 }
 
 ///|
-async test "request cancel" {
-  let start = @async.now()
-  let result = @async.with_timeout_opt(200, () => {
-    @http.get(
-      "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
-    )
-  })
-  let end = @async.now()
-  assert_true(result is None)
-  if @env.get_env_var("MOONBIT_ASYNC_TEST_SANITIZER_ENABLED") is None {
-    let delta = end - start
-    if delta >= 300 {
-      raise Failure::Failure("request cancellation took too long: \{delta}ms")
+async test "request cancel handshake" {
+  @async.with_task_group() <| group => {
+    let port = non_responding_tcp_server(group)
+    let result = @async.with_timeout_opt(250) <| () => {
+      let (response, _) = @http.get("http://127.0.0.1:\{port}/")
+      response.code
     }
+    debug_inspect(result, content="None")
+  }
+}
+
+///|
+async test "request cancel wait response header" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let result = @async.with_timeout_opt(250) <| () => {
+      let (response, _) = @http.get("http://127.0.0.1:\{port}/no-response")
+      response.code
+    }
+    debug_inspect(result, content="None")
+  }
+}
+
+///|
+async test "request cancel wait response body" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let result = @async.with_timeout_opt(250) <| () => {
+      let (response, _) = @http.get("http://127.0.0.1:\{port}/no-response-body")
+      response.code
+    }
+    debug_inspect(result, content="None")
   }
 }
 
@@ -51,7 +71,7 @@ async test "manual Accept-Encoding" {
     group.spawn_bg(no_wait=true) <| () => {
       test_server.run_forever() <| ((req, _body, conn) => {
         let accept_encoding = req.headers.get("accept-encoding")
-        log.push("server received: \{to_repr(accept_encoding)}")
+        log.push("server received: \{Repr(accept_encoding)}")
         let file = @fs.open("LICENSE", mode=ReadOnly)
         defer file.close()
         conn.send_response(200, "OK", extra_headers={

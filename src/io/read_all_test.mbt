@@ -28,7 +28,7 @@ async fn writer(log : StringBuilder, w : @io.PipeWrite) -> Unit {
 
 ///|
 async test "read_all basic" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
     defer r.close()

@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 fn test_arg(arg : String) -> String {
-  StringBuilder::new()..write_arg_with_windows_escape(arg).to_string()
+  StringBuilder()..write_arg_with_windows_escape(arg).to_string()
 }
 
 ///|
-#cfg(platform="windows")
+#cfg(any(target="wasm", platform="windows"))
 test "windows command line arg escape" {
   // These tests come from
   // https://learn.microsoft.com/en-us/cpp/c-language/parsing-c-command-line-arguments
@@ -67,6 +67,43 @@ test "windows command line arg escape" {
     test_arg(test_str),
     content=(
       #|"ab\" c d"
+    ),
+  )
+}
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+test "windows command line arg escape empty" {
+  let test_str = ""
+  inspect(
+    test_arg(test_str),
+    content=(
+      #|""
+    ),
+  )
+}
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+test "windows command line arg escape leading quote" {
+  let test_str =
+    #|"abcd
+  inspect(
+    test_arg(test_str),
+    content=(
+      #|"\"abcd"
+    ),
+  )
+}
+
+///|
+#cfg(any(target="wasm", platform="windows"))
+test "windows command line arg truncate on NUL" {
+  let test_str = "ab\u{0000}cd"
+  inspect(
+    test_arg(test_str),
+    content=(
+      #|"ab"
     ),
   )
 }

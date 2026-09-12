@@ -13,66 +13,42 @@
 // limitations under the License.
 
 ///|
-#cfg(not(platform="windows"))
-pub const IS_WINDOWS : Bool = false
+pub using @env_util {platform}
 
 ///|
-#cfg(platform="windows")
-pub const IS_WINDOWS : Bool = true
-
-///|
-pub(all) enum Platform {
-  Linux = 0
-  MacOS = 1
-  Windows = 2
-}
-
-///|
-extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
-
-///|
-pub let platform : Platform = get_platform()
-
-///|
-#cfg(not(platform="windows"))
 priv struct EventLoop {
-  poll : Instance
+  bus : EventBus
   fds : Map[@fd_util.Fd, IoHandle]
-  pids : Map[Int, @coroutine.Coroutine]
+  extra : PlatformEventLoopExtra
+  /// a special file descriptor used to indicate job completion message from thread pool
   notify_recv : @fd_util.Fd
-  notify_send : @fd_util.Fd
   max_worker_count : Int
   mut job_id : Int
-  job_queue : @deque.Deque[QueuedJob]
-  idle_workers : @deque.Deque[Worker]
-  running_workers : Map[Int, Worker]
-  completed_jobs_buffer : FixedArray[Int]
-  jobs : Map[Int, @coroutine.Coroutine]
-  timers : @sorted_set.SortedSet[Timer]
-  mut main : @coroutine.Coroutine?
-  mut killed_by_signal : Int?
-}
-
-///|
-#cfg(platform="windows")
-priv struct EventLoop {
-  poll : Instance
-  fds : Map[@fd_util.Fd, IoHandle]
-  max_worker_count : Int
-  mut job_id : Int
-  job_queue : @deque.Deque[QueuedJob]
+  job_queue : Set[QueuedJob]
   idle_workers : @deque.Deque[Worker]
   running_workers : Map[Int, Worker]
   jobs : Map[Int, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
   mut killed_by_signal : Int?
+  mut blocked_tasks : Int
 }
 
 ///|
 priv struct QueuedJob {
   job_id : Int
   job : Job
+  waiter : @coroutine.Coroutine
+}
+
+///|
+impl Eq for QueuedJob with fn equal(x, y) {
+  x.job_id == y.job_id
+}
+
+///|
+impl Hash for QueuedJob with fn hash_combine(job, hasher) {
+  Hash::hash_combine(job.job_id, hasher)
 }
 
 ///|
@@ -92,96 +68,67 @@ pub fn register_hook(
   init? : () -> Unit raise,
   exit? : () -> Unit raise,
 ) -> Unit {
-  hooks.push({ init, exit })
+  hooks.push({ init, exit, })
 }
 
 ///|
-#cfg(not(platform="windows"))
-fn EventLoop::new() -> EventLoop raise {
-  let poll = Instance::new()
-  let (notify_recv, notify_send) = @fd_util.pipe(
-    read_end_is_async=true,
-    write_end_is_async=false,
-    context="initialze runtime",
-  )
-  poll.register(notify_recv, prev_events=NoEvent, new_events=ReadEvent) catch {
-    err => {
-      @fd_util.close(notify_recv, kind=Pipe, context="initialize runtime")
-      @fd_util.close(notify_send, kind=Pipe, context="initialize runtime")
-      raise err
-    }
+fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
+  let bus = EventBus::new()
+  errdefer bus.destroy()
+  let notify_recv = init_thread_pool_ffi(bus)
+  if !@fd_util.fd_is_valid(notify_recv) {
+    @os_error.check_errno("initialize thread pool")
   }
-  init_thread_pool_ffi(notify_send)
+  let extra = PlatformEventLoopExtra::new()
   {
-    poll,
-    fds: {},
-    pids: {},
+    bus,
+    fds: Map([]),
+    extra,
     notify_recv,
-    notify_send,
-    max_worker_count: 1024,
+    max_worker_count,
     job_id: 0,
-    job_queue: @deque.Deque([]),
-    idle_workers: @deque.Deque([]),
-    running_workers: {},
-    completed_jobs_buffer: FixedArray::make(1024, 0),
-    jobs: {},
-    timers: @sorted_set.SortedSet([]),
+    job_queue: Set([]),
+    idle_workers: Deque([]),
+    running_workers: Map([]),
+    jobs: Map([]),
+    timers: SortedSet([]),
     main: None,
     killed_by_signal: None,
+    blocked_tasks: 0,
   }
 }
 
 ///|
-#cfg(platform="windows")
-fn EventLoop::new() -> EventLoop raise {
-  let poll = Instance::new()
-  init_thread_pool_ffi(poll.0)
-  if init_WSA_ffi() != 0 {
-    @os_error.check_errno("initialize WSA")
-  }
-  {
-    poll,
-    fds: {},
-    max_worker_count: 1024,
-    job_id: 0,
-    job_queue: @deque.Deque([]),
-    idle_workers: @deque.Deque([]),
-    running_workers: {},
-    jobs: {},
-    timers: @sorted_set.SortedSet([]),
-    main: None,
-    killed_by_signal: None,
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
 fn EventLoop::destroy(evloop : EventLoop) -> Unit {
-  @fd_util.close(evloop.notify_recv, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
-  @fd_util.close(evloop.notify_send, kind=Pipe, context="initialize runtime") catch {
-    _ => ()
-  }
-  evloop.poll.remove(evloop.notify_recv, events=ReadEvent) catch {
-    _ => ()
-  }
-  evloop.poll.destroy()
+  evloop.bus.destroy()
   destroy_thread_pool()
+  evloop.extra.destroy()
 }
 
 ///|
-#cfg(platform="windows")
-fn EventLoop::destroy(evloop : EventLoop) -> Unit {
-  evloop.poll.destroy()
-  destroy_thread_pool()
-  ignore(cleanup_WSA_ffi())
+using @external_loop_integration {trait ExternalEventLoop}
+
+///|
+let external_loop : Ref[&ExternalEventLoop?] = Ref(None)
+
+///|
+pub fn set_external_event_loop(extloop : &ExternalEventLoop) -> Unit {
+  if curr_loop.val is Some(evloop) && evloop.main is Some(_) {
+    abort("`set_external_event_loop` called after event loop already started")
+  }
+  guard external_loop.val is None else {
+    abort("An external event loop is already set")
+  }
+  external_loop.val = Some(extloop)
 }
 
 ///|
-pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
-  guard curr_loop.val is None
-  let evloop = EventLoop::new()
+pub fn with_event_loop(
+  f : async () -> Unit,
+  max_worker_count? : Int = 1024,
+) -> Unit raise {
+  guard! curr_loop.val is None
+  let evloop = EventLoop::new(max_worker_count~)
   defer evloop.destroy()
   curr_loop.val = Some(evloop)
   defer {
@@ -192,42 +139,70 @@ pub fn with_event_loop(f : async () -> Unit) -> Unit raise {
       init()
     }
   }
-  let signal_handler = setup_signal_handler()
+  setup_signal_handler()
   let main = @coroutine.spawn(() => {
-    try f() catch {
-      err => {
-        evloop.terminate_signal_handler(signal_handler)
-        raise err
-      }
-    } noraise {
-      _ => evloop.terminate_signal_handler(signal_handler)
-    }
+    defer evloop.terminate_signal_handler()
+    f()
   })
+  @coroutine.reschedule()
   evloop.main = Some(main)
-  evloop.run_forever()
-  main.unwrap()
+  try {
+    if external_loop.val is Some(extloop) {
+      external_loop.val = None
+      defer extloop.terminate()
+      evloop.run_with_external_loop(extloop)
+    } else {
+      evloop.run_forever()
+    }
+  } catch {
+    err => {
+      @env_util.eprintln("fatal runtime error: \{err}")
+      panic()
+    }
+  }
+  ignore(main.unwrap())
 }
 
 ///|
-fn EventLoop::wait_for_event(self : EventLoop) -> Int raise {
-  let timeout = if @coroutine.has_immediately_ready_task() {
-    0
-  } else if self.timers.iter().head() is Some(timer) {
-    @cmp.maximum(0, (timer.expire_time - @time.ms_since_epoch()).to_int())
-  } else {
-    -1
+async fn EventLoop::suspend(evloop : EventLoop) -> Unit noraise {
+  evloop.blocked_tasks += 1
+  defer {
+    evloop.blocked_tasks -= 1
   }
-  let n = self.poll.wait(timeout~)
+  @coroutine.suspend()
+}
+
+///|
+async fn EventLoop::suspend_check_cancel(
+  evloop : EventLoop,
+) -> @coroutine.SuspendResult noraise {
+  evloop.blocked_tasks += 1
+  defer {
+    evloop.blocked_tasks -= 1
+  }
+  @coroutine.suspend_check_cancel()
+}
+
+///|
+#cfg(target="native")
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+pub fn now() -> Int64 = "moonbitlang/async" "time/get_ms_since_epoch"
+
+///|
+fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
+  let n = self.bus.wait(timeout~)
   if n < 0 {
-    @os_error.check_errno("runtime internal: poll_wait")
-  }
-  let now = @time.ms_since_epoch()
-  for timer in self.timers {
-    if timer.expire_time <= now {
-      (timer.callback)()
-    } else {
-      break
+    if errno_is_cancelled(@os_error.get_errno()) {
+      // `EINTR`
+      return 0
     }
+    @os_error.check_errno("runtime internal: poll_wait")
   }
   n
 }
@@ -243,9 +218,20 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     }
     self.killed_by_signal = Some(job_id ^ (1 << 31))
   }
-  guard self.running_workers.get(job_id) is Some(worker)
+  guard self.running_workers.get(job_id) is Some(worker) else { return }
+  // Completion message for a job may receive in two cases:
+  //
+  // - the job indeed completed
+  // - the job is being cancelled, and we need to retry cancellation
+  //
+  // `check_cancellation_retry` check the second case and perform retry automatically.
+  // If the completion message is for retry, do not wake the waiter yet.
+  if worker.check_cancellation_retry() {
+    return
+  }
+
   self.running_workers.remove(job_id)
-  match self.job_queue.pop_front() {
+  match self.job_queue.iter().next() {
     None => {
       worker.enter_idle()
       self.idle_workers.push_back(worker)
@@ -253,74 +239,12 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
     Some(job) => {
       self.running_workers[job.job_id] = worker
       worker.wake(job.job_id, job.job)
+      self.job_queue.remove(job)
+      job.waiter.wake()
     }
   }
   if self.jobs.get(job_id) is Some(coro) {
     coro.wake()
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-fn EventLoop::poll(self : Self) -> Unit raise {
-  let n = self.wait_for_event()
-  for i in 0..<n {
-    let event = get_event(i)
-    let events = event.events()
-    let fd = event.fd()
-    if (events & ProcessEvent) != 0 {
-      if self.pids.get(fd) is Some(coro) {
-        coro.wake()
-      }
-    } else if fd == self.notify_recv {
-      while true {
-        let bytes_transferred = fetch_completion_ffi(
-          self.notify_recv,
-          self.completed_jobs_buffer,
-        )
-        if bytes_transferred < 0 {
-          @os_error.check_errno("runtime internal: failed to get completed job")
-        }
-        let n = bytes_transferred / 4
-        for i in 0..<n {
-          self.handle_completed_job(self.completed_jobs_buffer[i])
-        }
-        if n < self.completed_jobs_buffer.length() {
-          break
-        }
-      }
-    } else if self.fds.get(fd) is Some(handle) {
-      if (events & ReadEvent) != 0 && handle.read is Some(coro) {
-        coro.wake()
-      }
-      if (events & WriteEvent) != 0 && handle.write is Some(coro) {
-        coro.wake()
-      }
-    }
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn EventLoop::poll(self : Self) -> Unit raise {
-  let n = self.wait_for_event()
-  for i in 0..<n {
-    let event = get_event(i)
-    let fd = event.fd()
-    if @fd_util.fd_is_valid(fd) {
-      // completed IO operation on a file descriptor
-      guard self.fds.get(fd) is Some(_) else {  }
-      let result = event.io_result()
-      let job_id = result.job_id()
-      if self.jobs.get(job_id) is Some(coro) {
-        coro.wake()
-      }
-    } else {
-      // custom completion packet from thread pool.
-      // Here we use the `dwNumberOfBytesTransferred` field to store job ID
-      let job_id = event.bytes_transferred()
-      self.handle_completed_job(job_id)
-    }
   }
 }
 
@@ -331,16 +255,16 @@ pub let check_fd_leak : Ref[Bool] = Ref(
 
 ///|
 fn EventLoop::check_fd_leak(self : Self) -> Unit {
-  if check_fd_leak.val && !self.fds.is_empty() {
+  if !self.fds.is_empty() {
     let leaked_handles = [
       for handle in self.fds.values() => @debug.to_string(handle.kind)
     ].join(", ")
-    abort("file descriptor leak detected: \{leaked_handles}")
+    @env_util.eprintln("file descriptor leak detected: \{leaked_handles}")
+    panic()
   }
 }
 
 ///|
-#cfg(not(platform="windows"))
 fn EventLoop::cleanup(self : Self) -> Unit raise {
   for hook in hooks {
     if hook.exit is Some(exit) {
@@ -348,17 +272,11 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
     }
   }
   for fd, handle in self.fds {
-    if handle.read is Some(coro) {
+    if handle.read is Waiting(coro) {
       coro.cancel()
     }
-    if handle.write is Some(coro) {
+    if handle.write is Waiting(coro) {
       coro.cancel()
-    }
-    if !(handle.events is NoEvent) {
-      // if `poll_register` fails, `handle.events` may be `NoEvent`,
-      // in this case we have never added it to the poller,
-      // so we must not remove it from the poller here
-      self.poll.remove(fd, events=handle.events)
     }
     @fd_util.close(
       fd,
@@ -366,74 +284,140 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
       context="runtime internal: close leaking fd",
     )
   }
-  self.check_fd_leak()
+  if check_fd_leak.val {
+    self.check_fd_leak()
+  }
   self.fds.clear()
   for _, coro in self.jobs {
     coro.cancel()
   }
-  for pid, coro in self.pids {
-    coro.cancel()
-    self.poll.remove_pid(pid)
-  }
-  self.pids.clear()
+  self.extra.cleanup()
   for worker in self.idle_workers {
     worker.free()
   }
 }
 
 ///|
-#cfg(platform="windows")
-fn EventLoop::cleanup(self : Self) -> Unit raise {
-  for hook in hooks {
-    if hook.exit is Some(exit) {
-      exit()
+fn EventLoop::get_next_timeout(self : Self) -> Int {
+  if @coroutine.has_immediately_ready_task() {
+    0
+  } else if !self.timers.is_empty() {
+    guard! self.timers.iter().head() is Some(first_timer)
+    let timeout = first_timer.expire_time - now()
+    @cmp.maximum(0, timeout.to_int())
+  } else {
+    -1
+  }
+}
+
+///|
+fn EventLoop::handle_timers(self : Self) -> Unit {
+  let now = now()
+  for timer in self.timers {
+    if timer.expire_time <= now {
+      (timer.callback)()
+    } else {
+      break
     }
   }
-  for fd, handle in self.fds {
-    @fd_util.close(
-      fd,
-      kind=handle.kind,
-      context="runtime internal: close leaking fd",
-    )
-  }
-  self.check_fd_leak()
-  self.fds.clear()
-  for _, coro in self.jobs {
-    coro.cancel()
-  }
-  self.jobs.clear()
-  for worker in self.idle_workers {
-    worker.free()
+}
+
+///|
+let deadlock_handler : Ref[(Array[SourceLoc]) -> Unit] = Ref(locs => {
+  let locs = locs.map(loc => loc.to_string())
+  @env_util.eprintln(
+    "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(locs)}",
+  )
+  panic()
+})
+
+///|
+pub fn set_deadlock_handler(f : (Array[SourceLoc]) -> Unit) -> Unit {
+  deadlock_handler.val = f
+}
+
+///|
+fn EventLoop::check_dead_lock(_self : Self) -> Unit {
+  let all_coros = @coroutine.all_coroutines().iter()
+  let all_coros = all_coros.map(coro => coro.loc).collect()
+  if all_coros.length() > 0 {
+    (deadlock_handler.val)(all_coros)
   }
 }
 
 ///|
 fn EventLoop::run_forever(self : Self) -> Unit raise {
-  try {
-    while !(@coroutine.no_more_work() && self.running_workers.is_empty()) {
-      self.poll() catch {
-        @os_error.OSError(_) as err if err.is_EINTR() => continue
-        err => raise err
-      }
-      @coroutine.reschedule()
+  let mut checked_deadlock = false
+  while !@coroutine.all_coroutines().is_empty() {
+    let timeout = self.get_next_timeout()
+    if timeout < 0 && self.blocked_tasks is 0 && !checked_deadlock {
+      // The user may decide to ignore deadlock situation,
+      // in this case we only perform the deadlock check once.
+      checked_deadlock = true
+      self.check_dead_lock()
     }
-  } catch {
-    err => {
-      Ref::protect(check_fd_leak, false, () => self.cleanup())
-      // In case the event loop has encountered some fatal error,
-      // propagate the error to relevant coroutines.
-      while !@coroutine.no_more_work() {
-        @coroutine.reschedule()
-      }
-      raise err
+    let n = self.wait_for_event(timeout~)
+    if timeout >= 0 {
+      self.handle_timers()
     }
-  } noraise {
-    _ => self.cleanup()
+    for i in 0..<n {
+      let event = self.bus.get_event(i)
+      self.extra.handle_event(self, event)
+    }
+    @coroutine.reschedule()
   }
+  self.cleanup()
 }
 
 ///|
-#warnings("-unused_constructor")
+#cfg(target="native")
+fn EventLoop::run_with_external_loop(
+  self : Self,
+  extloop : &ExternalEventLoop,
+) -> Unit raise {
+  let waiter = self.bus.spawn_waiter(
+    wakeup_callback=extloop.get_wakeup_callback_for_foreign_thread(),
+  )
+  if waiter.0.is_null() {
+    @os_error.check_errno("runtime internal: spawn waiter")
+  }
+  defer waiter.terminate()
+  while !@coroutine.all_coroutines().is_empty() {
+    let timeout = match self.get_next_timeout() {
+      _..<0 => None
+      timeout => Some(timeout)
+    }
+    extloop.poll(timeout?)
+    if !self.timers.is_empty() {
+      self.handle_timers()
+    }
+    let n = waiter.get_events()
+    if n > 0 {
+      defer waiter.wake()
+      for i in 0..<n {
+        let event = self.bus.get_event(i)
+        self.extra.handle_event(self, event)
+      }
+    } else if n < 0 {
+      @os_error.check_errno("runtime internal: poll_wait")
+    }
+    @coroutine.reschedule()
+  }
+  self.cleanup()
+}
+
+///|
+#cfg(target="wasm")
+fn EventLoop::run_with_external_loop(
+  _self : Self,
+  _extloop : &ExternalEventLoop,
+) -> Unit raise {
+  raise Failure::Failure(
+    "external event loop integration is not supported on Wasm",
+  )
+}
+
+///|
 priv enum CancellationStatus {
   NoWait
   NeedWait
@@ -441,67 +425,105 @@ priv enum CancellationStatus {
 }
 
 ///|
-async fn EventLoop::wait_for_job(
-  evloop : EventLoop,
-  job_id : Int,
-  cancel? : (Int) -> CancellationStatus raise,
-) -> Unit {
-  evloop.jobs[job_id] = @coroutine.current_coroutine()
-  defer evloop.jobs.remove(job_id)
-  match cancel {
-    None =>
-      @coroutine.protect_from_cancel(@coroutine.suspend, resume_on_cancel=true)
-    Some(cancel_func) =>
-      @coroutine.suspend() catch {
-        err =>
-          for ;; {
-            let status = cancel_func(job_id) catch {
-              err =>
-                @coroutine.protect_from_cancel() <| () => {
-                  @coroutine.suspend()
-                  raise err
-                }
-            }
-            match status {
-              NeedWait => {
-                @coroutine.protect_from_cancel(
-                  @coroutine.suspend,
-                  resume_on_cancel=true,
-                )
-                break
-              }
-              NoWait => raise err
-              RetryLater => {
-                @coroutine.protect_from_cancel(
-                  @coroutine.pause,
-                  resume_on_cancel=true,
-                )
-                if evloop.jobs.get(job_id) is None {
-                  break
-                }
-              }
-            }
-          }
-      }
+/// Generic function for performing cancellation on an IO operation.
+/// `cancel_func` performs the cancellation work under the hood.
+/// For Windows IOCP/thread pool operations, the OS/thread pool hold references to user objects.
+/// We must wait for the completion of the operation before dropping those user objects,
+/// even in case of cancellation.
+async fn wait_for_cancellation(
+  cancel_func : () -> CancellationStatus raise,
+) -> Unit nocancel {
+  guard! curr_loop.val is Some(evloop)
+  let status = {
+    errdefer @coroutine.protect_from_cancel(() => evloop.suspend())
+    cancel_func()
+  }
+  match status {
+    NeedWait =>
+      // The cancellation operation has succeeded,
+      // but the thread pool or OS may need some more time to finish all the cleanup.
+      // So wait for the completion of the cleanup process here.
+      @coroutine.protect_from_cancel(() => evloop.suspend())
+    NoWait =>
+      // The cancellation operation has succeeded,
+      // and the cancelled operation has already terminated.
+      // Return immediately here.
+      ()
+    RetryLater => {
+      // Due to some inherent race condition, the cancellaion attempt did not succeed.
+      // Retry again after a small timeout.
+      @coroutine.protect_from_cancel(() => sleep(10))
+      wait_for_cancellation(cancel_func)
+    }
   }
 }
 
 ///|
+async fn EventLoop::wait_for_job(
+  evloop : EventLoop,
+  job_id : Int,
+  cancellable~ : Bool,
+  context~ : String,
+) -> Unit {
+  evloop.jobs[job_id] = @coroutine.current_coroutine()
+  defer evloop.jobs.remove(job_id)
+  if cancellable {
+    match evloop.suspend_check_cancel() {
+      Continue => ()
+      Cancelled =>
+        // The cancellation error is swallowed here,
+        // because in case the operation completed before cancellation,
+        // we need to return the result normally to retain cancellation safety
+        // and avoid data loss.
+        // In case the cancellation succeeded,
+        // the underlying operation itself should report cancelled status properly
+        // via error code (`EINTR` or `ERROR_OPERATION_ABORTED`)
+        wait_for_cancellation(() => {
+          evloop.cancel_job_in_worker(job_id, context~)
+        })
+    }
+  } else {
+    @coroutine.protect_from_cancel(() => evloop.suspend())
+  }
+}
+
+///|
+#cfg(target="native")
 extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
 
 ///|
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  cancel? : (Int) -> CancellationStatus raise,
+  cancellable? : Bool = false,
 ) -> Int {
   @coroutine.check_cancellation()
-  guard curr_loop.val is Some(evloop)
+  guard! curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
   evloop.job_id += 1
   match evloop.idle_workers.pop_front() {
-    None if evloop.running_workers.length() >= evloop.max_worker_count =>
-      evloop.job_queue.push_back({ job_id, job })
+    None if evloop.running_workers.length() >= evloop.max_worker_count => {
+      let waiter = @coroutine.current_coroutine()
+      let queued_job = { job_id, job, waiter, }
+      evloop.job_queue.add(queued_job)
+      match @coroutine.suspend_check_cancel() {
+        Continue => ()
+        Cancelled if evloop.job_queue.contains(queued_job) => {
+          evloop.job_queue.remove(queued_job)
+          @coroutine.raise_cancellation_signal()
+        }
+        Cancelled =>
+          // If `queued_job` is already removed, the job must have been submitted already,
+          // within the same tick as the cancellation request.
+          // In this case, swallow the cancellation to avoid problems. 
+          ()
+      }
+    }
     None => {
       let worker = Worker::spawn(job_id, job)
       evloop.running_workers[job_id] = worker
@@ -511,14 +533,15 @@ async fn perform_job_in_worker(
       worker.wake(job_id, job)
     }
   }
-  evloop.wait_for_job(job_id, cancel?)
+  evloop.wait_for_job(job_id, cancellable~, context~)
   if job.err() is err && err > 0 {
-    if errno_is_cancelled(err) {
-      raise @coroutine.Cancelled
+    if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
+      @coroutine.raise_cancellation_signal()
     } else {
       raise @os_error.OSError(err, context~)
     }
   } else {
+    job.copy_output()
     job.ret()
   }
 }

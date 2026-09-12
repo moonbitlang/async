@@ -19,6 +19,7 @@ suberror ServerTerminate derive(Debug)
 pub(all) struct Printer((String) -> Unit)
 
 ///|
+#warnings("-fragile_catch_all")
 async fn server_main(server : @socket.UdpServer, println : Printer) -> Unit {
   @async.with_task_group(group => {
     defer server.close()
