@@ -19,39 +19,164 @@ priv enum AddrFamily {
 }
 
 ///|
-/// IPv4 address + port number
-#warnings("-unused_constructor")
 struct Addr(Bytes) derive(Eq, Compare, Hash)
 
 ///|
-pub extern "C" fn Addr::new(ip : UInt, port : Int) -> Addr = "moonbitlang_async_make_ip_addr"
+#cfg(target="native")
+extern "C" fn get_ipv4_addr_size() -> Int = "moonbitlang_async_ipv4_addr_size"
 
 ///|
-extern "C" fn Addr::empty(family : AddrFamily) -> Addr = "moonbitlang_async_make_empty_addr"
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_ipv4_addr_size() -> Int = "moonbitlang/async" "socket/ipv4_addr_size"
 
 ///|
-#borrow(ip)
-extern "C" fn Addr::new_ipv6(
+let ipv4_addr_size : Int = get_ipv4_addr_size()
+
+///|
+#cfg(target="native")
+extern "C" fn get_ipv6_addr_size() -> Int = "moonbitlang_async_ipv6_addr_size"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn get_ipv6_addr_size() -> Int = "moonbitlang/async" "socket/ipv6_addr_size"
+
+///|
+let ipv6_addr_size : Int = get_ipv6_addr_size()
+
+///|
+#cfg(target="native")
+#borrow(addr)
+extern "C" fn init_ip_addr(addr : Bytes, ip : UInt, port : Int) -> Unit = "moonbitlang_async_init_ip_addr"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn init_ip_addr(addr : Bytes, ip : UInt, port : Int) -> Unit = "moonbitlang/async" "socket/init_ip_addr"
+
+///|
+pub fn Addr::new(ip : UInt, port : Int) -> Addr {
+  let addr = Bytes::make(ipv4_addr_size, 0)
+  init_ip_addr(addr, ip, port)
+  Addr(addr)
+}
+
+///|
+#cfg(target="native")
+#borrow(addr, ip)
+extern "C" fn init_ipv6_addr(
+  addr : Bytes,
   ip : FixedArray[Byte],
   port : Int,
   scope_id~ : UInt,
-) -> Addr = "moonbitlang_async_make_ipv6_addr"
+) -> Unit = "moonbitlang_async_init_ipv6_addr"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr, ip)
+fn init_ipv6_addr(
+  addr : Bytes,
+  ip : FixedArray[Byte],
+  port : Int,
+  scope_id~ : UInt,
+) -> Unit = "moonbitlang/async" "socket/init_ipv6_addr"
+
+///|
+fn Addr::new_ipv6(ip : FixedArray[Byte], port : Int, scope_id~ : UInt) -> Addr {
+  let addr = Bytes::make(ipv6_addr_size, 0)
+  init_ipv6_addr(addr, ip, port, scope_id~)
+  Addr(addr)
+}
+
+///|
+let empty_ipv6_bytes : FixedArray[Byte] = FixedArray::make(16, 0)
+
+///|
+fn Addr::empty(family : AddrFamily) -> Addr {
+  match family {
+    IPv4 => {
+      let addr = Bytes::make(ipv4_addr_size, 0)
+      init_ip_addr(addr, 0, 0)
+      Addr(addr)
+    }
+    IPv6 => {
+      let addr = Bytes::make(ipv6_addr_size, 0)
+      init_ipv6_addr(addr, empty_ipv6_bytes, 0, scope_id=0)
+      Addr(addr)
+    }
+  }
+}
+
+///|
+#cfg(target="native")
 #borrow(addr)
 pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get_ip"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn ip_addr_get_ip(addr : Addr, addr_len? : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/ip_addr_get_ip"
+
+///|
+#cfg(target="wasm")
+pub fn Addr::ip(addr : Addr) -> UInt {
+  ip_addr_get_ip(addr)
+}
+
+///|
+#cfg(target="native")
 #borrow(addr)
 pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_get_port"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn ip_addr_get_port(addr : Addr, addr_len? : Int = addr.0.length()) -> Int = "moonbitlang/async" "socket/ip_addr_get_port"
+
+///|
+#cfg(target="wasm")
+pub fn Addr::port(addr : Addr) -> Int {
+  ip_addr_get_port(addr)
+}
+
+///|
+#cfg(target="native")
 #borrow(addr)
 pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn addr_is_ipv6(addr : Addr, addr_len? : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_ipv6"
+
+///|
+#cfg(target="wasm")
+pub fn Addr::is_ipv6(addr : Addr) -> Bool {
+  addr_is_ipv6(addr)
+}
+
+///|
+#cfg(target="native")
 #borrow(addr)
 pub extern "C" fn Addr::is_multicast(addr : Addr) -> Bool = "moonbitlang_async_addr_is_multicast"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn addr_is_multicast(addr : Addr, addr_len? : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_multicast"
+
+///|
+#cfg(target="wasm")
+pub fn Addr::is_multicast(addr : Addr) -> Bool {
+  addr_is_multicast(addr)
+}
 
 ///|
 fn Addr::family(self : Addr) -> AddrFamily {
@@ -63,29 +188,65 @@ fn Addr::family(self : Addr) -> AddrFamily {
 }
 
 ///|
-let ipv4_any : Addr = Addr::new(0, 0)
+let ipv4_any : Lazy[Addr] = Lazy(() => Addr::new(0, 0))
 
 ///|
-let ipv6_any : Addr = Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
+let ipv6_any : Lazy[Addr] = Lazy(() => {
+  Addr::new_ipv6(FixedArray::make(16, 0), 0, scope_id=0)
+})
 
 ///|
-#borrow(addr)
-extern "C" fn Addr::get_ipv6_bytes(addr : Addr) -> @c_buffer.Buffer = "moonbitlang_async_addr_get_ipv6_bytes"
+fn Addr::any(family : AddrFamily) -> Addr {
+  match family {
+    IPv4 => ipv4_any.force()
+    IPv6 => ipv6_any.force()
+  }
+}
 
 ///|
+#cfg(target="native")
+extern "C" fn Addr::get_ipv6_bytes_offset() -> Int = "moonbitlang_async_addr_get_ipv6_bytes_offset"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn Addr::get_ipv6_bytes_offset() -> Int = "moonbitlang/async" "socket/addr_get_ipv6_bytes_offset"
+
+///|
+/// The offset of IPv6 bytes in `struct sockaddr_in6`
+let ipv6_bytes_offset : Int = Addr::get_ipv6_bytes_offset()
+
+///|
+#cfg(target="native")
 #borrow(addr)
 extern "C" fn Addr::scope_id(addr : Addr) -> UInt = "moonbitlang_async_addr_get_ipv6_scope_id"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn Addr::scope_id(addr : Addr, addr_len? : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/addr_get_ipv6_scope_id"
+
+///|
+#cfg(target="native")
 #borrow(addr)
 extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_addr_is_ipv6_wildcard"
 
 ///|
-pub impl Show for Addr with output(self, logger) {
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(addr)
+fn Addr::is_ipv6_wildcard(
+  addr : Addr,
+  addr_len? : Int = addr.0.length(),
+) -> Bool = "moonbitlang/async" "socket/addr_is_ipv6_wildcard"
+
+///|
+pub impl Show for Addr with fn output(self, logger) {
   if self.is_ipv6() {
     // IPv6 address format
     logger <+ "["
-    write_ipv6_str(self.get_ipv6_bytes(), logger)
+    write_ipv6_str(self.0[ipv6_bytes_offset:], logger)
     let scope_id = self.scope_id()
     if scope_id > 0 {
       let interface = if_indextoname(scope_id, context="") catch {
@@ -98,10 +259,14 @@ pub impl Show for Addr with output(self, logger) {
     // IPv4 address format
     let ip = self.ip()
     let port = self.port()
-    logger
-      <+
+    logger <+
       "\{ip >> 24}.\{(ip >> 16) & 255}.\{(ip >> 8) & 255}.\{ip & 255}:\{port}"
   }
+}
+
+///|
+pub impl Debug for Addr with fn to_repr(self) {
+  Repr::opaque_("Addr", Repr::literal(Show::to_string(self)))
 }
 
 ///|
@@ -114,7 +279,7 @@ pub fn Addr::parse(src : String) -> Addr raise {
   if src.has_prefix("[") {
     let (ip_bytes, port, interface) = try_parse_ipv6(src)
     let scope_id = if interface is Some(interface) {
-      parse_ipv6_zone_suffix(interface, context="socket.Addr::parse()")
+      parse_ipv6_zone_suffix(interface, context="@socket.Addr::parse()")
     } else {
       0
     }
@@ -131,22 +296,72 @@ pub fn Addr::parse(src : String) -> Addr raise {
 using @event_loop {type AddrInfo}
 
 ///|
+#cfg(target="native")
 extern "C" fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang_async_addrinfo_is_null"
 
 ///|
-/// Convert AddrInfo to Addr(support both IPv4 and IPv6)
-extern "C" fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr = "moonbitlang_async_addrinfo_to_addr"
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn AddrInfo::is_null(self : AddrInfo) -> Bool = "moonbitlang/async" "socket/addrinfo_is_null"
 
 ///|
+/// Convert AddrInfo to Addr(support both IPv4 and IPv6)
+#cfg(target="native")
+extern "C" fn AddrInfo::addr_size(self : AddrInfo) -> Int = "moonbitlang_async_addrinfo_addr_size"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn AddrInfo::addr_size(self : AddrInfo) -> Int = "moonbitlang/async" "socket/addrinfo_addr_size"
+
+///|
+#cfg(target="native")
+#borrow(out)
+extern "C" fn AddrInfo::fill_addr(
+  self : AddrInfo,
+  out : Bytes,
+  port : Int,
+) -> Unit = "moonbitlang_async_addrinfo_fill_addr"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(out)
+fn AddrInfo::fill_addr(
+  self : AddrInfo,
+  out : Bytes,
+  port : Int,
+  out_len? : Int = out.length(),
+) -> Unit = "moonbitlang/async" "socket/addrinfo_fill_addr"
+
+///|
+fn AddrInfo::to_addr(self : AddrInfo, port : Int) -> Addr {
+  let addr = Bytes::make(self.addr_size(), 0)
+  self.fill_addr(addr, port)
+  Addr(addr)
+}
+
+///|
+#cfg(target="native")
 extern "C" fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang_async_addrinfo_get_next"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn AddrInfo::next(self : AddrInfo) -> AddrInfo = "moonbitlang/async" "socket/addrinfo_get_next"
+
+///|
+#cfg(not(any(platform="windows", target="wasm")))
 extern "C" fn AddrInfo::free(self : AddrInfo) = "freeaddrinfo"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn AddrInfo::free(self : AddrInfo) = "moonbitlang_async_freeaddrinfo"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn AddrInfo::free(self : AddrInfo) -> Unit = "moonbitlang/async" "socket/addrinfo_free"
 
 ///|
 /// Error message from failure in resolving a network hostname.

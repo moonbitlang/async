@@ -32,7 +32,7 @@ extern "js" fn StreamReader::read_ffi(
 async fn StreamReader::read(reader : StreamReader) -> Bytes? {
   match reader.read_ffi().wait() {
     { done: true, .. } => None
-    { done: false, value } => Some(value)
+    { done: false, value, } => Some(value)
   }
 }
 
@@ -90,6 +90,8 @@ extern "js" fn JsReadableStream::get_reader(stream : Self) -> StreamReader =
 struct ReadableStream {
   read_end : @io.PipeRead
   worker : @coroutine.Coroutine
+  stream : JsReadableStream
+  reader : StreamReader
 }
 
 ///|
@@ -99,20 +101,18 @@ struct ReadableStream {
 /// other code cannot read the stream anymore.
 pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
   let (r, w) = @io.pipe()
+  let reader = stream.get_reader()
   // Here, we use a coroutine to copy the data,
   // because the `.read()` method of `StreamReader` is NOT cancellable.
   // It can only be cancelled by cancelling the whole stream.
   // So we use a `@io.pipe` in the middle to provide proper cancellation support.
   let worker = @coroutine.spawn(() => {
     defer w.close()
-    defer stream.cancel()
-    let reader = stream.get_reader()
-    defer reader.release_lock()
     while reader.read() is Some(chunk) {
       w.write(chunk)
     }
   })
-  { read_end: r, worker }
+  { read_end: r, worker, stream, reader, }
 }
 
 ///|
@@ -120,15 +120,17 @@ pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
 pub fn ReadableStream::close(self : ReadableStream) -> Unit {
   self.worker.cancel()
   self.read_end.close()
+  self.reader.release_lock()
+  self.stream.cancel()
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with _get_internal_buffer(self) {
+pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(self) {
   self.read_end._get_internal_buffer()
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with _direct_read(
+pub impl @io.Reader for ReadableStream with fn _direct_read(
   self,
   buf,
   offset~,

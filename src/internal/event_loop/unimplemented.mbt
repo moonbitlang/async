@@ -15,12 +15,22 @@
 ///|
 #coverage.skip
 let _ignore_unused_import : Unit = {
+  let _ : (@deque.Deque[Int]) -> Unit = ignore
+  let _ : (@sorted_set.SortedSet[Int]) -> Unit = ignore
+  ignore(@cmp.minimum(0, 0))
+  ignore(@debug.to_string(0))
   ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
-  ignore(@time.ms_since_epoch)
   ignore(@coroutine.is_being_cancelled)
+  ignore(@env_util.eprintln)
+  let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+}
+
+///|
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
 }
 
 ///|
@@ -40,16 +50,8 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
 }
 
 ///|
-/// WASM stub for the scheduler-only `reschedule` entry point. Drains
-/// immediately-ready coroutines (including any wake-ups produced by
-/// running coroutines themselves) and then returns. Gating on
-/// `has_immediately_ready_task` rather than `no_more_work` ensures
-/// blocked coroutines (`blocking > 0`, e.g. suspended on an external
-/// host callback) do NOT cause this function to tight-spin: when there
-/// is nothing ready to run we exit and yield back to the host, which
-/// can re-enter via `run_async_main` once new work is available.
-pub fn reschedule() -> Unit {
-  while @coroutine.has_immediately_ready_task() {
-    @coroutine.reschedule()
-  }
+#warnings("-unused_async")
+pub async fn sleep(duration : Int) -> Unit {
+  ignore(duration)
+  abort("`sleep()` is unimplemented on WASM backend")
 }

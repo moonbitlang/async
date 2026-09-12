@@ -68,40 +68,50 @@ pub struct TcpServer {
 /// and similarly a server binding to a wildcard address can bind to
 /// the remaining interfaces if a bind to a specific interface already exists.
 /// This side effect cannot be isolated, so `reuse_addr` should be used with this in mind.
+///
+/// If `reuse_port_lb` is `true` (`false` by default), `SO_REUSEPORT` is enabled
+/// so several sockets — typically one per worker process — can bind the same
+/// address at once while the kernel load-balances incoming connections across
+/// them. This is the usual basis for a multi-process server: a supervisor
+/// `exec`s N workers, each binds the same address with this option, and the
+/// kernel spreads connections, so no socket needs to be shared between processes.
+///
+/// The load-balancing semantic is Linux-only. `SO_REUSEPORT` also exists on the
+/// BSDs and MacOS, but there it does not evenly distribute connections — which
+/// socket accepts a given connection is unspecified — so `reuse_port_lb` takes
+/// effect only on Linux and is ignored everywhere else (BSD, MacOS, Windows, wasm).
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
+  reuse_port_lb? : Bool = false,
 ) -> TcpServer {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
-  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-      if 0 != set_ipv6_only(sock, !dual_stack) {
-        @os_error.check_errno(context)
-      }
-    }
-    if !@event_loop.IS_WINDOWS && reuse_addr {
-      guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
-    }
-    io.bind(addr.0, context~)
-    if 0 != listen_ffi(sock) {
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
+  errdefer io.close()
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
       @os_error.check_errno(context)
     }
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
   }
+  if !(@event_loop.platform is Windows) && reuse_addr {
+    guard allow_reuse_addr(sock) >= 0 else { @os_error.check_errno(context) }
+  }
+  if @event_loop.platform is Linux && reuse_port_lb {
+    guard allow_reuse_port(sock) >= 0 else { @os_error.check_errno(context) }
+  }
+  io.bind(addr.0, context~)
+  if 0 != listen_ffi(sock) {
+    @os_error.check_errno(context)
+  }
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr, }
 }
 
 ///|
@@ -172,26 +182,45 @@ pub fn TcpServer::fd(self : TcpServer) -> @fd_util.Fd {
 }
 
 ///|
-/// Accept a new connection on a listening TCP server.
-/// The accepted connection will be returned together with the address of peer.
 #cfg(not(platform="windows"))
-pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+async fn TcpServer::accept_unix(self : TcpServer) -> (Tcp, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
-  let conn = self.io.accept(addr.0, context="@socket.TcpServer::accept")
-  try {
-    if disable_nagle(conn.fd()) < 0 {
-      @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-    }
-    @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  let conn = self.io.accept_unix(addr.0, context="@socket.TcpServer::accept()")
+  errdefer conn.close()
+  if disable_nagle(conn.fd()) < 0 {
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
+  }
+  @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
+  // The local address of a server connection is the same as the listen address
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+#cfg(any(target="wasm", platform="windows"))
+async fn TcpServer::accept_windows(self : TcpServer) -> (Tcp, Addr) {
+  let context = "@socket.TcpServer::accept()"
+  let family = self.addr.family()
+  let conn_sock = make_tcp_socket(family, context~)
+  let conn = @event_loop.IoHandle::from_fd(conn_sock, kind=Socket)
+  errdefer conn.close()
+  let addr = Addr::empty(family)
+  self.io.accept_windows(conn, addr.0, context~)
+  if disable_nagle(conn_sock) < 0 {
+    @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
   // The local address of a server connection is the same as the listen address
-  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
+  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+#cfg(all(target="native", not(platform="windows")))
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  self.accept_unix()
 }
 
 ///|
@@ -199,22 +228,18 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 /// The accepted connection will be returned together with the address of peer.
 #cfg(platform="windows")
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
-  let context = "@socket.TcpServer::accept()"
-  let family = self.addr.family()
-  let conn_sock = make_tcp_socket(family, context~)
-  let conn = self.io.accept(conn_sock, context~)
-  try {
-    if disable_nagle(conn_sock) < 0 {
-      @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
-    }
-    let addr = getpeername(conn_sock, self.addr.family(), context~)
-    // The local address of a server connection is the same as the listen address
-    ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new() }, addr)
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  self.accept_windows()
+}
+
+///|
+/// Accept a new connection on a listening TCP server.
+/// The accepted connection will be returned together with the address of peer.
+#cfg(target="wasm")
+pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
+  if @event_loop.platform is Windows {
+    self.accept_windows()
+  } else {
+    self.accept_unix()
   }
 }
 
@@ -252,19 +277,13 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
   let family = addr.family()
   let sock = make_tcp_socket(family, context~)
   let conn = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if disable_nagle(sock) < 0 {
-      @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
-    }
-    conn.connect(addr.0, context~)
-    let addr = getsockname(sock, family, context~)
-    { io: conn, addr, read_buf: @io.ReaderBuffer::new() }
-  } catch {
-    err => {
-      conn.close()
-      raise err
-    }
+  errdefer conn.close()
+  if disable_nagle(sock) < 0 {
+    @os_error.check_errno("@socket.Tcp::connect(): set TCP_NODELAY")
   }
+  conn.connect(addr.0, context~)
+  let addr = getsockname(sock, family, context~)
+  { io: conn, addr, read_buf: @io.ReaderBuffer::new(), }
 }
 
 ///|
@@ -282,16 +301,16 @@ pub fn Tcp::addr(sock : Tcp) -> Addr {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for Tcp with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
 }
 
 ///|
-pub impl @io.Reader for Tcp with _get_internal_buffer(self) {
+pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@socket.Tcp::write()")
 }

@@ -14,23 +14,85 @@
 
 ///|
 #cfg(platform="windows")
-extern "C" fn get_curr_env() -> String = "moonbitlang_async_get_curr_env"
+priv struct OsEnv(@c_buffer.Buffer)
 
 ///|
 #cfg(platform="windows")
-let curr_env : String = get_curr_env()
+extern "C" fn get_curr_env() -> OsEnv = "moonbitlang_async_get_curr_env"
 
 ///|
 #cfg(platform="windows")
+extern "C" fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang_async_env_block_length"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_block"
+
+///|
+#cfg(platform="windows")
+extern "C" fn OsEnv::write_env_block(
+  dst : OsEnv,
+  block : OsEnv,
+  offset~ : Int,
+) -> Unit = "moonbitlang_async_write_env_block"
+
+///|
+/// Return updated offset after writing the new entry.
+/// The `dst` block should contain at least
+/// `key_len + value_len + 2` characters of space after `offset`.
+#cfg(platform="windows")
+#borrow(key, value)
+extern "C" fn OsEnv::add_entry(
+  dst : OsEnv,
+  offset : Int,
+  key~ : String,
+  key_len~ : Int,
+  value~ : String,
+  value_len~ : Int,
+) -> Int = "moonbitlang_async_env_block_add_entry"
+
+///|
+#cfg(platform="windows")
+fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
+  let extra_env_len = for k, v in extra_env; acc = 0 {
+    continue acc + k.length() + v.length() + 2
+  } nobreak {
+    acc
+  }
+  let (curr_env, curr_env_len) = if inherit_env {
+    let curr_env = get_curr_env()
+    (Some(curr_env), curr_env.length())
+  } else {
+    (None, 0)
+  }
+  let env = OsEnv::new(curr_env_len + extra_env_len)
+  for k, v in extra_env; offset = 0 {
+    let key_len = k.length()
+    let value_len = v.length()
+    continue env.add_entry(offset, key=k, key_len~, value=v, value_len~)
+  } nobreak {
+    if curr_env is Some(curr_env) {
+      env.write_env_block(curr_env, offset~)
+    }
+  }
+  env
+}
+
+///|
+#cfg(any(target="wasm", platform="windows"))
 fn StringBuilder::write_arg_with_windows_escape(
   builder : StringBuilder,
   arg : StringView,
 ) -> Unit {
+  if arg is "" {
+    builder.write("\"\"")
+    return
+  }
   // Do not add double quotes if it is unnecessary to do so.
   // This help with simple cases when the program is not using C argv syntax,
   // such as `rundll32.exe`.
-  let need_quote = for char in arg {
-    if char is (' ' | '\t' | '"') {
+  let need_quote = for char in arg.code_units() {
+    if char is (' ' | '\t' | '"' | 0) {
       break true
     }
   } nobreak {
@@ -49,13 +111,16 @@ fn StringBuilder::write_arg_with_windows_escape(
       if trailing_backslash > 0 {
         builder.write_string(String::make(trailing_backslash * 2, '\\'))
       }
-      segment_start = index + skip
     }
+    segment_start = index + skip
   }
 
   builder.write_char('"')
   while index < arg.length() {
     match arg.code_unit_at(index) {
+      0 =>
+        // truncate on NUL in input to prevent argv injection
+        break
       '"' => {
         flush(1)
         builder <+ "\\\""
@@ -70,8 +135,8 @@ fn StringBuilder::write_arg_with_windows_escape(
 }
 
 ///|
-#cfg(platform="windows")
-async fn raw_spawn(
+#cfg(any(target="wasm", platform="windows"))
+async fn raw_spawn_windows(
   cmd : StringView,
   args : ArrayView[String],
   extra_env~ : Map[String, String],
@@ -80,14 +145,16 @@ async fn raw_spawn(
   stdout~ : &ProcessOutput?,
   stderr~ : &ProcessOutput?,
   cwd~ : StringView?,
+  no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
 ) -> @event_loop.Process {
   let cmd = match cmd {
-    [.., .. ".exe"] => cmd
+    [.., '.', 'e' | 'E', 'x' | 'X', 'e' | 'E']
+    | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
     _ => cmd + ".exe"
   }
-  let command_line = StringBuilder::new()
+  let command_line = StringBuilder()
   command_line.write_arg_with_windows_escape(cmd)
   for arg in args {
     command_line..write_char(' ').write_arg_with_windows_escape(arg)
@@ -120,33 +187,44 @@ async fn raw_spawn(
     Some(pipe) => pipe.fd()
     None => @fd_util.invalid_fd
   }
-  let env = match (inherit_env, extra_env.is_empty()) {
-    (true, true) => None
-    (false, true) => Some(@os_string.encode("\u{0}"))
-    (_, false) => {
-      let env = StringBuilder::new()
-      for key, value in extra_env {
-        env
-        ..write_string(key)
-        ..write_char('=')
-        ..write_string(value)
-        .write_string("\u{0}")
-      }
-      if inherit_env {
-        env.write_string(curr_env)
-      } else {
-        env <+ "\u{0}"
-      }
-      Some(@os_string.encode(env.to_string()))
-    }
-  }
-  @event_loop.spawn(
+  @event_loop.spawn_windows(
     command_line,
-    env~,
+    env=OsEnv::make(extra_env, inherit_env~).0,
     stdin~,
     stdout~,
     stderr~,
     cwd~,
+    no_console_window~,
+    is_orphan~,
+    context~,
+  )
+}
+
+///|
+#cfg(platform="windows")
+async fn raw_spawn(
+  cmd : StringView,
+  args : ArrayView[String],
+  extra_env~ : Map[String, String],
+  inherit_env~ : Bool,
+  stdin~ : &ProcessInput?,
+  stdout~ : &ProcessOutput?,
+  stderr~ : &ProcessOutput?,
+  cwd~ : StringView?,
+  no_console_window~ : Bool,
+  is_orphan~ : Bool,
+  context~ : String,
+) -> @event_loop.Process {
+  raw_spawn_windows(
+    cmd,
+    args,
+    extra_env~,
+    inherit_env~,
+    stdin~,
+    stdout~,
+    stderr~,
+    cwd~,
+    no_console_window~,
     is_orphan~,
     context~,
   )

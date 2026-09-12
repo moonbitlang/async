@@ -17,7 +17,7 @@
 pub impl Show for ReaderClosed
 
 ///|
-pub impl Show for ReaderClosed with output(_self, logger) {
+pub impl Show for ReaderClosed with fn output(_self, logger) {
   logger <+ "ReaderClosed"
 }
 
@@ -26,6 +26,6 @@ pub impl Show for ReaderClosed with output(_self, logger) {
 pub impl Show for PipeClosed
 
 ///|
-pub impl Show for PipeClosed with output(_self, logger) {
+pub impl Show for PipeClosed with fn output(_self, logger) {
   logger <+ "PipeClosed"
 }

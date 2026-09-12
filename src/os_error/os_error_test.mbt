@@ -14,18 +14,22 @@
 
 ///|
 async test "is_ENOENT" {
-  let result = try? @fs.open("does_not_exist", mode=ReadOnly)
-  guard result is Err(@os_error.OSError(_) as err) else {
-    fail("result is not OSError")
+  let err = @test_util.expect_error_async <| () => {
+    @fs.open("does_not_exist", mode=ReadOnly)
   }
-  assert_true(err.is_ENOENT())
+  match err {
+    @os_error.OSError(_) as err => assert_true(err.is_ENOENT())
+    _ => fail("result is not OSError")
+  }
 }
 
 ///|
 async test "is_EEXIST" {
-  let result = try? @fs.mkdir("src", permission=0o755)
-  guard result is Err(@os_error.OSError(_) as err) else {
-    fail("result is not OSError")
+  let err = @test_util.expect_error_async <| () => {
+    @fs.mkdir("src", permission=0o755)
   }
-  assert_true(err.is_EEXIST())
+  match err {
+    @os_error.OSError(_) as err => assert_true(err.is_EEXIST())
+    _ => fail("result is not OSError")
+  }
 }

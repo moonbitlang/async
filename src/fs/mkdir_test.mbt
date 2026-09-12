@@ -16,50 +16,49 @@
 async test "mkdir" {
   let path = "_build/mkdir_test"
   @fs.mkdir(path)
-  @fs.write_file("\{path}/file", "", create_mode=CreateOrTruncate)
+  defer @fs.rmdir(path, recursive=true)
+  @fs.write_file("\{path}/file", "")
   let result = @fs.readdir(path, sort=true)
-  @fs.remove("\{path}/file")
-  @fs.rmdir(path)
   debug_inspect(result, content="[\"file\"]")
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "rmdir recursive" {
+  guard! @env.current_dir() is Some(cwd)
   let path = "_build/rmdir_test"
   @fs.mkdir(path, permission=0o755)
-  @fs.write_file("\{path}/file", "", create_mode=CreateOrTruncate)
+  @fs.write_file("\{path}/file", "")
   @fs.mkdir("\{path}/inner")
-  @fs.write_file("\{path}/inner/file", "", create_mode=CreateOrTruncate)
-  @fs.symlink("\{path}/symlink", target="../../target")
-  let result = try? @fs.rmdir(path)
+  @fs.write_file("\{path}/inner/file", "")
+  @fs.symlink("\{path}/symlink", target="\{cwd}/_build")
+  defer (if @fs.exists(path) { @fs.rmdir(path, recursive=true) })
+  @test_util.assert_raise_async(() => @fs.rmdir(path))
   @fs.rmdir(path, recursive=true)
-  assert_true(result is Err(_))
 }
 
 ///|
 async test "mkdir recursive" {
-  @async.with_task_group() <| group => {
-    let base_path = "_build/recursive_mkdir"
-    let path = "\{base_path}/test//directory"
-    @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
-    json_inspect(@fs.readdir(base_path), content=["test"])
-    json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
-    json_inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
-  }
+  let base_path = "_build/recursive_mkdir"
+  let path = "\{base_path}/test//directory"
+  @fs.mkdir(path, recursive=true)
+  defer @fs.rmdir(base_path, recursive=true)
+  json_inspect(@fs.readdir(base_path), content=["test"])
+  json_inspect(@fs.readdir("\{base_path}/test"), content=["directory"])
+  json_inspect(@fs.readdir("\{base_path}/test/directory"), content=[])
 }
 
 ///|
-#cfg(platform="windows")
 async test "mkdir recursive windows" {
-  @async.with_task_group() <| group => {
-    let base_path = "_build\\recursive_mkdir_windows"
-    let path = "\{base_path}\\test\\\\directory"
-    @fs.mkdir(path, recursive=true)
-    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
-    json_inspect(@fs.readdir(base_path), content=["test"])
-    json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
-    json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
+  // Wasm learns the host platform at runtime instead of through MoonBit target
+  // cfg, so keep this test present and select it using moonrun's host platform.
+  if !(@event_loop.platform is Windows) {
+    return
   }
+  let base_path = "_build\\recursive_mkdir_windows"
+  let path = "\{base_path}\\test\\\\directory"
+  @fs.mkdir(path, recursive=true)
+  defer @fs.rmdir(base_path, recursive=true)
+  json_inspect(@fs.readdir(base_path), content=["test"])
+  json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
+  json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
 }

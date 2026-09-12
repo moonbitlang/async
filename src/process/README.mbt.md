@@ -191,7 +191,7 @@ Use a file as process input:
 async test "redirect input from file" {
   @async.with_task_group(root => {
     let input_file = "_build/process_test_input.txt"
-    @fs.write_file(input_file, "file content", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, "file content")
     root.add_defer(() => @fs.remove(input_file))
     let (code, output) = @process.collect_stdout(
       "cat",
@@ -218,10 +218,7 @@ async test "redirect output to file" {
     let code = @process.run(
       "echo",
       ["test output"],
-      stdout=@process.redirect_to_file(
-        output_file,
-        create_mode=CreateOrTruncate,
-      ),
+      stdout=@process.redirect_to_file(output_file),
     )
     inspect(code, content="0")
     let content = @fs.read_file(output_file).text()
@@ -241,17 +238,14 @@ async test "file to file redirection" {
   @async.with_task_group(root => {
     let input_file = "_build/process_redirect_in.txt"
     let output_file = "_build/process_redirect_out.txt"
-    @fs.write_file(input_file, "redirect test", create_mode=CreateOrTruncate)
+    @fs.write_file(input_file, "redirect test")
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     let _ = @process.run(
       "cat",
       [],
       stdin=@process.redirect_from_file(input_file),
-      stdout=@process.redirect_to_file(
-        output_file,
-        create_mode=CreateOrTruncate,
-      ),
+      stdout=@process.redirect_to_file(output_file),
     )
     inspect(@fs.read_file(output_file).text(), content="redirect test")
   })
@@ -420,15 +414,17 @@ Run multiple processes writing to the same pipe:
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple processes to one pipe" {
   @async.with_task_group(root => {
-    let (reader, writer) = @pipe.pipe()
+    let (reader, writer) = @process.read_from_process(shared=true)
     root.spawn_bg(no_wait=true, () => {
       defer reader.close()
       let output = reader.read_all().text()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })
-    defer writer.close()
     @async.with_task_group(group => {
+      // The write must be manually closed after all children process are spawned
+      // in the shared case
+      defer writer.close()
       @process.spawn(group, "echo", ["first"], stdout=writer) |> ignore
       @process.spawn(group, "echo", ["second"], stdout=writer) |> ignore
     })
@@ -473,8 +469,7 @@ Process operations handle errors through exit codes:
 #cfg(all(target="native", not(platform="windows")))
 async test "handle process errors" {
   // Non-existent command fails
-  let result = try? @process.run("nonexistent_command", [])
-  assert_true(result is Err(_))
+  @test_util.assert_raise_async(() => @process.run("nonexistent_command", []))
 }
 
 ///|

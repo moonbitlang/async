@@ -14,22 +14,22 @@
 
 ///|
 let all_protocol_preferences : FixedArray[@socket.IpProtocolPreference] = [
-  @socket.FavorV4,
-  @socket.OnlyV4,
-  @socket.FavorV6,
-  @socket.OnlyV6,
+  FavorV4,
+  OnlyV4,
+  FavorV6,
+  OnlyV6,
 ]
 
 ///|
 async test "Only_V4 server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.TcpServer(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr.port()
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -46,7 +46,11 @@ async test "Only_V4 server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",
@@ -72,7 +76,7 @@ async test "Only_V4 server" {
 
 ///|
 async test "Only_V6 server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.TcpServer(
       @socket.Addr::parse("[::]:0"),
@@ -82,7 +86,7 @@ async test "Only_V6 server" {
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -99,7 +103,11 @@ async test "Only_V6 server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",
@@ -125,14 +133,14 @@ async test "Only_V6 server" {
 
 ///|
 async test "dual stack server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.TcpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()
     root.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, addr) => {
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         let msg = conn.read_all().text()
         log.write_string("server received \{msg.escape()} from \{ip}\n")
@@ -145,7 +153,11 @@ async test "dual stack server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",
@@ -172,7 +184,7 @@ async test "dual stack server" {
 
 ///|
 async test "Only_V4 UDP server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.UdpServer(@socket.Addr::parse("0.0.0.0:0"))
     let port = server.addr.port()
@@ -183,7 +195,7 @@ async test "Only_V4 UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }
@@ -196,7 +208,11 @@ async test "Only_V4 UDP server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",
@@ -221,7 +237,7 @@ async test "Only_V4 UDP server" {
 
 ///|
 async test "Only_V6 UDP server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.UdpServer(
       @socket.Addr::parse("[::]:0"),
@@ -235,7 +251,7 @@ async test "Only_V6 UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }
@@ -248,7 +264,11 @@ async test "Only_V6 UDP server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",
@@ -273,7 +293,7 @@ async test "Only_V6 UDP server" {
 
 ///|
 async test "dual stack UDP server" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
     let port = server.addr.port()
@@ -284,7 +304,7 @@ async test "dual stack UDP server" {
         let (len, addr) = server.recvfrom(buf)
         let msg = @utf8.decode(buf.unsafe_reinterpret_as_bytes()[:len])
         let addr_str = addr.to_string()
-        guard addr_str.rev_find(":") is Some(ip_end)
+        guard! addr_str.rev_find(":") is Some(ip_end)
         let ip = addr_str[:ip_end]
         log.write_string("server received \{msg.escape()} from \{ip}\n")
       }
@@ -297,7 +317,11 @@ async test "dual stack UDP server" {
     }
 
     for protocol in all_protocol_preferences {
-      let result = try? client(protocol)
+      let result = try client(protocol) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       @async.sleep(100)
       log.write_string(
         "client(\{@debug.to_string(protocol)}): \{@debug.to_string(result)}\n",

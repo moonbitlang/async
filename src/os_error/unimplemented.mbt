@@ -19,4 +19,5 @@
 pub let unimplemented : Unit = {
   ignore(@c_buffer.unimplemented)
   ignore(@os_string.unimplemented)
+  ignore(@env_util.eprintln)
 }

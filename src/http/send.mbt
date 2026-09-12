@@ -34,27 +34,42 @@ priv struct Sender {
 }
 
 ///|
-let forbidden_headers : Set[String] = Set::from_array([
-  "content-length", "transfer-encoding",
+let forbidden_headers : Set[CaseInsensitiveString] = Set::from_array([
+  "Content-Length", "Transfer-Encoding",
 ])
 
 ///|
-fn[W : @io.Writer] Sender::new(
-  w : W,
-  headers? : Map[String, String] = {},
-) -> Sender {
-  let header_text = @buffer.new()
+fn sanitize_header_value(s : String) -> String {
+  for c in s.code_units(); crlf_count = 0 {
+    if c is ('\r' | '\n') {
+      continue crlf_count + 1
+    }
+  } nobreak {
+    guard crlf_count > 0 else {
+      // fast path: no CRLF detected, return immediately
+      s
+    }
+    let buf = StringBuilder(size_hint=s.length() - crlf_count)
+    for c in s {
+      buf.write_char(c)
+    }
+    buf.to_string()
+  }
+}
+
+///|
+fn[W : @io.Writer] Sender::new(w : W, headers? : Headers = Map([])) -> Sender {
+  let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {
-    let k_lower = k.to_lower()
-    if !forbidden_headers.contains(k_lower) {
-      if k_lower is "accept-encoding" {
+    if !forbidden_headers.contains(k) {
+      if k == "Accept-Encoding" {
         has_accept_encoding = true
       }
       header_text
-      ..write_string_utf8(k)
+      ..write_string_utf8(sanitize_header_value(k.0))
       ..write_bytes(b": ")
-      ..write_string_utf8(v)
+      ..write_string_utf8(sanitize_header_value(v))
       .write_bytes(b"\r\n")
     }
   }
@@ -89,7 +104,7 @@ const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 pub suberror IncorrectBodyLength derive(Debug, ToJson)
 
 ///|
-impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
+impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
   match self.mode {
     SendingHeader => {
       if self.send_len >= self.send_buf.length() {
@@ -153,7 +168,7 @@ impl @io.Writer for Sender with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-impl @io.Writer for Sender with write_reader(self, reader) {
+impl @io.Writer for Sender with fn write_reader(self, reader) {
   match self.mode {
     SendingHeader =>
       for ;; {
@@ -223,6 +238,9 @@ impl @io.Writer for Sender with write_reader(self, reader) {
 }
 
 ///|
+extend Sender with @io.Writer::{write_once, write, write_reader}
+
+///|
 async fn Sender::end_body(self : Sender) -> Unit {
   match self.mode {
     SendingHeader | PassThrough =>
@@ -263,21 +281,20 @@ async fn Sender::end_body(self : Sender) -> Unit {
 }
 
 ///|
-async fn Sender::send_headers(
-  self : Sender,
-  headers : Map[String, String],
-) -> Int64? {
+async fn Sender::send_headers(self : Sender, headers : Headers) -> Int64? {
   let mut content_length = None
-  for pair in headers.to_array() {
-    let (k, v) = pair
-    let k_lower = k.to_lower()
-    if k_lower is "content-length" {
+  for k, v in headers {
+    if k == "Content-Length" {
       let len = @string.parse_int64(v.trim(), base=10)
       content_length = Some(len)
-    } else if forbidden_headers.contains(k_lower) {
+    } else if forbidden_headers.contains(k) {
       continue
     }
-    self..write(k)..write(b": ")..write(v).write(b"\r\n")
+    self
+    ..write(sanitize_header_value(k.0))
+    ..write(b": ")
+    ..write(sanitize_header_value(v))
+    .write(b"\r\n")
   }
   content_length
 }
@@ -288,9 +305,9 @@ async fn Sender::send_request(
   self : Sender,
   meth : RequestMethod,
   path : StringView,
-  extra_headers~ : Map[String, String],
+  extra_headers~ : Headers,
 ) -> Bool {
-  guard self.mode is SendingHeader
+  guard! self.mode is SendingHeader
   self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
     Get => self.write(b"GET ")
@@ -309,8 +326,7 @@ async fn Sender::send_request(
     ..write(self.headers)
     .send_headers(extra_headers)
   let auto_decompress = !self.has_accept_encoding &&
-    extra_headers.keys().find_first(k => k.to_lower() is "accept-encoding")
-    is None
+    !extra_headers.contains("Accept-Encoding")
   if auto_decompress {
     self.write(b"Accept-Encoding: gzip,identity\r\n")
   }
@@ -328,11 +344,11 @@ async fn Sender::send_response(
   self : Sender,
   code : Int,
   reason : String,
-  extra_headers~ : Map[String, String],
+  extra_headers~ : Headers,
   cookies~ : Array[Cookie],
   request_method~ : RequestMethod,
 ) -> Unit {
-  guard self.mode is SendingHeader
+  guard! self.mode is SendingHeader
   match request_method {
     Head => self.should_have_empty_body = true
     Connect => self.should_have_empty_body = code is (100..<300 | 304)
@@ -342,7 +358,7 @@ async fn Sender::send_response(
     ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
     ..write(b" ")
-    ..write(reason)
+    ..write(sanitize_header_value(reason))
     ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
@@ -351,7 +367,10 @@ async fn Sender::send_response(
     cookie.write_to(self)
     self.write(b"\r\n")
   }
-  if content_length is Some(len) {
+  if request_method is Head {
+    self.write("\r\n")
+    self.mode = SendingFixed(remaining=0)
+  } else if content_length is Some(len) {
     self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {

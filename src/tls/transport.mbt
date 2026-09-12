@@ -41,14 +41,15 @@ fn Transport::new(reader : &@io.Reader, writer : &@io.Writer) -> Transport {
   {
     state: Normal,
     reader,
-    read_lock: @semaphore.Semaphore(1),
+    read_lock: Semaphore(1),
     write_buf: @io_buffer.new(BUFFER_SIZE),
     writer,
-    write_lock: @semaphore.Semaphore(1),
+    write_lock: Semaphore(1),
   }
 }
 
 ///|
+#warnings("-fragile_catch_all")
 async fn Transport::read_more(self : Transport) -> Unit {
   self.read_lock.acquire()
   defer self.read_lock.release()

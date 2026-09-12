@@ -48,8 +48,8 @@ pub fn Semaphore::Semaphore(
   if size <= 0 {
     abort("size of semaphore must be positive")
   }
-  guard initial_value >= 0 && initial_value <= size
-  { value: initial_value, size, waiters: @deque.Deque([]) }
+  guard! initial_value >= 0 && initial_value <= size
+  { value: initial_value, size, waiters: Deque([]), }
 }
 
 ///|
@@ -87,17 +87,21 @@ pub fn Semaphore::release(self : Semaphore) -> Unit {
 /// However, since `acquire` is a blocking point,
 /// the task running `acquire` may be cancelled,
 /// in this case, an cancellation will be raised from `acquire`.
-pub async fn Semaphore::acquire(self : Semaphore) -> Unit {
+pub async fn Semaphore::acquire(self : Semaphore) -> Unit noraise {
   if self.value > 0 {
     self.value -= 1
   } else {
-    let waiter = { coro: Some(@coroutine.current_coroutine()), acquired: false }
+    let waiter = {
+      coro: Some(@coroutine.current_coroutine()),
+      acquired: false,
+    }
     self.waiters.push_back(waiter)
-    @coroutine.suspend() catch {
-      _ if waiter.acquired => ()
-      err => {
+    match @coroutine.suspend_check_cancel() {
+      Continue => ()
+      Cancelled if waiter.acquired => ()
+      Cancelled => {
         waiter.coro = None
-        raise err
+        @coroutine.raise_cancellation_signal()
       }
     }
   }

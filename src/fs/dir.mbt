@@ -31,12 +31,12 @@ pub async fn mkdir(
     @os_error.OSError(_) as err if recursive && err.is_ENOENT() => {
       let last_path_sep_index = match path.rev_find("/") {
         Some(index) => index
-        None if @event_loop.IS_WINDOWS && path.rev_find("\\") is Some(index) =>
-          index
+        None if @event_loop.platform is Windows &&
+          path.rev_find("\\") is Some(index) => index
         None => raise err
       }
       let parent = path[:last_path_sep_index].trim_end(chars="/")
-      let parent = if @event_loop.IS_WINDOWS {
+      let parent = if @event_loop.platform is Windows {
         parent.trim_end(chars="\\")
       } else {
         parent
@@ -54,23 +54,30 @@ pub async fn mkdir(
 /// files and directories in `path` will be removed recursively.
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
-pub async fn rmdir(path : StringView, recursive? : Bool = false) -> Unit {
+///
+/// This function is not cancellable.
+pub async fn rmdir(
+  path : StringView,
+  recursive? : Bool = false,
+) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
-    let base = if @event_loop.IS_WINDOWS {
+    let base = if @event_loop.platform is Windows {
       path.trim_end(chars="/\\")
     } else {
       path.trim_end(chars="/")
     }
-    let dir = opendir_aux(path, context~)
-    defer dir.close()
-    while dir.next_aux(include_special=false, include_hidden=true, context~)
-          is Some(ent) {
-      let child_path = "\{base}/\{ent.name}"
-      if ent.is_dir {
-        rmdir(child_path, recursive=true)
-      } else {
-        @event_loop.remove(child_path, context~)
+    @async.protect_from_cancel <| () => {
+      let dir = opendir_aux(path, context~)
+      defer dir.close()
+      while dir.next_aux(include_special=false, include_hidden=true, context~)
+            is Some(ent) {
+        let child_path = "\{base}/\{ent.name}"
+        if ent.is_dir {
+          rmdir(child_path, recursive=true)
+        } else {
+          @event_loop.remove(child_path, context~)
+        }
       }
     }
   }
@@ -85,10 +92,14 @@ priv enum DirectoryState {
 }
 
 ///|
+priv struct DirectoryBuffer(@c_buffer.Buffer)
+
+///|
 /// A directory in file system
 struct Directory {
   io : @event_loop.IoHandle
-  buf : FixedArray[Byte]
+  buf : DirectoryBuffer
+  buf_len : Int
   // The offset of the next entry in the buffer
   mut offset : Int
   // The number of entries already consumed
@@ -104,10 +115,17 @@ struct Directory {
 ///|
 pub fn Directory::close(self : Directory) -> Unit {
   self.io.close()
+  self.buf.0.free()
 }
 
 ///|
+#cfg(target="native")
 extern "C" fn Directory::min_buffer_size() -> Int = "moonbitlang_async_dir_buffer_min_size"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+fn Directory::min_buffer_size() -> Int = "moonbitlang/async" "fs/dir_buffer_min_size"
 
 ///|
 /// Open the directory at `path`. `path` is encoded UTF8.
@@ -139,12 +157,11 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
 
 ///|
 fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
+  let buf_len = @cmp.maximum(1024, Directory::min_buffer_size())
   {
     io,
-    buf: FixedArray::make(
-      @cmp.maximum(Directory::min_buffer_size(), 1024),
-      b'\x00',
-    ),
+    buf: @c_buffer.new(buf_len),
+    buf_len,
     offset: 0,
     count: 0,
     job_ret: 0,
@@ -153,39 +170,73 @@ fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
 }
 
 ///|
-#borrow(buf)
-extern "C" fn Directory::entry_length(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_length"
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_length(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_length"
 
 ///|
-#borrow(buf)
-extern "C" fn Directory::entry_name_len(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_get_name_len"
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_length(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_length"
 
 ///|
-#borrow(buf)
-extern "C" fn Directory::entry_name(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> @c_buffer.Buffer = "moonbitlang_async_dir_entry_get_name"
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_name_len(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_get_name_len"
 
 ///|
-#borrow(buf)
-extern "C" fn Directory::entry_is_dir(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_is_dir"
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_name_len(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_get_name_len"
 
 ///|
-#borrow(buf)
-extern "C" fn Directory::entry_is_hidden(
-  buf : FixedArray[Byte],
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_name_offset(
+  self : Self,
+  offset : Int,
+) -> Int = "moonbitlang_async_dir_entry_get_name_offset"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_name_offset(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_get_name_offset"
+
+///|
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_is_dir"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_is_dir"
+
+///|
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_is_hidden(
+  self : Self,
   offset : Int,
 ) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_is_hidden(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/dir_entry_is_hidden"
+
+///|
+#cfg(target="native")
+extern "C" fn DirectoryBuffer::entry_file_id(
+  self : Self,
+  offset : Int,
+) -> UInt64 = "moonbitlang_async_dir_entry_get_file_id"
+
+///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(self)
+fn DirectoryBuffer::entry_file_id(self : Self, offset : Int) -> UInt64 = "moonbitlang/async" "fs/dir_entry_get_file_id"
 
 ///|
 #valtype
@@ -194,6 +245,7 @@ pub struct DirectoryEntry {
   /// Indicate whether the directory entry is another directory.
   /// Symbolic links are not treated as directories here.
   is_dir : Bool
+  priv file_id : UInt64
 }
 
 ///|
@@ -226,6 +278,7 @@ async fn Directory::next_aux(
   dir : Directory,
   include_hidden~ : Bool,
   include_special~ : Bool,
+  restart? : Bool = false,
   context~ : String,
 ) -> DirectoryEntry? {
   match dir.state {
@@ -234,7 +287,7 @@ async fn Directory::next_aux(
     NeedMoreEntry => {
       dir.offset = 0
       dir.count = 0
-      dir.job_ret = dir.io.readdir(dir.buf, dir.buf.length(), context~)
+      dir.job_ret = dir.io.readdir(dir.buf.0, dir.buf_len, restart~, context~)
       if dir.job_ret is 0 {
         dir.state = NoMoreEntry
         return None
@@ -243,7 +296,7 @@ async fn Directory::next_aux(
       }
     }
   }
-  let entry_len = Directory::entry_length(dir.buf, dir.offset)
+  let entry_len = dir.buf.entry_length(dir.offset)
   let offset = dir.offset
   dir.offset += entry_len
   dir.count += 1
@@ -255,17 +308,18 @@ async fn Directory::next_aux(
   if need_more_entry {
     dir.state = NeedMoreEntry
   }
-  if !include_hidden && Directory::entry_is_hidden(dir.buf, offset) {
+  if !include_hidden && dir.buf.entry_is_hidden(offset) {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
   let name = @os_string.decode(
-    Directory::entry_name(dir.buf, offset),
-    len=Directory::entry_name_len(dir.buf, offset),
+    dir.buf.0,
+    offset=offset + dir.buf.entry_name_offset(offset),
+    len=dir.buf.entry_name_len(offset),
   )
   if !include_special && name is ("." | "..") {
     return dir.next_aux(include_special~, include_hidden~, context~)
   }
-  let is_dir = match Directory::entry_is_dir(dir.buf, offset) {
+  let is_dir = match dir.buf.entry_is_dir(offset) {
     0 => false
     1..<_ => true
     _..<0 => {
@@ -278,7 +332,12 @@ async fn Directory::next_aux(
       kind is Directory
     }
   }
-  Some({ name, is_dir })
+  let file_id = dir.buf.entry_file_id(offset)
+  let entry = { name, is_dir, file_id, }
+  // Native file watching consumes this private field. Wasm keeps the same
+  // entry shape even though watch support is not compiled there yet.
+  ignore(entry.file_id)
+  Some(entry)
 }
 
 ///|
@@ -366,7 +425,7 @@ pub async fn walk(
   allow_failure? : Bool = false,
 ) -> Unit {
   let context = "@fs.walk()"
-  guard max_concurrency > 0
+  guard! max_concurrency > 0
   let sem = @async.Semaphore(max_concurrency)
   @async.with_task_group() <| fn(group) {
     fn handle_path(path : String) {
@@ -376,18 +435,22 @@ pub async fn walk(
         defer sem.release()
         let dir = opendir_aux(path, context~)
         defer dir.close()
+        let sub_dirs = []
         let files = []
         while dir.next_aux(include_hidden=true, include_special=false, context~)
               is Some(ent) {
-          let file_path = if path is [.., '/'] {
-            path + ent.name
-          } else {
-            "\{path}/\{ent.name}"
-          }
           if ent.is_dir {
-            handle_path(file_path)
+            let file_path = if path is [.., '/'] {
+              path + ent.name
+            } else {
+              "\{path}/\{ent.name}"
+            }
+            sub_dirs.push(file_path)
           }
           files.push(ent.name)
+        }
+        for path in sub_dirs {
+          handle_path(path)
         }
         f(path, files)
       }

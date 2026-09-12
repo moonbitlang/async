@@ -27,11 +27,12 @@ typedef FILE_ID_BOTH_DIR_INFO sys_dirent;
 #include <sys/vnode.h>
 
 // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getattrlist.2.html
-typedef struct {
+typedef struct __attribute__((packed, aligned(4))) {
    u_int32_t       d_reclen; /* length of the whole record */
    attribute_set_t d_attrs;  /* list of supported attributes */
    attrreference_t d_name;   /* the name of the file */
    fsobj_type_t    d_type;   /* the type of the file */
+   uint64_t        d_fileid;  /* the id of the file on its volume */
 } sys_dirent;
 
 #elif defined(__linux__)
@@ -64,7 +65,7 @@ MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_dir_buffer_min_size() {
 #ifdef _WIN32
 
-  return sizeof(sys_dirent) + MAX_PATH;
+  return sizeof(sys_dirent) + MAX_PATH * sizeof(WCHAR);
 
 #else
 
@@ -112,20 +113,20 @@ int32_t moonbitlang_async_dir_entry_get_name_len(char *buf, int32_t offset) {
 }
 
 MOONBIT_FFI_EXPORT
-char *moonbitlang_async_dir_entry_get_name(char *buf, int32_t offset) {
-  sys_dirent *ent = (sys_dirent *)(buf + offset);
+int32_t moonbitlang_async_dir_entry_get_name_offset(char *buf, int32_t offset) {
 
 #ifdef _WIN32
 
-  return (char*)ent->FileName;
+  return offsetof(sys_dirent, FileName);
 
 #elif defined(__MACH__)
 
-  return ((char*)&ent->d_name) + ent->d_name.attr_dataoffset;
+  sys_dirent *ent = (sys_dirent *)(buf + offset);
+  return offsetof(sys_dirent, d_name) + ent->d_name.attr_dataoffset;
 
 #elif defined(__linux__)
 
-  return ent->d_name;
+  return offsetof(sys_dirent, d_name);
 
 #else
 
@@ -188,6 +189,24 @@ int32_t moonbitlang_async_dir_entry_is_hidden(char *buf, int32_t offset) {
 
   return ent->d_name[0] == '.';
 
+#endif
+}
+
+MOONBIT_FFI_EXPORT
+uint64_t moonbitlang_async_dir_entry_get_file_id(char *buf, int32_t offset) {
+  sys_dirent *ent = (sys_dirent *)(buf + offset);
+
+#ifdef _WIN32
+
+  return ent->FileId.QuadPart;
+
+#elif defined(__MACH__)
+
+  return ent->d_fileid;
+
+#elif defined(__linux__)
+
+  return ent->d_ino;
 
 #endif
 }

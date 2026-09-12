@@ -23,6 +23,18 @@ struct OsString(String)
 
 ///|
 #cfg(not(platform="windows"))
+pub fn OsString::bytes_length(self : OsString) -> Int {
+  self.0.length()
+}
+
+///|
+#cfg(platform="windows")
+pub fn OsString::bytes_length(self : OsString) -> Int {
+  self.0.length() * 2
+}
+
+///|
+#cfg(not(platform="windows"))
 pub fn encode(str : StringView) -> OsString {
   @utf8.encode(str)
 }
@@ -34,21 +46,24 @@ pub fn encode(str : StringView) -> OsString {
 }
 
 ///|
-pub impl Show for OsString with output(self, logger) {
-  self.to_string().output(logger)
+pub impl Show for OsString with fn output(self, logger) {
+  Show::output(self.to_string(), logger)
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub impl Show for OsString with to_string(self) {
+pub impl Show for OsString with fn to_string(self) {
   @utf8.decode_lossy(self.0)
 }
 
 ///|
 #cfg(platform="windows")
-pub impl Show for OsString with to_string(self) {
+pub impl Show for OsString with fn to_string(self) {
   self.0
 }
+
+///|
+pub extend OsString with Show::{to_string}
 
 ///|
 /// `len`, if present, is the number of bytes to decode in `os_str`.
@@ -56,16 +71,24 @@ pub impl Show for OsString with to_string(self) {
 #cfg(not(platform="windows"))
 pub fn decode(
   os_str : @c_buffer.Buffer,
-  len? : Int = os_str.strlen(),
+  offset? : Int = 0,
+  len? : Int = os_str.strlen(offset~),
 ) -> String {
   let data = FixedArray::make(len, b'\x00')
-  os_str.blit_to_bytes(dst=data, offset=0, len~)
+  os_str.blit_to_bytes(dst=data, src_offset=offset, len~)
   @utf8.decode_lossy(data.unsafe_reinterpret_as_bytes())
 }
 
 ///|
 #cfg(platform="windows")
-pub extern "C" fn decode(os_str : @c_buffer.Buffer, len? : Int = -1) -> String = "moonbitlang_async_c_buffer_as_string"
+pub extern "C" fn decode(
+  os_str : @c_buffer.Buffer,
+  offset? : Int = 0,
+  len? : Int = -1,
+) -> String = "moonbitlang_async_c_buffer_as_string"
+
+///|
+pub let empty : OsString = encode("")
 
 ///|
 #cfg(platform="windows")

@@ -18,7 +18,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
-    timeout-minutes: 10
+    # The test suite cold-builds a few small `moonx` tool packages on every
+    # fresh runner; give the full-matrix build jobs headroom for that.
+    timeout-minutes: 15
     steps:
       - name: disable auto CRLF
         if: ${{ matrix.os == 'windows-latest' }}
@@ -56,9 +58,6 @@ jobs:
       - name: moon check
         run: moon check --deny-warn
 
-      - name: moon check (test programs)
-        run: moon -C src/process/test_programs check --deny-warn
-
       - name: moon test
         run: moon test
 
@@ -73,7 +72,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     continue-on-error: false
-    timeout-minutes: 10
+    # The test suite cold-builds a few small `moonx` tool packages on every
+    # fresh runner; give the full-matrix build jobs headroom for that.
+    timeout-minutes: 15
     steps:
       - name: disable auto CRLF
         if: ${{ matrix.os == 'windows-latest' }}
@@ -113,9 +114,6 @@ jobs:
 
       - name: moon check
         run: moon check
-
-      - name: moon check (test programs)
-        run: moon -C src/process/test_programs check
 
       - name: moon test
         run: moon test
@@ -169,6 +167,9 @@ jobs:
           moon check --target wasm --deny-warn
           moon check --target wasm-gc --deny-warn
 
+      - name: moon test (Wasm-GC entry point)
+        run: moon test src --target wasm-gc --filter 'wasm-gc async main*'
+
   moon-format:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -192,7 +193,6 @@ jobs:
       - name: format diff
         run: |
           moon fmt
-          moon fmt --manifest-path src/process/test_programs/moon.mod.json
           git diff --exit-code
 
   moon-info:
@@ -223,6 +223,9 @@ jobs:
   sanitizer-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
@@ -243,23 +246,20 @@ jobs:
         run: |
           moon update
 
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          gcc dummy_libmoonbitrun.c -c -o ~/.moon/lib/libmoonbitrun.o
-
       - name: setup sanitizer check
         run: |
-          moon run --debug src/process/test_programs/setup_sanitizer_check
+          moon run --debug test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |
-          export MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           moon test
 
   sanitizer-check-windows:
     runs-on: windows-latest
     timeout-minutes: 10
+    env:
+      MOONBIT_NEW_NATIVE: 0
+      MOONBIT_ALLOCATOR: system
     steps:
       - name: disable auto CRLF
         run: git config --global core.autocrlf false
@@ -285,18 +285,11 @@ jobs:
         run: |
           moon update
 
-      - name: disable mimalloc
-        run: |
-          echo "" >dummy_libmoonbitrun.c
-          $out_path = Convert-Path ~/.moon/lib/libmoonbitrun.o
-          cl.exe dummy_libmoonbitrun.c /c /Fo: $out_path
-
       - name: setup sanitizer check
         run: |
-          moon run --debug src/process/test_programs/setup_sanitizer_check
+          moon run --debug test_programs/setup_sanitizer_check
 
       - name: run test with address sanitizer
         run: |
           $env:ASAN_OPTIONS='fast_unwind_on_malloc=0'
-          $env:MOONBIT_ASYNC_TEST_SANITIZER_ENABLED=1
           moon test

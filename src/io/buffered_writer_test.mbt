@@ -14,7 +14,7 @@
 
 ///|
 async test "BufferedWriter" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| fn(root) {
     let (r, w) = @io.pipe()
     root.spawn_bg() <| () => {
@@ -52,7 +52,7 @@ async test "BufferedWriter" {
 
 ///|
 async test "BufferedWriter::write_reader" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| fn(root) {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()

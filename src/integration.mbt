@@ -20,14 +20,38 @@
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
-    @event_loop.KilledBySignal(signal) => exit(128 + signal)
+    @event_loop.KilledBySignal(signal) =>
+      @event_loop.terminate_process_by_signal(signal)
     err => {
-      // TODO: output the error to stderr
-      println(err)
+      @env_util.eprintln(err.to_string())
       exit(1)
     }
   }
 }
+
+///|
+/// Set a custom event loop implementation
+/// instead of using `moonbitlang/async`'s default one.
+/// If a user-provided event loop is present,
+/// `moonbitlang/async` will spawn its own loop in a dedicated thread
+/// to integrate with the user-provided loop.
+///
+/// For what a custom event loop should provide,
+/// see `@external_loop_integration.ExternalEventLoop`.
+///
+/// `set_external_event_loop` MUST be invoked before `moonbitlang/async`
+/// actually starts the event loop, for example inside `fn init`.
+/// It is possible to invoke `set_external_event_loop` inside `async fn main` as well.
+/// But in this case, it must be invoked before running any actual async code.
+/// For example, a CLI program may invoke `set_external_event_loop` in `async fn main`
+/// after processing command line arguments and (synchronous) event loop initialization.
+///
+/// When using an external event loop, all MoonBit code are still run in the main thread.
+/// `moonbitlang/async` will only spawn its waiting part in a dedicated thread.
+/// As a consequence, even if an external event loop is used,
+/// `moonbitlang/async` may still modify state of the main thread, such as changing signal mask.
+#cfg(target="native")
+pub using @event_loop {set_external_event_loop}
 
 ///|
 #cfg(target="native")
@@ -38,22 +62,14 @@ extern "C" fn exit(code : Int) = "exit"
 #cfg(target="js")
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn(main)
-  @event_loop.reschedule()
-}
-
-///|
-/// Scheduler-only entry for wasm / wasm-gc. The async library does not
-/// provide IO on these targets (`sleep`, `Timer`, sockets, fs, etc. all
-/// `abort` via the existing `unimplemented.mbt` stubs), but pure
-/// coroutine code (`pause`, `with_task_group`, `aqueue`, `semaphore`,
-/// `cond_var`) does not depend on the event loop and works fine — this
-/// shim just drains the ready queue.
-#coverage.skip
-#cfg(target="wasm")
-#doc(hidden)
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn(main)
+  let _ = @coroutine.spawn <| () => {
+    main() catch {
+      err => {
+        @env_util.eprintln(err.to_string())
+        panic()
+      }
+    }
+  }
   @event_loop.reschedule()
 }
 
@@ -62,6 +78,20 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 #cfg(target="wasm-gc")
 #doc(hidden)
 pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn(main)
-  @event_loop.reschedule()
+  let _ = @coroutine.spawn <| () => {
+    main() catch {
+      err => {
+        @env_util.eprintln(err.to_string())
+        panic()
+      }
+    }
+  }
+  // Return to the host when only suspended coroutines remain.
+  while @coroutine.has_immediately_ready_task() {
+    @coroutine.reschedule()
+  }
 }
+
+///|
+#cfg(all(not(target="native"), not(target="wasm")))
+let _unused_import : Unit = ignore(@env_util.eprintln)

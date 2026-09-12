@@ -13,85 +13,40 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
-  let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
-  group.spawn_bg(no_wait=true) <| () => {
-    server.run_forever() <| ((request, body, conn) => {
-      let meth = @debug.to_string(request.meth).to_upper()
-      log.write_string("server received request: \{meth} \{request.path}\n")
-      while body.read_some() is Some(data) {
-        let data = @utf8.decode(data)
-        log.write_string("server received: \{data}")
-      }
-      conn.send_response(200, "OK")
-      log.write_string("server: sending \{meth} response part 1\n")
-      conn..write("\{meth} response part 1\n").flush()
-      @async.sleep(100)
-      log.write_string("server: sending \{meth} response part 2\n")
-      conn.write("\{meth} response part 2\n")
-    })
+#cfg(target="js")
+async test "responses with null Web API bodies are empty readable streams" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let client = @http.Client("http://localhost:\{port}")
+    defer client.close()
+    for
+      request in [
+        (@http.Get, "/no-content", 204),
+        (@http.Get, "/reset-content", 205),
+        (@http.Get, "/not-modified", 304),
+        (@http.Head, "/head", 200),
+      ] {
+      let (meth, path, expected_status) = request
+      client.request(meth, path)
+      let response = client.end_request()
+      assert_eq(response.code, expected_status)
+      assert_eq(client.read_all().text(), "")
+    }
   }
-  server.addr.port()
 }
 
 ///|
-#cfg(target="js")
-#external
-type Server
+#cfg(not(target="js"))
+let is_js : Bool = false
 
 ///|
 #cfg(target="js")
-extern "js" fn Server::close(server : Server) =
-  #| (server) => server.close()
-
-///|
-#cfg(target="js")
-extern "js" fn Server::port(server : Server) -> Int =
-  #| (server) => server.address().port
-
-///|
-#cfg(target="js")
-extern "js" fn Server::create(
-  logger : (String) -> Unit,
-) -> @js_async.Promise[Server] =
-  #| (logger) => {
-  #|   const http = require('node:http')
-  #|   const server = http.createServer()
-  #|   server.on('request', (req, response) => {
-  #|     logger(`server received request: ${req.method} ${req.url}\n`)
-  #|     req.on('data', (data) => {
-  #|       logger(`server received: ${data}`)
-  #|     })
-  #|     req.on('end', () => {
-  #|       response.statusCode  = 200
-  #|       response.statusMessage = "OK"
-  #|       logger(`server: sending ${req.method} response part 1\n`)
-  #|       response.write(`${req.method} response part 1\n`, () => {
-  #|         setTimeout(() => {
-  #|           logger(`server: sending ${req.method} response part 2\n`)
-  #|           response.end(`${req.method} response part 2\n`)
-  #|         }, 100)
-  #|       })
-  #|     })
-  #|   })
-  #|   server.listen(0, '127.0.0.1')
-  #|   return new Promise((resolve) => {
-  #|     server.on('listening', () => resolve(server))
-  #|   })
-  #| }
-
-///|
-#cfg(target="js")
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
-  let server = Server::create(msg => log.write_string(msg)).wait()
-  group.add_defer(() => server.close())
-  server.port()
-}
+let is_js : Bool = true
 
 ///|
 async test "request streaming" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
@@ -103,14 +58,16 @@ async test "request streaming" {
 
     {
       log <+ "client sending GET request\n"
-      let (response, client) = @http.get_stream("http://localhost:\{port}/get")
+      let (response, client) = @http.get_stream(
+        "http://localhost:\{port}/get-streaming",
+      )
       defer client.close()
       inspect(response.code, content="200")
       fetch_response(client)
     }
     {
       log <+ "client sending PUT request\n"
-      let client = @http.put_stream("http://localhost:\{port}/put")
+      let client = @http.put_stream("http://localhost:\{port}/put-streaming")
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending PUT data part 1\n"
@@ -124,7 +81,7 @@ async test "request streaming" {
     }
     {
       log <+ "client sending POST request\n"
-      let client = @http.post_stream("http://localhost:\{port}/post")
+      let client = @http.post_stream("http://localhost:\{port}/post-streaming")
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending POST data part 1\n"
@@ -140,38 +97,76 @@ async test "request streaming" {
     // so that the port occupied by the server can be reused immediately.
     @async.sleep(200)
   }
-  inspect(
-    log,
-    content=(
-      #|client sending GET request
-      #|server received request: GET /get
-      #|server: sending GET response part 1
-      #|client received: GET response part 1
-      #|server: sending GET response part 2
-      #|client received: GET response part 2
-      #|client sending PUT request
-      #|client: sending PUT data part 1
-      #|server received request: PUT /put
-      #|server received: PUT data part 1
-      #|client: sending PUT data part 2
-      #|server received: PUT data part 2
-      #|server: sending PUT response part 1
-      #|client received: PUT response part 1
-      #|server: sending PUT response part 2
-      #|client received: PUT response part 2
-      #|client sending POST request
-      #|client: sending POST data part 1
-      #|server received request: POST /post
-      #|server received: POST data part 1
-      #|client: sending POST data part 2
-      #|server received: POST data part 2
-      #|server: sending POST response part 1
-      #|client received: POST response part 1
-      #|server: sending POST response part 2
-      #|client received: POST response part 2
-      #|
-    ),
-  )
+  if is_js {
+    // On JS backend, streaming request body is not supported,
+    // so we can only buffer the whole request body before sending.
+    // This will result is different evaluation order behavior here.
+    inspect(
+      log,
+      content=(
+        #|client sending GET request
+        #|server received request: GET /get-streaming
+        #|server: sending GET response part 1
+        #|client received: GET response part 1
+        #|server: sending GET response part 2
+        #|client received: GET response part 2
+        #|client sending PUT request
+        #|client: sending PUT data part 1
+        #|client: sending PUT data part 2
+        #|server received request: PUT /put-streaming
+        #|server received: PUT data part 1
+        #|PUT data part 2
+        #|server: sending PUT response part 1
+        #|client received: PUT response part 1
+        #|server: sending PUT response part 2
+        #|client received: PUT response part 2
+        #|client sending POST request
+        #|client: sending POST data part 1
+        #|client: sending POST data part 2
+        #|server received request: POST /post-streaming
+        #|server received: POST data part 1
+        #|POST data part 2
+        #|server: sending POST response part 1
+        #|client received: POST response part 1
+        #|server: sending POST response part 2
+        #|client received: POST response part 2
+        #|
+      ),
+    )
+  } else {
+    inspect(
+      log,
+      content=(
+        #|client sending GET request
+        #|server received request: GET /get-streaming
+        #|server: sending GET response part 1
+        #|client received: GET response part 1
+        #|server: sending GET response part 2
+        #|client received: GET response part 2
+        #|client sending PUT request
+        #|client: sending PUT data part 1
+        #|server received request: PUT /put-streaming
+        #|server received: PUT data part 1
+        #|client: sending PUT data part 2
+        #|server received: PUT data part 2
+        #|server: sending PUT response part 1
+        #|client received: PUT response part 1
+        #|server: sending PUT response part 2
+        #|client received: PUT response part 2
+        #|client sending POST request
+        #|client: sending POST data part 1
+        #|server received request: POST /post-streaming
+        #|server received: POST data part 1
+        #|client: sending POST data part 2
+        #|server received: POST data part 2
+        #|server: sending POST response part 1
+        #|client received: POST response part 1
+        #|server: sending POST response part 2
+        #|client received: POST response part 2
+        #|
+      ),
+    )
+  }
 }
 
 ///|
@@ -184,4 +179,43 @@ async test "multiple request" {
   let response2 = client.get("/download")
   inspect(response2.code, content="200")
   assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "user agent" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr.port()
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((request, _body, conn) => {
+        let meth = @debug.to_string(request.meth).to_upper()
+        log <+ "server received request: \{meth} \{request.path}\n"
+        let ua = request.headers.get("user-agent").unwrap_or("none")
+        log <+ "User-Agent: \{ua}\n"
+        conn.send_response(200, "OK")
+      })
+    }
+    {
+      let (response, client) = @http.get_stream("http://localhost:\{port}")
+      defer client.close()
+      inspect(response.code, content="200")
+    }
+    let (response, client) = @http.get_stream("http://localhost:\{port}", headers={
+      "User-Agent": "my-custom-UA/4.2",
+    })
+    defer client.close()
+    inspect(response.code, content="200")
+  }
+  inspect(
+    log.to_string(),
+    content=(
+      #|server received request: GET /
+      #|User-Agent: moonbit-http-client/1.1
+      #|server received request: GET /
+      #|User-Agent: my-custom-UA/4.2
+      #|
+    ),
+  )
 }

@@ -7,7 +7,7 @@ Currently, this library only supports native/LLVM backends on Linux/MacOS.
 API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
 You can also find small examples in `examples`,
 these examples can be run via `moon run -C examples examples/<example-name>` in project root.
-Youn can find a brief introduction to some examples in `examples/README.md`,
+You can find a brief introduction to some examples in `examples/README.md`,
 including the topics each example covers.
 
 WARNING: this library is current experimental, API is subject to future change.
@@ -15,7 +15,7 @@ WARNING: this library is current experimental, API is subject to future change.
 ## Installation
 In your MoonBit project root, run:
 ```bash
-moon add moonbitlang/async@0.19.1
+moon add moonbitlang/async@0.21.3
 ```
 This library provides the following packages:
 
@@ -26,6 +26,7 @@ This library provides the following packages:
 - `moonbitlang/async/pipe`: operations on pipes
 - `moonbitlang/async/fs`: file system operations, such as file IO and directory reading
 - `moonbitlang/async/process`: spawning system process
+- `moonbitlang/async/shell`: shell-free commands, pipelines, redirection, and glob expansion
 - `moonbitlang/async/aqueue`: asynchronous queue data structure for inter-task communication
 - `moonbitlang/async/semaphore`: semaphore for concurrency control
 - `moonbitlang/async/cond_var`: condition variable with broadcasting support
@@ -54,7 +55,7 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] signal handling
     - [X] graceful cancellation on receiving `SIGINT` etc.
     - [ ] custom signal handling logic
-- [ ] file system watching
+- [X] file system watching
 - [X] structured concurrency
 - [X] cooperative multi tasking
 - [X] IO worker thread
@@ -62,7 +63,8 @@ To use these packages, add them to the `import` field of `moon.pkg.json`.
 - [X] Linux support (`epoll`)
 - [X] MacOS support (`kqueue`)
 - [X] Windows support (`IOCP`)
-- [ ] WASM backend
+- [X] wasm1 backend
+- [ ] wasm-gc
 - [X] Javascript backend
     - [X] integration with JavaScript promise and Web API `ReadableStream`
     - [X] all IO-independent API, including:
@@ -99,15 +101,23 @@ In `moonbitlang/async`, all asynchronous operations are by default cancellable.
 So no need to worry about accidentally creating uncancellable task.
 
 In `moonbitlang/async`, when a task is cancelled,
-it will receive an error at where it suspended.
-The cancelled task can then perform cleanup logic using `try .. catch`.
-Since most asynchronous operations may throw other error anyway,
-correct error handling automatically gives correct cancellation handling,
-so most of the time correct cancellation handling just come for free in `moonbitlang/async`.
+it will receive a special signal at where it suspended.
+This cancellation signal is similar to, but not the same as an error.
+The cancellation signal propogates like an error, and can trigger `defer` and `errdefer` blocks.
+However, `catch` can **not** capture the cancellation signal.
 
-Currently, it is not allowed to perform other asynchronous operation after a task is cancelled.
-Those operations will be cancelled immediately if current task is already cancelled.
-Spawn a task in some parent context if asynchronous cleanup is necessary.
+In most cases, users don't need to handle cancellation specially.
+Cleanup related logic inside `defer` or `errdefer`,
+while other error handlers usually don't need to handle cancellation anyway.
+If special handling of cancellation is indeed necessary,
+`@async.handle_cancellation` can be used.
+
+Cancellation is a sticky state attached to every task in `moonbitlang/async`.
+The aforementioned cancellation signal is merely a notification for the cancelled task,
+capturing that signal via `@async.handle_cancellation` does *not* revert cancellation.
+The task will stay in cancelled state,
+and the next unprotected async operation will get cancelled immediately.
+To truly protect a piece of critical code from cancellation, use `@async.protect_from_cancel`.
 
 ## Caveats
 

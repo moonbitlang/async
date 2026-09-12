@@ -39,7 +39,7 @@ pub fn Cookie::Cookie(
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 fn Cookie::parse(line : StringView) -> Cookie raise {
   guard line.find("=") is Some(name_end) else { raise BadRequest }
   let name = line[:name_end].to_owned()
@@ -105,7 +105,7 @@ fn Cookie::parse(line : StringView) -> Cookie raise {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn[W : @io.Writer] Cookie::write_to(cookie : Cookie, w : W) -> Unit {
   w..write(cookie.name)..write("=").write(cookie.value)
   if cookie.path is Some(path) {

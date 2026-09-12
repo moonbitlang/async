@@ -16,8 +16,9 @@
 async test "read EOF" {
   let buf = FixedArray::make(16, b'0')
   let path = "_build/read_eof_test"
+  let w = @fs.create(path, permission=0o644, sync=Full)
+  defer @fs.remove(path)
   {
-    let w = @fs.create(path, permission=0o644, sync=Full)
     defer w.close()
     w.write(b"abcd")
   }
@@ -26,7 +27,6 @@ async test "read EOF" {
     defer r.close()
     r.read(buf)
   }
-  @fs.remove(path)
   assert_eq(n, 4)
   inspect(@utf8.decode(buf.unsafe_reinterpret_as_bytes()[0:n]), content="abcd")
 }

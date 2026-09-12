@@ -80,11 +80,7 @@ async fn main {
       ),
     ],
     positionals=[
-      PositionArg(
-        "file",
-        about="file to process",
-        num_args=@argparse.ValueRange(lower=0),
-      ),
+      PositionArg("file", about="file to process", num_args=ValueRange(lower=0)),
     ],
   ).parse()
   let options : Options = {

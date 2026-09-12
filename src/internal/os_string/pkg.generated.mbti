@@ -6,7 +6,9 @@ import {
 }
 
 // Values
-pub fn decode(@c_buffer.Buffer, len? : Int) -> String
+pub fn decode(@c_buffer.Buffer, offset? : Int, len? : Int) -> String
+
+pub let empty : OsString
 
 pub fn encode(StringView) -> OsString
 
@@ -14,9 +16,10 @@ pub fn encode(StringView) -> OsString
 
 // Types and methods
 type OsString
+pub fn OsString::bytes_length(Self) -> Int
+pub fn OsString::to_string(Self) -> String
 pub impl Show for OsString
 
 // Type aliases
 
 // Traits
-

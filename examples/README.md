@@ -64,3 +64,7 @@ You can learn about the basic structure of a UDP server in MoonBit from this exa
 A simple toy program that exit automatically if the user have not type anything in the terminal for 5 seconds.
 
 You can learn about the pattern of setting up a idle timeout system in MoonBit from this example.
+
+## `dead_lock`
+An example program with dead lock. This example demonstrates the dead lock detection feature of `moonbitlang/async`.
+Instead of hanging forever, the dead lock program will abort with meaningful message when it enter dead lock state.

@@ -9,7 +9,7 @@ import {
 // Values
 pub fn rand_bytes(Int) -> Bytes raise
 
-pub fn sha1(Bytes) -> Bytes
+pub fn sha1(Bytes) -> Bytes raise
 
 // Errors
 pub suberror ConnectionClosed derive(ToJson, @debug.Debug)
@@ -52,4 +52,3 @@ pub(all) enum X509FileType {
 // Type aliases
 
 // Traits
-

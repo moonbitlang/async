@@ -21,7 +21,7 @@ async fn main {
       PositionArg(
         "file",
         about="file to read",
-        num_args=@argparse.ValueRange(lower=0),
+        num_args=ValueRange(lower=0),
         allow_hyphen_values=true,
       ),
     ],

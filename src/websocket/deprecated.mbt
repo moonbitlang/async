@@ -34,7 +34,7 @@ fn CloseCode::write_show(self : CloseCode, logger : &Logger) -> Unit {
 pub impl Show for MessageKind
 
 ///|
-pub impl Show for MessageKind with output(self, logger) {
+pub impl Show for MessageKind with fn output(self, logger) {
   match self {
     Binary => logger <+ "Binary"
     Text => logger <+ "Text"
@@ -46,7 +46,7 @@ pub impl Show for MessageKind with output(self, logger) {
 pub impl Show for CloseCode
 
 ///|
-pub impl Show for CloseCode with output(self, logger) {
+pub impl Show for CloseCode with fn output(self, logger) {
   self.write_show(logger)
 }
 
@@ -56,14 +56,13 @@ pub impl Show for WebSocketError
 
 ///|
 #warnings("-deprecated")
-pub impl Show for WebSocketError with output(self, logger) {
+pub impl Show for WebSocketError with fn output(self, logger) {
   match self {
     ConnectionClosed(close_code, msg) =>
       logger <+ "ConnectionClosed(\{close_code}, \{msg})"
     InvalidHandshake(msg) => logger <+ "InvalidHandshake(\{msg})"
     HandshakeRejected(msg, response) =>
-      logger
-        <+
+      logger <+
         "HandshakeRejected(\{msg}, \{response.code}, \{to_repr(response.reason)})"
     ProtocolError(msg) => logger <+ "ProtocolError(\{msg})"
   }

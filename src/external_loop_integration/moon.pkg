@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/external_loop_integration/internal/external_loop_test",
+  "moonbitlang/async/pipe",
+  "moonbitlang/async/internal/test_util",
+} for "test"

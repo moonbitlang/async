@@ -201,6 +201,9 @@ extern "C" fn disable_nagle(sock : @fd_util.Fd) -> Int = "moonbitlang_async_disa
 extern "C" fn allow_reuse_addr(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_addr"
 
 ///|
+extern "C" fn allow_reuse_port(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_port"
+
+///|
 extern "C" fn enable_keepalive_ffi(
   sock : @fd_util.Fd,
   keep_idle : Int,
@@ -220,25 +223,6 @@ fn getsockname(
 ) -> Addr raise {
   let addr = Addr::empty(family)
   if getsockname_ffi(sock, addr) < 0 {
-    @os_error.check_errno(context)
-  }
-  addr
-}
-
-///|
-#cfg(platform="windows")
-#borrow(addr_out)
-extern "C" fn getpeername_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getpeername"
-
-///|
-#cfg(platform="windows")
-fn getpeername(
-  sock : @fd_util.Fd,
-  family : AddrFamily,
-  context~ : String,
-) -> Addr raise {
-  let addr = Addr::empty(family)
-  if getpeername_ffi(sock, addr) != 0 {
     @os_error.check_errno(context)
   }
   addr

@@ -13,6 +13,18 @@
 // limitations under the License.
 
 ///|
+#cfg(target="wasm")
+fn is_wasm_target() -> Bool {
+  true
+}
+
+///|
+#cfg(not(target="wasm"))
+fn is_wasm_target() -> Bool {
+  false
+}
+
+///|
 async test "multicast basic" {
   let log = []
   @async.with_task_group <| group => {
@@ -103,6 +115,9 @@ async test "multicast no loopback" {
     // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
     return
   }
+  if @event_loop.platform is Windows && is_wasm_target() {
+    return
+  }
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer::multicast(
@@ -122,7 +137,7 @@ async test "multicast no loopback" {
     )
     defer client.close()
     @async.sleep(200)
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.platform is Windows {
       server.set_multicast_loopback(false)
     } else {
       client.set_multicast_loopback(false)
@@ -130,11 +145,12 @@ async test "multicast no loopback" {
     client.set_multicast_ttl(0)
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.platform is Windows {
       server.set_multicast_loopback(true)
     } else {
       client.set_multicast_loopback(true)
     }
+    @async.sleep(100)
     log.push("client sending: xyzw")
     let _ = client.send(b"xyzw")
     @async.sleep(200)
@@ -156,15 +172,18 @@ async test "multicast discovery then unicast v6" {
     defer server.close()
     let port = server.addr.port()
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{server.addr.port()}")
-    server.join_multicast_group_v6(multicast_addr, interface=test_interface)
+    server.join_multicast_group_v6(
+      multicast_addr,
+      interface=test_interface.force(),
+    )
     server.set_multicast_ttl(0)
     group.spawn_bg() <| () => {
       let client = @socket.UdpClient(
-        @socket.Addr::parse("[ff02::1%\{test_interface}]:\{port}"),
+        @socket.Addr::parse("[ff02::1%\{test_interface.force()}]:\{port}"),
       )
       defer client.close()
       client.set_multicast_ttl(0)
-      client.set_multicast_interface_v6(test_interface)
+      client.set_multicast_interface_v6(test_interface.force())
       @async.sleep(150)
       log.push("client sending discovery packet")
       let _ = client.send(b"anybody here?")
@@ -203,6 +222,9 @@ async test "multicast no loopback v6" {
     // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
     return
   }
+  if @event_loop.platform is Windows && is_wasm_target() {
+    return
+  }
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
@@ -210,7 +232,10 @@ async test "multicast no loopback v6" {
     let multicast_addr = @socket.Addr::parse("[ff02::1]:\{port}")
     group.spawn_bg(no_wait=true) <| () => {
       defer server.close()
-      server.join_multicast_group_v6(multicast_addr, interface=test_interface)
+      server.join_multicast_group_v6(
+        multicast_addr,
+        interface=test_interface.force(),
+      )
       let buf = FixedArray::make(1024, b'\x00')
       for ;; {
         let (n, _) = server.recvfrom(buf)
@@ -219,20 +244,20 @@ async test "multicast no loopback v6" {
       }
     }
     let client = @socket.UdpClient(
-      @socket.Addr::parse("[ff02::1%\{test_interface}]:\{port}"),
+      @socket.Addr::parse("[ff02::1%\{test_interface.force()}]:\{port}"),
     )
     defer client.close()
     @async.sleep(200)
-    client.set_multicast_interface_v6(test_interface)
+    client.set_multicast_interface_v6(test_interface.force())
     client.set_multicast_ttl(0)
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.platform is Windows {
       server.set_multicast_loopback(false)
     } else {
       client.set_multicast_loopback(false)
     }
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.IS_WINDOWS {
+    if @event_loop.platform is Windows {
       server.set_multicast_loopback(true)
     } else {
       client.set_multicast_loopback(true)

@@ -45,31 +45,22 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
   let context = "@socket.UdpClient::new()"
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
-  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    let dst_addr = if addr.is_multicast() {
-      if @event_loop.IS_WINDOWS {
-        let local_addr = match family {
-          IPv4 => ipv4_any
-          IPv6 => ipv6_any
-        }
-        io.bind(local_addr.0, context~)
-      }
-      Some(addr)
-    } else if 0 != connect_ffi(sock, addr) {
-      @os_error.check_errno(context)
-      None
-    } else {
-      None
+  let io = @event_loop.IoHandle::from_fd(sock, kind=Socket, read_only=true)
+  errdefer io.close()
+  let dst_addr = if addr.is_multicast() {
+    if @event_loop.platform is Windows {
+      let local_addr = Addr::any(family)
+      io.bind(local_addr.0, context~)
     }
-    let local_addr = getsockname(sock, family, context~)
-    { io, addr: local_addr, dst_addr }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
+    Some(addr)
+  } else if 0 != connect_ffi(sock, addr) {
+    @os_error.check_errno(context)
+    None
+  } else {
+    None
   }
+  let local_addr = getsockname(sock, family, context~)
+  { io, addr: local_addr, dst_addr, }
 }
 
 ///|
@@ -98,7 +89,7 @@ pub fn UdpClient::set_multicast_interface(
   addr : Addr,
 ) -> Unit raise {
   let context = "@socket.UdpClient::set_multicast_interface()"
-  guard self.addr.family() is IPv4
+  guard! self.addr.family() is IPv4
   guard addr.family() is IPv4 else {
     raise Failure::Failure("\{context}: expected IPv4 address")
   }
@@ -116,7 +107,7 @@ pub fn UdpClient::set_multicast_interface_v6(
   self : UdpClient,
   interface : String,
 ) -> Unit raise {
-  guard self.addr.family() is IPv6
+  guard! self.addr.family() is IPv6
   let context = "@socket.UdpClient::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),
@@ -226,24 +217,18 @@ pub async fn UdpServer::UdpServer(
   let family = addr.family()
   let sock = make_udp_socket(family, multicast=false, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if addr.is_ipv6() && addr.is_ipv6_wildcard() {
-      if 0 != set_ipv6_only(sock, !dual_stack) {
-        @os_error.check_errno(context)
-      }
-    }
-    io.bind(addr.0, context~)
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr, is_multicast_only: false }
-  } catch {
-    err => {
-      io.close()
-      raise err
+  errdefer io.close()
+  if addr.is_ipv6() && addr.is_ipv6_wildcard() {
+    if 0 != set_ipv6_only(sock, !dual_stack) {
+      @os_error.check_errno(context)
     }
   }
+  io.bind(addr.0, context~)
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr, is_multicast_only: false, }
 }
 
 ///|
@@ -277,25 +262,19 @@ pub async fn UdpServer::multicast(
   }
   let sock = make_udp_socket(family, multicast=true, context~)
   let io = @event_loop.IoHandle::from_fd(sock, kind=Socket)
-  try {
-    if @event_loop.IS_WINDOWS {
-      let local_addr = Addr::new(0, multi_addr.port())
-      io.bind(local_addr.0, context~)
-    } else {
-      io.bind(multi_addr.0, context~)
-    }
-    join_multicast_group(sock, multi_addr, interface_addr, context~)
-    // If `addr` specifies zero as the listen port,
-    // the OS will assign a random port for us,
-    // in this case, we need to retrieve the actual port via `getsockname`.
-    let addr = getsockname(sock, family, context~)
-    { io, addr, is_multicast_only: true }
-  } catch {
-    err => {
-      io.close()
-      raise err
-    }
+  errdefer io.close()
+  if @event_loop.platform is Windows {
+    let local_addr = Addr::new(0, multi_addr.port())
+    io.bind(local_addr.0, context~)
+  } else {
+    io.bind(multi_addr.0, context~)
   }
+  join_multicast_group(sock, multi_addr, interface_addr, context~)
+  // If `addr` specifies zero as the listen port,
+  // the OS will assign a random port for us,
+  // in this case, we need to retrieve the actual port via `getsockname`.
+  let addr = getsockname(sock, family, context~)
+  { io, addr, is_multicast_only: true, }
 }
 
 ///|
@@ -313,7 +292,7 @@ pub fn UdpServer::set_multicast_interface(
   self : UdpServer,
   addr : Addr,
 ) -> Unit raise {
-  guard self.addr.family() is IPv4
+  guard! self.addr.family() is IPv4
   set_multicast_interface(
     self.io.fd(),
     addr,
@@ -332,7 +311,7 @@ pub fn UdpServer::set_multicast_interface_v6(
   self : UdpServer,
   interface : String,
 ) -> Unit raise {
-  guard self.addr.family() is IPv6
+  guard! self.addr.family() is IPv6
   let context = "@socket.UdpServer::set_multicast_interface_v6()"
   set_multicast_interface_v6(
     self.io.fd(),
@@ -461,7 +440,7 @@ pub async fn UdpClient::recv(
   offset? : Int = 0,
   max_len? : Int = buf.length() - offset,
 ) -> Int {
-  self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv")
+  self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv()")
 }
 
 ///|
@@ -481,7 +460,7 @@ pub async fn UdpClient::recvfrom(
     offset~,
     len=max_len,
     addr=addr.0,
-    context="@socket.UdpClient::recvfrom",
+    context="@socket.UdpClient::recvfrom()",
   )
   (n_read, addr)
 }
@@ -513,7 +492,7 @@ pub async fn UdpServer::recvfrom(
     offset~,
     len=max_len,
     addr=addr.0,
-    context="@socket.UdpServer::recvfrom",
+    context="@socket.UdpServer::recvfrom()",
   )
   (n_read, addr)
 }
@@ -564,7 +543,7 @@ pub async fn UdpServer::sendto(
     offset~,
     len~,
     addr=addr.0,
-    context="@socket.UdpServer::sendto",
+    context="@socket.UdpServer::sendto()",
   )
   |> ignore
 }

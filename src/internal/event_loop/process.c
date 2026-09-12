@@ -15,38 +15,119 @@
  */
 
 #ifdef _WIN32
+
 #include <windows.h>
+
 #else
+
+#include <errno.h>
+#include <unistd.h>
 #include <sys/wait.h>
+
+typedef int HANDLE;
+
+#ifdef __linux__
+
+#include <linux/version.h>
+#include <sys/syscall.h>
+
+#ifndef P_PIDFD
+#define P_PIDFD 3
+#endif
+
+#endif
+
 #endif
 
 #include <moonbit.h>
 
+
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *out) {
 #ifdef _WIN32
 
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_process_result(HANDLE handle, DWORD *out) {
-  int result = GetExitCodeProcess(handle, out) ? 0 : -1;
-  return result;
-}
-
-MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_open_pid_handle(DWORD pid) {
-  return OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-}
+  // On Windows, `get_process_result` should only be called when the process has exited.
+  BOOL ret = GetExitCodeProcess(handle, out);
+  return ret ? 0 : - 1;
 
 #else
 
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_process_result(pid_t pid, int *out) {
-  int wstatus;
-  int ret = waitpid(pid, &wstatus, 0);
-  if (ret > 0) {
-    *out = WEXITSTATUS(wstatus);
+#ifdef __linux__
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+
+  if (handle >= 0) {
+    siginfo_t info;
+    info.si_pid = 0;
+    int ret = waitid(P_PIDFD, handle, &info, WEXITED | WNOHANG);
+
+    if (ret < 0)
+      return -1;
+
+    if (info.si_pid == 0) {
+      errno = EAGAIN;
+      return -1;
+    }
+
+    if (info.si_code == CLD_EXITED) {
+      *out = info.si_status;
+    } else {
+      // killed by signal
+      *out = -info.si_status;
+    }
     return 0;
-  } else {
+  }
+
+#endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#endif // #ifdef __linux__
+
+  /* This can be either:
+     1. Linux systems without `pidfd` support.
+     2. MacOS/BSD
+  */
+  int wstatus;
+  int ret = waitpid(pid, &wstatus, WNOHANG);
+  if (ret < 0)
+    return -1;
+
+  if (ret == 0) {
+    errno = EAGAIN;
     return -1;
   }
+
+  if WIFEXITED(wstatus) {
+    *out = WEXITSTATUS(wstatus);
+  } else {
+    *out = -WTERMSIG(wstatus);
+  }
+  return 0;
+
+#endif // #ifdef _WIN32
 }
 
-#endif
+
+MOONBIT_FFI_EXPORT
+HANDLE moonbitlang_async_open_pid_handle(int32_t pid) {
+#ifdef _WIN32
+
+  return OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+
+#else
+
+#ifdef __linux__
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+
+  int pidfd = syscall(SYS_pidfd_open, pid, 0);
+  if (pidfd < 0 && (errno == ENOSYS || errno == EPERM))
+    // some container environments do not support `pidfd` even on Linux >= 5.3.0
+    errno = 0;
+
+  return pidfd;
+
+#endif // #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#endif // #ifdef __linux__
+
+  errno = 0;
+  return -1;
+
+#endif // #ifdef _WIN32
+}

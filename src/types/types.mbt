@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+/// The wasm host uses opaque `UInt64` handles for host-owned file resources.
+#cfg(target="wasm")
+pub type Fd = UInt64
+
+///|
 /// The type for a system file descriptor.
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
 #cfg(platform="windows")
@@ -21,7 +26,7 @@ pub type Fd
 
 ///|
 #cfg(platform="windows")
-pub impl Eq for Fd with equal(x, y) = "%refeq"
+pub impl Eq for Fd with fn equal(x, y) = "%refeq"
 
 ///|
 #cfg(platform="windows")
@@ -29,12 +34,12 @@ extern "C" fn Fd::to_uint64(fd : Fd) -> UInt64 = "moonbitlang_async_fd_as_uint64
 
 ///|
 #cfg(platform="windows")
-pub impl Hash for Fd with hash_combine(self, hasher) {
+pub impl Hash for Fd with fn hash_combine(self, hasher) {
   hasher.combine_uint64(self.to_uint64())
 }
 
 ///|
 /// The type for a system file descriptor.
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
-#cfg(not(platform="windows"))
+#cfg(not(any(platform="windows", target="wasm")))
 pub type Fd = Int

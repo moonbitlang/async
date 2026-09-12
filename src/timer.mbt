@@ -16,12 +16,7 @@
 /// `sleep` will wait for the given time (in milliseconds) before returning.
 /// Other task can still run while current task is sleeping.
 /// If current task is cancelled, `sleep` will return early with an error.
-pub async fn sleep(duration : Int) -> Unit {
-  let coro = @coroutine.current_coroutine()
-  let timer = @event_loop.Timer::new(duration, () => coro.wake())
-  defer timer.cancel()
-  @coroutine.suspend()
-}
+pub using @event_loop {sleep}
 
 ///|
 priv enum TimerState {
@@ -58,8 +53,8 @@ pub struct Timer {
 /// The timer will start immediately, and expire after the duration elapsed.
 #alias(new, deprecated)
 pub fn Timer::Timer(duration : Int) -> Timer {
-  let expire_time = @time.ms_since_epoch() + duration.to_int64()
-  { state: Detached, duration, expire_time, waiters: Set([]) }
+  let expire_time = now() + duration.to_int64()
+  { state: Detached, duration, expire_time, waiters: Set([]), }
 }
 
 ///|
@@ -97,7 +92,7 @@ pub async fn Timer::wait(timer : Timer) -> Unit {
   match timer.state {
     Running(_) => ()
     Detached => {
-      let duration = timer.expire_time - @time.ms_since_epoch()
+      let duration = timer.expire_time - now()
       guard duration > 0 else { return }
       timer.state = Running(
         @event_loop.Timer::new(duration.to_int()) <| () => {
@@ -131,7 +126,7 @@ pub fn Timer::refresh(timer : Timer) -> Unit {
     Detached | Terminated => ()
     Cancelled(_) => return
   }
-  timer.expire_time = @time.ms_since_epoch() + timer.duration.to_int64()
+  timer.expire_time = now() + timer.duration.to_int64()
   if timer.waiters.is_empty() {
     timer.state = Detached
   } else {

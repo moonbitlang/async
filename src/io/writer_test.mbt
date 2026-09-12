@@ -30,7 +30,7 @@ async test "write large data" {
 
 ///|
 async test "write reader" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     let (r1, w1) = @io.pipe()
     let (r2, w2) = @io.pipe()
@@ -79,8 +79,8 @@ struct DummyWriter {
 }
 
 ///|
-impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
-  guard offset + len <= buf.length()
+impl @io.Writer for DummyWriter with fn write_once(self, buf, offset~, len~) {
+  guard! offset + len <= buf.length()
   @async.sleep(self.base_timeout)
   let logger = self.logger
   logger <+ "writing byte \{buf[offset]}\n"
@@ -88,9 +88,12 @@ impl @io.Writer for DummyWriter with write_once(self, buf, offset~, len~) {
 }
 
 ///|
+extend DummyWriter with @io.Writer::{write}
+
+///|
 async test "write cancel" {
-  let log = StringBuilder::new()
-  let writer = { logger: log, base_timeout: 300 }
+  let log = StringBuilder()
+  let writer = { logger: log, base_timeout: 300, }
   @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang

@@ -20,17 +20,15 @@ extern "C" fn mkfifo(path : @os_string.OsString, mode : Int) -> Int = "mkfifo"
 ///|
 #cfg(not(platform="windows"))
 async test "cancel named fifo open" {
-  @async.with_task_group() <| group => {
-    let path = "_build/cancel_open_test"
-    if mkfifo(@os_string.encode(path), 0o644) < 0 {
-      @os_error.check_errno("mkfifo")
-    }
-    group.add_defer(() => @fs.remove(path))
-    let result = @async.with_timeout_opt(500, () => {
-      @fs.open(path, mode=ReadOnly).close()
-    })
-    debug_inspect(result, content="None")
+  let path = "_build/cancel_open_test"
+  if mkfifo(@os_string.encode(path), 0o644) < 0 {
+    @os_error.check_errno("mkfifo")
   }
+  defer @fs.remove(path)
+  let result = @async.with_timeout_opt(500, () => {
+    @fs.open(path, mode=ReadOnly).close()
+  })
+  debug_inspect(result, content="None")
 }
 
 ///|
@@ -116,4 +114,47 @@ async test "named pipe" {
       ignore(w.write(b"efgh", offset=0, len=4, context=""))
     }
   }
+}
+
+///|
+#cfg(platform="windows")
+async test "named pipe multiple client" {
+  let log = []
+  @async.with_task_group() <| group => {
+    let context = "named pipe test"
+    let path = "\\\\.\\pipe\\moonbitlang_async_named_pipe_multiple_client_test"
+    let w = @fd_util.create_named_pipe_server(
+      @os_string.encode(path),
+      is_async=true,
+    )
+    if !@fd_util.fd_is_valid(w) {
+      @os_error.check_errno(context)
+    }
+    for i in 1..<=2 {
+      group.spawn_bg() <| () => {
+        @async.sleep(i * 50)
+        let r = @fs.open(path, mode=ReadOnly)
+        defer r.close()
+        log.push("client #\{i} connected")
+        inspect(@utf8.decode(r.read_exactly(4)), content="abcd")
+      }
+    }
+    let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+    defer w.close()
+    // wait for the client to connect
+    @async.sleep(100)
+    ignore(w.write(b"abcd", offset=0, len=4, context=""))
+    @async.sleep(100)
+    log.push("server disconnecting")
+    @fd_util.disconnect_named_pipe_server(w.fd())
+    @async.sleep(100)
+    log.push("server connecting again")
+    @fd_util.connect_named_pipe_server_sync(w.fd())
+    // wait for the client to connect
+    @async.sleep(100)
+    ignore(w.write(b"abcd", offset=0, len=4, context=""))
+  }
+  json_inspect(log, content=[
+    "client #1 connected", "server disconnecting", "server connecting again", "client #2 connected",
+  ])
 }

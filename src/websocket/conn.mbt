@@ -21,18 +21,24 @@ const MASK_SIZE : Int = 4
 
 ///|
 priv trait Transport: @io.Reader + @io.Writer {
-  close(Self) -> Unit
+  fn close(Self) -> Unit
 }
 
 ///|
-impl Transport for @http.Client with close(self) {
+impl Transport for @http.Client with fn close(self) {
   self.close()
 }
 
 ///|
-impl Transport for @http.ServerConnection with close(self) {
+impl Transport for @http.ServerConnection with fn close(self) {
   self.close()
 }
+
+///|
+extend &Transport with @io.Reader::{read, read_exactly}
+
+///|
+extend &Transport with @io.Writer::{write}
 
 ///|
 /// A WebSocket connection
@@ -161,7 +167,7 @@ fn Conn::new(
     read_mask: None,
     mask_offset: 0,
     utf8_remaining: -1,
-    write_lock: @semaphore.Semaphore(1),
+    write_lock: Semaphore(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
       MAX_HEADER_SIZE + MASK_SIZE
@@ -172,7 +178,7 @@ fn Conn::new(
     is_first_frame: true,
     write_buf: FixedArray::make(max_frame_size, 0),
     write_len: 0,
-    pings: {},
+    pings: Map([]),
   }
 }
 
@@ -304,7 +310,7 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   }
 
   // Read first two bytes
-  guard self.transport.read_exactly(2)
+  guard! self.transport.read_exactly(2)
     is [
       u1be(fin),
       u1be(rsv1),
@@ -336,13 +342,13 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
 
   // Validate payload length according to RFC 6455 Section 5.2
   if payload_len == 126L {
-    guard self.transport.read_exactly(2) is [u16be(len)]
+    guard! self.transport.read_exactly(2) is [u16be(len)]
     payload_len = len.to_int64()
     if payload_len < 126L {
       self.protocol_error("Invalid payload length format")
     }
   } else if payload_len == 127L {
-    guard self.transport.read_exactly(8) is [u64be(len)]
+    guard! self.transport.read_exactly(8) is [u64be(len)]
     payload_len = len.reinterpret_as_int64()
     if payload_len < 0L {
       self.protocol_error("Invalid payload length format")
@@ -357,7 +363,7 @@ async fn Conn::recv_frame_header(self : Conn) -> FrameHeader {
   } else {
     None
   }
-  { opcode, fin: fin != 0, payload_len }
+  { opcode, fin: fin != 0, payload_len, }
 }
 
 ///|
@@ -454,7 +460,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     (CloseCode::from_uint(code), reason)
   } else {
     // the `close` packet we receive is empty
-    (CloseCode::Normal, None)
+    (Normal, None)
   }
   self.closed = Some(ConnectionClosed(close_code, reason))
   if self.write_mask is Some(rand) {
@@ -510,18 +516,24 @@ pub async fn Conn::recv(self : Conn) -> Message {
       }
     }
   }
-  let message = { kind, conn: self, state: Active }
+  let message = { kind, conn: self, state: Active, }
   self.curr_message = Some(message)
   message
 }
 
 ///|
-pub impl @io.Reader for Message with _get_internal_buffer(self) {
+pub impl @io.Reader for Message with fn _get_internal_buffer(self) {
   self.conn.read_buf
 }
 
 ///|
-pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) {
+#warnings("-fragile_catch_all")
+pub impl @io.Reader for Message with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   match self.state {
     Active => ()
     Closed => return 0
@@ -601,6 +613,16 @@ pub impl @io.Reader for Message with _direct_read(self, buf, offset~, max_len~) 
 }
 
 ///|
+pub extend Message with @io.Reader::{
+  read,
+  drop,
+  read_exactly,
+  read_some,
+  read_all,
+  read_until,
+}
+
+///|
 /// Start sending a new message to the server.
 /// The content of the message can be sent by using the `self` as a `@io.Writer`
 /// after calling `start_message`.
@@ -667,7 +689,7 @@ async fn Conn::flush(self : Conn) -> Unit {
 /// The message may be fragmented into multiple WebSocket frames automatically.
 /// Writing message content is buffered.
 /// To ensure immediate delivery of data, call `flush` manually.
-pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
   if self.payload_start + self.write_len >= self.write_buf.length() {
     self.flush()
   }
@@ -679,6 +701,9 @@ pub impl @io.Writer for Conn with write_once(self, buf, offset~, len~) {
   self.write_len += len
   len
 }
+
+///|
+pub extend Conn with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Convenient helper for sending a single text message.
@@ -716,7 +741,7 @@ pub async fn Conn::ping(self : Conn, msg? : BytesView) -> Unit {
     None => @tls.rand_bytes(64)
   }
   let len = msg.length()
-  guard len <= 125
+  guard! len <= 125
   let payload_start = if self.write_mask is Some(_) { 2 + MASK_SIZE } else { 2 }
   let frame = FixedArray::make(payload_start + len, b'\x00')
   frame[0] = 0x89

@@ -51,7 +51,7 @@ fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 fn resolve_host(
   host : StringView,
   protocol~ : Protocol,
@@ -72,10 +72,19 @@ fn resolve_host(
 }
 
 ///|
-async fn perform_request(
+/// Perform a single HTTP request to `uri`.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn request(
   uri : String,
   meth : RequestMethod,
-  headers : Map[String, String],
+  headers : Headers,
   body : &@io.Data,
   proxy? : Client,
 ) -> (Response, &@io.Data) {
@@ -96,13 +105,14 @@ async fn perform_request(
 /// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Get, headers, body, proxy?)
+  request(uri, Get, headers, body, proxy?)
 }
 
 ///|
@@ -110,10 +120,10 @@ pub async fn get(
 pub async fn put(
   uri : String,
   content : &@io.Data,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Put, headers, content, proxy?)
+  request(uri, Put, headers, content, proxy?)
 }
 
 ///|
@@ -121,10 +131,10 @@ pub async fn put(
 pub async fn post(
   uri : String,
   content : &@io.Data,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> (Response, &@io.Data) {
-  perform_request(uri, Post, headers, content, proxy?)
+  request(uri, Post, headers, content, proxy?)
 }
 
 ///|
@@ -137,23 +147,18 @@ pub async fn post(
 ///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
+#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get_stream(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   body? : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, Client) {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
-  try {
-    let response = client..request(Get, path)..write(body).end_request()
-    (response, client)
-  } catch {
-    err => {
-      client.close()
-      raise err
-    }
-  }
+  errdefer client.close()
+  let response = client..request(Get, path)..write(body).end_request()
+  (response, client)
 }
 
 ///|
@@ -171,19 +176,14 @@ pub async fn get_stream(
 /// to close the underlying connection used for the request.
 pub async fn put_stream(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, proxy?)
-  try client.request(Put, path, extra_headers=headers) catch {
-    err => {
-      client.close()
-      raise err
-    }
-  } noraise {
-    _ => client
-  }
+  let client = Client::connect(host, protocol~, headers~, proxy?)
+  errdefer client.close()
+  client.request(Put, path)
+  client
 }
 
 ///|
@@ -201,17 +201,12 @@ pub async fn put_stream(
 /// to close the underlying connection used for the request.
 pub async fn post_stream(
   uri : String,
-  headers? : Map[String, String] = {},
+  headers? : Headers = Map([]),
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, proxy?)
-  try client.request(Post, path, extra_headers=headers) catch {
-    err => {
-      client.close()
-      raise err
-    }
-  } noraise {
-    _ => client
-  }
+  let client = Client::connect(host, protocol~, headers~, proxy?)
+  errdefer client.close()
+  client.request(Post, path)
+  client
 }

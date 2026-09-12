@@ -1,0 +1,24 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
+  "moonbitlang/async/internal/env_util",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/internal/env_util",
+  "moonbitlang/core/env",
+  "moonbitlang/async/internal/test_util",
+} for "test"
+
+supported_targets = "native+wasm"
+
+options(
+  "max-concurrent-tests": 5,
+)

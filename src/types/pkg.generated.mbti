@@ -11,4 +11,3 @@ package "moonbitlang/async/types"
 pub type Fd = Int
 
 // Traits
-

@@ -3,37 +3,46 @@ import {
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
   "moonbitlang/async",
   "moonbitlang/async/io",
   "moonbitlang/async/fs",
   "moonbitlang/async/signal",
+  "moonbitlang/async/os_error",
 }
 
 import {
   "moonbitlang/core/env",
-  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
   "moonbitlang/async/fs",
+  "moonbitlang/async/internal/test_util",
+  "moonbitlang/core/encoding/utf8",
 } for "test"
+
+import {
+  "moonbitlang/async/internal/test_util",
+} for "wbtest"
 
 options(
   "max-concurrent-tests": 5,
-  "native-stub": [ "stub.c", "windows.c" ],
+  "native-stub": [ "unix.c", "windows.c" ],
   targets: {
-    "basic_test.mbt": [ "native" ],
-    "cancel_test.mbt": [ "native" ],
-    "cancellation.mbt": [ "native" ],
-    "commands_for_test.mbt": [ "native" ],
-    "cwd_test.mbt": [ "native" ],
-    "env_test.mbt": [ "native" ],
-    "helper_test.mbt": [ "native" ],
-    "process.mbt": [ "native" ],
-    "redirect.mbt": [ "native" ],
-    "redirect_test.mbt": [ "native" ],
-    "spawn_in_group_test.mbt": [ "native" ],
-    "unix.mbt": [ "native" ],
-    "wait_test.mbt": [ "native" ],
-    "windows.mbt": [ "native" ],
+    "process.mbt": [ "native", "wasm" ],
+    "unix.mbt": [ "native", "wasm" ],
+    "windows.mbt": [ "native", "wasm" ],
+    "wasm.mbt": [ "wasm" ],
+    "basic_test.mbt": [ "native", "wasm" ],
+    "cancel_test.mbt": [ "native", "wasm" ],
+    "cancellation.mbt": [ "native", "wasm" ],
+    "commands_for_test.mbt": [ "native", "wasm" ],
+    "cwd_test.mbt": [ "native", "wasm" ],
+    "env_test.mbt": [ "native", "wasm" ],
+    "helper_test.mbt": [ "native", "wasm" ],
+    "redirect.mbt": [ "native", "wasm" ],
+    "redirect_test.mbt": [ "native", "wasm" ],
+    "spawn_in_group_test.mbt": [ "native", "wasm" ],
+    "wait_test.mbt": [ "native", "wasm" ],
   },
 )

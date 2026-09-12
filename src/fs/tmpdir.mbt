@@ -14,8 +14,8 @@
 
 ///|
 let tmpdir_seed : @random.Rand = {
-  let seed = @buffer.new()
-  let now = @async.now()
+  let seed = Buffer()
+  let now = @event_loop.now()
   for _ in 0..<4 {
     seed.write_int64_le(now)
   }
@@ -23,15 +23,16 @@ let tmpdir_seed : @random.Rand = {
 }
 
 ///|
-extern "C" fn get_tmp_path_ffi() -> String? = "moonbitlang_async_get_tmp_path"
+extern "C" fn get_tmp_path_ffi() -> @c_buffer.Buffer = "moonbitlang_async_get_tmp_path"
 
 ///|
 let tmp_base_path : String = {
-  guard get_tmp_path_ffi() is Some(path) else {
+  let path = get_tmp_path_ffi()
+  if path.is_null() {
     let err = @os_error.errno_to_string(@os_error.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
-  path
+  @os_string.decode(path)
 }
 
 ///|
@@ -51,11 +52,11 @@ let tmp_base_path : String = {
 /// The temporary directory name is not cryptographically secure.
 pub async fn tmpdir(prefix~ : StringView) -> String {
   for _ in 0..<@int.MAX_VALUE {
-    let hasher = Hasher::new()
+    let hasher = Hasher()
     hasher.combine_uint64(tmpdir_seed.uint64())
-    hasher.combine_int64(@async.now())
+    hasher.combine_int64(@event_loop.now())
     let h = hasher.finalize().reinterpret_as_uint()
-    let path = StringBuilder::new()
+    let path = StringBuilder()
     path.write_string(tmp_base_path)
     path.write_stringview(prefix)
     path.write_char('.')

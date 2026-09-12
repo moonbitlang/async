@@ -490,7 +490,7 @@ int32_t moonbitlang_async_schannel_read(
     case SEC_E_OK:
       ctx->msg_trailer = buffers[2].cbBuffer;
       ctx->bytes_read = len;
-      if (buffers[3].BufferType = SECBUFFER_EXTRA) {
+      if (buffers[3].BufferType == SECBUFFER_EXTRA) {
         ctx->bytes_read -= buffers[3].cbBuffer;
         ctx->msg_trailer -= buffers[3].cbBuffer;
       }
@@ -569,68 +569,76 @@ int32_t moonbitlang_async_schannel_shutdown(struct Context *ctx) {
   return ApplyControlToken(&ctx->context, &buf_desc);
 }
 
+MOONBIT_FFI_EXPORT
+CERT_CONTEXT *moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
+  CERT_CONTEXT *cert = 0;
+  int err = QueryContextAttributes(&ctx->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &cert);
+  if (err != SEC_E_OK && err != SEC_E_NO_CREDENTIALS) {
+    SetLastError(err);
+    return 0;
+  } else {
+    SetLastError(0);
+  }
+
+  return cert;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_free_peer_certificate(CERT_CONTEXT *cert) {
+  CertFreeCertificateContext(cert);
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_schannel_peer_certificate_length(CERT_CONTEXT *cert) {
+  return cert->cbCertEncoded;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_peer_certificate_blit_to(
+  CERT_CONTEXT *cert,
+  void *buf,
+  int32_t len
+) {
+  memcpy(buf, cert->pbCertEncoded, len);
+}
+
 static
-moonbit_bytes_t get_channel_binding(struct Context *ctx, int attribute) {
+SEC_CHANNEL_BINDINGS *get_channel_binding(struct Context *ctx, int attribute) {
   SecPkgContext_Bindings bindings;
   int32_t err = QueryContextAttributes(&ctx->context, attribute, &bindings);
   if (err != SEC_E_OK) {
     SetLastError(err);
     return 0;
   }
-
-  if (!bindings.Bindings) {
-    FreeContextBuffer(bindings.Bindings);
-    return 0;
-  }
-
-  unsigned long data_offset = bindings.Bindings->dwApplicationDataOffset;
-  unsigned long data_len = bindings.Bindings->cbApplicationDataLength;
-  if (
-    data_offset > bindings.BindingsLength ||
-    data_len > bindings.BindingsLength - data_offset
-  ) {
-    SetLastError(ERROR_INVALID_DATA);
-    FreeContextBuffer(bindings.Bindings);
-    return 0;
-  }
-
-  moonbit_bytes_t result = moonbit_make_bytes_raw(data_len);
-  memcpy(
-    result,
-    ((unsigned char *)bindings.Bindings) + data_offset,
-    data_len
-  );
-  FreeContextBuffer(bindings.Bindings);
-  return result;
+  return bindings.Bindings;
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_get_peer_certificate(struct Context *ctx) {
-  CERT_CONTEXT *cert = 0;
-  int err = QueryContextAttributes(&ctx->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &cert);
-  if (err != SEC_E_OK && err != SEC_E_NO_CREDENTIALS) {
-    SetLastError(err);
-    return 0;
-  }
-
-  if (!cert) {
-    SetLastError(0);
-    return 0;
-  }
-
-  moonbit_bytes_t result = moonbit_make_bytes_raw(cert->cbCertEncoded);
-  memcpy(result, cert->pbCertEncoded, cert->cbCertEncoded);
-  CertFreeCertificateContext(cert);
-  return result;
+int32_t moonbitlang_async_schannel_channel_binding_length(SEC_CHANNEL_BINDINGS *bindings) {
+  return bindings->cbApplicationDataLength;
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_unique_channel_binding(struct Context *ctx) {
+void moonbitlang_async_schannel_channel_binding_blit_to(
+  SEC_CHANNEL_BINDINGS *bindings,
+  void *buf,
+  int32_t len
+) {
+  memcpy(buf, ((unsigned char *)bindings) + bindings->dwApplicationDataOffset, len);
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_schannel_free_channel_binding(SEC_CHANNEL_BINDINGS *bindings) {
+  FreeContextBuffer(bindings);
+}
+
+MOONBIT_FFI_EXPORT
+SEC_CHANNEL_BINDINGS *moonbitlang_async_schannel_unique_channel_binding(struct Context *ctx) {
   return get_channel_binding(ctx, SECPKG_ATTR_UNIQUE_BINDINGS);
 }
 
 MOONBIT_FFI_EXPORT
-moonbit_bytes_t moonbitlang_async_schannel_server_endpoint_channel_binding(struct Context *ctx) {
+SEC_CHANNEL_BINDINGS *moonbitlang_async_schannel_server_endpoint_channel_binding(struct Context *ctx) {
   return get_channel_binding(ctx, SECPKG_ATTR_ENDPOINT_BINDINGS);
 }
 

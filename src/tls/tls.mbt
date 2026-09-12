@@ -27,6 +27,10 @@ const PEM_BEGIN = "-----BEGIN CERTIFICATE-----"
 const PEM_END = "-----END CERTIFICATE-----"
 
 ///|
+// Wasm TLS dispatches server credential shape from the host runtime platform.
+let _target_specific_imports : Unit = ignore(@event_loop.platform)
+
+///|
 fn decode_pem_certificates(pem : String) -> Array[Bytes] raise TlsError {
   let certs = []
   for chunk in pem.split(PEM_BEGIN) {
@@ -58,11 +62,17 @@ fn decode_pem_certificates(pem : String) -> Array[Bytes] raise TlsError {
 /// - `SystemRoot`: use the default trusted root of the system
 ///
 /// - `CustomPemFile(name)`: use the certificates in the PEM file `name` exclusively as trusted root.
-///   Useful for connecting via a pre-shared self-signed certificate
+///   Useful for connecting to services whose certificates are issued by a private or self-signed root.
 pub(all) enum TrustedRoot {
   NoVerification
   SystemRoot
   CustomPemFile(String)
+}
+
+///|
+pub(all) enum X509FileType {
+  PEM = 1
+  ANS1 = 2
 }
 
 ///|

@@ -94,10 +94,11 @@ async fn handle_connect(
     let port = @string.parse_int(request.path[index + 1:])
     @socket.Tcp::connect_to_host(host, port~)
   } catch {
-    err => {
+    err if !@async.is_being_cancelled() => {
       conn..send_response(502, "BadGateway").end_response()
       raise err
     }
+    err => raise err
   }
   defer client.close()
   log.push("proxy server: connected to \{request.path} successfully")
@@ -122,7 +123,7 @@ async test "proxied https request" {
     }
     let (_, result) = @http.get(
       "https://www.moonbitlang.com",
-      proxy=@http.Client("http://localhost:\{port}"),
+      proxy=Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -144,7 +145,7 @@ async test "proxied http request" {
     }
     let (_, result) = @http.get(
       "http://www.example.org",
-      proxy=@http.Client("http://localhost:\{port}"),
+      proxy=Client("http://localhost:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -211,14 +212,14 @@ async test "proxy error" {
     try
       @http.get(
         "https://www.moonbitlang.com",
-        proxy=@http.Client("http://localhost:\{port}"),
+        proxy=Client("http://localhost:\{port}"),
       )
     catch {
       err =>
         inspect(
           err,
           content=(
-            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"content-length": "0"}})
+            #|ProxyError({code: 407, reason: "ProxyAuthenticationRequired", headers: {"Content-Length": "0"}})
           ),
         )
     } noraise {

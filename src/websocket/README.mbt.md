@@ -15,7 +15,7 @@ This module provides RFC 6455 compilant WebSocket client & server support for `m
 // and reply clients with whatever they send.
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
   let server = @http.Server(addr)
   // WebSocket server are built on top of a HTTP server.
@@ -50,7 +50,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
 ### WebSocket client
 ```moonbit check
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "WebSocket client example" {
   @async.with_task_group(group => {
     let port = 42080

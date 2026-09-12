@@ -14,10 +14,10 @@
 
 ///|
 async test "exists" {
-  assert_true(@fs.exists("moon.mod.json"))
-  @fs.open("moon.mod.json", mode=ReadOnly).close()
-  assert_false(@fs.exists("moon.mod.json.not_exist"))
-  try @fs.open("moon.mod.json.not_exist", mode=ReadOnly) catch {
+  assert_true(@fs.exists("moon.mod"))
+  @fs.open("moon.mod", mode=ReadOnly).close()
+  assert_false(@fs.exists("moon.mod.not_exist"))
+  try @fs.open("moon.mod.not_exist", mode=ReadOnly) catch {
     @os_error.OSError(_) as err if err.is_ENOENT() => ()
     err => fail("incorrect error: \{err}")
   } noraise {
@@ -30,37 +30,43 @@ async test "exists" {
 
 ///|
 async test "can_read" {
-  assert_true(@fs.can_read("moon.mod.json"))
+  assert_true(@fs.can_read("moon.mod"))
 }
 
 ///|
 async test "can_write" {
-  assert_true(@fs.can_write("moon.mod.json"))
+  assert_true(@fs.can_write("moon.mod"))
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "can_execute" {
-  assert_false(@fs.can_execute("moon.mod.json"))
+  // POSIX execute-bit checks do not match Windows access semantics. Wasm learns
+  // the host platform at runtime instead of through MoonBit target cfg.
+  if @event_loop.platform is Windows {
+    return
+  }
+  assert_false(@fs.can_execute("moon.mod"))
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "chmod" {
-  let path = "_build/chmod_test"
-  @async.with_task_group() <| group => {
-    @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
-    group.add_defer(() => @fs.remove(path))
-    inspect(@fs.can_read(path), content="true")
-    inspect(@fs.can_write(path), content="false")
-    inspect(@fs.can_execute(path), content="false")
-    @fs.chmod(path, 0o644)
-    inspect(@fs.can_read(path), content="true")
-    inspect(@fs.can_write(path), content="true")
-    inspect(@fs.can_execute(path), content="false")
-    @fs.chmod(path, 0o755)
-    inspect(@fs.can_read(path), content="true")
-    inspect(@fs.can_write(path), content="true")
-    inspect(@fs.can_execute(path), content="true")
+  // POSIX permission-bit transitions do not match Windows chmod semantics. Wasm
+  // learns the host platform at runtime instead of through MoonBit target cfg.
+  if @event_loop.platform is Windows {
+    return
   }
+  let path = "_build/chmod_test"
+  @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
+  defer @fs.remove(path)
+  inspect(@fs.can_read(path), content="true")
+  inspect(@fs.can_write(path), content="false")
+  inspect(@fs.can_execute(path), content="false")
+  @fs.chmod(path, 0o644)
+  inspect(@fs.can_read(path), content="true")
+  inspect(@fs.can_write(path), content="true")
+  inspect(@fs.can_execute(path), content="false")
+  @fs.chmod(path, 0o755)
+  inspect(@fs.can_read(path), content="true")
+  inspect(@fs.can_write(path), content="true")
+  inspect(@fs.can_execute(path), content="true")
 }

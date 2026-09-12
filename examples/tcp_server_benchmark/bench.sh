@@ -45,11 +45,11 @@ fi
 for n in 1 5 10 20 50 100 200 500 1000; do
   echo "====== $n parallel connection ======"
   echo "moonbit:"
-  ( run_moonbit -max-concurrent $n -total-conn $((n * 10)) -conn-duration 500 )
+  ( run_moonbit --max-concurrent $n --total-conn $((n * 10)) --conn-duration 500 )
   if [ "$moonbit_only" != "true" ]; then
     echo "nodejs:"
-    ( run_node -max-concurrent $n -total-conn $((n * 10)) -conn-duration 500 )
+    ( run_node --max-concurrent $n --total-conn $((n * 10)) --conn-duration 500 )
     echo "Go:"
-    ( run_go -max-concurrent $n -total-conn $((n * 10)) -conn-duration 500 )
+    ( run_go --max-concurrent $n --total-conn $((n * 10)) --conn-duration 500 )
   fi
 done

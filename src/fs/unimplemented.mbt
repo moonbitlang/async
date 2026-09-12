@@ -17,12 +17,17 @@
 #cfg(not(target="native"))
 #coverage.skip
 pub let unimplemented : Unit = {
+  let _ : (@random.Rand) -> Unit = ignore
+  let _ : (@buffer.Buffer) -> Unit = ignore
+  ignore(@int.MAX_VALUE)
+  ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@async.sleep)
   ignore(@event_loop.Timer::new)
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
-  ignore(@env_util.unimplemented)
+  ignore(@env_util.eprintln)
   ignore(@c_buffer.unimplemented)
+  ignore(@coroutine.pause)
 }

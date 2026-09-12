@@ -14,16 +14,26 @@
 
 ///|
 let _ignore_unused_import : Unit = {
+  let _ : (@deque.Deque[Int]) -> Unit = ignore
+  let _ : (@sorted_set.SortedSet[Int]) -> Unit = ignore
+  ignore(@cmp.minimum(0, 0))
+  ignore(@debug.to_string(0))
   ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
-  ignore(@time.ms_since_epoch)
+  let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+  ignore(@env_util.eprintln)
+}
+
+///|
+pub fn now() -> Int64 {
+  @env.now().reinterpret_as_int64()
 }
 
 ///|
 pub fn reschedule() -> Unit {
-  guard !@coroutine.no_more_work() else {  }
+  guard !@coroutine.all_coroutines().is_empty() else {  }
   @coroutine.reschedule()
   // Instead of looping blockingly until there is no ready task,
   // we only perform one round of scheduling here

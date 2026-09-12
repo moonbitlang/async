@@ -38,7 +38,7 @@ struct Cond {
 /// Create a new condition variable.
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { waiters: @deque.Deque([]) }
+  { waiters: Deque([]), }
 }
 
 ///|
@@ -47,15 +47,16 @@ pub fn Cond::Cond() -> Cond {
 /// However, since `wait` is a blocking point,
 /// the task running `wait` may be cancelled,
 /// in this case, an cancellation will be raised from `wait`.
-pub async fn Cond::wait(cond : Cond) -> Unit {
+pub async fn Cond::wait(cond : Cond) -> Unit noraise {
   let coro = @coroutine.current_coroutine()
-  let waiter = { woken: false, coro: Some(coro) }
+  let waiter = { woken: false, coro: Some(coro), }
   cond.waiters.push_back(waiter)
-  @coroutine.suspend() catch {
-    _ if waiter.woken => ()
-    err => {
+  match @coroutine.suspend_check_cancel() {
+    Continue => ()
+    Cancelled if waiter.woken => ()
+    Cancelled => {
       waiter.coro = None
-      raise err
+      @coroutine.raise_cancellation_signal()
     }
   }
 }

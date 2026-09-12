@@ -46,7 +46,7 @@ suberror JsError {
 }
 
 ///|
-pub impl Show for JsError with output(self, logger) {
+pub impl Show for JsError with fn output(self, logger) {
   let JsError(value) = self
   logger <+ "\{value.to_string()}"
 }
@@ -84,6 +84,17 @@ extern "js" fn AbortSignal::on_abort(
   f : () -> Unit,
 ) -> Unit =
   #| (signal, f) => signal.addEventListener('abort', f, { once: true })
+
+///|
+extern "js" fn AbortSignal::remove_abort_listener(
+  signal : AbortSignal,
+  f : () -> Unit,
+) -> Unit =
+  #| (signal, f) => signal.removeEventListener('abort', f)
+
+///|
+extern "js" fn AbortSignal::aborted(signal : AbortSignal) -> Bool =
+  #| (signal) => signal.aborted
 
 ///|
 extern "js" fn JsValue::then(
@@ -146,14 +157,10 @@ pub async fn[X] Promise::wait(
     waiter.coro = None
   }
   if abort_controller is Some(controller) {
-    @coroutine.suspend() catch {
-      err => {
-        controller.abort()
-        raise err
-      }
-    }
+    errdefer controller.abort()
+    @coroutine.suspend()
   } else {
-    @coroutine.protect_from_cancel(@coroutine.suspend)
+    @coroutine.protect_from_cancel(() => @coroutine.suspend())
   }
   if waiter.err is Some(err) {
     raise err
@@ -202,19 +209,32 @@ pub fn[X] Promise::from_async(
   abort_signal? : AbortSignal,
 ) -> Promise[X] {
   let promise = JsValue::new_promise((resolve, reject) => {
-    let coro = @coroutine.spawn(() => {
-      try f() catch {
-        @coroutine.Cancelled if @coroutine.is_being_cancelled() =>
-          reject(JsValue::abort_error())
+    let _ = @coroutine.spawn(() => {
+      let coro = @coroutine.current_coroutine()
+      fn abort_handler() {
+        coro.cancel()
+      }
+      if abort_signal is Some(signal) {
+        signal.on_abort(abort_handler)
+      }
+      defer (if abort_signal is Some(signal) {
+        signal.remove_abort_listener(abort_handler)
+      })
+      if abort_signal is Some(signal) {
+        // An abort event fired before listener registration is not replayed.
+        // Register first, then inspect the sticky state to cover both orderings.
+        if signal.aborted() {
+          coro.cancel()
+        }
+      }
+      try @coroutine.handle_cancellation(f) catch {
         err => reject(JsValue::make(err.to_string()))
       } noraise {
-        ret => resolve(JsValue::make(ret))
+        None => reject(JsValue::abort_error())
+        Some(ret) => resolve(JsValue::make(ret))
       }
     })
-    if abort_signal is Some(signal) {
-      signal.on_abort(() => coro.cancel())
-    }
   })
-  @coroutine.reschedule()
+  @event_loop.reschedule()
   promise.cast()
 }

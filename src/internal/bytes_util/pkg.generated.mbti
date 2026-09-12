@@ -11,4 +11,3 @@ pub fn ascii_to_string(BytesView) -> String
 // Type aliases
 
 // Traits
-

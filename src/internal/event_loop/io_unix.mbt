@@ -14,131 +14,39 @@
 
 ///|
 #cfg(not(platform="windows"))
-struct IoHandle {
-  mut fd : @fd_util.Fd
-  kind : @fd_util.FileKind
-  is_async : Bool
-  mut events : Int
-  mut read : @coroutine.Coroutine?
-  mut write : @coroutine.Coroutine?
-}
-
-///|
-/// Create a IO handle from a raw file descriptor.
-/// The ownership of the file descriptor would be transferred to this function,
-/// so the caller must not close the file descriptor manually in any circumstances.
-#cfg(not(platform="windows"))
-pub fn IoHandle::from_fd(
-  fd : @fd_util.Fd,
-  kind~ : @fd_util.FileKind,
-  is_async? : Bool = true,
-) -> IoHandle raise {
-  let context = "@event_loop.IoHandle::from_fd()"
-  guard curr_loop.val is Some(evloop)
-  guard evloop.fds.get(fd) is None
-  if is_async {
-    @fd_util.set_nonblocking(fd, context~) catch {
-      err => {
-        @fd_util.close(fd, kind~, context~)
-        raise err
-      }
-    }
-  }
-  let handle = { fd, kind, is_async, read: None, write: None, events: NoEvent }
-  evloop.fds[fd] = handle
-  handle
-}
-
-///|
-#cfg(not(platform="windows"))
-fn IoHandle::prepare_read(handle : IoHandle) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
+pub async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
+  guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  if (handle.events & ReadEvent) == 0 {
-    evloop.poll.register(
-      handle.fd,
-      prev_events=handle.events,
-      new_events=ReadEvent,
-      oneshot=false,
-    )
-    handle.events = handle.events | ReadEvent
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-async fn IoHandle::wait_read(handle : IoHandle) -> Unit {
-  guard (handle.events & ReadEvent) != 0
-  guard @fd_util.fd_is_valid(handle.fd) else {
-    abort("file descriptor already closed")
-  }
-  guard handle.read is None
-  handle.read = Some(@coroutine.current_coroutine())
+  guard! handle.read is Idle
+  handle.read = Waiting(@coroutine.current_coroutine())
   defer {
-    handle.read = None
+    handle.read = Idle
   }
-  @coroutine.suspend()
-}
-
-///|
-#cfg(not(platform="windows"))
-fn IoHandle::prepare_write(handle : IoHandle) -> Unit raise {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else {
-    abort("file descriptor already closed")
-  }
-  if (handle.events & WriteEvent) == 0 {
-    evloop.poll.register(
-      handle.fd,
-      prev_events=handle.events,
-      new_events=WriteEvent,
-      oneshot=false,
-    )
-    handle.events = handle.events | WriteEvent
-  }
+  evloop.suspend()
 }
 
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
-  guard (handle.events & WriteEvent) != 0
+  guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else {
     abort("file descriptor already closed")
   }
-  guard handle.write is None
+  guard! handle.write is Idle
   let coro = @coroutine.current_coroutine()
-  handle.write = Some(coro)
+  handle.write = Waiting(coro)
   defer {
-    handle.write = None
+    handle.write = Idle
   }
-  @coroutine.suspend()
+  evloop.suspend()
 }
 
 ///|
-/// Detach a file descriptor from the event loop,
-/// but does not close the file descriptor itself.
-/// The underlying file descriptor is returned.
-#cfg(not(platform="windows"))
-pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> @fd_util.Fd {
-  guard curr_loop.val is Some(evloop)
-  guard @fd_util.fd_is_valid(handle.fd) else { @fd_util.invalid_fd }
-  evloop.fds.remove(handle.fd)
-  if !(handle.events is NoEvent) {
-    evloop.poll.remove(handle.fd, events=handle.events) catch {
-      err => abort("detach \{handle.fd} from loop: \{err}")
-    }
-  }
-  let fd = handle.fd
-  handle.fd = @fd_util.invalid_fd
-  fd
-}
-
-///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 #borrow(buf)
-extern "C" fn read_ffi(
+extern "C" fn read_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
   offset~ : Int,
@@ -146,63 +54,60 @@ extern "C" fn read_ffi(
 ) -> Int = "moonbitlang_async_read"
 
 ///|
-#cfg(not(platform="windows"))
-pub async fn IoHandle::read(
-  handle : IoHandle,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  context~ : String,
-) -> Int {
-  if handle.is_async {
-    @coroutine.check_cancellation()
-    handle.prepare_read()
-    let ret = read_ffi(handle.fd, buf, offset~, len~)
-    if ret >= 0 {
-      @coroutine.pause()
-      return ret
-    }
-    let ret = if @os_error.is_nonblocking_io_error() {
-      handle.wait_read()
-      read_ffi(handle.fd, buf, offset~, len~)
-    } else {
-      ret
-    }
-    if ret < 0 {
-      @os_error.check_errno(context)
-    }
-    ret
-  } else {
-    let cancel = if handle.kind.can_poll() {
-      guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-    } else {
-      None
-    }
-    let job = Job::read(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~, cancel?)
-  }
-}
-
-///|
-#cfg(not(platform="windows"))
-pub async fn IoHandle::read_at(
-  handle : IoHandle,
-  buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  position~ : Int64,
-  context~ : String,
-) -> Int {
-  guard !handle.kind.can_poll()
-  let job = Job::read(handle.fd, buf, offset, len, position~)
-  perform_job_in_worker(job, context~)
-}
-
-///|
-#cfg(not(platform="windows"))
+#cfg(target="wasm")
+#unsafe_skip_stub_check
 #borrow(buf)
-extern "C" fn write_ffi(
+fn read_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang/async" "io/read/unix"
+
+///|
+#cfg(not(platform="windows"))
+async fn IoHandle::read_via_event_bus_unix(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  let ret = read_unix_ffi(handle.fd, buf, offset~, len~)
+  if ret >= 0 {
+    // The `pause` here prevent a busy read loop from exhausting the whole program
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(() => @coroutine.pause())
+    return ret
+  }
+  let ret = if @os_error.is_nonblocking_io_error() {
+    handle.wait_read()
+    read_unix_ffi(handle.fd, buf, offset~, len~)
+  } else {
+    ret
+  }
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async fn IoHandle::read_via_event_bus(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  handle.read_via_event_bus_unix(buf, offset~, len~, context~)
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+#borrow(buf)
+extern "C" fn write_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
   offset~ : Int,
@@ -210,55 +115,52 @@ extern "C" fn write_ffi(
 ) -> Int = "moonbitlang_async_write"
 
 ///|
+#cfg(target="wasm")
+#unsafe_skip_stub_check
+#borrow(buf)
+fn write_unix_ffi(
+  fd : @fd_util.Fd,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int = "moonbitlang/async" "io/write/unix"
+
+///|
 #cfg(not(platform="windows"))
-pub async fn IoHandle::write(
+async fn IoHandle::write_via_event_bus_unix(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
   context~ : String,
 ) -> Int {
-  if handle.is_async {
-    @coroutine.check_cancellation()
-    handle.prepare_write()
-    let ret = write_ffi(handle.fd, buf, offset~, len~)
-    if ret >= 0 {
-      @coroutine.pause()
-      return ret
-    }
-    let ret = if @os_error.is_nonblocking_io_error() {
-      handle.wait_write()
-      write_ffi(handle.fd, buf, offset~, len~)
-    } else {
-      ret
-    }
-    if ret < 0 {
-      @os_error.check_errno(context)
-    }
-    ret
-  } else {
-    let cancel = if handle.kind.can_poll() {
-      guard curr_loop.val is Some(evloop)
-      Some(job_id => evloop.cancel_job_in_worker(job_id, context~))
-    } else {
-      None
-    }
-    let job = Job::write(handle.fd, buf, offset, len, position=-1)
-    perform_job_in_worker(job, context~, cancel?)
+  let ret = write_unix_ffi(handle.fd, buf, offset~, len~)
+  if ret >= 0 {
+    // The `pause` here prevent a busy write loop from exhausting the whole program,
+    // and give chance for other tasks to execute.
+    @coroutine.protect_from_cancel(() => @coroutine.pause())
+    return ret
   }
+  let ret = if @os_error.is_nonblocking_io_error() {
+    handle.wait_write()
+    write_unix_ffi(handle.fd, buf, offset~, len~)
+  } else {
+    ret
+  }
+  if ret < 0 {
+    @os_error.check_errno(context)
+  }
+  ret
 }
 
 ///|
-#cfg(not(platform="windows"))
-pub async fn IoHandle::write_at(
+#cfg(all(target="native", not(platform="windows")))
+async fn IoHandle::write_via_event_bus(
   handle : IoHandle,
   buf : Bytes,
   offset~ : Int,
   len~ : Int,
-  position~ : Int64,
   context~ : String,
-) -> Unit {
-  guard !handle.kind.can_poll()
-  let job = Job::write(handle.fd, buf, offset, len, position~)
-  perform_job_in_worker(job, context~) |> ignore
+) -> Int {
+  handle.write_via_event_bus_unix(buf, offset~, len~, context~)
 }

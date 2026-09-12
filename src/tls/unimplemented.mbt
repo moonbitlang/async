@@ -13,13 +13,16 @@
 // limitations under the License.
 
 ///|
-/// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+/// This package currently does not support JavaScript or wasm-gc backend
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
+  ignore(@base64.encode(b""))
+  ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@bytes_util.ascii_to_string)
   ignore(@c_buffer.unimplemented)
+  ignore(@event_loop.sleep)
   ignore(@io_buffer.new)
   ignore(@semaphore.Semaphore::acquire)
   ignore(@os_string.unimplemented)
@@ -27,3 +30,8 @@ pub let unimplemented : Unit = {
   ignore(@utf8.encode(""))
   ignore(@fs.unimplemented)
 }
+
+///|
+#cfg(target="wasm")
+#coverage.skip
+pub let _ignore_unused_import : Unit = ignore(@utf8.encode(""))

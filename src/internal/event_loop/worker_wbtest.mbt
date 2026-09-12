@@ -19,18 +19,20 @@ extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
 ///|
 #cfg(target="native")
 async fn perform_sleep_job(t : Int) -> Unit {
-  perform_job_in_worker(Job::sleep(t), context="") |> ignore
+  let job = Job::sleep(t)
+  defer job.free()
+  perform_job_in_worker(job, context="") |> ignore
 }
 
 ///|
 #cfg(target="js")
 async fn perform_sleep_job(t : Int) -> Unit {
-  @async.protect_from_cancel(() => @async.sleep(t), resume_on_cancel=true)
+  @async.protect_from_cancel(() => @async.sleep(t))
 }
 
 ///|
 async test "worker basic" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {
@@ -55,7 +57,7 @@ async test "worker basic" {
 
 ///|
 async test "worker multiple" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {
@@ -86,7 +88,7 @@ async test "worker multiple" {
 
 ///|
 async test "worker cancel1" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<4 {
@@ -95,13 +97,9 @@ async test "worker cancel1" {
       }
     }
     let task = root.spawn(() => {
-      try perform_sleep_job(1000) catch {
-        err => {
-          log.write_string("sleep cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => log <+ "done\n"
+      match @async.handle_cancellation(() => perform_sleep_job(1000)) {
+        None => log.write_string("sleep cancelled with\n")
+        Some(_) => log <+ "done\n"
       }
     })
     @async.sleep(500)
@@ -124,7 +122,7 @@ async test "worker cancel1" {
 
 ///|
 async test "worker cancel2" {
-  let log = StringBuilder::new()
+  let log = StringBuilder()
   @async.with_task_group() <| root => {
     root.spawn_bg() <| () => {
       for _ in 0..<3 {
@@ -133,13 +131,9 @@ async test "worker cancel2" {
       }
     }
     root.spawn_bg(allow_failure=true) <| () => {
-      try perform_sleep_job(1000) catch {
-        err => {
-          log.write_string("sleep cancelled with \{err}\n")
-          raise err
-        }
-      } noraise {
-        _ => log <+ "done\n"
+      match @async.handle_cancellation(() => perform_sleep_job(1000)) {
+        None => log.write_string("sleep cancelled\n")
+        Some(_) => log <+ "done\n"
       }
     }
     @async.sleep(600)
@@ -155,4 +149,62 @@ async test "worker cancel2" {
       #|
     ),
   )
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+test "max worker limit" {
+  let log = []
+  with_event_loop(max_worker_count=2, () => {
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      for i in 0..<4 {
+        group.spawn_bg() <| () => {
+          let t = (@async.now() - start).to_int() / 200
+          log.push("job #\{i} starting at tick #\{t}")
+          perform_sleep_job(200)
+          let t = (@async.now() - start).to_int() / 200
+          log.push("job #\{i} completed at tick #\{t}")
+        }
+        @async.sleep(50)
+      }
+    }
+  })
+  json_inspect(log, content=[
+    "job #0 starting at tick #0", "job #1 starting at tick #0", "job #2 starting at tick #0",
+    "job #3 starting at tick #0", "job #0 completed at tick #1", "job #1 completed at tick #1",
+    "job #2 completed at tick #2", "job #3 completed at tick #2",
+  ])
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+test "cancel queued job" {
+  let log = []
+  with_event_loop(max_worker_count=1, () => {
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      fn tick() {
+        (@async.now() - start + 50).to_int() / 100
+      }
+      group.spawn_bg() <| () => {
+        log.push("main job starting at tick #\{tick()}")
+        perform_sleep_job(300)
+        log.push("main job completed at tick #\{tick()}")
+      }
+      @async.sleep(100)
+      log.push("queued job starting at tick #\{tick()}")
+      // The job here is not cancellable once it start running.
+      // But all jobs are cancellable while they are queued.
+      try @async.with_timeout(100, () => perform_sleep_job(200)) catch {
+        _ => log.push("queued job cancelled at tick #\{tick()}")
+      } noraise {
+        _ => log.push("queued job completed at tick #\{tick()}")
+      }
+    }
+  })
+  json_inspect(log, content=[
+    "main job starting at tick #0", "queued job starting at tick #1", "queued job cancelled at tick #2",
+    "main job completed at tick #3",
+  ])
 }

@@ -14,7 +14,7 @@
 // limitations under the License.
 
 ///|
-let is_windows : Bool = @event_loop.IS_WINDOWS
+let is_windows : Bool = @event_loop.platform is Windows
 
 ///|
 let shell : String = if is_windows { "powershell" } else { "sh" }
@@ -23,14 +23,14 @@ let shell : String = if is_windows { "powershell" } else { "sh" }
 let write_stdout : String = if is_windows {
   "Write-Host -NoNewline"
 } else {
-  "printf"
+  "printf '%s'"
 }
 
 ///|
 let write_stderr : String = if is_windows {
   "& { [Console]::Error.Write($args[0]) }"
 } else {
-  "printf >&2"
+  "printf >&2 '%s'"
 }
 
 ///|
@@ -38,18 +38,18 @@ let ls : String = if is_windows { "Get-ChildItem -Name" } else { "ls" }
 
 ///|
 fn make_test_prog(name : String) -> @async.Lazy[String] {
-  @async.Lazy() <| () => {
+  Lazy() <| () => {
     let code = @process.run("moon", [
-      "-C",
-      "src/process/test_programs",
       "build",
-      "\{name}",
+      "test_programs/\{name}",
       "--debug",
+      "--target-dir",
+      "_build/test_programs",
     ])
     if code != 0 {
       fail("failed to build test program `\{name}`: \{code}")
     }
-    "src/process/test_programs/_build/native/debug/build/\{name}/\{name}.exe"
+    "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/\{name}/\{name}.exe"
   }
 }
 
