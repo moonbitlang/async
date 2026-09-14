@@ -14,4 +14,7 @@
 
 ///|
 #cfg(any(target="js", target="wasm-gc"))
-let _ignore_unused_import : Unit = ignore(() => @test.assert_raise(() => ()))
+let _ignore_unused_import : Unit = {
+  ignore(@debug.to_string(0))
+  ignore(() => @test.assert_raise(() => ()))
+}

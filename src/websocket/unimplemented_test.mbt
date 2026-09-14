@@ -15,8 +15,8 @@
 ///|
 #cfg(any(target="js", target="wasm-gc"))
 fn init {
+  ignore(@debug.to_string(0))
   ignore(@async.sleep)
-  ignore(@aqueue.Unbounded)
   ignore(@socket.unimplemented)
   ignore(@process.unimplemented)
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))

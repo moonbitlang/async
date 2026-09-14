@@ -21,3 +21,7 @@ let _unimplemented : Unit = {
   ignore(@utf8.encode(""))
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+let _ignore_string_import : Unit = ignore(() => @string.parse_int("0"))

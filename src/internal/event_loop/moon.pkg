@@ -18,7 +18,6 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
-  "moonbitlang/async/io",
   "moonbitlang/async/internal/test_util",
 } for "test"
 

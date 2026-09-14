@@ -18,6 +18,7 @@
 #coverage.skip
 pub let unimplemented : Unit = {
   let _ : (@buffer.Buffer) -> Unit = ignore
+  ignore(() => @string.parse_int("0"))
   ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
   ignore(@socket.unimplemented)
@@ -30,3 +31,7 @@ pub let unimplemented : Unit = {
 #cfg(not(target="js"))
 #coverage.skip
 let _unused : Unit = ignore(@js_async.AbortController::new)
+
+///|
+#cfg(any(target="native", target="wasm"))
+let _ignore_buffer_import : Unit = ignore(@buffer.Buffer::length)
