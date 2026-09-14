@@ -1,6 +1,5 @@
 import {
   "moonbitlang/core/random",
-  "moonbitlang/core/buffer",
   "moonbitlang/core/int",
   "moonbitlang/core/cmp",
   "moonbitlang/async/os_error",

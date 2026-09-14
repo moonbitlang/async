@@ -15,7 +15,6 @@
 ///|
 #cfg(not(target="native"))
 let _ignore_unused_import : Unit = {
-  ignore(@io.pipe)
   ignore(@async.sleep)
   ignore(@fs.unimplemented)
   ignore(@utf8.encode(""))
