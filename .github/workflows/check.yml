@@ -167,6 +167,9 @@ jobs:
           moon check --target wasm --deny-warn
           moon check --target wasm-gc --deny-warn
 
+      - name: moon test (Wasm-GC entry point)
+        run: moon test src --target wasm-gc --filter 'wasm-gc async main*'
+
   moon-format:
     runs-on: ubuntu-latest
     timeout-minutes: 10
