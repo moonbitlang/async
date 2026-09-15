@@ -96,6 +96,24 @@ pub async fn pause() -> Unit noraise {
 }
 
 ///|
+/// Helper for a non-cancellable `pause`, more efficient than `protect_from_cancel`
+pub async fn pause_nocancel() -> Unit noraise + nocancel {
+  guard! scheduler.curr_coro is Some(coro)
+  let shielded = coro.shielded
+  coro.shielded = true
+  defer {
+    coro.shielded = shielded
+  }
+  let result = async_suspend() <| cont => {
+    guard! coro.state is Running
+    coro.state = Suspend(cont)
+    coro.ready = true
+    scheduler.run_later.push_back(coro)
+  }
+  guard! result is Continue
+}
+
+///|
 pub async fn suspend_check_cancel() -> SuspendResult noraise {
   guard! scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
@@ -210,23 +228,4 @@ pub async fn[X] protect_from_cancel(f : async () -> X) -> X nocancel {
 ///|
 pub async fn[X] handle_cancellation(f : async () -> X) -> X? {
   capture_cancellation(handler=() => None, () => Some(f()))
-}
-
-///|
-/// Yield after an I/O operation has made progress. Preserve cancellation for
-/// the caller's next cancellation point without losing the completed result.
-pub async fn pause_after_io() -> Unit noraise + nocancel {
-  guard! scheduler.curr_coro is Some(coro)
-  let shielded = coro.shielded
-  coro.shielded = true
-  defer {
-    coro.shielded = shielded
-  }
-  let result = async_suspend() <| cont => {
-    guard! coro.state is Running
-    coro.state = Suspend(cont)
-    coro.ready = true
-    scheduler.run_later.push_back(coro)
-  }
-  guard! result is Continue
 }

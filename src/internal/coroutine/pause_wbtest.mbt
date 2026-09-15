@@ -13,18 +13,18 @@
 // limitations under the License.
 
 ///|
-test "IO pause preserves round robin scheduling" {
+test "non-cancellable pause preserves round robin scheduling" {
   let log : Array[Int] = []
   let a = spawn(() => {
     for _ in 0..<3 {
       log.push(1)
-      pause_after_io()
+      pause_nocancel()
     }
   })
   let b = spawn(() => {
     for _ in 0..<3 {
       log.push(2)
-      pause_after_io()
+      pause_nocancel()
     }
   })
   while has_immediately_ready_task() {
@@ -36,64 +36,60 @@ test "IO pause preserves round robin scheduling" {
 }
 
 ///|
-test "IO pause delivers completed IO then preserves cancellation" {
+test "non-cancellable pause completes then preserves cancellation" {
+  let log : Array[String] = []
+  let _ = spawn(() => {
+    let self = current_coroutine()
+    log.push("started")
+    self.cancel()
+    pause_nocancel()
+    log.push("completed")
+    assert_false(self.shielded)
+    assert_true(self.cancelled)
+  })
+  while has_immediately_ready_task() {
+    reschedule()
+  }
+  json_inspect(log, content=["started", "completed"])
+}
+
+///|
+test "non-cancellable pause restores an enclosing cancellation shield" {
+  let log : Array[String] = []
+  let _ = spawn(() => {
+    let self = current_coroutine()
+    protect_from_cancel(() => {
+      self.cancel()
+      pause_nocancel()
+      log.push("completed")
+      assert_true(self.shielded)
+      assert_true(self.cancelled)
+    })
+    assert_false(self.shielded)
+    assert_true(self.cancelled)
+  })
+  while has_immediately_ready_task() {
+    reschedule()
+  }
+  assert_eq(log, ["completed"])
+}
+
+///|
+test "non-cancellable pause cancelled during suspension" {
   let log : Array[String] = []
   let a = spawn(() => {
     log.push("started")
-    pause_after_io()
-    log.push("delivered")
-    assert_false(current_coroutine().shielded)
+    pause_nocancel()
+    log.push("completed")
     check_cancellation()
     log.push("unreachable")
   })
+  reschedule()
+  assert_eq(log, ["started"])
   a.cancel()
   while has_immediately_ready_task() {
     reschedule()
   }
   guard! a.unwrap() is Cancelled
-  assert_eq(log, ["started", "delivered"])
-}
-
-///|
-test "IO pause restores an enclosing cancellation shield" {
-  let log : Array[String] = []
-  let a = spawn(() => {
-    protect_from_cancel(() => {
-      current_coroutine().cancel()
-      pause_after_io()
-      assert_true(current_coroutine().shielded)
-      assert_true(current_coroutine().cancelled)
-      log.push("delivered")
-    })
-    assert_false(current_coroutine().shielded)
-    check_cancellation()
-    log.push("unreachable")
-  })
-  while has_immediately_ready_task() {
-    reschedule()
-  }
-  guard! a.unwrap() is Cancelled
-  assert_eq(log, ["delivered"])
-}
-
-///|
-test "IO pause delivers completed IO when cancelled during suspension" {
-  let log : Array[String] = []
-  let a = spawn(() => {
-    log.push("started")
-    pause_after_io()
-    log.push("delivered")
-    check_cancellation()
-    log.push("unreachable")
-  })
-  let b = spawn(() => {
-    assert_eq(log, ["started"])
-    a.cancel()
-  })
-  while has_immediately_ready_task() {
-    reschedule()
-  }
-  guard! a.unwrap() is Cancelled
-  guard! b.unwrap() is Continue
-  assert_eq(log, ["started", "delivered"])
+  assert_eq(log, ["started", "completed"])
 }
