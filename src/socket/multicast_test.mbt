@@ -13,18 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(target="wasm")
-fn is_wasm_target() -> Bool {
-  true
-}
-
-///|
-#cfg(not(target="wasm"))
-fn is_wasm_target() -> Bool {
-  false
-}
-
-///|
 async test "multicast basic" {
   let log = []
   @async.with_task_group <| group => {
@@ -115,9 +103,6 @@ async test "multicast no loopback" {
     // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
     return
   }
-  if @event_loop.platform is Windows && is_wasm_target() {
-    return
-  }
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer::multicast(
@@ -130,33 +115,28 @@ async test "multicast no loopback" {
         let (n, _) = server.recvfrom(buf)
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         log.push("server received: \{@utf8.decode(data)}")
+        if @event_loop.platform is Windows {
+          server.set_multicast_loopback(false)
+        }
       }
     }
     let client = @socket.UdpClient(
       @socket.Addr::parse("239.0.0.1:\{server.addr.port()}"),
     )
     defer client.close()
-    @async.sleep(200)
-    if @event_loop.platform is Windows {
-      server.set_multicast_loopback(false)
-    } else {
-      client.set_multicast_loopback(false)
-    }
     client.set_multicast_ttl(0)
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.platform is Windows {
-      server.set_multicast_loopback(true)
-    } else {
-      client.set_multicast_loopback(true)
+    if !(@event_loop.platform is Windows) {
+      client.set_multicast_loopback(false)
     }
-    @async.sleep(100)
+    @async.sleep(200)
     log.push("client sending: xyzw")
     let _ = client.send(b"xyzw")
     @async.sleep(200)
   }
   json_inspect(log, content=[
-    "client sending: abcd", "client sending: xyzw", "server received: xyzw",
+    "client sending: abcd", "server received: abcd", "client sending: xyzw",
   ])
 }
 
@@ -222,9 +202,6 @@ async test "multicast no loopback v6" {
     // MacOS requires the user clicking a GUI alertbox for UDP multicast since MacOS 15
     return
   }
-  if @event_loop.platform is Windows && is_wasm_target() {
-    return
-  }
   let log = []
   @async.with_task_group() <| group => {
     let server = @socket.UdpServer(@socket.Addr::parse("[::]:0"))
@@ -241,6 +218,9 @@ async test "multicast no loopback v6" {
         let (n, _) = server.recvfrom(buf)
         let data = buf.unsafe_reinterpret_as_bytes()[:n]
         log.push("server received: \{@utf8.decode(data)}")
+        if @event_loop.platform is Windows {
+          server.set_multicast_loopback(false)
+        }
       }
     }
     let client = @socket.UdpClient(
@@ -250,23 +230,17 @@ async test "multicast no loopback v6" {
     @async.sleep(200)
     client.set_multicast_interface_v6(test_interface.force())
     client.set_multicast_ttl(0)
-    if @event_loop.platform is Windows {
-      server.set_multicast_loopback(false)
-    } else {
-      client.set_multicast_loopback(false)
-    }
     log.push("client sending: abcd")
     let _ = client.send(b"abcd")
-    if @event_loop.platform is Windows {
-      server.set_multicast_loopback(true)
-    } else {
-      client.set_multicast_loopback(true)
+    if !(@event_loop.platform is Windows) {
+      client.set_multicast_loopback(false)
     }
+    @async.sleep(200)
     log.push("client sending: xyzw")
     let _ = client.send(b"xyzw")
     @async.sleep(200)
   }
   json_inspect(log, content=[
-    "client sending: abcd", "client sending: xyzw", "server received: xyzw",
+    "client sending: abcd", "server received: abcd", "client sending: xyzw",
   ])
 }
