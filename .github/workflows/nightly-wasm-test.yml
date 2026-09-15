@@ -9,6 +9,9 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+env:
+  MOON_WASM_NEW_ALLOCATOR: "1"
+
 jobs:
   wasm-test:
     strategy:
