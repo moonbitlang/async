@@ -123,7 +123,7 @@ pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) 
       // The pause here is not cancellable,
       // because otherwise the writer cannot have correct knowledge on what is written,
       // making writing not cancellation safe.
-      @coroutine.protect_from_cancel(() => @coroutine.pause())
+      @coroutine.pause_nocancel()
       len
     }
   }
@@ -186,7 +186,7 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
       // The pause here is not cancellable,
       // because otherwise the writer cannot have correct knowledge on what is written,
       // making writing not cancellation safe.
-      @coroutine.protect_from_cancel(() => @coroutine.pause())
+      @coroutine.pause_nocancel()
       len
     }
   }
