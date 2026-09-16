@@ -64,6 +64,23 @@ async test "read_request basic" {
 }
 
 ///|
+async test "read_request joins repeated header values in arrival order" {
+  @async.with_task_group(group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg(() => {
+      defer w.close()
+      w.write(
+        "GET / HTTP/1.1\r\nX-List: one\r\nX-Other: separate\r\nx-LIST: \r\nX-List: three\r\n\r\n",
+      )
+    })
+    defer r.close()
+    let request = Reader::new(r).read_request()
+    assert_eq(request.headers.get("x-list"), Some("one,,three"))
+    assert_eq(request.headers.get("X-Other"), Some("separate"))
+  })
+}
+
+///|
 async test "read_request fixed body" {
   let log = StringBuilder()
   @async.with_task_group() <| root => {
