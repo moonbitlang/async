@@ -43,3 +43,12 @@ pub impl Hash for Fd with fn hash_combine(self, hasher) {
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
 #cfg(not(any(platform="windows", target="wasm")))
 pub type Fd = Int
+
+///|
+/// Current operating system running the program.
+/// For Wasm backend, the actual operating system can only be known at runtime.
+pub(all) enum Platform {
+  Linux = 0
+  MacOS = 1
+  Windows = 2
+}

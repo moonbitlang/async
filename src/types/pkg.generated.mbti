@@ -6,6 +6,11 @@ package "moonbitlang/async/types"
 // Errors
 
 // Types and methods
+pub(all) enum Platform {
+  Linux
+  MacOS
+  Windows
+}
 
 // Type aliases
 pub type Fd = Int

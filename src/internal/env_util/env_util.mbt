@@ -37,11 +37,7 @@ pub fn eprintln(msg : String) -> Unit {
 }
 
 ///|
-pub(all) enum Platform {
-  Linux = 0
-  MacOS = 1
-  Windows = 2
-}
+pub using @types {type Platform}
 
 ///|
 #cfg(target="native")
