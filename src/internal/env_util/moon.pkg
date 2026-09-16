@@ -1,3 +1,7 @@
+import {
+  "moonbitlang/async/types",
+}
+
 options(
   "native-stub": [ "stub.c" ],
 )

@@ -13,6 +13,18 @@
 // limitations under the License.
 
 ///|
+/// The operating system that the program is currently running on.
+/// For Wasm backend, the actual operating system can only be known at runtime,
+/// because the same Wasm binary may be run on different operating systems,
+/// hence `platform` is not a compile-time constant.
+/// Program supporting Wasm backend should always use `platform`
+/// instead of `#cfg` to detect current operating system.
+///
+/// Currently supported operating systems: `Linux`, `MacOS`, `Windows`.
+#cfg(any(platform="native", platform="wasm"))
+pub using @event_loop {platform}
+
+///|
 /// Pause current task and give other tasks chance to execute.
 /// When performing long running pure computation (i.e. no IO involved),
 /// `pause` can be used to avoid starving other tasks.

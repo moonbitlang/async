@@ -1,22 +1,22 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitlang/async/internal/env_util"
 
+import {
+  "moonbitlang/async/types",
+}
+
 // Values
 pub let current_process : UInt
 
 pub fn eprintln(String) -> Unit
 
-pub let platform : Platform
+pub let platform : @types.Platform
 
 // Errors
 
 // Types and methods
-pub(all) enum Platform {
-  Linux
-  MacOS
-  Windows
-}
 
 // Type aliases
+pub using @types {type Platform}
 
 // Traits
