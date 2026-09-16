@@ -107,7 +107,7 @@ The cancellation signal propogates like an error, and can trigger `defer` and `e
 However, `catch` can **not** capture the cancellation signal.
 
 In most cases, users don't need to handle cancellation specially.
-Cleanup related logic inside `defer` or `errdefer`,
+Cleanup related logic can be put in `defer` or `errdefer`,
 while other error handlers usually don't need to handle cancellation anyway.
 If special handling of cancellation is indeed necessary,
 `@async.handle_cancellation` can be used.
