@@ -21,7 +21,7 @@
 /// instead of `#cfg` to detect current operating system.
 ///
 /// Currently supported operating systems: `Linux`, `MacOS`, `Windows`.
-#cfg(any(platform="native", platform="wasm"))
+#cfg(any(target="native", target="wasm"))
 pub using @event_loop {platform}
 
 ///|

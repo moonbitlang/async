@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/cond_var",
   "moonbitlang/async/external_loop_integration",
   "moonbitlang/async/semaphore",
+  "moonbitlang/async/types",
   "moonbitlang/core/debug",
 }
 
@@ -25,6 +26,8 @@ pub fn is_cancellation_error(Error) -> Bool
 pub fn now() -> Int64
 
 pub async fn pause() -> Unit noraise
+
+pub let platform : @types.Platform
 
 pub async fn[X] protect_from_cancel(async () -> X) -> X nocancel
 
