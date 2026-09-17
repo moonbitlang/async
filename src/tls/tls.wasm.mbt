@@ -49,11 +49,6 @@ const TLS_WOULD_BLOCK = -3
 const TLS_RENEGOTIATION = -4
 
 ///|
-fn TlsConnectionHandle::is_null(self : TlsConnectionHandle) -> Bool {
-  self.0 == 0UL
-}
-
-///|
 fn TrustedRoot::mode(self : TrustedRoot) -> TlsTrustMode {
   match self {
     NoVerification => TrustNoVerification
@@ -63,18 +58,13 @@ fn TrustedRoot::mode(self : TrustedRoot) -> TlsTrustMode {
 }
 
 ///|
-fn tls_take_global_error_message() -> String {
-  let buf = tls_take_global_error()
-  defer buf.free()
-  @os_string.decode(buf)
-}
-
-///|
 #unsafe_skip_stub_check
 #borrow(buf)
 fn tls_buffer_length(buf : @c_buffer.Buffer) -> Int = "moonbitlang/async" "c_buffer/length"
 
 ///|
+// Returns a live handle containing pending configuration. TLS initialization
+// errors are reported by the client and server setup calls.
 #unsafe_skip_stub_check
 fn TlsConnectionHandle::new() -> TlsConnectionHandle = "moonbitlang/async" "tls/connection/new"
 
@@ -122,18 +112,7 @@ fn TlsConnectionHandle::set_server_pfx(
 
 ///|
 #unsafe_skip_stub_check
-fn tls_take_global_error() -> @c_buffer.Buffer = "moonbitlang/async" "tls/error/take_global"
-
-///|
-#unsafe_skip_stub_check
-fn TlsConnectionHandle::free_ffi(self : TlsConnectionHandle) -> Unit = "moonbitlang/async" "tls/connection/free"
-
-///|
-fn TlsConnectionHandle::free(self : TlsConnectionHandle) -> Unit {
-  if !self.is_null() {
-    self.free_ffi()
-  }
-}
+fn TlsConnectionHandle::free(self : TlsConnectionHandle) -> Unit = "moonbitlang/async" "tls/connection/free"
 
 ///|
 #unsafe_skip_stub_check
@@ -247,16 +226,6 @@ fn TlsConnectionHandle::server_endpoint_channel_binding(
 ) -> @c_buffer.Buffer = "moonbitlang/async" "tls/connection/server_endpoint_channel_binding"
 
 ///|
-fn TlsConnectionHandle::check_new(
-  self : TlsConnectionHandle,
-) -> TlsConnectionHandle raise TlsError {
-  if self.is_null() {
-    raise TlsError(tls_take_global_error_message())
-  }
-  self
-}
-
-///|
 struct Tls {
   conn : TlsConnectionHandle
   host : String?
@@ -368,7 +337,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     Some(host) => host
     None => ""
   }
-  let conn = TlsConnectionHandle::new().check_new()
+  let conn = TlsConnectionHandle::new()
   let self = Tls::from_pair(conn, r, w, is_client=true, host~)
   errdefer self.close()
   if trust is CustomPemFile(path) {
@@ -399,7 +368,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   certificate_type? : X509FileType,
   pfx_file? : String,
 ) -> Tls {
-  let conn = TlsConnectionHandle::new().check_new()
+  let conn = TlsConnectionHandle::new()
   let self = Tls::from_pair(conn, r, w, is_client=false, host=None)
   errdefer self.close()
   let status = if @event_loop.platform is Windows {
