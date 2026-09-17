@@ -25,6 +25,7 @@ pub let unimplemented : Unit = {
   ignore(@tls.unimplemented)
   ignore(@io_buffer.new)
   ignore(@gzip.Decoder::is_finished)
+  ignore(@utf8.encode(""))
 }
 
 ///|

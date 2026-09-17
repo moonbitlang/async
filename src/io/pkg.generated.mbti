@@ -44,6 +44,7 @@ pub impl Writer for PipeWrite
 
 type ReaderBuffer
 pub fn ReaderBuffer::new() -> Self
+pub fn ReaderBuffer::take_buffered_until(Self, Bytes) -> BytesView?
 
 // Type aliases
 
