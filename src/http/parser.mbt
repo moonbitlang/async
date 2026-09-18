@@ -249,13 +249,13 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
     }
     guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
     let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
-    guard colon_index + 1 < header_line.length() else { raise BadRequest }
-    let value_start = if header_line.code_unit_at(colon_index + 1) == ' ' {
-      colon_index + 2
+    let value = if colon_index + 1 == header_line.length() {
+      ""
+    } else if header_line.code_unit_at(colon_index + 1) == ' ' {
+      header_line[colon_index + 2:].to_owned()
     } else {
-      colon_index + 1
+      header_line[colon_index + 1:].to_owned()
     }
-    let value = header_line[value_start:].to_owned()
     if key == "Set-Cookie" {
       cookies.push(Cookie::parse(value))
     } else {

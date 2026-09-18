@@ -269,6 +269,29 @@ async test "multiple request" {
 }
 
 ///|
+async test "empty header value" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("GET / HTTP/1.1\r\n")
+      ..write("Empty1:\r\n")
+      .write("Empty2: \r\n\r\n")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let request = input.read_request()
+    debug_inspect(
+      request.headers,
+      content=(
+        #|{ "Empty1": "", "Empty2": "" }
+      ),
+    )
+  }
+}
+
+///|
 async test "read_response basic" {
   let log = StringBuilder()
   @async.with_task_group() <| root => {
