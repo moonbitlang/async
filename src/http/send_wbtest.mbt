@@ -923,3 +923,92 @@ async test "HEAD response with non-empty body" {
     ignore(r.read_all().binary())
   }
 }
+
+///|
+async test "response header batching preserves long headers and persistent state" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    let value = "0123456789".repeat(300) + "日本語"
+    group.spawn_bg() <| () => {
+      defer w.close()
+      let sender = Sender::new(w, headers={ "Server": "MoonBit" })
+      sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
+        "X-Long": value,
+        "Content-Length": "3",
+        "Transfer-Encoding": "forbidden",
+      })
+      sender..write(b"123").end_body()
+      sender.send_response(
+        204,
+        "No Content",
+        cookies=[],
+        request_method=Get,
+        extra_headers=Map([]),
+      )
+      sender.end_body()
+    }
+    defer r.close()
+    assert_eq(
+      r.read_all().text(),
+      "HTTP/1.1 200 OK\r\nServer: MoonBit\r\nX-Long: \{value}\r\nContent-Length: 3\r\n\r\n123HTTP/1.1 204 No Content\r\nServer: MoonBit\r\n\r\n",
+    )
+  }
+}
+
+///|
+test "response head batching stays within its byte budget" {
+  let (r, w) = @io.pipe()
+  defer r.close()
+  defer w.close()
+  let sender = Sender::new(w)
+  assert_true(sender.can_batch_response_head(3, "OK", Map([])))
+  // Three UTF-8 bytes per code unit: the upper bound is exactly 256 bytes.
+  assert_true(
+    sender.can_batch_response_head(3, "OK", { "X": "界".repeat(76) }),
+  )
+  assert_false(
+    sender.can_batch_response_head(3, "OK", { "X": "界".repeat(77) }),
+  )
+  assert_true(
+    sender.can_batch_response_head(3, "OK", { "X": "😀".repeat(38) }),
+  )
+  assert_false(
+    sender.can_batch_response_head(3, "OK", { "X": "😀".repeat(39) }),
+  )
+  assert_false(sender.can_batch_response_head(3, "x".repeat(100), Map([])))
+  assert_false(
+    sender.can_batch_response_head(3, "OK", { "X": "x".repeat(65536) }),
+  )
+  // Ignored headers do not consume the response-head budget.
+  assert_true(
+    sender.can_batch_response_head(3, "OK", {
+      "Transfer-Encoding": "x".repeat(65536),
+    }),
+  )
+  // A batched head must also fit in the space left in the sender's buffer.
+  sender.send_len = 1010
+  assert_false(sender.can_batch_response_head(3, "OK", Map([])))
+  let sender = Sender::new(w, headers={ "X": "x".repeat(256) })
+  assert_false(sender.can_batch_response_head(3, "OK", Map([])))
+}
+
+///|
+async test "response head batching preserves UTF-8 at the batch boundary" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    let value = "界".repeat(76)
+    group.spawn_bg() <| () => {
+      defer w.close()
+      let sender = Sender::new(w)
+      sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
+        "X": value,
+      })
+      sender.end_body()
+    }
+    defer r.close()
+    assert_eq(
+      r.read_all().text(),
+      "HTTP/1.1 200 OK\r\nX: \{value}\r\nContent-Length: 0\r\n\r\n",
+    )
+  }
+}
