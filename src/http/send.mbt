@@ -51,7 +51,10 @@ fn sanitize_header_value(s : String) -> String {
     }
     let buf = StringBuilder(size_hint=s.length() - crlf_count)
     for c in s {
-      buf.write_char(c)
+      match c {
+        '\r' | '\n' => ()
+        c => buf.write_char(c)
+      }
     }
     buf.to_string()
   }
@@ -62,12 +65,15 @@ fn[W : @io.Writer] Sender::new(w : W, headers? : Headers = Map([])) -> Sender {
   let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {
+    if !is_valid_http_header_field_name(k.0) {
+      continue
+    }
     if !forbidden_headers.contains(k) {
       if k == "Accept-Encoding" {
         has_accept_encoding = true
       }
       header_text
-      ..write_string_utf8(sanitize_header_value(k.0))
+      ..write_string_utf8(k.0)
       ..write_bytes(b": ")
       ..write_string_utf8(sanitize_header_value(v))
       .write_bytes(b"\r\n")
@@ -286,6 +292,9 @@ async fn Sender::end_body(self : Sender) -> Unit {
 async fn Sender::send_headers(self : Sender, headers : Headers) -> Int64? {
   let mut content_length = None
   for k, v in headers {
+    if !is_valid_http_header_field_name(k.0) {
+      continue
+    }
     if k == "Content-Length" {
       let len = @string.parse_int64(v.trim(), base=10)
       content_length = Some(len)
@@ -293,7 +302,7 @@ async fn Sender::send_headers(self : Sender, headers : Headers) -> Int64? {
       continue
     }
     self
-    ..write(sanitize_header_value(k.0))
+    ..write(k.0)
     ..write(b": ")
     ..write(sanitize_header_value(v))
     .write(b"\r\n")

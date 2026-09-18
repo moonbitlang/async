@@ -27,3 +27,32 @@ fn encode_int(value : Int, base~ : Int) -> Bytes {
   }
   out.unsafe_reinterpret_as_bytes()
 }
+
+///|
+fn is_valid_http_header_field_name(name : StringView) -> Bool {
+  for c in name.code_units() {
+    match c {
+      'A'..='Z' => ()
+      'a'..='z' => ()
+      '0'..='9' => ()
+      '!'
+      | '#'
+      | '$'
+      | '%'
+      | '&'
+      | '\''
+      | '*'
+      | '+'
+      | '-'
+      | '.'
+      | '^'
+      | '_'
+      | '`'
+      | '|'
+      | '~' => ()
+      _ => return false
+    }
+  } nobreak {
+    name.length() > 0
+  }
+}

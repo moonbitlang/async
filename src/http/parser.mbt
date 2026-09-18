@@ -249,6 +249,9 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
     }
     guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
     let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
+    if !is_valid_http_header_field_name(key.0) {
+      raise BadRequest
+    }
     let value = if colon_index + 1 == header_line.length() {
       ""
     } else if header_line.code_unit_at(colon_index + 1) == ' ' {
