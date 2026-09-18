@@ -922,3 +922,32 @@ async test "HEAD response with non-empty body" {
     ignore(r.read_all().binary())
   }
 }
+
+///|
+async test "reject header injection" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      let sender = Sender::new(w, headers={
+        "Host": "x.y.org\nInjected: xxx",
+        "User-\nAgent": "MoonBit",
+      })
+      let _ = sender.send_response(200, "Ok", cookies=[], request_method=Head, extra_headers={
+        "Content-Length": "42",
+      })
+      sender.end_body()
+    }
+    defer r.close()
+    inspect(
+      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      content=(
+        #|HTTP/1.1 200 Ok\r
+        #|Host: x.y.orgInjected: xxx\r
+        #|Content-Length: 42\r
+        #|\r
+        #|
+      ),
+    )
+  }
+}
