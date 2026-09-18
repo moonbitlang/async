@@ -15,7 +15,8 @@
 ///|
 priv enum SenderMode {
   SendingHeader
-  WaitingBody
+  WaitingRequestBody
+  WaitingResponseBody
   SendingBody
   SendingFixed(mut remaining~ : Int64)
   PassThrough
@@ -30,7 +31,6 @@ priv struct Sender {
   mut send_len : Int
   headers : Bytes
   has_accept_encoding : Bool
-  mut should_have_empty_body : Bool
 }
 
 ///|
@@ -80,7 +80,6 @@ fn[W : @io.Writer] Sender::new(w : W, headers? : Headers = Map([])) -> Sender {
     send_len: 0,
     headers: header_text.contents(),
     has_accept_encoding,
-    should_have_empty_body: false,
   }
 }
 
@@ -126,7 +125,7 @@ impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
       mode.remaining -= len.to_int64()
       len
     }
-    WaitingBody => {
+    WaitingRequestBody | WaitingResponseBody => {
       if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
         self.flush()
@@ -198,7 +197,7 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
         self.flush()
         continue remaining
       }
-    WaitingBody => {
+    WaitingRequestBody | WaitingResponseBody => {
       if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
         self.flush()
@@ -247,11 +246,15 @@ async fn Sender::end_body(self : Sender) -> Unit {
       abort("`end_body()` called outside a HTTP message")
     SendingFixed(remaining=0) => self.flush()
     SendingFixed(_) => raise IncorrectBodyLength
-    WaitingBody if self.should_have_empty_body => {
+    WaitingRequestBody => {
+      // Request body are empty by default, no need to emit body related headers
       self.mode = SendingHeader
       self..write(b"\r\n").flush()
     }
-    WaitingBody =>
+    WaitingResponseBody =>
+      // Response body are close-delimited by default,
+      // so we always emit message related headers,
+      // except for special cases such as response to `HEAD` request.
       if self.send_len + EMPTY_MESSAGE_HEADER_END.length() >
         self.send_buf.length() {
         self.flush()
@@ -276,7 +279,6 @@ async fn Sender::end_body(self : Sender) -> Unit {
         self.flush()
       }
   }
-  self.should_have_empty_body = false
   self.mode = SendingHeader
 }
 
@@ -308,7 +310,6 @@ async fn Sender::send_request(
   extra_headers~ : Headers,
 ) -> Bool {
   guard! self.mode is SendingHeader
-  self.should_have_empty_body = meth is (Get | Head | Delete | Trace)
   match meth {
     Get => self.write(b"GET ")
     Head => self.write(b"HEAD ")
@@ -334,7 +335,7 @@ async fn Sender::send_request(
     self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
-    self.mode = WaitingBody
+    self.mode = WaitingRequestBody
   }
   auto_decompress
 }
@@ -349,11 +350,6 @@ async fn Sender::send_response(
   request_method~ : RequestMethod,
 ) -> Unit {
   guard! self.mode is SendingHeader
-  match request_method {
-    Head => self.should_have_empty_body = true
-    Connect => self.should_have_empty_body = code is (100..<300 | 304)
-    _ => self.should_have_empty_body = code is (100..<200 | 204 | 205 | 304)
-  }
   let content_length = self
     ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
@@ -367,14 +363,14 @@ async fn Sender::send_response(
     cookie.write_to(self)
     self.write(b"\r\n")
   }
-  if request_method is Head {
+  if should_not_have_body(Some(request_method), code) {
     self.write("\r\n")
     self.mode = SendingFixed(remaining=0)
   } else if content_length is Some(len) {
     self.write(b"\r\n")
     self.mode = SendingFixed(remaining=len)
   } else {
-    self.mode = WaitingBody
+    self.mode = WaitingResponseBody
   }
 }
 

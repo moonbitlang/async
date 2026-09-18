@@ -253,39 +253,52 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
       colon_index + 1
     }
     let value = header_line[value_start:].to_owned()
-    if key == "Content-Length" {
-      guard !(self.body is Fixed(_)) else { raise BadRequest }
-      let len = @string.parse_int(value, base=10)
-      if self.body is Empty && len > 0 {
-        self.body = Fixed(len)
-      }
-      // if automatic decompression is enabled, avoid reporting a wrong content-length value
-      if self.gzip is Some(_) {
-        continue
-      }
-    } else if key == "Transfer-Encoding" {
-      guard !(self.body is Chunked(_)) else { raise BadRequest }
-      guard CaseInsensitiveString(value) == "chunked" else {
-        raise NotImplemented
-      }
-      self.body = Chunked(0)
-    } else if key == "Content-Encoding" && self.auto_decompress {
-      guard self.gzip is None else { raise BadRequest }
-      guard CaseInsensitiveString(value) == "gzip" else { raise NotImplemented }
-      self.gzip = Some(@gzip.Decoder())
-      // if automatic decompression is enabled, avoid reporting a wrong content-length value
-      headers.remove("Content-Length")
-      continue
-    } else if key == "Set-Cookie" {
+    if key == "Set-Cookie" {
       cookies.push(Cookie::parse(value))
-      continue
-    }
-    match headers.get(key) {
-      None => headers[key] = value
-      Some(value0) => headers[key] = "\{value0},\{value}"
+    } else {
+      match headers.get(key) {
+        None => headers[key] = value
+        Some(value0) => headers[key] = "\{value0},\{value}"
+      }
     }
   }
   (headers, cookies)
+}
+
+///|
+fn Reader::setup_message_body(self : Reader, headers : Headers) -> Unit raise {
+  let content_length = match headers.get("Content-Length") {
+    None => None
+    Some(value) => Some(@string.parse_int(value, base=10))
+  }
+  let chunked = match headers.get("Transfer-Encoding") {
+    None => false
+    Some(encoding) if CaseInsensitiveString(encoding) == "chunked" => true
+    Some(_) => raise NotImplemented
+  }
+  let auto_gzip = if self.auto_decompress {
+    match headers.get("Content-Encoding") {
+      None => false
+      Some(encoding) if CaseInsensitiveString(encoding) == "gzip" => true
+      Some(_) => raise NotImplemented
+    }
+  } else {
+    false
+  }
+  if chunked {
+    self.body = Chunked(0)
+  } else if content_length is Some(len) {
+    if len == 0 {
+      self.body = Empty
+      return
+    }
+    self.body = Fixed(len)
+  }
+  if auto_gzip {
+    // if automatic decompression is enabled, avoid reporting a wrong content-length value
+    headers.remove("Content-Length")
+    self.gzip = Some(@gzip.Decoder())
+  }
 }
 
 ///|
@@ -323,39 +336,18 @@ async fn Reader::read_request(self : Reader) -> Request {
   }
   let (headers, cookies) = self.read_headers()
   guard cookies.length() is 0 else { raise BadRequest }
+  self.setup_message_body(headers)
   { meth, path, headers, }
 }
 
 ///|
-/// Determines if the response body should be read until connection close.
-/// Returns true when:
-/// - No Content-Length or Transfer-Encoding header is present
-/// - Body has not been determined by other means (still Empty)
-/// - Status code is not 1xx, 204, 205, or 304 (which MUST NOT have a message body)
-/// - Not a successful (2xx) response to a CONNECT request (which becomes a tunnel)
-/// - Not a response to a HEAD request (which never has a message body)
-fn should_read_body_until_close(
-  code : Int,
-  headers : Headers,
-  current_body : BodyKind,
-  request_method : RequestMethod?,
-) -> Bool {
-  // HEAD responses never have a message body, regardless of headers
-  if request_method is Some(Head) {
-    return false
+fn should_not_have_body(request_method : RequestMethod?, code : Int) -> Bool {
+  match (request_method, code) {
+    (Some(Head), _) => true
+    (Some(Connect), 200..<300) => true
+    (_, 100..<200 | 204 | 304) => true
+    _ => false
   }
-  // Successful CONNECT responses (2xx) switch connection to tunnel mode
-  // and have no HTTP message body
-  if request_method is Some(Connect) && code >= 200 && code < 300 {
-    return false
-  }
-  current_body is Empty &&
-  headers.get("Content-Length") is None &&
-  headers.get("Transfer-Encoding") is None &&
-  code >= 200 &&
-  code != 204 &&
-  code != 205 &&
-  code != 304
 }
 
 ///|
@@ -388,13 +380,12 @@ async fn Reader::read_response(
   }
   let reason = response_line[code_len + 1:].to_owned()
   let (headers, cookies) = self.read_headers()
-
-  // HTTP/1.1 Spec (RFC 7230 Section 3.3.3): Message Body Length Determination
-  // Other cases are handled in `read_headers` when parsing the headers, which will set the body kind accordingly.
-  if should_read_body_until_close(code, headers, self.body, request_method) {
-    self.body = WaitConnectionClose // Read until connection close
-  } else if request_method is Some(Head) {
+  if should_not_have_body(request_method, code) {
     self.body = Empty
+  } else {
+    // response messages are close-delimited by default
+    self.body = WaitConnectionClose
+    self.setup_message_body(headers)
   }
 
   { code, reason, headers, cookies, }
