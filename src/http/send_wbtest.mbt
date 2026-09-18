@@ -764,7 +764,6 @@ async test "send_request empty body" {
         #|\r
         #|POST / HTTP/1.1\r
         #|Accept-Encoding: gzip,identity\r
-        #|Content-Length: 0\r
         #|\r
         #|
       ),
