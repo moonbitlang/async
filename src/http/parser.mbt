@@ -15,8 +15,8 @@
 ///|
 priv enum BodyKind {
   Empty
-  Fixed(Int)
-  Chunked(Int)
+  Fixed(UInt64)
+  Chunked(UInt64)
   PassThrough
   WaitConnectionClose
 }
@@ -133,16 +133,17 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
+      let limit = @cmp.minimum(remaining, @int.MAX_VALUE.to_uint64()).to_int()
       let (consumed, produced) = self.decode_chunk(
         buf,
         offset~,
         max_len~,
-        limit=remaining,
+        limit~,
       )
       if consumed is 0 && produced is 0 {
         raise @io.ReaderClosed
       }
-      let remaining = remaining - consumed
+      let remaining = remaining - consumed.to_uint64()
       self.body = if remaining == 0 {
         if self.gzip is Some(gzip) {
           guard gzip.is_finished() else { raise BadRequest }
@@ -162,7 +163,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       guard self.transport.read_until("\r\n") is Some(len_str) else {
         raise @io.ReaderClosed
       }
-      let next_chunk_len = @string.parse_int(len_str, base=16) catch {
+      let next_chunk_len = @string.parse_uint64(len_str, base=16) catch {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
@@ -176,13 +177,14 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         self.body = Empty
         return 0
       }
+      let limit = @cmp.minimum(next_chunk_len, @int.MAX_VALUE.to_uint64()).to_int()
       let (consumed, produced) = self.decode_chunk(
         buf,
         offset~,
         max_len~,
-        limit=next_chunk_len,
+        limit~,
       )
-      let remaining = next_chunk_len - consumed
+      let remaining = next_chunk_len - consumed.to_uint64()
       if remaining == 0 {
         guard self.transport.read_exactly(2) == b"\r\n" else {
           raise BadRequest
@@ -196,13 +198,14 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
     }
     Chunked(curr_chunk_remaining) => {
+      let limit = @cmp.minimum(curr_chunk_remaining, @int.MAX_VALUE.to_uint64()).to_int()
       let (consumed, produced) = self.decode_chunk(
         buf,
         offset~,
         max_len~,
-        limit=curr_chunk_remaining,
+        limit~,
       )
-      let remaining = curr_chunk_remaining - consumed
+      let remaining = curr_chunk_remaining - consumed.to_uint64()
       if remaining == 0 {
         guard self.transport.read_exactly(2) == b"\r\n" else {
           raise BadRequest
@@ -269,7 +272,7 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
 fn Reader::setup_message_body(self : Reader, headers : Headers) -> Unit raise {
   let content_length = match headers.get("Content-Length") {
     None => None
-    Some(value) => Some(@string.parse_int(value, base=10))
+    Some(value) => Some(@string.parse_uint64(value, base=10))
   }
   let chunked = match headers.get("Transfer-Encoding") {
     None => false

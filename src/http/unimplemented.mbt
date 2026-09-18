@@ -18,6 +18,7 @@
 #coverage.skip
 pub let unimplemented : Unit = {
   let _ : (@buffer.Buffer) -> Unit = ignore
+  ignore(@int.MAX_VALUE)
   ignore(() => @string.parse_int("0"))
   ignore(@cmp.minimum(0, 0))
   ignore(@io.pipe)
