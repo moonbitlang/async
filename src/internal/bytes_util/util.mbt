@@ -25,7 +25,7 @@
 /// ```mbt check
 /// test {
 ///   let bytes : Bytes = [0, 1, 15, 16, 31, 32, 65, 10, 13, 9, 127]
-///   let rendered = ascii_to_string(bytes)
+///   let rendered = @bytes_util.ascii_to_string(bytes)
 ///   inspect(rendered, content="\\x0\\x1\\xf\\x10\\x1f A\n\\r\\t\\x7f")
 /// }
 /// ```
