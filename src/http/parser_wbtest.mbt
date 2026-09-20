@@ -711,3 +711,33 @@ async test "read_response parse cookie" {
     )
   }
 }
+
+///|
+async test "chunk extension" {
+  @async.with_task_group() <| root => {
+    let (r, w) = @io.pipe()
+    root.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Transfer-Encoding: chunked\r\n")
+      ..write("\r\n")
+      ..write("4;single_no_payload\r\nabcd\r\n")
+      ..write("4;single_token_payload = value\r\nxyzw\r\n")
+      ..write("4; single_quoted_payload=\"quoted\\\"\\\\\"\r\n1234\r\n")
+      ..write("4;p1 ;p2=value; p3;p4=\"quoted\\\"\\\\\"\r\nABCD\r\n")
+      ..write("0;last\r\n")
+      .write("\r\n")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    // first message
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
+    inspect(response.code, content="200")
+    debug_inspect(input.trailer, content="None")
+    inspect(input.read_all().text(), content="abcdxyzw1234ABCD")
+  }
+}

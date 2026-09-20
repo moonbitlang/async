@@ -166,6 +166,12 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       guard self.transport.read_until("\r\n") is Some(len_str) else {
         raise @io.ReaderClosed
       }
+      let len_str = if len_str.find(";") is Some(semi_index) {
+        validate_chunk_extension(len_str[semi_index:])
+        len_str[:semi_index].trim_end(chars=" \t")
+      } else {
+        len_str
+      }
       let next_chunk_len = @string.parse_uint64(len_str, base=16) catch {
         _ => raise BadRequest
       }
