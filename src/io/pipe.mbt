@@ -136,6 +136,16 @@ pub impl Reader for PipeRead with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub extend PipeRead with Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 /// This error will be raised when
 /// writing to a pipe whose read end is already closed.
 pub suberror PipeClosed derive(Debug, ToJson)
@@ -191,3 +201,6 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
     }
   }
 }
+
+///|
+pub extend PipeWrite with Writer::{write_once, write, write_reader}
