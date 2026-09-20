@@ -13,18 +13,6 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@fs.unimplemented)
-  ignore(@utf8.encode(""))
-  ignore(@io.Encoding::UTF8)
-}
-
-///|
-#cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
+#deprecated
+#doc(hidden)
+pub extend Decoder with @io.Reader::{_direct_read, _get_internal_buffer}

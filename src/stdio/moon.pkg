@@ -13,6 +13,7 @@ import {
 
 options(
   targets: {
+    "deprecated.mbt": [ "native", "wasm" ],
     "stdio.mbt": [ "native", "wasm" ],
     "stdio_test.mbt": [ "native", "wasm" ],
   },

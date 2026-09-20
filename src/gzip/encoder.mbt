@@ -88,3 +88,6 @@ pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
   self.buf_len += produced
   written
 }
+
+///|
+pub extend Encoder with @io.Writer::{write_once, write, write_reader}

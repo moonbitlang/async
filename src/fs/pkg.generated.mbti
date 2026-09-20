@@ -82,17 +82,26 @@ pub fn File::as_dir(Self) -> Directory raise
 pub async fn File::atime(Self) -> (Int64, Int)
 pub fn File::close(Self) -> Unit
 pub async fn File::ctime(Self) -> (Int64, Int)
+pub async fn File::drop(Self, Int) -> Int
 pub fn File::fd(Self) -> Int
 pub fn File::kind(Self) -> FileKind
 pub async fn File::lock(Self, Lock) -> Unit
 pub async fn File::mtime(Self) -> (Int64, Int)
+pub async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn File::read_all(Self) -> &@io.Data
 pub async fn File::read_at(Self, FixedArray[Byte], position~ : Int64, offset? : Int, len? : Int) -> Int
+pub async fn File::read_exactly(Self, Int) -> Bytes
 pub async fn File::read_exactly_at(Self, Int, position~ : Int64) -> Bytes
+pub async fn File::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn File::read_until(Self, StringView) -> String?
 pub async fn File::size(Self) -> Int64
 pub async fn File::sync(Self, only_data? : Bool) -> Unit
 pub fn File::try_lock(Self, Lock) -> Bool raise
 pub fn File::unlock(Self) -> Unit
+pub async fn File::write(Self, &@io.Data) -> Unit
 pub async fn File::write_at(Self, BytesView, position~ : Int64) -> Unit
+pub async fn File::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn File::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for File
 pub impl @io.Writer for File
 

@@ -84,3 +84,13 @@ pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
     0
   }
 }
+
+///|
+pub extend Decoder with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}

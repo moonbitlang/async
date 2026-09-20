@@ -153,6 +153,19 @@ pub impl @io.Reader for RawFdStream with fn _direct_read(
 }
 
 ///|
+pub extend RawFdStream with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 pub impl @io.Writer for RawFdStream with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@raw_fd.RawFdStream::write()")
 }
+
+///|
+pub extend RawFdStream with @io.Writer::{write_once, write, write_reader}

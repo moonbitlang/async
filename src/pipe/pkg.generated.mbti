@@ -13,12 +13,21 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise
 // Types and methods
 type PipeRead
 pub fn PipeRead::close(Self) -> Unit
+pub async fn PipeRead::drop(Self, Int) -> Int
 pub fn PipeRead::fd(Self) -> Int
+pub async fn PipeRead::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn PipeRead::read_all(Self) -> &@io.Data
+pub async fn PipeRead::read_exactly(Self, Int) -> Bytes
+pub async fn PipeRead::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn PipeRead::read_until(Self, StringView) -> String?
 pub impl @io.Reader for PipeRead
 
 type PipeWrite
 pub fn PipeWrite::close(Self) -> Unit
 pub fn PipeWrite::fd(Self) -> Int
+pub async fn PipeWrite::write(Self, &@io.Data) -> Unit
+pub async fn PipeWrite::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn PipeWrite::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Writer for PipeWrite
 
 // Type aliases
