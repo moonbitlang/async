@@ -77,6 +77,7 @@ pub async fn Client::read_some(Self, max_len? : Int) -> Bytes?
 pub async fn Client::read_until(Self, StringView) -> String?
 pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[CaseInsensitiveString, String]) -> Unit
 pub async fn Client::skip_response_body(Self) -> Unit
+pub fn Client::trailer(Self) -> Map[CaseInsensitiveString, String]
 pub async fn Client::write(Self, &@io.Data) -> Unit
 pub async fn Client::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
 pub async fn Client::write_reader(Self, &@io.Reader) -> Unit
@@ -164,6 +165,7 @@ pub async fn ServerConnection::read_some(Self, max_len? : Int) -> Bytes?
 pub async fn ServerConnection::read_until(Self, StringView) -> String?
 pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[CaseInsensitiveString, String], cookies? : Array[Cookie]) -> Unit
 pub async fn ServerConnection::skip_request_body(Self) -> Unit
+pub fn ServerConnection::trailer(Self) -> Map[CaseInsensitiveString, String]
 pub async fn ServerConnection::write(Self, &@io.Data) -> Unit
 pub async fn ServerConnection::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
 pub async fn ServerConnection::write_reader(Self, &@io.Reader) -> Unit

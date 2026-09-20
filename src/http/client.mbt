@@ -176,6 +176,17 @@ pub extend Client with @io.Reader::{
 }
 
 ///|
+/// Get the trailer of current response message.
+///
+/// MUST be called AFTER all content of current message body has been read,
+/// and BEFORE reading the next response, otherwise this method will crash immediately.
+///
+/// If the message is not chunk encoded, an empty header map will be returned.
+pub fn Client::trailer(self : Client) -> Headers {
+  self.reader.trailer.unwrap()
+}
+
+///|
 /// Write data to the body of the request currently being sent.
 /// Must be called after `send_request`.
 /// `end_request` must be called after all content of response body has been sent.

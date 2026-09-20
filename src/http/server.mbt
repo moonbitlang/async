@@ -87,6 +87,17 @@ pub extend ServerConnection with @io.Reader::{
 }
 
 ///|
+/// Get the trailer of current request message.
+///
+/// MUST be called AFTER all content of current message body has been read,
+/// and BEFORE reading the next request, otherwise this method will crash immediately.
+///
+/// If the message is not chunk encoded, an empty header map will be returned.
+pub fn ServerConnection::trailer(self : ServerConnection) -> Headers {
+  self.reader.trailer.unwrap()
+}
+
+///|
 /// Read a single request from the connection.
 /// If the body of the last request is not consumed yet,
 /// it will be discarded.

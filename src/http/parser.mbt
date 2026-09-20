@@ -29,6 +29,7 @@ priv struct Reader {
   read_buf : @io.ReaderBuffer
   mut auto_decompress : Bool
   mut gzip : @gzip.Decoder?
+  mut trailer : Headers?
 }
 
 ///|
@@ -41,6 +42,7 @@ fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
     read_buf: @io.ReaderBuffer::new(),
     auto_decompress: false,
     gzip: None,
+    trailer: None,
   }
 }
 
@@ -149,6 +151,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
           guard gzip.is_finished() else { raise BadRequest }
           self.gzip = None
         }
+        self.trailer = Some({})
         Empty
       } else {
         Fixed(remaining)
@@ -167,14 +170,14 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
-        guard self.transport.read_exactly(2) == b"\r\n" else {
-          raise BadRequest
-        }
+        let (trailer, cookies) = self.read_headers()
+        guard cookies.is_empty() else { raise BadRequest }
         if self.gzip is Some(gzip) {
           guard gzip.is_finished() else { raise BadRequest }
           self.gzip = None
         }
         self.body = Empty
+        self.trailer = Some(trailer)
         return 0
       }
       let limit = @cmp.minimum(next_chunk_len, @int.MAX_VALUE.to_uint64()).to_int()
@@ -219,7 +222,13 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
     }
     PassThrough => self.transport._direct_read(buf, offset~, max_len~)
-    WaitConnectionClose => self.transport._direct_read(buf, offset~, max_len~)
+    WaitConnectionClose => {
+      let n = self.transport._direct_read(buf, offset~, max_len~)
+      if n is 0 {
+        self.trailer = Some({})
+      }
+      n
+    }
   }
 }
 
@@ -272,7 +281,11 @@ async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
 }
 
 ///|
-fn Reader::setup_message_body(self : Reader, headers : Headers) -> Unit raise {
+fn Reader::setup_message_body(
+  self : Reader,
+  headers : Headers,
+  default~ : BodyKind,
+) -> Unit raise {
   let content_length = match headers.get("Content-Length") {
     None => None
     Some(value) => Some(@string.parse_uint64(value, base=10))
@@ -296,11 +309,17 @@ fn Reader::setup_message_body(self : Reader, headers : Headers) -> Unit raise {
   } else if content_length is Some(len) {
     if len == 0 {
       self.body = Empty
-      return
+      self.trailer = Some({})
+    } else {
+      self.body = Fixed(len)
     }
-    self.body = Fixed(len)
+  } else {
+    self.body = default
+    if default is Empty {
+      self.trailer = Some({})
+    }
   }
-  if auto_gzip {
+  if auto_gzip && !(self.body is Empty) {
     // if automatic decompression is enabled, avoid reporting a wrong content-length value
     headers.remove("Content-Length")
     self.gzip = Some(@gzip.Decoder())
@@ -317,6 +336,7 @@ fn Reader::setup_message_body(self : Reader, headers : Headers) -> Unit raise {
 /// the HTTP reader itself can be used to extract the body of the request.
 async fn Reader::read_request(self : Reader) -> Request {
   guard! self.body is Empty
+  self.trailer = None
   guard self.transport.read_until("\r\n") is Some(request_line) else {
     raise @io.ReaderClosed
   }
@@ -342,7 +362,7 @@ async fn Reader::read_request(self : Reader) -> Request {
   }
   let (headers, cookies) = self.read_headers()
   guard cookies.length() is 0 else { raise BadRequest }
-  self.setup_message_body(headers)
+  self.setup_message_body(headers, default=Empty)
   { meth, path, headers, }
 }
 
@@ -371,6 +391,7 @@ async fn Reader::read_response(
 ) -> Response {
   self.auto_decompress = auto_decompress
   guard! self.body is Empty
+  self.trailer = None
   guard self.transport.read_until("\r\n") is Some(response_line) else {
     raise @io.ReaderClosed
   }
@@ -388,10 +409,10 @@ async fn Reader::read_response(
   let (headers, cookies) = self.read_headers()
   if should_not_have_body(request_method, code) {
     self.body = Empty
+    self.trailer = Some({})
   } else {
     // response messages are close-delimited by default
-    self.body = WaitConnectionClose
-    self.setup_message_body(headers)
+    self.setup_message_body(headers, default=WaitConnectionClose)
   }
 
   { code, reason, headers, cookies, }
