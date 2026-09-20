@@ -10,6 +10,7 @@ pub async fn[X] run_promise((AbortSignal) -> Promise[X]) -> X
 
 // Errors
 type JsError
+pub fn JsError::to_string(Self) -> String
 pub impl Show for JsError
 
 // Types and methods
@@ -32,7 +33,13 @@ pub async fn[X] Promise::wait(Self[X], abort_controller? : AbortController) -> X
 
 type ReadableStream
 pub fn ReadableStream::close(Self) -> Unit
+pub async fn ReadableStream::drop(Self, Int) -> Int
 pub fn ReadableStream::from_js(JsReadableStream) -> Self
+pub async fn ReadableStream::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn ReadableStream::read_all(Self) -> &@io.Data
+pub async fn ReadableStream::read_exactly(Self, Int) -> Bytes
+pub async fn ReadableStream::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn ReadableStream::read_until(Self, StringView) -> String?
 pub impl @io.Reader for ReadableStream
 
 // Type aliases

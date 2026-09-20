@@ -52,6 +52,9 @@ pub impl Show for JsError with fn output(self, logger) {
 }
 
 ///|
+pub extend JsError with Show::{to_string}
+
+///|
 /// A JavaScript `AbortController` used to cancel promises
 #external
 pub type AbortController

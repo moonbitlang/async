@@ -126,7 +126,7 @@ pub fn ReadableStream::close(self : ReadableStream) -> Unit {
 
 ///|
 pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(self) {
-  self.read_end._get_internal_buffer()
+  @io.Reader::_get_internal_buffer(self.read_end)
 }
 
 ///|
@@ -136,7 +136,17 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
   offset~,
   max_len~,
 ) {
-  self.read_end._direct_read(buf, offset~, max_len~)
+  @io.Reader::_direct_read(self.read_end, buf, offset~, max_len~)
+}
+
+///|
+pub extend ReadableStream with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
 }
 
 ///|
