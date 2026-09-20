@@ -41,6 +41,7 @@ options(
     "deprecated.mbt": [ "native", "js", "wasm" ],
     "parser.mbt": [ "native", "wasm" ],
     "parser_wbtest.mbt": [ "native", "wasm" ],
+    "parser_trailer_wbtest.mbt": [ "native", "wasm" ],
     "proxy_test.mbt": [ "native", "wasm" ],
     "request.mbt": [ "native", "js", "wasm" ],
     "request_test.mbt": [ "native", "js", "wasm" ],
