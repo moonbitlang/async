@@ -312,6 +312,19 @@ pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub extend Tcp with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@socket.Tcp::write()")
 }
+
+///|
+pub extend Tcp with @io.Writer::{write_once, write, write_reader}

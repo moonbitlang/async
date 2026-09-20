@@ -265,6 +265,9 @@ pub impl Show for Addr with fn output(self, logger) {
 }
 
 ///|
+pub extend Addr with Show::{to_string}
+
+///|
 pub impl Debug for Addr with fn to_repr(self) {
   Repr::opaque_("Addr", Repr::literal(Show::to_string(self)))
 }

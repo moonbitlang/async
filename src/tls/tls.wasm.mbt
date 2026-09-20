@@ -507,6 +507,16 @@ pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub extend Tls with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   self.transport.flush_write()
   let read_buf = self.transport.reader._get_internal_buffer().repr()
@@ -558,6 +568,9 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
     0
   }
 }
+
+///|
+pub extend Tls with @io.Writer::{write_once, write, write_reader}
 
 ///|
 pub fn Tls::close(self : Tls) -> Unit {

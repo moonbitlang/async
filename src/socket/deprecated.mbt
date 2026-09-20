@@ -23,6 +23,11 @@ pub impl Show for InvalidAddr with fn output(_self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend InvalidAddr with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for ResolveHostnameError
 
 ///|
@@ -31,6 +36,11 @@ pub impl Show for ResolveHostnameError with fn output(self, logger) {
     ResolveHostnameError(msg) => logger <+ "ResolveHostnameError(\{Repr(msg)})"
   }
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend ResolveHostnameError with Show::{to_string}
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
@@ -46,3 +56,78 @@ pub impl Show for IpProtocolPreference with fn output(self, logger) {
     NoPreference => logger <+ "NoPreference"
   }
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend IpProtocolPreference with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Addr with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Addr with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Addr with Hash::{hash, hash_combine}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Addr with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Addr with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend InvalidAddr with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend InvalidAddr with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend InvalidAddr with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ResolveHostnameError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ResolveHostnameError with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ResolveHostnameError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend IpProtocolPreference with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend IpProtocolPreference with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Tcp with @io.Reader::{_direct_read, _get_internal_buffer}

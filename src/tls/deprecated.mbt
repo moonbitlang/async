@@ -25,9 +25,54 @@ pub impl Show for TlsError with fn output(self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend TlsError with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for ConnectionClosed
 
 ///|
 pub impl Show for ConnectionClosed with fn output(_self, logger) {
   logger <+ "ConnectionClosed"
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend ConnectionClosed with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TlsError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TlsError with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TlsError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ConnectionClosed with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ConnectionClosed with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ConnectionClosed with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Tls with @io.Reader::{_direct_read, _get_internal_buffer}
