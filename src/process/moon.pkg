@@ -29,6 +29,7 @@ options(
   "max-concurrent-tests": 5,
   "native-stub": [ "unix.c", "windows.c" ],
   targets: {
+    "deprecated.mbt": [ "native", "wasm" ],
     "process.mbt": [ "native", "wasm" ],
     "unix.mbt": [ "native", "wasm" ],
     "windows.mbt": [ "native", "wasm" ],
