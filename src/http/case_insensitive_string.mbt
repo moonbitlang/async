@@ -38,6 +38,9 @@ pub impl Show for CaseInsensitiveString with fn to_string(self) {
 }
 
 ///|
+pub extend CaseInsensitiveString with Show::{to_string}
+
+///|
 pub impl Hash for CaseInsensitiveString with fn hash_combine(self, hasher) {
   for code in self.0.code_units() {
     let code = match code {

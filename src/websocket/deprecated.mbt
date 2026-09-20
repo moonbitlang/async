@@ -43,12 +43,22 @@ pub impl Show for MessageKind with fn output(self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend MessageKind with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for CloseCode
 
 ///|
 pub impl Show for CloseCode with fn output(self, logger) {
   self.write_show(logger)
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend CloseCode with Show::{to_string}
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
@@ -67,3 +77,48 @@ pub impl Show for WebSocketError with fn output(self, logger) {
     ProtocolError(msg) => logger <+ "ProtocolError(\{msg})"
   }
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend WebSocketError with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend MessageKind with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend MessageKind with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend CloseCode with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend CloseCode with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend CloseCode with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend WebSocketError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend WebSocketError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Message with @io.Reader::{_direct_read, _get_internal_buffer}

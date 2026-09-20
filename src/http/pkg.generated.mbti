@@ -51,6 +51,7 @@ pub impl Show for URIParseError
 
 // Types and methods
 pub(all) struct CaseInsensitiveString(String) derive(ToJson)
+pub fn CaseInsensitiveString::to_string(Self) -> String
 pub impl Compare for CaseInsensitiveString
 pub impl Eq for CaseInsensitiveString
 pub impl Hash for CaseInsensitiveString
