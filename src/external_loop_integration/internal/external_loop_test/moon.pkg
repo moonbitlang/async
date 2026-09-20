@@ -7,5 +7,5 @@ import {
 
 options(
   "native-stub": [ "external_loop.c" ],
-  targets: { "main.mbt": [ "native" ] },
+  targets: { "deprecated.mbt": [ "native" ], "main.mbt": [ "native" ] },
 )

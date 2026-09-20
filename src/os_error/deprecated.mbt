@@ -13,15 +13,16 @@
 // limitations under the License.
 
 ///|
-#warnings("-deprecated")
-async test "cancel before submit" {
-  let file = @fs.open("LICENSE", mode=ReadOnly)
-  defer file.close()
-  let buf = FixedArray::make(1, b'\x00')
-  let result = @async.with_timeout_opt(1, () => {
-    while file._direct_read(buf, offset=0, max_len=1) is 1 {
+#deprecated
+#doc(hidden)
+pub extend OSError with ToJson::{to_json}
 
-    }
-  })
-  debug_inspect(result, content="None")
-}
+///|
+#deprecated
+#doc(hidden)
+pub extend OSError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend OSError with Debug::{to_repr}

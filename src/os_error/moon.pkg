@@ -17,6 +17,7 @@ options(
     "errno_linux.mbt": [ "native", "wasm" ],
     "errno_macos.mbt": [ "native", "wasm" ],
     "errno_windows.mbt": [ "native", "wasm" ],
+    "deprecated.mbt": [ "native", "wasm" ],
     "os_error_test.mbt": [ "native" ],
   },
 )
