@@ -13,6 +13,10 @@
 // limitations under the License.
 
 ///|
+// Minimum cancelled entries before considering a queue rebuild.
+const CANCELLED_WAITER_COMPACTION_THRESHOLD : Int = 64
+
+///|
 priv struct Waiter {
   // In the rare case where:
   //
@@ -60,7 +64,7 @@ pub async fn Cond::wait(cond : Cond) -> Unit noraise {
       cond.cancelled += 1
       // Rebuild only when enough cancellations pay for scanning the live entries.
       // Keeping live entries in order preserves signal's FIFO behavior.
-      if cond.cancelled >= 64 &&
+      if cond.cancelled >= CANCELLED_WAITER_COMPACTION_THRESHOLD &&
         cond.cancelled >= cond.waiters.length() - cond.cancelled {
         let live : @deque.Deque[Waiter] = Deque([])
         for pending in cond.waiters {

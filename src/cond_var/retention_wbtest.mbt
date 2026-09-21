@@ -27,7 +27,9 @@ async test "cancelled waiters stay bounded behind a live waiter" {
         err => raise err
       }
     }
-    assert_true(cond.waiters.length() <= 65)
+    assert_true(
+      cond.waiters.length() <= CANCELLED_WAITER_COMPACTION_THRESHOLD + 1,
+    )
     cond.signal()
     live.wait()
     cond.broadcast()
@@ -56,7 +58,9 @@ async test "compacting cancelled waiters preserves signal order" {
         }
       }
     }
-    assert_true(cond.waiters.length() <= 67)
+    assert_true(
+      cond.waiters.length() <= CANCELLED_WAITER_COMPACTION_THRESHOLD + 3,
+    )
     for i in 0..<3 {
       cond.signal()
       @async.sleep(0)
