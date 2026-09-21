@@ -64,7 +64,7 @@ type Client
 pub async fn Client::Client(String, headers? : Map[CaseInsensitiveString, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self
 pub fn Client::close(Self) -> Unit
 pub async fn Client::drop(Self, Int) -> Int
-pub async fn Client::end_request(Self) -> Response
+pub async fn Client::end_request(Self, on_informational_response? : async (Response) -> Unit) -> Response
 pub async fn Client::enter_passthrough_mode(Self) -> Unit
 pub async fn Client::flush(Self) -> Unit
 #label_migration(body, fill=false, msg="`GET` request should not contain a body")
