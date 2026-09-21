@@ -156,7 +156,7 @@ pub fn with_event_loop(
     }
   } catch {
     err => {
-      @env_util.eprintln("fatal runtime error: \{err}")
+      eprintln("fatal runtime error: \{err}")
       panic()
     }
   }
@@ -259,7 +259,7 @@ fn EventLoop::check_fd_leak(self : Self) -> Unit {
     let leaked_handles = [
       for handle in self.fds.values() => @debug.to_string(handle.kind)
     ].join(", ")
-    @env_util.eprintln("file descriptor leak detected: \{leaked_handles}")
+    eprintln("file descriptor leak detected: \{leaked_handles}")
     panic()
   }
 }
@@ -325,7 +325,7 @@ fn EventLoop::handle_timers(self : Self) -> Unit {
 ///|
 let deadlock_handler : Ref[(Array[SourceLoc]) -> Unit] = Ref(locs => {
   let locs = locs.map(loc => loc.to_string())
-  @env_util.eprintln(
+  eprintln(
     "Dead lock detected. Tasks spawned at the following locations are still alive: \{Repr(locs)}",
   )
   panic()

@@ -24,7 +24,7 @@ let _ignore_unused_import : Unit = {
   ignore(@os_string.unimplemented)
   ignore(@os_error.unimplemented)
   ignore(@coroutine.is_being_cancelled)
-  ignore(@env_util.eprintln)
+  ignore((_ : @env_util.Platform) => ())
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
 }
 

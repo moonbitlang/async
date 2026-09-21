@@ -26,7 +26,7 @@ pub let unimplemented : Unit = {
   ignore(@os_error.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
-  ignore(@env_util.eprintln)
+  ignore((_ : @env_util.Platform) => ())
   ignore(@c_buffer.unimplemented)
   ignore(@coroutine.pause)
 }

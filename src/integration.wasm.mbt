@@ -19,7 +19,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   @event_loop.with_event_loop(() => main()) catch {
     @event_loop.KilledBySignal(signal) => terminate_process_by_signal(signal)
     err => {
-      @env_util.eprintln(err.to_string())
+      eprintln(err.to_string())
       exit(1)
     }
   }

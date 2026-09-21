@@ -23,7 +23,7 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
     @event_loop.KilledBySignal(signal) =>
       @event_loop.terminate_process_by_signal(signal)
     err => {
-      @env_util.eprintln(err.to_string())
+      eprintln(err.to_string())
       exit(1)
     }
   }
@@ -65,14 +65,10 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
   let _ = @coroutine.spawn <| () => {
     main() catch {
       err => {
-        @env_util.eprintln(err.to_string())
+        eprintln(err.to_string())
         panic()
       }
     }
   }
   @event_loop.reschedule()
 }
-
-///|
-#cfg(all(not(target="native"), not(target="wasm")))
-let _unused_import : Unit = ignore(@env_util.eprintln)
