@@ -173,7 +173,23 @@ pub extend Client with @io.Reader::{
 }
 
 ///|
-pub async fn Client::end_request(self : Client) -> Response {
+/// End the body of the request currently being sent,
+/// and obtain response from the server.
+/// Should be called immediately after request body is fully sent.
+///
+/// Only the header of the response will be received and returned,
+/// the body of the response can be extracted by using `Client` as a `@io.Reader`.
+///
+/// If the body of the last response is still not consumed,
+/// it will be discarded.
+///
+/// `on_informational_response` is not supported on JS backend,
+/// and will be silently ignored.
+pub async fn Client::end_request(
+  self : Client,
+  on_informational_response? : async (Response) -> Unit,
+) -> Response {
+  ignore(on_informational_response)
   guard! self.request is Some(request)
   self.request = None
   let abort_controller = @js_async.AbortController::new()

@@ -219,3 +219,36 @@ async test "user agent" {
     ),
   )
 }
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "1XX response" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let client = @http.Client("http://localhost:\{port}")
+    defer client.close()
+    let response = client
+      ..request(Get, "/informational")
+      .end_request(on_informational_response=response => {
+        log.write(
+          "got informational response: \{response.code} \{response.reason}\n",
+        )
+        log.write("\{Repr(response.headers)}\n")
+      })
+    log.write("got final response: \{response.code} \{response.reason}\n")
+    log.write("\{Repr(response.headers)}\n")
+  }
+  inspect(
+    log,
+    content=(
+      #|got informational response: 100 CONTINUE
+      #|{ "Info": "round1" }
+      #|got informational response: 100 CONTINUE
+      #|{ "Info": "round2" }
+      #|got final response: 200 OK
+      #|{ "Content-Length": "0" }
+      #|
+    ),
+  )
+}

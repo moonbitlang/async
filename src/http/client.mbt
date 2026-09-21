@@ -223,16 +223,33 @@ pub async fn Client::flush(self : Client) -> Unit {
 ///
 /// If the body of the last response is still not consumed,
 /// it will be discarded.
-pub async fn Client::end_request(self : Client) -> Response {
+///
+/// `1XX` response, except for `101 Switching Protocol`,
+/// will be automatically processed and discarded,
+/// and the returned response is always the final response (or `101`).
+/// `on_informational_response`, if present,
+/// will be invoked for every skipped `1XX` informational response.
+pub async fn Client::end_request(
+  self : Client,
+  on_informational_response? : async (Response) -> Unit,
+) -> Response {
   self.sender.end_body()
-  self.reader.skip_body()
-  let response = self.reader.read_response(
-    request_method=self.request_method,
-    auto_decompress=self.auto_decompress,
-  )
-  self.request_method = None
-  self.auto_decompress = false
-  response
+  for ;; {
+    self.reader.skip_body()
+    let response = self.reader.read_response(
+      request_method=self.request_method,
+      auto_decompress=self.auto_decompress,
+    )
+    if response.code is (100 | 102..<200) {
+      if on_informational_response is Some(callback) {
+        callback(response)
+      }
+      continue
+    }
+    self.request_method = None
+    self.auto_decompress = false
+    break response
+  }
 }
 
 ///|

@@ -85,6 +85,17 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
           log.write_string("server: sending \{meth} response part 2\n")
           conn.write("\{meth} response part 2\n")
         }
+        "/informational" => {
+          conn
+          ..send_response(100, "CONTINUE", extra_headers={ "Info": "round1" })
+          .end_response()
+          @async.sleep(100)
+          conn
+          ..send_response(100, "CONTINUE", extra_headers={ "Info": "round2" })
+          .end_response()
+          @async.sleep(100)
+          conn..send_response(200, "OK").end_response()
+        }
         path => raise Failure("unknown request path: \{path}")
       }
     })
