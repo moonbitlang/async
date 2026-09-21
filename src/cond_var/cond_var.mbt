@@ -31,14 +31,15 @@ priv struct Waiter {
 ///|
 /// A condition variable that can be used for synchronization between tasks.
 struct Cond {
-  waiters : @deque.Deque[Waiter]
+  mut waiters : @deque.Deque[Waiter]
+  mut cancelled : Int
 }
 
 ///|
 /// Create a new condition variable.
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { waiters: Deque([]), }
+  { waiters: Deque([]), cancelled: 0, }
 }
 
 ///|
@@ -56,6 +57,20 @@ pub async fn Cond::wait(cond : Cond) -> Unit noraise {
     Cancelled if waiter.woken => ()
     Cancelled => {
       waiter.coro = None
+      cond.cancelled += 1
+      // Rebuild only when enough cancellations pay for scanning the live entries.
+      // Keeping live entries in order preserves signal's FIFO behavior.
+      if cond.cancelled >= 64 &&
+        cond.cancelled >= cond.waiters.length() - cond.cancelled {
+        let live : @deque.Deque[Waiter] = Deque([])
+        for pending in cond.waiters {
+          if pending.coro is Some(_) {
+            live.push_back(pending)
+          }
+        }
+        cond.waiters = live
+        cond.cancelled = 0
+      }
       @coroutine.raise_cancellation_signal()
     }
   }
@@ -71,7 +86,12 @@ pub fn Cond::signal(cond : Cond) -> Unit {
       waiter.woken = true
       coro.wake()
       break
+    } else {
+      cond.cancelled -= 1
     }
+  }
+  if cond.waiters.is_empty() {
+    cond.waiters = Deque([])
   }
 }
 
@@ -86,5 +106,7 @@ pub fn Cond::broadcast(cond : Cond) -> Unit {
       coro.wake()
     }
   }
-  cond.waiters.clear()
+  // Replace the backing storage as well as dropping the logical entries.
+  cond.waiters = Deque([])
+  cond.cancelled = 0
 }
