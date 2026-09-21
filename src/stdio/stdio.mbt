@@ -42,6 +42,16 @@ pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
 }
 
 ///|
+pub extend Input with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 struct Output(Result[@event_loop.IoHandle, Error])
 
 ///|
@@ -61,6 +71,9 @@ pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
   .unwrap_or_error()
   .write(buf, offset~, len~, context="@stdio.Output::write()")
 }
+
+///|
+pub extend Output with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// The standard input channel.

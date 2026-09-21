@@ -19,6 +19,7 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/test_util",
+  "moonbitlang/async/io",
 } for "test"
 
 import {
@@ -59,6 +60,7 @@ options(
     "network_unix.mbt": [ "native", "wasm" ],
     "network_windows.mbt": [ "native", "wasm" ],
     "event_bus.mbt": [ "native" ],
+    "deprecated.mbt": [ "native", "wasm" ],
     "process.mbt": [ "native", "wasm" ],
     "process_unix.mbt": [ "native", "wasm" ],
     "process_windows.mbt": [ "native", "wasm" ],

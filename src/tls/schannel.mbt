@@ -379,6 +379,17 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 #cfg(platform="windows")
+pub extend Tls with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
+#cfg(platform="windows")
 #borrow(self, buf)
 extern "C" fn Schannel::write(
   self : Schannel,
@@ -412,6 +423,10 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
     raise TlsError(@os_error.errno_to_string(errno))
   }
 }
+
+///|
+#cfg(platform="windows")
+pub extend Tls with @io.Writer::{write_once, write, write_reader}
 
 ///|
 #cfg(platform="windows")

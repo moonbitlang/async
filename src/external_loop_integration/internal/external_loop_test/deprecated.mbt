@@ -13,18 +13,10 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
-let _ignore_unused_import : Unit = {
-  ignore(@async.sleep)
-  ignore(@fs.unimplemented)
-  ignore(@utf8.encode(""))
-  ignore(@io.Encoding::UTF8)
+#deprecated
+#doc(hidden)
+pub extend MainLoop with ExternalEventLoop::{
+  terminate,
+  poll,
+  get_wakeup_callback_for_foreign_thread,
 }
-
-///|
-#cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)

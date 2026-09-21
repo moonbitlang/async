@@ -23,9 +23,59 @@ pub impl Show for ReaderClosed with fn output(_self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend ReaderClosed with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for PipeClosed
 
 ///|
 pub impl Show for PipeClosed with fn output(_self, logger) {
   logger <+ "PipeClosed"
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend PipeClosed with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ReaderClosed with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ReaderClosed with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend ReaderClosed with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend PipeClosed with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend PipeClosed with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend PipeClosed with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend MemoryReader with Reader::{_direct_read, _get_internal_buffer}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend PipeRead with Reader::{_direct_read, _get_internal_buffer}

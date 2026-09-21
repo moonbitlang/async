@@ -219,6 +219,16 @@ pub impl @io.Reader for File with fn read_all(self) {
 }
 
 ///|
+pub extend File with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
 /// Read from a file at the offset given by `position`.
 /// Only seekable files (e.g. regular files and block devices) support this operation,
 /// calling `read_at` on unsupported file, such as pipe or socket, result in error.
@@ -273,6 +283,9 @@ pub async fn File::read_exactly_at(
 pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@fs.File::write()")
 }
+
+///|
+pub extend File with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Write to a file at the offset given by `position`.

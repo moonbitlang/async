@@ -44,6 +44,9 @@ pub impl Show for JsError with fn output(self, _logger) {
 }
 
 ///|
+pub extend JsError with Show::{to_string}
+
+///|
 /// A JavaScript `AbortController` used to cancel promises
 #external
 #internal(unimplemented, "unimplemented in native backend")
@@ -214,6 +217,16 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
   ignore(offset)
   ignore(max_len)
   abort("unimplemented in native backend")
+}
+
+///|
+pub extend ReadableStream with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
 }
 
 ///|

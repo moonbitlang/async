@@ -22,6 +22,9 @@ type BufferedWriter[W]
 pub fn[W] BufferedWriter::capacity(Self[W]) -> Int
 pub async fn[W : Writer] BufferedWriter::flush(Self[W]) -> Unit
 pub fn[W] BufferedWriter::new(W, size? : Int) -> Self[W]
+pub async fn[W : Writer] BufferedWriter::write(Self[W], &Data) -> Unit
+pub async fn[W : Writer] BufferedWriter::write_once(Self[W], Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn[W : Writer] BufferedWriter::write_reader(Self[W], &Reader) -> Unit
 pub impl[W : Writer] Writer for BufferedWriter[W]
 
 pub(all) enum Encoding {
@@ -32,14 +35,29 @@ type MemoryReader
 #callsite(autofill(loc))
 pub fn MemoryReader::MemoryReader(async (&Writer) -> Unit, loc~ : SourceLoc) -> Self
 pub fn MemoryReader::close(Self) -> Unit
+pub async fn MemoryReader::drop(Self, Int) -> Int
+pub async fn MemoryReader::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn MemoryReader::read_all(Self) -> &Data
+pub async fn MemoryReader::read_exactly(Self, Int) -> Bytes
+pub async fn MemoryReader::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn MemoryReader::read_until(Self, StringView) -> String?
 pub impl Reader for MemoryReader
 
 type PipeRead
 pub fn PipeRead::close(Self) -> Unit
+pub async fn PipeRead::drop(Self, Int) -> Int
+pub async fn PipeRead::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn PipeRead::read_all(Self) -> &Data
+pub async fn PipeRead::read_exactly(Self, Int) -> Bytes
+pub async fn PipeRead::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn PipeRead::read_until(Self, StringView) -> String?
 pub impl Reader for PipeRead
 
 type PipeWrite
 pub fn PipeWrite::close(Self) -> Unit
+pub async fn PipeWrite::write(Self, &Data) -> Unit
+pub async fn PipeWrite::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn PipeWrite::write_reader(Self, &Reader) -> Unit
 pub impl Writer for PipeWrite
 
 type ReaderBuffer

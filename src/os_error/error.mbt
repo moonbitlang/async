@@ -107,6 +107,9 @@ pub fn OSError::is_EINTR(err : OSError) -> Bool {
 }
 
 ///|
+pub extend OSError with Show::{to_string}
+
+///|
 /// Detect whether the error is the `ENOENT` (no such file or directory) error.
 pub fn OSError::is_ENOENT(err : OSError) -> Bool {
   let OSError(errno, ..) = err

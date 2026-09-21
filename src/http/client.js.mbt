@@ -148,7 +148,7 @@ pub async fn Client::flush(_ : Client) -> Unit {
 ///|
 pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
   guard! self.response_body is Some(stream)
-  stream._get_internal_buffer()
+  @io.Reader::_get_internal_buffer(stream)
 }
 
 ///|
@@ -159,7 +159,7 @@ pub impl @io.Reader for Client with fn _direct_read(
   max_len~,
 ) {
   guard! self.response_body is Some(stream)
-  stream._direct_read(buf, offset~, max_len~)
+  @io.Reader::_direct_read(stream, buf, offset~, max_len~)
 }
 
 ///|

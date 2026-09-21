@@ -77,12 +77,22 @@ pub impl Show for RequestMethod with fn output(self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend RequestMethod with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for Request
 
 ///|
 pub impl Show for Request with fn output(self, logger) {
   self.write_show(logger)
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend Request with Show::{to_string}
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
@@ -95,12 +105,22 @@ pub impl Show for Response with fn output(self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend Response with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for Protocol
 
 ///|
 pub impl Show for Protocol with fn output(self, logger) {
   self.write_show(logger)
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend Protocol with Show::{to_string}
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
@@ -114,6 +134,11 @@ pub impl Show for URIParseError with fn output(self, logger) {
       logger <+ "UnsupportedProtocol(\{Repr(protocol)})"
   }
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend URIParseError with Show::{to_string}
 
 ///|
 #cfg(any(target="native", target="wasm"))
@@ -135,6 +160,12 @@ pub impl Show for ProxyError with fn output(self, logger) {
 ///|
 #cfg(any(target="native", target="wasm"))
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend ProxyError with Show::{to_string}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for HttpProtocolError
 
 ///|
@@ -146,4 +177,187 @@ pub impl Show for HttpProtocolError with fn output(self, logger) {
       logger <+ "HttpVersionNotSupported(\{Repr(version)})"
     NotImplemented => logger <+ "NotImplemented"
   }
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend HttpProtocolError with Show::{to_string}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend ProxyError with Debug::{to_repr}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend ProxyError with ToJson::{to_json}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend ProxyError with Show::{output}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend HttpProtocolError with Debug::{to_repr}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend HttpProtocolError with ToJson::{to_json}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend HttpProtocolError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with Hash::{hash, hash_combine}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend RequestMethod with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Request with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Request with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Request with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Response with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Response with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Response with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with Hash::{hash, hash_combine}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Protocol with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend URIParseError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend URIParseError with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend URIParseError with Show::{output}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend IncorrectBodyLength with Debug::{to_repr}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend IncorrectBodyLength with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Cookie with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Cookie with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Client with @io.Reader::{_direct_read, _get_internal_buffer}
+
+///|
+#cfg(any(target="native", target="wasm"))
+#deprecated
+#doc(hidden)
+pub extend ServerConnection with @io.Reader::{
+  _direct_read,
+  _get_internal_buffer,
 }

@@ -23,9 +23,49 @@ pub impl Show for TimeoutError with fn output(_self, logger) {
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend TimeoutError with Show::{to_string}
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for TimerCancelled
 
 ///|
 pub impl Show for TimerCancelled with fn output(_self, logger) {
   logger <+ "TimerCancelled"
 }
+
+///|
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend TimerCancelled with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TimeoutError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TimeoutError with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TimeoutError with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TimerCancelled with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TimerCancelled with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend TaskCancelled with Debug::{to_repr}

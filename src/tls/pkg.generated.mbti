@@ -29,12 +29,21 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(Inner, verify? : Bool,
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(R, W, verify? : Bool, host? : String, sni? : Bool, trust? : TrustedRoot) -> Self
 pub fn Tls::close(Self) -> Unit
+pub async fn Tls::drop(Self, Int) -> Int
 pub fn Tls::get_peer_certificate(Self) -> Bytes? raise
+pub async fn Tls::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn Tls::read_all(Self) -> &@io.Data
+pub async fn Tls::read_exactly(Self, Int) -> Bytes
+pub async fn Tls::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn Tls::read_until(Self, StringView) -> String?
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(Inner, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
 pub fn Tls::server_endpoint_channel_binding(Self) -> Bytes raise
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(R, W, private_key_file~ : String, private_key_type~ : X509FileType, certificate_file~ : String, certificate_type~ : X509FileType) -> Self
 pub async fn Tls::shutdown(Self) -> Unit
 pub fn Tls::unique_channel_binding(Self) -> Bytes raise
+pub async fn Tls::write(Self, &@io.Data) -> Unit
+pub async fn Tls::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn Tls::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for Tls
 pub impl @io.Writer for Tls
 

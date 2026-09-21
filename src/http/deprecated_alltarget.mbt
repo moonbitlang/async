@@ -13,30 +13,37 @@
 // limitations under the License.
 
 ///|
-#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
-pub impl Show for QueueAlreadyClosed
+#deprecated
+#doc(hidden)
+pub extend CaseInsensitiveString with ToJson::{to_json}
 
 ///|
-pub impl Show for QueueAlreadyClosed with fn output(_self, logger) {
-  logger <+ "QueueAlreadyClosed"
+#deprecated
+#doc(hidden)
+pub extend CaseInsensitiveString with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend CaseInsensitiveString with Compare::{
+  op_lt,
+  op_le,
+  op_ge,
+  compare,
+  op_gt,
 }
 
 ///|
-#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with Show::{to_string}
+pub extend CaseInsensitiveString with Debug::{to_repr}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with Debug::{to_repr}
+pub extend CaseInsensitiveString with Show::{output}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with ToJson::{to_json}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend QueueAlreadyClosed with Show::{output}
+pub extend CaseInsensitiveString with Hash::{hash, hash_combine}

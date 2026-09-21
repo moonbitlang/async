@@ -543,6 +543,17 @@ pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
 
 ///|
 #cfg(not(platform="windows"))
+pub extend Tls with @io.Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
+#cfg(not(platform="windows"))
 pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
@@ -556,6 +567,10 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   self.transport.flush_write()
   n
 }
+
+///|
+#cfg(not(platform="windows"))
+pub extend Tls with @io.Writer::{write_once, write, write_reader}
 
 ///|
 /// Close a TLS connection and release related resource.

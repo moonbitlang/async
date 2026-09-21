@@ -90,3 +90,6 @@ pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_reader(
     self.len += n
   }
 }
+
+///|
+pub extend BufferedWriter with Writer::{write_once, write, write_reader}

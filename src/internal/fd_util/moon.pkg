@@ -8,7 +8,7 @@ import {
 options(
   "native-stub": [ "stub.c" ],
   targets: {
-    "deprecated.mbt": [ "native" ],
+    "deprecated.mbt": [ "native", "wasm" ],
     "fd_util.mbt": [ "native" ],
     "fd_util.wasm.mbt": [ "wasm" ],
     "pipe.mbt": [ "native" ],

@@ -12,6 +12,7 @@ import {
 
 options(
   targets: {
+    "deprecated.mbt": [ "native", "wasm" ],
     "pipe.mbt": [ "native", "wasm" ],
     "read_exactly_test.mbt": [ "native", "wasm" ],
     "reader_closed_test.mbt": [ "native", "wasm" ],

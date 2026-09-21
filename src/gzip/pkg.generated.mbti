@@ -13,6 +13,12 @@ import {
 type Decoder[R]
 #alias(new, deprecated)
 pub fn[R : @io.Reader] Decoder::Decoder(R) -> Self[R]
+pub async fn[R : @io.Reader] Decoder::drop(Self[R], Int) -> Int
+pub async fn[R : @io.Reader] Decoder::read(Self[R], FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn[R : @io.Reader] Decoder::read_all(Self[R]) -> &@io.Data
+pub async fn[R : @io.Reader] Decoder::read_exactly(Self[R], Int) -> Bytes
+pub async fn[R : @io.Reader] Decoder::read_some(Self[R], max_len? : Int) -> Bytes?
+pub async fn[R : @io.Reader] Decoder::read_until(Self[R], StringView) -> String?
 pub impl[R : @io.Reader] @io.Reader for Decoder[R]
 
 type Encoder[W]
@@ -20,6 +26,9 @@ type Encoder[W]
 pub fn[W] Encoder::Encoder(W, mtime? : UInt, extra_flags? : Byte, operating_system? : Byte) -> Self[W]
 pub async fn[W : @io.Writer] Encoder::end(Self[W]) -> Unit
 pub async fn[W : @io.Writer] Encoder::flush(Self[W]) -> Unit
+pub async fn[W : @io.Writer] Encoder::write(Self[W], &@io.Data) -> Unit
+pub async fn[W : @io.Writer] Encoder::write_once(Self[W], Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn[W : @io.Writer] Encoder::write_reader(Self[W], &@io.Reader) -> Unit
 pub impl[W : @io.Writer] @io.Writer for Encoder[W]
 
 // Type aliases

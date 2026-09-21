@@ -13,10 +13,12 @@
 // limitations under the License.
 
 ///|
+#cfg(target="native")
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 pub impl Show for FileKind
 
 ///|
+#cfg(target="native")
 pub impl Show for FileKind with fn output(self, logger) {
   match self {
     Unknown => logger <+ "Unknown"
@@ -29,3 +31,40 @@ pub impl Show for FileKind with fn output(self, logger) {
     CharDevice => logger <+ "CharDevice"
   }
 }
+
+///|
+#cfg(target="native")
+#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#doc(hidden)
+pub extend FileKind with Show::{to_string}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend FileKind with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend FileKind with Debug::{to_repr}
+
+///|
+#cfg(target="native")
+#deprecated
+#doc(hidden)
+pub extend FileKind with Show::{output}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend File with @io.Reader::{_direct_read, _get_internal_buffer}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend FsEvent with Eq::{not_equal, equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend FsEvent with Debug::{to_repr}

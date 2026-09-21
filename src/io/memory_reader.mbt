@@ -70,3 +70,13 @@ pub impl Reader for MemoryReader with fn _direct_read(
   self.writer.check_error()
   n
 }
+
+///|
+pub extend MemoryReader with Reader::{
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}

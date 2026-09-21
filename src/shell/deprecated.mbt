@@ -13,30 +13,26 @@
 // limitations under the License.
 
 ///|
-#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
-pub impl Show for QueueAlreadyClosed
-
-///|
-pub impl Show for QueueAlreadyClosed with fn output(_self, logger) {
-  logger <+ "QueueAlreadyClosed"
-}
-
-///|
-#deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
+#deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with Show::{to_string}
+pub extend Stdin with Debug::{to_repr}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with Debug::{to_repr}
+pub extend Redirect with Debug::{to_repr}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with ToJson::{to_json}
+pub extend Cmd with Debug::{to_repr}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend QueueAlreadyClosed with Show::{output}
+pub extend Output with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Pipeline with Debug::{to_repr}
