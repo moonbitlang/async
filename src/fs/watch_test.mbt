@@ -32,119 +32,97 @@ async fn TestFile::instantiate(self : TestFile, path : String) -> Unit {
 }
 
 ///|
-async fn make_watcher(
-  path : String,
-  report_child_event? : Bool,
-  report_event_on_init? : Bool,
-  ignored_paths? : (String) -> Bool,
-) -> @fs.Watcher {
-  Watcher(
-    path,
-    report_child_event?,
-    report_event_on_init?,
-    ignored_paths?,
-    debounce_timeout=50,
-    max_debounce_delay=80,
-  )
-}
-
-///|
 async fn watch_basic_test(
   path : String,
   report_child_event~ : Bool,
 ) -> Array[String] {
   let log = []
-  @async.with_task_group(group => {
-    let test_dir = Dir({
-      "root_file": File("abcd"),
-      "inner_dir": Dir({ "inner_file": File("efgh") }),
-    })
-    test_dir.instantiate(path)
-    group.add_defer(() => {
-      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
-    })
-
-    let watcher = make_watcher(path, report_child_event~)
-    group.spawn_bg(no_wait=true, () => {
-      defer watcher.close()
-      for ;; {
-        let events = watcher.wait()
-        log.push("watcher received change: \{Repr(events)}")
-      }
-    })
-    // 1. modify content of existing file at root
-    log.push("writing to root file")
-    @fs.write_file("\{path}/root_file", "ABCD", create_mode=OpenExisting)
-    @async.sleep(150)
-
-    // 2. modify content of existing file at inner directory
-    log.push("writing to inner file")
-    @fs.write_file(
-      "\{path}/inner_dir/inner_file",
-      "EFGH",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 3. create file in root directory
-    {
-      log.push("creating new file in root directory")
-      let file = @fs.create("\{path}/root_file2")
-      defer file.close()
-      @async.sleep(150)
-
-      // 4. modify content of newly created file at root directory
-      log.push("writing to newly created root file")
-      file.write("ABCD")
-    }
-    @async.sleep(150)
-
-    // 5. create file in inner directory
-    {
-      log.push("creating new file in inner directory")
-      let file = @fs.create("\{path}/inner_dir/inner_file2")
-      defer file.close()
-      @async.sleep(150)
-
-      // 6. modify content of newly created file at inner directory
-      log.push("writing to newly created inner file")
-      file.write("EFGH")
-    }
-    @async.sleep(150)
-
-    // 7. remove a file in root directory
-    log.push("removing file in root directory")
-    @fs.remove("\{path}/root_file")
-    @async.sleep(150)
-
-    // 8. remove a file in inner directory
-    log.push("removing file in inner directory")
-    @fs.remove("\{path}/inner_dir/inner_file2")
-    @async.sleep(150)
-
-    // 9. remove inner directory recursively
-    log.push("removing inner directory")
-    @fs.rmdir("\{path}/inner_dir", recursive=true)
-    @async.sleep(150)
-
-    // 10. create new inner directory
-    log.push("creating new directory in root directory")
-    @fs.mkdir("\{path}/inner_dir")
-    @async.sleep(150)
-
-    // 11. create new file in newly created inner directory
-    {
-      log.push("creating new file in inner directory")
-      let file = @fs.create("\{path}/inner_dir/inner_file")
-      defer file.close()
-      @async.sleep(150)
-
-      // 12. modify content of newly created file at newly created inner directory
-      log.push("writing to newly created inner file")
-      file.write("EFGH")
-    }
-    @async.sleep(150)
+  let test_dir = Dir({
+    "root_file": File("abcd"),
+    "inner_dir": Dir({ "inner_file": File("efgh") }),
   })
+  test_dir.instantiate(path)
+  defer @fs.rmdir(path, recursive=true)
+
+  let watcher = @fs.Watcher(path, report_child_event~)
+  defer watcher.close()
+
+  async fn wait() {
+    let events = @async.with_timeout(300, () => watcher.wait())
+    log.push("watcher received change: \{Repr(events)}")
+  }
+  // 1. modify content of existing file at root
+  log.push("writing to root file")
+  @fs.write_file("\{path}/root_file", "ABCD", create_mode=OpenExisting)
+  wait()
+
+  // 2. modify content of existing file at inner directory
+  log.push("writing to inner file")
+  @fs.write_file(
+    "\{path}/inner_dir/inner_file",
+    "EFGH",
+    create_mode=OpenExisting,
+  )
+  wait()
+
+  // 3. create file in root directory
+  {
+    log.push("creating new file in root directory")
+    let file = @fs.create("\{path}/root_file2")
+    defer file.close()
+    wait()
+
+    // 4. modify content of newly created file at root directory
+    log.push("writing to newly created root file")
+    file.write("ABCD")
+  }
+  wait()
+
+  // 5. create file in inner directory
+  {
+    log.push("creating new file in inner directory")
+    let file = @fs.create("\{path}/inner_dir/inner_file2")
+    defer file.close()
+    wait()
+
+    // 6. modify content of newly created file at inner directory
+    log.push("writing to newly created inner file")
+    file.write("EFGH")
+  }
+  wait()
+
+  // 7. remove a file in root directory
+  log.push("removing file in root directory")
+  @fs.remove("\{path}/root_file")
+  wait()
+
+  // 8. remove a file in inner directory
+  log.push("removing file in inner directory")
+  @fs.remove("\{path}/inner_dir/inner_file2")
+  wait()
+
+  // 9. remove inner directory recursively
+  log.push("removing inner directory")
+  @fs.rmdir("\{path}/inner_dir", recursive=true)
+  wait()
+
+  // 10. create new inner directory
+  log.push("creating new directory in root directory")
+  @fs.mkdir("\{path}/inner_dir")
+  wait()
+
+  // 11. create new file in newly created inner directory
+  {
+    log.push("creating new file in inner directory")
+    let file = @fs.create("\{path}/inner_dir/inner_file")
+    defer file.close()
+    wait()
+
+    // 12. modify content of newly created file at newly created inner directory
+    log.push("writing to newly created inner file")
+    file.write("EFGH")
+  }
+  wait()
   log
 }
 
@@ -228,67 +206,62 @@ async fn watch_rename_within_test(
   report_child_event~ : Bool,
 ) -> Array[String] {
   let log = []
-  @async.with_task_group(group => {
-    let test_dir = Dir({
-      "root_file": File("abcd"),
-      "inner_dir": Dir({ "inner_file": File("efgh") }),
-    })
-    test_dir.instantiate(path)
-    group.add_defer(() => {
-      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
-    })
-
-    let watcher = make_watcher(path, report_child_event~)
-    group.spawn_bg(no_wait=true, () => {
-      defer watcher.close()
-      for ;; {
-        let events = watcher.wait()
-        log.push("watcher received change: \{Repr(events)}")
-      }
-    })
-    // 1. rename within the same directory
-    log.push("rename: inner_dir/inner_file => inner_dir/inner_file2")
-    @fs.rename("\{path}/inner_dir/inner_file", "\{path}/inner_dir/inner_file2")
-    @async.sleep(150)
-
-    // 2. modify file renamed within the same directory
-    log.push("writing to inner_dir/inner_file2")
-    @fs.write_file(
-      "\{path}/inner_dir/inner_file2",
-      "efgh",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 3. rename directory
-    log.push("rename: inner_dir => inner_dir2")
-    @fs.rename("\{path}/inner_dir", "\{path}/inner_dir2")
-    @async.sleep(150)
-
-    // 4. modify file within renamed directory
-    log.push("writing to inner_dir2/inner_file2")
-    @fs.write_file(
-      "\{path}/inner_dir2/inner_file2",
-      "EFGH",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 5. rename across directory, but within watched tree
-    log.push("rename: inner_dir2/inner_file2 => root_file2")
-    @fs.rename("\{path}/inner_dir2/inner_file2", "\{path}/root_file2")
-    @async.sleep(150)
-
-    // 6. modify file moved across directory but still within watched tree
-    log.push("writing to root_file2")
-    @fs.write_file("\{path}/root_file2", "EFGH", create_mode=OpenExisting)
-    @async.sleep(150)
-
-    // 7. rename file replaces existing file
-    log.push("rename root_file2 to replace root_file")
-    @fs.rename("\{path}/root_file2", "\{path}/root_file")
-    @async.sleep(150)
+  let test_dir = Dir({
+    "root_file": File("abcd"),
+    "inner_dir": Dir({ "inner_file": File("efgh") }),
   })
+  test_dir.instantiate(path)
+  defer @fs.rmdir(path, recursive=true)
+
+  let watcher = @fs.Watcher(path, report_child_event~)
+  defer watcher.close()
+
+  async fn wait() {
+    let events = @async.with_timeout(300, () => watcher.wait())
+    log.push("watcher received change: \{Repr(events)}")
+  }
+  // 1. rename within the same directory
+  log.push("rename: inner_dir/inner_file => inner_dir/inner_file2")
+  @fs.rename("\{path}/inner_dir/inner_file", "\{path}/inner_dir/inner_file2")
+  wait()
+
+  // 2. modify file renamed within the same directory
+  log.push("writing to inner_dir/inner_file2")
+  @fs.write_file(
+    "\{path}/inner_dir/inner_file2",
+    "efgh",
+    create_mode=OpenExisting,
+  )
+  wait()
+
+  // 3. rename directory
+  log.push("rename: inner_dir => inner_dir2")
+  @fs.rename("\{path}/inner_dir", "\{path}/inner_dir2")
+  wait()
+
+  // 4. modify file within renamed directory
+  log.push("writing to inner_dir2/inner_file2")
+  @fs.write_file(
+    "\{path}/inner_dir2/inner_file2",
+    "EFGH",
+    create_mode=OpenExisting,
+  )
+  wait()
+
+  // 5. rename across directory, but within watched tree
+  log.push("rename: inner_dir2/inner_file2 => root_file2")
+  @fs.rename("\{path}/inner_dir2/inner_file2", "\{path}/root_file2")
+  wait()
+
+  // 6. modify file moved across directory but still within watched tree
+  log.push("writing to root_file2")
+  @fs.write_file("\{path}/root_file2", "EFGH", create_mode=OpenExisting)
+  wait()
+
+  // 7. rename file replaces existing file
+  log.push("rename root_file2 to replace root_file")
+  @fs.rename("\{path}/root_file2", "\{path}/root_file")
+  wait()
   log
 }
 
@@ -352,104 +325,107 @@ async fn watch_rename_inout_test(
   report_child_event~ : Bool,
 ) -> Array[String] {
   let log = []
-  @async.with_task_group(group => {
-    let test_dir = Dir({
-      "watched": Dir({
-        "root_file": File("abcd"),
-        "inner_dir": Dir({ "inner_file": File("efgh") }),
-      }),
-    })
-    test_dir.instantiate(base_path)
-    group.add_defer(() => {
-      @async.protect_from_cancel(() => @fs.rmdir(base_path, recursive=true))
-    })
-    let watched_path = "\{base_path}/watched"
-
-    let watcher = make_watcher(watched_path, report_child_event~)
-    group.spawn_bg(no_wait=true, () => {
-      defer watcher.close()
-      for ;; {
-        let events = watcher.wait()
-        log.push("watcher received change: \{Repr(events)}")
-      }
-    })
-    // 1. move foreign file inside watched tree
-    @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
-    log.push("moving foreign file inside watched tree")
-    @fs.rename("\{base_path}/foreign_file", "\{watched_path}/moved_in_file")
-    @async.sleep(150)
-
-    // 2. modify moved in file
-    log.push("writing to moved_in_file")
-    @fs.write_file(
-      "\{watched_path}/moved_in_file",
-      "5678",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 3. move foreign directory inside watched tree
-    let foreign_dir = Dir({ "foreign_file": File("xyzw") })
-    foreign_dir.instantiate("\{base_path}/foreign_dir")
-    log.push("moving foreign directory inside watched tree")
-    @fs.rename("\{base_path}/foreign_dir", "\{watched_path}/moved_in_dir")
-    @async.sleep(150)
-
-    // 4. modify file within moved in directory
-    log.push("writing to moved_in_dir/foreign_file")
-    @fs.write_file(
-      "\{watched_path}/moved_in_dir/foreign_file",
-      "XYZW",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 5. move file outside watched tree
-    log.push("moving file outside watched tree")
-    @fs.rename("\{watched_path}/moved_in_file", "\{base_path}/moved_out_file")
-    @async.sleep(150)
-
-    // 6. modify moved out file
-    log.push("writing to moved_out_file")
-    @fs.write_file(
-      "\{base_path}/moved_out_file",
-      "1234",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 7. remove moved out file
-    log.push("removing moved out file")
-    @fs.remove("\{base_path}/moved_out_file")
-    @async.sleep(150)
-
-    // 8. move directory outside watched tree
-    log.push("moving directory outside watched tree")
-    @fs.rename("\{watched_path}/moved_in_dir", "\{base_path}/moved_out_dir")
-    @async.sleep(150)
-
-    // 9. modify file inside moved out directoy
-    log.push("writing to moved_out_dir/foreign_file")
-    @fs.write_file(
-      "\{base_path}/moved_out_dir/foreign_file",
-      "xyzw",
-      create_mode=OpenExisting,
-    )
-    @async.sleep(150)
-
-    // 10. remove moved out file
-    log.push("removing moved out directory")
-    @fs.rmdir("\{base_path}/moved_out_dir", recursive=true)
-    @async.sleep(150)
-
-    // 11. moved in file overwrites existing file
-    log.push("renaming foreign file to replace root_file")
-    @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
-    @fs.rename("\{base_path}/foreign_file", "\{watched_path}/root_file")
-    @async.sleep(150)
-
-    // 12. moved in directory cannot replace existing directory: forbidden by OS
+  let test_dir = Dir({
+    "watched": Dir({
+      "root_file": File("abcd"),
+      "inner_dir": Dir({ "inner_file": File("efgh") }),
+    }),
   })
+  test_dir.instantiate(base_path)
+  defer @fs.rmdir(base_path, recursive=true)
+  let watched_path = "\{base_path}/watched"
+
+  let watcher = @fs.Watcher(watched_path, report_child_event~)
+  defer watcher.close()
+
+  async fn wait() {
+    let events = @async.with_timeout(300, () => watcher.wait())
+    log.push("watcher received change: \{Repr(events)}")
+  }
+  // 1. move foreign file inside watched tree
+  @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
+  log.push("moving foreign file inside watched tree")
+  @fs.rename("\{base_path}/foreign_file", "\{watched_path}/moved_in_file")
+  wait()
+
+  // 2. modify moved in file
+  log.push("writing to moved_in_file")
+  @fs.write_file(
+    "\{watched_path}/moved_in_file",
+    "5678",
+    create_mode=OpenExisting,
+  )
+  wait()
+
+  // 3. move foreign directory inside watched tree
+  let foreign_dir = Dir({ "foreign_file": File("xyzw") })
+  foreign_dir.instantiate("\{base_path}/foreign_dir")
+  log.push("moving foreign directory inside watched tree")
+  @fs.rename("\{base_path}/foreign_dir", "\{watched_path}/moved_in_dir")
+  wait()
+
+  // 4. modify file within moved in directory
+  log.push("writing to moved_in_dir/foreign_file")
+  @fs.write_file(
+    "\{watched_path}/moved_in_dir/foreign_file",
+    "XYZW",
+    create_mode=OpenExisting,
+  )
+  wait()
+
+  // 5. move file outside watched tree
+  log.push("moving file outside watched tree")
+  @fs.rename("\{watched_path}/moved_in_file", "\{base_path}/moved_out_file")
+  wait()
+
+  // 6. modify moved out file
+  log.push("writing to moved_out_file")
+  @fs.write_file(
+    "\{base_path}/moved_out_file",
+    "1234",
+    create_mode=OpenExisting,
+  )
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 7. remove moved out file
+  log.push("removing moved out file")
+  @fs.remove("\{base_path}/moved_out_file")
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 8. move directory outside watched tree
+  log.push("moving directory outside watched tree")
+  @fs.rename("\{watched_path}/moved_in_dir", "\{base_path}/moved_out_dir")
+  wait()
+
+  // 9. modify file inside moved out directoy
+  log.push("writing to moved_out_dir/foreign_file")
+  @fs.write_file(
+    "\{base_path}/moved_out_dir/foreign_file",
+    "xyzw",
+    create_mode=OpenExisting,
+  )
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 10. remove moved out file
+  log.push("removing moved out directory")
+  @fs.rmdir("\{base_path}/moved_out_dir", recursive=true)
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 11. moved in file overwrites existing file
+  log.push("renaming foreign file to replace root_file")
+  @fs.write_file("\{base_path}/foreign_file", "1234", create_mode=CreateNew)
+  @fs.rename("\{base_path}/foreign_file", "\{watched_path}/root_file")
+  wait()
+
+  // 12. moved in directory cannot replace existing directory: forbidden by OS
   log
 }
 
@@ -524,7 +500,7 @@ async test "watch horizontal swap" {
     group.add_defer(() => {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
-    let watcher = make_watcher(path)
+    let watcher = @fs.Watcher(path)
     defer watcher.close()
     @fs.rename("\{path}/file1", "\{path}/tmp")
     @fs.rename("\{path}/file2", "\{path}/file1")
@@ -565,7 +541,7 @@ async fn watch_vertical_swap_test(
     group.add_defer(() => {
       @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
     })
-    let watcher = make_watcher(path, report_child_event~)
+    let watcher = @fs.Watcher(path, report_child_event~)
     defer watcher.close()
     log.push("performing vertical swapping")
     @fs.rename("\{path}/outer/inner", "\{path}/tmp")
@@ -633,145 +609,156 @@ async test "watch vertical swap with child" {
 ///|
 async test "watch ignored path" {
   let log = []
-  @async.with_task_group(group => {
-    let path = "_build/watch_ignored_path_test"
-    let test_dir = Dir({
-      "ignored": Dir({ "file": File("abcd") }),
-      "normal": Dir({ "file": File("efgh") }),
-    })
-    test_dir.instantiate(path)
-    group.add_defer(() => {
-      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
-    })
-
-    let watcher = make_watcher(path, ignored_paths=path => path is "ignored")
-    group.spawn_bg(no_wait=true, () => {
-      defer watcher.close()
-      for ;; {
-        watcher.wait_any()
-        log.push("watcher received change")
-      }
-    })
-
-    // 1. modify file in ignored path
-    log.push("writing to ignored/file")
-    @fs.write_file("\{path}/ignored/file", "ABCD", create_mode=OpenExisting)
-    @async.sleep(150)
-
-    // 2. modify file in normal path
-    log.push("writing to normal/file")
-    @fs.write_file("\{path}/normal/file", "EFGH", create_mode=OpenExisting)
-    @async.sleep(150)
-
-    // 3. create file in ignored directory
-    {
-      log.push("creating new file in ignored directory")
-      let file = @fs.create("\{path}/ignored/file2")
-      defer file.close()
-      @async.sleep(150)
-
-      // 4. modify content of newly created file at ignored directory
-      log.push("writing to newly created file in ignored directory")
-      file.write("ABCD")
-    }
-    @async.sleep(150)
-
-    // 5. create file in normal directory
-    {
-      log.push("creating new file in normal directory")
-      let file = @fs.create("\{path}/normal/file2")
-      defer file.close()
-      @async.sleep(150)
-
-      // 6. modify content of newly created file at normal directory
-      log.push("writing to newly created file in normal directory")
-      file.write("EFGH")
-    }
-    @async.sleep(150)
-
-    // 7. remove a file in ignored directory
-    log.push("removing file in ignored directory")
-    @fs.remove("\{path}/ignored/file")
-    @async.sleep(150)
-
-    // 8. remove a file in normal directory
-    log.push("removing file in normal directory")
-    @fs.remove("\{path}/normal/file")
-    @async.sleep(150)
-
-    // 9. remove ignored directory
-    log.push("removing ignored directory")
-    @fs.rmdir("\{path}/ignored", recursive=true)
-    @async.sleep(150)
-
-    // 10. remove normal directory
-    log.push("removing normal directory")
-    @fs.rmdir("\{path}/normal", recursive=true)
-    @async.sleep(150)
-
-    // 11. re-create directory at ignored path
-    log.push("re-creating directory at ignored path")
-    @fs.mkdir("\{path}/ignored")
-    @async.sleep(150)
-
-    // 12. create new file in re-created ignored path
-    {
-      log.push("creating new file in re-created directory at ignored path")
-      let file = @fs.create("\{path}/ignored/file")
-      defer file.close()
-      @async.sleep(150)
-
-      // 13. create new file in re-created ignored path
-      log.push("writing to newly created file in ignored directory")
-      file.write("ABCD")
-    }
-    @async.sleep(150)
-
-    // 14. re-create directory at normal path
-    log.push("re-creating directory at normal path")
-    @fs.mkdir("\{path}/normal")
-    @async.sleep(150)
-
-    // 15. create new file in re-created normal path
-    {
-      log.push("creating new file in re-created directory at normal path")
-      let file = @fs.create("\{path}/normal/file")
-      defer file.close()
-      @async.sleep(150)
-
-      // 16. create new file in re-created normal path
-      log.push("writing to newly created file in normal directory")
-      file.write("EFGH")
-    }
-    @async.sleep(150)
+  let path = "_build/watch_ignored_path_test"
+  let test_dir = Dir({
+    "ignored": Dir({ "file": File("abcd") }),
+    "normal": Dir({ "file": File("efgh") }),
   })
+  test_dir.instantiate(path)
+  defer @fs.rmdir(path, recursive=true)
+
+  let watcher = @fs.Watcher(path, ignored_paths=path => path is "ignored")
+  defer watcher.close()
+
+  async fn wait() {
+    let events = @async.with_timeout(300, () => watcher.wait())
+    log.push("watcher received change: \{Repr(events)}")
+  }
+
+  // 1. modify file in ignored path
+  log.push("writing to ignored/file")
+  @fs.write_file("\{path}/ignored/file", "ABCD", create_mode=OpenExisting)
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 2. modify file in normal path
+  log.push("writing to normal/file")
+  @fs.write_file("\{path}/normal/file", "EFGH", create_mode=OpenExisting)
+  wait()
+
+  // 3. create file in ignored directory
+  {
+    log.push("creating new file in ignored directory")
+    let file = @fs.create("\{path}/ignored/file2")
+    defer file.close()
+    assert_true(
+      @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+    )
+
+    // 4. modify content of newly created file at ignored directory
+    log.push("writing to newly created file in ignored directory")
+    file.write("ABCD")
+  }
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 5. create file in normal directory
+  {
+    log.push("creating new file in normal directory")
+    let file = @fs.create("\{path}/normal/file2")
+    defer file.close()
+    wait()
+
+    // 6. modify content of newly created file at normal directory
+    log.push("writing to newly created file in normal directory")
+    file.write("EFGH")
+  }
+  wait()
+
+  // 7. remove a file in ignored directory
+  log.push("removing file in ignored directory")
+  @fs.remove("\{path}/ignored/file")
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 8. remove a file in normal directory
+  log.push("removing file in normal directory")
+  @fs.remove("\{path}/normal/file")
+  wait()
+
+  // 9. remove ignored directory
+  log.push("removing ignored directory")
+  @fs.rmdir("\{path}/ignored", recursive=true)
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 10. remove normal directory
+  log.push("removing normal directory")
+  @fs.rmdir("\{path}/normal", recursive=true)
+  wait()
+
+  // 11. re-create directory at ignored path
+  log.push("re-creating directory at ignored path")
+  @fs.mkdir("\{path}/ignored")
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 12. create new file in re-created ignored path
+  {
+    log.push("creating new file in re-created directory at ignored path")
+    let file = @fs.create("\{path}/ignored/file")
+    defer file.close()
+    assert_true(
+      @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+    )
+
+    // 13. create new file in re-created ignored path
+    log.push("writing to newly created file in ignored directory")
+    file.write("ABCD")
+  }
+  assert_true(
+    @test_util.expect_error_async(() => wait()) is @async.TimeoutError,
+  )
+
+  // 14. re-create directory at normal path
+  log.push("re-creating directory at normal path")
+  @fs.mkdir("\{path}/normal")
+  wait()
+
+  // 15. create new file in re-created normal path
+  {
+    log.push("creating new file in re-created directory at normal path")
+    let file = @fs.create("\{path}/normal/file")
+    defer file.close()
+    wait()
+
+    // 16. create new file in re-created normal path
+    log.push("writing to newly created file in normal directory")
+    file.write("EFGH")
+  }
+  wait()
   inspect(
     log.join("\n"),
     content=(
       #|writing to ignored/file
       #|writing to normal/file
-      #|watcher received change
+      #|watcher received change: [Modify("normal/file")]
       #|creating new file in ignored directory
       #|writing to newly created file in ignored directory
       #|creating new file in normal directory
-      #|watcher received change
+      #|watcher received change: [Create("normal/file2")]
       #|writing to newly created file in normal directory
-      #|watcher received change
+      #|watcher received change: [Modify("normal/file2")]
       #|removing file in ignored directory
       #|removing file in normal directory
-      #|watcher received change
+      #|watcher received change: [Remove("normal/file")]
       #|removing ignored directory
       #|removing normal directory
-      #|watcher received change
+      #|watcher received change: [Remove("normal")]
       #|re-creating directory at ignored path
       #|creating new file in re-created directory at ignored path
       #|writing to newly created file in ignored directory
       #|re-creating directory at normal path
-      #|watcher received change
+      #|watcher received change: [Create("normal")]
       #|creating new file in re-created directory at normal path
-      #|watcher received change
+      #|watcher received change: [Create("normal/file")]
       #|writing to newly created file in normal directory
-      #|watcher received change
+      #|watcher received change: [Modify("normal/file")]
     ),
   )
 }
@@ -782,28 +769,88 @@ async test "watch init event" {
     "root_file": File("abcd"),
     "inner_dir": Dir({ "inner_file": File("efgh") }),
   })
-  @async.with_task_group <| group => {
-    let path = "_build/watch_init_event_test"
-    test_dir.instantiate(path)
-    group.add_defer(() => {
-      @async.protect_from_cancel(() => @fs.rmdir(path, recursive=true))
-    })
+  let path = "_build/watch_init_event_test"
+  test_dir.instantiate(path)
+  defer @fs.rmdir(path, recursive=true)
 
-    let watcher = make_watcher(
-      path,
-      report_event_on_init=true,
-      report_child_event=true,
+  let watcher = @fs.Watcher(
+    path,
+    report_event_on_init=true,
+    report_child_event=true,
+  )
+  defer watcher.close()
+  debug_inspect(
+    @async.with_timeout(1000, () => watcher.wait()),
+    content=(
+      #|[
+      #|  Create("inner_dir"),
+      #|  Create("inner_dir/inner_file"),
+      #|  Create("root_file"),
+      #|]
+    ),
+  )
+}
+
+///|
+async test "watch debounce" {
+  let test_dir = Dir({ "watched": Dir({ "file": File("abcd") }) })
+  let path = "_build/watch_debounce_test"
+  let watched_path = "\{path}/watched"
+  test_dir.instantiate(path)
+  defer @fs.rmdir(path, recursive=true)
+
+  let log = StringBuilder()
+  @async.with_task_group <| group => {
+    let watcher = @fs.Watcher(
+      watched_path,
+      debounce_timeout=400,
+      max_debounce_delay=600,
     )
-    defer watcher.close()
-    debug_inspect(
-      @async.with_timeout(1000, () => watcher.wait()),
-      content=(
-        #|[
-        #|  Create("inner_dir"),
-        #|  Create("inner_dir/inner_file"),
-        #|  Create("root_file"),
-        #|]
-      ),
-    )
+    group.spawn_bg(no_wait=true) <| () => {
+      defer watcher.close()
+      for ;; {
+        let events = watcher.wait()
+        log.write("watcher received: \{Repr(events)}\n")
+      }
+    }
+
+    // 1. multiple events happen within debounce interval
+    log.write("rename happen within debounce interval\n")
+    @fs.rename("\{watched_path}/file", "\{path}/file")
+    @async.sleep(200)
+    @fs.rename("\{path}/file", "\{watched_path}/file2")
+    @async.sleep(600)
+
+    // 2. exceed debounce interval
+    log.write("rename longer than debounce interval\n")
+    @fs.rename("\{watched_path}/file2", "\{path}/file")
+    @async.sleep(500)
+    @fs.rename("\{path}/file", "\{watched_path}/file")
+    @async.sleep(600)
+
+    // 3. exceed max interval
+    log.write("rename exceed max debounce delay\n")
+    @fs.write_file("\{watched_path}/file", "xyzw")
+    @async.sleep(250)
+    @fs.rename("\{watched_path}/file", "\{path}/file")
+    @async.sleep(250)
+    @fs.write_file("\{watched_path}/another_file", "1234")
+    @async.sleep(250)
+    @fs.rename("\{path}/file", "\{watched_path}/file2")
+    @async.sleep(600)
   }
+  inspect(
+    log,
+    content=(
+      #|rename happen within debounce interval
+      #|watcher received: [Rename(old="file", new="file2")]
+      #|rename longer than debounce interval
+      #|watcher received: [Remove("file2")]
+      #|watcher received: [Create("file")]
+      #|rename exceed max debounce delay
+      #|watcher received: [Create("another_file"), Remove("file")]
+      #|watcher received: [Create("file2")]
+      #|
+    ),
+  )
 }
