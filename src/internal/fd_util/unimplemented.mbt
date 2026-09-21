@@ -19,6 +19,6 @@
 pub let unimplemented : Unit = {
   ignore(@os_error.unimplemented)
   ignore(@os_string.unimplemented)
-  ignore(@env_util.eprintln)
+  ignore((_ : @env_util.Platform) => ())
   ignore((_x : @types.Fd) => ())
 }

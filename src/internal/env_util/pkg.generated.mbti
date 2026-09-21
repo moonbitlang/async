@@ -8,8 +8,6 @@ import {
 // Values
 pub let current_process : UInt
 
-pub fn eprintln(String) -> Unit
-
 pub let platform : @types.Platform
 
 // Errors

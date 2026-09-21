@@ -26,17 +26,6 @@ fn get_pid() -> UInt = "moonbitlang/async" "env_util/getpid"
 pub let current_process : UInt = get_pid()
 
 ///|
-#cfg(target="native")
-#borrow(msg)
-pub extern "C" fn eprintln(msg : String) -> Unit = "moonbitlang_async_eprintln"
-
-///|
-#cfg(not(target="native"))
-pub fn eprintln(msg : String) -> Unit {
-  println(msg)
-}
-
-///|
 pub using @types {type Platform}
 
 ///|
