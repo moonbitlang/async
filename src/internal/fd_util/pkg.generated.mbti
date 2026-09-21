@@ -32,6 +32,7 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
+  Console
 } derive(Eq, @debug.Debug)
 pub fn FileKind::can_poll(Self) -> Bool
 pub fn FileKind::unsafe_from_int(Int) -> Self
