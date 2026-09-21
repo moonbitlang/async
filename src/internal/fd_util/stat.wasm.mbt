@@ -22,6 +22,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
+  Console = 8
 } derive(Eq, Debug)
 
 ///|
@@ -30,7 +31,7 @@ pub fn FileKind::unsafe_from_int(value : Int) -> FileKind = "%identity"
 ///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {
   match self {
-    Socket | Pipe | CharDevice => true
+    Socket | Pipe | CharDevice | Console => true
     Unknown | Regular | Directory | SymLink | BlockDevice => false
   }
 }

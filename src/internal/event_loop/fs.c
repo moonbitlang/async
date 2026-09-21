@@ -112,7 +112,8 @@ enum FileKind {
   Socket = 4,
   Pipe = 5,
   BlockDevice = 6,
-  CharDevice = 7
+  CharDevice = 7,
+  Console = 8
 };
 
 struct FileSpec {
@@ -249,7 +250,10 @@ int32_t get_file_type_no_dir_check(HANDLE handle) {
   DWORD kind = GetFileType(handle);
   switch (kind) {
     case FILE_TYPE_DISK: return Regular;
-    case FILE_TYPE_CHAR: return CharDevice;
+    case FILE_TYPE_CHAR: {
+      DWORD mode;
+      return GetConsoleMode(handle, &mode) ? Console : CharDevice;
+    }
     case FILE_TYPE_PIPE: {
       int opt = 0, opt_len = sizeof(int);
       if (0 == getsockopt((SOCKET)handle, SOL_SOCKET, SO_TYPE, (char*)&opt, &opt_len)) {
@@ -645,7 +649,10 @@ exit:
             output->properties[offset++] = BlockDevice;
             break;
           case S_IFCHR:
-            output->properties[offset++] = CharDevice;
+            output->properties[offset++] =
+              file->kind == BY_HANDLE && isatty(file->fd)
+              ? Console
+              : CharDevice;
             break;
           default:
             output->properties[offset++] = UnknownFileKind;
@@ -803,7 +810,10 @@ exit:
           output->properties[0] = BlockDevice;
           break;
         case S_IFCHR:
-          output->properties[0] = CharDevice;
+          output->properties[0] =
+            file->kind == BY_HANDLE && isatty(file->fd)
+            ? Console
+            : CharDevice;
           break;
         default:
           output->properties[0] = UnknownFileKind;

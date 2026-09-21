@@ -27,4 +27,18 @@ pub(all) enum FileKind {
 ///|
 // currently we cannot re-export constructors,
 // so we have to use a hack to make the `FileKind` type available to users.
-fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind = "%identity"
+fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind {
+  match k {
+    Unknown => Unknown
+    Regular => Regular
+    Directory => Directory
+    SymLink => SymLink
+    Socket => Socket
+    Pipe => Pipe
+    BlockDevice => BlockDevice
+    CharDevice => CharDevice
+    Console =>
+      // For backward compatibility
+      CharDevice
+  }
+}
