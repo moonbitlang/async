@@ -21,14 +21,17 @@
 ///
 /// If `recursive=true` (`false` by default), non-existing parent directories
 /// of `path` will be recursively created, too.
+/// In this mode it is not an error if `path` is already a directory (like `mkdir -p`),
+/// so concurrent tasks may create directories under a shared parent.
 pub async fn mkdir(
   path : StringView,
   permission? : Int = 0o755,
   recursive? : Bool = false,
 ) -> Unit {
   let context = "@fs.mkdir()"
-  @event_loop.mkdir(path, mode=permission, context~) catch {
-    @os_error.OSError(_) as err if recursive && err.is_ENOENT() => {
+  guard recursive else { @event_loop.mkdir(path, mode=permission, context~) }
+  mkdir_unless_directory(path, permission~, context~) catch {
+    @os_error.OSError(_) as err if err.is_ENOENT() => {
       let last_path_sep_index = match path.rev_find("/") {
         Some(index) => index
         None if @event_loop.platform is Windows &&
@@ -42,7 +45,25 @@ pub async fn mkdir(
         parent
       }
       mkdir(parent, permission~, recursive~)
-      @event_loop.mkdir(path, mode=permission, context~)
+      mkdir_unless_directory(path, permission~, context~)
+    }
+    err => raise err
+  }
+}
+
+///|
+/// Create a directory at `path`, succeeding if a directory is already there.
+/// Another task or process may create `path` or one of its parents
+/// at any point during a recursive `mkdir`.
+async fn mkdir_unless_directory(
+  path : StringView,
+  permission~ : Int,
+  context~ : String,
+) -> Unit {
+  @event_loop.mkdir(path, mode=permission, context~) catch {
+    @os_error.OSError(_) as err if err.is_EEXIST() => {
+      let kind = kind(path) catch { _ => raise err }
+      guard kind is Directory else { raise err }
     }
     err => raise err
   }
