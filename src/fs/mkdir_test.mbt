@@ -62,3 +62,42 @@ async test "mkdir recursive windows" {
   json_inspect(@fs.readdir("\{base_path}\\test"), content=["directory"])
   json_inspect(@fs.readdir("\{base_path}\\test/directory"), content=[])
 }
+
+///|
+async test "mkdir recursive existing directory" {
+  @async.with_task_group() <| group => {
+    let base_path = "_build/recursive_mkdir_existing"
+    let path = "\{base_path}/directory"
+    @fs.mkdir(path, recursive=true)
+    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    @fs.mkdir(path, recursive=true)
+    @fs.mkdir("\{path}/", recursive=true)
+    // without `recursive`, an existing directory is still an error
+    @test_util.assert_raise_async(() => @fs.mkdir(path))
+    // an existing non-directory is an error in both modes
+    let file = "\{base_path}/file"
+    @fs.write_file(file, "", create_mode=CreateOrTruncate)
+    @test_util.assert_raise_async(() => @fs.mkdir(file, recursive=true))
+    json_inspect(@fs.readdir(base_path, sort=true), content=[
+      "file", "directory",
+    ])
+  }
+}
+
+///|
+async test "mkdir recursive concurrent with shared parents" {
+  @async.with_task_group() <| group => {
+    let base_path = "_build/recursive_mkdir_concurrent"
+    group.add_defer(() => @fs.rmdir(base_path, recursive=true))
+    @async.with_task_group() <| workers => {
+      for i in 0..<8 {
+        workers.spawn_bg(() => {
+          @fs.mkdir("\{base_path}/shared/parent/\{i}", recursive=true)
+        })
+      }
+    }
+    json_inspect(@fs.readdir("\{base_path}/shared/parent", sort=true), content=[
+      "0", "1", "2", "3", "4", "5", "6", "7",
+    ])
+  }
+}
