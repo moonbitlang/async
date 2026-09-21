@@ -804,7 +804,7 @@ async test "watch debounce" {
     let watcher = @fs.Watcher(
       watched_path,
       debounce_timeout=400,
-      max_debounce_delay=600,
+      max_debounce_delay=650,
     )
     group.spawn_bg(no_wait=true) <| () => {
       defer watcher.close()
@@ -830,12 +830,13 @@ async test "watch debounce" {
 
     // 3. exceed max interval
     log.write("rename exceed max debounce delay\n")
+    let timers = [@async.Timer(250), @async.Timer(500), @async.Timer(750)]
     @fs.write_file("\{watched_path}/file", "xyzw")
-    @async.sleep(250)
+    timers[0].wait()
     @fs.rename("\{watched_path}/file", "\{path}/file")
-    @async.sleep(250)
+    timers[1].wait()
     @fs.write_file("\{watched_path}/another_file", "1234")
-    @async.sleep(250)
+    timers[2].wait()
     @fs.rename("\{path}/file", "\{watched_path}/file2")
     @async.sleep(600)
   }
