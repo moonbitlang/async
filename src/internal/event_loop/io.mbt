@@ -44,6 +44,7 @@ pub struct IoHandle {
   priv mut write : IoStatus
   /// Similar to `read_offset`, but for the write end of the object.
   mut write_offset : Int64
+  priv console_state : WindowsConsoleBuffer
 }
 
 ///|
@@ -118,6 +119,7 @@ pub fn IoHandle::from_fd(
     } else {
       -1
     },
+    console_state: WindowsConsoleBuffer(kind),
   }
   evloop.fds[fd] = handle
   handle
@@ -148,6 +150,111 @@ async fn IoHandle::read_via_worker(
 }
 
 ///|
+#cfg(platform="windows")
+const IS_NATIVE_WINDOWS : Bool = true
+
+///|
+#cfg(not(platform="windows"))
+const IS_NATIVE_WINDOWS : Bool = false
+
+///|
+async fn IoHandle::read_console(
+  handle : IoHandle,
+  buf : FixedArray[Byte],
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  guard! handle.read is Idle
+  if handle.console_state.pending_len > 0 {
+    return handle.console_state.write_pending(buf, offset~, len~)
+  }
+
+  // At this point, `handle.console_buffer` should not contain any pending decoded bytes,
+  // but may contain unpaired high surrogate from the last read.
+  let unpaired_offset = if handle.console_state.unpaired_surrogate > 0 {
+    handle.console_state.buffer[0] = handle.console_state.unpaired_surrogate
+    1
+  } else {
+    0
+  }
+  let max_read_len = @cmp.minimum(
+    WINDOWS_CONSOLE_BUFFER_SIZE - unpaired_offset,
+    @cmp.maximum(len / 3, 1),
+  )
+  let n = {
+    handle.read = Submitted
+    defer {
+      handle.read = Idle
+    }
+    let job = Job::read_console(
+      handle.fd,
+      handle.console_state.buffer,
+      unpaired_offset,
+      max_read_len,
+    )
+    defer job.free()
+    perform_job_in_worker(job, context~, cancellable=true)
+  }
+
+  let n = unpaired_offset + n
+  handle.console_state.unpaired_surrogate = 0
+  for rest = handle.console_state.buffer[:n], produced = 0 {
+    let (char, rest) = match rest {
+      [] => break produced
+      [0xD800..=0xDBFF as high, 0xDC00..=0xDFFF as low, .. rest] => {
+        let c = ((high.to_int() - 0xD800) << 10) +
+          (low.to_int() - 0xDC00) +
+          0x10000
+        (if c > 0x10FFFF { 0xFFFD } else { c }, rest)
+      }
+      [0xD800..=0xDBFF as high] =>
+        if produced > 0 {
+          handle.console_state.unpaired_surrogate = high
+          break produced
+        } else if unpaired_offset > 0 {
+          // Corner case: the last code unit before EOF is an unpaired high surrogate.
+          // Convert it to `U+FFFD` (replacement character)
+          handle.console_state.pending_len = 3
+          encode_utf8_char(0xFFFD, handle.console_state.pending, offset=1)
+          return handle.console_state.write_pending(buf, offset~, len~)
+        } else {
+          // The input contain solely one unpaired surrogate,
+          // since 0 inidicates EOF, we must read more data here.
+          handle.console_state.unpaired_surrogate = high
+          return handle.read_console(buf, offset~, len~, context~)
+        }
+      [0xD800..=0xDFFF, .. rest] => (0xFFFD, rest)
+      [c, .. rest] => (c.to_int(), rest)
+    }
+    let char_bytes = match char {
+      _..<0x80 => 1
+      _..<0x800 => 2
+      _..<0x10000 => 3
+      _ => 4
+    }
+    if produced + char_bytes <= len {
+      encode_utf8_char(char, buf, offset=offset + produced)
+      continue rest, produced + char_bytes
+    } else {
+      encode_utf8_char(
+        char,
+        handle.console_state.pending,
+        offset=4 - char_bytes,
+      )
+      handle.console_state.pending_len = char_bytes
+      guard! rest is []
+      break produced +
+        handle.console_state.write_pending(
+          buf,
+          offset=produced + offset,
+          len=len - produced,
+        )
+    }
+  }
+}
+
+///|
 pub async fn IoHandle::read(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -156,7 +263,10 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let n = if handle.is_async {
+  // TODO: port to Wasm
+  let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
+    handle.read_console(buf, offset~, len~, context~)
+  } else if handle.is_async {
     /// The implementation of `read_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
     handle.read_via_event_bus(buf, offset~, len~, context~)
@@ -200,6 +310,143 @@ async fn IoHandle::write_via_worker(
 }
 
 ///|
+#cfg(target="native")
+#borrow(src, dst)
+extern "C" fn utf8_decode_lossy_to_utf16(
+  src~ : Bytes,
+  src_offset~ : Int,
+  src_len~ : Int,
+  dst~ : FixedArray[UInt16],
+  dst_offset~ : Int,
+) -> Int = "moonbit_utf8_decode_lossy_into_utf16"
+
+///|
+#cfg(target="wasm")
+fn utf8_decode_lossy_to_utf16(
+  src~ : Bytes,
+  src_offset~ : Int,
+  src_len~ : Int,
+  dst~ : FixedArray[UInt16],
+  dst_offset~ : Int,
+) -> Int {
+  ignore(src)
+  ignore(src_offset)
+  ignore(src_len)
+  ignore(dst)
+  ignore(dst_offset)
+  panic()
+}
+
+///|
+async fn IoHandle::write_console(
+  handle : IoHandle,
+  buf : Bytes,
+  offset~ : Int,
+  len~ : Int,
+  context~ : String,
+) -> Int {
+  guard! handle.write is Idle
+  handle.write = Submitted
+  defer {
+    handle.write = Idle
+  }
+  let (cache_produced, cache_consumed) = if handle.console_state.pending_len > 0 {
+    let total = match handle.console_state.pending[0] {
+      0xC0..<0xE0 => 2
+      0xE0..<0xF0 => 3
+      0xF0..=0xF4 => 4
+      _ => panic()
+    }
+    let required = total - handle.console_state.pending_len
+    let max_new_pending = @cmp.minimum(len, required)
+    // Copy only continuation bytes, so that in case of invalid sequence,
+    // subsequent correct characters can recover synchronization.
+    let continuation_prefix = for i in 0..<max_new_pending {
+      guard buf[offset + i] is (0x80..<0xC0) else { break i }
+    } nobreak {
+      max_new_pending
+    }
+    handle.console_state.pending.blit_from_bytesview(
+      handle.console_state.pending_len,
+      buf[offset:offset + continuation_prefix],
+    )
+    if continuation_prefix >= required {
+      let decoded = @utf8.decode_lossy(
+        handle.console_state.pending.unsafe_reinterpret_as_bytes()[:total],
+      )
+      for i, value in decoded.code_units() {
+        handle.console_state.buffer[i] = value
+      }
+      (decoded.length(), required)
+    } else if continuation_prefix < len {
+      handle.console_state.buffer[0] = 0xFFFD
+      (1, continuation_prefix)
+    } else {
+      // We still do no have enough data to produce a complete character
+      handle.console_state.pending_len += len
+      return len
+    }
+  } else {
+    (0, 0)
+  }
+
+  let offset = offset + cache_consumed
+  let len = @cmp.minimum(
+    len - cache_consumed,
+    (WINDOWS_CONSOLE_BUFFER_SIZE - cache_produced) / 2,
+  )
+
+  let remainder = match buf[offset:offset + len] {
+    [.., 0xC0..<0xE0] => 1
+    [.., 0xE0..<0xF0] => 1
+    [.., 0xE0..<0xF0, 0x80..<0xC0] => 2
+    [.., 0xF0..=0xF4] => 1
+    [.., 0xF0..=0xF4, 0x80..<0xC0] => 2
+    [.., 0xF0..=0xF4, 0x80..<0XC0, 0x80..<0xC0] => 3
+    _ => 0
+  }
+
+  let produced = if len > remainder {
+    cache_produced +
+    utf8_decode_lossy_to_utf16(
+      src=buf,
+      src_offset=offset,
+      src_len=len - remainder,
+      dst=handle.console_state.buffer,
+      dst_offset=cache_produced,
+    )
+  } else {
+    cache_produced
+  }
+  if produced > 0 {
+    for written = 0; written < produced; {
+      let job = Job::write_console(
+        handle.fd,
+        handle.console_state.buffer,
+        written,
+        produced - written,
+      )
+      defer job.free()
+      // We need to ensure cancellation safety of `write_console`,
+      // so if there is already data written (`written > 0`),
+      // we should make subsequent write calls non-cancellable.
+      let delta = perform_job_in_worker(job, context~, cancellable=written is 0)
+      continue written + delta
+    }
+    handle.console_state.pending_len = 0
+    cache_consumed + len - remainder
+  } else {
+    // the input is not enough to decode even a single complete unicode character
+    handle.console_state.pending_len = remainder
+    handle.console_state.pending.blit_from_bytesview(
+      0,
+      buf[offset + len - remainder:offset + len],
+    )
+    remainder
+  }
+}
+
+///|
 pub async fn IoHandle::write(
   handle : IoHandle,
   buf : Bytes,
@@ -208,7 +455,10 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int {
   @coroutine.check_cancellation()
-  let n = if handle.is_async {
+  // TODO: port to Wasm
+  let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
+    handle.write_console(buf, offset~, len~, context~)
+  } else if handle.is_async {
     /// The implementation of `write_via_event_bus` is platform dependent,
     /// and is located in `io_unix.mbt`, `io_windows.mbt` etc.
     handle.write_via_event_bus(buf, offset~, len~, context~)

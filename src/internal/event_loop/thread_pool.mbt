@@ -105,6 +105,24 @@ extern "C" fn Job::write(
 ) -> Job = "moonbitlang_async_make_write_job"
 
 ///|
+#owned(buf)
+extern "C" fn Job::read_console(
+  fd : @fd_util.Fd,
+  buf : FixedArray[UInt16],
+  offset : Int,
+  len : Int,
+) -> Job = "moonbitlang_async_make_read_console_job"
+
+///|
+#owned(buf)
+extern "C" fn Job::write_console(
+  fd : @fd_util.Fd,
+  buf : FixedArray[UInt16],
+  offset : Int,
+  len : Int,
+) -> Job = "moonbitlang_async_make_write_console_job"
+
+///|
 #owned(filename, stat_buf)
 extern "C" fn Job::open(
   filename : @os_string.OsString,
