@@ -57,7 +57,7 @@ jobs:
           moon update
 
       - name: moon check
-        run: moon check
+        run: moon check --deny-warn
 
       - name: moon test
         run: moon test
@@ -112,8 +112,62 @@ jobs:
 
       - name: moon check
         run: |
-          moon check --target wasm
-          moon check --target wasm-gc
+          moon check --target wasm --deny-warn
+          moon check --target wasm-gc --deny-warn
+
+  moon-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s pre-release
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
+
+      - name: format diff
+        run: |
+          moon fmt
+          git diff --exit-code
+
+  moon-info:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: install
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s pre-release
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: moon update
+        run: |
+          moon update
+
+      - name: moon info
+        run: |
+          moon info
+          git diff --exit-code
 
   sanitizer-check:
     runs-on: ubuntu-latest
