@@ -13,19 +13,58 @@
 // limitations under the License.
 
 ///|
-priv struct Reader[X] {
-  /// the value provided the reader.
-  /// `value` must be `Some(_)` when the reader is woken
+/// A blocked reader or writer of a async queue
+priv struct Waiter[X] {
+  /// For reader, the value is
+  ///
+  /// - `Some(_)` if the reader already received a value and has been woken
+  /// - `None` otherwise
+  ///
+  /// For writer, the value is
+  ///
+  /// - `None` if the value provided by this writer is already delivered
+  /// - `Some(_)` otherwise
   mut value : X?
   /// `None` indicates that the reader is cancelled
-  mut coro : @coroutine.Coroutine?
+  coro : @coroutine.Coroutine
+  /// For intrusive cancellable queue
+  mut index : Int
+  mut next : Int
+  mut prev : Int
 }
 
 ///|
-priv struct Writer[X] {
-  value : X
-  mut coro : @coroutine.Coroutine?
+impl[X] @cancellable_queue.Element for Waiter[X] with fn get_index(self) {
+  self.index
 }
+
+///|
+impl[X] @cancellable_queue.Element for Waiter[X] with fn set_index(self, value) {
+  self.index = value
+}
+
+///|
+impl[X] @cancellable_queue.Element for Waiter[X] with fn get_next(self) {
+  self.next
+}
+
+///|
+impl[X] @cancellable_queue.Element for Waiter[X] with fn set_next(self, value) {
+  self.next = value
+}
+
+///|
+impl[X] @cancellable_queue.Element for Waiter[X] with fn get_prev(self) {
+  self.prev
+}
+
+///|
+impl[X] @cancellable_queue.Element for Waiter[X] with fn set_prev(self, value) {
+  self.prev = value
+}
+
+///|
+extend Waiter with @cancellable_queue.Element::{is_queued}
 
 ///|
 /// Options for different behavior of `put` in async queue.
@@ -54,9 +93,9 @@ pub(all) enum Kind {
 pub struct Queue[X] {
   kind : Kind
   /// invariant: if `readers` is non-empty, `buffer` must be empty
-  priv readers : @deque.Deque[Reader[X]]
+  priv readers : @cancellable_queue.Queue[Waiter[X]]
   /// invariant: if `writers` is non-empty, `buffer` must be full
-  priv writers : @deque.Deque[Writer[X]]
+  priv writers : @cancellable_queue.Queue[Waiter[X]]
   /// invariant: if `buffer` is non-empty, `readers` must be empty; 
   /// if `buffer` is not full, `writers` must be empty
   priv buffer : @deque.Deque[X]
@@ -78,13 +117,7 @@ pub fn[X] Queue::Queue(kind~ : Kind) -> Queue[X] {
         abort("queue size must not be negative")
       }
   }
-  {
-    kind,
-    writers: Deque([]),
-    readers: Deque([]),
-    buffer: Deque([]),
-    closed: None,
-  }
+  { kind, writers: Queue(), readers: Queue(), buffer: Deque([]), closed: None, }
 }
 
 ///|
@@ -126,16 +159,28 @@ pub async fn[X] Queue::put(self : Queue[X], data : X) -> Unit {
     match self.kind {
       Unbounded => panic()
       Blocking(_) => {
-        let writer = Writer::{
-          value: data,
-          coro: Some(@coroutine.current_coroutine()),
+        let writer = {
+          value: Some(data),
+          coro: @coroutine.current_coroutine(),
+          index: -1,
+          prev: -1,
+          next: -1,
         }
-        self.writers.push_back(writer)
+        self.writers.push(writer)
         match @coroutine.suspend_check_cancel() {
-          Continue => ()
-          Cancelled if writer.coro is None => ()
+          Continue =>
+            if writer.value is Some(_) {
+              guard! self.closed is Some(err)
+              raise err
+            }
+          Cancelled if writer.value is None => ()
           Cancelled => {
-            writer.coro = None
+            if writer.is_queued() {
+              // This may happen if the queue is closed while `put` is cancelled.
+              // Currently we let cancellation win in this case,
+              // but the `writer` would not be in `self.writer` in this case
+              self.writers.remove(writer)
+            }
             @coroutine.raise_cancellation_signal()
           }
         }
@@ -168,18 +213,16 @@ pub fn[X] Queue::try_put(self : Queue[X], data : X) -> Bool raise {
   if self.closed is Some(err) {
     raise err
   }
-  while self.readers.pop_front() is Some(reader) {
-    if reader.coro is Some(coro) {
-      // after waking the reader, it may not start execution immediately.
-      // And a lot of things could happen in the middle.
-      // So instead of using `self.buffer`,
-      // we pass `data` to the woker reader in a point-to-point manner
-      // to avoid some edge cases.
-      reader.value = Some(data)
-      coro.wake()
-      break true
-    }
-  } nobreak {
+  if self.readers.pop() is Some(reader) {
+    // after waking the reader, it may not start execution immediately.
+    // And a lot of things could happen in the middle.
+    // So instead of using `self.buffer`,
+    // we pass `data` to the woker reader in a point-to-point manner
+    // to avoid some edge cases.
+    reader.value = Some(data)
+    reader.coro.wake()
+    true
+  } else {
     match self.kind {
       Unbounded => {
         self.buffer.push_back(data)
@@ -213,11 +256,14 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
   if self.try_get() is Some(data) {
     return data
   }
-  let reader = Reader::{
+  let reader = {
     value: None,
-    coro: Some(@coroutine.current_coroutine()),
+    coro: @coroutine.current_coroutine(),
+    index: -1,
+    next: -1,
+    prev: -1,
   }
-  self.readers.push_back(reader)
+  self.readers.push(reader)
   match @coroutine.suspend_check_cancel() {
     Continue =>
       if reader.value is Some(value) {
@@ -241,7 +287,12 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
       // which is fine because cancellation is level-triggered.
       value
     Cancelled => {
-      reader.coro = None
+      if reader.is_queued() {
+        // This may happen if the queue is closed while `get` is cancelled.
+        // Currently we let cancellation win in this case,
+        // but the `reader` would not be in `self.readers` in this case
+        self.readers.remove(reader)
+      }
       @coroutine.raise_cancellation_signal()
     }
   }
@@ -254,25 +305,22 @@ pub async fn[X] Queue::get(self : Queue[X]) -> X {
 /// If the queue is already closed and there is no buffered elements,
 /// `try_get` will fail immediately.
 pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
-  while self.writers.pop_front() is Some(writer) {
-    if writer.coro is Some(coro) {
-      let mut data = self.buffer.pop_front()
-      if data is Some(_) {
-        self.buffer.push_back(writer.value)
-      } else {
-        data = Some(writer.value)
-      }
-      coro.wake()
-      writer.coro = None
-      break data
+  let data = self.buffer.pop_front()
+  if self.writers.pop() is Some(writer) {
+    // must be blocking queue, otherwise `self.writers` is always empty
+    guard! writer.value is Some(value)
+    writer.value = None
+    writer.coro.wake()
+    if data is None {
+      return Some(value)
+    } else {
+      self.buffer.push_back(value)
     }
-  } nobreak {
-    let data = self.buffer.pop_front()
-    if data is None && self.closed is Some(err) {
-      raise err
-    }
-    data
   }
+  if data is None && self.closed is Some(err) {
+    raise err
+  }
+  data
 }
 
 ///|
@@ -299,15 +347,11 @@ pub fn[X] Queue::close(
   clear? : Bool = false,
 ) -> Unit {
   self.closed = Some(error)
-  for writer in self.writers {
-    if writer.coro is Some(coro) {
-      coro.wake()
-    }
+  while self.writers.pop() is Some(writer) {
+    writer.coro.wake()
   }
-  for reader in self.readers {
-    if reader.coro is Some(coro) {
-      coro.wake()
-    }
+  while self.readers.pop() is Some(reader) {
+    reader.coro.wake()
   }
   if clear {
     self.buffer.clear()

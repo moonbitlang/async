@@ -14,26 +14,51 @@
 
 ///|
 priv struct Waiter {
-  // In the rare case where:
-  //
-  // - `release` wake up a waiter, the piece of resource is assigned to that waiter
-  // - the waiter is immediately cancelled after woken up by `release`,
-  //   but before the waiter's coroutine actually resumes execution
-  //
-  // we must swallow the cancellation signal,
-  // as otherwise the piece of resource will be gone forever.
-  // So we set `acquired = true` after waking up a waiter,
-  // and use this flag to protect against dangerous cancellation.
-  mut acquired : Bool
   // `None` indicates that the waiter is cancelled
-  mut coro : @coroutine.Coroutine?
+  coro : @coroutine.Coroutine
+  mut index : Int
+  mut prev : Int
+  mut next : Int
 }
+
+///|
+impl @cancellable_queue.Element for Waiter with fn get_index(self) {
+  self.index
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_index(self, value) {
+  self.index = value
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn get_next(self) {
+  self.next
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_next(self, value) {
+  self.next = value
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn get_prev(self) {
+  self.prev
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_prev(self, value) {
+  self.prev = value
+}
+
+///|
+extend Waiter with @cancellable_queue.Element::{is_queued}
 
 ///|
 pub struct Semaphore {
   size : Int
   priv mut value : Int
-  priv waiters : @deque.Deque[Waiter]
+  priv waiters : @cancellable_queue.Queue[Waiter]
 }
 
 ///|
@@ -49,7 +74,7 @@ pub fn Semaphore::Semaphore(
     abort("size of semaphore must be positive")
   }
   guard! initial_value >= 0 && initial_value <= size
-  { value: initial_value, size, waiters: Deque([]), }
+  { value: initial_value, size, waiters: Queue(), }
 }
 
 ///|
@@ -65,13 +90,9 @@ pub fn Semaphore::release(self : Semaphore) -> Unit {
   if self.value >= self.size {
     abort("semaphore: too many release")
   }
-  while self.waiters.pop_front() is Some(waiter) {
-    if waiter.coro is Some(coro) {
-      waiter.acquired = true
-      coro.wake()
-      break
-    }
-  } nobreak {
+  if self.waiters.pop() is Some(waiter) {
+    waiter.coro.wake()
+  } else {
     self.value += 1
   }
 }
@@ -92,15 +113,26 @@ pub async fn Semaphore::acquire(self : Semaphore) -> Unit noraise {
     self.value -= 1
   } else {
     let waiter = {
-      coro: Some(@coroutine.current_coroutine()),
-      acquired: false,
+      coro: @coroutine.current_coroutine(),
+      index: -1,
+      next: -1,
+      prev: -1,
     }
-    self.waiters.push_back(waiter)
+    self.waiters.push(waiter)
     match @coroutine.suspend_check_cancel() {
       Continue => ()
-      Cancelled if waiter.acquired => ()
+      Cancelled if !waiter.is_queued() =>
+        // In the rare case where:
+        //
+        // - `release` wake up a waiter, the piece of resource is assigned to that waiter
+        // - the waiter is immediately cancelled after woken up by `release`,
+        //   but before the waiter's coroutine actually resumes execution
+        //
+        // we must swallow the cancellation signal,
+        // as otherwise the piece of resource will be gone forever.
+        ()
       Cancelled => {
-        waiter.coro = None
+        self.waiters.remove(waiter)
         @coroutine.raise_cancellation_signal()
       }
     }
