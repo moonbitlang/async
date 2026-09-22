@@ -1,6 +1,7 @@
 import {
   "moonbitlang/core/deque",
   "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/cancellable_queue",
 }
 
 import {

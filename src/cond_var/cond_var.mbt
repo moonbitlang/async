@@ -14,31 +14,58 @@
 
 ///|
 priv struct Waiter {
-  // In the rare case where:
-  //
-  // - `signal` wake up a waiter, the piece of resource is assigned to that waiter
-  // - the waiter is immediately cancelled after woken up by `signal`,
-  //   but before the waiter's coroutine actually resumes execution
-  //
-  // we must swallow the cancellation signal,
-  // as otherwise the signal will be gone forever.
-  // So we set `woken = true` after waking up a waiter,
-  // and use this flag to protect against dangerous cancellation.
-  mut woken : Bool
-  mut coro : @coroutine.Coroutine?
+  coro : @coroutine.Coroutine
+  /// For intrusive cancellable queue
+  mut index : Int
+  mut next : Int
+  mut prev : Int
 }
 
 ///|
+impl @cancellable_queue.Element for Waiter with fn get_index(self) {
+  self.index
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_index(self, value) {
+  self.index = value
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn get_next(self) {
+  self.next
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_next(self, value) {
+  self.next = value
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn get_prev(self) {
+  self.prev
+}
+
+///|
+impl @cancellable_queue.Element for Waiter with fn set_prev(self, value) {
+  self.prev = value
+}
+
+///|
+extend Waiter with @cancellable_queue.Element::{is_queued}
+
+///|
 /// A condition variable that can be used for synchronization between tasks.
+#valtype
 struct Cond {
-  waiters : @deque.Deque[Waiter]
+  waiters : @cancellable_queue.Queue[Waiter]
 }
 
 ///|
 /// Create a new condition variable.
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { waiters: Deque([]), }
+  { waiters: Queue(), }
 }
 
 ///|
@@ -49,13 +76,24 @@ pub fn Cond::Cond() -> Cond {
 /// in this case, an cancellation will be raised from `wait`.
 pub async fn Cond::wait(cond : Cond) -> Unit noraise {
   let coro = @coroutine.current_coroutine()
-  let waiter = { woken: false, coro: Some(coro), }
-  cond.waiters.push_back(waiter)
+  let waiter = { coro, index: -1, next: -1, prev: -1, }
+  cond.waiters.push(waiter)
   match @coroutine.suspend_check_cancel() {
     Continue => ()
-    Cancelled if waiter.woken => ()
+    Cancelled if !waiter.is_queued() =>
+      // In the rare case where:
+      //
+      // - `signal` wake up a waiter, the piece of resource is assigned to that waiter
+      // - the waiter is immediately cancelled after woken up by `signal`,
+      //   but before the waiter's coroutine actually resumes execution
+      //
+      // we must swallow the cancellation signal,
+      // as otherwise the signal will be gone forever.
+      // So we set `woken = true` after waking up a waiter,
+      // and use this flag to protect against dangerous cancellation.
+      ()
     Cancelled => {
-      waiter.coro = None
+      cond.waiters.remove(waiter)
       @coroutine.raise_cancellation_signal()
     }
   }
@@ -66,12 +104,8 @@ pub async fn Cond::wait(cond : Cond) -> Unit noraise {
 /// waking up the first task waiting for the condition variable.
 /// If no task is waiting for the condition variable, nothing will happen.
 pub fn Cond::signal(cond : Cond) -> Unit {
-  while cond.waiters.pop_front() is Some(waiter) {
-    if waiter.coro is Some(coro) {
-      waiter.woken = true
-      coro.wake()
-      break
-    }
+  if cond.waiters.pop() is Some(waiter) {
+    waiter.coro.wake()
   }
 }
 
@@ -80,11 +114,7 @@ pub fn Cond::signal(cond : Cond) -> Unit {
 /// waking up all tasks waiting for the condition variable.
 /// If no task is waiting for the condition variable, nothing will happen.
 pub fn Cond::broadcast(cond : Cond) -> Unit {
-  for waiter in cond.waiters {
-    if waiter.coro is Some(coro) {
-      waiter.woken = true
-      coro.wake()
-    }
+  while cond.waiters.pop() is Some(waiter) {
+    waiter.coro.wake()
   }
-  cond.waiters.clear()
 }
