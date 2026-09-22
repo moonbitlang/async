@@ -197,6 +197,26 @@ fn Job::write(
 }
 
 ///|
+fn Job::read_console(
+  _fd : @fd_util.Fd,
+  _buf : FixedArray[UInt16],
+  _offset : Int,
+  _len : Int,
+) -> Job {
+  panic()
+}
+
+///|
+fn Job::write_console(
+  _fd : @fd_util.Fd,
+  _buf : FixedArray[UInt16],
+  _offset : Int,
+  _len : Int,
+) -> Job {
+  panic()
+}
+
+///|
 #unsafe_skip_stub_check
 #borrow(filename)
 fn JobHandle::open(

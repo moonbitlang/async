@@ -24,6 +24,7 @@ let _ignore_unused_import : Unit = {
   ignore(@os_error.unimplemented)
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
   ignore((_ : @env_util.Platform) => ())
+  ignore(@utf8.encode(""))
 }
 
 ///|

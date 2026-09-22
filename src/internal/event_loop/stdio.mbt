@@ -102,6 +102,7 @@ fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
     read_offset: -1,
     write: Idle,
     write_offset: -1,
+    console_state: WindowsConsoleBuffer(kind),
   }
   stdio_handles[fd] = handle
   register_hook(

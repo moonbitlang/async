@@ -937,6 +937,141 @@ struct write_job *moonbitlang_async_make_write_job(
   return job;
 }
 
+// ===== read_console job, read UTF-16 data from a Windows console =====
+struct read_console_job {
+  HANDLE fd;
+  char *buf;
+  int32_t offset;
+  int32_t len;
+};
+
+static
+void free_read_console_job(struct read_console_job *job) {
+  moonbit_decref(job->buf);
+}
+
+static
+int32_t read_console_job_worker(struct read_console_job *job, int32_t *err_out) {
+  struct worker *worker = moonbitlang_async_get_current_worker();
+
+#ifdef _WIN32
+
+   if (moonbitlang_async_enter_cancellable_region(worker)) {
+     *err_out = ERROR_OPERATION_ABORTED;
+     return -1;
+   }
+
+   DWORD bytes_transferred;
+   BOOL result = ReadConsoleW(
+     job->fd,
+     (WCHAR*)job->buf + job->offset,
+     job->len,
+     &bytes_transferred,
+     NULL
+   );
+
+   moonbitlang_async_leave_cancellable_region(worker);
+
+   if (result) {
+     return bytes_transferred;
+   } else {
+     int err = GetLastError();
+     if (err == ERROR_HANDLE_EOF || err == ERROR_BROKEN_PIPE) {
+       return 0;
+     } else {
+       *err_out = err;
+       return -1;
+     }
+   }
+
+#else
+
+  *err_out = ENOSYS;
+  return -1;
+
+#endif
+}
+
+struct read_console_job *moonbitlang_async_make_read_console_job(
+  HANDLE fd,
+  char *buf,
+  int32_t offset,
+  int32_t len
+) {
+  struct read_console_job *job = MAKE_JOB(read_console, 0);
+  job->fd = fd;
+  job->buf = buf;
+  job->offset = offset;
+  job->len = len;
+  return job;
+}
+
+
+// ===== write console job, write UTF-16 data to Windows console =====
+
+struct write_console_job {
+  HANDLE fd;
+  char *buf;
+  int offset;
+  int len;
+};
+
+static
+void free_write_console_job(struct write_console_job *job) {
+  moonbit_decref(job->buf);
+}
+
+static
+int32_t write_console_job_worker(struct write_console_job *job, int32_t *err_out) {
+  struct worker *worker = moonbitlang_async_get_current_worker();
+
+#ifdef _WIN32
+
+   DWORD bytes_transferred;
+   if (moonbitlang_async_enter_cancellable_region(worker)) {
+     *err_out = ERROR_OPERATION_ABORTED;
+     return -1;
+   }
+
+   BOOL result = WriteConsoleW(
+     job->fd,
+     (WCHAR*)job->buf + job->offset,
+     job->len,
+     &bytes_transferred,
+     NULL
+   );
+   moonbitlang_async_leave_cancellable_region(worker);
+
+   if (result)
+     return bytes_transferred;
+   else {
+     *err_out = GetLastError();
+     return -1;
+   }
+
+#else
+
+  *err_out = ENOSYS;
+  return -1;
+
+#endif
+}
+
+struct write_console_job *moonbitlang_async_make_write_console_job(
+  HANDLE fd,
+  char *buf,
+  int offset,
+  int len
+) {
+  struct write_console_job *job = MAKE_JOB(write_console, 0);
+  job->fd = fd;
+  job->buf = buf;
+  job->offset = offset;
+  job->len = len;
+  return job;
+}
+
+
 // ===== spawn job, spawn foreign process =====
 #ifdef _WIN32
 

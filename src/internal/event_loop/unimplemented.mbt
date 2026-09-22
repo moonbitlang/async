@@ -26,6 +26,7 @@ let _ignore_unused_import : Unit = {
   ignore(@coroutine.is_being_cancelled)
   ignore((_ : @env_util.Platform) => ())
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+  ignore(@utf8.encode(""))
 }
 
 ///|
