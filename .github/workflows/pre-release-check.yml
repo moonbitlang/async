@@ -1,18 +1,12 @@
 name: pre-release check
-run-name: "${{ inputs.pr_number != '' && format('pre-release check PR #{0}', inputs.pr_number) || format('pre-release check {0}', github.ref_name) }}"
+run-name: "pre-release check ${{ github.ref_name }}"
 
 on:
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: "Optional PR number to test. Leave empty to run on the selected branch or tag."
-        required: false
-        default: ""
-        type: string
 
 env:
   MOONBIT_ASYNC_CHECK_FD_LEAK: 1
-  CHECKOUT_REF: ${{ inputs.pr_number != '' && format('refs/pull/{0}/merge', inputs.pr_number) || github.ref }}
+  CHECKOUT_REF: ${{ github.ref }}
 
 jobs:
   pre-release-check:
