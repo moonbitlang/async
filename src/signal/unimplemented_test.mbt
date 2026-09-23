@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _ignore_unused_import : Unit = {
   ignore(@utf8.encode(""))
   ignore(@async.sleep)

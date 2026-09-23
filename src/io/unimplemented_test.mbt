@@ -13,5 +13,5 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _unused : Unit = ignore(@fs.unimplemented)

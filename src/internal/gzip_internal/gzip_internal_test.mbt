@@ -320,7 +320,7 @@ test "gzip encoder hash table survives history wrap" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "gzip encode min input source file" {
   let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
   let compressed = encode(data, input_step=Min)
@@ -329,7 +329,7 @@ async test "gzip encode min input source file" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "gzip encode min output source file" {
   let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
   let compressed = encode(data, output_step=Min)
@@ -338,7 +338,7 @@ async test "gzip encode min output source file" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "gzip decode min input source file" {
   let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
   let compressed = encode(data)
@@ -347,7 +347,7 @@ async test "gzip decode min input source file" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "gzip decode min output source file" {
   let data = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
   let compressed = encode(data)
@@ -356,7 +356,7 @@ async test "gzip decode min output source file" {
 }
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _unused : Unit = {
   ignore(@async.sleep)
   ignore(@fs.unimplemented)

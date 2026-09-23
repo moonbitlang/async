@@ -14,11 +14,18 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@os_error.unimplemented)
   ignore(@os_string.unimplemented)
   ignore((_ : @env_util.Platform) => ())
   ignore((_x : @types.Fd) => ())
+}
+
+///|
+#cfg(target="wasm")
+let _wasm_unused_import : Unit = {
+  ignore((_ : @os_string.OsString) => ())
+  ignore((_ : @env_util.Platform) => ())
 }

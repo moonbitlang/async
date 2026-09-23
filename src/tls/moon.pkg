@@ -32,7 +32,7 @@ options(
     "openssl.mbt": [ "native" ],
     "openssl_loader.mbt": [ "native" ],
     "schannel.mbt": [ "native" ],
-    "shutdown_test.mbt": [ "native" ],
+    "shutdown_test.mbt": [ "native", "wasm" ],
     "tls.mbt": [ "native", "wasm" ],
     "tls.wasm.mbt": [ "wasm" ],
     "tls_test.mbt": [ "native", "wasm" ],

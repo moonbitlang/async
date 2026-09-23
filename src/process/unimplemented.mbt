@@ -14,7 +14,7 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
   ignore(@io.pipe)
@@ -28,12 +28,9 @@ pub let unimplemented : Unit = {
   ignore(@signal.unimplemented)
   ignore(@c_buffer.unimplemented)
   ignore(@os_error.unimplemented)
+  ignore(@pipe.unimplemented)
 }
 
 ///|
 #cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
+let _unused_wasm_import : Unit = ignore((_ : @c_buffer.Buffer) => ())

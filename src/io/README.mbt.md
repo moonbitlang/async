@@ -288,7 +288,7 @@ async test "read_until - read text from stream until a separator is found" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "read_until - used to read file line by line" {
   let file = @fs.open("LICENSE", mode=ReadOnly)
   defer file.close()

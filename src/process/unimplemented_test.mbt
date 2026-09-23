@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _unimplemented : Unit = {
   ignore(@env.get_env_var)
   ignore(() => @string.parse_int("0"))

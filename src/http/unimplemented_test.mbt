@@ -21,10 +21,3 @@ let _ignore_unused_import : Unit = {
   ignore((_ : @gzip_stream.Encoder[&@io.Writer]) => ())
   ignore(@fs.unimplemented)
 }
-
-///|
-#cfg(target="wasm")
-let _ignore_unused_wasm_import : Unit = {
-  ignore(@fs.unimplemented)
-  ignore((_ : @gzip_stream.Encoder[&@io.Writer]) => ())
-}

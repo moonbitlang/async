@@ -85,3 +85,7 @@ async test "prevent NUL command injection" {
   ])
   inspect(output.text().trim_end(chars="\r\n"), content="abc")
 }
+
+///|
+#cfg(target="wasm")
+let _wasm_unused_string_import : Unit = ignore(() => @string.parse_int(""))
