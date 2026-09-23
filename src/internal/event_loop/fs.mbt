@@ -59,7 +59,7 @@ pub async fn open(
       guard (mask & STAT_FILE_KIND) > 0 else {
         // we need at least the file kind
         raise @os_error.from_errno(
-          @os_error.errno_ENOTDIR,
+          @errno_util.not_directory,
           context="\{context}: \{path.escape()}",
         )
       }
@@ -104,7 +104,7 @@ async fn fstatx_single(
   fstatx(fd, request, buf, buf.length(), context~)
   guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
-    raise @os_error.from_errno(@os_error.errno_ENOTSUP, context~)
+    raise @os_error.from_errno(@errno_util.not_supported, context~)
   }
   payload
 }
@@ -151,7 +151,7 @@ async fn statx_single(
   statx(path, parent~, follow_symlink~, request, buf, buf.length(), context~)
   guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
-    raise @os_error.from_errno(@os_error.errno_ENOTSUP, context~)
+    raise @os_error.from_errno(@errno_util.not_supported, context~)
   }
   payload
 }
@@ -536,10 +536,11 @@ pub async fn IoHandle::read_dir_changes(
     // and give chance for other tasks to execute.
     @coroutine.pause_nocancel()
     n
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if @errno_util.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
-      @os_error.OsError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
+      @os_error.OsError(_, raw_code~, ..) if raw_code ==
+        @errno_util.windows_ERROR_NOTIFY_ENUM_DIR => 0
       err => raise err
     }
   } else {

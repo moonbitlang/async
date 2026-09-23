@@ -29,7 +29,7 @@ extern "C" fn get_tmp_path_ffi() -> @c_buffer.Buffer = "moonbitlang_async_get_tm
 let tmp_base_path : String = {
   let path = get_tmp_path_ffi()
   if path.is_null() {
-    let err = @os_error.errno_to_string(@os_error.get_errno())
+    let err = @errno_util.errno_to_string(@errno_util.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
   @os_string.decode(path)

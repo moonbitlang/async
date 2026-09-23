@@ -628,15 +628,6 @@ int32_t moonbitlang_async_fetch_completion(int notify_recv, int32_t *output) {
 }
 #endif
 
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_errno_is_cancelled(int32_t err) {
-#ifdef _WIN32
-  return err == ERROR_OPERATION_ABORTED;
-#else
-  return err == EINTR;
-#endif
-}
-
 // =========================================================
 // ===================== concrete jobs =====================
 // =========================================================

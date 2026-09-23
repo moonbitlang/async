@@ -347,15 +347,6 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 
 ///|
 #cfg(target="native")
-extern "C" fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang_async_errno_is_lock_violation"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
-
-///|
-#cfg(target="native")
 extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
 
 ///|
@@ -381,7 +372,7 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
   let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
   if ret >= 0 {
     true
-  } else if errno_is_lock_violation(@os_error.get_errno()) {
+  } else if @errno_util.get_errno() == @errno_util.lock_violation {
     false
   } else {
     @os_error.check_errno("@fs.File::try_lock()")
@@ -456,7 +447,7 @@ pub fn File::as_dir(self : File) -> Directory raise {
   guard self.io.kind() is Directory else {
     self.close()
     raise @os_error.from_errno(
-      @os_error.errno_ENOTDIR,
+      @errno_util.not_directory,
       context="@fs.File::as_dir()",
     )
   }

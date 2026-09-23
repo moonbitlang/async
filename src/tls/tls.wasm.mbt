@@ -659,4 +659,5 @@ let _unused : Unit = {
   ignore((tls : Tls) => tls.is_client)
   ignore((transport : Transport) => transport.flush_write())
   ignore((_ : @fs.File) => ())
+  ignore(@errno_util.errno_to_string)
 }

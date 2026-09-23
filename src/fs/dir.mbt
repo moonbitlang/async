@@ -159,7 +159,7 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
   if !(io.kind() is Directory) {
     io.close()
     raise @os_error.from_errno(
-      @os_error.errno_ENOTDIR,
+      @errno_util.not_directory,
       context="\{context}: \{path.escape()}",
     )
   }

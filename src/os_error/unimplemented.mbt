@@ -17,7 +17,6 @@
 #cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = {
-  ignore(@c_buffer.unimplemented)
-  ignore(@os_string.unimplemented)
   ignore((_ : @env_util.Platform) => ())
+  ignore(@errno.unimplemented)
 }
