@@ -105,6 +105,7 @@ pub async fn File::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for File
 pub impl @io.Writer for File
 
+#non_exhaustive
 pub(all) enum FileKind {
   Unknown
   Regular
@@ -114,6 +115,7 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
+  Console
 } derive(Eq, @debug.Debug)
 #deprecated
 pub impl Show for FileKind
