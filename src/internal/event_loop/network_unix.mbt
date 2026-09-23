@@ -194,7 +194,7 @@ async fn IoHandle::connect_unix(
     if err < 0 {
       @os_error.check_errno(context)
     } else if err > 0 {
-      raise @os_error.OSError(err, context~)
+      raise @os_error.from_errno(err, context~)
     }
   } else {
     @os_error.check_errno(context)
