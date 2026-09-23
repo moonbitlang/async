@@ -29,4 +29,5 @@ pub let unimplemented : Unit = {
   ignore((_ : @env_util.Platform) => ())
   ignore(@c_buffer.unimplemented)
   ignore(@coroutine.pause)
+  ignore(@errno_util.unimplemented)
 }

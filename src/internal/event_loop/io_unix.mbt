@@ -80,7 +80,7 @@ async fn IoHandle::read_via_event_bus_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  let ret = if @errno_util.is_nonblocking_io_error() {
     handle.wait_read()
     read_unix_ffi(handle.fd, buf, offset~, len~)
   } else {
@@ -141,7 +141,7 @@ async fn IoHandle::write_via_event_bus_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  let ret = if @errno_util.is_nonblocking_io_error() {
     handle.wait_write()
     write_unix_ffi(handle.fd, buf, offset~, len~)
   } else {

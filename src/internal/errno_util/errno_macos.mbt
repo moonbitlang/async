@@ -13,34 +13,31 @@
 // limitations under the License.
 
 ///|
-let windows_ERROR_IO_INCOMPLETE : Int32 = 996
+pub let macos_EINTR : Int32 = 4
 
 ///|
-let windows_ERROR_IO_PENDING : Int32 = 997
+pub let macos_ENOENT : Int32 = 2
 
 ///|
-let windows_ERROR_FILE_NOT_FOUND : Int32 = 2
+pub let macos_EEXIST : Int32 = 17
 
 ///|
-let windows_ERROR_PATH_NOT_FOUND : Int32 = 3
+pub let macos_EACCES : Int32 = 13
 
 ///|
-let windows_ERROR_FILE_EXISTS : Int32 = 80
+pub let macos_ECONNREFUSED : Int32 = 61
 
 ///|
-let windows_ERROR_ALREADY_EXISTS : Int32 = 183
+pub let macos_ENOTDIR : Int32 = 20
 
 ///|
-let windows_ERROR_ACCESS_DENIED : Int32 = 5
+pub let macos_ENOTSUP : Int32 = 45
 
 ///|
-let windows_ERROR_CONNECTION_REFUSED : Int32 = 1225
+pub let macos_EAGAIN : Int32 = 35
 
 ///|
-let windows_ERROR_NOTIFY_ENUM_DIR : Int32 = 1022
+pub let macos_EINPROGRESS : Int32 = 36
 
 ///|
-let windows_ERROR_DIRECTORY : Int32 = 267
-
-///|
-let windows_ERROR_NOT_SUPPORTED : Int32 = 50
+pub let macos_EWOULDBLOCK : Int32 = macos_EAGAIN
