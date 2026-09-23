@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn node_gzip(mode : String, input : Bytes) -> Bytes {
   @async.with_task_group() <| group => {
     let (stdin, we_write) = @process.write_to_process()
@@ -32,7 +32,7 @@ async fn node_gzip(mode : String, input : Bytes) -> Bytes {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn encode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
   @async.with_task_group() <| group => {
@@ -46,7 +46,7 @@ async fn encode_with_moonbit(input : Bytes) -> Bytes {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn decode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
   @async.with_task_group() <| group => {
@@ -60,7 +60,7 @@ async fn decode_with_moonbit(input : Bytes) -> Bytes {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn assert_node_compatibility(input : Bytes) -> Unit {
   let node_encoded = node_gzip("compress", input)
   assert_true(decode_with_moonbit(node_encoded) == input)
@@ -232,21 +232,21 @@ async test "decoder supports reads smaller than writer chunks" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "node compatibility on source text file" {
   let input = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
   assert_node_compatibility(input)
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "node compatibility on generated binary data" {
   let input = Bytes::makei(65536 + 257, i => ((i * 73 + 19) & 0xff).to_byte())
   assert_node_compatibility(input)
 }
 
 ///|
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 let _unused : Unit = {
   ignore(@fs.unimplemented)
   ignore(@process.unimplemented)

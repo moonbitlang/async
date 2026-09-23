@@ -63,7 +63,7 @@ async test "request cancel wait response body" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "manual Accept-Encoding" {
   let log = []
   let test_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))

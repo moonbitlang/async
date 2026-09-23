@@ -15,7 +15,6 @@ import {
 }
 
 import {
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",

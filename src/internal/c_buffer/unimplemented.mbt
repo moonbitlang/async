@@ -14,6 +14,6 @@
 
 ///|
 /// This package currently does not support JavaScript backend
-#cfg(not(target="native"))
+#cfg(not(any(target="native", target="wasm")))
 #coverage.skip
 pub let unimplemented : Unit = ()
