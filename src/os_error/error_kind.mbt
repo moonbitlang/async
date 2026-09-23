@@ -29,32 +29,32 @@ pub(all) enum Kind {
 let errno_table : Map[Int, Kind] = match @env_util.platform {
   Linux =>
     Map([
-      (linux_ENOENT, FileNotFound),
-      (linux_EEXIST, AlreadyExists),
-      (linux_EACCES, AccessDenied),
-      (linux_ENOTDIR, NotDirectory),
-      (linux_ECONNREFUSED, ConnectionRefused),
-      (linux_ENOTSUP, OperationNotSupported),
+      (@errno.linux_ENOENT, FileNotFound),
+      (@errno.linux_EEXIST, AlreadyExists),
+      (@errno.linux_EACCES, AccessDenied),
+      (@errno.linux_ENOTDIR, NotDirectory),
+      (@errno.linux_ECONNREFUSED, ConnectionRefused),
+      (@errno.linux_ENOTSUP, OperationNotSupported),
     ])
   MacOS =>
     Map([
-      (macos_ENOENT, FileNotFound),
-      (macos_EEXIST, AlreadyExists),
-      (macos_EACCES, AccessDenied),
-      (macos_ENOTDIR, NotDirectory),
-      (macos_ECONNREFUSED, ConnectionRefused),
-      (macos_ENOTSUP, OperationNotSupported),
+      (@errno.macos_ENOENT, FileNotFound),
+      (@errno.macos_EEXIST, AlreadyExists),
+      (@errno.macos_EACCES, AccessDenied),
+      (@errno.macos_ENOTDIR, NotDirectory),
+      (@errno.macos_ECONNREFUSED, ConnectionRefused),
+      (@errno.macos_ENOTSUP, OperationNotSupported),
     ])
   Windows =>
     Map([
-      (windows_ERROR_FILE_NOT_FOUND, FileNotFound),
-      (windows_ERROR_PATH_NOT_FOUND, FileNotFound),
-      (windows_ERROR_FILE_EXISTS, AlreadyExists),
-      (windows_ERROR_ALREADY_EXISTS, AlreadyExists),
-      (windows_ERROR_ACCESS_DENIED, AccessDenied),
-      (windows_ERROR_DIRECTORY, NotDirectory),
-      (windows_ERROR_CONNECTION_REFUSED, ConnectionRefused),
-      (windows_ERROR_NOT_SUPPORTED, OperationNotSupported),
+      (@errno.windows_ERROR_FILE_NOT_FOUND, FileNotFound),
+      (@errno.windows_ERROR_PATH_NOT_FOUND, FileNotFound),
+      (@errno.windows_ERROR_FILE_EXISTS, AlreadyExists),
+      (@errno.windows_ERROR_ALREADY_EXISTS, AlreadyExists),
+      (@errno.windows_ERROR_ACCESS_DENIED, AccessDenied),
+      (@errno.windows_ERROR_DIRECTORY, NotDirectory),
+      (@errno.windows_ERROR_CONNECTION_REFUSED, ConnectionRefused),
+      (@errno.windows_ERROR_NOT_SUPPORTED, OperationNotSupported),
     ])
 }
 

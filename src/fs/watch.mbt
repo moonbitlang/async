@@ -300,7 +300,7 @@ pub async fn Watcher::Watcher(
   )
   guard root_file.kind() is Directory else {
     root_file.close()
-    raise @os_error.from_errno(@os_error.errno_ENOTDIR, context~)
+    raise @os_error.from_errno(@errno_util.not_directory, context~)
   }
   let self = {
     backend: None,
@@ -688,7 +688,7 @@ async fn Watcher::scan_dir(
   )
   guard dir_fd.kind() is Directory else {
     dir_fd.close()
-    raise @os_error.from_errno(@os_error.errno_ENOTDIR, context~)
+    raise @os_error.from_errno(@errno_util.not_directory, context~)
   }
   let dir_obj = Directory::from_io_handle(dir_fd)
   defer dir_obj.close()

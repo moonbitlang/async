@@ -12,6 +12,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/c_buffer",
+  "moonbitlang/async/internal/errno_util",
 }
 
 import {

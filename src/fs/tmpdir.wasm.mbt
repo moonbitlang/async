@@ -41,12 +41,12 @@ fn get_tmp_path_ffi(path : String, len : Int) -> Int = "moonbitlang/async" "fs/g
 fn get_tmp_base_path() -> String {
   let len = get_tmp_path_len_ffi()
   if len < 0 {
-    let err = @os_error.errno_to_string(@os_error.get_errno())
+    let err = @errno_util.errno_to_string(@errno_util.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
   let path = String::make(len, '\u{0}')
   if get_tmp_path_ffi(path, len) < 0 {
-    let err = @os_error.errno_to_string(@os_error.get_errno())
+    let err = @errno_util.errno_to_string(@errno_util.get_errno())
     abort("failed to obtain directory for temporary files: \{err}")
   }
 

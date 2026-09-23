@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/async/internal/env_util",
+  "moonbitlang/async/internal/c_buffer",
+  "moonbitlang/async/internal/os_string",
+}
+
+options(
+  "native-stub": [ "stub.c" ],
+  targets: {
+    "errno_linux.mbt": [ "native", "wasm" ],
+    "errno_macos.mbt": [ "native", "wasm" ],
+    "errno_windows.mbt": [ "native", "wasm" ],
+    "errno_common.mbt": [ "native", "wasm" ],
+  },
+)

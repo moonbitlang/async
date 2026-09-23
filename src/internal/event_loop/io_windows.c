@@ -343,11 +343,6 @@ int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handl
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_errno_is_read_EOF(int32_t err) {
-  return err == ERROR_HANDLE_EOF || err == ERROR_BROKEN_PIPE;
-}
-
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_read(HANDLE handle, struct IoResult *result_obj) {
   DWORD n_read = 0;
   int success;
