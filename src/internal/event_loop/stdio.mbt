@@ -34,7 +34,7 @@ fn kind_of_fd_sync(
   }
   guard! buf is [u32le(_), u32le(mask), i64le(kind)]
   guard mask == STAT_FILE_KIND else {
-    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+    raise @os_error.from_errno(@os_error.errno_ENOTSUP, context~)
   }
   @fd_util.FileKind::unsafe_from_int(kind.to_int())
 }
