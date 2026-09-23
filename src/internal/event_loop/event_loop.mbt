@@ -538,7 +538,7 @@ async fn perform_job_in_worker(
     if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
       @coroutine.raise_cancellation_signal()
     } else {
-      raise @os_error.OSError(err, context~)
+      raise @os_error.from_errno(err, context~)
     }
   } else {
     job.copy_output()

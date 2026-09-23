@@ -13,23 +13,23 @@
 // limitations under the License.
 
 ///|
-async test "is_ENOENT" {
+async test "FileNotFound" {
   let err = @test_util.expect_error_async <| () => {
     @fs.open("does_not_exist", mode=ReadOnly)
   }
   match err {
-    @os_error.OSError(_) as err => assert_true(err.is_ENOENT())
-    _ => fail("result is not OSError")
+    @os_error.OsError(FileNotFound, ..) => ()
+    err => fail("incorrect error: \{err}")
   }
 }
 
 ///|
-async test "is_EEXIST" {
+async test "AlreadyExists" {
   let err = @test_util.expect_error_async <| () => {
     @fs.mkdir("src", permission=0o755)
   }
   match err {
-    @os_error.OSError(_) as err => assert_true(err.is_EEXIST())
-    _ => fail("result is not OSError")
+    @os_error.OsError(AlreadyExists, ..) => ()
+    err => fail("incorrect error: \{err}")
   }
 }

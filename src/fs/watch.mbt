@@ -300,7 +300,7 @@ pub async fn Watcher::Watcher(
   )
   guard root_file.kind() is Directory else {
     root_file.close()
-    raise @os_error.OSError(@os_error.errno_ENOTDIR, context~)
+    raise @os_error.from_errno(@os_error.errno_ENOTDIR, context~)
   }
   let self = {
     backend: None,
@@ -688,7 +688,7 @@ async fn Watcher::scan_dir(
   )
   guard dir_fd.kind() is Directory else {
     dir_fd.close()
-    raise @os_error.OSError(@os_error.errno_ENOTDIR, context~)
+    raise @os_error.from_errno(@os_error.errno_ENOTDIR, context~)
   }
   let dir_obj = Directory::from_io_handle(dir_fd)
   defer dir_obj.close()
@@ -703,7 +703,7 @@ async fn Watcher::scan_dir(
       path=rel_path(path, ent.name),
       context~,
     ) catch {
-      @os_error.OSError(_) as err if err.is_ENOENT() => continue
+      @os_error.OsError(FileNotFound, ..) => continue
       err => raise err
     }
     removed_children.remove(ent.name)
@@ -754,7 +754,7 @@ async fn Watcher::synchronize_file(
     try
       self.synchronize_file(child, path=rel_path(path, name), context~)
     catch {
-      @os_error.OSError(_) as err if err.is_ENOENT() || err.is_ENOTDIR() =>
+      @os_error.OsError(FileNotFound | NotDirectory, ..) =>
         self.mark_as_modified(file.identity)
       err => raise err
     } noraise {

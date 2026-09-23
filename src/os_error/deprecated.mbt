@@ -15,14 +15,29 @@
 ///|
 #deprecated
 #doc(hidden)
-pub extend OSError with ToJson::{to_json}
+pub extend OsError with ToJson::{to_json}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend OSError with Show::{output}
+pub extend OsError with Show::{output}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend OSError with Debug::{to_repr}
+pub extend OsError with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Kind with ToJson::{to_json}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Kind with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Kind with Eq::{equal, not_equal}

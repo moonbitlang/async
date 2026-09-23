@@ -18,7 +18,7 @@ async test "exists" {
   @fs.open("moon.mod", mode=ReadOnly).close()
   assert_false(@fs.exists("moon.mod.not_exist"))
   try @fs.open("moon.mod.not_exist", mode=ReadOnly) catch {
-    @os_error.OSError(_) as err if err.is_ENOENT() => ()
+    @os_error.OsError(FileNotFound, ..) => ()
     err => fail("incorrect error: \{err}")
   } noraise {
     file => {

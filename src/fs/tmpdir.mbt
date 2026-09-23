@@ -65,7 +65,7 @@ pub async fn tmpdir(prefix~ : StringView) -> String {
     path.write_string(h.to_string(radix=16))
     let path = path.to_string()
     try @event_loop.mkdir(path, mode=0o700, context="@fs.tmpdir()") catch {
-      @os_error.OSError(_) as err if err.is_EEXIST() => ()
+      @os_error.OsError(AlreadyExists, ..) => ()
       err => raise err
     } noraise {
       _ => return path

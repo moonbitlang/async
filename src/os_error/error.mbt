@@ -70,108 +70,81 @@ pub fn errno_to_string(errno : Int) -> String {
 }
 
 ///|
-pub(all) suberror OSError {
-  OSError(Int, context~ : String)
+/// An error from the operating system.
+///
+/// The positional parameter of type `Kind` is a platform-independent abstraction
+/// for common kinds of error, such as file not found.
+/// It can be used to match against special error in a portable way.
+/// Note that not all error has a corresponding `Kind`.
+///
+/// `raw_code` is the raw, system-specific error number.
+/// `context` describe the context that generated this error.
+pub suberror OsError {
+  OsError(Kind, raw_code~ : Int, context~ : String)
 } derive(ToJson)
 
 ///|
-pub impl Show for OSError with fn output(self, logger) -> Unit {
-  let OSError(errno, context~) = self
-  let msg = "\{context}: \{errno_to_string(errno)}"
-  logger <+ "OSError(\{Repr(msg)})"
+/// Create a `OsError` from a raw error number
+#as_free_fn
+pub fn OsError::from_errno(errno : Int, context~ : String) -> OsError {
+  OsError(Kind(errno), raw_code=errno, context~)
 }
 
 ///|
-pub impl Debug for OSError with fn to_repr(self) {
-  let OSError(errno, context~) = self
-  Repr::opaque_(
-    "@os_error.OSError",
-    Repr::string("\{context}: \{errno_to_string(errno)}"),
-  )
+/// Transform the context of a `OsError` using `f`
+pub fn OsError::wrap_context(err : OsError, f : (String) -> String) -> OsError {
+  let OsError(kind, raw_code~, context~) = err
+  OsError(kind, raw_code~, context=f(context))
 }
 
 ///|
-pub fn OSError::is_nonblocking_io_error(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  errno_is_nonblocking_io_error(errno)
+pub impl Show for OsError with fn output(self, logger) -> Unit {
+  let OsError(_, raw_code~, context~) = self
+  logger
+  ..write_string(context)
+  ..write_string(": ")
+  .write_string(errno_to_string(raw_code))
 }
 
 ///|
-pub fn OSError::is_EINTR(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
+pub impl Debug for OsError with fn to_repr(self) {
+  Repr::opaque_("@os_error.OSError", Repr::string(self.to_string()))
+}
+
+///|
+pub fn OsError::is_nonblocking_io_error(err : OsError) -> Bool {
+  let OsError(_, raw_code~, ..) = err
+  errno_is_nonblocking_io_error(raw_code)
+}
+
+///|
+pub fn OsError::is_EINTR(err : OsError) -> Bool {
+  let OsError(_, raw_code~, ..) = err
   match @env_util.platform {
-    Linux => errno == linux_EINTR
-    MacOS => errno == macos_EINTR
+    Linux => raw_code == linux_EINTR
+    MacOS => raw_code == macos_EINTR
     Windows => false
   }
 }
 
 ///|
-pub extend OSError with Show::{to_string}
-
-///|
-/// Detect whether the error is the `ENOENT` (no such file or directory) error.
-pub fn OSError::is_ENOENT(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  match @env_util.platform {
-    Linux => errno == linux_ENOENT
-    MacOS => errno == macos_ENOENT
-    Windows =>
-      errno == windows_ERROR_FILE_NOT_FOUND ||
-      errno == windows_ERROR_PATH_NOT_FOUND
-  }
-}
-
-///|
-/// Detect whether the error is the `EEXIST` (already exists) error.
-pub fn OSError::is_EEXIST(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  match @env_util.platform {
-    Linux => errno == linux_EEXIST
-    MacOS => errno == macos_EEXIST
-    Windows =>
-      errno == windows_ERROR_FILE_EXISTS ||
-      errno == windows_ERROR_ALREADY_EXISTS
-  }
-}
-
-///|
-/// Detect whether the error is the `EACCES` (permission denied) error.
-pub fn OSError::is_EACCES(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  match @env_util.platform {
-    Linux => errno == linux_EACCES
-    MacOS => errno == macos_EACCES
-    Windows => errno == windows_ERROR_ACCESS_DENIED
-  }
-}
-
-///|
-/// Detect whether the error is the `ECONNREFUSED` (connection refused) error.
-pub fn OSError::is_ECONNREFUSED(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  match @env_util.platform {
-    Linux => errno == linux_ECONNREFUSED
-    MacOS => errno == macos_ECONNREFUSED
-    Windows => errno == windows_ERROR_CONNECTION_REFUSED
-  }
-}
+pub extend OsError with Show::{to_string}
 
 ///|
 /// Detect whether the error is the Windows `ERROR_NOTIFY_ENUM_DIR` error.
-pub fn OSError::is_ERROR_NOTIFY_ENUM_DIR(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
+pub fn OsError::is_ERROR_NOTIFY_ENUM_DIR(err : OsError) -> Bool {
+  let OsError(_, raw_code~, ..) = err
   match @env_util.platform {
     Linux | MacOS => false
-    Windows => errno == windows_ERROR_NOTIFY_ENUM_DIR
+    Windows => raw_code == windows_ERROR_NOTIFY_ENUM_DIR
   }
 }
 
 ///|
-pub fn check_errno(context : String) -> Unit raise OSError {
+pub fn check_errno(context : String) -> Unit raise OsError {
   let err_code = get_errno()
   if err_code != 0 {
-    raise OSError(err_code, context~)
+    raise OsError(Kind(err_code), raw_code=err_code, context~)
   }
 }
 
@@ -180,12 +153,6 @@ pub let errno_ENOTDIR : Int = match @env_util.platform {
   Linux => linux_ENOTDIR
   MacOS => macos_ENOTDIR
   Windows => windows_ERROR_DIRECTORY
-}
-
-///|
-pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
-  let OSError(errno, ..) = err
-  errno == errno_ENOTDIR
 }
 
 ///|

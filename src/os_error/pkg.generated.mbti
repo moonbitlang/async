@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn check_errno(String) -> Unit raise OSError
+pub fn check_errno(String) -> Unit raise OsError
 
 pub let errno_ENOTDIR : Int
 
@@ -19,22 +19,30 @@ pub fn get_errno() -> Int
 pub fn is_nonblocking_io_error() -> Bool
 
 // Errors
-pub(all) suberror OSError {
-  OSError(Int, context~ : String)
+pub suberror OsError {
+  OsError(Kind, raw_code~ : Int, context~ : String)
 } derive(ToJson)
-pub fn OSError::is_EACCES(Self) -> Bool
-pub fn OSError::is_ECONNREFUSED(Self) -> Bool
-pub fn OSError::is_EEXIST(Self) -> Bool
-pub fn OSError::is_EINTR(Self) -> Bool
-pub fn OSError::is_ENOENT(Self) -> Bool
-pub fn OSError::is_ENOTDIR(Self) -> Bool
-pub fn OSError::is_ERROR_NOTIFY_ENUM_DIR(Self) -> Bool
-pub fn OSError::is_nonblocking_io_error(Self) -> Bool
-pub fn OSError::to_string(Self) -> String
-pub impl Show for OSError
-pub impl @debug.Debug for OSError
+#as_free_fn
+pub fn OsError::from_errno(Int, context~ : String) -> Self
+pub fn OsError::is_EINTR(Self) -> Bool
+pub fn OsError::is_ERROR_NOTIFY_ENUM_DIR(Self) -> Bool
+pub fn OsError::is_nonblocking_io_error(Self) -> Bool
+pub fn OsError::to_string(Self) -> String
+pub fn OsError::wrap_context(Self, (String) -> String) -> Self
+pub impl Show for OsError
+pub impl @debug.Debug for OsError
 
 // Types and methods
+#non_exhaustive
+pub(all) enum Kind {
+  FileNotFound
+  AlreadyExists
+  AccessDenied
+  NotDirectory
+  ConnectionRefused
+  OperationNotSupported
+  Unknown
+} derive(Eq, ToJson, @debug.Debug)
 
 // Type aliases
 
