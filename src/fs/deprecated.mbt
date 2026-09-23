@@ -29,6 +29,7 @@ pub impl Show for FileKind with fn output(self, logger) {
     Pipe => logger <+ "Pipe"
     BlockDevice => logger <+ "BlockDevice"
     CharDevice => logger <+ "CharDevice"
+    Console => logger <+ "Console"
   }
 }
 
