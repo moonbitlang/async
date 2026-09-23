@@ -80,6 +80,10 @@ pub extend Output with @io.Writer::{write_once, write, write_reader}
 ///
 /// If `stdin` does not exist or is invalid,
 /// all operations on `stdin` will immediately fail with error.
+///
+/// Windows note: console handles are text based on Windows.
+/// If `stdin` is a Windows console input,
+/// unicode text read from the console will be decoded to UTF-8.
 pub let stdin : Input = {
   io: @event_loop.stdin,
   read_buf: @io.ReaderBuffer::new(),
@@ -90,6 +94,13 @@ pub let stdin : Input = {
 ///
 /// If `stdout` does not exist or is invalid,
 /// all operations on `stdout` will immediately fail with error.
+///
+/// Windows note: console handles are text based on Windows.
+/// If `stdout` is a Windows console output,
+/// binary IO over `stdout` will be interpreted as UTF-8 sequence,
+/// and submitted to the actual console screen buffer via unicode-safe API.
+/// If the input is not valid UTF-8, the correct parts will be preserved,
+/// but the final output for incorrect parts is undefined
 pub let stdout : Output = @event_loop.stdout
 
 ///|
@@ -97,4 +108,11 @@ pub let stdout : Output = @event_loop.stdout
 ///
 /// If `stderr` does not exist or is invalid,
 /// all operations on `stderr` will immediately fail with error.
+///
+/// Windows note: console handles are text based on Windows.
+/// If `stderr` is a Windows console output,
+/// binary IO over `stderr` will be interpreted as UTF-8 sequence,
+/// and submitted to the actual console screen buffer via unicode-safe API.
+/// If the input is not valid UTF-8, the correct parts will be preserved,
+/// but the final output for incorrect parts is undefined
 pub let stderr : Output = @event_loop.stderr
