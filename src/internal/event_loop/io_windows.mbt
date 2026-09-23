@@ -134,7 +134,7 @@ async fn IoHandle::generic_read_windows(
   } else if @os_error.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
-      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+      @os_error.OsError(_, raw_code~, ..) if errno_is_read_eof(raw_code) => 0
       err => raise err
     }
   } else if errno_is_read_eof(@os_error.get_errno()) {

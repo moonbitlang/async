@@ -455,7 +455,7 @@ pub async fn file_size(path : StringView) -> Int64 {
 pub fn File::as_dir(self : File) -> Directory raise {
   guard self.io.kind() is Directory else {
     self.close()
-    raise @os_error.OSError(
+    raise @os_error.from_errno(
       @os_error.errno_ENOTDIR,
       context="@fs.File::as_dir()",
     )
