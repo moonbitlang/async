@@ -13,31 +13,10 @@
 // limitations under the License.
 
 ///|
-let linux_EINTR : Int32 = 4
-
-///|
-let linux_ENOENT : Int32 = 2
-
-///|
-let linux_EEXIST : Int32 = 17
-
-///|
-let linux_EACCES : Int32 = 13
-
-///|
-let linux_ECONNREFUSED : Int32 = 111
-
-///|
-let linux_ENOTDIR : Int32 = 20
-
-///|
-let linux_ENOTSUP : Int32 = 95
-
-///|
-let linux_EAGAIN : Int32 = 11
-
-///|
-let linux_EINPROGRESS : Int32 = 115
-
-///|
-let linux_EWOULDBLOCK : Int32 = linux_EAGAIN
+#cfg(not(any(target="native", target="wasm")))
+#coverage.skip
+pub let unimplemented : Unit = {
+  ignore(@os_string.unimplemented)
+  ignore((_ : @env_util.Platform) => ())
+  ignore(@c_buffer.unimplemented)
+}

@@ -19,12 +19,12 @@ let _ignore_unused_import : Unit = {
   ignore(@fs.unimplemented)
   ignore(@utf8.encode(""))
   ignore(@io.Encoding::UTF8)
+  ignore(@pipe.unimplemented)
 }
 
 ///|
 #cfg(target="wasm")
-let _ignore_pipe_import : Unit = ignore(@pipe.pipe)
-
-///|
-#cfg(not(any(target="native", target="wasm")))
-let _ignore_pipe_import : Unit = ignore(@pipe.unimplemented)
+let _ignore_unused_import : Unit = {
+  ignore(@pipe.pipe)
+  ignore(@utf8.encode(""))
+}

@@ -8,25 +8,12 @@ import {
 // Values
 pub fn check_errno(String) -> Unit raise OsError
 
-pub let errno_ENOTDIR : Int32
-
-pub let errno_ENOTSUP : Int32
-
-pub fn errno_to_string(Int32) -> String
-
-pub fn get_errno() -> Int32
-
-pub fn is_nonblocking_io_error() -> Bool
-
 // Errors
 pub suberror OsError {
   OsError(Kind, raw_code~ : Int32, context~ : String)
 } derive(ToJson)
 #as_free_fn
 pub fn OsError::from_errno(Int32, context~ : String) -> Self
-pub fn OsError::is_EINTR(Self) -> Bool
-pub fn OsError::is_ERROR_NOTIFY_ENUM_DIR(Self) -> Bool
-pub fn OsError::is_nonblocking_io_error(Self) -> Bool
 pub fn OsError::to_string(Self) -> String
 pub fn OsError::wrap_context(Self, (String) -> String) -> Self
 pub impl Show for OsError
