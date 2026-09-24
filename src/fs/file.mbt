@@ -466,26 +466,23 @@ pub fn File::kind(self : File) -> FileKind {
 
 ///|
 /// Get the last access time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::atime(self : File) -> (Int64, Int) {
-  @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
+pub async fn File::atime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last modification time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::mtime(self : File) -> (Int64, Int) {
-  @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
+pub async fn File::mtime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last status change time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::ctime(self : File) -> (Int64, Int) {
-  @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
+pub async fn File::ctime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
+  { sec, nsec, }
 }
 
 ///|
