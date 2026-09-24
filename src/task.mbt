@@ -23,7 +23,8 @@ struct Task[X] {
 ///|
 /// Special error indicating a waited task is cancelled.
 /// Note that this error has nothing to do with cancellation of *current* task.
-pub suberror TaskCancelled derive(Debug)
+#alias(TaskCancelled, deprecated)
+pub suberror WaitedTaskAlreadyCancelled derive(Debug)
 
 ///|
 /// Wait for a task and retrieve its result value.
@@ -32,7 +33,7 @@ pub suberror TaskCancelled derive(Debug)
 pub async fn[X] Task::wait(self : Task[X]) -> X {
   match self.coro.wait() {
     Continue => self.value.val.unwrap()
-    Cancelled => raise TaskCancelled
+    Cancelled => raise WaitedTaskAlreadyCancelled
   }
 }
 
