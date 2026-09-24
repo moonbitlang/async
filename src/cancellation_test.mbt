@@ -290,7 +290,7 @@ async test "task group cancel & complete at the same time" {
       // - `task1` starts and completes, waking the main task of `inner`
       // So here we will have `.cancer()` and `.wake()` called on the same coroutine,
       // but the coroutine should be woken only once in this case.
-      inner.spawn_bg(() => inner.return_immediately(()))
+      inner.spawn_bg(() => inner.return_immediately())
       let task1 = inner.spawn(() => ())
       match @async.handle_cancellation(() => task1.wait()) {
         None => {
