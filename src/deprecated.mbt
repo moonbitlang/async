@@ -68,4 +68,4 @@ pub extend TimerCancelled with Show::{output}
 ///|
 #deprecated
 #doc(hidden)
-pub extend TaskCancelled with Debug::{to_repr}
+pub extend WaitedTaskAlreadyCancelled with Debug::{to_repr}
