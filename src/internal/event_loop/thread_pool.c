@@ -370,7 +370,9 @@ enum {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_cancel_worker(struct worker *worker) {
-  switch (worker->state) {
+  // Older Apple Clang rejects an atomic value directly in a switch condition.
+  int32_t state = worker->state;
+  switch (state) {
     case Cancelled:
     case Waiting:
       return CANCELLATION_STATUS_NEED_WAIT;
