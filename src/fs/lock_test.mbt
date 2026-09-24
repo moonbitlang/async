@@ -25,7 +25,7 @@ let lock_file_prog : @async.Lazy[String] = Lazy(() => {
 
 ///|
 async fn run_lock_file_prog(
-  group : @async.TaskGroup[Unit],
+  group : @async.TaskGroup,
   file : String,
   lock : @fs.Lock,
   log : Array[String],

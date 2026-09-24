@@ -43,7 +43,7 @@ pub async fn sleep(Int) -> Unit noraise
 pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> Unit) -> X
 
 #callsite(autofill(loc))
-pub async fn[X] with_task_group(async (TaskGroup[X]) -> X, loc~ : SourceLoc) -> X
+pub async fn with_task_group(async (TaskGroup) -> Unit, loc~ : SourceLoc) -> Unit
 
 pub async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
 
@@ -87,14 +87,14 @@ pub fn[X] Task::cancel(Self[X]) -> Unit
 pub fn[X] Task::try_wait(Self[X]) -> X? raise
 pub async fn[X] Task::wait(Self[X]) -> X
 
-type TaskGroup[X]
-pub fn[X] TaskGroup::add_defer(Self[X], async () -> Unit nocancel) -> Unit
-pub async fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit noraise
+type TaskGroup
+pub fn TaskGroup::add_defer(Self, async () -> Unit nocancel) -> Unit
+pub async fn TaskGroup::return_immediately(Self) -> Unit noraise
 #callsite(autofill(loc))
-pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Task[X]
+pub fn[X] TaskGroup::spawn(Self, async () -> X, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Task[X]
 #callsite(autofill(loc))
-pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Unit
-pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
+pub fn TaskGroup::spawn_bg(Self, async () -> Unit, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Unit
+pub fn TaskGroup::spawn_loop(Self, async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
 
 pub struct Timer {
   duration : Int
