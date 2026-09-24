@@ -347,8 +347,8 @@ let null_device : String = if @env_util.platform is Windows {
 }
 
 ///|
-async fn[X] spawn_stage(
-  group : @async.TaskGroup[X],
+async fn spawn_stage(
+  group : @async.TaskGroup,
   cmd : Cmd,
   stdin : &@process.ProcessInput,
   stdout : &@process.ProcessOutput?,
@@ -529,6 +529,7 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
   // immediately before its producer is spawned, keeping any unconsumed input
   // end local to that one junction if the producer itself fails to spawn.
   let capture_stderr = sink is Buffer(_)
+  let mut result = None
   @async.with_task_group() <| group => {
     let captured = Ref(0)
     let limit = match sink {
@@ -652,11 +653,12 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
       }
       stderr.write_string(@utf8.decode_lossy(stage_bytes))
     }
-    {
+    result = Some({
       exit_code: pipefail_exit_code(exit_codes),
       stdout: @utf8.decode_lossy(stdout_bytes),
       stdout_bytes,
       stderr: stderr.to_string(),
-    }
+    })
   }
+  result.unwrap()
 }

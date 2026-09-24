@@ -150,14 +150,13 @@ pub async fn run(
   let pid = process.pid
   match @async.handle_cancellation(() => process.wait_pid(context~)) {
     None => {
-      let ret = @async.protect_from_cancel() <| () => {
+      @async.protect_from_cancel() <| () => {
         @async.with_task_group() <| group => {
           group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          process.wait_pid(context~)
+          ignore <| process.wait_pid(context~)
         }
       }
-      @coroutine.check_cancellation()
-      ret
+      @coroutine.raise_cancellation_signal()
     }
     Some(ret) => ret
   }
@@ -208,8 +207,8 @@ pub fn Process::cancel(self : Process) -> Unit {
 ///
 /// All arguments except `group` and `no_wait` have the same meaning as `@process.run`,
 /// see `@process.run` for more details.
-pub async fn[X] spawn(
-  group : @async.TaskGroup[X],
+pub async fn spawn(
+  group : @async.TaskGroup,
   cmd : StringView,
   args : ArrayView[String],
   extra_env? : Map[String, String] = Map([]),
@@ -240,13 +239,16 @@ pub async fn[X] spawn(
   let result = group.spawn(no_wait?, () => {
     defer process.close()
     match @async.handle_cancellation(() => process.wait_pid(context~)) {
-      None =>
+      None => {
+        let mut result = 0
         @async.protect_from_cancel() <| () => {
           @async.with_task_group() <| group => {
             group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-            process.wait_pid(context~)
+            result = process.wait_pid(context~)
           }
         }
+        result
+      }
       Some(ret) => ret
     }
   })
@@ -269,6 +271,7 @@ pub async fn collect_stdout(
   no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
+  let mut result = None
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
@@ -285,8 +288,9 @@ pub async fn collect_stdout(
       )
     })
     let output = r.read_all()
-    (exit_code.wait(), output)
+    result = Some((exit_code.wait(), output))
   }
+  result.unwrap()
 }
 
 ///|
@@ -305,6 +309,7 @@ pub async fn collect_stderr(
   no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
+  let mut result = None
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
@@ -321,8 +326,9 @@ pub async fn collect_stderr(
       )
     })
     let output = r.read_all()
-    (exit_code.wait(), output)
+    result = Some((exit_code.wait(), output))
   }
+  result.unwrap()
 }
 
 ///|
@@ -342,6 +348,7 @@ pub async fn collect_output(
 ) -> (Int, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
+  let mut result = None
   @async.with_task_group() <| group => {
     let exit_code = group.spawn(() => {
       run(
@@ -364,8 +371,9 @@ pub async fn collect_output(
       defer r_err.close()
       r_err.read_all()
     })
-    (exit_code.wait(), stdout.wait(), stderr.wait())
+    result = Some((exit_code.wait(), stdout.wait(), stderr.wait()))
   }
+  result.unwrap()
 }
 
 ///|
@@ -384,6 +392,7 @@ pub async fn collect_output_merged(
   no_console_window? : Bool,
 ) -> (Int, &@io.Data) {
   let (r, w) = read_from_process()
+  let mut result = None
   @async.with_task_group() <| group => {
     defer r.close()
     let exit_code = group.spawn(() => {
@@ -400,6 +409,7 @@ pub async fn collect_output_merged(
       )
     })
     let output = r.read_all()
-    (exit_code.wait(), output)
+    result = Some((exit_code.wait(), output))
   }
+  result.unwrap()
 }

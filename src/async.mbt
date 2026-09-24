@@ -132,7 +132,7 @@ pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
     with_task_group() <| group => {
       group.spawn_bg(no_wait=true) <| () => {
         sleep(time)
-        group.return_immediately(())
+        group.return_immediately()
       }
       result = Some(f())
     }
@@ -365,7 +365,7 @@ pub async fn[X] any(
             raise e
           }
         }
-        tg.return_immediately(())
+        tg.return_immediately()
       }
     }
   }
