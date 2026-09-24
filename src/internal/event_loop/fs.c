@@ -539,22 +539,22 @@ write_result:
         break;
 
       case STAT_ACCESS_TIME:
-        output->properties[offset++] = sys_stat.access_time / 10000000;
+        output->properties[offset++] = sys_stat.access_time / 10000000 - 11644473600;
         output->properties[offset++] = (sys_stat.access_time % 10000000) * 100;
         break;
 
       case STAT_MODIFY_TIME:
-        output->properties[offset++] = sys_stat.modify_time / 10000000;
+        output->properties[offset++] = sys_stat.modify_time / 10000000 - 11644473600;
         output->properties[offset++] = (sys_stat.modify_time % 10000000) * 100;
         break;
 
       case STAT_CHANGE_TIME:
-        output->properties[offset++] = sys_stat.change_time / 10000000;
+        output->properties[offset++] = sys_stat.change_time / 10000000 - 11644473600;
         output->properties[offset++] = (sys_stat.change_time % 10000000) * 100;
         break;
 
       case STAT_CREATE_TIME:
-        output->properties[offset++] = sys_stat.create_time / 10000000;
+        output->properties[offset++] = sys_stat.create_time / 10000000 - 11644473600;
         output->properties[offset++] = (sys_stat.create_time % 10000000) * 100;
         break;
     }
