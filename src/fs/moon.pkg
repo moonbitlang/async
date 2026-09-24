@@ -53,6 +53,7 @@ options(
     "rename_test.mbt": [ "native", "wasm" ],
     "stat_test.mbt": [ "native" ],
     "text_file_test.mbt": [ "native", "wasm" ],
+    "timestamp.mbt": [ "native", "wasm" ],
     "timestamp_test.mbt": [ "native", "wasm" ],
     "tmpdir.mbt": [ "native" ],
     "tmpdir.wasm.mbt": [ "wasm" ],
