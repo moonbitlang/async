@@ -149,7 +149,7 @@ async test "worker cancel2" {
     }
     @async.sleep(600)
     log <+ "trying to terminate now\n"
-    root.return_immediately(())
+    root.return_immediately()
   }
   inspect(
     log.to_string(),

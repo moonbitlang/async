@@ -19,7 +19,7 @@ async fn main {
     group.spawn_bg(no_wait=true) <| () => {
       idle_timer.wait()
       println("You have not type anything for 5 seconds, exit now...")
-      group.return_immediately(())
+      group.return_immediately()
     }
     while @stdio.stdin.read_some() is Some(_) {
       idle_timer.refresh()

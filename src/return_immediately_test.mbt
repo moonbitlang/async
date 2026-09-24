@@ -17,7 +17,7 @@ async test "return_immediately basic" {
   @async.with_task_group(root => {
     root.spawn_bg() <| () => {
       @async.sleep(200)
-      root.return_immediately(())
+      root.return_immediately()
     }
     root.spawn_bg() <| () => { @async.sleep(300) }
   })
@@ -30,7 +30,7 @@ async test "return_immediately nested" {
     @async.with_task_group() <| fn(group) {
       group.spawn_bg() <| () => {
         @async.sleep(200)
-        root.return_immediately(())
+        root.return_immediately()
       }
       group.spawn_bg() <| () => { @async.sleep(300) }
     }
@@ -44,7 +44,7 @@ async test "return_immediately error on cancel" {
     @async.with_task_group(root => {
       root.spawn_bg() <| () => {
         @async.sleep(200)
-        root.return_immediately(())
+        root.return_immediately()
       }
       root.spawn_bg() <| () => {
         match @async.handle_cancellation(() => @async.sleep(300)) {
@@ -77,7 +77,7 @@ async test "return_immediately recursive cancel" {
     }
     @async.with_task_group <| group => {
       defer @async.sleep(200)
-      group.return_immediately(())
+      group.return_immediately()
     }
     log.push("inner group finished")
   }
@@ -93,7 +93,7 @@ async test "return_immediately called outside" {
       log.push("100ms tick")
     }
     @async.with_task_group(inner => {
-      outer.spawn_bg(() => inner.return_immediately(()))
+      outer.spawn_bg(() => inner.return_immediately())
     })
     log.push("inner group finished")
   }
