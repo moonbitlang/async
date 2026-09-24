@@ -40,7 +40,7 @@ async fn IoResult::status(
   let n = result.status_ffi(handle)
   if n < 0 {
     if @coroutine.is_being_cancelled() &&
-      errno_is_cancelled(@os_error.get_errno()) {
+      @errno_util.get_errno() == @errno_util.operation_aborted {
       @coroutine.raise_cancellation_signal()
     } else {
       @os_error.check_errno(context)
@@ -105,13 +105,11 @@ fn read_windows(fd : @fd_util.Fd, result : IoResult) -> Int {
 }
 
 ///|
-#cfg(platform="windows")
-extern "C" fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang_async_errno_is_read_EOF"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn errno_is_read_eof(errno : Int) -> Bool = "moonbitlang/async" "io/errno_is_read_EOF/windows"
+#cfg(any(platform="windows", target="wasm"))
+fn errno_is_read_eof(errno : Int) -> Bool {
+  errno == @errno_util.windows_ERROR_HANDLE_EOF ||
+  errno == @errno_util.windows_ERROR_BROKEN_PIPE
+}
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
@@ -131,13 +129,13 @@ async fn IoHandle::generic_read_windows(
     // Otherwise, even if the read operation itself indicates immediate success,
     // we still need to wait for the completion packet to obtain correct result.
     n
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if @errno_util.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
-      @os_error.OSError(errno, ..) if errno_is_read_eof(errno) => 0
+      @os_error.OsError(_, raw_code~, ..) if errno_is_read_eof(raw_code) => 0
       err => raise err
     }
-  } else if errno_is_read_eof(@os_error.get_errno()) {
+  } else if errno_is_read_eof(@errno_util.get_errno()) {
     0
   } else {
     @os_error.check_errno(context)
@@ -210,7 +208,7 @@ async fn IoHandle::generic_write_windows(
     // Otherwise, even if the write operation itself indicates immediate success,
     // we still need to wait for the completion packet to obtain correct result.
     n
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if @errno_util.is_nonblocking_io_error() {
     handle.wait_write_result(result, context~)
     result.status(handle.fd, context~)
   } else {

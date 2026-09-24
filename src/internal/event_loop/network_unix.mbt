@@ -63,7 +63,7 @@ async fn IoHandle::recvfrom_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  let ret = if @errno_util.is_nonblocking_io_error() {
     handle.wait_read()
     recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
@@ -128,7 +128,7 @@ async fn IoHandle::sendto_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  let ret = if @errno_util.is_nonblocking_io_error() {
     handle.wait_write()
     sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   } else {
@@ -188,13 +188,13 @@ async fn IoHandle::connect_unix(
   if 0 == connect_unix_ffi(handle.fd, addr) {
     return
   }
-  if @os_error.is_nonblocking_io_error() {
+  if @errno_util.is_nonblocking_io_error() {
     handle.wait_write()
     let err = get_socket_err(handle.fd)
     if err < 0 {
       @os_error.check_errno(context)
     } else if err > 0 {
-      raise @os_error.OSError(err, context~)
+      raise @os_error.from_errno(err, context~)
     }
   } else {
     @os_error.check_errno(context)
@@ -244,7 +244,7 @@ pub async fn IoHandle::accept_unix(
     // and give chance for other tasks to execute.
     @coroutine.pause_nocancel()
     conn
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if @errno_util.is_nonblocking_io_error() {
     handle.wait_read()
     accept_unix_ffi(handle.fd, addr)
   } else {

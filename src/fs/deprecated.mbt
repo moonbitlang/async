@@ -29,6 +29,7 @@ pub impl Show for FileKind with fn output(self, logger) {
     Pipe => logger <+ "Pipe"
     BlockDevice => logger <+ "BlockDevice"
     CharDevice => logger <+ "CharDevice"
+    Console => logger <+ "Console"
   }
 }
 
@@ -68,3 +69,23 @@ pub extend FsEvent with Eq::{not_equal, equal}
 #deprecated
 #doc(hidden)
 pub extend FsEvent with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Timestamp with Eq::{equal, not_equal}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Timestamp with Compare::{compare, op_lt, op_le, op_gt, op_ge}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Timestamp with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend Timestamp with Sub::{sub}

@@ -15,7 +15,7 @@
 ///|
 #cfg(platform="windows")
 fn gai_error_to_string(code : Int) -> String {
-  @os_error.errno_to_string(code)
+  @errno_util.errno_to_string(code)
 }
 
 ///|
@@ -125,7 +125,7 @@ async fn IoHandle::connect_windows(
   let result = IoResult::for_connect(addr)
   defer result.free()
   if 0 == connect_windows(handle.fd, result) {
-    if !@os_error.is_nonblocking_io_error() {
+    if !@errno_util.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
     handle.wait_write_result(result, context~)
@@ -201,7 +201,7 @@ pub async fn IoHandle::accept_windows(
   let result = IoResult::for_accept(addr.length())
   defer result.free()
   if 0 == accept_windows_ffi(handle.fd, conn_sock.fd, result) {
-    if !@os_error.is_nonblocking_io_error() {
+    if !@errno_util.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
     handle.wait_read_result(result, context~)

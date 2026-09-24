@@ -35,11 +35,11 @@ pub async fn mkdir(
 ) -> Unit {
   let context = "@fs.mkdir()"
   @event_loop.mkdir(path, mode=permission, context~) catch {
-    @os_error.OSError(_) as err if allow_exist && err.is_EEXIST() => {
+    @os_error.OsError(AlreadyExists, ..) as err if allow_exist => {
       let kind = kind(path) catch { _ => raise err }
       guard kind is Directory else { raise err }
     }
-    @os_error.OSError(_) as err if recursive && err.is_ENOENT() => {
+    @os_error.OsError(FileNotFound, ..) as err if recursive => {
       let last_path_sep_index = match path.rev_find("/") {
         Some(index) => index
         None if @event_loop.platform is Windows &&
@@ -158,8 +158,8 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
   )
   if !(io.kind() is Directory) {
     io.close()
-    raise @os_error.OSError(
-      @os_error.errno_ENOTDIR,
+    raise @os_error.from_errno(
+      @errno_util.not_directory,
       context="\{context}: \{path.escape()}",
     )
   }

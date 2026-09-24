@@ -109,14 +109,13 @@ async test "lazy init multiple waiters 1" {
       Some(_) => log.push("lazy init completed at tick \{current_tick()}")
     }
   })
-  let result = @async.with_task_group(group => {
+  @async.with_task_group(group => {
     group.spawn_bg() <| () => {
       x.wait()
       log.push("got lazy init value at tick \{current_tick()}")
     }
-    @async.with_timeout_opt(200, () => x.wait())
+    debug_inspect(@async.with_timeout_opt(200, () => x.wait()), content="None")
   })
-  debug_inspect(result, content="None")
   json_inspect(log, content=[
     "lazy init started at tick 0", "lazy init completed at tick 2", "got lazy init value at tick 2",
   ])

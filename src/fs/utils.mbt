@@ -28,50 +28,59 @@ pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind 
 
 ///|
 /// Get the last access time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn atime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.atime_by_path(path, follow_symlink~, context="@fs.atime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.atime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.atime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last modification time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.mtime_by_path(path, follow_symlink~, context="@fs.mtime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.mtime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.mtime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last status change time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.ctime_by_path(path, follow_symlink~, context="@fs.ctime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.ctime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.ctime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
 pub async fn exists(path : StringView) -> Bool {
   try @event_loop.access(path, Exist, context="@fs.exists()") catch {
-    @os_error.OSError(_) as err if err.is_ENOENT() => false
+    @os_error.OsError(FileNotFound, ..) => false
     err => raise err
   } noraise {
     _ => true
@@ -81,8 +90,7 @@ pub async fn exists(path : StringView) -> Bool {
 ///|
 pub async fn can_read(path : StringView) -> Bool {
   try @event_loop.access(path, CanRead, context="@fs.can_read()") catch {
-    @os_error.OSError(_) as err if err.is_ENOENT() => false
-    @os_error.OSError(_) as err if err.is_EACCES() => false
+    @os_error.OsError(FileNotFound | AccessDenied, ..) => false
     err => raise err
   } noraise {
     _ => true
@@ -92,8 +100,7 @@ pub async fn can_read(path : StringView) -> Bool {
 ///|
 pub async fn can_write(path : StringView) -> Bool {
   try @event_loop.access(path, CanWrite, context="@fs.can_write()") catch {
-    @os_error.OSError(_) as err if err.is_ENOENT() => false
-    @os_error.OSError(_) as err if err.is_EACCES() => false
+    @os_error.OsError(FileNotFound | AccessDenied, ..) => false
     err => raise err
   } noraise {
     _ => true
@@ -103,8 +110,7 @@ pub async fn can_write(path : StringView) -> Bool {
 ///|
 pub async fn can_execute(path : StringView) -> Bool {
   try @event_loop.access(path, CanExecute, context="@fs.can_execute()") catch {
-    @os_error.OSError(_) as err if err.is_ENOENT() => false
-    @os_error.OSError(_) as err if err.is_EACCES() => false
+    @os_error.OsError(FileNotFound | AccessDenied, ..) => false
     err => raise err
   } noraise {
     _ => true

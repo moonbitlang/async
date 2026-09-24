@@ -13,31 +13,31 @@
 // limitations under the License.
 
 ///|
-let linux_EINTR : Int = 4
+pub let linux_EINTR : Int = 4
 
 ///|
-let linux_ENOENT : Int = 2
+pub let linux_ENOENT : Int = 2
 
 ///|
-let linux_EEXIST : Int = 17
+pub let linux_EEXIST : Int = 17
 
 ///|
-let linux_EACCES : Int = 13
+pub let linux_EACCES : Int = 13
 
 ///|
-let linux_ECONNREFUSED : Int = 111
+pub let linux_ECONNREFUSED : Int = 111
 
 ///|
-let linux_ENOTDIR : Int = 20
+pub let linux_ENOTDIR : Int = 20
 
 ///|
-let linux_ENOTSUP : Int = 95
+pub let linux_ENOTSUP : Int = 95
 
 ///|
-let linux_EAGAIN : Int = 11
+pub let linux_EAGAIN : Int = 11
 
 ///|
-let linux_EINPROGRESS : Int = 115
+pub let linux_EINPROGRESS : Int = 115
 
 ///|
-let linux_EWOULDBLOCK : Int = linux_EAGAIN
+pub let linux_EWOULDBLOCK : Int = linux_EAGAIN

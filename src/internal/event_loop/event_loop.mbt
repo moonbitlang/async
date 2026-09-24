@@ -198,7 +198,7 @@ pub fn now() -> Int64 = "moonbitlang/async" "time/get_ms_since_epoch"
 fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
   let n = self.bus.wait(timeout~)
   if n < 0 {
-    if errno_is_cancelled(@os_error.get_errno()) {
+    if @errno_util.get_errno() == @errno_util.operation_aborted {
       // `EINTR`
       return 0
     }
@@ -488,15 +488,6 @@ async fn EventLoop::wait_for_job(
 }
 
 ///|
-#cfg(target="native")
-extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
-
-///|
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
@@ -535,10 +526,10 @@ async fn perform_job_in_worker(
   }
   evloop.wait_for_job(job_id, cancellable~, context~)
   if job.err() is err && err > 0 {
-    if @coroutine.is_being_cancelled() && errno_is_cancelled(err) {
+    if @coroutine.is_being_cancelled() && err == @errno_util.operation_aborted {
       @coroutine.raise_cancellation_signal()
     } else {
-      raise @os_error.OSError(err, context~)
+      raise @os_error.from_errno(err, context~)
     }
   } else {
     job.copy_output()

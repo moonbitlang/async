@@ -48,8 +48,8 @@ pub async fn open(
   )
   defer job.0.free()
   try perform_job_in_worker(job.0, context~, cancellable=true) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => {
@@ -58,8 +58,8 @@ pub async fn open(
         is [u32le(_), u32le(mask), i64le(kind), u64le(dev_id), u64le(file_id)]
       guard (mask & STAT_FILE_KIND) > 0 else {
         // we need at least the file kind
-        raise @os_error.OSError(
-          @os_error.errno_ENOTDIR,
+        raise @os_error.from_errno(
+          @errno_util.not_directory,
           context="\{context}: \{path.escape()}",
         )
       }
@@ -104,7 +104,7 @@ async fn fstatx_single(
   fstatx(fd, request, buf, buf.length(), context~)
   guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
-    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+    raise @os_error.from_errno(@errno_util.not_supported, context~)
   }
   payload
 }
@@ -130,8 +130,8 @@ pub async fn statx(
   )
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -151,7 +151,7 @@ async fn statx_single(
   statx(path, parent~, follow_symlink~, request, buf, buf.length(), context~)
   guard! buf is [u32le(_), u32le(mask), .. payload]
   guard (mask & request) != 0 else {
-    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+    raise @os_error.from_errno(@errno_util.not_supported, context~)
   }
   payload
 }
@@ -289,8 +289,8 @@ pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
   let job = Job::access(path_bytes, acc)
   defer job.free()
   perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   }
 }
@@ -301,8 +301,8 @@ pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
   let job = Job::chmod(path_bytes, mode)
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -338,8 +338,8 @@ pub async fn remove(path : StringView, context~ : String) -> Unit nocancel {
   defer job.free()
   @coroutine.protect_from_cancel <| () => {
     try perform_job_in_worker(job, context~) catch {
-      @os_error.OSError(errno, context~) =>
-        raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+      @os_error.OsError(_) as err =>
+        raise err.wrap_context(context => "\{context}: \{path.escape()}")
       err => raise err
     } noraise {
       _ => ()
@@ -359,11 +359,10 @@ pub async fn rename(
   let job = Job::rename(old_path_bytes, new_path_bytes, replace~)
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(
-        errno,
-        context="\{context}: \{old_path.escape()} => \{new_path.escape()}",
-      )
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => {
+        "\{context}: \{old_path.escape()} => \{new_path.escape()}"
+      })
     err => raise err
   } noraise {
     _ => ()
@@ -382,11 +381,10 @@ pub async fn symlink(
   let job = Job::symlink(target_bytes, path_bytes, force_symlink~)
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(
-        errno,
-        context="\{context}: \{target.escape()} => \{path.escape()}",
-      )
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => {
+        "\{context}: \{target.escape()} => \{path.escape()}"
+      })
     err => raise err
   } noraise {
     _ => ()
@@ -399,8 +397,8 @@ pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
   let job = Job::mkdir(path_bytes, mode)
   defer job.free()
   try perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   } noraise {
     _ => ()
@@ -414,8 +412,8 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit nocancel {
   defer job.free()
   @coroutine.protect_from_cancel <| () => {
     try perform_job_in_worker(job, context~) catch {
-      @os_error.OSError(errno, context~) =>
-        raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+      @os_error.OsError(_) as err =>
+        raise err.wrap_context(context => "\{context}: \{path.escape()}")
       err => raise err
     } noraise {
       _ => ()
@@ -448,8 +446,8 @@ pub async fn realpath(path : StringView, context~ : String) -> String {
   let job = Job::realpath(path_bytes)
   defer job.free()
   let _ = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   }
   let c_path = job.get_realpath_result()
@@ -468,8 +466,8 @@ pub async fn inotify_add_watch(
   let job = Job::inotify_add_watch(inotify, path_bytes, is_dir)
   defer job.free()
   perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   }
 }
@@ -486,8 +484,8 @@ pub async fn inotify_add_watch(
   let job = Job::inotify_add_watch(inotify, path_bytes, is_dir)
   defer job.free()
   let wd = perform_job_in_worker(job, context~) catch {
-    @os_error.OSError(errno, context~) =>
-      raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
+    @os_error.OsError(_) as err =>
+      raise err.wrap_context(context => "\{context}: \{path.escape()}")
     err => raise err
   }
   wd.to_uint64()
@@ -538,10 +536,11 @@ pub async fn IoHandle::read_dir_changes(
     // and give chance for other tasks to execute.
     @coroutine.pause_nocancel()
     n
-  } else if @os_error.is_nonblocking_io_error() {
+  } else if @errno_util.is_nonblocking_io_error() {
     handle.wait_read_result(result, context~)
     result.status(handle.fd, context~) catch {
-      @os_error.OSError(_) as err if err.is_ERROR_NOTIFY_ENUM_DIR() => 0
+      @os_error.OsError(_, raw_code~, ..) if raw_code ==
+        @errno_util.windows_ERROR_NOTIFY_ENUM_DIR => 0
       err => raise err
     }
   } else {

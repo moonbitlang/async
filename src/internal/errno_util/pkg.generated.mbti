@@ -1,0 +1,97 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/internal/errno_util"
+
+// Values
+pub fn errno_is_nonblocking_io_error(Int) -> Bool
+
+pub fn errno_to_string(Int) -> String
+
+pub fn get_errno() -> Int
+
+pub fn is_nonblocking_io_error() -> Bool
+
+pub let linux_EACCES : Int
+
+pub let linux_EAGAIN : Int
+
+pub let linux_ECONNREFUSED : Int
+
+pub let linux_EEXIST : Int
+
+pub let linux_EINPROGRESS : Int
+
+pub let linux_EINTR : Int
+
+pub let linux_ENOENT : Int
+
+pub let linux_ENOTDIR : Int
+
+pub let linux_ENOTSUP : Int
+
+pub let linux_EWOULDBLOCK : Int
+
+pub let lock_violation : Int
+
+pub let macos_EACCES : Int
+
+pub let macos_EAGAIN : Int
+
+pub let macos_ECONNREFUSED : Int
+
+pub let macos_EEXIST : Int
+
+pub let macos_EINPROGRESS : Int
+
+pub let macos_EINTR : Int
+
+pub let macos_ENOENT : Int
+
+pub let macos_ENOTDIR : Int
+
+pub let macos_ENOTSUP : Int
+
+pub let macos_EWOULDBLOCK : Int
+
+pub let not_directory : Int
+
+pub let not_supported : Int
+
+pub let operation_aborted : Int
+
+pub let windows_ERROR_ACCESS_DENIED : Int
+
+pub let windows_ERROR_ALREADY_EXISTS : Int
+
+pub let windows_ERROR_BROKEN_PIPE : Int
+
+pub let windows_ERROR_CONNECTION_REFUSED : Int
+
+pub let windows_ERROR_DIRECTORY : Int
+
+pub let windows_ERROR_FILE_EXISTS : Int
+
+pub let windows_ERROR_FILE_NOT_FOUND : Int
+
+pub let windows_ERROR_HANDLE_EOF : Int
+
+pub let windows_ERROR_IO_INCOMPLETE : Int
+
+pub let windows_ERROR_IO_PENDING : Int
+
+pub let windows_ERROR_LOCK_VIOLATION : Int
+
+pub let windows_ERROR_NOTIFY_ENUM_DIR : Int
+
+pub let windows_ERROR_NOT_SUPPORTED : Int
+
+pub let windows_ERROR_OPERATION_ABORTED : Int
+
+pub let windows_ERROR_PATH_NOT_FOUND : Int
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
