@@ -50,7 +50,10 @@ pub impl Hash for Coroutine with fn hash_combine(self, hasher) {
 
 ///|
 pub fn Coroutine::wake(self : Coroutine) -> Unit {
-  if !self.ready {
+  // Only a suspended coroutine can be resumed: a running one observes
+  // `cancelled` at its next suspension point, and a finished one never runs
+  // again. Enqueueing either would leave a stale entry in `run_later`.
+  if !self.ready && self.state is Suspend(_) {
     self.ready = true
     scheduler.run_later.push_back(self)
   }
