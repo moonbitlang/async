@@ -28,44 +28,53 @@ pub async fn kind(path : StringView, follow_symlink? : Bool = true) -> FileKind 
 
 ///|
 /// Get the last access time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn atime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.atime_by_path(path, follow_symlink~, context="@fs.atime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.atime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.atime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last modification time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.mtime_by_path(path, follow_symlink~, context="@fs.mtime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.mtime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.mtime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last status change time of a file at `path`.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
 ///
 /// If `follow_symlink` is `true` (`true` by default) and `path` is a symbolic link,
 /// the timestamp of the target of `path` will be returned.
 pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool = true,
-) -> (Int64, Int) {
-  @event_loop.ctime_by_path(path, follow_symlink~, context="@fs.ctime()")
+) -> Timestamp {
+  let (sec, nsec) = @event_loop.ctime_by_path(
+    path,
+    follow_symlink~,
+    context="@fs.ctime()",
+  )
+  { sec, nsec, }
 }
 
 ///|
