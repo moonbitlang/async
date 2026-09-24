@@ -93,17 +93,20 @@ pub suberror TimeoutError derive(Debug, ToJson)
 /// - If `f` is still running after `timeout` milliseconds,
 ///   `with_timeout` will fail with `TimeoutError`,
 ///   or the value of `error`, if explicitly specified.
+///
+/// - If the whole `with_timeout` call is cancelled before `f` completes,
+///   `f` will be cancelled immediately
+///
+/// Note that `with_timeout` will succeed as long as `f` completes,
+/// and the result of `f` is never silently discarded.
 pub async fn[X] with_timeout(
   time : Int,
   f : async () -> X,
   error? : Error = TimeoutError,
 ) -> X {
-  with_task_group() <| group => {
-    group.spawn_bg(no_wait=true) <| () => {
-      sleep(time)
-      raise error
-    }
-    f()
+  match with_timeout_opt(time, f) {
+    Some(result) => result
+    None => raise error
   }
 }
 
@@ -116,14 +119,28 @@ pub async fn[X] with_timeout(
 /// - If `f` fail before `timeout`, `with_timeout_opt` will fail immediately.
 ///
 /// - If `f` is still running after `timeout` milliseconds,
-/// ` with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
+///   `with_timeout_opt` will return `None` immediately, and `f` will be cancelled.
+///
+/// - If the whole `with_timeout_opt` call is cancelled before `f` completes,
+///   `f` will be cancelled immediately
+///
+/// Note that `with_timeout_opt` will succeed as long as `f` completes,
+/// and the result of `f` is never silently discarded.
 pub async fn[X] with_timeout_opt(time : Int, f : async () -> X) -> X? {
-  with_task_group() <| group => {
-    group.spawn_bg(no_wait=true) <| () => {
-      sleep(time)
-      group.return_immediately(None)
+  let mut result = None
+  let status = @coroutine.handle_cancellation <| () => {
+    with_task_group() <| group => {
+      group.spawn_bg(no_wait=true) <| () => {
+        sleep(time)
+        group.return_immediately(())
+      }
+      result = Some(f())
     }
-    Some(f())
+  }
+  match result {
+    Some(_) => result
+    None if status is Some(_) => None
+    None => @coroutine.raise_cancellation_signal()
   }
 }
 

@@ -71,7 +71,10 @@ async test "with_timeout timeout" {
     }
     @async.with_timeout(200, () => {
       match @async.handle_cancellation(() => @async.sleep(400)) {
-        None => log <+ "task cancelled\n"
+        None => {
+          log <+ "task cancelled\n"
+          @coroutine.raise_cancellation_signal()
+        }
         Some(_) => log <+ "task finished\n"
       }
     }) catch {
@@ -105,13 +108,19 @@ async test "with_timeout nested1" {
       let result = @async.handle_cancellation() <| () => {
         @async.with_timeout(500) <| () => {
           match @async.handle_cancellation(() => @async.sleep(2000)) {
-            None => log <+ "task cancelled\n"
+            None => {
+              log <+ "task cancelled\n"
+              @coroutine.raise_cancellation_signal()
+            }
             Some(_) => log <+ "task finished after 2s\n"
           }
         }
       }
       match result {
-        None => log.write_string("inner `with_timeout` cancelled\n")
+        None => {
+          log.write_string("inner `with_timeout` cancelled\n")
+          @coroutine.raise_cancellation_signal()
+        }
         Some(_) => ()
       }
     }) catch {
@@ -146,7 +155,10 @@ async test "with_timeout nested2" {
     @async.with_timeout(750, () => {
       @async.with_timeout(450, () => {
         match @async.handle_cancellation(() => @async.sleep(2000)) {
-          None => log <+ "task cancelled\n"
+          None => {
+            log <+ "task cancelled\n"
+            @coroutine.raise_cancellation_signal()
+          }
           Some(_) => log <+ "task finished after 2s\n"
         }
       }) catch {
@@ -213,7 +225,10 @@ async test "with_timeout error-on-timeout" {
       defer log.write_string("main task terminates\n")
       @async.with_timeout(100, error=Err) <| () => {
         match @async.handle_cancellation(() => @async.sleep(2000)) {
-          None => log <+ "task cancelled\n"
+          None => {
+            log <+ "task cancelled\n"
+            @coroutine.raise_cancellation_signal()
+          }
           Some(_) => log <+ "task finished after 2s\n"
         }
       }
@@ -290,7 +305,10 @@ async test "with_timeout_opt timeout" {
     }
     let result = @async.with_timeout_opt(100, () => {
       match @async.handle_cancellation(() => @async.sleep(2000)) {
-        None => log.push("task cancelled")
+        None => {
+          log.push("task cancelled")
+          @coroutine.raise_cancellation_signal()
+        }
         Some(_) => log.push("task finished after 2s")
       }
       42
