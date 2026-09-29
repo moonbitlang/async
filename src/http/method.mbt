@@ -13,38 +13,20 @@
 // limitations under the License.
 
 ///|
-/// An invalid method token or an extension duplicating a named method.
+/// Raised when a method name is invalid, or an extension uses a standard method name.
 pub suberror InvalidMethod derive(Debug, ToJson)
 
 ///|
-/// Parse a case-sensitive HTTP method token. Existing named methods are
-/// returned as their corresponding variants; other valid tokens are extensions.
+/// Parse a HTTP method name. Method names are case sensitive.
+/// Standard method names return the corresponding constructor,
+/// other valid names return `Extension`.
+/// Raises `InvalidMethod` if the name is empty or contains invalid characters.
 pub fn RequestMethod::from_string(
   name : StringView,
 ) -> RequestMethod raise InvalidMethod {
   guard !name.is_empty() else { raise InvalidMethod }
-  for c in name {
-    match c {
-      'A'..='Z'
-      | 'a'..='z'
-      | '0'..='9'
-      | '!'
-      | '#'
-      | '$'
-      | '%'
-      | '&'
-      | '\''
-      | '*'
-      | '+'
-      | '-'
-      | '.'
-      | '^'
-      | '_'
-      | '`'
-      | '|'
-      | '~' => ()
-      _ => raise InvalidMethod
-    }
+  for c in name.code_units() {
+    guard is_token_char(c) else { raise InvalidMethod }
   }
   match name {
     "GET" => Get
@@ -61,8 +43,8 @@ pub fn RequestMethod::from_string(
 }
 
 ///|
-/// Return the method's wire name, preserving extension method case.
-/// This does not validate directly constructed extension values.
+/// Get the name of a HTTP method.
+/// For `Extension`, the name is returned as is, without validation.
 pub fn RequestMethod::as_string(self : RequestMethod) -> String {
   match self {
     Get => "GET"

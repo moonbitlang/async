@@ -254,19 +254,17 @@ async test "1XX response" {
 }
 
 ///|
-async test "extension methods round trip after rejected method values" {
+async test "extension method" {
   let log = StringBuilder()
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
     let client = @http.Client("http://127.0.0.1:\{port}")
     defer client.close()
     for name in ["X\r\nInjected: yes", "HEAD"] {
-      try client.request(Extension(name), "/") catch {
-        @http.InvalidMethod => ()
-        err => raise err
-      } noraise {
-        _ => fail("accepted invalid extension: \{name.escape()}")
-      }
+      debug_inspect(
+        @test_util.expect_error_async(() => client.request(Extension(name), "/")),
+        content="InvalidMethod",
+      )
     }
     client.request(Extension("PROPFIND"), "/post-streaming")
     client.write("<propfind/>")
@@ -281,7 +279,7 @@ async test "extension methods round trip after rejected method values" {
 
 ///|
 #cfg(target="js")
-async test "fetch normalizes extension HEAD case" {
+async test "extension method HEAD on JS" {
   let log = StringBuilder()
   @async.with_task_group() <| group => {
     let port = test_server(group, log)

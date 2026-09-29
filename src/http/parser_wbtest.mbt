@@ -752,11 +752,9 @@ async test "invalid request method tokens remain BadRequest" {
     }
     defer r.close()
     let reader = Reader::new(r)
-    try reader.read_request() catch {
-      BadRequest => ()
-      err => raise err
-    } noraise {
-      _ => fail("accepted invalid request method")
-    }
+    debug_inspect(
+      @test_util.expect_error_async(() => reader.read_request()),
+      content="BadRequest",
+    )
   }
 }
