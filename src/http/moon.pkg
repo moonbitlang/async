@@ -39,6 +39,8 @@ options(
     "cookie.mbt": [ "native", "js", "wasm" ],
     "cookie_wbtest.mbt": [ "native", "wasm" ],
     "deprecated.mbt": [ "native", "js", "wasm" ],
+    "method.mbt": [ "native", "js", "wasm" ],
+    "method_test.mbt": [ "native", "js", "wasm" ],
     "parser.mbt": [ "native", "wasm" ],
     "parser_wbtest.mbt": [ "native", "wasm" ],
     "parser_trailer_wbtest.mbt": [ "native", "wasm" ],

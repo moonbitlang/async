@@ -741,3 +741,45 @@ async test "chunk extension" {
     inspect(input.read_all().text(), content="abcdxyzw1234ABCD")
   }
 }
+
+///|
+async test "read extension methods and preserve body framing" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w.write("PROPFIND /dav HTTP/1.1\r\nContent-Length: 4\r\n\r\n<d/>")
+      w.write("head /custom HTTP/1.1\r\nContent-Length: 3\r\n\r\nabc")
+      w.write("MKCOL /new HTTP/1.1\r\n\r\n")
+    }
+    defer r.close()
+    let reader = Reader::new(r)
+    assert_eq(reader.read_request().meth, Extension("PROPFIND"))
+    assert_eq(reader.read_all().text(), "<d/>")
+    assert_eq(reader.read_request().meth, Extension("head"))
+    assert_eq(reader.read_all().text(), "abc")
+    assert_eq(reader.read_request().meth, Extension("MKCOL"))
+    assert_eq(reader.read_all().text(), "")
+  }
+}
+
+///|
+async test "invalid request method tokens remain BadRequest" {
+  for name in ["", "X\tY", "X/Y", "X:Y", "方法"] {
+    @async.with_task_group() <| group => {
+      let (r, w) = @io.pipe()
+      group.spawn_bg() <| () => {
+        defer w.close()
+        w.write("\{name} / HTTP/1.1\r\n\r\n")
+      }
+      defer r.close()
+      let reader = Reader::new(r)
+      try reader.read_request() catch {
+        BadRequest => ()
+        err => raise err
+      } noraise {
+        _ => fail("accepted invalid request method")
+      }
+    }
+  }
+}

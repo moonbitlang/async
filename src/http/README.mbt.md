@@ -57,6 +57,22 @@ are supported on JavaScript backend using `fetch` API,
 meaning that you can use these API in browser environment.
 Notice that some feature, such as proxy, is not supported on JavaScript backend.
 
+## Extension request methods
+
+Use `Extension("PROPFIND")` to send an extension method through `Client::request`
+or `@http.request`. Servers expose valid unknown methods through the same variant.
+Method names are case-sensitive, nonempty HTTP tokens.
+
+`RequestMethod::from_string(name)` validates a name and returns a named variant
+for an existing standard method (for example, `"HEAD"` becomes `Head`), or an
+`Extension` otherwise. `method.as_string()` returns its wire name.
+Direct extension values are checked before sending: invalid tokens and duplicate
+standard names such as `Extension("HEAD")` raise `InvalidMethod`.
+
+The JavaScript client follows Fetch restrictions: `CONNECT`, `TRACE`, and `TRACK`
+are forbidden, and case variants of `DELETE`, `GET`, `HEAD`, `OPTIONS`, `POST`, and
+`PUT` are normalized to uppercase. Native and wasm preserve extension method case.
+
 ## Writing HTTP servers
 The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.
 A HTTP server should first get created via `@http.Server(..)`,

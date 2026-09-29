@@ -36,6 +36,8 @@ pub impl Show for HttpProtocolError
 
 pub suberror IncorrectBodyLength derive(ToJson, @debug.Debug)
 
+pub suberror InvalidMethod derive(ToJson, @debug.Debug)
+
 pub suberror ProxyError {
   ProxyError(Response)
 } derive(ToJson, @debug.Debug)
@@ -125,7 +127,10 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
+  Extension(String)
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn RequestMethod::as_string(Self) -> String
+pub fn RequestMethod::from_string(StringView) -> Self raise InvalidMethod
 #deprecated
 pub impl Show for RequestMethod
 

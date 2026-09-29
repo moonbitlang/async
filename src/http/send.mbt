@@ -319,17 +319,8 @@ async fn Sender::send_request(
   extra_headers~ : Headers,
 ) -> Bool {
   guard! self.mode is SendingHeader
-  match meth {
-    Get => self.write(b"GET ")
-    Head => self.write(b"HEAD ")
-    Post => self.write(b"POST ")
-    Put => self.write(b"PUT ")
-    Delete => self.write(b"DELETE ")
-    Connect => self.write(b"CONNECT ")
-    Options => self.write(b"OPTIONS ")
-    Trace => self.write(b"TRACE ")
-    Patch => self.write(b"PATCH ")
-  }
+  meth.validate()
+  self..write(meth.as_string()).write(b" ")
   let content_length = self
     ..write(path)
     ..write(b" HTTP/1.1\r\n")
