@@ -68,19 +68,9 @@ pub async fn propfind(client : @http.Client, path : String) -> @http.Response {
 }
 ```
 
-You can also use `@http.RequestMethod::from_string(..)` to parse a method name,
-and `.as_string()` to get its name back.
-Method names are case sensitive.
-Standard names such as `"HEAD"` are parsed as `Head`,
-other valid names are parsed as `Extension`.
-Invalid names raise `@http.InvalidMethod`.
-When sending requests, use `Head` instead of `Extension("HEAD")`;
-extensions using a standard method name also raise `@http.InvalidMethod`.
-HTTP servers return extension methods in `request.meth`.
-
-On JavaScript backend, `fetch` forbids `CONNECT`, `TRACE`, and `TRACK`,
-and converts case variants of `DELETE`, `GET`, `HEAD`, `OPTIONS`, `POST`, and `PUT`
-to uppercase. Native and wasm backends preserve the case of extension methods.
+Use `@http.RequestMethod::from_string(..)` to validate dynamic method names.
+Servers return extension methods in `request.meth`.
+On JavaScript backend, methods are subject to `fetch` restrictions.
 
 ## Writing HTTP servers
 The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.
