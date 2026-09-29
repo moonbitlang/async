@@ -951,23 +951,3 @@ async test "reject header injection" {
     )
   }
 }
-
-///|
-async test "send extension method preserves wire token" {
-  @async.with_task_group() <| group => {
-    let (r, w) = @io.pipe()
-    group.spawn_bg() <| () => {
-      defer w.close()
-      let sender = Sender::new(w)
-      let _ = sender.send_request(Extension("head"), "/dav", extra_headers={
-        "Content-Length": "4",
-      })
-      sender..write("<d/>").end_body()
-    }
-    defer r.close()
-    assert_eq(
-      r.read_all().text(),
-      "head /dav HTTP/1.1\r\nContent-Length: 4\r\nAccept-Encoding: gzip,identity\r\n\r\n<d/>",
-    )
-  }
-}

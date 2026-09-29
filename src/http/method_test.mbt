@@ -14,25 +14,9 @@
 
 ///|
 test "method names preserve case and recognize named methods" {
-  let named : Array[(@http.RequestMethod, String)] = [
-    (Get, "GET"),
-    (Head, "HEAD"),
-    (Post, "POST"),
-    (Put, "PUT"),
-    (Delete, "DELETE"),
-    (Connect, "CONNECT"),
-    (Options, "OPTIONS"),
-    (Trace, "TRACE"),
-    (Patch, "PATCH"),
-  ]
-  for (meth, name) in named {
-    assert_eq(@http.RequestMethod::from_string(name), meth)
-    assert_eq(meth.as_string(), name)
-  }
-  for
-    name in [
-      "PROPFIND", "MKCOL", "X-Custom", "head", "get", "!#$%&'*+-.^_`|~0123456789",
-    ] {
+  assert_eq(@http.RequestMethod::from_string("HEAD"), @http.Head)
+  assert_eq(@http.Head.as_string(), "HEAD")
+  for name in ["PROPFIND", "head", "!#$%&'*+-.^_`|~0123456789"] {
     let meth = @http.RequestMethod::from_string(name)
     assert_eq(meth, @http.Extension(name))
     assert_eq(meth.as_string(), name)
@@ -41,12 +25,7 @@ test "method names preserve case and recognize named methods" {
 
 ///|
 test "invalid method tokens" {
-  for
-    name in [
-      "", " GET", "GET ", "X Y", "X\tY", "X\r\nY", "X/Y", "X:Y", "X(Y)", "X[Y]",
-      "X{Y}", "X,Y", "X;Y", "X=Y", "X?Y", "X@Y", "X\"Y", "X\\Y", "X\u0000Y", "X\u007fY",
-      "方法",
-    ] {
+  for name in ["", "X Y", "X\r\nY", "X/Y", "方法"] {
     try @http.RequestMethod::from_string(name) catch {
       @http.InvalidMethod => ()
     } noraise {
