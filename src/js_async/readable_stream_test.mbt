@@ -87,3 +87,29 @@ async test "ReadableStream write cancelled" {
   }
   json_inspect(msgs, content=[["message1"], ["message2"], ["message4"]])
 }
+
+
+///|
+extern "js" fn failing_readable_stream() -> @js_async.JsReadableStream =
+  #| () => new ReadableStream({
+  #|   start(controller) {
+  #|     controller.error(new TypeError("expected stream failure"))
+  #|   },
+  #| })
+
+///|
+async test "ReadableStream propagates JS stream errors" {
+  let r = @js_async.ReadableStream::from_js(failing_readable_stream())
+  let err = @test_util.expect_error_async(() => r.read_some())
+  debug_inspect(
+    err,
+    content=(
+      #|<moonbitlang/async/js_async.JsError.JsError: ...>
+    ),
+  )
+  // Cancelling an already errored JS ReadableStream returns a rejected promise.
+  // ReadableStream::close must observe that rejection instead of leaking an
+  // unhandled rejection to the JavaScript host.
+  r.close()
+  @async.pause()
+}
