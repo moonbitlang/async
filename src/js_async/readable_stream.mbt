@@ -74,7 +74,9 @@ extern "js" fn JsReadableStream::new(
 
 ///|
 extern "js" fn JsReadableStream::cancel(stream : Self) -> Unit =
-  #| (stream) => stream.cancel()
+  #| (stream) => {
+  #|   stream.cancel().catch(() => {})
+  #| }
 
 ///|
 extern "js" fn JsReadableStream::get_reader(stream : Self) -> StreamReader =
@@ -136,7 +138,11 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
   offset~,
   max_len~,
 ) {
-  @io.Reader::_direct_read(self.read_end, buf, offset~, max_len~)
+  let n = @io.Reader::_direct_read(self.read_end, buf, offset~, max_len~)
+  if n == 0 {
+    self.worker.check_error()
+  }
+  n
 }
 
 ///|
