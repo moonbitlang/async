@@ -88,7 +88,6 @@ async test "ReadableStream write cancelled" {
   json_inspect(msgs, content=[["message1"], ["message2"], ["message4"]])
 }
 
-
 ///|
 extern "js" fn failing_readable_stream() -> @js_async.JsReadableStream =
   #| () => new ReadableStream({
