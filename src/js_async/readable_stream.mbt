@@ -92,6 +92,7 @@ extern "js" fn JsReadableStream::get_reader(stream : Self) -> StreamReader =
 struct ReadableStream {
   read_end : @io.PipeRead
   worker : @coroutine.Coroutine
+  worker_error : Ref[Error?]
   stream : JsReadableStream
   reader : StreamReader
 }
@@ -108,13 +109,18 @@ pub fn ReadableStream::from_js(stream : JsReadableStream) -> ReadableStream {
   // because the `.read()` method of `StreamReader` is NOT cancellable.
   // It can only be cancelled by cancelling the whole stream.
   // So we use a `@io.pipe` in the middle to provide proper cancellation support.
+  let worker_error : Ref[Error?] = Ref(None)
   let worker = @coroutine.spawn(() => {
     defer w.close()
-    while reader.read() is Some(chunk) {
-      w.write(chunk)
+    try {
+      while reader.read() is Some(chunk) {
+        w.write(chunk)
+      }
+    } catch {
+      err => worker_error.val = Some(err)
     }
   })
-  { read_end: r, worker, stream, reader, }
+  { read_end: r, worker, worker_error, stream, reader, }
 }
 
 ///|
@@ -139,8 +145,8 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
   max_len~,
 ) {
   let n = @io.Reader::_direct_read(self.read_end, buf, offset~, max_len~)
-  if n == 0 {
-    self.worker.check_error()
+  if n == 0 && self.worker_error.val is Some(err) {
+    raise err
   }
   n
 }
