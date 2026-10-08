@@ -146,7 +146,11 @@ async test "pipe" {
     let _ = @process.spawn(group, cat, [], stdin=r2, stdout=w3)
     log.push("writing: abcd")
     w1.write("abcd")
-    @async.sleep(150)
+    // wait for the first chunk to travel through both processes before
+    // writing the second one, instead of relying on a fixed delay
+    while log.length() < 2 {
+      @async.sleep(10)
+    }
     log.push("writing: xyzw")
     w1.write("xyzw")
   }
