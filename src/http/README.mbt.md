@@ -57,6 +57,21 @@ are supported on JavaScript backend using `fetch` API,
 meaning that you can use these API in browser environment.
 Notice that some feature, such as proxy, is not supported on JavaScript backend.
 
+## Extension methods
+You can use `Extension` to send methods such as `PROPFIND` for WebDAV:
+
+```moonbit check
+///|
+#cfg(any(target="native", target="js", target="wasm"))
+pub async fn propfind(client : @http.Client, path : String) -> @http.Response {
+  client..request(Extension("PROPFIND"), path).end_request()
+}
+```
+
+Use `@http.RequestMethod::from_string(..)` to validate dynamic method names.
+Servers return extension methods in `request.meth`.
+On JavaScript backend, methods are subject to `fetch` restrictions.
+
 ## Writing HTTP servers
 The recommended way to create HTTP servers is `@http.Server::run_forever(..)`.
 A HTTP server should first get created via `@http.Server(..)`,

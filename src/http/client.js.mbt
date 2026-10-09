@@ -224,7 +224,8 @@ extern "js" fn Client::request_ffi(
   signal~ : @js_async.AbortSignal,
 ) -> @js_async.Promise[JsResponse] =
   #| (uri, method, headers, body, signal) => {
-  #|   const fixed_body = (method === "GET" || method === "HEAD") ? null : body
+  #|   const upper_method = method.toUpperCase()
+  #|   const fixed_body = (upper_method === "GET" || upper_method === "HEAD") ? null : body
   #|   return fetch(
   #|     uri,
   #|     {
@@ -265,17 +266,8 @@ pub async fn Client::request(
   }
   let path = if path is ['/', ..] { path } else { "/\{path}" }
   let uri = "\{protocol}\{self.host}\{path}"
-  let meth = match meth {
-    Get => "GET"
-    Head => "HEAD"
-    Post => "POST"
-    Put => "PUT"
-    Delete => "DELETE"
-    Connect => "CONNECT"
-    Options => "OPTIONS"
-    Trace => "TRACE"
-    Patch => "PATCH"
-  }
+  meth.validate()
+  let meth = meth.as_string()
   let headers = JsHeaders::new()
   for k, v in self.headers {
     headers.append(k.0, v)

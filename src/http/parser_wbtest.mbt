@@ -741,3 +741,20 @@ async test "chunk extension" {
     inspect(input.read_all().text(), content="abcdxyzw1234ABCD")
   }
 }
+
+///|
+async test "invalid request method tokens remain BadRequest" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w.write("X/Y / HTTP/1.1\r\n\r\n")
+    }
+    defer r.close()
+    let reader = Reader::new(r)
+    debug_inspect(
+      @test_util.expect_error_async(() => reader.read_request()),
+      content="BadRequest",
+    )
+  }
+}

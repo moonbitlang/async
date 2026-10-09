@@ -24,6 +24,7 @@ fn RequestMethod::write_show(self : RequestMethod, logger : &Logger) -> Unit {
     Options => logger <+ "Options"
     Trace => logger <+ "Trace"
     Patch => logger <+ "Patch"
+    Extension(name) => logger <+ "Extension(\{name.escape()})"
   }
 }
 
@@ -361,3 +362,13 @@ pub extend ServerConnection with @io.Reader::{
   _direct_read,
   _get_internal_buffer,
 }
+
+///|
+#deprecated
+#doc(hidden)
+pub extend InvalidMethod with Debug::{to_repr}
+
+///|
+#deprecated
+#doc(hidden)
+pub extend InvalidMethod with ToJson::{to_json}

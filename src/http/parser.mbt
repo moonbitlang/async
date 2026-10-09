@@ -347,17 +347,8 @@ async fn Reader::read_request(self : Reader) -> Request {
     raise @io.ReaderClosed
   }
   guard request_line.find(" ") is Some(meth_len) else { raise BadRequest }
-  let meth = match request_line[:meth_len] {
-    "GET" => Get
-    "HEAD" => Head
-    "POST" => Post
-    "PUT" => Put
-    "DELETE" => Delete
-    "CONNECT" => Connect
-    "OPTIONS" => Options
-    "TRACE" => Trace
-    "PATCH" => Patch
-    _ => raise BadRequest
+  let meth = RequestMethod::from_string(request_line[:meth_len]) catch {
+    InvalidMethod => raise BadRequest
   }
   let request_line = request_line[meth_len + 1:]
   guard request_line.find(" ") is Some(path_len) else { raise BadRequest }

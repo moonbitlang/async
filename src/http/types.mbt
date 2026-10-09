@@ -23,6 +23,9 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
+  /// A nonempty HTTP token other than an existing named method.
+  /// Use `RequestMethod::from_string` to validate and classify a method name.
+  Extension(String)
 } derive(Debug, Eq, Compare, Hash, ToJson)
 
 ///|

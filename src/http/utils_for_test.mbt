@@ -72,7 +72,7 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
           return
         }
         "/get-streaming" | "/put-streaming" | "/post-streaming" => {
-          let meth = @debug.to_string(request.meth).to_upper()
+          let meth = request.meth.as_string()
           log.write_string("server received request: \{meth} \{request.path}\n")
           while body.read_some() is Some(data) {
             let data = @utf8.decode(data)

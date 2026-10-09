@@ -252,3 +252,41 @@ async test "1XX response" {
     ),
   )
 }
+
+///|
+async test "extension method" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let client = @http.Client("http://127.0.0.1:\{port}")
+    defer client.close()
+    for name in ["X\r\nInjected: yes", "HEAD"] {
+      debug_inspect(
+        @test_util.expect_error_async(() => client.request(Extension(name), "/")),
+        content="InvalidMethod",
+      )
+    }
+    client.request(Extension("PROPFIND"), "/post-streaming")
+    client.write("<propfind/>")
+    assert_eq(client.end_request().code, 200)
+    assert_eq(
+      client.read_all().text(),
+      "PROPFIND response part 1\nPROPFIND response part 2\n",
+    )
+  }
+  assert_true(log.to_string().contains("server received: <propfind/>"))
+}
+
+///|
+#cfg(target="js")
+async test "extension method HEAD on JS" {
+  let log = StringBuilder()
+  @async.with_task_group() <| group => {
+    let port = test_server(group, log)
+    let client = @http.Client("http://127.0.0.1:\{port}")
+    defer client.close()
+    client.request(Extension("head"), "/head")
+    assert_eq(client.end_request().code, 200)
+    assert_eq(client.read_all().text(), "")
+  }
+}
