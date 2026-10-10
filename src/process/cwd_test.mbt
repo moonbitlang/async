@@ -15,23 +15,21 @@
 
 ///|
 async test "set cwd" {
-  @async.with_task_group() <| root => {
+  @async.with_task_group() <| group => {
     // FIXME(upstram): missing codelens here
     guard! @env.current_dir() is Some(prev_cwd)
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    root.spawn_bg() <| () => {
-      let _ = @process.run(
-        shell,
-        ["-c", ls],
-        stdout=w,
-        cwd="test_directory/dir1",
-        extra_env={ "LC_ALL": "C" },
-      )
-      guard! @env.current_dir() is Some(new_cwd)
-      guard! prev_cwd == new_cwd
-    }
-    let files = r
+    let child = @process.spawn(
+      group,
+      shell,
+      ["-c", ls],
+      stdout=@process.read_from_process(),
+      cwd="test_directory/dir1",
+      extra_env={ "LC_ALL": "C" },
+    )
+    defer child.stdout.close()
+    guard! @env.current_dir() is Some(new_cwd)
+    guard! prev_cwd == new_cwd
+    let files = child.stdout
       .read_all()
       .text()
       .trim(char_set="\n\r ")

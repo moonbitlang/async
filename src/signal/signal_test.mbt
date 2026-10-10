@@ -37,23 +37,28 @@ async test "cancel with default signal" {
   let test_prog = sleep_prog.wait()
   let log = []
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    let task = group.spawn(() => {
-      defer log.push("process terminates")
-      @process.run(test_prog, stdout=w, [
+    let child = @process.spawn(
+      group,
+      test_prog,
+      stdout=@process.read_from_process(),
+      [
         "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
         "before exit",
-      ])
-    })
+      ],
+    )
     group.spawn_bg() <| () => {
-      defer r.close()
-      while r.read_some() is Some(data) {
+      defer log.push("process terminates")
+      let _ = child.wait()
+    }
+    group.spawn_bg() <| () => {
+      defer child.stdout.close()
+      while child.stdout.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
     @async.sleep(500)
-    task.cancel()
+    child.cancel()
     log.push("cancelling task running process")
   }
   json_inspect(log, content=[
@@ -68,24 +73,29 @@ async test "cancel with ctrl+c" {
   let test_prog = sleep_prog.wait()
   let log = []
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    let task = group.spawn(() => {
-      defer log.push("process terminates")
-      let cancel_handler = @process.graceful_cancel(timeout=5000, signal=SIGINT)
-      @process.run(test_prog, stdout=w, cancel_handler~, [
+    let child = @process.spawn(
+      group,
+      test_prog,
+      stdout=@process.read_from_process(),
+      cancel_handler=@process.graceful_cancel(timeout=5000, signal=SIGINT),
+      [
         "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
         "before exit",
-      ])
-    })
+      ],
+    )
     group.spawn_bg() <| () => {
-      defer r.close()
-      while r.read_some() is Some(data) {
+      defer log.push("process terminates")
+      let _ = child.wait()
+    }
+    group.spawn_bg() <| () => {
+      defer child.stdout.close()
+      while child.stdout.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
     @async.sleep(500)
-    task.cancel()
+    child.cancel()
     log.push("cancelling task running process")
   }
   json_inspect(log, content=[
@@ -100,24 +110,29 @@ async test "cancel with SIGHUP" {
   let test_prog = sleep_prog.wait()
   let log = []
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    let task = group.spawn(() => {
-      defer log.push("process terminates")
-      let cancel_handler = @process.graceful_cancel(timeout=5000, signal=SIGHUP)
-      @process.run(test_prog, stdout=w, cancel_handler~, [
+    let child = @process.spawn(
+      group,
+      test_prog,
+      stdout=@process.read_from_process(),
+      cancel_handler=@process.graceful_cancel(timeout=5000, signal=SIGHUP),
+      [
         "10000", "-use-default-handler", "-print-after-sleep", "normal exit", "-print-finally",
         "before exit",
-      ])
-    })
+      ],
+    )
     group.spawn_bg() <| () => {
-      defer r.close()
-      while r.read_some() is Some(data) {
+      defer log.push("process terminates")
+      let _ = child.wait()
+    }
+    group.spawn_bg() <| () => {
+      defer child.stdout.close()
+      while child.stdout.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
     @async.sleep(500)
-    task.cancel()
+    child.cancel()
     log.push("cancelling task running process")
   }
   json_inspect(log, content=[
@@ -130,19 +145,23 @@ async test "change cancellation signal set in the middle #1" {
   let test_prog = sleep_prog.wait()
   let log = []
   @async.with_task_group() <| group => {
-    let (r1, w1) = @process.write_to_process()
-    defer w1.close()
-    let (r2, w2) = @process.read_from_process()
+    let proc = @process.spawn(
+      group,
+      test_prog,
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+      [
+        "2000", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
+      ],
+    )
     group.spawn_bg() <| () => {
-      defer r2.close()
-      while r2.read_some() is Some(data) {
+      defer proc.stdout.close()
+      while proc.stdout.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
-    let proc = @process.spawn(group, test_prog, stdin=r1, stdout=w2, [
-      "2000", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
-    ])
+    defer proc.stdin.close()
     @async.sleep(250)
     proc.cancel()
     log.push("cancelling task running process")
@@ -158,20 +177,24 @@ async test "change cancellation signal set in the middle #2" {
   let test_prog = sleep_prog.wait()
   let log = []
   @async.with_task_group() <| group => {
-    let (r1, w1) = @process.write_to_process()
-    defer w1.close()
-    let (r2, w2) = @process.read_from_process()
+    let proc = @process.spawn(
+      group,
+      test_prog,
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+      [
+        "500", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
+      ],
+    )
     group.spawn_bg() <| () => {
-      defer r2.close()
-      while r2.read_some() is Some(data) {
+      defer proc.stdout.close()
+      while proc.stdout.read_some() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
-    let proc = @process.spawn(group, test_prog, stdin=r1, stdout=w2, [
-      "500", "-wait-on-init", "-print-finally", "before exit", "-swallow-cancel-signal",
-    ])
-    w1.write("whatever")
+    defer proc.stdin.close()
+    proc.stdin.write("whatever")
     @async.sleep(250)
     proc.cancel()
     log.push("cancelling task running process")

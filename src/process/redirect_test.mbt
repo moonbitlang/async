@@ -16,7 +16,7 @@
 ///|
 async test "merge multiple" {
   @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process(shared=true)
+    let (r, w) = @process.read_from_process_shared()
     root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
       inspect(r.read_all().text(), content="abcdefgh")
@@ -60,94 +60,100 @@ async test "redirect to file" {
 
 ///|
 async test "merge multiple to file" {
-  @async.with_task_group() <| root => {
-    let output_file = "_build/process_redirect_merge_multiple_test_out.txt"
-    root.add_defer(() => @fs.remove(output_file))
-    let w = @process.redirect_to_file(output_file, shared=true)
-    @async.with_task_group <| group => {
-      defer w.close()
-      let _ = @process.spawn(
-        group,
-        shell,
-        ["-c", "\{write_stdout} abcd"],
-        stdout=w,
-        extra_env={ "LANG": "en_US.UTF-8" },
-      )
-      let _ = @process.spawn(
-        group,
-        shell,
-        ["-c", "sleep 1; \{write_stdout} efgh"],
-        stdout=w,
-        extra_env={ "LANG": "en_US.UTF-8" },
-      )
-    }
-    inspect(
-      @fs.read_file(output_file).text(),
-      content=(
-        #|abcdefgh
-      ),
+  let output_file = "_build/process_redirect_merge_multiple_test_out.txt"
+  defer @fs.remove(output_file)
+  let w = @process.redirect_to_file_shared(output_file)
+  @async.with_task_group <| group => {
+    defer w.close()
+    let _ = @process.spawn(
+      group,
+      shell,
+      ["-c", "\{write_stdout} abcd"],
+      stdout=w,
+      extra_env={ "LANG": "en_US.UTF-8" },
+    )
+    let _ = @process.spawn(
+      group,
+      shell,
+      ["-c", "sleep 1; \{write_stdout} efgh"],
+      stdout=w,
+      extra_env={ "LANG": "en_US.UTF-8" },
     )
   }
+  inspect(
+    @fs.read_file(output_file).text(),
+    content=(
+      #|abcdefgh
+    ),
+  )
 }
 
 ///|
 async test "merge stdout and stderr" {
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       shell,
       ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],
-      stdout=w,
-      stderr=w,
+      stdout=@process.read_from_process(),
+      stderr=@process.duplicate_stdout(),
     )
-    inspect(r.read_all().text(), content="abcdefgh")
+    defer child.stdout.close()
+    inspect(child.stdout.read_all().text(), content="abcdefgh")
   }
 }
 
 ///|
 async test "merge stdout and stderr to file" {
-  @async.with_task_group() <| group => {
-    let output_file = "_build/process_redirect_merge_test_out.txt"
-    group.add_defer(() => @fs.remove(output_file))
-    let w = @process.redirect_to_file(output_file)
-    let _ = @process.run(
-      shell,
-      ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],
-      stdout=w,
-      stderr=w,
-    )
-    inspect(
-      @fs.read_file(output_file).text(),
-      content=(
-        #|abcdefgh
-      ),
-    )
-  }
+  let output_file = "_build/process_redirect_merge_test_out.txt"
+  defer @fs.remove(output_file)
+  let _ = @process.run(
+    shell,
+    ["-c", "\{write_stdout} abcd; \{write_stderr} efgh"],
+    stdout=@process.redirect_to_file(output_file),
+    stderr=@process.duplicate_stdout(),
+  )
+  inspect(
+    @fs.read_file(output_file).text(),
+    content=(
+      #|abcdefgh
+    ),
+  )
 }
 
 ///|
 async test "pipe" {
   @async.with_task_group() <| group => {
     let cat = cat.wait()
-    let (r1, w1) = @process.write_to_process()
-    defer w1.close()
-    let (r2, w2) = @process.pipe()
-    let (r3, w3) = @process.read_from_process()
-    defer r3.close()
-    let _ = @process.spawn(group, cat, [], stdin=r1, stdout=w2)
-    let _ = @process.spawn(group, cat, [], stdin=r2, stdout=w3)
-    w1.write("abcd")
+    let (r, w) = @process.pipe()
+    defer r.close()
+    defer w.close()
+    let child1 = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=@process.write_to_process(),
+      stdout=w,
+    )
+    defer child1.stdin.close()
+    let child2 = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=r,
+      stdout=@process.read_from_process(),
+    )
+    defer child2.stdout.close()
+    child1.stdin.write("abcd")
     debug_inspect(
-      r3.read_some().map(data => @utf8.decode(data)),
+      child2.stdout.read_some().map(data => @utf8.decode(data)),
       content=(
         #|Some("abcd")
       ),
     )
-    w1.write("xyzw")
+    child1.stdin.write("xyzw")
     debug_inspect(
-      r3.read_some().map(data => @utf8.decode(data)),
+      child2.stdout.read_some().map(data => @utf8.decode(data)),
       content=(
         #|Some("xyzw")
       ),

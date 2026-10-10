@@ -37,18 +37,17 @@ async fn run_lock_file_prog(
   duration~ : Int32 = 500,
 ) -> @async.Queue[LockEvent] {
   let prog = lock_file_prog.wait()
-  let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
-  let _ = @process.spawn(group, prog, stdout=w, [
-    file,
-    "-duration",
-    duration.to_string(),
-    lock_kind,
-  ])
+  let lock_proc = @process.spawn(
+    group,
+    prog,
+    stdout=@process.read_from_process(),
+    [file, "-duration", duration.to_string(), lock_kind],
+  )
   let queue = @async.Queue(kind=Unbounded)
   group.spawn_bg() <| () => {
-    defer r.close()
-    while r.read_until("\n") is Some(line) {
+    defer lock_proc.stdout.close()
+    while lock_proc.stdout.read_until("\n") is Some(line) {
       match line {
         "acquired lock" => queue.put(Acquire)
         "releasing lock" => queue.put(Release)

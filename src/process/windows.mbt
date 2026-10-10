@@ -141,14 +141,14 @@ async fn raw_spawn_windows(
   args : ArrayView[String],
   extra_env~ : Map[String, String],
   inherit_env~ : Bool,
-  stdin~ : &ProcessInput?,
-  stdout~ : &ProcessOutput?,
-  stderr~ : &ProcessOutput?,
+  stdin~ : &ProcessInput,
+  stdout~ : &ProcessOutput,
+  stderr~ : &ProcessOutput,
   cwd~ : StringView?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
-) -> @event_loop.Process {
+) -> (@event_loop.Process, WriteToProcess, ReadFromProcess, ReadFromProcess) {
   let cmd = match cmd {
     [.., '.', 'e' | 'E', 'x' | 'X', 'e' | 'E']
     | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
@@ -164,40 +164,30 @@ async fn raw_spawn_windows(
     None => None
     Some(cwd) => Some(@os_string.encode(cwd))
   }
-  defer {
-    if stdin is Some(p) {
-      p.after_spawn()
-    }
-    if stdout is Some(p) {
-      p.after_spawn()
-    }
-    if stderr is Some(p) {
-      p.after_spawn()
-    }
-  }
-  let stdin = match stdin {
-    Some(pipe) => pipe.fd()
-    None => @fd_util.invalid_fd
-  }
-  let stdout = match stdout {
-    Some(pipe) => pipe.fd()
-    None => @fd_util.invalid_fd
-  }
-  let stderr = match stderr {
-    Some(pipe) => pipe.fd()
-    None => @fd_util.invalid_fd
-  }
-  @event_loop.spawn_windows(
+  let (stdin_child, stdin_parent) = stdin.init_stdin(context~)
+  defer stdin.close(stdin_child)
+  errdefer stdin_parent.close()
+  let (stdout_parent, stdout_child) = stdout.init_stdout(context~)
+  defer stdout.close(stdout_child)
+  errdefer stdout_parent.close()
+  let (stderr_parent, stderr_child) = stderr.init_stderr(
+    stdout=stdout_child,
+    context~,
+  )
+  defer stderr.close(stderr_child)
+  errdefer stderr_parent.close()
+  let proc = @event_loop.spawn_windows(
     command_line,
     env=OsEnv::make(extra_env, inherit_env~).0,
-    stdin~,
-    stdout~,
-    stderr~,
+    stdin=if stdin_child is Some(io) { io.fd() } else { @fd_util.invalid_fd },
+    stdout=if stdout_child is Some(io) { io.fd() } else { @fd_util.invalid_fd },
+    stderr=if stderr_child is Some(io) { io.fd() } else { @fd_util.invalid_fd },
     cwd~,
     no_console_window~,
     is_orphan~,
     context~,
   )
+  (proc, stdin_parent, stdout_parent, stderr_parent)
 }
 
 ///|
@@ -207,14 +197,14 @@ async fn raw_spawn(
   args : ArrayView[String],
   extra_env~ : Map[String, String],
   inherit_env~ : Bool,
-  stdin~ : &ProcessInput?,
-  stdout~ : &ProcessOutput?,
-  stderr~ : &ProcessOutput?,
+  stdin~ : &ProcessInput,
+  stdout~ : &ProcessOutput,
+  stderr~ : &ProcessOutput,
   cwd~ : StringView?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
-) -> @event_loop.Process {
+) -> (@event_loop.Process, WriteToProcess, ReadFromProcess, ReadFromProcess) {
   raw_spawn_windows(
     cmd,
     args,

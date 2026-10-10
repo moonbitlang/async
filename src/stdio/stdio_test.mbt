@@ -45,29 +45,31 @@ async test "redirect_file" {
 ///|
 #cfg(any(target="native", target="wasm"))
 async test "redirect pipe" {
-  @async.with_task_group() <| root => {
+  @async.with_task_group() <| group => {
     let cat = cat.wait()
-    let (cat_read, we_write) = @process.write_to_process()
-    let (we_read, cat_write) = @process.read_from_process()
-    root.spawn_bg() <| () => {
-      let code = @process.run(cat, [], stdin=cat_read, stdout=cat_write)
-      inspect(code, content="0")
-    }
-    root.spawn_bg() <| () => {
-      defer we_write.close()
-      we_write.write(b"abcd\n")
+    let child = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+    )
+    group.spawn_bg() <| () => {
+      defer child.stdin.close()
+      child.stdin.write(b"abcd\n")
       @async.sleep(50)
-      we_write.write(b"defg\n")
+      child.stdin.write(b"defg\n")
     }
-    defer we_read.close()
+    defer child.stdout.close()
     inspect(
-      we_read.read_all().text(),
+      child.stdout.read_all().text(),
       content=(
         #|abcd
         #|defg
         #|
       ),
     )
+    inspect(child.wait(), content="0")
   }
 }
 
@@ -76,35 +78,31 @@ async test "redirect pipe" {
 async test "stdio cancel" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
-    let (cat_read, we_write) = @process.write_to_process()
-    let (we_read, cat_write) = @process.read_from_process()
-    let (we_read_err, cat_write_err) = @process.read_from_process()
-    group.spawn_bg() <| () => {
-      let code = @process.run(
-        cat,
-        ["-timeout", "500"],
-        stdin=cat_read,
-        stdout=cat_write,
-        stderr=cat_write_err,
-      )
-      inspect(code, content="1")
-    }
-    defer we_write.close()
-    defer we_read.close()
-    defer we_read_err.close()
-    we_write.write("abcd")
+    let child = @process.spawn(
+      group,
+      cat,
+      ["-timeout", "500"],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+      stderr=@process.read_from_process(),
+    )
+    defer child.stdin.close()
+    defer child.stdout.close()
+    defer child.stderr.close()
+    child.stdin.write("abcd")
     debug_inspect(
-      we_read.read_some(),
+      child.stdout.read_some(),
       content=(
         #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),
     )
     @async.sleep(750)
-    assert_eq(we_read.read_all().text(), "")
+    assert_eq(child.stdout.read_all().text(), "")
     inspect(
-      we_read_err.read_all().text().trim(chars="\r\n"),
+      child.stderr.read_all().text().trim(chars="\r\n"),
       content="TimeoutError",
     )
+    inspect(child.wait(), content="1")
   }
 }
 
@@ -112,18 +110,22 @@ async test "stdio cancel" {
 #cfg(any(target="native", target="wasm"))
 async test "stdout and stderr are the same" {
   let cat = cat.wait()
-  let (cat_read, we_write) = @process.write_to_process()
   @async.with_task_group <| group => {
-    let cat_task = group.spawn() <| () => {
-      @process.collect_output_merged(cat, [], stdin=cat_read)
-    }
+    let child = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+      stderr=@process.duplicate_stdout(),
+    )
+    defer child.stdout.close()
     {
-      defer we_write.close()
-      we_write.write("abcd")
+      defer child.stdin.close()
+      child.stdin.write("abcd")
     }
-    let (_, output) = cat_task.wait()
     inspect(
-      output.text(),
+      child.stdout.read_all().text(),
       content=(
         #|abcd
       ),
