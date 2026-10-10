@@ -118,16 +118,6 @@ async fn raw_spawn_unix(
   is_orphan~ : Bool,
   context~ : String,
 ) -> (@event_loop.Process, WriteToProcess, ReadFromProcess, ReadFromProcess) {
-  let cmd = @os_string.encode(cmd)
-  let cwd = match cwd {
-    None => None
-    Some(cwd) => Some(@os_string.encode(cwd))
-  }
-  let argv = OsArgv::new(args.length() + 1)
-  argv.add_encoded_entry(0, cmd)
-  for i, arg in args {
-    argv.add_entry(i + 1, arg)
-  }
   let (stdin_child, stdin_parent) = stdin.init_stdin(context~)
   defer stdin.close(stdin_child)
   errdefer stdin_parent.close()
@@ -140,6 +130,16 @@ async fn raw_spawn_unix(
   )
   defer stderr.close(stderr_child)
   errdefer stderr_parent.close()
+  let cmd = @os_string.encode(cmd)
+  let cwd = match cwd {
+    None => None
+    Some(cwd) => Some(@os_string.encode(cwd))
+  }
+  let argv = OsArgv::new(args.length() + 1)
+  argv.add_encoded_entry(0, cmd)
+  for i, arg in args {
+    argv.add_entry(i + 1, arg)
+  }
   // currently auto kill child process on hard termination is not supported on Unix,
   // so `is_orphan` makes no difference on actual spawning
   ignore(is_orphan)
