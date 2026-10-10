@@ -55,8 +55,9 @@ async test "wait_pid" {
         log <+ "tick\n"
       }
     }
-    let pid = @process.spawn_orphan(test_prog, ["1000", "-exit-code", "42"])
-    log.write_string("process terminated with \{@process.wait_pid(pid)}\n")
+    let proc = @process.spawn_orphan(test_prog, ["1000", "-exit-code", "42"])
+    defer proc.close()
+    log.write_string("process terminated with \{proc.wait()}\n")
   }
   inspect(
     log.to_string(),
