@@ -447,13 +447,17 @@ use `@process.spawn_orphan` only when it is absolutely necessary:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "spawn orphan and wait later" {
-  let pid = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
+  let proc = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
+
+  // Unlike `@process.spawn`,
+  // the handle returned by `@process.spawn_orphan` must be closed manually
+  defer proc.close()
 
   // Do other work...
   @async.sleep(50)
 
   // Wait for the process to complete
-  let exit_code = @process.wait_pid(pid)
+  let exit_code = proc.wait()
   inspect(exit_code, content="7")
 }
 ```

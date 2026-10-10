@@ -15,64 +15,6 @@
 ///|
 /// Execute a system process with command `cmd`,
 /// and provide `args` as extra arguments to `cmd.
-/// Both `cmd` and elements of `args` are encoded using UTF8.
-/// The process ID of the spawned process will be returned.
-///
-/// The spawned process would be *orphan*, meaning that it will
-/// keep running until completion or explicitly terminated,
-/// even if the task that calls `spawn_orphan` is cancelled.
-/// Users are recommended to use `@process.run` whenever possible,
-/// because `@process.spawn`/`@process.run` has better structured concurrency integration.
-/// `spawn_orphan` should only be used when the process is intended to be orphan
-/// (i.e. keep running after parent process terminates).
-///
-/// The meaning of the arguments is the same as `@process.spawn`,
-/// see `@process.spawn` for more details.
-pub async fn spawn_orphan(
-  cmd : StringView,
-  args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
-  stdin? : &ProcessInput = @stdio.stdin,
-  stdout? : &ProcessOutput = @stdio.stdout,
-  stderr? : &ProcessOutput = @stdio.stderr,
-  cwd? : StringView,
-  no_console_window? : Bool = false,
-) -> Int {
-  let (proc, stdin, stdout, stderr) = raw_spawn(
-    cmd,
-    args,
-    extra_env~,
-    inherit_env~,
-    stdin~,
-    stdout~,
-    stderr~,
-    cwd~,
-    no_console_window~,
-    is_orphan=true,
-    context="@process.spawn_orphan()",
-  )
-  defer proc.close()
-  stdin.close()
-  stdout.close()
-  stderr.close()
-  proc.pid
-}
-
-///|
-/// Wait for the process with specfic ID to terminate,
-/// and return the exit code of the process.
-/// If the process is killed by a signal, the result would be `-signal_number`.
-pub async fn wait_pid(pid : Int) -> Int {
-  let context = "@process.wait_pid()"
-  let process = @event_loop.Process::from_pid(pid, context~)
-  defer process.close()
-  process.wait_pid(context~)
-}
-
-///|
-/// Execute a system process with command `cmd`,
-/// and provide `args` as extra arguments to `cmd.
 ///
 /// All arguments of `@process.run` has the same meaning as `@process.spawn`,
 /// see `@process.spawn` for more details.

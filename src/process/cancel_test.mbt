@@ -110,25 +110,22 @@ async test "cancel process hard" {
 ///|
 async test "orphan process" {
   let log = StringBuilder()
-  @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process_shared()
-    let task = root.spawn(() => {
+  @async.with_task_group() <| group => {
+    let proc = @process.spawn_orphan(
+      shell,
+      ["-c", "\{write_stdout} first; sleep 1; \{write_stdout} second"],
+      stdout=@process.read_from_process(),
+    )
+    let wait_task = group.spawn() <| () => {
       defer log.write_string("process terminates\n")
-      let pid = {
-        defer w.close()
-        @process.spawn_orphan(
-          shell,
-          ["-c", "\{write_stdout} first; sleep 1; \{write_stdout} second"],
-          stdout=w,
-        )
-      }
-      @process.wait_pid(pid)
-    })
-    defer r.close()
-    inspect(@utf8.decode(r.read_exactly(5)), content="first")
-    task.cancel()
+      let _ = proc.wait()
+    }
+    defer proc.close()
+    defer proc.stdout.close()
+    inspect(@utf8.decode(proc.stdout.read_exactly(5)), content="first")
+    wait_task.cancel()
     log <+ "cancelling task running process\n"
-    inspect(r.read_all().text(), content="second")
+    inspect(proc.stdout.read_all().text(), content="second")
   }
   inspect(
     log.to_string(),
