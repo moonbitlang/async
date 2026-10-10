@@ -166,8 +166,8 @@ async fn Tls::connect(self : Tls) -> Unit {
       WantRead => self.transport.read_more()
       WantWrite => self.transport.flush_write()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -216,13 +216,13 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   }
   errdefer tls.close()
   if context.init_client(verify=trust is SystemRoot) is err && err != 0 {
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   if trust is CustomPemFile(root_cert) {
     let pem = @fs.read_file(root_cert).text()
     for cert in decode_pem_certificates(pem) {
       if context.add_root_certificate(cert) is err && err != 0 {
-        raise TlsError(@os_error.errno_to_string(err))
+        raise TlsError(@errno_util.errno_to_string(err))
       }
     }
   }
@@ -233,7 +233,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       Some(str) => Some(@os_string.encode(str))
     }
     if tls.context.verify_peer_certificate(host) is err && err != 0 {
-      raise TlsError(@os_error.errno_to_string(err))
+      raise TlsError(@errno_util.errno_to_string(err))
     }
   }
   tls
@@ -263,8 +263,8 @@ async fn Tls::accept(self : Tls) -> Unit {
       WantRead => self.transport.read_more()
       WantWrite => self.transport.flush_write()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -283,7 +283,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   let pfx_content = @fs.read_file(pfx_file).binary()
   if context.init_server(pfx_content) is err && err != 0 {
     context.free()
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   let transport = Transport::new(reader, writer)
   let tls = {
@@ -354,8 +354,8 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
       }
       WantWrite => panic()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation =>
         if self.is_client {
@@ -419,8 +419,8 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
     self.transport.flush_write()
     len
   } else {
-    let errno = @os_error.get_errno()
-    raise TlsError(@os_error.errno_to_string(errno))
+    let errno = @errno_util.get_errno()
+    raise TlsError(@errno_util.errno_to_string(errno))
   }
 }
 
@@ -444,7 +444,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
     Error(err) => raise err
   }
   if self.context.shutdown() is err && err != 0 {
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   if self.is_client {
     self.connect()
@@ -548,9 +548,9 @@ fn ChannelBinding::to_bytes(self : ChannelBinding) -> Bytes {
 pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
   let binding = self.context.unique_channel_binding()
   if binding.0.is_null() {
-    let errno = @os_error.get_errno()
+    let errno = @errno_util.get_errno()
     if errno != 0 {
-      raise TlsError(@os_error.errno_to_string(errno))
+      raise TlsError(@errno_util.errno_to_string(errno))
     } else {
       raise TlsError("tls-unique channel binding unavailable")
     }
@@ -567,9 +567,9 @@ pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
 pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
   let binding = self.context.server_endpoint_channel_binding()
   if binding.0.is_null() {
-    let errno = @os_error.get_errno()
+    let errno = @errno_util.get_errno()
     if errno != 0 {
-      raise TlsError(@os_error.errno_to_string(errno))
+      raise TlsError(@errno_util.errno_to_string(errno))
     } else {
       raise TlsError("tls-server-endpoint channel binding unavailable")
     }

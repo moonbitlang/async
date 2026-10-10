@@ -13,13 +13,6 @@
 // limitations under the License.
 
 ///|
-fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
-  let (s1, ns1) = t1
-  let (s2, ns2) = t2
-  (s1 - s2) * 1_000_000_000 + (ns1 - ns2).to_int64()
-}
-
-///|
 async test "timestamp for path" {
   // Windows may avoid updating access time eagerly, so keep the POSIX-style
   // atime/mtime/ctime assertions to non-Windows hosts. Wasm learns that host
@@ -37,14 +30,14 @@ async test "timestamp for path" {
   let atime_2 = @fs.atime(path)
   let mtime_2 = @fs.mtime(path)
   let ctime_2 = @fs.ctime(path)
-  assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
-  assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
+  assert_true((mtime_2 - mtime_1).msec() > 500)
+  assert_true((ctime_2 - ctime_1).msec() > 500)
   @async.sleep(600)
   inspect(@fs.read_file(path, sync_timestamp=true).text(), content="1234")
   let atime_3 = @fs.atime(path)
   let mtime_3 = @fs.mtime(path)
   let ctime_3 = @fs.ctime(path)
-  assert_true(diff_timestamp(atime_3, atime_2) > 500_000_000)
+  assert_true((atime_3 - atime_2).msec() > 500)
   @debug.assert_eq(mtime_3, mtime_2)
   @debug.assert_eq(ctime_3, ctime_2)
   @async.sleep(600)
@@ -52,7 +45,7 @@ async test "timestamp for path" {
   let mtime_4 = @fs.mtime(path)
   let ctime_4 = @fs.ctime(path)
   @debug.assert_eq(mtime_4, mtime_3)
-  assert_true(diff_timestamp(ctime_4, ctime_3) > 500_000_000)
+  assert_true((ctime_4 - ctime_3).msec() > 500)
 }
 
 ///|
@@ -71,8 +64,8 @@ async test "mtime for path" {
   @fs.write_file(path, "1234", create_mode=OpenExisting, sync=Full)
   let mtime_2 = @fs.mtime(path)
   let ctime_2 = @fs.ctime(path)
-  assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
-  assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
+  assert_true((mtime_2 - mtime_1).msec() > 500)
+  assert_true((ctime_2 - ctime_1).msec() > 500)
 }
 
 ///|
@@ -95,15 +88,15 @@ async test "timestamp for opened file" {
   let atime_2 = file.atime()
   let mtime_2 = file.mtime()
   let ctime_2 = file.mtime()
-  assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
-  assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
+  assert_true((mtime_2 - mtime_1).msec() > 500)
+  assert_true((ctime_2 - ctime_1).msec() > 500)
   @async.sleep(600)
   inspect(file.read_all().text(), content="1234")
   file.sync()
   let atime_3 = file.atime()
   let mtime_3 = file.mtime()
   let ctime_3 = file.mtime()
-  assert_true(diff_timestamp(atime_3, atime_2) > 500_000_000)
+  assert_true((atime_3 - atime_2).msec() > 500)
   @debug.assert_eq(mtime_3, mtime_2)
   @debug.assert_eq(ctime_3, ctime_2)
   @async.sleep(600)
@@ -111,7 +104,7 @@ async test "timestamp for opened file" {
   let mtime_4 = @fs.mtime(path)
   let ctime_4 = @fs.ctime(path)
   @debug.assert_eq(mtime_4, mtime_3)
-  assert_true(diff_timestamp(ctime_4, ctime_3) > 500_000_000)
+  assert_true((ctime_4 - ctime_3).msec() > 500)
 }
 
 ///|
@@ -132,6 +125,6 @@ async test "mtime for opened file" {
   file.write_at(b"1234", position=0)
   let mtime_2 = file.mtime()
   let ctime_2 = file.mtime()
-  assert_true(diff_timestamp(mtime_2, mtime_1) > 500_000_000)
-  assert_true(diff_timestamp(ctime_2, ctime_1) > 500_000_000)
+  assert_true((mtime_2 - mtime_1).msec() > 500)
+  assert_true((ctime_2 - ctime_1).msec() > 500)
 }

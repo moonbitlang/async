@@ -27,8 +27,9 @@ async fn main {
   }
   guard args is [cmd, .. args] else { fail("invalid argument") }
   if is_orphan {
-    let pid = @process.spawn_orphan(cmd, args)
-    ignore(@process.wait_pid(pid))
+    let proc = @process.spawn_orphan(cmd, args)
+    defer proc.close()
+    ignore(proc.wait())
   } else {
     ignore(@process.run(cmd, args))
   }

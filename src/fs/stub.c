@@ -47,11 +47,6 @@ int moonbitlang_async_dir_is_null(DIR *dir) {
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_errno_is_lock_violation(int32_t err) {
-  return err == ERROR_LOCK_VIOLATION;
-}
-
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_try_lock_file(HANDLE handle, int exclusive) {
   OVERLAPPED overlapped;
   memset(&overlapped, 0, sizeof(OVERLAPPED));
@@ -76,10 +71,6 @@ int moonbitlang_async_unlock_file(HANDLE handle) {
 }
 
 #else
-
-int32_t moonbitlang_async_errno_is_lock_violation(int32_t err) {
-  return err == EWOULDBLOCK;
-}
 
 int moonbitlang_async_try_lock_file(int fd, int exclusive) {
   return flock(fd, LOCK_NB | (exclusive ? LOCK_EX : LOCK_SH));

@@ -59,7 +59,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
     if ret >= 0 {
       return out.val
     }
-    if !@os_error.is_nonblocking_io_error() {
+    if !@errno_util.is_nonblocking_io_error() {
       @os_error.check_errno(context)
     }
     io.wait_read()
@@ -79,7 +79,7 @@ pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
 
   let ret = get_process_result(handle, self.pid, out)
   if ret < 0 {
-    while @os_error.is_nonblocking_io_error() {
+    while @errno_util.is_nonblocking_io_error() {
       match @env_util.platform {
         Linux if self.handle is Some(io) =>
           // On Linux, if the child process is `ptrace`'ed,

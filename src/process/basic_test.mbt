@@ -16,17 +16,15 @@
 ///|
 async test "basic_ls" {
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    @process.spawn(
+    let child = @process.spawn(
       group,
       shell,
       ["-c", "\{ls} test_directory/dir1"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={ "LC_ALL": "C" },
     )
-    |> ignore
-    let files = r
+    defer child.stdout.close()
+    let files = child.stdout
       .read_all()
       .text()
       .trim(char_set="\n\r ")
@@ -42,18 +40,22 @@ async test "basic_ls" {
 async test "basic_cat" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
-    let (cat_read, we_write) = @process.write_to_process()
-    let (we_read, cat_write) = @process.read_from_process()
-    @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
+    let child = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+    )
     group.spawn_bg() <| () => {
-      defer we_write.close()
-      we_write.write(b"abcd")
+      defer child.stdin.close()
+      child.stdin.write(b"abcd")
       @async.sleep(50)
-      we_write.write(b"efgh")
+      child.stdin.write(b"efgh")
     }
     group.spawn_bg() <| () => {
-      defer we_read.close()
-      inspect(we_read.read_all().text(), content="abcdefgh")
+      defer child.stdout.close()
+      inspect(child.stdout.read_all().text(), content="abcdefgh")
     }
   }
 }

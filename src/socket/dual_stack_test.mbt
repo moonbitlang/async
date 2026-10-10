@@ -37,7 +37,7 @@ async test "Only_V4 server" {
     }
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~) catch {
-        @os_error.OSError(_) as err if err.is_ECONNREFUSED() =>
+        @os_error.OsError(ConnectionRefused, ..) =>
           raise Failure::Failure("connection refused")
         err => raise err
       }
@@ -94,7 +94,7 @@ async test "Only_V6 server" {
     }
     async fn client(protocol) {
       let conn = @socket.Tcp::connect_to_host("localhost", port~, protocol~) catch {
-        @os_error.OSError(_) as err if err.is_ECONNREFUSED() =>
+        @os_error.OsError(ConnectionRefused, ..) =>
           raise Failure::Failure("connection refused")
         err => raise err
       }

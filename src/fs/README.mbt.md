@@ -462,9 +462,9 @@ async test "atime - access time" {
   let test_file = "_build/test_atime.txt"
   @fs.write_file(test_file, b"test")
   defer @fs.remove(test_file)
-  let (seconds, nanoseconds) = @fs.atime(test_file)
-  inspect(seconds > 0, content="true")
-  inspect(nanoseconds >= 0, content="true")
+  let ts = @fs.atime(test_file)
+  inspect(ts.sec() > 0, content="true")
+  inspect(ts.nsec() >= 0, content="true")
 }
 
 ///|
@@ -473,9 +473,9 @@ async test "mtime - modification time" {
   let test_file = "_build/test_mtime.txt"
   @fs.write_file(test_file, b"test")
   defer @fs.remove(test_file)
-  let (seconds, nanoseconds) = @fs.mtime(test_file)
-  inspect(seconds > 0, content="true")
-  inspect(nanoseconds >= 0, content="true")
+  let ts = @fs.mtime(test_file)
+  inspect(ts.sec() > 0, content="true")
+  inspect(ts.nsec() >= 0, content="true")
 }
 
 ///|
@@ -484,9 +484,9 @@ async test "ctime - status change time" {
   let test_file = "_build/test_ctime.txt"
   @fs.write_file(test_file, b"test")
   defer @fs.remove(test_file)
-  let (seconds, nanoseconds) = @fs.ctime(test_file)
-  inspect(seconds > 0, content="true")
-  inspect(nanoseconds >= 0, content="true")
+  let ts = @fs.ctime(test_file)
+  inspect(ts.sec() > 0, content="true")
+  inspect(ts.nsec() >= 0, content="true")
 }
 
 ///|
@@ -497,12 +497,12 @@ async test "File timestamp methods" {
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
-  let (atime_s, _) = file.atime()
-  let (mtime_s, _) = file.mtime()
-  let (ctime_s, _) = file.ctime()
-  inspect(atime_s > 0, content="true")
-  inspect(mtime_s > 0, content="true")
-  inspect(ctime_s > 0, content="true")
+  let atime = file.atime()
+  let mtime = file.mtime()
+  let ctime = file.ctime()
+  inspect(atime.sec() > 0, content="true")
+  inspect(mtime.sec() > 0, content="true")
+  inspect(ctime.sec() > 0, content="true")
 }
 ```
 

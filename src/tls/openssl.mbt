@@ -706,4 +706,5 @@ let _unused : Unit = {
   ignore(@os_error.check_errno)
   ignore(@os_string.encode)
   ignore((_ : @fs.File) => ())
+  ignore(@errno_util.errno_to_string)
 }

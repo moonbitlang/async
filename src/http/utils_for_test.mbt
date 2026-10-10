@@ -14,7 +14,7 @@
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int {
+async fn non_responding_tcp_server(group : @async.TaskGroup) -> Int {
   let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
   group.add_defer(() => server.close())
   server.addr.port()
@@ -49,7 +49,7 @@ extern "js" fn TcpServer::port(server : TcpServer) -> Int =
 
 ///|
 #cfg(target="js")
-async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int {
+async fn non_responding_tcp_server(group : @async.TaskGroup) -> Int {
   let server = TcpServer::create().wait()
   group.add_defer(() => server.close())
   server.port()
@@ -57,7 +57,7 @@ async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int {
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
+async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true) <| () => {
     server.run_forever() <| ((request, body, conn) => {
@@ -190,7 +190,7 @@ extern "js" fn Server::create(
 
 ///|
 #cfg(target="js")
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int {
+async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int {
   let server = Server::create(msg => log.write_string(msg)).wait()
   group.add_defer(() => server.close())
   server.port()

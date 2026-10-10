@@ -19,7 +19,7 @@ fn gai_strerror(code : Int) -> @c_buffer.Buffer = "moonbitlang/async" "socket/ga
 ///|
 fn gai_error_to_string(code : Int) -> String {
   if platform is Windows {
-    @os_error.errno_to_string(code)
+    @errno_util.errno_to_string(code)
   } else {
     let message = gai_strerror(code)
     defer message.free()

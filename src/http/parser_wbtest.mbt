@@ -555,15 +555,16 @@ test "should_not_have_body" {
 
 ///|
 async test "gzip split between chunks" {
-  let compressed = @async.with_task_group(group => {
+  let mut compressed = b""
+  @async.with_task_group <| group => {
     let (r, w) = @io.pipe()
     group.spawn_bg() <| () => {
       defer w.close()
       @gzip_stream.Encoder(w)..write("A simple message to compress").end()
     }
     defer r.close()
-    r.read_all().binary()
-  })
+    compressed = r.read_all().binary()
+  }
   let (r, w) = @io.pipe()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {

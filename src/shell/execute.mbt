@@ -302,39 +302,23 @@ fn validate_output_limit(limit : Int) -> Unit raise ShellError {
 /// `None` means the child inherits the parent's descriptor. `capture` is the
 /// descriptor this run reads from, and is absent when the caller keeps nothing.
 ///
-/// A file opened here is recorded in `created`, so that if a later setup step
-/// fails before the spawn that would consume it, the handle is closed rather
-/// than leaked. The spawn itself closes it through `after_spawn`.
-async fn resolve_redirect(
+/// File redirections are lazy single-child descriptors: the file is opened by
+/// `spawn`, which also owns cleanup if process creation fails.
+fn resolve_redirect(
   redirect : Redirect,
   capture : &@process.ProcessOutput?,
-  created : Array[&@process.ProcessOutput],
 ) -> &@process.ProcessOutput? {
   match redirect {
     Capture => capture
     Inherit => None
-    ToFile(path) => {
-      let file = @process.redirect_to_file(path, create_mode=CreateOrTruncate)
-      created.push(file)
-      Some(file)
-    }
-    AppendToFile(path) => {
-      let file = @process.redirect_to_file(
-        path,
-        append=true,
-        create_mode=OpenOrCreate,
+    ToFile(path) =>
+      Some(@process.redirect_to_file(path, create_mode=CreateOrTruncate))
+    AppendToFile(path) =>
+      Some(
+        @process.redirect_to_file(path, append=true, create_mode=OpenOrCreate),
       )
-      created.push(file)
-      Some(file)
-    }
-    Discard => {
-      let file = @process.redirect_to_file(
-        null_device,
-        create_mode=OpenExisting,
-      )
-      created.push(file)
-      Some(file)
-    }
+    Discard =>
+      Some(@process.redirect_to_file(null_device, create_mode=OpenExisting))
   }
 }
 
@@ -347,8 +331,8 @@ let null_device : String = if @env_util.platform is Windows {
 }
 
 ///|
-async fn[X] spawn_stage(
-  group : @async.TaskGroup[X],
+async fn spawn_stage(
+  group : @async.TaskGroup,
   cmd : Cmd,
   stdin : &@process.ProcessInput,
   stdout : &@process.ProcessOutput?,
@@ -504,12 +488,6 @@ fn take_line(
 }
 
 ///|
-#warnings("-deprecated")
-fn close_process_input(input : &@process.ProcessInput) -> Unit {
-  input.close()
-}
-
-///|
 async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
   let commands = pipeline.commands
   let count = commands.length()
@@ -521,14 +499,14 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
   // Everything the parent itself reads or writes uses the process-owned pipes.
   // `@pipe.pipe()` makes both ends non-blocking, and that flag survives into
   // the child, so a child that outran us would get `EAGAIN` on its own write
-  // instead of blocking. `read_from_process` and `write_to_process` keep the
-  // child's end blocking, which is the whole point of using them here.
+  // instead of blocking. The process redirections keep the child's end
+  // blocking, which is the whole point of using them here.
   //
-  // Passing a process-owned end to `spawn` transfers that end: `after_spawn`
-  // closes the parent's copy on success or failure. A junction is created
-  // immediately before its producer is spawned, keeping any unconsumed input
-  // end local to that one junction if the producer itself fails to spawn.
-  let capture_stderr = sink is Buffer(_)
+  // The parent owns both ends returned by `@process.pipe()`. Each end is closed
+  // immediately after the only child that needs it has spawned. The error
+  // cleanup below covers junctions whose child has not spawned yet.
+  let collect_stderr = sink is Buffer(_)
+  let mut result = None
   @async.with_task_group() <| group => {
     let captured = Ref(0)
     let limit = match sink {
@@ -538,106 +516,116 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
     let mut stdout_task : @async.Task[Bytes]? = None
     let stderr_tasks : Array[@async.Task[Bytes]?] = []
     //
-    // A child-side end exists before the spawn that consumes it, so a failing
-    // setup step — an output file that cannot be opened, a pipe that cannot
-    // be created — would otherwise leak every end already made. Closing an
-    // end is idempotent, and a no-op for a borrowed one such as the parent's
-    // own stdin, so the cleanup is simply: record every end ever created, and
-    // on failure close them all. Ends a spawn has consumed were already
-    // closed by its `after_spawn` hook — on success and on failure alike —
-    // and closing them again does nothing.
-    let created_inputs : Array[&@process.ProcessInput] = []
-    let created_outputs : Array[&@process.ProcessOutput] = []
+    // Inter-stage pipes are shared descriptors: unlike the lazy single-child
+    // redirections, `spawn` never closes the parent's copies. Build all
+    // junctions under error cleanup, then close each end as soon as its one
+    // consumer has spawned.
+    let junction_inputs : Array[@process.SharedProcessInput] = []
+    let junction_outputs : Array[@process.SharedProcessOutput] = []
     errdefer {
-      for input in created_inputs {
-        close_process_input(input)
+      for input in junction_inputs {
+        input.close()
       }
-      for output in created_outputs {
+      for output in junction_outputs {
         output.close()
       }
     }
+    for _ in 1..<count {
+      let (input, output) = @process.pipe()
+      junction_inputs.push(input)
+      junction_outputs.push(output)
+    }
     //
     // Standard input for the first stage: a file the child reads itself, the
-    // parent's own descriptor, or a pipe this task fills.
-    let first_input : &@process.ProcessInput = match commands[0].stdin {
+    // parent's own descriptor, or a lazy single-child pipe this task fills
+    // through the `Process` returned by `spawn`.
+    let first_stdin = commands[0].stdin
+    let writes_first_input = match first_stdin {
+      Some(FromFile(_) | Inherit) => false
+      Some(Text(_) | Binary(_)) | None => true
+    }
+    let first_input : &@process.ProcessInput = match first_stdin {
       Some(FromFile(path)) => @process.redirect_from_file(path)
       Some(Inherit) => @stdio.stdin
-      input => {
-        let (child_end, writer) = @process.write_to_process()
-        group.spawn_bg(allow_failure=true, () => {
-          write_standard_input(writer, input)
-        })
-        child_end
-      }
+      Some(Text(_) | Binary(_)) | None => @process.write_to_process()
     }
-    created_inputs.push(first_input)
     let processes : Array[@process.Process] = []
-    let mut next_stdin : &@process.ProcessInput? = None
     for index, cmd in commands {
       let stdin : &@process.ProcessInput = if index == 0 {
         first_input
       } else {
-        guard next_stdin is Some(input) else {
-          abort("a later stage always has a junction")
-        }
-        input
+        junction_inputs[index - 1]
       }
       //
-      // The junction is built here rather than up front, so each end is handed
-      // directly to the child that owns it. A downstream stage that stops
-      // reading early closes the pipe in the ordinary operating-system way,
-      // and the producer observes the resulting broken pipe.
-      let stdout = if index + 1 < count {
-        let (child_stdin, child_stdout) = @process.pipe()
-        next_stdin = Some(child_stdin)
-        created_inputs.push(child_stdin)
-        created_outputs.push(child_stdout)
-        Some(child_stdout)
+      // A downstream stage that stops reading early closes the pipe in the
+      // ordinary operating-system way, and the producer observes the resulting
+      // broken pipe.
+      let captures_stdout = index + 1 == count &&
+        !(sink is Inherited) &&
+        cmd.stdout is Capture
+      let stdout : &@process.ProcessOutput? = if index + 1 < count {
+        Some(junction_outputs[index])
       } else {
-        let final_capture = if !(sink is Inherited) && cmd.stdout is Capture {
-          let (reader, child_stdout) = @process.read_from_process()
-          created_outputs.push(child_stdout)
-          match sink {
-            Buffer(_) =>
-              stdout_task = Some(
-                group.spawn(() => {
-                  defer reader.close()
-                  read_bounded(reader, captured, limit, "stdout")
-                }),
-              )
-            Lines(on_line, line_limit) =>
-              group.spawn_bg(() => {
-                defer reader.close()
-                read_lines(reader, on_line, line_limit)
-              })
-            Inherited => ()
-          }
-          Some(child_stdout)
+        let final_capture : &@process.ProcessOutput? = if captures_stdout {
+          Some(@process.read_from_process())
         } else {
           None
         }
-        resolve_redirect(cmd.stdout, final_capture, created_outputs)
+        resolve_redirect(cmd.stdout, final_capture)
       }
       //
-      // Each reader starts before its child, so a full pipe never stalls one.
-      let stderr_capture = if capture_stderr && cmd.stderr is Capture {
-        let (reader, child_stderr) = @process.read_from_process()
-        created_outputs.push(child_stderr)
+      let captures_stderr = collect_stderr && cmd.stderr is Capture
+      let stderr_capture : &@process.ProcessOutput? = if captures_stderr {
+        Some(@process.read_from_process())
+      } else {
+        None
+      }
+      let stderr = resolve_redirect(cmd.stderr, stderr_capture)
+      let child = spawn_stage(group, cmd, stdin, stdout, stderr)
+      // Shared junction ends remain owned by this process after `spawn`.
+      if index > 0 {
+        junction_inputs[index - 1].close()
+      }
+      if index + 1 < count {
+        junction_outputs[index].close()
+      }
+      // The lazy single-child pipes become accessible only after `spawn`.
+      // Start their tasks immediately so a full pipe cannot stall a child.
+      if index == 0 && writes_first_input {
+        group.spawn_bg(allow_failure=true, () => {
+          write_standard_input(child.stdin, first_stdin)
+        })
+      }
+      if captures_stdout {
+        match sink {
+          Buffer(_) =>
+            stdout_task = Some(
+              group.spawn(() => {
+                defer child.stdout.close()
+                read_bounded(child.stdout, captured, limit, "stdout")
+              }),
+            )
+          Lines(on_line, line_limit) =>
+            group.spawn_bg(() => {
+              defer child.stdout.close()
+              read_lines(child.stdout, on_line, line_limit)
+            })
+          Inherited => ()
+        }
+      }
+      if captures_stderr {
         stderr_tasks.push(
           Some(
             group.spawn(() => {
-              defer reader.close()
-              read_bounded(reader, captured, limit, "stderr")
+              defer child.stderr.close()
+              read_bounded(child.stderr, captured, limit, "stderr")
             }),
           ),
         )
-        Some(child_stderr)
       } else {
         stderr_tasks.push(None)
-        None
       }
-      let stderr = resolve_redirect(cmd.stderr, stderr_capture, created_outputs)
-      processes.push(spawn_stage(group, cmd, stdin, stdout, stderr))
+      processes.push(child)
     }
     let exit_codes = [ for child in processes => child.wait() ]
     let stdout_bytes = match stdout_task {
@@ -652,11 +640,12 @@ async fn run_pipeline(pipeline : Pipeline, sink : Sink) -> Output {
       }
       stderr.write_string(@utf8.decode_lossy(stage_bytes))
     }
-    {
+    result = Some({
       exit_code: pipefail_exit_code(exit_codes),
       stdout: @utf8.decode_lossy(stdout_bytes),
       stdout_bytes,
       stderr: stderr.to_string(),
-    }
+    })
   }
+  result.unwrap()
 }

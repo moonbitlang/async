@@ -26,10 +26,11 @@ async test "command with exit code" {
 }
 ```
 
-### Spawn process in the background
-Spawning process in the background can be achieved by combining `@process.run` and `@async.TaskGroup::spawn_bg`.
-`@proces` also provides a convenient helper `@process.spawn`,
-which accept a task group as its first parameter, and spawn the process in the task group:
+### Spawn a Process in a Task Group
+
+Use `@process.spawn` to start a process without blocking the current task. It
+registers the process with a task group and returns a `Process` handle for
+waiting, cancellation, and parent-side pipe access:
 
 ```moonbit check
 ///|
@@ -45,11 +46,15 @@ async test "spawn command in background" {
 }
 ```
 
-Child process follows rules of structured concurrency as well:
+Child processes follow the rules of structured concurrency:
 
-- by default, the task group will wait for the child process
-- the child process will be terminated automatically when the task group terminates
-  (for example when `no_wait=true` is passed to `@process.spawn`)
+- by default, the task group waits for the child process before returning normally,
+  unless `no_wait=true` is passed to `@process.spawn`
+- in any case, `with_task_group` will wait for the child process before exitting.
+  If the task group decides to exit regardless of the child (for example due to fatal error or external cancellation),
+  it will cancel the child process automatically, and wait for the child process to finish its cleanup
+- `process.cancel()` can be used to manually cancel the child process,
+  and `process.wait()` waits for actual termination.
 
 ## Collecting Process Output
 
@@ -132,17 +137,22 @@ async test "collect merged output" {
 
 ### Reading from Process
 
-Create a pipe to read from a process:
+Use `@process.read_from_process()` with `@process.spawn` to create a pipe lazily.
+Output is available through `.stdout` or `.stderr` on the returned child handle:
 
 ```moonbit check
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "read from process with pipe" {
   @async.with_task_group(group => {
-    let (reader, writer) = @process.read_from_process()
-    defer reader.close()
-    let _ = @process.spawn(group, "echo", ["Hello from process"], stdout=writer)
-    let output = reader.read_all().text()
+    let child = @process.spawn(
+      group,
+      "echo",
+      ["Hello from process"],
+      stdout=@process.read_from_process(),
+    )
+    defer child.stdout.close()
+    let output = child.stdout.read_all().text()
     inspect(output.has_prefix("Hello"), content="true")
   })
 }
@@ -150,34 +160,39 @@ async test "read from process with pipe" {
 
 ### Writing to Process
 
-Create a pipe to write to a process:
+Use `@process.write_to_process()` with `@process.spawn` to create a pipe lazily.
+Input can be written through `.stdin` on the returned child handle. Close
+`.stdin` when writing is complete so the child observes end-of-file:
 
 ```moonbit check
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "write to process with pipe" {
   @async.with_task_group(group => {
-    let (cat_read, we_write) = @process.write_to_process()
-    let (we_read, cat_write) = @process.read_from_process()
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       "cat",
       ["-"],
-      stdin=cat_read,
-      stdout=cat_write,
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
     )
     group.spawn_bg(() => {
-      defer we_write.close()
-      we_write.write(b"test input\n")
+      defer child.stdin.close()
+      child.stdin.write(b"test input\n")
     })
     group.spawn_bg(() => {
-      defer we_read.close()
-      let output = we_read.read_all().text()
+      defer child.stdout.close()
+      let output = child.stdout.read_all().text()
       inspect(output.contains("test input"), content="true")
     })
   })
 }
 ```
+
+`read_from_process()` and `write_to_process()` are for one child created with
+`spawn()`. Their child-side handles are closed automatically after process
+creation. The returned `Process.stdin`, `Process.stdout`, and `Process.stderr`
+channels must be closed by the caller when those channels were requested.
 
 ## File Redirection
 
@@ -251,6 +266,42 @@ async test "file to file redirection" {
   })
 }
 ```
+
+`redirect_from_file()` and `redirect_to_file()` are lazy, single-process
+redirections. The file is opened while the process is created and the parent
+copy of the file handle is closed automatically afterward.
+
+### Share a File Redirection
+
+Use `redirect_to_file_shared()` when multiple children must inherit the same
+open output file. Unlike the single-process helper, it opens the file
+immediately and returns a `SharedProcessOutput` owned by the caller. Close it
+after it has been passed to the last child, or if spawning is abandoned:
+
+```moonbit check
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "redirect multiple processes to one file" {
+  let output_file = "_build/process_shared_output.txt"
+  defer @fs.remove(output_file)
+  let output = @process.redirect_to_file_shared(output_file)
+  {
+    defer output.close()
+    @async.with_task_group(group => {
+      @process.spawn(group, "printf", ["first"], stdout=output) |> ignore
+      @process.spawn(group, "printf", ["second"], stdout=output) |> ignore
+    })
+  }
+  let content = @fs.read_file(output_file).text()
+  inspect(content.contains("first"), content="true")
+  inspect(content.contains("second"), content="true")
+}
+```
+
+`redirect_from_file_shared()` similarly returns a caller-owned
+`SharedProcessInput`. Children using it share one open file description and
+therefore one file offset: data consumed by one child is no longer available to
+the others. Always close the value after its last use.
 
 ## Environment Variables
 
@@ -337,14 +388,19 @@ async test "relative path in cwd" {
 
 ### Spawn and Wait
 
-Spawn processes asynchronously and wait for completion:
+`run()` waits in the current task. `spawn()` starts the process in a task group
+and returns a handle immediately:
 
 ```moonbit check
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "spawn and wait" {
-  let exit_code = @process.run("sleep", ["0.1"])
-  inspect(exit_code, content="0")
+  @async.with_task_group(group => {
+    let child = @process.spawn(group, "sleep", ["0.1"])
+    inspect(child.pid > 0, content="true")
+    inspect(child.try_wait() is None, content="true")
+    inspect(child.wait(), content="0")
+  })
 }
 
 ///|
@@ -355,9 +411,33 @@ async test "wait for specific exit code" {
 }
 ```
 
+The `Process` handle exposes:
+
+- `pid`, the operating-system process identifier;
+- `stdin`, when `stdin=write_to_process()` was requested;
+- `stdout` and `stderr`, when the corresponding stream uses
+  `read_from_process()`;
+- `wait()`, `try_wait()`, and `cancel()` for lifecycle management.
+
+Only use the pipe fields configured during `spawn()`, and close each configured
+field when it is no longer needed.
+
+### Cancellation
+
+Cancelling the task running `run()`, cancelling the task group containing a
+spawned process, or calling `Process.cancel()` invokes the process cancellation
+handler. The default is `graceful_cancel(timeout=5000)`: it sends `SIGTERM` on
+POSIX systems or `SIGBREAK` on Windows, waits up to five seconds, and then kills
+the process if necessary.
+
+Use `hard_cancel()` to kill immediately, or construct
+`graceful_cancel(timeout~, signal?)` to select a timeout and, on POSIX systems,
+a signal. `Process.cancel()` initiates cancellation; call `Process.wait()` when
+the code must wait until the process has actually terminated.
+
 ### Spawn Orphan Process
 
-Start a orphan process with unbounded lifetime.
+Start an orphan process with an unbounded lifetime.
 The orphan process will not be automatically cancelled,
 and may live longer than the main process.
 It is recommended to use `@process.spawn` or `@process.run` whenever possible,
@@ -367,13 +447,17 @@ use `@process.spawn_orphan` only when it is absolutely necessary:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "spawn orphan and wait later" {
-  let pid = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
+  let proc = @process.spawn_orphan("sh", ["-c", "sleep 0.1; exit 7"])
+
+  // Unlike `@process.spawn`,
+  // the handle returned by `@process.spawn_orphan` must be closed manually
+  defer proc.close()
 
   // Do other work...
   @async.sleep(50)
 
   // Wait for the process to complete
-  let exit_code = @process.wait_pid(pid)
+  let exit_code = proc.wait()
   inspect(exit_code, content="7")
 }
 ```
@@ -382,23 +466,22 @@ async test "spawn orphan and wait later" {
 
 ### Merge Output Streams
 
-Combine stdout and stderr into one stream:
+Use `@process.duplicate_stdout()` to redirect `stderr` to the same channel as `stdout` for a child process:
 
 ```moonbit check
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "merge stdout and stderr" {
   @async.with_task_group(group => {
-    let (reader, writer) = @process.read_from_process()
-    defer reader.close()
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       "sh",
       ["-c", "echo 'to stdout'; echo 'to stderr' >&2"],
-      stdout=writer,
-      stderr=writer,
+      stdout=@process.read_from_process(),
+      stderr=@process.duplicate_stdout(),
     )
-    let output = reader.read_all().text()
+    defer child.stdout.close()
+    let output = child.stdout.read_all().text()
     inspect(output.contains("to stdout"), content="true")
     inspect(output.contains("to stderr"), content="true")
   })
@@ -407,14 +490,16 @@ async test "merge stdout and stderr" {
 
 ### Multiple Processes Sharing Output
 
-Run multiple processes writing to the same pipe:
+`read_from_process_shared()` creates a parent reader and a `SharedProcessOutput` that can
+be passed to multiple children, allowing the parent to collect their merged
+output. Unlike `read_from_process()`, both ends are explicit and caller-owned.
 
 ```moonbit check
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple processes to one pipe" {
   @async.with_task_group(root => {
-    let (reader, writer) = @process.read_from_process(shared=true)
+    let (reader, writer) = @process.read_from_process_shared()
     root.spawn_bg(no_wait=true, () => {
       defer reader.close()
       let output = reader.read_all().text()
@@ -422,8 +507,7 @@ async test "multiple processes to one pipe" {
       inspect(output.contains("second"), content="true")
     })
     @async.with_task_group(group => {
-      // The write must be manually closed after all children process are spawned
-      // in the shared case
+      // Close the shared child-side handle after spawning the last child.
       defer writer.close()
       @process.spawn(group, "echo", ["first"], stdout=writer) |> ignore
       @process.spawn(group, "echo", ["second"], stdout=writer) |> ignore
@@ -432,37 +516,65 @@ async test "multiple processes to one pipe" {
 }
 ```
 
+### Other Shared Pipes
+
+`write_to_process_shared()` returns a `SharedProcessInput` for children and a
+`WriteToProcess` for the parent. It is useful when the same input stream must be
+passed to multiple children, or when using `run()`, `spawn_orphan()`, or a
+collection helper instead of `spawn()`. Children share the stream: each byte is
+consumed by only one reader.
+
+`pipe()` returns a `(SharedProcessInput, SharedProcessOutput)` pair for direct
+child-to-child communication. Pass the output to the producer and the input to
+the consumer. Both handles remain caller-owned and must be closed after the
+last corresponding child has been spawned, or if spawning fails.
+
+For every shared pipe, also close the parent-facing `ReadFromProcess` or
+`WriteToProcess` when reading or writing is complete. Failing to close the last
+writer can prevent readers from observing end-of-file.
+
 ## Types Reference
 
-### ProcessInput
+`ProcessInput` and `ProcessOutput` are the redirection types accepted by
+`run()`, `spawn()`, `spawn_orphan()`, and the collection helpers.
 
-Trait for types that can be used as process input:
+| API or value | Redirection role | Ownership and closing |
+|---|---|---|
+| `@stdio.stdin` | `ProcessInput` | Borrowed; not closed by the process API |
+| `@stdio.stdout`, `@stdio.stderr` | `ProcessOutput` | Borrowed; not closed by the process API |
+| `write_to_process()` | Single-child `ProcessInput` | Child side is automatic; close returned `Process.stdin` |
+| `read_from_process()` | Single-child `ProcessOutput` | Child side is automatic; close returned `Process.stdout` or `.stderr` |
+| `redirect_from_file(path)` | Single-child `ProcessInput` | Opened lazily and closed automatically after process creation |
+| `redirect_to_file(path, ...)` | Single-child `ProcessOutput` | Opened lazily and closed automatically after process creation |
+| `pipe_from_parent()` | `SharedProcessInput` plus parent writer | Caller closes both ends |
+| `pipe_to_parent()` | Parent reader plus `SharedProcessOutput` | Caller closes both ends |
+| `pipe()` | `SharedProcessInput` plus `SharedProcessOutput` | Caller closes both ends |
+| `redirect_from_file_shared(path)` | `SharedProcessInput` | Caller closes it after its last use |
+| `redirect_to_file_shared(path, ...)` | `SharedProcessOutput` | Caller closes it after its last use |
 
-- Created with `write_to_process()` 
-- Created with `redirect_from_file(path)`
-- Implemented by `@pipe.PipeRead`
-
-### ProcessOutput
-
-Trait for types that can be used as process output:
-
-- Created with `read_from_process()`
-- Created with `redirect_to_file(path)`
-- Implemented by `@pipe.PipeWrite`
+`duplicate_stdout()` is a special `ProcessOutput` accepted only as `stderr`; it
+makes the child inherit the same destination as its `stdout` and does not own a
+separate handle.
 
 ## Best Practices
 
-1. **Always close pipes** with `defer reader.close()` or `defer writer.close()`
-2. **Use collect functions** for simple output capture
-3. **Use task groups** when managing multiple processes
-4. **Handle exit codes** appropriately for error detection
-5. **Set working directory** explicitly when path-dependent
-6. **Use environment variables** for configuration
-7. **Prefer `@process.spawn` or `@process.run`**. Only use `spawn_orphan` when necessary.
+1. **Close every caller-owned channel**, preferably immediately after acquiring
+   it with `defer channel.close()`.
+2. **Use collection helpers** for simple output capture.
+3. **Use `spawn()` for interactive pipes**, because the parent endpoints are
+   returned on the `Process` handle.
+4. **Use shared redirections only when sharing is required**, and close them
+   after the last child has been spawned.
+5. **Handle exit codes** explicitly; a nonzero exit is not a spawning error.
+6. **Prefer `spawn()` or `run()`** and use `spawn_orphan()` only when the process
+   must outlive structured concurrency.
 
 ## Error Handling
 
-Process operations handle errors through exit codes:
+Failure to create a process or initialize a redirection raises an error. Once a
+process starts successfully, its exit status is returned as an integer; a
+nonzero status is not raised as an error. If a process is killed by a signal on
+POSIX systems, its status is the negative signal number.
 
 ```moonbit check
 ///|

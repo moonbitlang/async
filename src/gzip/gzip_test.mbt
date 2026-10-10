@@ -15,48 +15,65 @@
 ///|
 #cfg(any(target="native", target="wasm"))
 async fn node_gzip(mode : String, input : Bytes) -> Bytes {
+  let mut result = b""
   @async.with_task_group() <| group => {
-    let (stdin, we_write) = @process.write_to_process()
-    let runner = group.spawn(() => {
-      @process.collect_output("node", ["src/gzip/node_gzip.js", mode], stdin~)
-    })
+    let node_proc = @process.spawn(
+      group,
+      "node",
+      ["src/gzip/node_gzip.js", mode],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+      stderr=@process.read_from_process(),
+    )
     group.spawn_bg() <| () => {
-      defer we_write.close()
-      we_write.write(input)
+      defer node_proc.stdin.close()
+      node_proc.stdin.write(input)
     }
-    let (code, stdout, stderr) = runner.wait()
-    assert_eq(code, 0)
-    assert_eq(stderr.binary().length(), 0)
-    stdout.binary()
+    let stdout = group.spawn() <| () => {
+      defer node_proc.stdout.close()
+      node_proc.stdout.read_all().binary()
+    }
+    let stderr = group.spawn() <| () => {
+      defer node_proc.stderr.close()
+      node_proc.stderr.read_all().binary()
+    }
+    assert_eq(node_proc.wait(), 0)
+    assert_eq(stderr.wait().length(), 0)
+    result = stdout.wait()
   }
+  result
 }
 
 ///|
 #cfg(any(target="native", target="wasm"))
 async fn encode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
+  let mut result = b""
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       defer w.close()
       @gzip.Encoder(w)..write(input).end()
     }
     defer r.close()
-    r.read_all().binary()
+    result = r.read_all().binary()
   }
+  result
 }
 
 ///|
 #cfg(any(target="native", target="wasm"))
 async fn decode_with_moonbit(input : Bytes) -> Bytes {
   let (r, w) = @io.pipe()
+  let mut result = b""
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
       defer w.close()
       w.write(input)
     }
     defer r.close()
-    @gzip.Decoder(r).read_all().binary()
+    result = @gzip.Decoder(r).read_all().binary()
   }
+  result
 }
 
 ///|

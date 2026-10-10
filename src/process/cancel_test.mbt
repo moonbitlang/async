@@ -14,13 +14,14 @@
 // limitations under the License.
 
 ///|
-async test "cancel process" {
+async test "cancel `@process.run()`" {
   let test_prog = sleep_prog.wait()
   let log = StringBuilder()
   @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process()
+    let (r, w) = @process.read_from_process_shared()
     let task = root.spawn(() => {
       defer log.write_string("process terminates\n")
+      defer w.close()
       @process.run(test_prog, ["10000"], stdout=w)
     })
     root.spawn_bg() <| () => {
@@ -48,19 +49,17 @@ async test "cancel process" {
 ///|
 async test "cancel process timeout" {
   let test_prog = sleep_prog.wait()
-  @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process()
-    let task = root.spawn(() => {
-      @process.run(
-        test_prog,
-        ["-swallow-cancel-signal", "10000"],
-        stdout=w,
-        cancel_handler=@process.graceful_cancel(timeout=500),
-      )
-    })
-    let t_receive_graceful_termination = root.spawn(() => {
-      defer r.close()
-      guard! r.read_some() is Some(data)
+  @async.with_task_group() <| group => {
+    let child = @process.spawn(
+      group,
+      test_prog,
+      ["-swallow-cancel-signal", "10000"],
+      stdout=@process.read_from_process(),
+      cancel_handler=@process.graceful_cancel(timeout=500),
+    )
+    let t_receive_graceful_termination = group.spawn(() => {
+      defer child.stdout.close()
+      guard! child.stdout.read_some() is Some(data)
       let data = @utf8.decode(data).trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
@@ -68,11 +67,11 @@ async test "cancel process timeout" {
     })
     @async.sleep(500)
     let t_cancel = @async.now()
-    task.cancel()
-    debug_inspect(
-      @test_util.expect_error_async(() => task.wait()),
-      content="WaitedTaskAlreadyCancelled",
-    )
+    child.cancel()
+    match @event_loop.platform {
+      Linux | MacOS => inspect(child.wait(), content="-9")
+      Windows => inspect(child.wait(), content="1")
+    }
     let t_process_terminates = @async.now()
     let t1 = t_receive_graceful_termination.wait() - t_cancel
     let t2 = t_process_terminates - t_cancel
@@ -84,27 +83,25 @@ async test "cancel process timeout" {
 ///|
 async test "cancel process hard" {
   let test_prog = sleep_prog.wait()
-  @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process()
-    let task = root.spawn(() => {
-      @process.run(
-        test_prog,
-        ["10000"],
-        stdout=w,
-        cancel_handler=@process.hard_cancel(),
-      )
-    })
-    root.spawn_bg() <| () => {
-      defer r.close()
-      inspect(r.read_all().text(), content="")
+  @async.with_task_group() <| group => {
+    let child = @process.spawn(
+      group,
+      test_prog,
+      ["10000"],
+      stdout=@process.read_from_process(),
+      cancel_handler=@process.hard_cancel(),
+    )
+    group.spawn_bg() <| () => {
+      defer child.stdout.close()
+      inspect(child.stdout.read_all().text(), content="")
     }
     @async.sleep(500)
     let t0 = @async.now()
-    task.cancel()
-    debug_inspect(
-      @test_util.expect_error_async(() => task.wait()),
-      content="WaitedTaskAlreadyCancelled",
-    )
+    child.cancel()
+    match @event_loop.platform {
+      Linux | MacOS => inspect(child.wait(), content="-9")
+      Windows => inspect(child.wait(), content="1")
+    }
     let t1 = @async.now()
     inspect((t1 - t0) / 250, content="0")
   }
@@ -113,22 +110,22 @@ async test "cancel process hard" {
 ///|
 async test "orphan process" {
   let log = StringBuilder()
-  @async.with_task_group() <| root => {
-    let (r, w) = @process.read_from_process()
-    let task = root.spawn(() => {
+  @async.with_task_group() <| group => {
+    let proc = @process.spawn_orphan(
+      shell,
+      ["-c", "\{write_stdout} first; sleep 1; \{write_stdout} second"],
+      stdout=@process.read_from_process(),
+    )
+    let wait_task = group.spawn() <| () => {
       defer log.write_string("process terminates\n")
-      let pid = @process.spawn_orphan(
-        shell,
-        ["-c", "\{write_stdout} first; sleep 1; \{write_stdout} second"],
-        stdout=w,
-      )
-      @process.wait_pid(pid)
-    })
-    defer r.close()
-    inspect(@utf8.decode(r.read_exactly(5)), content="first")
-    task.cancel()
+      let _ = proc.wait()
+    }
+    defer proc.close()
+    defer proc.stdout.close()
+    inspect(@utf8.decode(proc.stdout.read_exactly(5)), content="first")
+    wait_task.cancel()
     log <+ "cancelling task running process\n"
-    inspect(r.read_all().text(), content="second")
+    inspect(proc.stdout.read_all().text(), content="second")
   }
   inspect(
     log.to_string(),
@@ -145,40 +142,36 @@ async test "orphan process" {
 async test "kill children on hard cancel" {
   let spawn = spawn_prog.wait()
   let sleep = sleep_prog.wait()
-  let (r, w) = @process.read_from_process()
-  defer r.close()
-  @async.with_timeout(300, () => {
-    @process.run(
+  @async.with_task_group <| group => {
+    let child = @process.spawn(
+      group,
       spawn,
       [sleep, "450", "-print-after-sleep", "after sleep"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       cancel_handler=@process.hard_cancel(),
     )
-    |> ignore
-  }) catch {
-    @async.TimeoutError => ()
-    err => raise err
+    defer child.stdout.close()
+    @async.sleep(300)
+    child.cancel()
+    inspect(child.stdout.read_all().text().trim(), content="")
   }
-  inspect(r.read_all().text().trim(), content="")
 }
 
 ///|
 async test "do not kill orphan children on hard cancel" {
   let spawn = spawn_prog.wait()
   let sleep = sleep_prog.wait()
-  let (r, w) = @process.read_from_process()
-  defer r.close()
-  (@async.with_timeout(300) <| () => {
-    @process.run(
+  @async.with_task_group <| group => {
+    let child = @process.spawn(
+      group,
       spawn,
       ["-orphan", sleep, "450", "-print-after-sleep", "after sleep"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       cancel_handler=@process.hard_cancel(),
     )
-    |> ignore
-  }) catch {
-    @async.TimeoutError => ()
-    err => raise err
+    defer child.stdout.close()
+    @async.sleep(300)
+    child.cancel()
+    inspect(child.stdout.read_all().text().trim(), content="after sleep")
   }
-  inspect(r.read_all().text().trim(), content="after sleep")
 }

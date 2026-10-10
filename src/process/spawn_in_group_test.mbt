@@ -34,13 +34,16 @@ async test "spawn_in_group wait" {
 async test "spawn_in_group cancel" {
   let sleep = sleep_prog.wait()
   @async.with_task_group() <| outer => {
-    let (r, w) = @process.read_from_process()
+    let (r, w) = @process.read_from_process_shared()
     outer.spawn_bg() <| () => {
       defer r.close()
       inspect(r.read_all().text().trim(), content="received termination signal")
     }
     @async.with_task_group() <| inner => {
-      let _ = @process.spawn(inner, sleep, ["10000"], stdout=w, no_wait=true)
+      let _ = {
+        defer w.close()
+        @process.spawn(inner, sleep, ["10000"], stdout=w, no_wait=true)
+      }
       @async.sleep(300)
     }
   }
@@ -79,12 +82,19 @@ async test "Process:cancel" {
   let sleep = sleep_prog.wait()
   let mut t0 = 0L
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      sleep,
+      ["10000"],
+      stdout=@process.read_from_process(),
+    )
     group.spawn_bg() <| () => {
-      defer r.close()
-      inspect(r.read_all().text().trim(), content="received termination signal")
+      defer child.stdout.close()
+      inspect(
+        child.stdout.read_all().text().trim(),
+        content="received termination signal",
+      )
     }
-    let child = @process.spawn(group, sleep, ["10000"], stdout=w)
     t0 = @async.now()
     @async.sleep(500)
     child.cancel()
