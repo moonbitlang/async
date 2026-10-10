@@ -43,7 +43,7 @@ pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String]
 
 pub async fn spawn(@async.TaskGroup, StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
 
-pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> Int
+pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> OrphanProcess
 
 pub async fn wait_pid(Int) -> Int
 
@@ -55,6 +55,16 @@ pub fn write_to_process_shared() -> (SharedProcessInput, WriteToProcess) raise
 
 // Types and methods
 pub(all) struct CancellationHandler(async (Int) -> Unit)
+
+pub struct OrphanProcess {
+  pid : Int
+  stdin : WriteToProcess
+  stdout : ReadFromProcess
+  stderr : ReadFromProcess
+  // private fields
+}
+pub fn OrphanProcess::close(Self) -> Unit
+pub async fn OrphanProcess::wait(Self) -> Int
 
 pub struct Process {
   pid : Int

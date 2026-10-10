@@ -34,6 +34,7 @@ options(
   targets: {
     "deprecated.mbt": [ "native", "wasm" ],
     "process.mbt": [ "native", "wasm" ],
+    "orphan_process.mbt": [ "native", "wasm" ],
     "unix.mbt": [ "native", "wasm" ],
     "windows.mbt": [ "native", "wasm" ],
     "wasm.mbt": [ "wasm" ],
