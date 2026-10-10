@@ -4,8 +4,8 @@ package "moonbitlang/async/process"
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/io",
-  "moonbitlang/async/pipe",
   "moonbitlang/async/signal",
   "moonbitlang/async/stdio",
 }
@@ -19,17 +19,25 @@ pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[Stri
 
 pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int, &@io.Data)
 
+pub fn duplicate_stdout() -> &ProcessOutput
+
 pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> CancellationHandler
 
 pub fn hard_cancel() -> CancellationHandler
 
-pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise
+pub fn pipe() -> (SharedProcessInput, SharedProcessOutput) raise
 
-pub fn read_from_process(shared? : Bool) -> (ReadFromProcess, &ProcessOutput) raise
+pub fn read_from_process() -> &ProcessOutput
 
-pub async fn redirect_from_file(String) -> &ProcessInput
+pub fn read_from_process_shared() -> (ReadFromProcess, SharedProcessOutput) raise
 
-pub async fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int, shared? : Bool) -> &ProcessOutput
+pub fn redirect_from_file(String) -> &ProcessInput
+
+pub async fn redirect_from_file_shared(String) -> SharedProcessInput
+
+pub fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int) -> &ProcessOutput
+
+pub async fn redirect_to_file_shared(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int) -> SharedProcessOutput
 
 pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler) -> Int
 
@@ -39,7 +47,9 @@ pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String
 
 pub async fn wait_pid(Int) -> Int
 
-pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
+pub fn write_to_process() -> &ProcessInput
+
+pub fn write_to_process_shared() -> (SharedProcessInput, WriteToProcess) raise
 
 // Errors
 
@@ -48,6 +58,9 @@ pub(all) struct CancellationHandler(async (Int) -> Unit)
 
 pub struct Process {
   pid : Int
+  stdin : WriteToProcess
+  stdout : ReadFromProcess
+  stderr : ReadFromProcess
   // private fields
 }
 pub fn Process::cancel(Self) -> Unit
@@ -64,6 +77,14 @@ pub async fn ReadFromProcess::read_some(Self, max_len? : Int) -> Bytes?
 pub async fn ReadFromProcess::read_until(Self, StringView) -> String?
 pub impl @io.Reader for ReadFromProcess
 
+type SharedProcessInput
+pub fn SharedProcessInput::close(Self) -> Unit
+pub impl ProcessInput for SharedProcessInput
+
+type SharedProcessOutput
+pub fn SharedProcessOutput::close(Self) -> Unit
+pub impl ProcessOutput for SharedProcessOutput
+
 type WriteToProcess
 pub fn WriteToProcess::close(Self) -> Unit
 pub async fn WriteToProcess::write(Self, &@io.Data) -> Unit
@@ -75,12 +96,7 @@ pub impl @io.Writer for WriteToProcess
 
 // Traits
 trait ProcessInput
-#deprecated
-pub impl ProcessInput for @pipe.PipeRead
 pub impl ProcessInput for @stdio.Input
 
 trait ProcessOutput
-#deprecated
-pub impl ProcessOutput for @pipe.PipeWrite
 pub impl ProcessOutput for @stdio.Output
-pub fn &ProcessOutput::close(Self) -> Unit

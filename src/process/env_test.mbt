@@ -16,17 +16,16 @@
 ///|
 async test "set_env" {
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
     let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       shell,
       ["-c", "\{write_stdout} \{env_var}"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={ "MAGIC_VAR": "MAGIC_VALUE" },
     )
-    inspect(r.read_all().text(), content="MAGIC_VALUE")
+    defer child.stdout.close()
+    inspect(child.stdout.read_all().text(), content="MAGIC_VALUE")
   }
 }
 
@@ -34,13 +33,11 @@ async test "set_env" {
 async test "set_env no inherit" {
   let test_prog = dump_env_prog.wait()
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       test_prog,
       [],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={
         "MAGIC_VAR_1": "MAGIC_VALUE_1",
         "MAGIC_VAR_2": "MAGIC_VALUE_2",
@@ -49,8 +46,9 @@ async test "set_env no inherit" {
       },
       inherit_env=false,
     )
+    defer child.stdout.close()
     inspect(
-      r.read_all().text().replace_all(old="\r\n", new="\n"),
+      child.stdout.read_all().text().replace_all(old="\r\n", new="\n"),
       content=(
         #|MAGIC_VAR_1=MAGIC_VALUE_1
         #|MAGIC_VAR_2=MAGIC_VALUE_2
