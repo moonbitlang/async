@@ -149,6 +149,18 @@ async fn raw_spawn_windows(
   is_orphan~ : Bool,
   context~ : String,
 ) -> (@event_loop.Process, WriteToProcess, ReadFromProcess, ReadFromProcess) {
+  let (stdin_child, stdin_parent) = stdin.init_stdin(context~)
+  defer stdin.close(stdin_child)
+  errdefer stdin_parent.close()
+  let (stdout_parent, stdout_child) = stdout.init_stdout(context~)
+  defer stdout.close(stdout_child)
+  errdefer stdout_parent.close()
+  let (stderr_parent, stderr_child) = stderr.init_stderr(
+    stdout=stdout_child,
+    context~,
+  )
+  defer stderr.close(stderr_child)
+  errdefer stderr_parent.close()
   let cmd = match cmd {
     [.., '.', 'e' | 'E', 'x' | 'X', 'e' | 'E']
     | [.., '.', 'c' | 'C', 'o' | 'O', 'm' | 'M'] => cmd
@@ -164,18 +176,6 @@ async fn raw_spawn_windows(
     None => None
     Some(cwd) => Some(@os_string.encode(cwd))
   }
-  let (stdin_child, stdin_parent) = stdin.init_stdin(context~)
-  defer stdin.close(stdin_child)
-  errdefer stdin_parent.close()
-  let (stdout_parent, stdout_child) = stdout.init_stdout(context~)
-  defer stdout.close(stdout_child)
-  errdefer stdout_parent.close()
-  let (stderr_parent, stderr_child) = stderr.init_stderr(
-    stdout=stdout_child,
-    context~,
-  )
-  defer stderr.close(stderr_child)
-  errdefer stderr_parent.close()
   let proc = @event_loop.spawn_windows(
     command_line,
     env=OsEnv::make(extra_env, inherit_env~).0,
