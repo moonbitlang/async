@@ -214,6 +214,9 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         max_len~,
         limit~,
       )
+      if consumed is 0 && produced is 0 {
+        raise @io.ReaderClosed
+      }
       let remaining = curr_chunk_remaining - consumed.to_uint64()
       if remaining == 0 {
         guard self.transport.read_exactly(2) == b"\r\n" else {

@@ -741,3 +741,78 @@ async test "chunk extension" {
     inspect(input.read_all().text(), content="abcdxyzw1234ABCD")
   }
 }
+
+///|
+async test "fixed length early EOF" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("GET / HTTP/1.1\r\n")
+      ..write("Host: x.y.org\r\n")
+      ..write("User-Agent: MoonBit\r\n")
+      ..write("Content-Length: 42\r\n\r\n")
+      .write("abcd")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let _ = input.read_request()
+    inspect(
+      @test_util.expect_error_async(() => input.read_all().text()),
+      content=(
+        #|ReaderClosed
+      ),
+    )
+  }
+}
+
+///|
+async test "chunked early EOF: within chunk" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("GET / HTTP/1.1\r\n")
+      ..write("Host: x.y.org\r\n")
+      ..write("User-Agent: MoonBit\r\n")
+      ..write("Transfer-Encoding: chunked\r\n\r\n")
+      .write("10\r\nabcd")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let _ = input.read_request()
+    inspect(
+      @test_util.expect_error_async(() => input.read_all().text()),
+      content=(
+        #|ReaderClosed
+      ),
+    )
+  }
+}
+
+///|
+async test "chunked early EOF: chunk boundary" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("GET / HTTP/1.1\r\n")
+      ..write("Host: x.y.org\r\n")
+      ..write("User-Agent: MoonBit\r\n")
+      ..write("Transfer-Encoding: chunked\r\n\r\n")
+      .write("4\r\nabcd\r\n")
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let _ = input.read_request()
+    inspect(
+      @test_util.expect_error_async(() => input.read_all().text()),
+      content=(
+        #|ReaderClosed
+      ),
+    )
+  }
+}
