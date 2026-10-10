@@ -4,7 +4,6 @@ import {
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/c_buffer",
-  "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
   "moonbitlang/async",
   "moonbitlang/async/io",
@@ -24,6 +23,10 @@ import {
 import {
   "moonbitlang/async/internal/test_util",
 } for "wbtest"
+
+// workaround an upstream compiler bug temporarily
+
+warnings = "-implicit_impl_as_method"
 
 options(
   "max-concurrent-tests": 5,

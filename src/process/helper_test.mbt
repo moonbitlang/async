@@ -58,7 +58,7 @@ async test "collect_output_merged" {
 async test "collect_output blocked" {
   let test_prog = cat.wait()
   @async.with_task_group() <| group => {
-    let (cat_read, we_write) = @process.write_to_process()
+    let (cat_read, we_write) = @process.write_to_process_shared()
     group.spawn_bg() <| () => {
       defer we_write.close()
       let chunk = Bytes::make(1024, 0)
@@ -66,6 +66,7 @@ async test "collect_output blocked" {
         we_write.write(chunk)
       }
     }
+    defer cat_read.close()
     let (code, stdout, stderr) = @process.collect_output(
       test_prog,
       ["-stderr"],

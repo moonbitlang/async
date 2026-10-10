@@ -33,17 +33,16 @@ async fn run_lock_file_prog(
   prefix? : String = "",
 ) -> @async.Task[Unit] {
   let prog = lock_file_prog.wait()
-  let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
-  let _ = @process.spawn(group, prog, stdout=w, [
-    file,
-    "-duration",
-    duration.to_string(),
-    lock_kind,
-  ])
+  let lock_proc = @process.spawn(
+    group,
+    prog,
+    stdout=@process.read_from_process(),
+    [file, "-duration", duration.to_string(), lock_kind],
+  )
   group.spawn() <| () => {
-    defer r.close()
-    while r.read_until("\n") is Some(line) {
+    defer lock_proc.stdout.close()
+    while lock_proc.stdout.read_until("\n") is Some(line) {
       log.push(prefix + line)
     }
   }

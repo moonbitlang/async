@@ -13,93 +13,24 @@
 // limitations under the License.
 
 ///|
-/// A temporary pipe used to read output from a spawned process
+/// A pipe for reading the output of child process.
+/// Must be closed when it is no longer used.
 struct ReadFromProcess {
-  io : @event_loop.IoHandle
+  io : @event_loop.IoHandle?
   read_buf : @io.ReaderBuffer
 }
 
 ///|
-/// A temporary pipe used to write data to a spawned process
-struct WriteToProcess(@event_loop.IoHandle)
-
-///|
-/// Create a temporary pipe for reading from stdout/stderr of a process.
-/// The return value is a pair `(r, w)`,
-/// where `r` is a temporary pipe that can be used to read process output,
-/// and `w` should be passed to `@process.run`, `@process.spawn` etc.
-///
-/// `w` is temporary: it can only be passed to one `@process.run` call.
-/// However, it is safe to pass `w` to both `stdout` and `stderr` of the same process.
-///
-/// If `shared` is `false` (the default), the created pipe is unique.
-/// In this case, `w` can only be passed to one child process
-/// (but it is ok to pass `w` to both stdout and stderr of the same process),
-/// and `w` will be closed automatically after the child process started.
-///
-/// If `shared` is `true`, the created pipe is shared:
-/// `w` can be passed to multiple children process to merge and collect their output.
-/// In this case, `w` should be closed manually via `w.close()`
-/// after being passed to the last child process.
-/// Note that `w` can be closed immediately after the last child process *started*,
-/// there is no need to wait for the termination of the child process.
-/// If you forgot to close `w` or close it too late,
-/// the read end `r` will fail to observe EOF from children process.
-pub fn read_from_process(
-  shared? : Bool = false,
-) -> (ReadFromProcess, &ProcessOutput) raise {
-  let context = "@process.read_from_process()"
-  let (r, w) = @fd_util.pipe(
-    read_end_is_async=true,
-    write_end_is_async=false,
-    context~,
-  )
-  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
-  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
-  (
-    { io: r, read_buf: @io.ReaderBuffer::new(), },
-    TempPipeWrite::{ pipe: w, shared, closed: false, },
-  )
-}
-
-///|
-/// Create a temporary pipe for writing to stdin of a process.
-/// The return value is a pair `(r, w)`,
-/// where `w` is a temporary pipe that can be used to write to process output,
-/// and `r` should be passed to `@process.run`.
-pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
-  let context = "@process.write_to_process()"
-  let (r, w) = @fd_util.pipe(
-    read_end_is_async=false,
-    write_end_is_async=true,
-    context~,
-  )
-  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
-  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
-  (TempPipeRead::{ pipe: r, closed: false, }, w)
-}
-
-///|
-/// Create a temporary pipe for connecting the output of
-/// one child process to the input of another child process.
-pub fn pipe() -> (&ProcessInput, &ProcessOutput) raise {
-  let context = "@process.pipe()"
-  let (r, w) = @fd_util.pipe(
-    read_end_is_async=false,
-    write_end_is_async=false,
-    context~,
-  )
-  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
-  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
-  (
-    TempPipeRead::{ pipe: r, closed: false, },
-    TempPipeWrite::{ pipe: w, shared: false, closed: false, },
-  )
+let no_output : ReadFromProcess = {
+  io: None,
+  read_buf: @io.ReaderBuffer::new(),
 }
 
 ///|
 pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
-  self.io.close()
+  if self.io is Some(io) {
+    io.close()
+  }
 }
 
 ///|
@@ -114,11 +45,16 @@ pub impl @io.Reader for ReadFromProcess with fn _direct_read(
   offset~,
   max_len~,
 ) {
-  self.io.read(
+  guard self.io is Some(io) else {
+    abort(
+      "cannot read output of a process whose stdout/stderr is not `@process.read_from_process()`",
+    )
+  }
+  io.read(
     buf,
     offset~,
     len=max_len,
-    context="@process.ReadFromProcess::read()",
+    context="impl @io.Reader for ReadFromProcess",
   )
 }
 
@@ -133,9 +69,18 @@ pub extend ReadFromProcess with @io.Reader::{
 }
 
 ///|
+/// A pipe for writing to the input of child process.
+/// Must be closed when it is no longer used.
+struct WriteToProcess(@event_loop.IoHandle?)
+
+///|
+let no_input : WriteToProcess = WriteToProcess(None)
+
+///|
 pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
-  let WriteToProcess(io) = self
-  io.close()
+  if self is WriteToProcess(Some(io)) {
+    io.close()
+  }
 }
 
 ///|
@@ -145,15 +90,295 @@ pub impl @io.Writer for WriteToProcess with fn write_once(
   offset~,
   len~,
 ) {
-  let WriteToProcess(io) = self
-  io.write(buf, offset~, len~, context="@process.WriteToProcess::write()")
+  guard self is WriteToProcess(Some(io)) else {
+    abort(
+      "cannot write input of a process whose stdin is not `@process.write_to_process()`",
+    )
+  }
+  io.write(buf, offset~, len~, context="impl @io.Writer for WriteToProcess")
 }
 
 ///|
 pub extend WriteToProcess with @io.Writer::{write_once, write, write_reader}
 
 ///|
+/// Trait for objects that can be used to redirect stdin of child process
+trait ProcessInput {
+  // object with `is_shared() == false` will be closed automatically on process creation
+  fn is_shared(Self) -> Bool
+  async fn init_stdin(Self, context~ : String) -> (
+    @event_loop.IoHandle?,
+    WriteToProcess,
+  )
+}
+
+///|
+fn &ProcessInput::close(
+  self : &ProcessInput,
+  child_end : @event_loop.IoHandle?,
+) -> Unit {
+  if !self.is_shared() && child_end is Some(child_end) {
+    child_end.close()
+  }
+}
+
+///|
+/// Trait for objects that can be used to redirect stdout/stderr of child process
+trait ProcessOutput {
+  // object with `is_shared() == false` will be closed automatically on process creation
+  fn is_shared(Self) -> Bool
+  async fn init_stdout(Self, context~ : String) -> (
+    ReadFromProcess,
+    @event_loop.IoHandle?,
+  )
+  // The special `duplicate_stdout` object need to access stdout
+  async fn init_stderr(Self, stdout~ : @event_loop.IoHandle?, context~ : String) -> (
+    ReadFromProcess,
+    @event_loop.IoHandle?,
+  ) = _
+}
+
+///|
+impl ProcessOutput with fn init_stderr(self, stdout~, context~) {
+  ignore(stdout)
+  self.init_stdout(context~)
+}
+
+///|
+fn &ProcessOutput::close(
+  self : &ProcessOutput,
+  child_end : @event_loop.IoHandle?,
+) -> Unit {
+  if !self.is_shared() && child_end is Some(child_end) {
+    child_end.close()
+  }
+}
+
+///|
+/// A lazily created pipe for reading output/writing input of a single child process.
+/// The pipe is lazily created when actually spawning the child process,
+/// so that it won't leak even if program fail before spawning child process.
+/// This way, the children end of the pipe can be completely hidden from the child process.
+priv struct PipeWithParentLazy {}
+
+///|
+impl ProcessInput for PipeWithParentLazy with fn is_shared(_self) {
+  false
+}
+
+///|
+impl ProcessInput for PipeWithParentLazy with fn init_stdin(_self, context~) {
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=true,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+  (Some(r), WriteToProcess(Some(w)))
+}
+
+///|
+impl ProcessOutput for PipeWithParentLazy with fn is_shared(_self) {
+  false
+}
+
+///|
+impl ProcessOutput for PipeWithParentLazy with fn init_stdout(_self, context~) {
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=true,
+    write_end_is_async=false,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
+  ({ io: Some(r), read_buf: @io.ReaderBuffer::new(), }, Some(w))
+}
+
+///|
+/// Create a temporary channel used to collect output of a single child process.
+/// The actual output of the child can be read from `Process.stdout` or `Process.stderr`
+/// after spawning the child process.
+pub fn read_from_process() -> &ProcessOutput {
+  PipeWithParentLazy::{ }
+}
+
+///|
+/// Create a temporary channel used to writing to input of a single child process.
+/// The actual output of the child can be read from `Process.stdout` or `Process.stderr`
+/// after spawning the child process.
+pub fn write_to_process() -> &ProcessInput {
+  PipeWithParentLazy::{ }
+}
+
+///|
+/// A general object for redirecting stdin of child process.
+/// Unlike `write_to_process()`, `SharedProcessInput` can be shared among multiple children.
+/// Must be closed manually after being passed to the last child process or on failure.
+struct SharedProcessInput(@event_loop.IoHandle)
+
+///|
+pub fn SharedProcessInput::close(self : SharedProcessInput) -> Unit {
+  self.0.close()
+}
+
+///|
+pub impl ProcessInput for SharedProcessInput with fn is_shared(_self) {
+  true
+}
+
+///|
+pub impl ProcessInput for SharedProcessInput with fn init_stdin(self, context~) {
+  ignore(context)
+  (Some(self.0), no_input)
+}
+
+///|
+/// A general pipe for redirecting stdout/stderr of child process.
+/// Unlike `read_from_process()`, `SharedProcessOutput` can be shared among multiple children.
+/// Must be closed manually after being passed to the last child process or on failure.
+struct SharedProcessOutput(@event_loop.IoHandle)
+
+///|
+pub fn SharedProcessOutput::close(self : SharedProcessOutput) -> Unit {
+  self.0.close()
+}
+
+///|
+pub impl ProcessOutput for SharedProcessOutput with fn is_shared(_self) {
+  true
+}
+
+///|
+pub impl ProcessOutput for SharedProcessOutput with fn init_stdout(
+  self,
+  context~,
+) {
+  ignore(context)
+  (no_output, Some(self.0))
+}
+
+///|
+/// Create a temporary pipe for reading from stdout/stderr of child process.
+/// The return value is a pair `(r, w)`,
+/// where `r` is a temporary pipe similar to `Process.stdout` for reading process output,
+/// and `w` should be passed to `@process.run`, `@process.spawn` etc.
+///
+/// For simple redirection involving only one child,
+/// `@process.read_from_process()` is cleaner and should be used instead.
+/// Use `@process.read_from_process_shared()` only when multiple children process are involved,
+/// or when `@process.spawn` cannot be used.
+///
+/// `w` can be shared among multiple children process,
+/// and must be closed manually after being passed to the last child or on failure.
+/// `r` must be closed manually when it become unused as well.
+pub fn read_from_process_shared() -> (ReadFromProcess, SharedProcessOutput) raise {
+  let context = "@process.read_from_process_shared()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=true,
+    write_end_is_async=false,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
+  ({ io: Some(r), read_buf: @io.ReaderBuffer::new(), }, SharedProcessOutput(w))
+}
+
+///|
+/// Create a temporary pipe for reading from stdout/stderr of child process.
+/// The return value is a pair `(r, w)`,
+/// where `w` is a temporary pipe similar to `Process.stdin` for writing process input,
+/// and `r` should be passed to `@process.run`, `@process.spawn` etc.
+///
+/// For simple redirection involving only one child,
+/// `@process.write_to_process()` is cleaner and should be used instead.
+/// Use `@process.write_to_process_shared()` only when multiple children process are involved,
+/// or when `@process.spawn` cannot be used.
+///
+/// `r` can be shared among multiple children process,
+/// and must be closed manually after being passed to the last child or on failure.
+/// `w` must be closed manually when it become unused as well.
+pub fn write_to_process_shared() -> (SharedProcessInput, WriteToProcess) raise {
+  let context = "@process.write_to_process_shared()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=true,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe)
+  (SharedProcessInput(r), WriteToProcess(Some(w)))
+}
+
+///|
+/// Create a temporary pipe for direct communicationg between multiple children process.
+/// Return value is a pair `(r, w)`,
+/// where `r` should be connected to stdin of child process,
+/// and `w` should be connected to stdout/stderr of child process.
+/// Data written to `w` by some children can be read from `r` by other children.
+///
+/// Both `r` and `w` can be shared among multiple children process,
+/// and must be closed manually after being passed to the last child or on failure.
+pub fn pipe() -> (SharedProcessInput, SharedProcessOutput) raise {
+  let context = "@process.pipe()"
+  let (r, w) = @fd_util.pipe(
+    read_end_is_async=false,
+    write_end_is_async=false,
+    context~,
+  )
+  let r = @event_loop.IoHandle::from_fd(r, kind=Pipe, is_async=false)
+  let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
+  (SharedProcessInput(r), SharedProcessOutput(w))
+}
+
+///|
 fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
+
+///|
+priv struct RedirectWithFile {
+  path : String
+  mode : Int
+  append : Bool
+  create_mode : @fs.CreateMode
+  permission : Int
+}
+
+///|
+async fn RedirectWithFile::init(
+  self : RedirectWithFile,
+  context~ : String,
+) -> @event_loop.IoHandle {
+  let (file, _) = @event_loop.open(
+    self.path,
+    self.mode, // write only
+    create=self.create_mode.to_int(),
+    append=self.append,
+    sync=0,
+    mode=self.permission,
+    context~,
+  )
+  file
+}
+
+///|
+impl ProcessInput for RedirectWithFile with fn is_shared(_self) {
+  false
+}
+
+///|
+impl ProcessInput for RedirectWithFile with fn init_stdin(self, context~) {
+  (Some(self.init(context~)), no_input)
+}
+
+///|
+impl ProcessOutput for RedirectWithFile with fn is_shared(_self) {
+  false
+}
+
+///|
+impl ProcessOutput for RedirectWithFile with fn init_stdout(self, context~) {
+  (no_output, Some(self.init(context~)))
+}
 
 ///|
 /// Redirect the output of a process to the file at `path`.
@@ -161,25 +386,37 @@ fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
 ///
 /// The meaning of `append`, `create_mode` and `permission` is the same as `@fs.open`,
 /// see the document of `@fs.open` for more details.
-///
-/// If `shared` is `false` (the default), the returned channel `w` is unique.
-/// In this case, `w` can only be passed to one child process
-/// (but it is ok to pass `w` to both stdout and stderr of the same process),
-/// and `w` will be closed automatically after the child process started.
-///
-/// If `shared` is `true`, the returned channel `w` is shared:
-/// it can be passed to multiple children process to merge and collect their output.
-/// In this case, `w` should be closed manually via `w.close()`
-/// after being passed to the last child process.
-/// Note that `w` can be closed immediately after the last child process *started*,
-/// there is no need to wait for the termination of the child process.
-pub async fn redirect_to_file(
+pub fn redirect_to_file(
   path : String,
   append? : Bool = false,
   create_mode? : @fs.CreateMode = CreateOrTruncate,
   permission? : Int = 0o644,
-  shared? : Bool = false,
 ) -> &ProcessOutput {
+  RedirectWithFile::{ path, mode: 1, append, create_mode, permission, }
+}
+
+///|
+/// Redirect the content of a file at `path` to the stdin of a process.
+pub fn redirect_from_file(path : String) -> &ProcessInput {
+  RedirectWithFile::{
+    path,
+    mode: 0,
+    append: false,
+    create_mode: OpenExisting,
+    permission: 0,
+  }
+}
+
+///|
+/// Similar to `redirect_to_file()`, except that
+/// result of `redirect_to_file_shared()` can be shared among multiple child process,
+/// and must be manually closed after being passed to the last child process or on failure.
+pub async fn redirect_to_file_shared(
+  path : String,
+  append? : Bool = false,
+  create_mode? : @fs.CreateMode = CreateOrTruncate,
+  permission? : Int = 0o644,
+) -> SharedProcessOutput {
   let (file, _) = @event_loop.open(
     path,
     1, // write only
@@ -187,209 +424,89 @@ pub async fn redirect_to_file(
     append~,
     sync=0,
     mode=permission,
-    context="@process.redirect_to_file()",
+    context="@process.redirect_to_file_shared()",
   )
-  RedirectToFile::{ io: file, shared, closed: false, }
+  SharedProcessOutput(file)
 }
 
 ///|
-/// Redirect the content of a file at `path` to the stdin of a process.
-pub async fn redirect_from_file(path : String) -> &ProcessInput {
+/// Similar to `redirect_from_file()`, except that
+/// result of `redirect_from_file_shared()` can be shared among multiple child process,
+/// and must be manually closed after being passed to the last child process or on failure.
+pub async fn redirect_from_file_shared(path : String) -> SharedProcessInput {
   let (file, _) = @event_loop.open(
     path,
     0, // read only
-    create=0, // `OpenExisting`
+    create=@fs.OpenExisting.to_int(),
     append=false,
     sync=0,
     mode=0,
-    context="@process.redirect_from_file()",
+    context="@process.redirect_from_file_shared()",
   )
-  RedirectToFile::{ io: file, shared: false, closed: false, }
+  SharedProcessInput(file)
 }
 
 ///|
-/// An entity that can be used to redirect stdin of a process
-trait ProcessInput {
-  fn fd(Self) -> @fd_util.Fd raise
-  /// Close the input channel.
-  /// May be called automatically via `after_spawn`, or manually via `.close()`
-  fn do_close(Self) -> Unit = _
-  fn after_spawn(Self) -> Unit = _
+pub impl ProcessOutput for @stdio.Output with fn is_shared(_self) {
+  true
 }
 
 ///|
-/// Close an input channel that will not be passed to a child process.
-/// A channel is closed automatically once it is passed to a child process,
-/// so this is only needed when a channel has been created
-/// but spawning the process that would consume it fails or is abandoned.
-/// Closing is idempotent, and a no-op for channels that only borrow
-/// their file descriptor, such as `@stdio.stdin`.
-#doc(hidden)
-#deprecated
-pub fn &ProcessInput::close(self : &ProcessInput) -> Unit {
-  self.do_close()
+pub impl ProcessOutput for @stdio.Output with fn init_stdout(self, context~) {
+  ignore(context)
+  let fd = self.fd() catch { _ => @fd_util.invalid_fd }
+  if @event_loop.stdout is Ok(stdout) && fd == stdout.fd() {
+    return (no_output, Some(stdout))
+  }
+  if @event_loop.stderr is Ok(stderr) && fd == stderr.fd() {
+    return (no_output, Some(stderr))
+  }
+  (no_output, None)
 }
 
 ///|
-impl ProcessInput with fn do_close(_) {
-  ()
+pub impl ProcessInput for @stdio.Input with fn is_shared(_self) {
+  true
 }
 
 ///|
-impl ProcessInput with fn after_spawn(_) {
-  ()
-}
-
-///|
-#deprecated("use `@process.write_to_process()` or `@process.pipe()` instead")
-pub impl ProcessInput for @pipe.PipeRead
-
-///|
-pub impl ProcessInput for @pipe.PipeRead with fn fd(self) {
-  self.fd()
-}
-
-///|
-pub impl ProcessInput for @stdio.Input with fn fd(self) {
-  self.fd()
-}
-
-///|
-/// An entity that can be used to redirect stdout/stderr of a process
-trait ProcessOutput {
-  fn fd(Self) -> @fd_util.Fd raise
-  /// Close the output channel.
-  /// May be called automatically via `after_spawn`, or manually via `.close()`
-  fn do_close(Self) -> Unit = _
-  fn after_spawn(Self) -> Unit = _
-}
-
-///|
-/// Close a shared channel for redirecting process output.
-/// Once closed, the channel can no longer be passed to child process.
-/// Note that unique channels are automatically closed after being passed to child process,
-/// so there is no need to manually call `.close()` on a unique channel.
-/// See `@process.read_from_process` for more details.
-pub fn &ProcessOutput::close(self : &ProcessOutput) -> Unit {
-  self.do_close()
-}
-
-///|
-impl ProcessOutput with fn do_close(_) {
-  ()
-}
-
-///|
-impl ProcessOutput with fn after_spawn(_) {
-  ()
-}
-
-///|
-#deprecated("use `@process.read_from_process(shared~)` or `@process.pipe()` instead")
-pub impl ProcessOutput for @pipe.PipeWrite
-
-///|
-pub impl ProcessOutput for @pipe.PipeWrite with fn fd(self) {
-  self.fd()
-}
-
-///|
-pub impl ProcessOutput for @stdio.Output with fn fd(self) {
-  self.fd()
-}
-
-///|
-priv struct TempPipeRead {
-  pipe : @event_loop.IoHandle
-  mut closed : Bool
-}
-
-///|
-priv struct TempPipeWrite {
-  pipe : @event_loop.IoHandle
-  shared : Bool
-  mut closed : Bool
-}
-
-///|
-impl ProcessOutput for TempPipeWrite with fn fd(self) {
-  self.pipe.fd()
-}
-
-///|
-impl ProcessOutput for TempPipeWrite with fn do_close(self) {
-  if !self.closed {
-    self.closed = true
-    self.pipe.close()
+pub impl ProcessInput for @stdio.Input with fn init_stdin(_self, context~) {
+  ignore(context)
+  match @event_loop.stdin {
+    Ok(stdin) => (Some(stdin), no_input)
+    Err(_) => (None, no_input)
   }
 }
 
 ///|
-impl ProcessOutput for TempPipeWrite with fn after_spawn(self) {
-  if !self.shared {
-    ProcessOutput::do_close(self)
-  }
+priv struct DuplicateStdout {}
+
+///|
+impl ProcessOutput for DuplicateStdout with fn is_shared(_self) {
+  true
 }
 
 ///|
-impl ProcessInput for TempPipeRead with fn fd(self) {
-  self.pipe.fd()
+impl ProcessOutput for DuplicateStdout with fn init_stdout(_self, context~) {
+  ignore(context)
+  abort("`@process.duplicate_stdout()` can only be used to redirect stderr")
 }
 
 ///|
-impl ProcessInput for TempPipeRead with fn do_close(self) {
-  if !self.closed {
-    self.closed = true
-    self.pipe.close()
-  }
+impl ProcessOutput for DuplicateStdout with fn init_stderr(
+  _self,
+  stdout~,
+  context~,
+) {
+  ignore(context)
+  (no_output, stdout)
 }
 
 ///|
-impl ProcessInput for TempPipeRead with fn after_spawn(self) {
-  ProcessInput::do_close(self)
-}
-
-///|
-priv struct RedirectToFile {
-  io : @event_loop.IoHandle
-  shared : Bool
-  mut closed : Bool
-}
-
-///|
-impl ProcessOutput for RedirectToFile with fn fd(self) {
-  self.io.fd()
-}
-
-///|
-impl ProcessOutput for RedirectToFile with fn do_close(self) {
-  if !self.closed {
-    self.closed = true
-    self.io.close()
-  }
-}
-
-///|
-impl ProcessOutput for RedirectToFile with fn after_spawn(self) {
-  if !self.shared {
-    ProcessOutput::do_close(self)
-  }
-}
-
-///|
-impl ProcessInput for RedirectToFile with fn fd(self) {
-  self.io.fd()
-}
-
-///|
-impl ProcessInput for RedirectToFile with fn do_close(self) {
-  if !self.closed {
-    self.closed = true
-    self.io.close()
-  }
-}
-
-///|
-impl ProcessInput for RedirectToFile with fn after_spawn(self) {
-  ProcessInput::do_close(self)
+/// Return a special object that can be used to redirect `stderr` of a child process
+/// and make it a duplicate of the `stdout` of the same child process.
+/// When spawning a child process with `stderr=@process.duplicate_stdout()`,
+/// `Process.stderr` cannot be used, and `Process.stdout` should be used instead, if available.
+pub fn duplicate_stdout() -> &ProcessOutput {
+  DuplicateStdout::{ }
 }
