@@ -422,6 +422,7 @@ void moonbitlang_async_free_worker(struct worker *worker) {
 
 #ifdef _WIN32
   WaitForSingleObject(worker->id, INFINITE);
+  CloseHandle(worker->id);
 #else
   pthread_join(worker->id, 0);
 #endif
