@@ -38,7 +38,7 @@ typedef CRITICAL_SECTION   mutex_t;
 typedef CONDITION_VARIABLE cond_t;
 
 #define mutex_init(mutex)    InitializeCriticalSection(mutex)
-#define mutex_destroy(mutex) (void)0
+#define mutex_destroy(mutex) DeleteCriticalSection(mutex)
 #define mutex_lock(mutex)    EnterCriticalSection(mutex)
 #define mutex_unlock(mutex)  LeaveCriticalSection(mutex)
 
@@ -310,6 +310,7 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
 
 #ifdef _WIN32
   WaitForSingleObject(waiter->thread_id, INFINITE);
+  CloseHandle(waiter->thread_id);
 #else
   pthread_join(waiter->thread_id, 0);
 #endif
