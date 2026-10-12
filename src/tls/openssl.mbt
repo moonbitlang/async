@@ -398,9 +398,9 @@ async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   r : R,
   w : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   load_openssl()

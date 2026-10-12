@@ -131,7 +131,7 @@ fn IoResultHandle::for_socket_with_addr_read(
   len~ : Int,
   flags~ : Int,
   addr~ : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_socket_with_addr_read_io_result/windows"
 
 ///|
@@ -143,7 +143,7 @@ fn IoResultHandle::copy_read_with_addr(
   offset~ : Int,
   len~ : Int,
   addr~ : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> Unit = "moonbitlang/async" "io/io_result_copy_read_with_addr/windows"
 
 ///|
@@ -169,7 +169,7 @@ fn IoResultHandle::for_socket_with_addr_write(
   len~ : Int,
   flags~ : Int,
   addr~ : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_socket_with_addr_write_io_result/windows"
 
 ///|
@@ -196,7 +196,7 @@ fn IoResult::for_socket_with_addr_write(
 #borrow(addr)
 fn IoResultHandle::for_connect(
   addr : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_connect_io_result/windows"
 
 ///|
@@ -229,7 +229,7 @@ fn IoResult::for_read_dir_changes(buf : UInt64, len~ : Int) -> IoResult {
 fn IoResultHandle::get_accept_peer_addr(
   self : IoResultHandle,
   dst : Bytes,
-  dst_len? : Int = dst.length(),
+  dst_len~ : Int = dst.length(),
 ) -> Unit = "moonbitlang/async" "io/get_accept_peer_addr/windows"
 
 ///|

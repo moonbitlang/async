@@ -30,7 +30,7 @@
 pub async fn Tcp::connect_to_host(
   host : StringView,
   port~ : Int,
-  protocol? : IpProtocolPreference = NoPreference,
+  protocol~ : IpProtocolPreference = NoPreference,
 ) -> Tcp {
   let context = "@socket.Tcp::connect_to_host()"
   let ai = match @event_loop.getaddrinfo(host, context~) {

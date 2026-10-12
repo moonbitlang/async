@@ -19,7 +19,7 @@ fn mask_payload(
   mask : BytesView,
   offset~ : Int,
   len~ : Int,
-  mask_offset? : Int = 0,
+  mask_offset~ : Int = 0,
 ) -> Unit {
   for i = 0; i < len; i = i + 1 {
     data[offset + i] = data[offset + i] ^ mask[(mask_offset + i) % 4]

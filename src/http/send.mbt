@@ -61,7 +61,7 @@ fn sanitize_header_value(s : String) -> String {
 }
 
 ///|
-fn[W : @io.Writer] Sender::new(w : W, headers? : Headers = Map([])) -> Sender {
+fn[W : @io.Writer] Sender::new(w : W, headers~ : Headers = Map([])) -> Sender {
   let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {

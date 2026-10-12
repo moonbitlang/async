@@ -479,7 +479,7 @@ fn in_ranges(members : Array[(Char, Char)], candidate : Char) -> Bool {
 ///   assert_true(sources.contains("execute.mbt"))
 /// }
 /// ```
-pub async fn glob(pattern : String, cwd? : String = ".") -> Array[String] {
+pub async fn glob(pattern : String, cwd~ : String = ".") -> Array[String] {
   // No filename can contain a NUL, and a C-string filesystem API would see a
   // truncated path — matching something the caller did not spell. Reject it
   // up front, exactly as `Cmd` does for process metadata.

@@ -205,7 +205,7 @@ pub fn Conn::close(self : Conn) -> Unit {
 ///    For example it should NOT be called when protocol error or network error occurs.
 pub async fn Conn::send_close(
   self : Conn,
-  code? : CloseCode = Normal,
+  code~ : CloseCode = Normal,
   reason? : String,
 ) -> Unit {
   if self.closed is Some(err) {
@@ -293,7 +293,7 @@ async fn Conn::send_close_unchecked(
 async fn[X] Conn::protocol_error(
   self : Conn,
   reason : String,
-  code? : CloseCode = ProtocolError,
+  code~ : CloseCode = ProtocolError,
 ) -> X {
   let err : WebSocketError = ProtocolError(reason)
   if self.closed is None {

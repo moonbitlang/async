@@ -68,9 +68,9 @@ struct Encoder {
 /// The gzip header is written by the first successful `write` or `end` call.
 #alias(new, deprecated)
 pub fn Encoder::Encoder(
-  mtime? : UInt = 0U,
-  extra_flags? : Byte = b'\x00',
-  operating_system? : Byte = b'\xff',
+  mtime~ : UInt = 0U,
+  extra_flags~ : Byte = b'\x00',
+  operating_system~ : Byte = b'\xff',
 ) -> Encoder {
   {
     header: Header::new(mtime~, extra_flags~, operating_system~),
@@ -497,10 +497,10 @@ pub fn Encoder::write(
   self : Encoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset? : Int = 0,
-  input_len? : Int = input.length() - input_offset,
-  output_offset? : Int = 0,
-  output_len? : Int = output.length() - output_offset,
+  input_offset~ : Int = 0,
+  input_len~ : Int = input.length() - input_offset,
+  output_offset~ : Int = 0,
+  output_len~ : Int = output.length() - output_offset,
 ) -> (Int, Int) {
   guard! !self.finished
   guard input_len > 0 else { return (0, 0) }
@@ -529,8 +529,8 @@ pub fn Encoder::write(
 pub fn Encoder::end(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset? : Int = 0,
-  output_len? : Int = output.length() - output_offset,
+  output_offset~ : Int = 0,
+  output_len~ : Int = output.length() - output_offset,
 ) -> Int {
   guard !self.finished else { return 0 }
   let mut produced = 0

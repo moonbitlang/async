@@ -90,9 +90,9 @@ pub(all) enum X509FileType {
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   inner : Inner,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   let trust = match trust {

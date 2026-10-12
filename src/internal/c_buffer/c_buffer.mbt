@@ -20,9 +20,9 @@ pub type Buffer
 #borrow(src)
 pub extern "C" fn Buffer::blit_from_bytes(
   dst : Buffer,
-  dst_offset? : Int = 0,
+  dst_offset~ : Int = 0,
   src~ : Bytes,
-  src_offset? : Int = 0,
+  src_offset~ : Int = 0,
   len~ : Int,
 ) = "moonbitlang_async_blit_to_c"
 
@@ -30,9 +30,9 @@ pub extern "C" fn Buffer::blit_from_bytes(
 #borrow(dst)
 pub extern "C" fn Buffer::blit_to_bytes(
   src : Buffer,
-  src_offset? : Int = 0,
+  src_offset~ : Int = 0,
   dst~ : FixedArray[Byte],
-  dst_offset? : Int = 0,
+  dst_offset~ : Int = 0,
   len~ : Int,
 ) = "moonbitlang_async_blit_from_c"
 
@@ -42,7 +42,7 @@ pub extern "C" fn Buffer::blit_to_bytes(
 pub extern "C" fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang_async_c_buffer_get"
 
 ///|
-pub extern "C" fn Buffer::strlen(buf : Buffer, offset? : Int = 0) -> Int = "moonbitlang_async_strlen"
+pub extern "C" fn Buffer::strlen(buf : Buffer, offset~ : Int = 0) -> Int = "moonbitlang_async_strlen"
 
 ///|
 pub extern "C" fn Buffer::is_null(ptr : Buffer) -> Bool = "moonbitlang_async_pointer_is_null"

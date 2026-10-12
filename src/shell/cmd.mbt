@@ -108,11 +108,11 @@ pub fn Cmd::Cmd(
   program : String,
   arguments : Array[String],
   cwd? : String,
-  env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : Stdin,
-  stdout? : Redirect = Capture,
-  stderr? : Redirect = Capture,
+  stdout~ : Redirect = Capture,
+  stderr~ : Redirect = Capture,
 ) -> Cmd {
   {
     program,

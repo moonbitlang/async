@@ -11,7 +11,6 @@ import {
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async",
   "moonbitlang/async/internal/coroutine",
-  "moonbitlang/async/internal/c_buffer",
 }
 
 import {
@@ -22,8 +21,9 @@ import {
   "moonbitlang/async/internal/test_util",
 } for "test"
 
+max_concurrent_tests = 3
+
 options(
-  "max-concurrent-tests": 3,
   "native-stub": [
     "stub.c",
     "dir.c",

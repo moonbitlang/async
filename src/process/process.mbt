@@ -34,13 +34,13 @@
 pub async fn spawn_orphan(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  no_console_window? : Bool = false,
+  no_console_window~ : Bool = false,
 ) -> Int {
   let proc = raw_spawn(
     cmd,
@@ -123,14 +123,14 @@ pub async fn wait_pid(pid : Int) -> Int {
 pub async fn run(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  no_console_window? : Bool = false,
-  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+  no_console_window~ : Bool = false,
+  cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
 ) -> Int {
   let context = "@process.run()"
   let process = raw_spawn(
@@ -212,14 +212,14 @@ pub async fn[X] spawn(
   group : @async.TaskGroup[X],
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  no_console_window? : Bool = false,
-  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+  no_console_window~ : Bool = false,
+  cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
   no_wait? : Bool,
 ) -> Process {
   let context = "@process.spawn()"
@@ -261,8 +261,8 @@ pub async fn[X] spawn(
 pub async fn collect_stdout(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
@@ -297,8 +297,8 @@ pub async fn collect_stdout(
 pub async fn collect_stderr(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   cwd? : StringView,
@@ -334,8 +334,8 @@ pub async fn collect_stderr(
 pub async fn collect_output(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,
@@ -377,8 +377,8 @@ pub async fn collect_output(
 pub async fn collect_output_merged(
   cmd : StringView,
   args : Array[String],
-  extra_env? : Map[String, String] = Map([]),
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = Map([]),
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,

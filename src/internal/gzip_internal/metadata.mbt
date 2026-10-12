@@ -32,9 +32,9 @@ priv struct Header {
 
 ///|
 fn Header::new(
-  mtime? : UInt = 0U,
-  extra_flags? : Byte = b'\x00',
-  operating_system? : Byte = b'\xff',
+  mtime~ : UInt = 0U,
+  extra_flags~ : Byte = b'\x00',
+  operating_system~ : Byte = b'\xff',
 ) -> Header {
   { mtime, extra_flags, operating_system, }
 }
@@ -102,8 +102,8 @@ priv struct TrailerState {
 
 ///|
 fn TrailerState::new(
-  crc32? : UInt = 0xffffffffU,
-  input_size? : UInt = 0U,
+  crc32~ : UInt = 0xffffffffU,
+  input_size~ : UInt = 0U,
 ) -> TrailerState {
   { crc32, input_size, }
 }

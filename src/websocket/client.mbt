@@ -32,7 +32,7 @@
 pub async fn Conn::from_http_client(
   conn : @http.Client,
   path : StringView,
-  extra_headers? : @http.Headers = Map([]),
+  extra_headers~ : @http.Headers = Map([]),
 ) -> Conn {
   // Ref : https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
   let seed = @tls.rand_bytes(32)
@@ -104,7 +104,7 @@ pub async fn Conn::from_http_client(
 #as_free_fn
 pub async fn Conn::connect(
   url : String,
-  headers? : @http.Headers = Map([]),
+  headers~ : @http.Headers = Map([]),
   proxy? : @http.Client,
 ) -> Conn {
   guard url.find("://") is Some(protocol_len) else {

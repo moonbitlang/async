@@ -96,7 +96,7 @@ pub suberror TimeoutError derive(Debug, ToJson)
 pub async fn[X] with_timeout(
   time : Int,
   f : async () -> X,
-  error? : Error = TimeoutError,
+  error~ : Error = TimeoutError,
 ) -> X {
   with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
@@ -320,7 +320,7 @@ pub async fn[X] all(
 pub async fn[X] any(
   tasks : ArrayView[async () -> X],
   max_concurrent? : Int,
-  allow_failure? : Bool = false,
+  allow_failure~ : Bool = false,
   loc~ : SourceLoc,
 ) -> X {
   let semaphore = if max_concurrent is Some(p) {

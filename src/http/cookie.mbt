@@ -21,9 +21,9 @@ pub fn Cookie::Cookie(
   expires_raw? : String,
   max_age? : Int64,
   domain? : String,
-  secure? : Bool = false,
-  http_only? : Bool = false,
-  extensions? : Array[String] = [],
+  secure~ : Bool = false,
+  http_only~ : Bool = false,
+  extensions~ : Array[String] = [],
 ) -> Cookie {
   {
     name,

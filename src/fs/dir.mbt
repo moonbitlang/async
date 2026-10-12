@@ -29,9 +29,9 @@
 /// An existing non-directory at `path` is still an error.
 pub async fn mkdir(
   path : StringView,
-  permission? : Int = 0o755,
-  recursive? : Bool = false,
-  allow_exist? : Bool = false,
+  permission~ : Int = 0o755,
+  recursive~ : Bool = false,
+  allow_exist~ : Bool = false,
 ) -> Unit {
   let context = "@fs.mkdir()"
   @event_loop.mkdir(path, mode=permission, context~) catch {
@@ -69,7 +69,7 @@ pub async fn mkdir(
 /// This function is not cancellable.
 pub async fn rmdir(
   path : StringView,
-  recursive? : Bool = false,
+  recursive~ : Bool = false,
 ) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
@@ -274,8 +274,8 @@ pub struct DirectoryEntry {
 /// The file name in the returned directory entry is interpreted as UTF8-encoded on Unix-like systems.
 pub async fn Directory::next(
   dir : Directory,
-  include_hidden? : Bool = true,
-  include_special? : Bool = false,
+  include_hidden~ : Bool = true,
+  include_special~ : Bool = false,
 ) -> DirectoryEntry? {
   dir.next_aux(
     include_special~,
@@ -289,7 +289,7 @@ async fn Directory::next_aux(
   dir : Directory,
   include_hidden~ : Bool,
   include_special~ : Bool,
-  restart? : Bool = false,
+  restart~ : Bool = false,
   context~ : String,
 ) -> DirectoryEntry? {
   match dir.state {
@@ -364,8 +364,8 @@ async fn Directory::next_aux(
 /// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn Directory::read_all(
   dir : Directory,
-  include_hidden? : Bool = true,
-  include_special? : Bool = false,
+  include_hidden~ : Bool = true,
+  include_special~ : Bool = false,
 ) -> Array[String] {
   let result = []
   let context = "@fs.Directory::read_all()"
@@ -391,9 +391,9 @@ pub async fn Directory::read_all(
 /// The returned file names are interpreted as UTF8-encoded on Unix-like systems.
 pub async fn readdir(
   path : StringView,
-  include_hidden? : Bool = true,
-  include_special? : Bool = false,
-  sort? : Bool = false,
+  include_hidden~ : Bool = true,
+  include_special~ : Bool = false,
+  sort~ : Bool = false,
 ) -> Array[String] {
   let context = "@fs.readdir()"
   let dir : Directory = opendir_aux(path, context~)
@@ -431,9 +431,9 @@ pub async fn readdir(
 pub async fn walk(
   path : StringView,
   f : async (String, Array[String]) -> Unit,
-  exclude? : (String) -> Bool = _ => false,
-  max_concurrency? : Int = 1000,
-  allow_failure? : Bool = false,
+  exclude~ : (String) -> Bool = _ => false,
+  max_concurrency~ : Int = 1000,
+  allow_failure~ : Bool = false,
 ) -> Unit {
   let context = "@fs.walk()"
   guard! max_concurrency > 0

@@ -50,8 +50,8 @@ fn fill_string(
 /// units into guest-owned MoonBit String storage.
 pub fn decode(
   os_str : @c_buffer.Buffer,
-  offset? : Int = 0,
-  len? : Int = -1,
+  offset~ : Int = 0,
+  len~ : Int = -1,
 ) -> String {
   let str_len = decode_len(os_str, offset, len)
   let str = String::make(str_len, '\u{0}')

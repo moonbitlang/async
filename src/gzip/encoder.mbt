@@ -27,9 +27,9 @@ struct Encoder[W] {
 #alias(new, deprecated)
 pub fn[W] Encoder::Encoder(
   inner : W,
-  mtime? : UInt = 0U,
-  extra_flags? : Byte = b'\x00',
-  operating_system? : Byte = b'\xff',
+  mtime~ : UInt = 0U,
+  extra_flags~ : Byte = b'\x00',
+  operating_system~ : Byte = b'\xff',
 ) -> Encoder[W] {
   let buf = FixedArray::make(encoder_buffer_size, b'\x00')
   {

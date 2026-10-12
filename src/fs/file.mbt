@@ -110,10 +110,10 @@ fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
 pub async fn open(
   filename : StringView,
   mode~ : Mode,
-  sync? : SyncMode = NoSync,
-  append? : Bool = false,
-  create_mode? : CreateMode = OpenExisting,
-  permission? : Int = 0o644,
+  sync~ : SyncMode = NoSync,
+  append~ : Bool = false,
+  create_mode~ : CreateMode = OpenExisting,
+  permission~ : Int = 0o644,
 ) -> File {
   let access = match mode {
     ReadOnly => 0
@@ -156,9 +156,9 @@ pub async fn open(
 ///   see `SyncMode` for more details. The default is `NoSync`
 pub async fn create(
   filename : StringView,
-  allow_existing? : Bool = true,
-  permission? : Int = 0o644,
-  sync? : SyncMode = NoSync,
+  allow_existing~ : Bool = true,
+  permission~ : Int = 0o644,
+  sync~ : SyncMode = NoSync,
 ) -> File {
   let create_mode = if allow_existing { CreateOrTruncate } else { CreateNew }
   open(filename, mode=WriteOnly, sync~, create_mode~, permission~)
@@ -244,8 +244,8 @@ pub async fn File::read_at(
   self : File,
   buf : FixedArray[Byte],
   position~ : Int64,
-  offset? : Int = 0,
-  len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  len~ : Int = buf.length() - offset,
 ) -> Int {
   self.io.read_at(buf, offset~, len~, position~, context="@fs.File::read_at()")
 }
@@ -317,7 +317,7 @@ pub async fn File::write_at(
 /// If `only_data` is `true` (`false` by default),
 /// some metadata such as timestamp may not be flushed.
 /// Buf file content and important metadata such as file size are always flushed.
-pub async fn File::sync(self : File, only_data? : Bool = false) -> Unit {
+pub async fn File::sync(self : File, only_data~ : Bool = false) -> Unit {
   self.io.fsync(only_data~, context="@fs.File::sync()")
 }
 
@@ -425,7 +425,7 @@ pub async fn remove(path : StringView) -> Unit nocancel {
 pub async fn rename(
   old_path : StringView,
   new_path : StringView,
-  replace? : Bool = true,
+  replace~ : Bool = true,
 ) -> Unit {
   @event_loop.rename(old_path, new_path, replace~, context="@fs.rename()")
 }
@@ -503,7 +503,7 @@ pub async fn File::ctime(self : File) -> (Int64, Int) {
 /// `read_file` will block until timestamp change is written to the file system.
 pub async fn read_file(
   path : StringView,
-  sync_timestamp? : Bool = false,
+  sync_timestamp~ : Bool = false,
 ) -> &@io.Data {
   let file = open(path, mode=ReadOnly)
   defer file.close()
@@ -522,10 +522,10 @@ pub async fn read_file(
 pub async fn write_file(
   path : StringView,
   content : &@io.Data,
-  create_mode? : CreateMode = CreateOrTruncate,
-  permission? : Int = 0o644,
-  sync? : SyncMode = Data,
-  append? : Bool = false,
+  create_mode~ : CreateMode = CreateOrTruncate,
+  permission~ : Int = 0o644,
+  sync~ : SyncMode = Data,
+  append~ : Bool = false,
 ) -> Unit {
   let file = open(
     path,

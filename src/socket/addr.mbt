@@ -119,7 +119,7 @@ pub extern "C" fn Addr::ip(addr : Addr) -> UInt = "moonbitlang_async_ip_addr_get
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(addr)
-fn ip_addr_get_ip(addr : Addr, addr_len? : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/ip_addr_get_ip"
+fn ip_addr_get_ip(addr : Addr, addr_len~ : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/ip_addr_get_ip"
 
 ///|
 #cfg(target="wasm")
@@ -136,7 +136,7 @@ pub extern "C" fn Addr::port(addr : Addr) -> Int = "moonbitlang_async_ip_addr_ge
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(addr)
-fn ip_addr_get_port(addr : Addr, addr_len? : Int = addr.0.length()) -> Int = "moonbitlang/async" "socket/ip_addr_get_port"
+fn ip_addr_get_port(addr : Addr, addr_len~ : Int = addr.0.length()) -> Int = "moonbitlang/async" "socket/ip_addr_get_port"
 
 ///|
 #cfg(target="wasm")
@@ -153,7 +153,7 @@ pub extern "C" fn Addr::is_ipv6(addr : Addr) -> Bool = "moonbitlang_async_addr_i
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(addr)
-fn addr_is_ipv6(addr : Addr, addr_len? : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_ipv6"
+fn addr_is_ipv6(addr : Addr, addr_len~ : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_ipv6"
 
 ///|
 #cfg(target="wasm")
@@ -170,7 +170,7 @@ pub extern "C" fn Addr::is_multicast(addr : Addr) -> Bool = "moonbitlang_async_a
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(addr)
-fn addr_is_multicast(addr : Addr, addr_len? : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_multicast"
+fn addr_is_multicast(addr : Addr, addr_len~ : Int = addr.0.length()) -> Bool = "moonbitlang/async" "socket/addr_is_multicast"
 
 ///|
 #cfg(target="wasm")
@@ -225,7 +225,7 @@ extern "C" fn Addr::scope_id(addr : Addr) -> UInt = "moonbitlang_async_addr_get_
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(addr)
-fn Addr::scope_id(addr : Addr, addr_len? : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/addr_get_ipv6_scope_id"
+fn Addr::scope_id(addr : Addr, addr_len~ : Int = addr.0.length()) -> UInt = "moonbitlang/async" "socket/addr_get_ipv6_scope_id"
 
 ///|
 #cfg(target="native")
@@ -238,7 +238,7 @@ extern "C" fn Addr::is_ipv6_wildcard(addr : Addr) -> Bool = "moonbitlang_async_a
 #borrow(addr)
 fn Addr::is_ipv6_wildcard(
   addr : Addr,
-  addr_len? : Int = addr.0.length(),
+  addr_len~ : Int = addr.0.length(),
 ) -> Bool = "moonbitlang/async" "socket/addr_is_ipv6_wildcard"
 
 ///|
@@ -334,7 +334,7 @@ fn AddrInfo::fill_addr(
   self : AddrInfo,
   out : Bytes,
   port : Int,
-  out_len? : Int = out.length(),
+  out_len~ : Int = out.length(),
 ) -> Unit = "moonbitlang/async" "socket/addrinfo_fill_addr"
 
 ///|
@@ -392,7 +392,7 @@ pub(all) enum IpProtocolPreference {
 pub async fn Addr::resolve(
   host : String,
   port~ : Int,
-  protocol? : IpProtocolPreference = NoPreference,
+  protocol~ : IpProtocolPreference = NoPreference,
 ) -> Addr {
   // TODO: Add option to prefer ipv6 or ipv4
   let context = "@socket.Addr::resolve()"

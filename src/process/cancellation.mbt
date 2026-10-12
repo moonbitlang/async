@@ -54,7 +54,7 @@ let default_signal : @signal.Signal = if @event_loop.platform is Windows {
 /// Note that on Windows, `SIGBREAK` is the only signal allowed to be be sent.
 pub fn graceful_cancel(
   timeout~ : Int,
-  signal? : @signal.Signal = default_signal,
+  signal~ : @signal.Signal = default_signal,
 ) -> CancellationHandler {
   pid => {
     if signal.to_int() is code && code >= 0 {

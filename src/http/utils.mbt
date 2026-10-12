@@ -31,9 +31,9 @@ fn encode_int(value : Int, base~ : Int) -> Bytes {
 ///|
 fn is_token_char(c : UInt16) -> Bool {
   match c {
-    'A'..='Z' => true
-    'a'..='z' => true
-    '0'..='9' => true
+    'A'..<='Z' => true
+    'a'..<='z' => true
+    '0'..<='9' => true
     '!'
     | '#'
     | '$'
@@ -55,7 +55,7 @@ fn is_token_char(c : UInt16) -> Bool {
 
 ///|
 fn is_VCHAR(c : UInt16) -> Bool {
-  c is (0x21..=0x7E | ' ' | '\t' | 0x80..=0xFF)
+  c is (0x21..<=0x7E | ' ' | '\t' | 0x80..<=0xFF)
 }
 
 ///|

@@ -343,8 +343,8 @@ pub suberror QueueAlreadyClosed derive(Debug, ToJson)
 /// But this error can be customized via the `error` parameter.
 pub fn[X] Queue::close(
   self : Queue[X],
-  error? : Error = QueueAlreadyClosed,
-  clear? : Bool = false,
+  error~ : Error = QueueAlreadyClosed,
+  clear~ : Bool = false,
 ) -> Unit {
   self.closed = Some(error)
   while self.writers.pop() is Some(writer) {

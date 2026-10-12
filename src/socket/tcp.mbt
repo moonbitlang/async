@@ -84,9 +84,9 @@ pub struct TcpServer {
 #alias(new, deprecated)
 pub async fn TcpServer::TcpServer(
   addr : Addr,
-  dual_stack? : Bool = true,
-  reuse_addr? : Bool = false,
-  reuse_port_lb? : Bool = false,
+  dual_stack~ : Bool = true,
+  reuse_addr~ : Bool = false,
+  reuse_port_lb~ : Bool = false,
 ) -> TcpServer {
   let context = "@socket.TcpServer::new()"
   let family = addr.family()
@@ -141,7 +141,7 @@ pub fn TcpServer::addr(server : TcpServer) -> Addr {
 pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
-  allow_failure? : Bool = true,
+  allow_failure~ : Bool = true,
   max_connections? : Int,
 ) -> Unit {
   defer self.close()
@@ -256,9 +256,9 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 /// `keep_alive_interval` is the time in seconds between two keep alive probes.
 pub fn Tcp::enable_keepalive(
   self : Tcp,
-  idle_before_keep_alive? : Int = -1,
-  keep_alive_count? : Int = -1,
-  keep_alive_interval? : Int = -1,
+  idle_before_keep_alive~ : Int = -1,
+  keep_alive_count~ : Int = -1,
+  keep_alive_interval~ : Int = -1,
 ) -> Unit raise {
   let ret = enable_keepalive_ffi(
     self.io.fd(),

@@ -44,7 +44,7 @@ pub extend CaseInsensitiveString with Show::{to_string}
 pub impl Hash for CaseInsensitiveString with fn hash_combine(self, hasher) {
   for code in self.0.code_units() {
     let code = match code {
-      'A'..='Z' => code + ('a' - 'A')
+      'A'..<='Z' => code + ('a' - 'A')
       _ => code
     }
     hasher.combine_uint(code.to_uint())

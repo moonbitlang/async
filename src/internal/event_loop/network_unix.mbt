@@ -43,7 +43,7 @@ fn recvfrom_unix_ffi(
   offset~ : Int,
   len~ : Int,
   addr~ : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> Int = "moonbitlang/async" "socket/recvfrom/unix"
 
 ///|
@@ -110,7 +110,7 @@ fn sendto_unix_ffi(
   offset~ : Int,
   len~ : Int,
   addr~ : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> Int = "moonbitlang/async" "socket/sendto/unix"
 
 ///|
@@ -166,7 +166,7 @@ extern "C" fn connect_unix_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonb
 fn connect_unix_ffi(
   sock : @fd_util.Fd,
   addr : Bytes,
-  addr_len? : Int = addr.length(),
+  addr_len~ : Int = addr.length(),
 ) -> Int = "moonbitlang/async" "socket/connect/unix"
 
 ///|
@@ -227,7 +227,7 @@ extern "C" fn accept_unix_ffi(
 fn accept_unix_ffi(
   sock : @fd_util.Fd,
   addr_buf : Bytes,
-  addr_len? : Int = addr_buf.length(),
+  addr_len~ : Int = addr_buf.length(),
 ) -> @fd_util.Fd = "moonbitlang/async" "socket/accept/unix"
 
 ///|

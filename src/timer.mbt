@@ -78,7 +78,7 @@ pub suberror TimerCancelled derive(Debug)
 /// All waiters on the timer will fail immediately with `err`
 /// (`TimerCancelled` by default).
 /// All subsequent waiters will also fail with `err` immediately.
-pub fn Timer::cancel(timer : Timer, err? : Error = TimerCancelled) -> Unit {
+pub fn Timer::cancel(timer : Timer, err~ : Error = TimerCancelled) -> Unit {
   timer.wake(Cancelled(err))
 }
 

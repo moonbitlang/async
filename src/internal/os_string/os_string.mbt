@@ -71,8 +71,8 @@ pub extend OsString with Show::{to_string}
 #cfg(not(platform="windows"))
 pub fn decode(
   os_str : @c_buffer.Buffer,
-  offset? : Int = 0,
-  len? : Int = os_str.strlen(offset~),
+  offset~ : Int = 0,
+  len~ : Int = os_str.strlen(offset~),
 ) -> String {
   let data = FixedArray::make(len, b'\x00')
   os_str.blit_to_bytes(dst=data, src_offset=offset, len~)
@@ -83,8 +83,8 @@ pub fn decode(
 #cfg(platform="windows")
 pub extern "C" fn decode(
   os_str : @c_buffer.Buffer,
-  offset? : Int = 0,
-  len? : Int = -1,
+  offset~ : Int = 0,
+  len~ : Int = -1,
 ) -> String = "moonbitlang_async_c_buffer_as_string"
 
 ///|

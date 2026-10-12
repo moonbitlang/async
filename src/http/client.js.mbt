@@ -86,8 +86,8 @@ pub fn Client::close(self : Client) -> Unit {
 ///|
 fn Client::connect(
   host : String,
-  headers? : Headers = Map([]),
-  protocol? : Protocol = Https,
+  headers~ : Headers = Map([]),
+  protocol~ : Protocol = Https,
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
@@ -117,9 +117,9 @@ fn Client::connect(
 #label_migration(verify, fill=false, msg="verify is unsupported on Windows")
 pub async fn Client::Client(
   uri : String,
-  headers? : Headers = Map([]),
+  headers~ : Headers = Map([]),
   proxy? : Client,
-  verify? : Bool = true,
+  verify~ : Bool = true,
 ) -> Client {
   ignore(proxy)
   ignore(verify)
@@ -256,7 +256,7 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Unit {
   guard! self.request is None
   let protocol = match self.protocol {
@@ -293,7 +293,7 @@ pub async fn Client::request(
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -309,7 +309,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -320,7 +320,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }

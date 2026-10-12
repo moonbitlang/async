@@ -40,8 +40,8 @@ pub(all) suberror ReaderClosed derive(Debug, ToJson)
 impl Reader with fn read(
   self,
   dst,
-  offset? = 0,
-  max_len? = dst.length() - offset,
+  offset~ = 0,
+  max_len~ = dst.length() - offset,
 ) {
   let buf = self._get_internal_buffer()
   if buf.len > 0 {
@@ -158,8 +158,8 @@ impl Reader with fn read_some(self, max_len?) {
 #doc(hidden)
 pub async fn[R : Reader] read_all(
   reader : R,
-  prefix_list? : FixedArray[BytesView] = [],
-  chunk_size? : Int = 4096,
+  prefix_list~ : FixedArray[BytesView] = [],
+  chunk_size~ : Int = 4096,
 ) -> Bytes {
   let buffer_list = []
   let mut buffer = FixedArray::make(chunk_size, b'\x00')
