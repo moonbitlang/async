@@ -14,16 +14,16 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn get_pid() -> UInt = "moonbitlang_async_getpid"
+extern "C" fn get_pid() -> UInt32 = "moonbitlang_async_getpid"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn get_pid() -> UInt = "moonbitlang/async" "env_util/getpid"
+fn get_pid() -> UInt32 = "moonbitlang/async" "env_util/getpid"
 
 ///|
 #cfg(any(target="native", target="wasm"))
-pub let current_process : UInt = get_pid()
+pub let current_process : UInt32 = get_pid()
 
 ///|
 pub using @types {type Platform}

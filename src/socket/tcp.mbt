@@ -142,7 +142,7 @@ pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
   allow_failure~ : Bool = true,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   defer self.close()
   let conn_limit = match max_connections {
@@ -256,9 +256,9 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
 /// `keep_alive_interval` is the time in seconds between two keep alive probes.
 pub fn Tcp::enable_keepalive(
   self : Tcp,
-  idle_before_keep_alive~ : Int = -1,
-  keep_alive_count~ : Int = -1,
-  keep_alive_interval~ : Int = -1,
+  idle_before_keep_alive~ : Int32 = -1,
+  keep_alive_count~ : Int32 = -1,
+  keep_alive_interval~ : Int32 = -1,
 ) -> Unit raise {
   let ret = enable_keepalive_ffi(
     self.io.fd(),

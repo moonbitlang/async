@@ -167,8 +167,8 @@ fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
   context~ : String,
 ) -> &WatcherBackend {
   ignore(context)
@@ -181,8 +181,8 @@ fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
   context~ : String,
 ) -> &WatcherBackend raise {
   ignore(root_id)
@@ -204,8 +204,8 @@ fn Watcher::new_backend(
   self : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
   context~ : String,
 ) -> &WatcherBackend raise {
   match @event_loop.platform {
@@ -276,8 +276,8 @@ fn Watcher::new_backend(
 /// Currently, the behavior when `path` itself is renamed or removed is undefined.
 pub async fn Watcher::Watcher(
   path : String,
-  debounce_timeout~ : Int = 20,
-  max_debounce_delay~ : Int = 200,
+  debounce_timeout~ : Int32 = 20,
+  max_debounce_delay~ : Int32 = 200,
   report_child_event~ : Bool = false,
   report_event_on_init~ : Bool = false,
   ignored_paths~ : (String) -> Bool = _ => false,

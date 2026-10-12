@@ -97,7 +97,7 @@ fn CloseCode::to_uint16(self : CloseCode) -> UInt16 {
 }
 
 ///|
-fn CloseCode::from_uint(code : UInt) -> CloseCode {
+fn CloseCode::from_uint(code : UInt32) -> CloseCode {
   match code {
     1000 => Normal
     1001 => GoingAway

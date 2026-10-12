@@ -57,7 +57,7 @@ let filter_prog : @async.Lazy[String] = make_test_prog("filter")
 ///|
 /// A payload of distinct lines: loss, duplication, and reordering all change
 /// it, where a payload of identical lines would hide the latter two.
-fn distinct_lines(count : Int) -> String {
+fn distinct_lines(count : Int32) -> String {
   let text = StringBuilder()
   for index in 0..<count {
     text.write_string("line-\{index}\n")

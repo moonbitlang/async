@@ -14,14 +14,14 @@
 
 ///|
 struct TestElement {
-  id : Int
-  mut index : Int
-  mut next : Int
-  mut prev : Int
+  id : Int32
+  mut index : Int32
+  mut next : Int32
+  mut prev : Int32
 }
 
 ///|
-fn test_element(id : Int) -> TestElement {
+fn test_element(id : Int32) -> TestElement {
   { id, index: -1, next: -1, prev: -1, }
 }
 
@@ -56,7 +56,7 @@ impl Element for TestElement with fn set_prev(self, prev) {
 }
 
 ///|
-fn assert_queue(q : Queue[TestElement], expected : Array[Int]) -> Unit raise {
+fn assert_queue(q : Queue[TestElement], expected : Array[Int32]) -> Unit raise {
   assert_eq(q.len, expected.length())
   let mut cursor = q.head
   let mut previous = -1

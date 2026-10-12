@@ -72,7 +72,7 @@
 ///   after `async fn main` returns. So event loop cleanup should not be performed
 ///   inside `async fn main`.
 pub(open) trait ExternalEventLoop {
-  fn poll(Self, timeout? : Int) -> Unit raise
+  fn poll(Self, timeout? : Int32) -> Unit raise
   fn get_wakeup_callback_for_foreign_thread(Self) -> FuncRef[() -> Unit]
   fn terminate(Self) -> Unit raise
 }

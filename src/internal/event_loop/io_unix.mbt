@@ -49,9 +49,9 @@ async fn IoHandle::wait_write(handle : IoHandle) -> Unit {
 extern "C" fn read_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-) -> Int = "moonbitlang_async_read"
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 = "moonbitlang_async_read"
 
 ///|
 #cfg(target="wasm")
@@ -60,19 +60,19 @@ extern "C" fn read_unix_ffi(
 fn read_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-) -> Int = "moonbitlang/async" "io/read/unix"
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 = "moonbitlang/async" "io/read/unix"
 
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::read_via_event_bus_unix(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let ret = read_unix_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy read loop from exhausting the whole program
@@ -97,10 +97,10 @@ async fn IoHandle::read_via_event_bus_unix(
 async fn IoHandle::read_via_event_bus(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   handle.read_via_event_bus_unix(buf, offset~, len~, context~)
 }
 
@@ -110,9 +110,9 @@ async fn IoHandle::read_via_event_bus(
 extern "C" fn write_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-) -> Int = "moonbitlang_async_write"
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 = "moonbitlang_async_write"
 
 ///|
 #cfg(target="wasm")
@@ -121,19 +121,19 @@ extern "C" fn write_unix_ffi(
 fn write_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-) -> Int = "moonbitlang/async" "io/write/unix"
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 = "moonbitlang/async" "io/write/unix"
 
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::write_via_event_bus_unix(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let ret = write_unix_ffi(handle.fd, buf, offset~, len~)
   if ret >= 0 {
     // The `pause` here prevent a busy write loop from exhausting the whole program,
@@ -158,9 +158,9 @@ async fn IoHandle::write_via_event_bus_unix(
 async fn IoHandle::write_via_event_bus(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   handle.write_via_event_bus_unix(buf, offset~, len~, context~)
 }

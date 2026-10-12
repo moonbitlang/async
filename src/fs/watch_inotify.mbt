@@ -22,7 +22,7 @@ priv struct InotifyWatcher {
   mut err : Error?
   mut waiter : @coroutine.Coroutine?
   debounce_timer : @async.Timer
-  max_debounce_delay : Int
+  max_debounce_delay : Int32
 }
 
 ///|
@@ -39,8 +39,8 @@ fn InotifyWatcher::new_ffi() -> @fd_util.Fd = "moonbitlang/async" "fs/inotify/cr
 #warnings("-fragile_catch_all")
 fn InotifyWatcher::InotifyWatcher(
   watcher : Watcher,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
   context~ : String,
 ) -> InotifyWatcher raise {
   let inotify_fd = InotifyWatcher::new_ffi()
@@ -139,7 +139,7 @@ impl WatcherBackend for InotifyWatcher with fn add_file(
 extern "C" fn InotifyWatcher::remove_file_ffi(
   watcher : @fd_util.Fd,
   wd : @fd_util.Fd,
-) -> Int = "moonbitlang_async_inotify_remove_file"
+) -> Int32 = "moonbitlang_async_inotify_remove_file"
 
 ///|
 #cfg(target="wasm")
@@ -147,7 +147,7 @@ extern "C" fn InotifyWatcher::remove_file_ffi(
 fn InotifyWatcher::remove_file_ffi(
   watcher : @fd_util.Fd,
   wd : @fd_util.Fd,
-) -> Int = "moonbitlang/async" "fs/inotify/remove_file"
+) -> Int32 = "moonbitlang/async" "fs/inotify/remove_file"
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))
@@ -175,12 +175,12 @@ priv struct InotifyEventBuffer(@c_buffer.Buffer)
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn InotifyEventBuffer::size() -> Int = "moonbitlang_async_inotify_event_buffer_size"
+extern "C" fn InotifyEventBuffer::size() -> Int32 = "moonbitlang_async_inotify_event_buffer_size"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn InotifyEventBuffer::size() -> Int = "moonbitlang/async" "fs/inotify/event_buffer_size"
+fn InotifyEventBuffer::size() -> Int32 = "moonbitlang/async" "fs/inotify/event_buffer_size"
 
 ///|
 /// Return value:
@@ -192,8 +192,8 @@ fn InotifyEventBuffer::size() -> Int = "moonbitlang/async" "fs/inotify/event_buf
 extern "C" fn InotifyWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
   buf : InotifyEventBuffer,
-  len~ : Int,
-) -> Int = "moonbitlang_async_inotify_fetch_event"
+  len~ : Int32,
+) -> Int32 = "moonbitlang_async_inotify_fetch_event"
 
 ///|
 #cfg(target="wasm")
@@ -202,67 +202,73 @@ extern "C" fn InotifyWatcher::fetch_os_event(
 fn InotifyWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
   buf : InotifyEventBuffer,
-  len~ : Int,
-) -> Int = "moonbitlang/async" "fs/inotify/fetch_event"
+  len~ : Int32,
+) -> Int32 = "moonbitlang/async" "fs/inotify/fetch_event"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn InotifyEventBuffer::get_size(self : Self, offset : Int) -> Int = "moonbitlang_async_inotify_event_get_size"
+extern "C" fn InotifyEventBuffer::get_size(
+  self : Self,
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_inotify_event_get_size"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn InotifyEventBuffer::get_size(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/inotify/event_get_size"
+fn InotifyEventBuffer::get_size(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/inotify/event_get_size"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 extern "C" fn InotifyEventBuffer::get_wd(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> @fd_util.Fd = "moonbitlang_async_inotify_event_get_wd"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn InotifyEventBuffer::get_wd(self : Self, offset : Int) -> @fd_util.Fd = "moonbitlang/async" "fs/inotify/event_get_wd"
+fn InotifyEventBuffer::get_wd(self : Self, offset : Int32) -> @fd_util.Fd = "moonbitlang/async" "fs/inotify/event_get_wd"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 extern "C" fn InotifyEventBuffer::has_relevant_event(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> Bool = "moonbitlang_async_inotify_event_has_relevant_event"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn InotifyEventBuffer::has_relevant_event(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/inotify/event_has_relevant_event"
+fn InotifyEventBuffer::has_relevant_event(self : Self, offset : Int32) -> Bool = "moonbitlang/async" "fs/inotify/event_has_relevant_event"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 extern "C" fn InotifyEventBuffer::has_overflow(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> Bool = "moonbitlang_async_inotify_event_has_overflow"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn InotifyEventBuffer::has_overflow(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/inotify/event_has_overflow"
+fn InotifyEventBuffer::has_overflow(self : Self, offset : Int32) -> Bool = "moonbitlang/async" "fs/inotify/event_has_overflow"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn InotifyEventBuffer::has_ignore(self : Self, offset : Int) -> Bool = "moonbitlang_async_inotify_event_has_ignore"
+extern "C" fn InotifyEventBuffer::has_ignore(
+  self : Self,
+  offset : Int32,
+) -> Bool = "moonbitlang_async_inotify_event_has_ignore"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn InotifyEventBuffer::has_ignore(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/inotify/event_has_ignore"
+fn InotifyEventBuffer::has_ignore(self : Self, offset : Int32) -> Bool = "moonbitlang/async" "fs/inotify/event_has_ignore"
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))

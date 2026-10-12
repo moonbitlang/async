@@ -14,8 +14,8 @@
 
 ///|
 let _ignore_unused_import : Unit = {
-  let _ : (@deque.Deque[Int]) -> Unit = ignore
-  let _ : (@sorted_set.SortedSet[Int]) -> Unit = ignore
+  let _ : (@deque.Deque[Int32]) -> Unit = ignore
+  let _ : (@sorted_set.SortedSet[Int32]) -> Unit = ignore
   ignore(@cmp.minimum(0, 0))
   ignore(@debug.to_string(0))
   ignore(@c_buffer.unimplemented)

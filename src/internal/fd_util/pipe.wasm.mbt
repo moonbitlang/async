@@ -17,10 +17,10 @@
 #borrow(fds)
 fn pipe_ffi(
   fds : FixedArray[Fd],
-  len : Int,
+  len : Int32,
   read_end_is_async : Bool,
   write_end_is_async : Bool,
-) -> Int = "moonbitlang/async" "fd_util/pipe"
+) -> Int32 = "moonbitlang/async" "fd_util/pipe"
 
 ///|
 pub fn pipe(

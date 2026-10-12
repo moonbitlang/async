@@ -67,7 +67,7 @@ fn encode(
 ///|
 fn decode(
   compressed : Bytes,
-  expected_len~ : Int,
+  expected_len~ : Int32,
   input_step~ : Step = Max,
   output_step~ : Step = Max,
 ) -> Bytes raise {

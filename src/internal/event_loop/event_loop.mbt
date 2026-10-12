@@ -22,21 +22,21 @@ priv struct EventLoop {
   extra : PlatformEventLoopExtra
   /// a special file descriptor used to indicate job completion message from thread pool
   notify_recv : @fd_util.Fd
-  max_worker_count : Int
-  mut job_id : Int
+  max_worker_count : Int32
+  mut job_id : Int32
   job_queue : Set[QueuedJob]
   idle_workers : @deque.Deque[Worker]
-  running_workers : Map[Int, Worker]
-  jobs : Map[Int, @coroutine.Coroutine]
+  running_workers : Map[Int32, Worker]
+  jobs : Map[Int32, @coroutine.Coroutine]
   timers : @sorted_set.SortedSet[Timer]
   mut main : @coroutine.Coroutine?
-  mut killed_by_signal : Int?
-  mut blocked_tasks : Int
+  mut killed_by_signal : Int32?
+  mut blocked_tasks : Int32
 }
 
 ///|
 priv struct QueuedJob {
-  job_id : Int
+  job_id : Int32
   job : Job
   waiter : @coroutine.Coroutine
 }
@@ -72,7 +72,7 @@ pub fn register_hook(
 }
 
 ///|
-fn EventLoop::new(max_worker_count~ : Int) -> EventLoop raise {
+fn EventLoop::new(max_worker_count~ : Int32) -> EventLoop raise {
   let bus = EventBus::new()
   errdefer bus.destroy()
   let notify_recv = init_thread_pool_ffi(bus)
@@ -125,7 +125,7 @@ pub fn set_external_event_loop(extloop : &ExternalEventLoop) -> Unit {
 ///|
 pub fn with_event_loop(
   f : async () -> Unit,
-  max_worker_count~ : Int = 1024,
+  max_worker_count~ : Int32 = 1024,
 ) -> Unit raise {
   guard! curr_loop.val is None
   let evloop = EventLoop::new(max_worker_count~)
@@ -195,7 +195,7 @@ pub fn now() -> Int64 {
 pub fn now() -> Int64 = "moonbitlang/async" "time/get_ms_since_epoch"
 
 ///|
-fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
+fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int32) -> Int32 raise {
   let n = self.bus.wait(timeout~)
   if n < 0 {
     if errno_is_cancelled(@os_error.get_errno()) {
@@ -208,7 +208,7 @@ fn EventLoop::wait_for_event(self : EventLoop, timeout~ : Int) -> Int raise {
 }
 
 ///|
-fn EventLoop::handle_completed_job(self : Self, job_id : Int) -> Unit {
+fn EventLoop::handle_completed_job(self : Self, job_id : Int32) -> Unit {
   // The thread pool pipe may receive job completion event or signal events.
   // Here we encode signal events by setting the most significant bit to one.
   guard (job_id & (1 << 31)) == 0 else {
@@ -298,7 +298,7 @@ fn EventLoop::cleanup(self : Self) -> Unit raise {
 }
 
 ///|
-fn EventLoop::get_next_timeout(self : Self) -> Int {
+fn EventLoop::get_next_timeout(self : Self) -> Int32 {
   if @coroutine.has_immediately_ready_task() {
     0
   } else if !self.timers.is_empty() {
@@ -461,7 +461,7 @@ async fn wait_for_cancellation(
 ///|
 async fn EventLoop::wait_for_job(
   evloop : EventLoop,
-  job_id : Int,
+  job_id : Int32,
   cancellable~ : Bool,
   context~ : String,
 ) -> Unit {
@@ -489,19 +489,19 @@ async fn EventLoop::wait_for_job(
 
 ///|
 #cfg(target="native")
-extern "C" fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang_async_errno_is_cancelled"
+extern "C" fn errno_is_cancelled(errno : Int32) -> Bool = "moonbitlang_async_errno_is_cancelled"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
+fn errno_is_cancelled(errno : Int32) -> Bool = "moonbitlang/async" "thread_pool/errno_is_cancelled"
 
 ///|
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
   cancellable~ : Bool = false,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   guard! curr_loop.val is Some(evloop)
   let job_id = evloop.job_id
@@ -549,7 +549,7 @@ async fn perform_job_in_worker(
 ///|
 fn EventLoop::cancel_job_in_worker(
   evloop : EventLoop,
-  job_id : Int,
+  job_id : Int32,
   context~ : String,
 ) -> CancellationStatus raise {
   if evloop.running_workers.get(job_id) is Some(worker) {

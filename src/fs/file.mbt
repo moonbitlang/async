@@ -76,7 +76,7 @@ pub(all) enum CreateMode {
 }
 
 ///|
-fn CreateMode::to_int(self : CreateMode) -> Int = "%identity"
+fn CreateMode::to_int(self : CreateMode) -> Int32 = "%identity"
 
 ///|
 /// Open a file. `filename` will be encoded using UTF8.
@@ -113,7 +113,7 @@ pub async fn open(
   sync~ : SyncMode = NoSync,
   append~ : Bool = false,
   create_mode~ : CreateMode = OpenExisting,
-  permission~ : Int = 0o644,
+  permission~ : Int32 = 0o644,
 ) -> File {
   let access = match mode {
     ReadOnly => 0
@@ -157,7 +157,7 @@ pub async fn open(
 pub async fn create(
   filename : StringView,
   allow_existing~ : Bool = true,
-  permission~ : Int = 0o644,
+  permission~ : Int32 = 0o644,
   sync~ : SyncMode = NoSync,
 ) -> File {
   let create_mode = if allow_existing { CreateOrTruncate } else { CreateNew }
@@ -244,16 +244,16 @@ pub async fn File::read_at(
   self : File,
   buf : FixedArray[Byte],
   position~ : Int64,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
-) -> Int {
+  offset~ : Int32 = 0,
+  len~ : Int32 = buf.length() - offset,
+) -> Int32 {
   self.io.read_at(buf, offset~, len~, position~, context="@fs.File::read_at()")
 }
 
 ///|
 pub async fn File::read_exactly_at(
   self : File,
-  len : Int,
+  len : Int32,
   position~ : Int64,
 ) -> Bytes {
   let buf = FixedArray::make(len, b'\x00')
@@ -347,21 +347,21 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 
 ///|
 #cfg(target="native")
-extern "C" fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang_async_errno_is_lock_violation"
+extern "C" fn errno_is_lock_violation(err : Int32) -> Bool = "moonbitlang_async_errno_is_lock_violation"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn errno_is_lock_violation(err : Int) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
+fn errno_is_lock_violation(err : Int32) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
 
 ///|
 #cfg(target="native")
-extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang_async_try_lock_file"
+extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int32 = "moonbitlang_async_try_lock_file"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int = "moonbitlang/async" "fs/try_lock_file"
+fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int32 = "moonbitlang/async" "fs/try_lock_file"
 
 ///|
 /// Try to lock a file.
@@ -391,12 +391,12 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
 
 ///|
 #cfg(target="native")
-extern "C" fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang_async_unlock_file"
+extern "C" fn unlock_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang_async_unlock_file"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn unlock_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fs/unlock_file"
+fn unlock_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang/async" "fs/unlock_file"
 
 ///|
 /// Unlock a file that was previously locked by this process.
@@ -477,7 +477,7 @@ pub fn File::kind(self : File) -> FileKind {
 /// Get the last access time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::atime(self : File) -> (Int64, Int) {
+pub async fn File::atime(self : File) -> (Int64, Int32) {
   @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
 }
 
@@ -485,7 +485,7 @@ pub async fn File::atime(self : File) -> (Int64, Int) {
 /// Get the last modification time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::mtime(self : File) -> (Int64, Int) {
+pub async fn File::mtime(self : File) -> (Int64, Int32) {
   @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
 }
 
@@ -493,7 +493,7 @@ pub async fn File::mtime(self : File) -> (Int64, Int) {
 /// Get the last status change time of a file.
 /// The return value is a pair `(s, ns)`,
 /// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::ctime(self : File) -> (Int64, Int) {
+pub async fn File::ctime(self : File) -> (Int64, Int32) {
   @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
 }
 
@@ -523,7 +523,7 @@ pub async fn write_file(
   path : StringView,
   content : &@io.Data,
   create_mode~ : CreateMode = CreateOrTruncate,
-  permission~ : Int = 0o644,
+  permission~ : Int32 = 0o644,
   sync~ : SyncMode = Data,
   append~ : Bool = false,
 ) -> Unit {

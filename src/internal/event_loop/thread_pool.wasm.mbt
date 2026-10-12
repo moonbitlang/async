@@ -25,10 +25,10 @@ fn destroy_thread_pool() -> Unit = "moonbitlang/async" "thread_pool/destroy_thre
 
 ///|
 #unsafe_skip_stub_check
-fn Worker::spawn_ffi(init_job_id : Int, init_job : JobHandle) -> Worker = "moonbitlang/async" "thread_pool/spawn_worker"
+fn Worker::spawn_ffi(init_job_id : Int32, init_job : JobHandle) -> Worker = "moonbitlang/async" "thread_pool/spawn_worker"
 
 ///|
-fn Worker::spawn(init_job_id : Int, init_job : Job) -> Worker {
+fn Worker::spawn(init_job_id : Int32, init_job : Job) -> Worker {
   Worker::spawn_ffi(init_job_id, init_job.handle)
 }
 
@@ -38,10 +38,10 @@ fn Worker::free(worker : Worker) -> Unit = "moonbitlang/async" "thread_pool/free
 
 ///|
 #unsafe_skip_stub_check
-fn Worker::wake_ffi(worker : Worker, job_id : Int, job : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/wake_worker"
+fn Worker::wake_ffi(worker : Worker, job_id : Int32, job : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/wake_worker"
 
 ///|
-fn Worker::wake(worker : Worker, job_id : Int, job : Job) -> Unit {
+fn Worker::wake(worker : Worker, job_id : Int32, job : Job) -> Unit {
   worker.wake_ffi(job_id, job.handle)
 }
 
@@ -52,7 +52,7 @@ fn Worker::enter_idle(worker : Worker) -> Unit = "moonbitlang/async" "thread_poo
 ///|
 // 0: retry later; 1: keep waiting; 2: the job result is ready.
 #unsafe_skip_stub_check
-fn Worker::cancel_ffi(worker : Worker) -> Int = "moonbitlang/async" "thread_pool/cancel_worker_with_retry"
+fn Worker::cancel_ffi(worker : Worker) -> Int32 = "moonbitlang/async" "thread_pool/cancel_worker_with_retry"
 
 ///|
 fn Worker::cancel(
@@ -83,9 +83,9 @@ fn Worker::check_cancellation_retry(worker : Worker) -> Bool {
 #borrow(output)
 fn fetch_completion_ffi(
   notify_recv : @fd_util.Fd,
-  output : FixedArray[Int],
-  len~ : Int = output.length(),
-) -> Int = "moonbitlang/async" "thread_pool/fetch_completion/unix"
+  output : FixedArray[Int32],
+  len~ : Int32 = output.length(),
+) -> Int32 = "moonbitlang/async" "thread_pool/fetch_completion/unix"
 
 ///|
 /// The actual job object submitted to the thread pool in runtime
@@ -121,19 +121,19 @@ fn Job::free(self : Job) -> Unit {
 
 ///|
 #unsafe_skip_stub_check
-fn JobHandle::ret(self : JobHandle) -> Int = "moonbitlang/async" "thread_pool/job_get_ret"
+fn JobHandle::ret(self : JobHandle) -> Int32 = "moonbitlang/async" "thread_pool/job_get_ret"
 
 ///|
-fn Job::ret(self : Job) -> Int {
+fn Job::ret(self : Job) -> Int32 {
   self.handle.ret()
 }
 
 ///|
 #unsafe_skip_stub_check
-fn JobHandle::err(self : JobHandle) -> Int = "moonbitlang/async" "thread_pool/job_get_err"
+fn JobHandle::err(self : JobHandle) -> Int32 = "moonbitlang/async" "thread_pool/job_get_err"
 
 ///|
-fn Job::err(self : Job) -> Int {
+fn Job::err(self : Job) -> Int32 {
   self.handle.err()
 }
 
@@ -146,7 +146,11 @@ fn Job::copy_output(self : Job) -> Unit {
 
 ///|
 #unsafe_skip_stub_check
-fn JobHandle::read(fd : @fd_util.Fd, len : Int, position~ : Int64) -> JobHandle = "moonbitlang/async" "thread_pool/make_read_job"
+fn JobHandle::read(
+  fd : @fd_util.Fd,
+  len : Int32,
+  position~ : Int64,
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_read_job"
 
 ///|
 #unsafe_skip_stub_check
@@ -154,16 +158,16 @@ fn JobHandle::read(fd : @fd_util.Fd, len : Int, position~ : Int64) -> JobHandle 
 fn JobHandle::get_read_result(
   self : JobHandle,
   buf : FixedArray[Byte],
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
 ) -> Unit = "moonbitlang/async" "thread_pool/get_read_result"
 
 ///|
 fn Job::read(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
   // `-1` indicates no offset
   position~ : Int64,
 ) -> Job {
@@ -178,8 +182,8 @@ fn Job::read(
 fn JobHandle::write(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
   // `-1` indicates no offset
   position~ : Int64,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_write_job"
@@ -188,8 +192,8 @@ fn JobHandle::write(
 fn Job::write(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
   // `-1` indicates no offset
   position~ : Int64,
 ) -> Job {
@@ -200,8 +204,8 @@ fn Job::write(
 fn Job::read_console(
   _fd : @fd_util.Fd,
   _buf : FixedArray[UInt16],
-  _offset : Int,
-  _len : Int,
+  _offset : Int32,
+  _len : Int32,
 ) -> Job {
   panic()
 }
@@ -210,8 +214,8 @@ fn Job::read_console(
 fn Job::write_console(
   _fd : @fd_util.Fd,
   _buf : FixedArray[UInt16],
-  _offset : Int,
-  _len : Int,
+  _offset : Int32,
+  _len : Int32,
 ) -> Job {
   panic()
 }
@@ -221,18 +225,18 @@ fn Job::write_console(
 #borrow(filename)
 fn JobHandle::open(
   filename : @os_string.OsString,
-  filename_len~ : Int = filename.to_string().length(),
+  filename_len~ : Int32 = filename.to_string().length(),
   // 0 => read only, 1 => write only, 2 => read write
-  access : Int,
+  access : Int32,
   // See `@fs.CreateMode` for more details
-  create~ : Int,
+  create~ : Int32,
   append~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
-  sync~ : Int,
+  sync~ : Int32,
   // permission for file when new file is created
-  mode~ : Int,
-  stat_request~ : UInt,
-  stat_buf_len~ : Int,
+  mode~ : Int32,
+  stat_request~ : UInt32,
+  stat_buf_len~ : Int32,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_open_stat_job"
 
 ///|
@@ -242,17 +246,17 @@ priv struct OpenJob(Job)
 fn Job::open(
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
-  access : Int,
+  access : Int32,
   // See `@fs.CreateMode` for more details
-  create~ : Int,
+  create~ : Int32,
   append~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
-  sync~ : Int,
+  sync~ : Int32,
   // permission for file when new file is created
-  mode~ : Int,
-  stat_request~ : UInt,
+  mode~ : Int32,
+  stat_request~ : UInt32,
   stat_buf~ : FixedArray[Byte],
-  stat_buf_len~ : Int,
+  stat_buf_len~ : Int32,
 ) -> OpenJob {
   Job(
     JobHandle::open(
@@ -284,47 +288,47 @@ fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd {
 fn JobHandle::get_stat_result(
   self : JobHandle,
   buf : FixedArray[Byte],
-  buf_len : Int,
+  buf_len : Int32,
 ) -> Unit = "moonbitlang/async" "thread_pool/get_stat_result"
 
 ///|
-pub const STAT_FILE_KIND : UInt = 0x0001
+pub const STAT_FILE_KIND : UInt32 = 0x0001
 
 ///|
-pub const STAT_FILE_SIZE : UInt = 0x0002
+pub const STAT_FILE_SIZE : UInt32 = 0x0002
 
 ///|
-pub const STAT_DEVICE_ID : UInt = 0x0004
+pub const STAT_DEVICE_ID : UInt32 = 0x0004
 
 ///|
-pub const STAT_FILE_ID : UInt = 0x0008
+pub const STAT_FILE_ID : UInt32 = 0x0008
 
 ///|
-pub const STAT_ACCESS_TIME : UInt = 0x0010
+pub const STAT_ACCESS_TIME : UInt32 = 0x0010
 
 ///|
-pub const STAT_MODIFY_TIME : UInt = 0x0020
+pub const STAT_MODIFY_TIME : UInt32 = 0x0020
 
 ///|
-pub const STAT_CHANGE_TIME : UInt = 0x0040
+pub const STAT_CHANGE_TIME : UInt32 = 0x0040
 
 ///|
-pub const STAT_CREATE_TIME : UInt = 0x0080
+pub const STAT_CREATE_TIME : UInt32 = 0x0080
 
 ///|
 #unsafe_skip_stub_check
 fn JobHandle::fstatx(
   fd : @fd_util.Fd,
-  request : UInt,
-  buf_len : Int,
+  request : UInt32,
+  buf_len : Int32,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_fstatx_job"
 
 ///|
 fn Job::fstatx(
   fd : @fd_util.Fd,
-  request : UInt,
+  request : UInt32,
   buf : FixedArray[Byte],
-  buf_len : Int,
+  buf_len : Int32,
 ) -> Job {
   Job(JobHandle::fstatx(fd, request, buf_len), copy_output=job => {
     job.get_stat_result(buf, buf_len)
@@ -336,9 +340,9 @@ fn Job::fstatx(
 #borrow(path)
 fn JobHandle::statx(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
-  request : UInt,
-  buf_len : Int,
+  path_len~ : Int32 = path.to_string().length(),
+  request : UInt32,
+  buf_len : Int32,
   parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_statx_job"
@@ -346,9 +350,9 @@ fn JobHandle::statx(
 ///|
 fn Job::statx(
   path : @os_string.OsString,
-  request : UInt,
+  request : UInt32,
   buf : FixedArray[Byte],
-  buf_len : Int,
+  buf_len : Int32,
   parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
 ) -> Job {
@@ -370,7 +374,7 @@ pub(all) enum Access {
 #borrow(path)
 fn JobHandle::access(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
   access : Access,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_access_job"
 
@@ -384,12 +388,12 @@ fn Job::access(path : @os_string.OsString, access : Access) -> Job {
 #borrow(path)
 fn JobHandle::chmod(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
-  mode : Int,
+  path_len~ : Int32 = path.to_string().length(),
+  mode : Int32,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_chmod_job"
 
 ///|
-fn Job::chmod(path : @os_string.OsString, mode : Int) -> Job {
+fn Job::chmod(path : @os_string.OsString, mode : Int32) -> Job {
   Job(JobHandle::chmod(path, mode))
 }
 
@@ -416,7 +420,7 @@ fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job {
 #borrow(path)
 fn JobHandle::remove(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_remove_job"
 
 ///|
@@ -429,9 +433,9 @@ fn Job::remove(path : @os_string.OsString) -> Job {
 #borrow(old_path, new_path)
 fn JobHandle::rename(
   old_path : @os_string.OsString,
-  old_path_len~ : Int = old_path.to_string().length(),
+  old_path_len~ : Int32 = old_path.to_string().length(),
   new_path : @os_string.OsString,
-  new_path_len~ : Int = new_path.to_string().length(),
+  new_path_len~ : Int32 = new_path.to_string().length(),
   replace~ : Bool,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_rename_job"
 
@@ -449,9 +453,9 @@ fn Job::rename(
 #borrow(target, path)
 fn JobHandle::symlink(
   target : @os_string.OsString,
-  target_len~ : Int = target.to_string().length(),
+  target_len~ : Int32 = target.to_string().length(),
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
   force_symlink~ : Bool,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_symlink_job"
 
@@ -469,12 +473,12 @@ fn Job::symlink(
 #borrow(path)
 fn JobHandle::mkdir(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
-  mode : Int,
+  path_len~ : Int32 = path.to_string().length(),
+  mode : Int32,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_mkdir_job"
 
 ///|
-fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
+fn Job::mkdir(path : @os_string.OsString, mode : Int32) -> Job {
   Job(JobHandle::mkdir(path, mode))
 }
 
@@ -483,7 +487,7 @@ fn Job::mkdir(path : @os_string.OsString, mode : Int) -> Job {
 #borrow(path)
 fn JobHandle::rmdir(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_rmdir_job"
 
 ///|
@@ -497,7 +501,7 @@ fn Job::rmdir(path : @os_string.OsString) -> Job {
 fn JobHandle::readdir(
   dir : @fd_util.Fd,
   buf : @c_buffer.Buffer,
-  len : Int,
+  len : Int32,
   restart : Bool,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_readdir_job"
 
@@ -505,7 +509,7 @@ fn JobHandle::readdir(
 fn Job::readdir(
   dir : @fd_util.Fd,
   buf : @c_buffer.Buffer,
-  len : Int,
+  len : Int32,
   restart : Bool,
 ) -> Job {
   Job(JobHandle::readdir(dir, buf, len, restart))
@@ -517,7 +521,7 @@ fn Job::readdir(
 fn JobHandle::bind(
   socket : @fd_util.Fd,
   addr : Bytes,
-  addr_len~ : Int = addr.length(),
+  addr_len~ : Int32 = addr.length(),
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_bind_job"
 
 ///|
@@ -530,7 +534,7 @@ fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job {
 #borrow(host)
 fn JobHandle::getaddrinfo(
   host : @os_string.OsString,
-  host_len~ : Int = host.to_string().length(),
+  host_len~ : Int32 = host.to_string().length(),
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_getaddrinfo_job"
 
 ///|
@@ -552,7 +556,7 @@ fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo {
 #borrow(path)
 fn JobHandle::realpath(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_realpath_job"
 
 ///|
@@ -577,7 +581,7 @@ priv struct SpawnJob(Job)
 #borrow(path)
 fn JobHandle::spawn_unix_ffi(
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
   args : UInt64,
   env~ : UInt64,
   stdin~ : @fd_util.Fd,
@@ -593,7 +597,7 @@ fn JobHandle::spawn_unix_ffi(
 fn JobHandle::spawn_job_set_cwd(
   job : JobHandle,
   cwd : @os_string.OsString,
-  cwd_len~ : Int = cwd.to_string().length(),
+  cwd_len~ : Int32 = cwd.to_string().length(),
 ) -> Unit = "moonbitlang/async" "thread_pool/spawn_job/set_cwd"
 
 ///|
@@ -629,7 +633,7 @@ fn Job::spawn_unix(
 #borrow(command_line)
 fn JobHandle::spawn_windows_ffi(
   command_line : @os_string.OsString,
-  command_line_len~ : Int = command_line.to_string().length(),
+  command_line_len~ : Int32 = command_line.to_string().length(),
   env~ : UInt64,
   stdin~ : @fd_util.Fd,
   stdout~ : @fd_util.Fd,
@@ -690,10 +694,10 @@ fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd {
 
 ///|
 #unsafe_skip_stub_check
-fn JobHandle::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> JobHandle = "moonbitlang/async" "thread_pool/make_wait_for_process_job"
+fn JobHandle::wait_for_process(handle : @fd_util.Fd, pid~ : Int32) -> JobHandle = "moonbitlang/async" "thread_pool/make_wait_for_process_job"
 
 ///|
-fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> Job {
+fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int32) -> Job {
   Job(JobHandle::wait_for_process(handle, pid~))
 }
 
@@ -703,7 +707,7 @@ fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int) -> Job {
 fn JobHandle::inotify_add_watch(
   inotify : @fd_util.Fd,
   path : @os_string.OsString,
-  path_len~ : Int = path.to_string().length(),
+  path_len~ : Int32 = path.to_string().length(),
   is_dir : Bool,
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_inotify_add_watch_job"
 

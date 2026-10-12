@@ -19,7 +19,7 @@ let encoder_buffer_size = 4096
 struct Encoder[W] {
   inner : W
   buf : FixedArray[Byte]
-  mut buf_len : Int
+  mut buf_len : Int32
   core : @gzip_internal.Encoder
 }
 
@@ -27,7 +27,7 @@ struct Encoder[W] {
 #alias(new, deprecated)
 pub fn[W] Encoder::Encoder(
   inner : W,
-  mtime~ : UInt = 0U,
+  mtime~ : UInt32 = 0U,
   extra_flags~ : Byte = b'\x00',
   operating_system~ : Byte = b'\xff',
 ) -> Encoder[W] {

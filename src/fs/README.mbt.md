@@ -361,7 +361,7 @@ async test "walk directory tree" {
   @fs.mkdir("\{base}/sub2")
   @fs.write_file("\{base}/file.txt", b"")
   @fs.write_file("\{base}/sub1/file1.txt", b"")
-  let visited : Ref[Int] = Ref(0)
+  let visited : Ref[Int32] = Ref(0)
   @fs.walk(base, fn(_path, _files) { visited.val = visited.val + 1 })
   inspect(visited.val >= 3, content="true")
 }
@@ -374,7 +374,7 @@ async test "walk with max_concurrency" {
   defer @fs.rmdir(base, recursive=true)
   @fs.mkdir("\{base}/dir1", permission=0o755)
   @fs.mkdir("\{base}/dir2", permission=0o755)
-  let count : Ref[Int] = Ref(0)
+  let count : Ref[Int32] = Ref(0)
   @fs.walk(
     base,
     fn(_path, _files) { count.val = count.val + 1 },

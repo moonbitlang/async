@@ -17,7 +17,7 @@
 /// in the `madler/zlib` repository.
 
 ///|
-fn add_metadata(deflate : Bytes, crc32 : UInt, input_size : UInt) -> Bytes {
+fn add_metadata(deflate : Bytes, crc32 : UInt32, input_size : UInt32) -> Bytes {
   let trailer = FixedArray::make(8, b'\x00')
   trailer.unsafe_write_uint32_le(0, crc32)
   trailer.unsafe_write_uint32_le(4, input_size)

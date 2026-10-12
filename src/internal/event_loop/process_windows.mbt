@@ -50,7 +50,7 @@ pub async fn spawn_windows(
 pub async fn Process::wait_pid_windows(
   self : Process,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! self.handle is Some(io)
   let job = Job::wait_for_process(io.fd, pid=self.pid)
   defer job.free()

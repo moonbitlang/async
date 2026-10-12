@@ -29,7 +29,7 @@
 #warnings("-fragile_catch_all")
 pub async fn Tcp::connect_to_host(
   host : StringView,
-  port~ : Int,
+  port~ : Int32,
   protocol~ : IpProtocolPreference = NoPreference,
 ) -> Tcp {
   let context = "@socket.Tcp::connect_to_host()"

@@ -22,12 +22,12 @@ type PlatformEventLoopExtra = WindowsEventLoopExtra
 
 ///|
 #cfg(platform="windows")
-extern "C" fn init_WSA_ffi() -> Int = "moonbitlang_async_init_WSA"
+extern "C" fn init_WSA_ffi() -> Int32 = "moonbitlang_async_init_WSA"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn init_WSA_ffi() -> Int = "moonbitlang/async" "runtime/init_WSA"
+fn init_WSA_ffi() -> Int32 = "moonbitlang/async" "runtime/init_WSA"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
@@ -40,12 +40,12 @@ fn WindowsEventLoopExtra::new() -> Self raise {
 
 ///|
 #cfg(platform="windows")
-extern "C" fn cleanup_WSA_ffi() -> Int = "moonbitlang_async_cleanup_WSA"
+extern "C" fn cleanup_WSA_ffi() -> Int32 = "moonbitlang_async_cleanup_WSA"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn cleanup_WSA_ffi() -> Int = "moonbitlang/async" "runtime/cleanup_WSA"
+fn cleanup_WSA_ffi() -> Int32 = "moonbitlang/async" "runtime/cleanup_WSA"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))

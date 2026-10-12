@@ -27,7 +27,7 @@
 ///   -stderr <msg>    write <msg> to stderr before exiting
 ///   -exit-code <n>   exit with status <n>
 ///   -print-cwd       print the working directory and exit; stdin is not read
-extern "C" fn exit(code : Int) = "exit"
+extern "C" fn exit(code : Int32) = "exit"
 
 ///|
 async fn main {

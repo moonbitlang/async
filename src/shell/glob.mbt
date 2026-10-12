@@ -113,7 +113,7 @@ fn parse_path(
 /// somewhere else entirely.
 fn starts_incomplete_root(text : String) -> Bool {
   let chars = collect_chars(text)
-  fn separator(index : Int) -> Bool {
+  fn separator(index : Int32) -> Bool {
     index < chars.length() && (chars[index] == '/' || chars[index] == '\\')
   }
 
@@ -128,11 +128,11 @@ fn starts_incomplete_root(text : String) -> Bool {
 /// a bare separator. Returns the root and the remainder.
 fn windows_root(text : String) -> (String, String)? {
   let chars = collect_chars(text)
-  fn separator(index : Int) -> Bool {
+  fn separator(index : Int32) -> Bool {
     index < chars.length() && (chars[index] == '/' || chars[index] == '\\')
   }
 
-  fn from(index : Int) -> String {
+  fn from(index : Int32) -> String {
     let rest = StringBuilder()
     for position in index..<chars.length() {
       rest.write_char(chars[position])
@@ -307,8 +307,8 @@ fn parse_segment(pattern : String) -> Array[Item] {
 /// whether it is negated, and the index after the closing `]`.
 fn parse_class(
   chars : Array[Char],
-  start : Int,
-) -> (Array[(Char, Char)], Bool, Int)? {
+  start : Int32,
+) -> (Array[(Char, Char)], Bool, Int32)? {
   let mut index = start
   let negated = index < chars.length() &&
     (chars[index] == '!' || chars[index] == '^')
@@ -519,7 +519,7 @@ pub async fn glob(pattern : String, cwd~ : String = ".") -> Array[String] {
 ///
 /// `Array::sort` on strings orders by length first, which would list
 /// "plain.txt" before "od d*name.txt". A shell does not.
-fn compare_code_units(left : String, right : String) -> Int {
+fn compare_code_units(left : String, right : String) -> Int32 {
   let shared = if left.length() < right.length() {
     left.length()
   } else {
@@ -544,7 +544,7 @@ async fn expand(
   base : String,
   prefix : String,
   segments : Array[String],
-  index : Int,
+  index : Int32,
   directories_only : Bool,
   attach_directly : Bool,
   found : Array[String],

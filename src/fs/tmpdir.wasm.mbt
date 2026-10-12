@@ -28,12 +28,12 @@ let tmpdir_seed : @random.Rand = {
 
 ///|
 #unsafe_skip_stub_check
-fn get_tmp_path_len_ffi() -> Int = "moonbitlang/async" "fs/get_tmp_path_len"
+fn get_tmp_path_len_ffi() -> Int32 = "moonbitlang/async" "fs/get_tmp_path_len"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path)
-fn get_tmp_path_ffi(path : String, len : Int) -> Int = "moonbitlang/async" "fs/get_tmp_path"
+fn get_tmp_path_ffi(path : String, len : Int32) -> Int32 = "moonbitlang/async" "fs/get_tmp_path"
 
 ///|
 /// Wasm can't access exported memory during initialization,

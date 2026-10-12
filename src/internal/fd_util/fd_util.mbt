@@ -17,7 +17,7 @@ pub type Fd = @types.Fd
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn fd_is_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang_async_fd_is_nonblocking"
+extern "C" fn fd_is_nonblocking_ffi(fd : Fd) -> Int32 = "moonbitlang_async_fd_is_nonblocking"
 
 ///|
 #cfg(not(platform="windows"))
@@ -31,7 +31,7 @@ pub fn fd_is_nonblocking(fd : Fd, context~ : String) -> Bool raise {
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn set_nonblocking_ffi(fd : Fd) -> Int = "moonbitlang_async_set_nonblocking"
+extern "C" fn set_nonblocking_ffi(fd : Fd) -> Int32 = "moonbitlang_async_set_nonblocking"
 
 ///|
 #cfg(not(platform="windows"))
@@ -43,7 +43,7 @@ pub fn set_nonblocking(fd : Fd, context~ : String) -> Unit raise {
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn set_cloexec_ffi(fd : Fd) -> Int = "moonbitlang_async_set_cloexec"
+extern "C" fn set_cloexec_ffi(fd : Fd) -> Int32 = "moonbitlang_async_set_cloexec"
 
 ///|
 #cfg(not(platform="windows"))
@@ -55,7 +55,7 @@ pub fn set_cloexec(fd : Fd, context~ : String) -> Unit raise {
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn close_ffi(fd : Fd) -> Int = "close"
+extern "C" fn close_ffi(fd : Fd) -> Int32 = "close"
 
 ///|
 #cfg(not(platform="windows"))
@@ -68,7 +68,7 @@ pub fn close(fd : Fd, kind~ : FileKind, context~ : String) -> Unit raise {
 
 ///|
 #cfg(platform="windows")
-extern "C" fn close_ffi(fd : Fd, is_socket~ : Bool) -> Int = "moonbitlang_async_close_fd"
+extern "C" fn close_ffi(fd : Fd, is_socket~ : Bool) -> Int32 = "moonbitlang_async_close_fd"
 
 ///|
 #cfg(platform="windows")

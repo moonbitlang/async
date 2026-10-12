@@ -15,16 +15,16 @@
 
 ///|
 /// Default aggregate limit for captured stdout and stderr: 8 MiB.
-let default_max_output_bytes : Int = 8 * 1024 * 1024
+let default_max_output_bytes : Int32 = 8 * 1024 * 1024
 
 ///|
 /// What the caller wants done with the streams a stage marks `Capture`.
 priv enum Sink {
   /// Collect into `Output`, bounded by the given aggregate byte limit.
-  Buffer(Int)
+  Buffer(Int32)
   /// Deliver final stdout one line at a time, holding at most one line of the
   /// given size.
-  Lines(async (String) -> Unit, Int)
+  Lines(async (String) -> Unit, Int32)
   /// Capture nothing; a `Capture` stream falls back to the parent's
   /// descriptor, as `status` and `run` have no channel to return it on.
   Inherited
@@ -48,8 +48,8 @@ priv enum Sink {
 /// ```
 pub async fn Cmd::output(
   self : Cmd,
-  timeout_ms? : Int,
-  max_output_bytes~ : Int = default_max_output_bytes,
+  timeout_ms? : Int32,
+  max_output_bytes~ : Int32 = default_max_output_bytes,
 ) -> Output {
   validate_output_limit(max_output_bytes)
   Pipeline::{ commands: [self], }.execute(Buffer(max_output_bytes), timeout_ms)
@@ -69,7 +69,7 @@ pub async fn Cmd::output(
 ///   assert_eq(@shell.Cmd("moonx", ["bobzhang/false@0.1.0"]).status(), 1)
 /// }
 /// ```
-pub async fn Cmd::status(self : Cmd, timeout_ms? : Int) -> Int {
+pub async fn Cmd::status(self : Cmd, timeout_ms? : Int32) -> Int32 {
   Pipeline::{ commands: [self], }.execute(Inherited, timeout_ms).exit_code
 }
 
@@ -92,7 +92,7 @@ pub async fn Cmd::status(self : Cmd, timeout_ms? : Int) -> Int {
 ///   }
 /// }
 /// ```
-pub async fn Cmd::run(self : Cmd, timeout_ms? : Int) -> Unit {
+pub async fn Cmd::run(self : Cmd, timeout_ms? : Int32) -> Unit {
   Pipeline::{ commands: [self], }.execute(Inherited, timeout_ms).check()
 }
 
@@ -130,9 +130,9 @@ pub async fn Cmd::run(self : Cmd, timeout_ms? : Int) -> Unit {
 pub async fn Cmd::each_line(
   self : Cmd,
   on_line : async (String) -> Unit,
-  timeout_ms? : Int,
-  max_line_bytes~ : Int = default_max_output_bytes,
-) -> Int {
+  timeout_ms? : Int32,
+  max_line_bytes~ : Int32 = default_max_output_bytes,
+) -> Int32 {
   validate_output_limit(max_line_bytes)
   Pipeline::{ commands: [self], }.execute(
     Lines(on_line, max_line_bytes),
@@ -158,8 +158,8 @@ pub async fn Cmd::each_line(
 /// ```
 pub async fn Pipeline::output(
   self : Pipeline,
-  timeout_ms? : Int,
-  max_output_bytes~ : Int = default_max_output_bytes,
+  timeout_ms? : Int32,
+  max_output_bytes~ : Int32 = default_max_output_bytes,
 ) -> Output {
   validate_output_limit(max_output_bytes)
   self.execute(Buffer(max_output_bytes), timeout_ms)
@@ -172,7 +172,7 @@ pub async fn Pipeline::output(
 /// process, exactly as in `Cmd::status`; the earlier stages' stdout is the
 /// connecting pipe regardless. The returned status uses the same pipefail
 /// rule as `output`, and there is no capture limit.
-pub async fn Pipeline::status(self : Pipeline, timeout_ms? : Int) -> Int {
+pub async fn Pipeline::status(self : Pipeline, timeout_ms? : Int32) -> Int32 {
   self.execute(Inherited, timeout_ms).exit_code
 }
 
@@ -181,7 +181,7 @@ pub async fn Pipeline::status(self : Pipeline, timeout_ms? : Int) -> Int {
 ///
 /// The checked form of `Pipeline::status`: streams are inherited the same
 /// way, and the pipefail status becomes an error when it is non-zero.
-pub async fn Pipeline::run(self : Pipeline, timeout_ms? : Int) -> Unit {
+pub async fn Pipeline::run(self : Pipeline, timeout_ms? : Int32) -> Unit {
   self.execute(Inherited, timeout_ms).check()
 }
 
@@ -207,9 +207,9 @@ pub async fn Pipeline::run(self : Pipeline, timeout_ms? : Int) -> Unit {
 pub async fn Pipeline::each_line(
   self : Pipeline,
   on_line : async (String) -> Unit,
-  timeout_ms? : Int,
-  max_line_bytes~ : Int = default_max_output_bytes,
-) -> Int {
+  timeout_ms? : Int32,
+  max_line_bytes~ : Int32 = default_max_output_bytes,
+) -> Int32 {
   validate_output_limit(max_line_bytes)
   self.execute(Lines(on_line, max_line_bytes), timeout_ms).exit_code
 }
@@ -219,7 +219,7 @@ pub async fn Pipeline::each_line(
 async fn Pipeline::execute(
   self : Pipeline,
   sink : Sink,
-  timeout_ms : Int?,
+  timeout_ms : Int32?,
 ) -> Output {
   let count = self.commands.length()
   if count == 0 {
@@ -290,7 +290,7 @@ fn validate_redirect(
 }
 
 ///|
-fn validate_output_limit(limit : Int) -> Unit raise ShellError {
+fn validate_output_limit(limit : Int32) -> Unit raise ShellError {
   if limit <= 0 {
     raise InvalidOutputLimit(limit)
   }
@@ -387,7 +387,7 @@ async fn write_standard_input(
 }
 
 ///|
-fn pipefail_exit_code(exit_codes : ArrayView[Int]) -> Int {
+fn pipefail_exit_code(exit_codes : ArrayView[Int32]) -> Int32 {
   let mut result = 0
   for code in exit_codes {
     if code != 0 {
@@ -400,8 +400,8 @@ fn pipefail_exit_code(exit_codes : ArrayView[Int]) -> Int {
 ///|
 async fn read_bounded(
   reader : @process.ReadFromProcess,
-  captured : Ref[Int],
-  limit : Int,
+  captured : Ref[Int32],
+  limit : Int32,
   stream : String,
 ) -> Bytes {
   let buffer = @buffer.Buffer(size_hint=4096)
@@ -438,7 +438,7 @@ async fn read_bounded(
 async fn read_lines(
   reader : @process.ReadFromProcess,
   on_line : async (String) -> Unit,
-  limit : Int,
+  limit : Int32,
 ) -> Unit {
   let pending = @buffer.Buffer(size_hint=4096)
   while reader.read_some(max_len=4096) is Some(chunk) {
@@ -466,7 +466,7 @@ async fn read_lines(
 fn extend_line(
   pending : @buffer.Buffer,
   view : BytesView,
-  limit : Int,
+  limit : Int32,
 ) -> Unit raise ShellError {
   let projected = pending.length() + view.length()
   // Written this way rather than `projected > limit + 1` so that a caller
@@ -487,7 +487,7 @@ fn extend_line(
 fn take_line(
   pending : @buffer.Buffer,
   terminated~ : Bool,
-  limit : Int,
+  limit : Int32,
 ) -> String raise ShellError {
   let raw = pending.to_bytes()
   pending.reset()

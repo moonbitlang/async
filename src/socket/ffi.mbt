@@ -77,7 +77,7 @@ extern "C" fn join_multicast_group_ffi(
   sock : @fd_util.Fd,
   multi_addr : Addr,
   local_addr : Addr,
-) -> Int = "moonbitlang_async_join_multicast_group"
+) -> Int32 = "moonbitlang_async_join_multicast_group"
 
 ///|
 fn join_multicast_group(
@@ -96,14 +96,14 @@ fn join_multicast_group(
 extern "C" fn join_multicast_group_v6_ffi(
   sock : @fd_util.Fd,
   multi_addr : Addr,
-  interface_index : UInt,
-) -> Int = "moonbitlang_async_join_multicast_group_v6"
+  interface_index : UInt32,
+) -> Int32 = "moonbitlang_async_join_multicast_group_v6"
 
 ///|
 fn join_multicast_group_v6(
   sock : @fd_util.Fd,
   multi_addr : Addr,
-  interface_index : UInt,
+  interface_index : UInt32,
   context~ : String,
 ) -> Unit raise {
   if join_multicast_group_v6_ffi(sock, multi_addr, interface_index) < 0 {
@@ -116,7 +116,7 @@ fn join_multicast_group_v6(
 extern "C" fn set_multicast_interface_ffi(
   sock : @fd_util.Fd,
   local_addr : Addr,
-) -> Int = "moonbitlang_async_set_multicast_interface"
+) -> Int32 = "moonbitlang_async_set_multicast_interface"
 
 ///|
 fn set_multicast_interface(
@@ -132,13 +132,13 @@ fn set_multicast_interface(
 ///|
 extern "C" fn set_multicast_interface_v6_ffi(
   sock : @fd_util.Fd,
-  interface_index : UInt,
-) -> Int = "moonbitlang_async_set_multicast_interface_v6"
+  interface_index : UInt32,
+) -> Int32 = "moonbitlang_async_set_multicast_interface_v6"
 
 ///|
 fn set_multicast_interface_v6(
   sock : @fd_util.Fd,
-  interface_index : UInt,
+  interface_index : UInt32,
   context~ : String,
 ) -> Unit raise {
   if set_multicast_interface_v6_ffi(sock, interface_index) < 0 {
@@ -149,14 +149,14 @@ fn set_multicast_interface_v6(
 ///|
 extern "C" fn set_multicast_ttl_ffi(
   sock : @fd_util.Fd,
-  ttl : Int,
+  ttl : Int32,
   family~ : AddrFamily,
-) -> Int = "moonbitlang_async_set_multicast_ttl"
+) -> Int32 = "moonbitlang_async_set_multicast_ttl"
 
 ///|
 fn set_multicast_ttl(
   sock : @fd_util.Fd,
-  ttl : Int,
+  ttl : Int32,
   family~ : AddrFamily,
   context~ : String,
 ) -> Unit raise {
@@ -170,7 +170,7 @@ extern "C" fn set_multicast_loopback_ffi(
   sock : @fd_util.Fd,
   loopback : Bool,
   family~ : AddrFamily,
-) -> Int = "moonbitlang_async_set_multicast_loopback"
+) -> Int32 = "moonbitlang_async_set_multicast_loopback"
 
 ///|
 fn set_multicast_loopback(
@@ -185,35 +185,35 @@ fn set_multicast_loopback(
 }
 
 ///|
-extern "C" fn set_ipv6_only(sock : @fd_util.Fd, dual_stack : Bool) -> Int = "moonbitlang_async_set_ipv6_only"
+extern "C" fn set_ipv6_only(sock : @fd_util.Fd, dual_stack : Bool) -> Int32 = "moonbitlang_async_set_ipv6_only"
 
 ///|
-extern "C" fn listen_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang_async_listen"
+extern "C" fn listen_ffi(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_listen"
 
 ///|
 #borrow(addr)
-extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Addr) -> Int = "moonbitlang_async_udp_client_connect"
+extern "C" fn connect_ffi(sock : @fd_util.Fd, addr : Addr) -> Int32 = "moonbitlang_async_udp_client_connect"
 
 ///|
-extern "C" fn disable_nagle(sock : @fd_util.Fd) -> Int = "moonbitlang_async_disable_nagle"
+extern "C" fn disable_nagle(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_disable_nagle"
 
 ///|
-extern "C" fn allow_reuse_addr(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_addr"
+extern "C" fn allow_reuse_addr(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_allow_reuse_addr"
 
 ///|
-extern "C" fn allow_reuse_port(sock : @fd_util.Fd) -> Int = "moonbitlang_async_allow_reuse_port"
+extern "C" fn allow_reuse_port(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_allow_reuse_port"
 
 ///|
 extern "C" fn enable_keepalive_ffi(
   sock : @fd_util.Fd,
-  keep_idle : Int,
-  keep_count : Int,
-  keep_intv : Int,
-) -> Int = "moonbitlang_async_enable_keepalive"
+  keep_idle : Int32,
+  keep_count : Int32,
+  keep_intv : Int32,
+) -> Int32 = "moonbitlang_async_enable_keepalive"
 
 ///|
 #borrow(addr_out)
-extern "C" fn getsockname_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int = "moonbitlang_async_getsockname"
+extern "C" fn getsockname_ffi(sock : @fd_util.Fd, addr_out : Addr) -> Int32 = "moonbitlang_async_getsockname"
 
 ///|
 fn getsockname(

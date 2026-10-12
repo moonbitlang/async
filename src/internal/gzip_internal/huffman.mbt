@@ -17,12 +17,12 @@ let max_huffman_bits = 15
 
 ///|
 priv struct HuffmanTree {
-  table : FixedArray[Int]
-  max_bits : Int
+  table : FixedArray[Int32]
+  max_bits : Int32
 }
 
 ///|
-fn reverse_bits(code : Int, bit_len : Int) -> Int {
+fn reverse_bits(code : Int32, bit_len : Int32) -> Int32 {
   let mut reversed = 0
   for i in 0..<bit_len {
     reversed = (reversed << 1) | ((code >> i) & 1)
@@ -31,7 +31,7 @@ fn reverse_bits(code : Int, bit_len : Int) -> Int {
 }
 
 ///|
-fn build_huffman_tree(lengths : FixedArray[Int]) -> HuffmanTree raise {
+fn build_huffman_tree(lengths : FixedArray[Int32]) -> HuffmanTree raise {
   let counts = FixedArray::make(max_huffman_bits + 1, 0)
   let mut max_bits = 0
   let mut num_codes = 0
@@ -84,7 +84,7 @@ fn build_huffman_tree(lengths : FixedArray[Int]) -> HuffmanTree raise {
 }
 
 ///|
-fn build_huffman_tree_or_abort(lengths : FixedArray[Int]) -> HuffmanTree {
+fn build_huffman_tree_or_abort(lengths : FixedArray[Int32]) -> HuffmanTree {
   build_huffman_tree(lengths) catch {
     err => abort(err.to_string())
   }
@@ -111,30 +111,30 @@ let fixed_distance_tree : HuffmanTree = build_huffman_tree_or_abort(
 )
 
 ///|
-let code_length_order : FixedArray[Int] = [
+let code_length_order : FixedArray[Int32] = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
 ///|
-let length_bases : FixedArray[Int] = [
+let length_bases : FixedArray[Int32] = [
   3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83,
   99, 115, 131, 163, 195, 227, 258,
 ]
 
 ///|
-let length_extras : FixedArray[Int] = [
+let length_extras : FixedArray[Int32] = [
   0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5,
   5, 0,
 ]
 
 ///|
-let distance_bases : FixedArray[Int] = [
+let distance_bases : FixedArray[Int32] = [
   1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769,
   1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
 ]
 
 ///|
-let distance_extras : FixedArray[Int] = [
+let distance_extras : FixedArray[Int32] = [
   0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
   12, 12, 13, 13,
 ]

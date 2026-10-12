@@ -14,10 +14,10 @@
 
 ///|
 // we currently allow at most 2^16 bytes in a single frame when sending
-const MAX_HEADER_SIZE : Int = 8 + 8 + 16
+const MAX_HEADER_SIZE : Int32 = 8 + 8 + 16
 
 ///|
-const MASK_SIZE : Int = 4
+const MASK_SIZE : Int32 = 4
 
 ///|
 priv trait Transport: @io.Reader + @io.Writer {
@@ -73,7 +73,7 @@ struct Conn {
   // when perform masking on the receiving side,
   // user may request data in a non 4-byte aligned manner.
   // In this case, we use `mask_offset` to store current offset in the mask.
-  mut mask_offset : Int
+  mut mask_offset : Int32
 
   // when receiving a text message,
   // we perform rolling UTF8 validation to confront to the protocol spec.
@@ -82,7 +82,7 @@ struct Conn {
   // the remaining number of bytes expected in the current UTF8 character,
   // so that we can continue UTF8 validation when more data arrives.
   // `-1` indicates that current message is a binary message.
-  mut utf8_remaining : Int
+  mut utf8_remaining : Int32
 
   // =================
   // state for writing
@@ -108,7 +108,7 @@ struct Conn {
 
   // We reserve some fixed space at the start of `write_buf` for header,
   // `payload_start` is the start offset of message payload in the buffer.
-  payload_start : Int
+  payload_start : Int32
 
   // The kind of the message currently being sent.
   // If the value is `None`, we are not in the middle of a message.
@@ -125,7 +125,7 @@ struct Conn {
   write_buf : FixedArray[Byte]
 
   // the length of *payload* currently buffered in `write_buf`
-  mut write_len : Int
+  mut write_len : Int32
 
   // The set of PING requests that are sent but not yet acknowledged.
   // According to the WebSocket protocol,
@@ -154,7 +154,7 @@ pub struct Message {
 ///|
 fn Conn::new(
   transport : &Transport,
-  max_frame_size : Int,
+  max_frame_size : Int32,
   mask~ : @random.Rand?,
 ) -> Conn {
   {

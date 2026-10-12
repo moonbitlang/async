@@ -15,14 +15,14 @@
 ///|
 #cfg(not(platform="windows"))
 #borrow(buf)
-extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int32) -> Int32 = "moonbitlang_async_tls_rand_bytes"
 
 ///|
 /// Generate cryptographically secure random bytes using OpenSSL's RAND_bytes
 /// Returns 1 on success, 0 on failure
 #cfg(not(platform="windows"))
 #internal(internal, "for internal use only")
-pub fn rand_bytes(num : Int) -> Bytes raise {
+pub fn rand_bytes(num : Int32) -> Bytes raise {
   // Reachable with no prior TLS connection (e.g. a plain `ws://` handshake).
   load_openssl()
   let result = FixedArray::make(num, b'\x00')
@@ -35,12 +35,12 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 ///|
 #cfg(platform="windows")
 #borrow(buf)
-extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang_async_tls_rand_bytes"
+extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int32) -> Int32 = "moonbitlang_async_tls_rand_bytes"
 
 ///|
 #cfg(platform="windows")
 #internal(internal, "for internal use only")
-pub fn rand_bytes(num : Int) -> Bytes raise {
+pub fn rand_bytes(num : Int32) -> Bytes raise {
   let result = FixedArray::make(num, b'\x00')
   if rand_bytes_ffi(result, num) == 0 {
     @os_error.check_errno("@tls.rand_bytes()")
@@ -51,7 +51,7 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 ///|
 #cfg(not(platform="windows"))
 #borrow(src, dst)
-extern "C" fn sha1_ffi(src : Bytes, len : Int, dst : FixedArray[Byte]) = "moonbitlang_async_tls_SHA1"
+extern "C" fn sha1_ffi(src : Bytes, len : Int32, dst : FixedArray[Byte]) = "moonbitlang_async_tls_SHA1"
 
 ///|
 #cfg(not(platform="windows"))
@@ -67,7 +67,11 @@ pub fn sha1(src : Bytes) -> Bytes raise {
 ///|
 #cfg(platform="windows")
 #borrow(data, out)
-extern "C" fn sha1_ffi(data : Bytes, len : Int, out : FixedArray[Byte]) -> Int = "moonbitlang_async_tls_SHA1"
+extern "C" fn sha1_ffi(
+  data : Bytes,
+  len : Int32,
+  out : FixedArray[Byte],
+) -> Int32 = "moonbitlang_async_tls_SHA1"
 
 ///|
 #cfg(platform="windows")

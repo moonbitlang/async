@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-extern "C" fn init_main_loop() -> Int = "init_main_loop"
+extern "C" fn init_main_loop() -> Int32 = "init_main_loop"
 
 ///|
 extern "C" fn destroy_main_loop() -> Unit = "destroy_main_loop"
@@ -22,17 +22,17 @@ extern "C" fn destroy_main_loop() -> Unit = "destroy_main_loop"
 extern "C" fn wakeup_main_loop() -> Unit = "wakeup_main_loop"
 
 ///|
-extern "C" fn wait_main_loop(timeout~ : Int) -> Int = "wait_main_loop"
+extern "C" fn wait_main_loop(timeout~ : Int32) -> Int32 = "wait_main_loop"
 
 ///|
 pub extern "C" fn trigger_event(
   pipe_w : @fd_util.Fd,
-  data : Int,
-  delay~ : Int,
+  data : Int32,
+  delay~ : Int32,
 ) -> Unit = "trigger_event"
 
 ///|
-pub fn trigger_main_loop_event(delay~ : Int) -> Unit {
+pub fn trigger_main_loop_event(delay~ : Int32) -> Unit {
   trigger_event(@fd_util.invalid_fd, 1, delay~)
 }
 

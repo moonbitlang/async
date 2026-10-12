@@ -29,7 +29,7 @@ priv enum State {
 
 ///|
 pub struct Coroutine {
-  priv coro_id : Int
+  priv coro_id : Int32
   priv mut state : State
   priv mut shielded : Bool
   priv mut cancelled : Bool

@@ -26,7 +26,7 @@ pub(all) enum FileKind {
 } derive(Eq, Debug)
 
 ///|
-pub fn FileKind::unsafe_from_int(value : Int) -> FileKind = "%identity"
+pub fn FileKind::unsafe_from_int(value : Int32) -> FileKind = "%identity"
 
 ///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {
@@ -40,7 +40,7 @@ pub fn FileKind::can_poll(self : FileKind) -> Bool {
 struct FileTime(FixedArray[Byte])
 
 ///|
-extern "C" fn FileTime::size() -> Int = "moonbitlang_async_sizeof_file_time"
+extern "C" fn FileTime::size() -> Int32 = "moonbitlang_async_sizeof_file_time"
 
 ///|
 pub fn FileTime::new() -> FileTime {
@@ -53,10 +53,10 @@ extern "C" fn FileTime::atime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_a
 
 ///|
 #borrow(self)
-extern "C" fn FileTime::atime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_atime_nsec"
+extern "C" fn FileTime::atime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang_async_get_atime_nsec"
 
 ///|
-pub fn FileTime::atime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::atime(self : FileTime) -> (Int64, Int32) {
   (self.atime_sec_ffi(), self.atime_nsec_ffi())
 }
 
@@ -66,10 +66,10 @@ extern "C" fn FileTime::mtime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_a
 
 ///|
 #borrow(self)
-extern "C" fn FileTime::mtime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_mtime_nsec"
+extern "C" fn FileTime::mtime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang_async_get_mtime_nsec"
 
 ///|
-pub fn FileTime::mtime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::mtime(self : FileTime) -> (Int64, Int32) {
   (self.mtime_sec_ffi(), self.mtime_nsec_ffi())
 }
 
@@ -79,9 +79,9 @@ extern "C" fn FileTime::ctime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang_a
 
 ///|
 #borrow(self)
-extern "C" fn FileTime::ctime_nsec_ffi(self : FileTime) -> Int = "moonbitlang_async_get_ctime_nsec"
+extern "C" fn FileTime::ctime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang_async_get_ctime_nsec"
 
 ///|
-pub fn FileTime::ctime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::ctime(self : FileTime) -> (Int64, Int32) {
   (self.ctime_sec_ffi(), self.ctime_nsec_ffi())
 }

@@ -28,9 +28,9 @@ fn OsEnv::new(inherit_env : Bool) -> OsEnv = "moonbitlang/async" "process/make_e
 fn OsEnv::add_entry(
   dst : OsEnv,
   key~ : String,
-  key_len~ : Int,
+  key_len~ : Int32,
   value~ : String,
-  value_len~ : Int,
+  value_len~ : Int32,
 ) -> Unit = "moonbitlang/async" "process/env_add_entry"
 
 ///|
@@ -46,16 +46,16 @@ fn OsEnv::make(extra_env : Map[String, String], inherit_env~ : Bool) -> OsEnv {
 
 ///|
 #unsafe_skip_stub_check
-fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang/async" "process/make_argv_array/unix"
+fn OsArgv::new(size : Int32) -> OsArgv = "moonbitlang/async" "process/make_argv_array/unix"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(arg)
 fn OsArgv::add_encoded_entry(
   self : OsArgv,
-  offset : Int,
+  offset : Int32,
   arg : @os_string.OsString,
-  arg_len~ : Int = arg.to_string().length(),
+  arg_len~ : Int32 = arg.to_string().length(),
 ) -> Unit = "moonbitlang/async" "process/argv_array_add_encoded_entry/unix"
 
 ///|
@@ -63,9 +63,9 @@ fn OsArgv::add_encoded_entry(
 #borrow(arg)
 fn OsArgv::add_entry(
   self : OsArgv,
-  offset : Int,
+  offset : Int32,
   arg : String,
-  arg_len~ : Int = arg.length(),
+  arg_len~ : Int32 = arg.length(),
 ) -> Unit = "moonbitlang/async" "process/argv_array_add_entry/unix"
 
 ///|

@@ -16,16 +16,16 @@
 #cfg(not(platform="windows"))
 #borrow(major, minor, fix)
 extern "C" fn load_openssl_ffi(
-  major : Ref[Int],
-  minor : Ref[Int],
-  fix : Ref[Int],
-) -> Int = "moonbitlang_async_load_openssl"
+  major : Ref[Int32],
+  minor : Ref[Int32],
+  fix : Ref[Int32],
+) -> Int32 = "moonbitlang_async_load_openssl"
 
 ///|
 #cfg(not(platform="windows"))
 extern "C" fn init_bio_method(
-  read : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
-  write : FuncRef[(BIO, @c_buffer.Buffer, Int) -> Int],
+  read : FuncRef[(BIO, @c_buffer.Buffer, Int32) -> Int32],
+  write : FuncRef[(BIO, @c_buffer.Buffer, Int32) -> Int32],
 ) = "moonbitlang_async_init_bio_method"
 
 ///|

@@ -14,26 +14,26 @@
 
 ///|
 #cfg(not(target="wasm"))
-extern "C" fn terminate_process(pid : Int, signal : Int) = "moonbitlang_async_terminate_process"
+extern "C" fn terminate_process(pid : Int32, signal : Int32) = "moonbitlang_async_terminate_process"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn terminate_process(pid : Int, signal : Int) = "moonbitlang/async" "process/terminate"
+fn terminate_process(pid : Int32, signal : Int32) = "moonbitlang/async" "process/terminate"
 
 ///|
 #cfg(not(target="wasm"))
-extern "C" fn kill_process(pid : Int) = "moonbitlang_async_kill_process"
+extern "C" fn kill_process(pid : Int32) = "moonbitlang_async_kill_process"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn kill_process(pid : Int) = "moonbitlang/async" "process/kill"
+fn kill_process(pid : Int32) = "moonbitlang/async" "process/kill"
 
 ///|
 /// A handler function used to stop spawned process on cancellation.
 /// The function receive the PID of the process as input.
-pub(all) struct CancellationHandler(async (Int) -> Unit)
+pub(all) struct CancellationHandler(async (Int32) -> Unit)
 
 ///|
 let default_signal : @signal.Signal = if @event_loop.platform is Windows {
@@ -53,7 +53,7 @@ let default_signal : @signal.Signal = if @event_loop.platform is Windows {
 ///
 /// Note that on Windows, `SIGBREAK` is the only signal allowed to be be sent.
 pub fn graceful_cancel(
-  timeout~ : Int,
+  timeout~ : Int32,
   signal~ : @signal.Signal = default_signal,
 ) -> CancellationHandler {
   pid => {

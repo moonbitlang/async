@@ -48,7 +48,7 @@ pub async fn spawn_unix(
 
 ///|
 #cfg(not(platform="windows"))
-pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int {
+pub async fn Process::wait_pid_unix(self : Process, context~ : String) -> Int32 {
   guard! curr_loop.val is Some(evloop)
   let handle = if self.handle is Some(io) { io.fd } else { @fd_util.invalid_fd }
 

@@ -60,10 +60,10 @@ pub suberror HttpProtocolError {
 async fn Reader::decode_chunk(
   self : Reader,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  max_len~ : Int,
-  limit~ : Int,
-) -> (Int, Int) {
+  offset~ : Int32,
+  max_len~ : Int32,
+  limit~ : Int32,
+) -> (Int32, Int32) {
   guard self.gzip is Some(gzip) else {
     let max_len = @cmp.minimum(max_len, limit)
     let n = self.transport.read(buf, offset~, max_len~)
@@ -376,7 +376,7 @@ async fn Reader::read_request(self : Reader) -> Request {
 }
 
 ///|
-fn should_not_have_body(request_method : RequestMethod?, code : Int) -> Bool {
+fn should_not_have_body(request_method : RequestMethod?, code : Int32) -> Bool {
   match (request_method, code) {
     (Some(Head), _) => true
     (Some(Connect), 200..<300) => true

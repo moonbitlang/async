@@ -29,7 +29,7 @@
 /// An existing non-directory at `path` is still an error.
 pub async fn mkdir(
   path : StringView,
-  permission~ : Int = 0o755,
+  permission~ : Int32 = 0o755,
   recursive~ : Bool = false,
   allow_exist~ : Bool = false,
 ) -> Unit {
@@ -110,16 +110,16 @@ priv struct DirectoryBuffer(@c_buffer.Buffer)
 struct Directory {
   io : @event_loop.IoHandle
   buf : DirectoryBuffer
-  buf_len : Int
+  buf_len : Int32
   // The offset of the next entry in the buffer
-  mut offset : Int
+  mut offset : Int32
   // The number of entries already consumed
-  mut count : Int
+  mut count : Int32
   // the return value of the corresponding job has different semantic of different platforms.
   // - Linux: number of bytes read
   // - MacOS: number on entries
   // - Windows: nonzero unless EOF
-  mut job_ret : Int
+  mut job_ret : Int32
   mut state : DirectoryState
 }
 
@@ -131,12 +131,12 @@ pub fn Directory::close(self : Directory) -> Unit {
 
 ///|
 #cfg(target="native")
-extern "C" fn Directory::min_buffer_size() -> Int = "moonbitlang_async_dir_buffer_min_size"
+extern "C" fn Directory::min_buffer_size() -> Int32 = "moonbitlang_async_dir_buffer_min_size"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn Directory::min_buffer_size() -> Int = "moonbitlang/async" "fs/dir_buffer_min_size"
+fn Directory::min_buffer_size() -> Int32 = "moonbitlang/async" "fs/dir_buffer_min_size"
 
 ///|
 /// Open the directory at `path`. `path` is encoded UTF8.
@@ -182,72 +182,81 @@ fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
 
 ///|
 #cfg(target="native")
-extern "C" fn DirectoryBuffer::entry_length(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_length"
+extern "C" fn DirectoryBuffer::entry_length(
+  self : Self,
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_dir_entry_length"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_length(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_length"
+fn DirectoryBuffer::entry_length(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/dir_entry_length"
 
 ///|
 #cfg(target="native")
-extern "C" fn DirectoryBuffer::entry_name_len(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_get_name_len"
+extern "C" fn DirectoryBuffer::entry_name_len(
+  self : Self,
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_dir_entry_get_name_len"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_name_len(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_get_name_len"
+fn DirectoryBuffer::entry_name_len(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/dir_entry_get_name_len"
 
 ///|
 #cfg(target="native")
 extern "C" fn DirectoryBuffer::entry_name_offset(
   self : Self,
-  offset : Int,
-) -> Int = "moonbitlang_async_dir_entry_get_name_offset"
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_dir_entry_get_name_offset"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_name_offset(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_get_name_offset"
+fn DirectoryBuffer::entry_name_offset(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/dir_entry_get_name_offset"
 
 ///|
 #cfg(target="native")
-extern "C" fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int) -> Int = "moonbitlang_async_dir_entry_is_dir"
+extern "C" fn DirectoryBuffer::entry_is_dir(
+  self : Self,
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_dir_entry_is_dir"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/dir_entry_is_dir"
+fn DirectoryBuffer::entry_is_dir(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/dir_entry_is_dir"
 
 ///|
 #cfg(target="native")
 extern "C" fn DirectoryBuffer::entry_is_hidden(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> Bool = "moonbitlang_async_dir_entry_is_hidden"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_is_hidden(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/dir_entry_is_hidden"
+fn DirectoryBuffer::entry_is_hidden(self : Self, offset : Int32) -> Bool = "moonbitlang/async" "fs/dir_entry_is_hidden"
 
 ///|
 #cfg(target="native")
 extern "C" fn DirectoryBuffer::entry_file_id(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> UInt64 = "moonbitlang_async_dir_entry_get_file_id"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn DirectoryBuffer::entry_file_id(self : Self, offset : Int) -> UInt64 = "moonbitlang/async" "fs/dir_entry_get_file_id"
+fn DirectoryBuffer::entry_file_id(self : Self, offset : Int32) -> UInt64 = "moonbitlang/async" "fs/dir_entry_get_file_id"
 
 ///|
 #valtype
@@ -432,7 +441,7 @@ pub async fn walk(
   path : StringView,
   f : async (String, Array[String]) -> Unit,
   exclude~ : (String) -> Bool = _ => false,
-  max_concurrency~ : Int = 1000,
+  max_concurrency~ : Int32 = 1000,
   allow_failure~ : Bool = false,
 ) -> Unit {
   let context = "@fs.walk()"

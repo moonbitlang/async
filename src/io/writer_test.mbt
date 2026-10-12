@@ -75,7 +75,7 @@ async test "write reader" {
 ///|
 struct DummyWriter {
   logger : &Logger
-  base_timeout : Int
+  base_timeout : Int32
 }
 
 ///|

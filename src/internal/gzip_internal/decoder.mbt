@@ -19,23 +19,23 @@ priv enum DecodeMode {
   DynamicHeader(is_final~ : Bool)
   DynamicCodeLengths(
     is_final~ : Bool,
-    hlit~ : Int,
-    hdist~ : Int,
-    hclen~ : Int,
-    index~ : Int,
-    code_lengths~ : FixedArray[Int]
+    hlit~ : Int32,
+    hdist~ : Int32,
+    hclen~ : Int32,
+    index~ : Int32,
+    code_lengths~ : FixedArray[Int32]
   )
   DynamicLengths(
     is_final~ : Bool,
-    hlit~ : Int,
-    hdist~ : Int,
+    hlit~ : Int32,
+    hdist~ : Int32,
     code_tree~ : HuffmanTree,
-    index~ : Int,
-    previous~ : Int,
-    lengths~ : FixedArray[Int]
+    index~ : Int32,
+    previous~ : Int32,
+    lengths~ : FixedArray[Int32]
   )
   StoredLengths(is_final~ : Bool)
-  StoredBlock(is_final~ : Bool, remaining~ : Int)
+  StoredBlock(is_final~ : Bool, remaining~ : Int32)
   HuffmanBlock(
     is_final~ : Bool,
     literal_tree~ : HuffmanTree,
@@ -49,31 +49,31 @@ priv enum DecodeMode {
 struct Decoder {
   trailer_state : TrailerState
   mut mode : DecodeMode
-  mut bit_buffer : UInt
-  mut bit_count : Int
-  mut copy_remaining : Int
-  mut copy_distance : Int
+  mut bit_buffer : UInt32
+  mut bit_count : Int32
+  mut copy_remaining : Int32
+  mut copy_distance : Int32
   mut pending_buf : FixedArray[Byte]
-  mut pending_len : Int
+  mut pending_len : Int32
   history : FixedArray[Byte]
-  mut history_pos : Int
-  mut history_len : Int
+  mut history_pos : Int32
+  mut history_len : Int32
 }
 
 ///|
 priv struct DecodeInput {
   input : Bytes
-  end : Int
-  mut index : Int
-  mut bit_buffer : UInt
-  mut bit_count : Int
+  end : Int32
+  mut index : Int32
+  mut bit_buffer : UInt32
+  mut bit_count : Int32
 }
 
 ///|
 fn DecodeInput::new(
   input : Bytes,
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
   decoder : Decoder,
 ) -> DecodeInput {
   {
@@ -135,12 +135,12 @@ pub fn Decoder::is_finished(self : Decoder) -> Bool {
 /// Return the minimum compressed input required for
 /// the next `write` call to make any progress.
 /// The caller may provide more than this amount.
-pub fn Decoder::minimum_input_size(self : Decoder) -> Int {
+pub fn Decoder::minimum_input_size(self : Decoder) -> Int32 {
   @cmp.maximum(0, self.raw_minimum_input_size() - self.pending_len)
 }
 
 ///|
-fn Decoder::raw_minimum_input_size(self : Decoder) -> Int {
+fn Decoder::raw_minimum_input_size(self : Decoder) -> Int32 {
   match self.mode {
     Header => HEADER_SIZE
     DynamicHeader(_) => @cmp.maximum(0, (14 - self.bit_count + 7) / 8)
@@ -169,7 +169,7 @@ fn Decoder::raw_minimum_input_size(self : Decoder) -> Int {
 }
 
 ///|
-fn Decoder::ensure_pending_capacity(self : Decoder, len : Int) -> Unit {
+fn Decoder::ensure_pending_capacity(self : Decoder, len : Int32) -> Unit {
   guard len > self.pending_buf.length() else { return }
   let new_buf = FixedArray::make(len, b'\x00')
   if self.pending_len > 0 {
@@ -179,7 +179,7 @@ fn Decoder::ensure_pending_capacity(self : Decoder, len : Int) -> Unit {
 }
 
 ///|
-fn Decoder::drop_pending(self : Decoder, len : Int) -> Unit {
+fn Decoder::drop_pending(self : Decoder, len : Int32) -> Unit {
   guard len > 0 else { return }
   self.pending_len -= len
   if self.pending_len > 0 {
@@ -196,8 +196,8 @@ fn Decoder::drop_pending(self : Decoder, len : Int) -> Unit {
 fn Decoder::copy_to_pending(
   self : Decoder,
   input : Bytes,
-  input_offset : Int,
-  len : Int,
+  input_offset : Int32,
+  len : Int32,
 ) -> Unit {
   guard len > 0 else { return }
   self.ensure_pending_capacity(self.pending_len + len)
@@ -211,8 +211,8 @@ fn Decoder::copy_to_pending(
 pub fn Decoder::write_partial_data(
   self : Decoder,
   input : Bytes,
-  input_offset~ : Int = 0,
-  input_len~ : Int = input.length() - input_offset,
+  input_offset~ : Int32 = 0,
+  input_len~ : Int32 = input.length() - input_offset,
 ) -> Unit {
   guard! input_len < self.minimum_input_size()
   self.ensure_pending_capacity(self.raw_minimum_input_size())
@@ -247,11 +247,11 @@ fn Decoder::finish_dynamic_code_lengths(
   self : Decoder,
   input : DecodeInput,
   is_final~ : Bool,
-  hlit~ : Int,
-  hdist~ : Int,
-  hclen~ : Int,
-  code_lengths : FixedArray[Int],
-  length_index~ : Int,
+  hlit~ : Int32,
+  hdist~ : Int32,
+  hclen~ : Int32,
+  code_lengths : FixedArray[Int32],
+  length_index~ : Int32,
 ) -> Unit raise {
   for i in length_index..<hclen {
     let bits = input.read_bits(3)
@@ -273,9 +273,9 @@ fn Decoder::finish_dynamic_code_lengths(
 fn Decoder::finish_dynamic_trees(
   self : Decoder,
   is_final~ : Bool,
-  hlit~ : Int,
-  hdist~ : Int,
-  lengths : FixedArray[Int],
+  hlit~ : Int32,
+  hdist~ : Int32,
+  lengths : FixedArray[Int32],
 ) -> Unit raise {
   let literal_lengths = FixedArray::make(hlit, 0)
   for i in 0..<hlit {
@@ -300,12 +300,12 @@ fn Decoder::decode_dynamic_length_step(
   self : Decoder,
   input : DecodeInput,
   is_final~ : Bool,
-  hlit~ : Int,
-  hdist~ : Int,
+  hlit~ : Int32,
+  hdist~ : Int32,
   code_tree~ : HuffmanTree,
-  lengths : FixedArray[Int],
-  length_index~ : Int,
-  previous~ : Int,
+  lengths : FixedArray[Int32],
+  length_index~ : Int32,
+  previous~ : Int32,
 ) -> Unit raise {
   let total = hlit + hdist
   guard length_index < total else {
@@ -385,12 +385,15 @@ fn Decoder::finish_header(self : Decoder, input : DecodeInput) -> Unit raise {
 }
 
 ///|
-fn Decoder::available_output(output_capacity : Int, produced : Int) -> Int {
+fn Decoder::available_output(
+  output_capacity : Int32,
+  produced : Int32,
+) -> Int32 {
   output_capacity - produced
 }
 
 ///|
-fn Decoder::minimum_huffman_input_size(self : Decoder) -> Int {
+fn Decoder::minimum_huffman_input_size(self : Decoder) -> Int32 {
   let needed_bits = 48 - self.bit_count
   if needed_bits <= 0 {
     0
@@ -412,8 +415,8 @@ fn Decoder::append_history(self : Decoder, byte : Byte) -> Unit {
 fn Decoder::append_history_bytes(
   self : Decoder,
   src : FixedArray[Byte],
-  src_offset : Int,
-  len : Int,
+  src_offset : Int32,
+  len : Int32,
 ) -> Unit {
   guard len > 0 else { return }
   let first_len = @cmp.minimum(len, 32768 - self.history_pos)
@@ -428,7 +431,7 @@ fn Decoder::append_history_bytes(
 }
 
 ///|
-fn Decoder::history_index(self : Decoder, distance : Int) -> Int raise {
+fn Decoder::history_index(self : Decoder, distance : Int32) -> Int32 raise {
   guard distance >= 1 && distance <= self.history_len else {
     raise InvalidBlock("invalid distance too far back")
   }
@@ -443,10 +446,10 @@ fn Decoder::history_index(self : Decoder, distance : Int) -> Int raise {
 fn Decoder::write_output_byte(
   self : Decoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   byte : Byte,
-) -> Int {
+) -> Int32 {
   output.unsafe_set(output_offset + produced, byte)
   self.append_history(byte)
   produced + 1
@@ -456,8 +459,8 @@ fn Decoder::write_output_byte(
 fn Decoder::update_trailer_output(
   self : Decoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  end : Int,
+  output_offset : Int32,
+  end : Int32,
 ) -> Unit {
   self.trailer_state.update(
     output.unsafe_reinterpret_as_bytes()[output_offset:output_offset + end],
@@ -505,7 +508,7 @@ fn DecodeInput::read_aligned_byte(self : DecodeInput) -> Byte {
 }
 
 ///|
-fn DecodeInput::read_aligned_uint32_le(self : DecodeInput) -> UInt {
+fn DecodeInput::read_aligned_uint32_le(self : DecodeInput) -> UInt32 {
   let b0 = self.read_aligned_byte()
   let b1 = self.read_aligned_byte()
   let b2 = self.read_aligned_byte()
@@ -533,7 +536,7 @@ fn Decoder::finish_trailer(self : Decoder, input : DecodeInput) -> Unit raise {
 }
 
 ///|
-fn DecodeInput::ensure_bits(self : DecodeInput, count : Int) -> Bool {
+fn DecodeInput::ensure_bits(self : DecodeInput, count : Int32) -> Bool {
   while self.bit_count < count {
     if self.index >= self.end {
       return false
@@ -547,7 +550,7 @@ fn DecodeInput::ensure_bits(self : DecodeInput, count : Int) -> Bool {
 }
 
 ///|
-fn DecodeInput::read_bits(self : DecodeInput, count : Int) -> UInt raise {
+fn DecodeInput::read_bits(self : DecodeInput, count : Int32) -> UInt32 raise {
   guard self.ensure_bits(count) else {
     raise NeedMoreInput("unexpected EOF in compressed data")
   }
@@ -584,10 +587,10 @@ fn Decoder::start_next_block(self : Decoder, input : DecodeInput) -> Unit raise 
 fn Decoder::continue_copy(
   self : Decoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-  output_len : Int,
-) -> Int raise {
+  output_offset : Int32,
+  produced : Int32,
+  output_len : Int32,
+) -> Int32 raise {
   ignore(self.history_index(self.copy_distance))
   let max_len = @cmp.minimum(
     Decoder::available_output(output_len, produced),
@@ -622,7 +625,7 @@ fn Decoder::continue_copy(
 fn DecodeInput::decode_symbol(
   self : DecodeInput,
   tree : HuffmanTree,
-) -> Int raise {
+) -> Int32 raise {
   for ;; {
     let has_more = self.ensure_bits(tree.max_bits)
     let lookup = (self.bit_buffer & ((1U << tree.max_bits) - 1U)).reinterpret_as_int()
@@ -645,7 +648,7 @@ fn DecodeInput::decode_symbol(
 }
 
 ///|
-fn DecodeInput::read_length(self : DecodeInput, symbol : Int) -> Int raise {
+fn DecodeInput::read_length(self : DecodeInput, symbol : Int32) -> Int32 raise {
   let index = symbol - 257
   guard index >= 0 && index < length_bases.length() else {
     raise InvalidBlock("invalid literal/length code")
@@ -661,7 +664,10 @@ fn DecodeInput::read_length(self : DecodeInput, symbol : Int) -> Int raise {
 }
 
 ///|
-fn DecodeInput::read_distance(self : DecodeInput, symbol : Int) -> Int raise {
+fn DecodeInput::read_distance(
+  self : DecodeInput,
+  symbol : Int32,
+) -> Int32 raise {
   guard symbol >= 0 && symbol < distance_bases.length() else {
     raise InvalidBlock("invalid distance code")
   }
@@ -715,12 +721,12 @@ fn Decoder::read_stored_from_input(
   self : Decoder,
   input : DecodeInput,
   is_final~ : Bool,
-  remaining~ : Int,
+  remaining~ : Int32,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-  output_len : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+  output_len : Int32,
+) -> Int32 {
   let len = @cmp.minimum(
     @cmp.minimum(Decoder::available_output(output_len, produced), remaining),
     input.end - input.index,
@@ -761,11 +767,11 @@ fn Decoder::write_direct(
   self : Decoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset~ : Int = 0,
-  input_len~ : Int = input.length() - input_offset,
-  output_offset~ : Int = 0,
-  output_len~ : Int = output.length() - output_offset,
-) -> (Int, Int) raise {
+  input_offset~ : Int32 = 0,
+  input_len~ : Int32 = input.length() - input_offset,
+  output_offset~ : Int32 = 0,
+  output_len~ : Int32 = output.length() - output_offset,
+) -> (Int32, Int32) raise {
   let input_state = DecodeInput::new(
     input,
     input_offset,
@@ -951,11 +957,11 @@ pub fn Decoder::write(
   self : Decoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset~ : Int = 0,
-  input_len~ : Int = input.length() - input_offset,
-  output_offset~ : Int = 0,
-  output_len~ : Int = output.length() - output_offset,
-) -> (Int, Int) raise {
+  input_offset~ : Int32 = 0,
+  input_len~ : Int32 = input.length() - input_offset,
+  output_offset~ : Int32 = 0,
+  output_len~ : Int32 = output.length() - output_offset,
+) -> (Int32, Int32) raise {
   guard! input_offset >= 0 && input_offset <= input.length()
   guard! input_len >= 0 && input_len <= input.length() - input_offset
   guard! output_offset >= 0 && output_offset <= output.length()

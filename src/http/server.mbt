@@ -197,7 +197,7 @@ pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 /// an error will be raised.
 pub async fn ServerConnection::send_response(
   self : ServerConnection,
-  code : Int,
+  code : Int32,
   reason : String,
   extra_headers~ : Headers = Map([]),
   cookies~ : Array[Cookie] = [],
@@ -293,7 +293,7 @@ pub async fn Server::run_forever(
   self : Server,
   f : async (Request, &@io.Reader, ServerConnection) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   self.server.run_forever(allow_failure?, max_connections?) <| ((conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)

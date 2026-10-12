@@ -131,10 +131,10 @@ pub fn IoHandle::from_fd(
 async fn IoHandle::read_via_worker(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! handle.read is Idle
   handle.read = Submitted
   defer {
@@ -161,10 +161,10 @@ const IS_NATIVE_WINDOWS : Bool = false
 async fn IoHandle::read_console(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! handle.read is Idle
   if handle.console_state.pending_len > 0 {
     return handle.console_state.write_pending(buf, offset~, len~)
@@ -258,10 +258,10 @@ async fn IoHandle::read_console(
 pub async fn IoHandle::read(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   // TODO: port to Wasm
   let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
@@ -285,10 +285,10 @@ pub async fn IoHandle::read(
 async fn IoHandle::write_via_worker(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! handle.write is Idle
   handle.write = Submitted
   defer {
@@ -314,21 +314,21 @@ async fn IoHandle::write_via_worker(
 #borrow(src, dst)
 extern "C" fn utf8_decode_lossy_to_utf16(
   src~ : Bytes,
-  src_offset~ : Int,
-  src_len~ : Int,
+  src_offset~ : Int32,
+  src_len~ : Int32,
   dst~ : FixedArray[UInt16],
-  dst_offset~ : Int,
-) -> Int = "moonbit_utf8_decode_lossy_into_utf16"
+  dst_offset~ : Int32,
+) -> Int32 = "moonbit_utf8_decode_lossy_into_utf16"
 
 ///|
 #cfg(target="wasm")
 fn utf8_decode_lossy_to_utf16(
   src~ : Bytes,
-  src_offset~ : Int,
-  src_len~ : Int,
+  src_offset~ : Int32,
+  src_len~ : Int32,
   dst~ : FixedArray[UInt16],
-  dst_offset~ : Int,
-) -> Int {
+  dst_offset~ : Int32,
+) -> Int32 {
   ignore(src)
   ignore(src_offset)
   ignore(src_len)
@@ -341,10 +341,10 @@ fn utf8_decode_lossy_to_utf16(
 async fn IoHandle::write_console(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! handle.write is Idle
   handle.write = Submitted
   defer {
@@ -450,10 +450,10 @@ async fn IoHandle::write_console(
 pub async fn IoHandle::write(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   // TODO: port to Wasm
   let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
@@ -478,11 +478,11 @@ pub async fn IoHandle::write(
 pub async fn IoHandle::read_at(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   guard! !handle.is_async
   let job = Job::read(handle.fd, buf, offset, len, position~)
@@ -497,8 +497,8 @@ pub async fn IoHandle::read_at(
 pub async fn IoHandle::write_at(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
   context~ : String,
 ) -> Unit {

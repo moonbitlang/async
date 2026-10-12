@@ -15,7 +15,7 @@
 ///|
 #valtype
 pub struct Process {
-  pid : Int
+  pid : Int32
   priv handle : IoHandle?
 }
 
@@ -28,15 +28,15 @@ pub fn Process::close(self : Process) -> Unit {
 
 ///|
 #cfg(target="native")
-extern "C" fn open_pid_handle(pid : Int) -> @fd_util.Fd = "moonbitlang_async_open_pid_handle"
+extern "C" fn open_pid_handle(pid : Int32) -> @fd_util.Fd = "moonbitlang_async_open_pid_handle"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn open_pid_handle(pid : Int) -> @fd_util.Fd = "moonbitlang/async" "process/open_pid_handle"
+fn open_pid_handle(pid : Int32) -> @fd_util.Fd = "moonbitlang/async" "process/open_pid_handle"
 
 ///|
-pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
+pub fn Process::from_pid(pid : Int32, context~ : String) -> Process raise {
   let handle = open_pid_handle(pid)
   let handle = if !@fd_util.fd_is_valid(handle) {
     @os_error.check_errno(context)
@@ -58,15 +58,19 @@ pub fn Process::from_pid(pid : Int, context~ : String) -> Process raise {
 #borrow(out)
 extern "C" fn get_process_result(
   handle : @fd_util.Fd,
-  pid : Int,
-  out : Ref[Int],
-) -> Int = "moonbitlang_async_get_process_result"
+  pid : Int32,
+  out : Ref[Int32],
+) -> Int32 = "moonbitlang_async_get_process_result"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(out)
-fn get_process_result(handle : @fd_util.Fd, pid : Int, out : Ref[Int]) -> Int = "moonbitlang/async" "process/get_process_result"
+fn get_process_result(
+  handle : @fd_util.Fd,
+  pid : Int32,
+  out : Ref[Int32],
+) -> Int32 = "moonbitlang/async" "process/get_process_result"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
@@ -86,19 +90,19 @@ type SpawnJobEnv = UInt64
 
 ///|
 #cfg(platform="windows")
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int32 {
   self.wait_pid_windows(context~)
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int32 {
   self.wait_pid_unix(context~)
 }
 
 ///|
 #cfg(target="wasm")
-pub async fn Process::wait_pid(self : Process, context~ : String) -> Int {
+pub async fn Process::wait_pid(self : Process, context~ : String) -> Int32 {
   match platform {
     Linux | MacOS => self.wait_pid_unix(context~)
     Windows => self.wait_pid_windows(context~)

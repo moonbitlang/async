@@ -24,10 +24,10 @@ fn Buffer::is_null_ffi(buf : Buffer) -> Bool = "moonbitlang/async" "c_buffer/is_
 #borrow(src)
 pub fn Buffer::blit_from_bytes(
   dst : Buffer,
-  dst_offset~ : Int = 0,
+  dst_offset~ : Int32 = 0,
   src~ : Bytes,
-  src_offset~ : Int = 0,
-  len~ : Int,
+  src_offset~ : Int32 = 0,
+  len~ : Int32,
 ) -> Unit = "moonbitlang/async" "c_buffer/blit_to_c"
 
 ///|
@@ -35,26 +35,26 @@ pub fn Buffer::blit_from_bytes(
 #borrow(dst)
 pub fn Buffer::blit_to_bytes(
   src : Buffer,
-  src_offset~ : Int = 0,
+  src_offset~ : Int32 = 0,
   dst~ : FixedArray[Byte],
-  dst_offset~ : Int = 0,
-  len~ : Int,
+  dst_offset~ : Int32 = 0,
+  len~ : Int32,
 ) -> Unit = "moonbitlang/async" "c_buffer/blit_from_c"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(buf)
 #alias("_[_]")
-pub fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang/async" "c_buffer/c_buffer_get"
+pub fn Buffer::get(buf : Buffer, index : Int32) -> Byte = "moonbitlang/async" "c_buffer/c_buffer_get"
 
 ///|
 #unsafe_skip_stub_check
-pub fn Buffer::strlen(buf : Buffer) -> Int = "moonbitlang/async" "c_buffer/strlen"
+pub fn Buffer::strlen(buf : Buffer) -> Int32 = "moonbitlang/async" "c_buffer/strlen"
 
 ///|
 #unsafe_skip_stub_check
 #as_free_fn
-pub fn Buffer::new(size : Int) -> Buffer = "moonbitlang/async" "c_buffer/new"
+pub fn Buffer::new(size : Int32) -> Buffer = "moonbitlang/async" "c_buffer/new"
 
 ///|
 pub fn Buffer::is_null(buf : Buffer) -> Bool {

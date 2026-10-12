@@ -19,7 +19,7 @@ pub(all) enum Protocol {
 } derive(Debug, Eq, Compare, Hash, ToJson)
 
 ///|
-pub fn Protocol::default_port(p : Protocol) -> Int {
+pub fn Protocol::default_port(p : Protocol) -> Int32 {
   match p {
     Http => 80
     Https => 443
@@ -55,7 +55,7 @@ fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {
 fn resolve_host(
   host : StringView,
   protocol~ : Protocol,
-) -> (StringView, Int) raise {
+) -> (StringView, Int32) raise {
   if host =~ (
       re"^" +
       (re".*" as host) +

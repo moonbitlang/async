@@ -25,21 +25,21 @@
 struct BufferedWriter[W] {
   writer : W
   buf : FixedArray[Byte]
-  mut len : Int
+  mut len : Int32
 }
 
 ///|
 /// Create a buffered writer with fixed buffer size `size`.
 pub fn[W] BufferedWriter::new(
   writer : W,
-  size~ : Int = 1024,
+  size~ : Int32 = 1024,
 ) -> BufferedWriter[W] {
   { writer, buf: FixedArray::make(size, 0), len: 0, }
 }
 
 ///|
 /// Return the internal buffer size of a buffered writer.
-pub fn[W] BufferedWriter::capacity(self : BufferedWriter[W]) -> Int {
+pub fn[W] BufferedWriter::capacity(self : BufferedWriter[W]) -> Int32 {
   self.buf.length()
 }
 

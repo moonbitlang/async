@@ -13,31 +13,31 @@
 // limitations under the License.
 
 ///|
-let macos_EINTR : Int = 4
+let macos_EINTR : Int32 = 4
 
 ///|
-let macos_ENOENT : Int = 2
+let macos_ENOENT : Int32 = 2
 
 ///|
-let macos_EEXIST : Int = 17
+let macos_EEXIST : Int32 = 17
 
 ///|
-let macos_EACCES : Int = 13
+let macos_EACCES : Int32 = 13
 
 ///|
-let macos_ECONNREFUSED : Int = 61
+let macos_ECONNREFUSED : Int32 = 61
 
 ///|
-let macos_ENOTDIR : Int = 20
+let macos_ENOTDIR : Int32 = 20
 
 ///|
-let macos_ENOTSUP : Int = 45
+let macos_ENOTSUP : Int32 = 45
 
 ///|
-let macos_EAGAIN : Int = 35
+let macos_EAGAIN : Int32 = 35
 
 ///|
-let macos_EINPROGRESS : Int = 36
+let macos_EINPROGRESS : Int32 = 36
 
 ///|
-let macos_EWOULDBLOCK : Int = macos_EAGAIN
+let macos_EWOULDBLOCK : Int32 = macos_EAGAIN

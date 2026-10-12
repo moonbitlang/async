@@ -14,7 +14,7 @@
 
 ///|
 test "non-cancellable pause preserves round robin scheduling" {
-  let log : Array[Int] = []
+  let log : Array[Int32] = []
   let a = spawn(() => {
     for _ in 0..<3 {
       log.push(1)

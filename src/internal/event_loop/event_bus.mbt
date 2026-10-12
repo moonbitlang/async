@@ -43,7 +43,7 @@ extern "C" fn EventBus::register_ffi(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only : Bool,
-) -> Int = "moonbitlang_async_event_bus_register"
+) -> Int32 = "moonbitlang_async_event_bus_register"
 
 ///|
 /// Try to register the file descriptor with the event bus,
@@ -63,13 +63,13 @@ fn EventBus::register(
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn EventBus::register_pid_ffi(self : EventBus, pid : Int) -> Int = "moonbitlang_async_event_bus_register_pid"
+extern "C" fn EventBus::register_pid_ffi(self : EventBus, pid : Int32) -> Int32 = "moonbitlang_async_event_bus_register_pid"
 
 ///|
 /// Return `true` if the PID is successfully registered.
 /// Return `false` if the process has already terminated.
 #cfg(not(platform="windows"))
-fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
+fn EventBus::register_pid(self : EventBus, pid : Int32) -> Bool raise {
   let ret = self.register_pid_ffi(pid)
   if ret == -1 {
     @os_error.check_errno("poll_register_pid")
@@ -82,20 +82,20 @@ fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
 priv type Event
 
 ///|
-extern "C" fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang_async_event_list_get"
+extern "C" fn EventBus::get_event(self : EventBus, index : Int32) -> Event = "moonbitlang_async_event_list_get"
 
 ///|
 extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
 
 ///|
 #cfg(not(platform="windows"))
-fn Event::pid(self : Event) -> Int {
+fn Event::pid(self : Event) -> Int32 {
   self.fd()
 }
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn Event::events(self : Event) -> Int = "moonbitlang_async_event_get_events"
+extern "C" fn Event::events(self : Event) -> Int32 = "moonbitlang_async_event_get_events"
 
 ///|
 #cfg(platform="windows")
@@ -103,10 +103,10 @@ extern "C" fn Event::io_result(self : Event) -> IoResult = "moonbitlang_async_ev
 
 ///|
 #cfg(platform="windows")
-extern "C" fn Event::bytes_transferred(self : Event) -> Int = "moonbitlang_async_event_get_bytes_transferred"
+extern "C" fn Event::bytes_transferred(self : Event) -> Int32 = "moonbitlang_async_event_get_bytes_transferred"
 
 ///|
-extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang_async_event_bus_wait"
+extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int32) -> Int32 = "moonbitlang_async_event_bus_wait"
 
 ///|
 priv struct EventBusWaiter(@c_buffer.Buffer)
@@ -121,7 +121,7 @@ extern "C" fn EventBus::spawn_waiter(
 extern "C" fn EventBusWaiter::terminate(self : Self) -> Unit = "moonbitlang_async_terminate_event_bus_waiter"
 
 ///|
-extern "C" fn EventBusWaiter::get_events(self : Self) -> Int = "moonbitlang_async_event_bus_waiter_get_events"
+extern "C" fn EventBusWaiter::get_events(self : Self) -> Int32 = "moonbitlang_async_event_bus_waiter_get_events"
 
 ///|
 extern "C" fn EventBusWaiter::wake(self : Self) -> Unit = "moonbitlang_async_wake_event_bus_waiter"

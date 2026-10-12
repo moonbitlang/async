@@ -36,7 +36,7 @@ pub async fn kind(path : StringView, follow_symlink~ : Bool = true) -> FileKind 
 pub async fn atime(
   path : StringView,
   follow_symlink~ : Bool = true,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   @event_loop.atime_by_path(path, follow_symlink~, context="@fs.atime()")
 }
 
@@ -50,7 +50,7 @@ pub async fn atime(
 pub async fn mtime(
   path : StringView,
   follow_symlink~ : Bool = true,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   @event_loop.mtime_by_path(path, follow_symlink~, context="@fs.mtime()")
 }
 
@@ -64,7 +64,7 @@ pub async fn mtime(
 pub async fn ctime(
   path : StringView,
   follow_symlink~ : Bool = true,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   @event_loop.ctime_by_path(path, follow_symlink~, context="@fs.ctime()")
 }
 
@@ -154,6 +154,6 @@ pub async fn symlink(
 /// - other users can do nothing to the file
 ///
 /// On Windows, `@fs.chmod` is not supported, and will fail with error.
-pub async fn chmod(path : StringView, mode : Int) -> Unit {
+pub async fn chmod(path : StringView, mode : Int32) -> Unit {
   @event_loop.chmod(path, mode, context="@fs.chmod()")
 }

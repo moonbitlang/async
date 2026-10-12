@@ -20,7 +20,7 @@
 /// decoded as lossy UTF-8 so arbitrary process output cannot cancel a run;
 /// `stdout_bytes` keeps standard output byte for byte.
 struct Output {
-  exit_code : Int
+  exit_code : Int32
   stdout : String
   stdout_bytes : Bytes
   stderr : String
@@ -29,7 +29,7 @@ struct Output {
 ///|
 /// The exit status: for a pipeline, the rightmost non-zero stage status, or
 /// zero when every stage succeeded (pipefail).
-pub fn Output::exit_code(self : Output) -> Int {
+pub fn Output::exit_code(self : Output) -> Int32 {
   self.exit_code
 }
 
@@ -86,11 +86,11 @@ priv suberror ShellError {
   EmptyProgram
   EmptyPipeline
   InvalidEnvironmentName(String)
-  InvalidOutputLimit(Int)
-  OutputLimitExceeded(stream~ : String, limit~ : Int)
+  InvalidOutputLimit(Int32)
+  OutputLimitExceeded(stream~ : String, limit~ : Int32)
   NulByte(String)
-  StdinOnNonFirstStage(Int)
-  RedirectOnNonFinalStage(Int)
+  StdinOnNonFirstStage(Int32)
+  RedirectOnNonFinalStage(Int32)
   StdoutNotCaptured
   CommandFailed(Output)
 } derive(Debug)

@@ -17,7 +17,7 @@
 /// `each_line`'s framing rules are exercised by echoing a chosen payload
 /// through the `cat` test program, so every byte of the child's output is
 /// under the test's control on every platform.
-async fn lines_of(payload : String, max_line_bytes? : Int) -> Array[String] {
+async fn lines_of(payload : String, max_line_bytes? : Int32) -> Array[String] {
   let seen = []
   let code = @shell.Cmd(cat_prog.wait(), [], stdin=Text(payload)).each_line(
     line => seen.push(line),

@@ -28,9 +28,9 @@ priv struct Waiter[X] {
   /// `None` indicates that the reader is cancelled
   coro : @coroutine.Coroutine
   /// For intrusive cancellable queue
-  mut index : Int
-  mut next : Int
-  mut prev : Int
+  mut index : Int32
+  mut next : Int32
+  mut prev : Int32
 }
 
 ///|
@@ -82,9 +82,9 @@ extend Waiter with @cancellable_queue.Element::{is_queued}
 ///   will be silently discarded.
 pub(all) enum Kind {
   Unbounded
-  Blocking(Int)
-  DiscardOldest(Int)
-  DiscardLatest(Int)
+  Blocking(Int32)
+  DiscardOldest(Int32)
+  DiscardLatest(Int32)
 }
 
 ///|

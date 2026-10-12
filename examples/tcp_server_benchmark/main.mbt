@@ -19,9 +19,9 @@ let data : Bytes = Bytes::make(1024, 0)
 async fn client(
   rand : @random.Rand,
   dst : @socket.Addr,
-  total_conn~ : Int,
-  max_concurrent_conn~ : Int,
-  conn_duration~ : Int,
+  total_conn~ : Int32,
+  max_concurrent_conn~ : Int32,
+  conn_duration~ : Int32,
 ) -> (Int64, Double) {
   let mut throughput_sum : Int64 = 0
   let mut latency_sum : UInt64 = 0

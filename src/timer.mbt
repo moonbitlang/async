@@ -41,7 +41,7 @@ priv enum TimerState {
 /// So if no one is waiting for a timer,
 /// the timer will not block program termination even if it is still active.
 pub struct Timer {
-  duration : Int
+  duration : Int32
   priv mut state : TimerState
   priv mut expire_time : Int64
   // invariant: `waiters` is non-empty iff `state` is `Running`
@@ -52,7 +52,7 @@ pub struct Timer {
 /// Create a new timer that expires after `duration` milliseconds.
 /// The timer will start immediately, and expire after the duration elapsed.
 #alias(new, deprecated)
-pub fn Timer::Timer(duration : Int) -> Timer {
+pub fn Timer::Timer(duration : Int32) -> Timer {
   let expire_time = now() + duration.to_int64()
   { state: Detached, duration, expire_time, waiters: Set([]), }
 }

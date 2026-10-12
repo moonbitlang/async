@@ -52,18 +52,18 @@ let global_ifname_socket : Ref[@fd_util.Fd] = {
 extern "C" fn if_nametoindex_ffi(
   global_sock : @fd_util.Fd,
   name : @os_string.OsString,
-) -> UInt = "moonbitlang_async_if_nametoindex"
+) -> UInt32 = "moonbitlang_async_if_nametoindex"
 
 ///|
 extern "C" fn if_indextoname_ffi(
   global_sock : @fd_util.Fd,
-  index : UInt,
+  index : UInt32,
 ) -> @c_buffer.Buffer = "moonbitlang_async_if_indextoname"
 
 ///|
 #doc(hidden)
 #internal(internal, "for internal use only")
-pub fn if_nametoindex(name : StringView, context~ : String) -> UInt raise {
+pub fn if_nametoindex(name : StringView, context~ : String) -> UInt32 raise {
   let os_name = @os_string.encode(name)
   let index = if_nametoindex_ffi(global_ifname_socket.val, os_name)
   if index is 0 {
@@ -75,7 +75,7 @@ pub fn if_nametoindex(name : StringView, context~ : String) -> UInt raise {
 ///|
 #doc(hidden)
 #internal(internal, "for internal use only")
-pub fn if_indextoname(index : UInt, context~ : String) -> String raise {
+pub fn if_indextoname(index : UInt32, context~ : String) -> String raise {
   let name = if_indextoname_ffi(global_ifname_socket.val, index)
   if name.is_null() {
     @os_error.check_errno("\{context}: if_indextoname(\{index})")

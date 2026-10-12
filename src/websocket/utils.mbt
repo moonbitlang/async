@@ -17,9 +17,9 @@
 fn mask_payload(
   data : FixedArray[Byte],
   mask : BytesView,
-  offset~ : Int,
-  len~ : Int,
-  mask_offset~ : Int = 0,
+  offset~ : Int32,
+  len~ : Int32,
+  mask_offset~ : Int32 = 0,
 ) -> Unit {
   for i = 0; i < len; i = i + 1 {
     data[offset + i] = data[offset + i] ^ mask[(mask_offset + i) % 4]
@@ -45,7 +45,7 @@ fn generate_accept_key(client_key : String) -> String raise {
 }
 
 ///|
-fn verify_utf8(data : BytesView, remaining~ : Int) -> Int raise {
+fn verify_utf8(data : BytesView, remaining~ : Int32) -> Int32 raise {
   for i = 0, remaining = remaining; i < data.length(); {
     match (remaining, data.unsafe_get(i)) {
       (0, 0..<0x80) => continue i + 1, 0

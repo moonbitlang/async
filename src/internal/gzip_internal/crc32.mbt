@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn make_crc32_table(slice : Int) -> FixedArray[UInt] {
+fn make_crc32_table(slice : Int32) -> FixedArray[UInt32] {
   FixedArray::makei(256, fn(i) {
     let mut crc = i.reinterpret_as_uint()
     for _ in 0..<(8 * (slice + 1)) {
@@ -24,31 +24,31 @@ fn make_crc32_table(slice : Int) -> FixedArray[UInt] {
 }
 
 ///|
-let crc32_table0 : FixedArray[UInt] = make_crc32_table(0)
+let crc32_table0 : FixedArray[UInt32] = make_crc32_table(0)
 
 ///|
-let crc32_table1 : FixedArray[UInt] = make_crc32_table(1)
+let crc32_table1 : FixedArray[UInt32] = make_crc32_table(1)
 
 ///|
-let crc32_table2 : FixedArray[UInt] = make_crc32_table(2)
+let crc32_table2 : FixedArray[UInt32] = make_crc32_table(2)
 
 ///|
-let crc32_table3 : FixedArray[UInt] = make_crc32_table(3)
+let crc32_table3 : FixedArray[UInt32] = make_crc32_table(3)
 
 ///|
-let crc32_table4 : FixedArray[UInt] = make_crc32_table(4)
+let crc32_table4 : FixedArray[UInt32] = make_crc32_table(4)
 
 ///|
-let crc32_table5 : FixedArray[UInt] = make_crc32_table(5)
+let crc32_table5 : FixedArray[UInt32] = make_crc32_table(5)
 
 ///|
-let crc32_table6 : FixedArray[UInt] = make_crc32_table(6)
+let crc32_table6 : FixedArray[UInt32] = make_crc32_table(6)
 
 ///|
-let crc32_table7 : FixedArray[UInt] = make_crc32_table(7)
+let crc32_table7 : FixedArray[UInt32] = make_crc32_table(7)
 
 ///|
-fn crc32_update(current : UInt, chunk : BytesView) -> UInt {
+fn crc32_update(current : UInt32, chunk : BytesView) -> UInt32 {
   let len = chunk.length()
   for crc = current, i = 0; i + 8 <= len; {
     let first = crc ^ chunk.unsafe_read_uint32_le(i)

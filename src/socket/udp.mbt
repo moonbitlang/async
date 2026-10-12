@@ -120,7 +120,10 @@ pub fn UdpClient::set_multicast_interface_v6(
 /// Set the multicast TTL (or hop limit for IPv6) for this client.
 /// `ttl=0` means packet never goes out of local machine.
 /// `ttl=1` means packet never goes out of local subnet.
-pub fn UdpClient::set_multicast_ttl(self : UdpClient, ttl : Int) -> Unit raise {
+pub fn UdpClient::set_multicast_ttl(
+  self : UdpClient,
+  ttl : Int32,
+) -> Unit raise {
   set_multicast_ttl(
     self.io.fd(),
     ttl,
@@ -324,7 +327,10 @@ pub fn UdpServer::set_multicast_interface_v6(
 /// Set the multicast TTL (or hop limit for IPv6) for this client.
 /// `ttl=0` means packet never goes out of local machine.
 /// `ttl=1` means packet never goes out of local subnet.
-pub fn UdpServer::set_multicast_ttl(self : UdpServer, ttl : Int) -> Unit raise {
+pub fn UdpServer::set_multicast_ttl(
+  self : UdpServer,
+  ttl : Int32,
+) -> Unit raise {
   set_multicast_ttl(
     self.io.fd(),
     ttl,
@@ -437,9 +443,9 @@ pub fn UdpServer::join_multicast_group_v6(
 pub async fn UdpClient::recv(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
-) -> Int {
+  offset~ : Int32 = 0,
+  max_len~ : Int32 = buf.length() - offset,
+) -> Int32 {
   self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv()")
 }
 
@@ -450,9 +456,9 @@ pub async fn UdpClient::recv(
 pub async fn UdpClient::recvfrom(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
-) -> (Int, Addr) {
+  offset~ : Int32 = 0,
+  max_len~ : Int32 = buf.length() - offset,
+) -> (Int32, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
   let n_read = self.io.recvfrom(
@@ -482,9 +488,9 @@ pub async fn UdpClient::recvfrom(
 pub async fn UdpServer::recvfrom(
   self : UdpServer,
   buf : FixedArray[Byte],
-  offset~ : Int = 0,
-  max_len~ : Int = buf.length() - offset,
-) -> (Int, Addr) {
+  offset~ : Int32 = 0,
+  max_len~ : Int32 = buf.length() - offset,
+) -> (Int32, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
   let n_read = self.io.recvfrom(
@@ -508,8 +514,8 @@ pub async fn UdpServer::recvfrom(
 pub async fn UdpClient::send(
   self : UdpClient,
   buf : Bytes,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
+  offset~ : Int32 = 0,
+  len~ : Int32 = buf.length() - offset,
 ) -> Unit {
   let context = "@socket.UdpClient::send()"
   let _ = match self.dst_addr {
@@ -530,8 +536,8 @@ pub async fn UdpServer::sendto(
   self : UdpServer,
   buf : Bytes,
   addr : Addr,
-  offset~ : Int = 0,
-  len~ : Int = buf.length() - offset,
+  offset~ : Int32 = 0,
+  len~ : Int32 = buf.length() - offset,
 ) -> Unit {
   guard !self.is_multicast_only else {
     raise Failure::Failure(

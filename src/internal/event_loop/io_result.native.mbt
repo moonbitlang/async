@@ -22,8 +22,8 @@ priv type IoResult
 #owned(buf)
 extern "C" fn IoResult::for_file_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResult = "moonbitlang_async_make_file_read_io_result"
 
@@ -32,8 +32,8 @@ extern "C" fn IoResult::for_file_read(
 #owned(buf)
 extern "C" fn IoResult::for_file_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResult = "moonbitlang_async_make_file_write_io_result"
 
@@ -42,9 +42,9 @@ extern "C" fn IoResult::for_file_write(
 #owned(buf)
 extern "C" fn IoResult::for_socket_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
 ) -> IoResult = "moonbitlang_async_make_socket_read_io_result"
 
 ///|
@@ -52,9 +52,9 @@ extern "C" fn IoResult::for_socket_read(
 #owned(buf)
 extern "C" fn IoResult::for_socket_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
 ) -> IoResult = "moonbitlang_async_make_socket_write_io_result"
 
 ///|
@@ -62,9 +62,9 @@ extern "C" fn IoResult::for_socket_write(
 #owned(buf, addr)
 extern "C" fn IoResult::for_socket_with_addr_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
 ) -> IoResult = "moonbitlang_async_make_socket_with_addr_read_io_result"
 
@@ -73,9 +73,9 @@ extern "C" fn IoResult::for_socket_with_addr_read(
 #owned(buf, addr)
 extern "C" fn IoResult::for_socket_with_addr_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
 ) -> IoResult = "moonbitlang_async_make_socket_with_addr_write_io_result"
 
@@ -86,7 +86,7 @@ extern "C" fn IoResult::for_connect(addr : Bytes) -> IoResult = "moonbitlang_asy
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::for_accept(addr_len : Int) -> IoResult = "moonbitlang_async_make_accept_io_result"
+extern "C" fn IoResult::for_accept(addr_len : Int32) -> IoResult = "moonbitlang_async_make_accept_io_result"
 
 ///|
 #cfg(platform="windows")
@@ -100,7 +100,7 @@ extern "C" fn IoResult::get_accept_peer_addr(
 #cfg(platform="windows")
 extern "C" fn IoResult::for_read_dir_changes(
   buf : @c_buffer.Buffer,
-  len~ : Int,
+  len~ : Int32,
 ) -> IoResult = "moonbitlang_async_make_read_dir_changes_io_result"
 
 ///|
@@ -109,26 +109,26 @@ extern "C" fn IoResult::free(self : IoResult) = "moonbitlang_async_free_io_resul
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::event(self : IoResult) -> Int = "moonbitlang_async_io_result_get_event"
+extern "C" fn IoResult::event(self : IoResult) -> Int32 = "moonbitlang_async_io_result_get_event"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn IoResult::cancel_ffi(
   self : IoResult,
   handle : @fd_util.Fd,
-) -> Int = "moonbitlang_async_cancel_io_result"
+) -> Int32 = "moonbitlang_async_cancel_io_result"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn IoResult::status_ffi(
   result : IoResult,
   handle : @fd_util.Fd,
-) -> Int = "moonbitlang_async_io_result_get_status"
+) -> Int32 = "moonbitlang_async_io_result_get_status"
 
 ///|
 /// There is no need to copy data on completion of an IOCP operation in native backend.
 /// This is mainly used to align the API shape with WASM.
 #cfg(platform="windows")
-fn IoResult::copy_read_result(result : IoResult, _ : Int) -> Unit {
+fn IoResult::copy_read_result(result : IoResult, _ : Int32) -> Unit {
   ignore(result)
 }

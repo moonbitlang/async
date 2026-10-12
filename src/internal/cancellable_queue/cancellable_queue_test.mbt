@@ -14,14 +14,14 @@
 
 ///|
 struct TestElement {
-  id : Int
-  mut index : Int
-  mut next : Int
-  mut prev : Int
+  id : Int32
+  mut index : Int32
+  mut next : Int32
+  mut prev : Int32
 }
 
 ///|
-fn test_element(id : Int) -> TestElement {
+fn test_element(id : Int32) -> TestElement {
   { id, index: -1, next: -1, prev: -1, }
 }
 
@@ -73,7 +73,7 @@ test "empty and singleton queue" {
 test "mixed removals, pops, and growth preserve FIFO order" {
   let q : @cancellable_queue.Queue[TestElement] = @cancellable_queue.Queue::Queue()
   let nodes : Array[TestElement] = []
-  let expected : Array[Int] = []
+  let expected : Array[Int32] = []
   for i in 0..<40 {
     let node = test_element(i)
     nodes.push(node)

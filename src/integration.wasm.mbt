@@ -27,8 +27,8 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 
 ///|
 #unsafe_skip_stub_check
-fn exit(code : Int) = "moonbitlang/async" "runtime/exit"
+fn exit(code : Int32) = "moonbitlang/async" "runtime/exit"
 
 ///|
 #unsafe_skip_stub_check
-fn terminate_process_by_signal(signal : Int) = "moonbitlang/async" "runtime/terminate_process_by_signal"
+fn terminate_process_by_signal(signal : Int32) = "moonbitlang/async" "runtime/terminate_process_by_signal"
