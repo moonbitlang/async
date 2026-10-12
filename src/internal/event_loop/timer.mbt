@@ -14,16 +14,16 @@
 
 ///|
 struct Timer {
-  timer_id : Int
+  timer_id : Int32
   expire_time : Int64
   callback : () -> Unit
 }
 
 ///|
-let timer_id : Ref[Int] = { val: 0, }
+let timer_id : Ref[Int32] = { val: 0, }
 
 ///|
-pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
+pub fn Timer::new(duration : Int32, callback : () -> Unit) -> Timer {
   guard! curr_loop.val is Some(evloop)
   let expire_time = now() + duration.to_int64()
   timer_id.val += 1
@@ -52,7 +52,7 @@ impl Compare for Timer with fn compare(t1, t2) {
 }
 
 ///|
-pub async fn sleep(duration : Int) -> Unit noraise {
+pub async fn sleep(duration : Int32) -> Unit noraise {
   let coro = @coroutine.current_coroutine()
   let timer = Timer::new(duration, () => coro.wake())
   defer timer.cancel()

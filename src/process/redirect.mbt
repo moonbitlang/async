@@ -153,7 +153,7 @@ pub impl @io.Writer for WriteToProcess with fn write_once(
 pub extend WriteToProcess with @io.Writer::{write_once, write, write_reader}
 
 ///|
-fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
+fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int32 = "%identity"
 
 ///|
 /// Redirect the output of a process to the file at `path`.
@@ -177,7 +177,7 @@ pub async fn redirect_to_file(
   path : String,
   append~ : Bool = false,
   create_mode~ : @fs.CreateMode = CreateOrTruncate,
-  permission~ : Int = 0o644,
+  permission~ : Int32 = 0o644,
   shared~ : Bool = false,
 ) -> &ProcessOutput {
   let (file, _) = @event_loop.open(

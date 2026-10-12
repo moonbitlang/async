@@ -147,7 +147,7 @@ async test "Timer::cancel" {
 async test "Timer::refresh has waiter" {
   let log = []
   let start = @async.now()
-  fn tick() -> Int {
+  fn tick() -> Int32 {
     (@async.now() - start + 50).to_int() / 150
   }
 
@@ -177,7 +177,7 @@ async test "Timer::refresh has waiter" {
 async test "Timer::refresh no waiter" {
   let log = []
   let start = @async.now()
-  fn tick() -> Int {
+  fn tick() -> Int32 {
     (@async.now() - start + 50).to_int() / 150
   }
 
@@ -196,7 +196,7 @@ async test "Timer::refresh no waiter" {
 async test "Timer::refresh already terminated" {
   let log = []
   let start = @async.now()
-  fn tick() -> Int {
+  fn tick() -> Int32 {
     (@async.now() - start + 50).to_int() / 150
   }
 

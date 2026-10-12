@@ -18,7 +18,7 @@ struct Options {
 }
 
 ///|
-fn line_prefix(line_no : Int) -> String {
+fn line_prefix(line_no : Int32) -> String {
   let n = if line_no < 10 { "0\{line_no}" } else { "\{line_no}" }
   "L\{n}: "
 }

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-let port : Int = 30001
+let port : Int32 = 30001
 
 ///|
 async fn main {

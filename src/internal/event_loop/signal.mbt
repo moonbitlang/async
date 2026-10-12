@@ -14,31 +14,31 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn get_signal_by_index(index : Int) -> Int = "moonbitlang_async_get_signal_by_index"
+extern "C" fn get_signal_by_index(index : Int32) -> Int32 = "moonbitlang_async_get_signal_by_index"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn get_signal_by_index(index : Int) -> Int = "moonbitlang/async" "signal/get_signal_by_index"
+fn get_signal_by_index(index : Int32) -> Int32 = "moonbitlang/async" "signal/get_signal_by_index"
 
 ///|
-pub let all_signals : ReadOnlyArray[Int] = ReadOnlyArray::makei(
+pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
   4, get_signal_by_index,
 )
 
 ///|
 pub suberror KilledBySignal {
-  KilledBySignal(Int)
+  KilledBySignal(Int32)
 }
 
 ///|
 #cfg(target="native")
 #borrow(all_signals, signals)
 extern "C" fn set_global_cancellation_signals_ffi(
-  all_signals : ReadOnlyArray[Int],
-  all_signals_len : Int,
-  signals : ReadOnlyArray[Int],
-  signals_len : Int,
+  all_signals : ReadOnlyArray[Int32],
+  all_signals_len : Int32,
+  signals : ReadOnlyArray[Int32],
+  signals_len : Int32,
 ) -> Unit = "moonbitlang_async_set_global_cancellation_signals"
 
 ///|
@@ -46,17 +46,17 @@ extern "C" fn set_global_cancellation_signals_ffi(
 #unsafe_skip_stub_check
 #borrow(all_signals, signals)
 fn set_global_cancellation_signals_ffi(
-  all_signals : ReadOnlyArray[Int],
-  all_signals_len : Int,
-  signals : ReadOnlyArray[Int],
-  signals_len : Int,
+  all_signals : ReadOnlyArray[Int32],
+  all_signals_len : Int32,
+  signals : ReadOnlyArray[Int32],
+  signals_len : Int32,
 ) -> Unit = "moonbitlang/async" "signal/set_global_cancellation_signals"
 
 ///|
 let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 
 ///|
-pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int]) -> Unit {
+pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int32]) -> Unit {
   global_signal_handler_initialized.val = true
   set_global_cancellation_signals_ffi(
     all_signals,
@@ -105,12 +105,12 @@ fn EventLoop::terminate_signal_handler_unix(evloop : EventLoop) -> Unit raise {
 
 ///|
 #cfg(platform="windows")
-extern "C" fn set_console_control_handler(add : Int) -> Int = "moonbitlang_async_set_console_control_handler"
+extern "C" fn set_console_control_handler(add : Int32) -> Int32 = "moonbitlang_async_set_console_control_handler"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn set_console_control_handler(add : Int) -> Int = "moonbitlang/async" "signal/set_console_control_handler"
+fn set_console_control_handler(add : Int32) -> Int32 = "moonbitlang/async" "signal/set_console_control_handler"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
@@ -182,4 +182,4 @@ fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
 
 ///|
 #cfg(target="native")
-pub extern "C" fn terminate_process_by_signal(sig : Int) -> Unit = "moonbitlang_async_terminate_process_by_signal"
+pub extern "C" fn terminate_process_by_signal(sig : Int32) -> Unit = "moonbitlang_async_terminate_process_by_signal"

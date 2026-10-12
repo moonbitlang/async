@@ -14,22 +14,22 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn Job::sleep(time : Int) -> Job = "moonbitlang_async_make_sleep_job"
+extern "C" fn Job::sleep(time : Int32) -> Job = "moonbitlang_async_make_sleep_job"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn JobHandle::sleep(time : Int) -> JobHandle = "moonbitlang/async" "thread_pool/make_sleep_job"
+fn JobHandle::sleep(time : Int32) -> JobHandle = "moonbitlang/async" "thread_pool/make_sleep_job"
 
 ///|
 #cfg(target="wasm")
-fn Job::sleep(time : Int) -> Job {
+fn Job::sleep(time : Int32) -> Job {
   Job(JobHandle::sleep(time))
 }
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn perform_sleep_job(t : Int) -> Unit {
+async fn perform_sleep_job(t : Int32) -> Unit {
   let job = Job::sleep(t)
   defer job.free()
   perform_job_in_worker(job, context="") |> ignore
@@ -37,7 +37,7 @@ async fn perform_sleep_job(t : Int) -> Unit {
 
 ///|
 #cfg(target="js")
-async fn perform_sleep_job(t : Int) -> Unit {
+async fn perform_sleep_job(t : Int32) -> Unit {
   @async.protect_from_cancel(() => @async.sleep(t))
 }
 

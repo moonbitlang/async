@@ -26,12 +26,12 @@ pub(all) enum Signal {
 } derive(Debug)
 
 ///|
-fn Signal::index(sig : Signal) -> Int = "%identity"
+fn Signal::index(sig : Signal) -> Int32 = "%identity"
 
 ///|
 /// Convert a signal to its underlying signal code in the OS.
 /// The result of this function is platform-dependent.
-pub fn Signal::to_int(signal : Signal) -> Int {
+pub fn Signal::to_int(signal : Signal) -> Int32 {
   @event_loop.all_signals[signal.index()]
 }
 

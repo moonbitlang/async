@@ -60,7 +60,7 @@ fn TrustedRoot::mode(self : TrustedRoot) -> TlsTrustMode {
 ///|
 #unsafe_skip_stub_check
 #borrow(buf)
-fn tls_buffer_length(buf : @c_buffer.Buffer) -> Int = "moonbitlang/async" "c_buffer/length"
+fn tls_buffer_length(buf : @c_buffer.Buffer) -> Int32 = "moonbitlang/async" "c_buffer/length"
 
 ///|
 // Returns a live handle containing pending configuration. TLS initialization
@@ -74,10 +74,10 @@ fn TlsConnectionHandle::new() -> TlsConnectionHandle = "moonbitlang/async" "tls/
 fn TlsConnectionHandle::set_client(
   self : TlsConnectionHandle,
   host : String,
-  host_len~ : Int = host.length(),
+  host_len~ : Int32 = host.length(),
   sni~ : Bool,
   trust : TlsTrustMode,
-) -> Int = "moonbitlang/async" "tls/connection/set_client"
+) -> Int32 = "moonbitlang/async" "tls/connection/set_client"
 
 ///|
 #unsafe_skip_stub_check
@@ -85,8 +85,8 @@ fn TlsConnectionHandle::set_client(
 fn TlsConnectionHandle::add_root_certificate(
   self : TlsConnectionHandle,
   root : Bytes,
-  root_len~ : Int = root.length(),
-) -> Int = "moonbitlang/async" "tls/connection/add_root_certificate"
+  root_len~ : Int32 = root.length(),
+) -> Int32 = "moonbitlang/async" "tls/connection/add_root_certificate"
 
 ///|
 #unsafe_skip_stub_check
@@ -94,12 +94,12 @@ fn TlsConnectionHandle::add_root_certificate(
 fn TlsConnectionHandle::set_server_files(
   self : TlsConnectionHandle,
   private_key_file : @os_string.OsString,
-  private_key_file_len~ : Int = private_key_file.to_string().length(),
+  private_key_file_len~ : Int32 = private_key_file.to_string().length(),
   private_key_type : X509FileType,
   certificate_file : @os_string.OsString,
-  certificate_file_len~ : Int = certificate_file.to_string().length(),
+  certificate_file_len~ : Int32 = certificate_file.to_string().length(),
   certificate_type : X509FileType,
-) -> Int = "moonbitlang/async" "tls/connection/set_server_files"
+) -> Int32 = "moonbitlang/async" "tls/connection/set_server_files"
 
 ///|
 #unsafe_skip_stub_check
@@ -107,8 +107,8 @@ fn TlsConnectionHandle::set_server_files(
 fn TlsConnectionHandle::set_server_pfx(
   self : TlsConnectionHandle,
   pfx_content : Bytes,
-  pfx_content_len~ : Int = pfx_content.length(),
-) -> Int = "moonbitlang/async" "tls/connection/set_server_pfx"
+  pfx_content_len~ : Int32 = pfx_content.length(),
+) -> Int32 = "moonbitlang/async" "tls/connection/set_server_pfx"
 
 ///|
 #unsafe_skip_stub_check
@@ -135,15 +135,15 @@ fn TlsConnectionHandle::take_error_message(
 fn TlsConnectionHandle::read_plain(
   self : TlsConnectionHandle,
   in_buffer~ : FixedArray[Byte],
-  in_buffer_offset~ : Int,
-  in_buffer_len~ : Int,
+  in_buffer_offset~ : Int32,
+  in_buffer_len~ : Int32,
   out_buffer~ : FixedArray[Byte],
-  out_buffer_offset~ : Int,
-  out_buffer_len~ : Int,
+  out_buffer_offset~ : Int32,
+  out_buffer_len~ : Int32,
   plain_buffer~ : FixedArray[Byte],
-  plain_buffer_offset~ : Int,
-  plain_buffer_len~ : Int,
-) -> Int = "moonbitlang/async" "tls/connection/read_plain"
+  plain_buffer_offset~ : Int32,
+  plain_buffer_len~ : Int32,
+) -> Int32 = "moonbitlang/async" "tls/connection/read_plain"
 
 ///|
 #unsafe_skip_stub_check
@@ -151,15 +151,15 @@ fn TlsConnectionHandle::read_plain(
 fn TlsConnectionHandle::write_plain(
   self : TlsConnectionHandle,
   in_buffer~ : FixedArray[Byte],
-  in_buffer_offset~ : Int,
-  in_buffer_len~ : Int,
+  in_buffer_offset~ : Int32,
+  in_buffer_len~ : Int32,
   out_buffer~ : FixedArray[Byte],
-  out_buffer_offset~ : Int,
-  out_buffer_len~ : Int,
+  out_buffer_offset~ : Int32,
+  out_buffer_len~ : Int32,
   plain_buffer~ : Bytes,
-  plain_buffer_offset~ : Int,
-  plain_buffer_len~ : Int,
-) -> Int = "moonbitlang/async" "tls/connection/write_plain"
+  plain_buffer_offset~ : Int32,
+  plain_buffer_len~ : Int32,
+) -> Int32 = "moonbitlang/async" "tls/connection/write_plain"
 
 ///|
 #unsafe_skip_stub_check
@@ -167,11 +167,11 @@ fn TlsConnectionHandle::write_plain(
 fn TlsConnectionHandle::connect(
   self : TlsConnectionHandle,
   in_buffer~ : FixedArray[Byte],
-  in_buffer_offset~ : Int,
-  in_buffer_len~ : Int,
+  in_buffer_offset~ : Int32,
+  in_buffer_len~ : Int32,
   out_buffer~ : FixedArray[Byte],
-  out_buffer_offset~ : Int,
-  out_buffer_len~ : Int,
+  out_buffer_offset~ : Int32,
+  out_buffer_len~ : Int32,
 ) -> TlsState = "moonbitlang/async" "tls/connection/connect"
 
 ///|
@@ -180,20 +180,20 @@ fn TlsConnectionHandle::connect(
 fn TlsConnectionHandle::accept(
   self : TlsConnectionHandle,
   in_buffer~ : FixedArray[Byte],
-  in_buffer_offset~ : Int,
-  in_buffer_len~ : Int,
+  in_buffer_offset~ : Int32,
+  in_buffer_len~ : Int32,
   out_buffer~ : FixedArray[Byte],
-  out_buffer_offset~ : Int,
-  out_buffer_len~ : Int,
+  out_buffer_offset~ : Int32,
+  out_buffer_len~ : Int32,
 ) -> TlsState = "moonbitlang/async" "tls/connection/accept"
 
 ///|
 #unsafe_skip_stub_check
-fn TlsConnectionHandle::bytes_read(self : TlsConnectionHandle) -> Int = "moonbitlang/async" "tls/connection/bytes_read"
+fn TlsConnectionHandle::bytes_read(self : TlsConnectionHandle) -> Int32 = "moonbitlang/async" "tls/connection/bytes_read"
 
 ///|
 #unsafe_skip_stub_check
-fn TlsConnectionHandle::bytes_to_write(self : TlsConnectionHandle) -> Int = "moonbitlang/async" "tls/connection/bytes_to_write"
+fn TlsConnectionHandle::bytes_to_write(self : TlsConnectionHandle) -> Int32 = "moonbitlang/async" "tls/connection/bytes_to_write"
 
 ///|
 #unsafe_skip_stub_check
@@ -205,7 +205,7 @@ fn TlsConnectionHandle::wants_write(self : TlsConnectionHandle) -> Bool = "moonb
 
 ///|
 #unsafe_skip_stub_check
-fn TlsConnectionHandle::shutdown(self : TlsConnectionHandle) -> Int = "moonbitlang/async" "tls/connection/shutdown"
+fn TlsConnectionHandle::shutdown(self : TlsConnectionHandle) -> Int32 = "moonbitlang/async" "tls/connection/shutdown"
 
 ///|
 #unsafe_skip_stub_check

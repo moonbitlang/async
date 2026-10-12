@@ -40,7 +40,7 @@ fn EventBus::try_register_ffi(
   self : EventBus,
   fd : @fd_util.Fd,
   read_only : Bool,
-) -> Int = "moonbitlang/async" "event_bus/try_register"
+) -> Int32 = "moonbitlang/async" "event_bus/try_register"
 
 ///|
 fn EventBus::register(
@@ -57,12 +57,12 @@ fn EventBus::register(
 
 ///|
 #unsafe_skip_stub_check
-fn EventBus::register_pid_ffi(self : EventBus, pid : Int) -> Int = "moonbitlang/async" "event_bus/register_pid"
+fn EventBus::register_pid_ffi(self : EventBus, pid : Int32) -> Int32 = "moonbitlang/async" "event_bus/register_pid"
 
 ///|
 /// Return `true` if the PID is successfully registered.
 /// Return `false` if the process has already terminated.
-fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
+fn EventBus::register_pid(self : EventBus, pid : Int32) -> Bool raise {
   let ret = self.register_pid_ffi(pid)
   if ret == -1 {
     @os_error.check_errno("poll_register_pid")
@@ -72,14 +72,14 @@ fn EventBus::register_pid(self : EventBus, pid : Int) -> Bool raise {
 
 ///|
 #unsafe_skip_stub_check
-fn EventBus::wait(self : EventBus, timeout~ : Int) -> Int = "moonbitlang/async" "event_bus/wait"
+fn EventBus::wait(self : EventBus, timeout~ : Int32) -> Int32 = "moonbitlang/async" "event_bus/wait"
 
 ///|
 priv struct Event(UInt64)
 
 ///|
 #unsafe_skip_stub_check
-fn EventBus::get_event(self : EventBus, index : Int) -> Event = "moonbitlang/async" "event_bus/get_event"
+fn EventBus::get_event(self : EventBus, index : Int32) -> Event = "moonbitlang/async" "event_bus/get_event"
 
 ///|
 #unsafe_skip_stub_check
@@ -87,11 +87,11 @@ fn Event::fd(event : Event) -> @fd_util.Fd = "moonbitlang/async" "event_bus/even
 
 ///|
 #unsafe_skip_stub_check
-fn Event::pid(event : Event) -> Int = "moonbitlang/async" "event_bus/event_pid"
+fn Event::pid(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_pid"
 
 ///|
 #unsafe_skip_stub_check
-fn Event::events(event : Event) -> Int = "moonbitlang/async" "event_bus/event_events/unix"
+fn Event::events(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_events/unix"
 
 ///|
 #unsafe_skip_stub_check
@@ -99,4 +99,4 @@ fn Event::io_result(event : Event) -> IoResultHandle = "moonbitlang/async" "even
 
 ///|
 #unsafe_skip_stub_check
-fn Event::bytes_transferred(event : Event) -> Int = "moonbitlang/async" "event_bus/event_bytes_transferred/windows"
+fn Event::bytes_transferred(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_bytes_transferred/windows"

@@ -17,12 +17,12 @@
 /// it requires elements to provide mutable storage for
 /// an array index and a doubly linked list header.
 pub(open) trait Element {
-  fn get_index(Self) -> Int
-  fn set_index(Self, Int) -> Unit
-  fn get_next(Self) -> Int
-  fn set_next(Self, Int) -> Unit
-  fn get_prev(Self) -> Int
-  fn set_prev(Self, Int) -> Unit
+  fn get_index(Self) -> Int32
+  fn set_index(Self, Int32) -> Unit
+  fn get_next(Self) -> Int32
+  fn set_next(Self, Int32) -> Unit
+  fn get_prev(Self) -> Int32
+  fn set_prev(Self, Int32) -> Unit
   fn is_queued(Self) -> Bool = _
 }
 
@@ -38,13 +38,13 @@ struct Queue[X] {
   // Using `X?` allows us to release the memory occupied by empty cells immediately.
   // All elements within `0..<len` should be `Some`
   mut buf : FixedArray[X?]
-  mut len : Int
+  mut len : Int32
 
   // Index of the first element in the queue, updated when popping
-  mut head : Int
+  mut head : Int32
 
   // Index of the last element in the queue, updated when pushing
-  mut last : Int
+  mut last : Int32
 }
 
 ///|
@@ -61,7 +61,7 @@ pub fn[X : Element] Queue::pop(self : Queue[X]) -> X? {
 }
 
 ///|
-fn[X] Queue::enlarge_to(self : Queue[X], size : Int) -> Unit {
+fn[X] Queue::enlarge_to(self : Queue[X], size : Int32) -> Unit {
   let new_buf = FixedArray::make(size, None)
   self.buf.blit_to(new_buf, src_offset=0, dst_offset=0, len=self.len)
   self.buf = new_buf

@@ -41,7 +41,7 @@ pub async fn spawn_orphan(
   stderr? : &ProcessOutput,
   cwd? : StringView,
   no_console_window~ : Bool = false,
-) -> Int {
+) -> Int32 {
   let proc = raw_spawn(
     cmd,
     args,
@@ -63,7 +63,7 @@ pub async fn spawn_orphan(
 /// Wait for the process with specfic ID to terminate,
 /// and return the exit code of the process.
 /// If the process is killed by a signal, the result would be `-signal_number`.
-pub async fn wait_pid(pid : Int) -> Int {
+pub async fn wait_pid(pid : Int32) -> Int32 {
   let context = "@process.wait_pid()"
   let process = @event_loop.Process::from_pid(pid, context~)
   defer process.close()
@@ -131,7 +131,7 @@ pub async fn run(
   cwd? : StringView,
   no_console_window~ : Bool = false,
   cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
-) -> Int {
+) -> Int32 {
   let context = "@process.run()"
   let process = raw_spawn(
     cmd,
@@ -166,14 +166,14 @@ pub async fn run(
 ///|
 /// A handle to a spawned process
 pub struct Process {
-  pid : Int
-  priv result : @async.Task[Int]
+  pid : Int32
+  priv result : @async.Task[Int32]
 }
 
 ///|
 /// Wait for a process to terminate, return the exit code of the process
 /// If the process is killed by a signal, the result would be `-signal_number`.
-pub async fn Process::wait(self : Process) -> Int {
+pub async fn Process::wait(self : Process) -> Int32 {
   self.result.wait()
 }
 
@@ -181,7 +181,7 @@ pub async fn Process::wait(self : Process) -> Int {
 /// If the process already terminated, return its exit code.
 /// If the process is killed by a signal, the result would be `-signal_number`.
 /// If the process is still running, return `None`.
-pub fn Process::try_wait(self : Process) -> Int? raise {
+pub fn Process::try_wait(self : Process) -> Int32? raise {
   self.result.try_wait()
 }
 
@@ -267,7 +267,7 @@ pub async fn collect_stdout(
   stderr? : &ProcessOutput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int32, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
@@ -303,7 +303,7 @@ pub async fn collect_stderr(
   stdout? : &ProcessOutput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int32, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()
@@ -339,7 +339,7 @@ pub async fn collect_output(
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data, &@io.Data) {
+) -> (Int32, &@io.Data, &@io.Data) {
   let (r_out, w_out) = read_from_process()
   let (r_err, w_err) = read_from_process()
   @async.with_task_group() <| group => {
@@ -382,7 +382,7 @@ pub async fn collect_output_merged(
   stdin? : &ProcessInput,
   cwd? : StringView,
   no_console_window? : Bool,
-) -> (Int, &@io.Data) {
+) -> (Int32, &@io.Data) {
   let (r, w) = read_from_process()
   @async.with_task_group() <| group => {
     defer r.close()

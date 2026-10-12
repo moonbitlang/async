@@ -15,11 +15,11 @@
 ///|
 #unsafe_skip_stub_check
 #borrow(buf)
-extern "wasm" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int) -> Int = "moonbitlang/async" "random/fill"
+extern "wasm" fn rand_bytes_ffi(buf : FixedArray[Byte], num : Int32) -> Int32 = "moonbitlang/async" "random/fill"
 
 ///|
 #internal(internal, "for internal use only")
-pub fn rand_bytes(num : Int) -> Bytes raise {
+pub fn rand_bytes(num : Int32) -> Bytes raise {
   let result = FixedArray::make(num, b'\x00')
   if rand_bytes_ffi(result, num) < 0 {
     @os_error.check_errno("@tls.rand_bytes()")
@@ -28,7 +28,7 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 }
 
 ///|
-fn sha1_rotate_left(x : Int, n : Int) -> Int {
+fn sha1_rotate_left(x : Int32, n : Int32) -> Int32 {
   (x << n) | (x.reinterpret_as_uint() >> (32 - n)).reinterpret_as_int()
 }
 

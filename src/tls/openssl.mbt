@@ -36,7 +36,10 @@ extern "C" fn SSL_CTX::free_ffi(self : SSL_CTX) = "moonbitlang_async_tls_ssl_ctx
 ///|
 #cfg(not(platform="windows"))
 #borrow(der)
-extern "C" fn SSL_CTX::add_root_certificate(self : SSL_CTX, der : Bytes) -> Int = "moonbitlang_async_tls_ssl_ctx_add_root_certificate"
+extern "C" fn SSL_CTX::add_root_certificate(
+  self : SSL_CTX,
+  der : Bytes,
+) -> Int32 = "moonbitlang_async_tls_ssl_ctx_add_root_certificate"
 
 // Lazy singletons: the shared client/server contexts (and the system CA read
 // they trigger) are built on first use, not before a TLS connection is made.
@@ -76,17 +79,17 @@ extern "C" fn SSL::new(ctx : SSL_CTX, rbio : BIO, wbio : BIO) -> SSL = "moonbitl
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::connect(self : SSL) -> Int = "moonbitlang_async_tls_ssl_connect"
+extern "C" fn SSL::connect(self : SSL) -> Int32 = "moonbitlang_async_tls_ssl_connect"
 
 ///|
 #cfg(not(platform="windows"))
 #borrow(host)
-extern "C" fn SSL::set_host(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_host"
+extern "C" fn SSL::set_host(self : SSL, host : Bytes) -> Int32 = "moonbitlang_async_tls_ssl_set_host"
 
 ///|
 #cfg(not(platform="windows"))
 #borrow(host)
-extern "C" fn SSL::set_sni(self : SSL, host : Bytes) -> Int = "moonbitlang_async_tls_ssl_set_sni"
+extern "C" fn SSL::set_sni(self : SSL, host : Bytes) -> Int32 = "moonbitlang_async_tls_ssl_set_sni"
 
 ///|
 #cfg(not(platform="windows"))
@@ -94,7 +97,7 @@ extern "C" fn SSL::set_verify(self : SSL, verify : Bool) = "moonbitlang_async_tl
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::accept(self : SSL) -> Int = "moonbitlang_async_tls_ssl_accept"
+extern "C" fn SSL::accept(self : SSL) -> Int32 = "moonbitlang_async_tls_ssl_accept"
 
 ///|
 #cfg(not(platform="windows"))
@@ -106,7 +109,7 @@ extern "C" fn PeerCertificate::free(self : PeerCertificate) -> Unit = "moonbitla
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int = "moonbitlang_async_tls_peer_certificate_length"
+extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int32 = "moonbitlang_async_tls_peer_certificate_length"
 
 ///|
 #cfg(not(platform="windows"))
@@ -114,7 +117,7 @@ extern "C" fn PeerCertificate::length(self : PeerCertificate) -> Int = "moonbitl
 extern "C" fn PeerCertificate::blit_to(
   self : PeerCertificate,
   buf : FixedArray[Byte],
-  len~ : Int,
+  len~ : Int32,
 ) -> Unit = "moonbitlang_async_tls_peer_certificate_blit_to"
 
 ///|
@@ -122,7 +125,7 @@ extern "C" fn PeerCertificate::blit_to(
 #borrow(len)
 extern "C" fn PeerCertificate::server_endpoint_hash(
   self : PeerCertificate,
-  len~ : Ref[Int],
+  len~ : Ref[Int32],
 ) -> @c_buffer.Buffer = "moonbitlang_async_tls_hash_server_endpoint_certificate"
 
 ///|
@@ -137,7 +140,7 @@ extern "C" fn SSL::get_certificate(
 extern "C" fn SSL::unique_channel_binding_length(
   self : SSL,
   is_client~ : Bool,
-) -> Int = "moonbitlang_async_tls_ssl_unique_channel_binding_length"
+) -> Int32 = "moonbitlang_async_tls_ssl_unique_channel_binding_length"
 
 ///|
 #cfg(not(platform="windows"))
@@ -145,7 +148,7 @@ extern "C" fn SSL::unique_channel_binding_length(
 extern "C" fn SSL::unique_channel_binding(
   self : SSL,
   buf : FixedArray[Byte],
-  len~ : Int,
+  len~ : Int32,
   is_client~ : Bool,
 ) -> Unit = "moonbitlang_async_tls_ssl_unique_channel_binding"
 
@@ -156,7 +159,7 @@ extern "C" fn SSL::use_certificate_file(
   self : SSL,
   file : Bytes,
   file_type : X509FileType,
-) -> Int = "moonbitlang_async_tls_ssl_use_certificate_file"
+) -> Int32 = "moonbitlang_async_tls_ssl_use_certificate_file"
 
 ///|
 #cfg(not(platform="windows"))
@@ -165,7 +168,7 @@ extern "C" fn SSL::use_private_key_file(
   self : SSL,
   file : Bytes,
   file_type : X509FileType,
-) -> Int = "moonbitlang_async_tls_ssl_use_private_key_file"
+) -> Int32 = "moonbitlang_async_tls_ssl_use_private_key_file"
 
 ///|
 #cfg(not(platform="windows"))
@@ -173,9 +176,9 @@ extern "C" fn SSL::use_private_key_file(
 extern "C" fn SSL::read(
   self : SSL,
   buf : FixedArray[Byte],
-  offset : Int,
-  len : Int,
-) -> Int = "moonbitlang_async_tls_ssl_read"
+  offset : Int32,
+  len : Int32,
+) -> Int32 = "moonbitlang_async_tls_ssl_read"
 
 ///|
 #cfg(not(platform="windows"))
@@ -183,13 +186,13 @@ extern "C" fn SSL::read(
 extern "C" fn SSL::write(
   self : SSL,
   buf : Bytes,
-  offset : Int,
-  len : Int,
-) -> Int = "moonbitlang_async_tls_ssl_write"
+  offset : Int32,
+  len : Int32,
+) -> Int32 = "moonbitlang_async_tls_ssl_write"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::shutdown(self : SSL) -> Int = "moonbitlang_async_tls_ssl_shutdown"
+extern "C" fn SSL::shutdown(self : SSL) -> Int32 = "moonbitlang_async_tls_ssl_shutdown"
 
 ///|
 #cfg(not(platform="windows"))
@@ -197,7 +200,7 @@ extern "C" fn SSL::free(self : SSL) = "moonbitlang_async_tls_ssl_free"
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn SSL::get_error(self : SSL, ret : Int) -> Int = "moonbitlang_async_tls_ssl_get_error"
+extern "C" fn SSL::get_error(self : SSL, ret : Int32) -> Int32 = "moonbitlang_async_tls_ssl_get_error"
 
 ///|
 #cfg(not(platform="windows"))
@@ -226,7 +229,7 @@ extern "C" fn err_peek_error_code() -> UInt64 = "moonbitlang_async_tls_peek_erro
 ///|
 #cfg(not(platform="windows"))
 #borrow(buf)
-extern "C" fn err_get_error_ffi(buf : Bytes) -> Int = "moonbitlang_async_tls_get_error"
+extern "C" fn err_get_error_ffi(buf : Bytes) -> Int32 = "moonbitlang_async_tls_get_error"
 
 ///|
 #cfg(not(platform="windows"))
@@ -247,7 +250,7 @@ extern "C" fn BIO::get_endpoint(bio : BIO) -> Transport = "moonbitlang_async_tls
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn BIO::set_flags(bio : BIO, flags : Int) = "moonbitlang_async_tls_bio_set_flags"
+extern "C" fn BIO::set_flags(bio : BIO, flags : Int32) = "moonbitlang_async_tls_bio_set_flags"
 
 ///|
 // Also the sole consumer of the BIO method table `load_openssl` registers.
@@ -269,7 +272,7 @@ const BIO_FLAGS_SHOULD_RETRY = 0x08
 
 ///|
 #cfg(not(platform="windows"))
-fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
+fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int32) -> Int32 {
   let ep = bio.get_endpoint()
   match ep.state {
     Normal => ()
@@ -293,7 +296,7 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int) -> Int {
 
 ///|
 #cfg(not(platform="windows"))
-fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int) -> Int {
+fn BIO::write(bio : BIO, src : @c_buffer.Buffer, len : Int32) -> Int32 {
   let ep = bio.get_endpoint()
   guard ep.state is Normal else { -1 }
   let end = ep.write_buf.start + ep.write_buf.len
@@ -366,7 +369,7 @@ async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
 
 ///|
 #cfg(not(platform="windows"))
-async fn Tls::handle_error(self : Tls, err : Int) -> Unit {
+async fn Tls::handle_error(self : Tls, err : Int32) -> Unit {
   match err {
     SSL_ERROR_WANT_READ => {
       self.transport.flush_write()

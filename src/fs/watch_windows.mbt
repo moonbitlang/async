@@ -22,7 +22,7 @@ priv struct WindowsWatcher {
   mut err : Error?
   mut waiter : @coroutine.Coroutine?
   debounce_timer : @async.Timer
-  max_debounce_delay : Int
+  max_debounce_delay : Int32
 }
 
 ///|
@@ -32,8 +32,8 @@ fn WindowsWatcher::WindowsWatcher(
   watcher : Watcher,
   root : @event_loop.IoHandle,
   root_id~ : FileIdentity,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
 ) -> WindowsWatcher {
   let self = {
     root,
@@ -131,7 +131,7 @@ using @event_loop {type WindowsWatcherBuf}
 // Meanwhile, the document also says that network file system does not support buffer larger than 64K,
 // so use the largest possible value (64K) here.
 #cfg(any(platform="windows", target="wasm"))
-let watcher_buffer_size : Int = 1 << 16
+let watcher_buffer_size : Int32 = 1 << 16
 
 ///|
 #cfg(platform="windows")
@@ -161,46 +161,49 @@ async fn WindowsWatcherBuf::read(
   self : WindowsWatcherBuf,
   root : @event_loop.IoHandle,
   context~ : String,
-) -> Int {
+) -> Int32 {
   root.read_dir_changes(self.0, watcher_buffer_size, context~)
 }
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = "moonbitlang_async_watcher_event_get_size"
+extern "C" fn WindowsWatcherBuf::event_size(
+  self : Self,
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_watcher_event_get_size"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::event_size(self : Self, offset : Int) -> Int = "moonbitlang/async" "fs/watcher/windows/event_get_size"
+fn WindowsWatcherBuf::event_size(self : Self, offset : Int32) -> Int32 = "moonbitlang/async" "fs/watcher/windows/event_get_size"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = "moonbitlang_async_watcher_event_is_modify_event"
+extern "C" fn WindowsWatcherBuf::is_modify(self : Self, offset : Int32) -> Bool = "moonbitlang_async_watcher_event_is_modify_event"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn WindowsWatcherBuf::is_modify(self : Self, offset : Int) -> Bool = "moonbitlang/async" "fs/watcher/windows/event_is_modify"
+fn WindowsWatcherBuf::is_modify(self : Self, offset : Int32) -> Bool = "moonbitlang/async" "fs/watcher/windows/event_is_modify"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn WindowsWatcherBuf::get_path_byte_len(
   self : Self,
-  offset : Int,
-) -> Int = "moonbitlang_async_watcher_event_get_path_len"
+  offset : Int32,
+) -> Int32 = "moonbitlang_async_watcher_event_get_path_len"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn WindowsWatcherBuf::get_path_offset() -> Int = "moonbitlang_async_watcher_event_get_path_offset"
+extern "C" fn WindowsWatcherBuf::get_path_offset() -> Int32 = "moonbitlang_async_watcher_event_get_path_offset"
 
 ///|
 #cfg(platform="windows")
 fn WindowsWatcherBuf::get_path(
   self : WindowsWatcherBuf,
-  offset : Int,
+  offset : Int32,
 ) -> String {
   @os_string.decode(
     self.0,
@@ -215,8 +218,8 @@ fn WindowsWatcherBuf::get_path(
 #borrow(self)
 fn WindowsWatcherBuf::get_path_unit_len(
   self : WindowsWatcherBuf,
-  offset : Int,
-) -> Int = "moonbitlang/async" "fs/watcher/windows/event_path_len"
+  offset : Int32,
+) -> Int32 = "moonbitlang/async" "fs/watcher/windows/event_path_len"
 
 ///|
 #cfg(target="wasm")
@@ -224,9 +227,9 @@ fn WindowsWatcherBuf::get_path_unit_len(
 #borrow(self, path)
 fn WindowsWatcherBuf::copy_path(
   self : WindowsWatcherBuf,
-  offset : Int,
+  offset : Int32,
   path : String,
-  path_len : Int,
+  path_len : Int32,
 ) -> Unit = "moonbitlang/async" "fs/watcher/windows/event_path_copy"
 
 ///|
@@ -235,7 +238,7 @@ fn WindowsWatcherBuf::copy_path(
 #cfg(target="wasm")
 fn WindowsWatcherBuf::get_path(
   self : WindowsWatcherBuf,
-  offset : Int,
+  offset : Int32,
 ) -> String {
   let path_len = self.get_path_unit_len(offset)
   let path = String::make(path_len, '\u{0}')
@@ -247,14 +250,14 @@ fn WindowsWatcherBuf::get_path(
 #cfg(platform="windows")
 extern "C" fn WindowsWatcherBuf::get_file_id(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> UInt64 = "moonbitlang_async_watcher_event_get_file_id"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn WindowsWatcherBuf::get_parent_file_id(
   self : Self,
-  offset : Int,
+  offset : Int32,
 ) -> UInt64 = "moonbitlang_async_watcher_event_get_parent_file_id"
 
 ///|
@@ -267,7 +270,7 @@ fn WindowsWatcherBuf::has_file_ids(_self : WindowsWatcherBuf) -> Bool {
 #cfg(platform="windows")
 fn WindowsWatcherBuf::dirty_file_id(
   self : WindowsWatcherBuf,
-  offset : Int,
+  offset : Int32,
 ) -> UInt64 {
   if self.is_modify(offset) {
     self.get_file_id(offset)
@@ -288,7 +291,7 @@ fn WindowsWatcherBuf::has_file_ids(self : WindowsWatcherBuf) -> Bool = "moonbitl
 #borrow(self)
 fn WindowsWatcherBuf::dirty_file_id(
   self : WindowsWatcherBuf,
-  offset : Int,
+  offset : Int32,
 ) -> UInt64 = "moonbitlang/async" "fs/watcher/windows/event_dirty_file_id"
 
 ///|

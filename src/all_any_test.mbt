@@ -89,7 +89,7 @@ async test "all with max_concurrent" {
 
 ///|
 async test "all empty" {
-  let results : Array[Int] = @async.all([])
+  let results : Array[Int32] = @async.all([])
   json_inspect(results, content=[])
 }
 
@@ -135,7 +135,7 @@ async test "all failure propagates" {
 ///|
 async test "all cancelled" {
   let log = []
-  async fn task(idx : Int, sleep_time : Int) -> Int {
+  async fn task(idx : Int32, sleep_time : Int32) -> Int32 {
     match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
       None => log.push("task #\{idx} cancelled")
       Some(_) => log.push("task #\{idx} completed")
@@ -175,7 +175,7 @@ async test "any basic" {
 ///|
 async test "any returns first success" {
   let log = []
-  async fn task(idx : Int, sleep_time : Int) -> Int {
+  async fn task(idx : Int32, sleep_time : Int32) -> Int32 {
     match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
       None => {
         log.push("task #\{idx} cancelled")
@@ -295,7 +295,7 @@ async test "any empty fails" {
 ///|
 async test "any cancelled" {
   let log = []
-  async fn task(idx : Int, sleep_time : Int) -> Int {
+  async fn task(idx : Int32, sleep_time : Int32) -> Int32 {
     match @async.handle_cancellation(() => @async.sleep(sleep_time)) {
       None => log.push("task #\{idx} cancelled")
       Some(_) => log.push("task #\{idx} completed")

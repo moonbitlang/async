@@ -14,10 +14,10 @@
 
 ///|
 #unsafe_skip_stub_check
-fn gai_strerror(code : Int) -> @c_buffer.Buffer = "moonbitlang/async" "socket/gai_strerror"
+fn gai_strerror(code : Int32) -> @c_buffer.Buffer = "moonbitlang/async" "socket/gai_strerror"
 
 ///|
-fn gai_error_to_string(code : Int) -> String {
+fn gai_error_to_string(code : Int32) -> String {
   if platform is Windows {
     @os_error.errno_to_string(code)
   } else {
@@ -31,11 +31,11 @@ fn gai_error_to_string(code : Int) -> String {
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   if platform is Windows {
     handle.recvfrom_windows(buf, offset~, len~, addr~, context~)
@@ -48,11 +48,11 @@ pub async fn IoHandle::recvfrom(
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   if platform is Windows {
     handle.sendto_windows(buf, offset~, len~, addr~, context~)

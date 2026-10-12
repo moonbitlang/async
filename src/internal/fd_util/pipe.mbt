@@ -15,7 +15,7 @@
 ///|
 #cfg(not(platform="windows"))
 #borrow(fds)
-extern "C" fn pipe_ffi(fds : FixedArray[Fd]) -> Int = "moonbitlang_async_pipe"
+extern "C" fn pipe_ffi(fds : FixedArray[Fd]) -> Int32 = "moonbitlang_async_pipe"
 
 ///|
 #cfg(not(platform="windows"))
@@ -24,7 +24,7 @@ pub fn pipe(
   write_end_is_async~ : Bool,
   context~ : String,
 ) -> (Fd, Fd) raise {
-  let fds : FixedArray[Int] = [0, 0]
+  let fds : FixedArray[Int32] = [0, 0]
   if 0 != pipe_ffi(fds) {
     @os_error.check_errno(context)
   }

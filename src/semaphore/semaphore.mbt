@@ -16,9 +16,9 @@
 priv struct Waiter {
   // `None` indicates that the waiter is cancelled
   coro : @coroutine.Coroutine
-  mut index : Int
-  mut prev : Int
-  mut next : Int
+  mut index : Int32
+  mut prev : Int32
+  mut next : Int32
 }
 
 ///|
@@ -56,8 +56,8 @@ extend Waiter with @cancellable_queue.Element::{is_queued}
 
 ///|
 pub struct Semaphore {
-  size : Int
-  priv mut value : Int
+  size : Int32
+  priv mut value : Int32
   priv waiters : @cancellable_queue.Queue[Waiter]
 }
 
@@ -67,8 +67,8 @@ pub struct Semaphore {
 /// will be set to `initial_value` (`size` by default)
 #alias(new, deprecated)
 pub fn Semaphore::Semaphore(
-  size : Int,
-  initial_value~ : Int = size,
+  size : Int32,
+  initial_value~ : Int32 = size,
 ) -> Semaphore {
   if size <= 0 {
     abort("size of semaphore must be positive")

@@ -15,7 +15,7 @@
 ///|
 fn try_parse_ipv6(
   input : String,
-) -> (FixedArray[Byte], Int, String?) raise InvalidAddr {
+) -> (FixedArray[Byte], Int32, String?) raise InvalidAddr {
   // Make sure the format is [addr]:port
   guard input.has_prefix("[") else {
     // IPv6 address must start with '['
@@ -190,7 +190,7 @@ fn parse_full_ipv6_to_bytes(
 }
 
 ///|
-fn parse_ipv6_group(group : StringView) -> UInt raise InvalidAddr {
+fn parse_ipv6_group(group : StringView) -> UInt32 raise InvalidAddr {
   guard !group.is_empty() && group.length() <= 4 else { raise InvalidAddr }
   @string.parse_uint(group, base=16) catch {
     _ => raise InvalidAddr
@@ -198,7 +198,7 @@ fn parse_ipv6_group(group : StringView) -> UInt raise InvalidAddr {
 }
 
 ///|
-fn parse_ipv6_zone_suffix(zone : StringView, context~ : String) -> UInt raise {
+fn parse_ipv6_zone_suffix(zone : StringView, context~ : String) -> UInt32 raise {
   try @string.parse_uint(zone) catch {
     _ => if_nametoindex(zone, context~)
   } noraise {
@@ -209,7 +209,7 @@ fn parse_ipv6_zone_suffix(zone : StringView, context~ : String) -> UInt raise {
 ///|
 fn parse_ipv4_to_bytes(
   ip_str : StringView,
-) -> (UInt, UInt, UInt, UInt) raise InvalidAddr {
+) -> (UInt32, UInt32, UInt32, UInt32) raise InvalidAddr {
   let parts = ip_str.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }
   fn parse_octal(x : StringView) raise InvalidAddr {
@@ -227,7 +227,7 @@ fn parse_ipv4_to_bytes(
 }
 
 ///|
-fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
+fn try_parse_ipv4(input : String) -> (UInt32, Int32) raise InvalidAddr {
   // Find the last colon to separate IP and port
   guard input.rev_find(":") is Some(last_colon) else { raise InvalidAddr }
   let ip_str = input[:last_colon]
@@ -240,7 +240,7 @@ fn try_parse_ipv4(input : String) -> (UInt, Int) raise InvalidAddr {
 }
 
 ///|
-fn parse_port(port_str : StringView) -> Int raise InvalidAddr {
+fn parse_port(port_str : StringView) -> Int32 raise InvalidAddr {
   guard !port_str.is_empty() else { raise InvalidAddr }
   let port = @string.parse_int(port_str) catch { _ => raise InvalidAddr }
   guard 0 <= port && port < 65536 else { raise InvalidAddr }

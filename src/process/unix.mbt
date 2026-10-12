@@ -22,18 +22,18 @@ extern "C" fn get_curr_env() -> OsEnv = "moonbitlang_async_get_curr_env"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang_async_env_block_length"
+extern "C" fn OsEnv::length(self : OsEnv) -> Int32 = "moonbitlang_async_env_block_length"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_block"
+extern "C" fn OsEnv::new(size : Int32) -> OsEnv = "moonbitlang_async_allocate_env_block"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 extern "C" fn OsEnv::write_env_block(
   dst : OsEnv,
   block : OsEnv,
-  start~ : Int,
+  start~ : Int32,
 ) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
@@ -45,12 +45,12 @@ extern "C" fn OsEnv::write_env_block(
 #borrow(key, value)
 extern "C" fn OsEnv::add_entry(
   dst : OsEnv,
-  index : Int,
+  index : Int32,
   key~ : String,
-  key_len~ : Int,
+  key_len~ : Int32,
   value~ : String,
-  value_len~ : Int,
-) -> Int = "moonbitlang_async_env_block_add_entry"
+  value_len~ : Int32,
+) -> Int32 = "moonbitlang_async_env_block_add_entry"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
@@ -81,16 +81,16 @@ priv struct OsArgv(@c_buffer.Buffer)
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn OsArgv::new(size : Int) -> OsArgv = "moonbitlang_async_make_argv_array"
+extern "C" fn OsArgv::new(size : Int32) -> OsArgv = "moonbitlang_async_make_argv_array"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 #borrow(arg)
 extern "C" fn OsArgv::add_encoded_entry(
   self : OsArgv,
-  offset : Int,
+  offset : Int32,
   arg : @os_string.OsString,
-  arg_len~ : Int = arg.bytes_length(),
+  arg_len~ : Int32 = arg.bytes_length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_encoded_entry"
 
 ///|
@@ -98,9 +98,9 @@ extern "C" fn OsArgv::add_encoded_entry(
 #borrow(arg)
 extern "C" fn OsArgv::add_entry(
   self : OsArgv,
-  offset : Int,
+  offset : Int32,
   arg : String,
-  arg_len~ : Int = arg.length(),
+  arg_len~ : Int32 = arg.length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_entry"
 
 ///|

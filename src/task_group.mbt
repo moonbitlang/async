@@ -38,7 +38,7 @@ priv struct GroupDeferBlock(async () -> Unit nocancel)
 struct TaskGroup[X] {
   children : Set[@coroutine.Coroutine]
   parent : @coroutine.Coroutine
-  mut waiting : Int
+  mut waiting : Int32
   mut state : TaskGroupState
   mut result : X?
   group_defer : Array[GroupDeferBlock]
@@ -314,7 +314,7 @@ pub fn[X] TaskGroup::spawn_loop(
   no_wait~ : Bool = false,
   allow_failure~ : Bool = false,
   retry? : RetryMethod,
-  max_retry? : Int,
+  max_retry? : Int32,
   fatal_error? : (Error) -> Bool,
 ) -> Unit {
   self.spawn_bg(no_wait~, allow_failure~) <| () => {

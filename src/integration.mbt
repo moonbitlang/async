@@ -55,7 +55,7 @@ pub using @event_loop {set_external_event_loop}
 
 ///|
 #cfg(target="native")
-extern "C" fn exit(code : Int) = "exit"
+extern "C" fn exit(code : Int32) = "exit"
 
 ///|
 #coverage.skip

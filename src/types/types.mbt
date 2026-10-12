@@ -42,7 +42,7 @@ pub impl Hash for Fd with fn hash_combine(self, hasher) {
 /// The type for a system file descriptor.
 /// An integer on Unix-like systems, or an opaque pointer (`HANDLE`) on Windows
 #cfg(not(any(platform="windows", target="wasm")))
-pub type Fd = Int
+pub type Fd = Int32
 
 ///|
 /// Current operating system running the program.

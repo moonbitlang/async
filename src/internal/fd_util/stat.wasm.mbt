@@ -26,7 +26,7 @@ pub(all) enum FileKind {
 } derive(Eq, Debug)
 
 ///|
-pub fn FileKind::unsafe_from_int(value : Int) -> FileKind = "%identity"
+pub fn FileKind::unsafe_from_int(value : Int32) -> FileKind = "%identity"
 
 ///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {
@@ -41,7 +41,7 @@ struct FileTime(FixedArray[Byte])
 
 ///|
 #unsafe_skip_stub_check
-fn FileTime::size() -> Int = "moonbitlang/async" "fd_util/sizeof_file_time"
+fn FileTime::size() -> Int32 = "moonbitlang/async" "fd_util/sizeof_file_time"
 
 ///|
 pub fn FileTime::new() -> FileTime {
@@ -56,10 +56,10 @@ fn FileTime::atime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang/async" "fd_u
 ///|
 #unsafe_skip_stub_check
 #borrow(self)
-fn FileTime::atime_nsec_ffi(self : FileTime) -> Int = "moonbitlang/async" "fd_util/get_atime_nsec"
+fn FileTime::atime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang/async" "fd_util/get_atime_nsec"
 
 ///|
-pub fn FileTime::atime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::atime(self : FileTime) -> (Int64, Int32) {
   (self.atime_sec_ffi(), self.atime_nsec_ffi())
 }
 
@@ -71,10 +71,10 @@ fn FileTime::mtime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang/async" "fd_u
 ///|
 #unsafe_skip_stub_check
 #borrow(self)
-fn FileTime::mtime_nsec_ffi(self : FileTime) -> Int = "moonbitlang/async" "fd_util/get_mtime_nsec"
+fn FileTime::mtime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang/async" "fd_util/get_mtime_nsec"
 
 ///|
-pub fn FileTime::mtime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::mtime(self : FileTime) -> (Int64, Int32) {
   (self.mtime_sec_ffi(), self.mtime_nsec_ffi())
 }
 
@@ -86,9 +86,9 @@ fn FileTime::ctime_sec_ffi(self : FileTime) -> Int64 = "moonbitlang/async" "fd_u
 ///|
 #unsafe_skip_stub_check
 #borrow(self)
-fn FileTime::ctime_nsec_ffi(self : FileTime) -> Int = "moonbitlang/async" "fd_util/get_ctime_nsec"
+fn FileTime::ctime_nsec_ffi(self : FileTime) -> Int32 = "moonbitlang/async" "fd_util/get_ctime_nsec"
 
 ///|
-pub fn FileTime::ctime(self : FileTime) -> (Int64, Int) {
+pub fn FileTime::ctime(self : FileTime) -> (Int64, Int32) {
   (self.ctime_sec_ffi(), self.ctime_nsec_ffi())
 }

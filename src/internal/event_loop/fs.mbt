@@ -23,14 +23,14 @@ pub(all) struct FileIdentity {
 pub async fn open(
   path : StringView,
   // 0 => read only, 1 => write only, 2 => read write, 3 => directory listing
-  access : Int,
+  access : Int32,
   // See `@fs.CreateMode` for more details
-  create~ : Int,
+  create~ : Int32,
   append~ : Bool,
   // 0 => no sync, 1 => data sync, 2 => full sync
-  sync~ : Int,
+  sync~ : Int32,
   // permission for file when new file is created
-  mode~ : Int,
+  mode~ : Int32,
   context~ : String,
 ) -> (IoHandle, FileIdentity) {
   let path_bytes = @os_string.encode(path)
@@ -83,9 +83,9 @@ pub async fn open(
 ///|
 pub async fn fstatx(
   fd : @fd_util.Fd,
-  request : UInt,
+  request : UInt32,
   buf : FixedArray[Byte],
-  buf_len : Int,
+  buf_len : Int32,
   context~ : String,
 ) -> Unit {
   let job = Job::fstatx(fd, request, buf, buf_len)
@@ -96,8 +96,8 @@ pub async fn fstatx(
 ///|
 async fn fstatx_single(
   fd : @fd_util.Fd,
-  request : UInt,
-  length : Int,
+  request : UInt32,
+  length : Int32,
   context~ : String,
 ) -> ArrayView[Byte] {
   let buf = FixedArray::make(8 + (length << 3), b'\x00')
@@ -114,9 +114,9 @@ pub async fn statx(
   path : StringView,
   parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
-  request : UInt,
+  request : UInt32,
   buf : FixedArray[Byte],
-  buf_len : Int,
+  buf_len : Int32,
   context~ : String,
 ) -> Unit {
   let path_bytes = @os_string.encode(path)
@@ -143,8 +143,8 @@ async fn statx_single(
   path : StringView,
   parent~ : @fd_util.Fd,
   follow_symlink~ : Bool,
-  request : UInt,
-  length : Int,
+  request : UInt32,
+  length : Int32,
   context~ : String,
 ) -> ArrayView[Byte] {
   let buf = FixedArray::make(8 + (length << 3), b'\x00')
@@ -209,21 +209,21 @@ pub async fn file_size_of_path(path : StringView, context~ : String) -> Int64 {
 }
 
 ///|
-pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+pub async fn mtime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int32) {
   guard! fstatx_single(fd, STAT_MODIFY_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
 }
 
 ///|
-pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+pub async fn atime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int32) {
   guard! fstatx_single(fd, STAT_ACCESS_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
 }
 
 ///|
-pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int) {
+pub async fn ctime(fd : @fd_util.Fd, context~ : String) -> (Int64, Int32) {
   guard! fstatx_single(fd, STAT_CHANGE_TIME, 2, context~)
     is [i64le(sec), i64le(nsec)]
   (sec, nsec.to_int())
@@ -234,7 +234,7 @@ pub async fn mtime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
@@ -252,7 +252,7 @@ pub async fn atime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
@@ -270,7 +270,7 @@ pub async fn ctime_by_path(
   path : StringView,
   follow_symlink~ : Bool,
   context~ : String,
-) -> (Int64, Int) {
+) -> (Int64, Int32) {
   guard! statx_single(
       path,
       parent=@fd_util.invalid_fd,
@@ -284,7 +284,11 @@ pub async fn ctime_by_path(
 }
 
 ///|
-pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
+pub async fn access(
+  path : StringView,
+  acc : Access,
+  context~ : String,
+) -> Int32 {
   let path_bytes = @os_string.encode(path)
   let job = Job::access(path_bytes, acc)
   defer job.free()
@@ -296,7 +300,7 @@ pub async fn access(path : StringView, acc : Access, context~ : String) -> Int {
 }
 
 ///|
-pub async fn chmod(path : StringView, mode : Int, context~ : String) -> Unit {
+pub async fn chmod(path : StringView, mode : Int32, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   let job = Job::chmod(path_bytes, mode)
   defer job.free()
@@ -394,7 +398,7 @@ pub async fn symlink(
 }
 
 ///|
-pub async fn mkdir(path : StringView, mode~ : Int, context~ : String) -> Unit {
+pub async fn mkdir(path : StringView, mode~ : Int32, context~ : String) -> Unit {
   let path_bytes = @os_string.encode(path)
   let job = Job::mkdir(path_bytes, mode)
   defer job.free()
@@ -427,10 +431,10 @@ pub async fn rmdir(path : StringView, context~ : String) -> Unit nocancel {
 pub async fn IoHandle::readdir(
   dir : IoHandle,
   buf : @c_buffer.Buffer,
-  len : Int,
+  len : Int32,
   restart~ : Bool,
   context~ : String,
-) -> Int {
+) -> Int32 {
   guard! dir.read is Idle
   dir.read = Submitted
   defer {
@@ -495,7 +499,10 @@ pub async fn inotify_add_watch(
 
 ///|
 #cfg(platform="windows")
-extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_read_dir_changes"
+extern "C" fn read_dir_changes_ffi(
+  fd : @fd_util.Fd,
+  result : IoResult,
+) -> Int32 = "moonbitlang_async_read_dir_changes"
 
 ///|
 #cfg(target="wasm")
@@ -503,11 +510,11 @@ extern "C" fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int =
 fn IoResultHandle::read_dir_changes_ffi(
   fd : @fd_util.Fd,
   result : IoResultHandle,
-) -> Int = "moonbitlang/async" "io/read_dir_changes/windows"
+) -> Int32 = "moonbitlang/async" "io/read_dir_changes/windows"
 
 ///|
 #cfg(target="wasm")
-fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int {
+fn read_dir_changes_ffi(fd : @fd_util.Fd, result : IoResult) -> Int32 {
   IoResultHandle::read_dir_changes_ffi(fd, result.handle)
 }
 
@@ -525,9 +532,9 @@ pub(all) struct WindowsWatcherBuf(UInt64)
 pub async fn IoHandle::read_dir_changes(
   handle : IoHandle,
   buf : WindowsWatcherBuf,
-  len : Int,
+  len : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   guard! handle.kind is Directory
   let result = IoResult::for_read_dir_changes(buf.0, len~)

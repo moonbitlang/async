@@ -14,15 +14,15 @@
 
 ///|
 #cfg(target="native")
-extern "C" fn find_ipv6_test_interface() -> UInt = "moonbitlang_async_find_ipv6_test_interface"
+extern "C" fn find_ipv6_test_interface() -> UInt32 = "moonbitlang_async_find_ipv6_test_interface"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn find_ipv6_test_interface() -> UInt = "moonbitlang/async" "socket/find_ipv6_test_interface"
+fn find_ipv6_test_interface() -> UInt32 = "moonbitlang/async" "socket/find_ipv6_test_interface"
 
 ///|
-let test_interface_index : Lazy[UInt] = Lazy(() => {
+let test_interface_index : Lazy[UInt32] = Lazy(() => {
   let index = find_ipv6_test_interface()
   if index is 0 {
     abort("cannot find suitable network interface for testing")

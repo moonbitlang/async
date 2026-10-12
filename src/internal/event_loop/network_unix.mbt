@@ -14,11 +14,11 @@
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn gai_strerror(code : Int) -> @c_buffer.Buffer = "gai_strerror"
+extern "C" fn gai_strerror(code : Int32) -> @c_buffer.Buffer = "gai_strerror"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-fn gai_error_to_string(code : Int) -> String {
+fn gai_error_to_string(code : Int32) -> String {
   @os_string.decode(gai_strerror(code))
 }
 
@@ -28,10 +28,10 @@ fn gai_error_to_string(code : Int) -> String {
 extern "C" fn recvfrom_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
-) -> Int = "moonbitlang_async_recvfrom"
+) -> Int32 = "moonbitlang_async_recvfrom"
 
 ///|
 #unsafe_skip_stub_check
@@ -40,22 +40,22 @@ extern "C" fn recvfrom_unix_ffi(
 fn recvfrom_unix_ffi(
   fd : @fd_util.Fd,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
-  addr_len~ : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/recvfrom/unix"
+  addr_len~ : Int32 = addr.length(),
+) -> Int32 = "moonbitlang/async" "socket/recvfrom/unix"
 
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::recvfrom_unix(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     // The `pause` here prevent a busy loop from exhausting the whole program,
@@ -80,11 +80,11 @@ async fn IoHandle::recvfrom_unix(
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   handle.recvfrom_unix(buf, offset~, len~, addr~, context~)
 }
@@ -95,10 +95,10 @@ pub async fn IoHandle::recvfrom(
 extern "C" fn sendto_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
-) -> Int = "moonbitlang_async_sendto"
+) -> Int32 = "moonbitlang_async_sendto"
 
 ///|
 #unsafe_skip_stub_check
@@ -107,22 +107,22 @@ extern "C" fn sendto_unix_ffi(
 fn sendto_unix_ffi(
   fd : @fd_util.Fd,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
-  addr_len~ : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/sendto/unix"
+  addr_len~ : Int32 = addr.length(),
+) -> Int32 = "moonbitlang/async" "socket/sendto/unix"
 
 ///|
 #cfg(not(platform="windows"))
 async fn IoHandle::sendto_unix(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   if ret >= 0 {
     @coroutine.pause_nocancel()
@@ -145,11 +145,11 @@ async fn IoHandle::sendto_unix(
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   handle.sendto_unix(buf, offset~, len~, addr~, context~)
 }
@@ -157,7 +157,7 @@ pub async fn IoHandle::sendto(
 ///|
 #cfg(all(target="native", not(platform="windows")))
 #borrow(addr)
-extern "C" fn connect_unix_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_unix_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int32 = "moonbitlang_async_connect"
 
 ///|
 #cfg(target="wasm")
@@ -166,17 +166,17 @@ extern "C" fn connect_unix_ffi(sock : @fd_util.Fd, addr : Bytes) -> Int = "moonb
 fn connect_unix_ffi(
   sock : @fd_util.Fd,
   addr : Bytes,
-  addr_len~ : Int = addr.length(),
-) -> Int = "moonbitlang/async" "socket/connect/unix"
+  addr_len~ : Int32 = addr.length(),
+) -> Int32 = "moonbitlang/async" "socket/connect/unix"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang_async_getsockerr"
+extern "C" fn get_socket_err(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_getsockerr"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn get_socket_err(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/getsockerr/unix"
+fn get_socket_err(sock : @fd_util.Fd) -> Int32 = "moonbitlang/async" "socket/getsockerr/unix"
 
 ///|
 #cfg(not(platform="windows"))
@@ -227,7 +227,7 @@ extern "C" fn accept_unix_ffi(
 fn accept_unix_ffi(
   sock : @fd_util.Fd,
   addr_buf : Bytes,
-  addr_len~ : Int = addr_buf.length(),
+  addr_len~ : Int32 = addr_buf.length(),
 ) -> @fd_util.Fd = "moonbitlang/async" "socket/accept/unix"
 
 ///|

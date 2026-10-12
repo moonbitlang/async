@@ -14,7 +14,7 @@
 
 ///|
 #cfg(platform="windows")
-fn gai_error_to_string(code : Int) -> String {
+fn gai_error_to_string(code : Int32) -> String {
   @os_error.errno_to_string(code)
 }
 
@@ -23,11 +23,11 @@ fn gai_error_to_string(code : Int) -> String {
 async fn IoHandle::recvfrom_windows(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let result = IoResult::for_socket_with_addr_read(
     buf,
     offset~,
@@ -44,11 +44,11 @@ async fn IoHandle::recvfrom_windows(
 pub async fn IoHandle::recvfrom(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   handle.recvfrom_windows(buf, offset~, len~, addr~, context~)
 }
@@ -58,11 +58,11 @@ pub async fn IoHandle::recvfrom(
 async fn IoHandle::sendto_windows(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   let result = IoResult::for_socket_with_addr_write(
     buf,
     offset~,
@@ -79,18 +79,18 @@ async fn IoHandle::sendto_windows(
 pub async fn IoHandle::sendto(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
   context~ : String,
-) -> Int {
+) -> Int32 {
   @coroutine.check_cancellation()
   handle.sendto_windows(buf, offset~, len~, addr~, context~)
 }
 
 ///|
 #cfg(platform="windows")
-extern "C" fn connect_windows(sock : @fd_util.Fd, result : IoResult) -> Int = "moonbitlang_async_connect"
+extern "C" fn connect_windows(sock : @fd_util.Fd, result : IoResult) -> Int32 = "moonbitlang_async_connect"
 
 ///|
 #cfg(target="wasm")
@@ -98,22 +98,22 @@ extern "C" fn connect_windows(sock : @fd_util.Fd, result : IoResult) -> Int = "m
 fn IoResultHandle::connect_ffi(
   sock : @fd_util.Fd,
   result : IoResultHandle,
-) -> Int = "moonbitlang/async" "socket/connect/windows"
+) -> Int32 = "moonbitlang/async" "socket/connect/windows"
 
 ///|
 #cfg(target="wasm")
-fn connect_windows(sock : @fd_util.Fd, result : IoResult) -> Int {
+fn connect_windows(sock : @fd_util.Fd, result : IoResult) -> Int32 {
   IoResultHandle::connect_ffi(sock, result.handle)
 }
 
 ///|
 #cfg(platform="windows")
-extern "C" fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang_async_setup_connected_socket"
+extern "C" fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int32 = "moonbitlang_async_setup_connected_socket"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/setup_connected_socket/windows"
+fn setup_connected_socket_ffi(sock : @fd_util.Fd) -> Int32 = "moonbitlang/async" "socket/setup_connected_socket/windows"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))
@@ -153,7 +153,7 @@ extern "C" fn accept_windows_ffi(
   server_sock : @fd_util.Fd,
   conn_sock : @fd_util.Fd,
   result : IoResult,
-) -> Int = "moonbitlang_async_accept"
+) -> Int32 = "moonbitlang_async_accept"
 
 ///|
 #cfg(target="wasm")
@@ -162,7 +162,7 @@ fn IoResultHandle::accept_ffi(
   server_sock : @fd_util.Fd,
   conn_sock : @fd_util.Fd,
   result : IoResultHandle,
-) -> Int = "moonbitlang/async" "socket/accept/windows"
+) -> Int32 = "moonbitlang/async" "socket/accept/windows"
 
 ///|
 #cfg(target="wasm")
@@ -170,7 +170,7 @@ fn accept_windows_ffi(
   server_sock : @fd_util.Fd,
   conn_sock : @fd_util.Fd,
   result : IoResult,
-) -> Int {
+) -> Int32 {
   IoResultHandle::accept_ffi(server_sock, conn_sock, result.handle)
 }
 
@@ -179,7 +179,7 @@ fn accept_windows_ffi(
 extern "C" fn setup_accepted_socket_ffi(
   listen_sock : @fd_util.Fd,
   accept_sock : @fd_util.Fd,
-) -> Int = "moonbitlang_async_setup_accepted_socket"
+) -> Int32 = "moonbitlang_async_setup_accepted_socket"
 
 ///|
 #cfg(target="wasm")
@@ -187,7 +187,7 @@ extern "C" fn setup_accepted_socket_ffi(
 fn setup_accepted_socket_ffi(
   listen_sock : @fd_util.Fd,
   accept_sock : @fd_util.Fd,
-) -> Int = "moonbitlang/async" "socket/setup_accepted_socket/windows"
+) -> Int32 = "moonbitlang/async" "socket/setup_accepted_socket/windows"
 
 ///|
 #cfg(any(target="wasm", platform="windows"))

@@ -14,15 +14,15 @@
 
 ///|
 #cfg(target="native")
-pub extern "C" fn get_errno() -> Int = "moonbitlang_async_get_errno"
+pub extern "C" fn get_errno() -> Int32 = "moonbitlang_async_get_errno"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-pub fn get_errno() -> Int = "moonbitlang/async" "os_error/get_errno"
+pub fn get_errno() -> Int32 = "moonbitlang/async" "os_error/get_errno"
 
 ///|
-fn errno_is_nonblocking_io_error(errno : Int) -> Bool {
+fn errno_is_nonblocking_io_error(errno : Int32) -> Bool {
   match @env_util.platform {
     Linux =>
       errno == linux_EAGAIN ||
@@ -44,12 +44,12 @@ pub fn is_nonblocking_io_error() -> Bool {
 
 ///|
 #cfg(target="native")
-extern "C" fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang_async_errno_to_string"
+extern "C" fn strerror(errno : Int32) -> @c_buffer.Buffer = "moonbitlang_async_errno_to_string"
 
 ///|
 #unsafe_skip_stub_check
 #cfg(target="wasm")
-fn strerror(errno : Int) -> @c_buffer.Buffer = "moonbitlang/async" "os_error/errno_to_string"
+fn strerror(errno : Int32) -> @c_buffer.Buffer = "moonbitlang/async" "os_error/errno_to_string"
 
 ///|
 #cfg(target="native")
@@ -63,7 +63,7 @@ fn free_errno_str(str : @c_buffer.Buffer) -> Unit = "moonbitlang/async" "os_erro
 
 ///|
 #internal(internal, "for internal use only")
-pub fn errno_to_string(errno : Int) -> String {
+pub fn errno_to_string(errno : Int32) -> String {
   let c_str = strerror(errno)
   defer free_errno_str(c_str)
   @os_string.decode(c_str).trim_end(chars="\r\n").to_owned()
@@ -71,7 +71,7 @@ pub fn errno_to_string(errno : Int) -> String {
 
 ///|
 pub(all) suberror OSError {
-  OSError(Int, context~ : String)
+  OSError(Int32, context~ : String)
 } derive(ToJson)
 
 ///|
@@ -176,7 +176,7 @@ pub fn check_errno(context : String) -> Unit raise OSError {
 }
 
 ///|
-pub let errno_ENOTDIR : Int = match @env_util.platform {
+pub let errno_ENOTDIR : Int32 = match @env_util.platform {
   Linux => linux_ENOTDIR
   MacOS => macos_ENOTDIR
   Windows => windows_ERROR_DIRECTORY
@@ -189,7 +189,7 @@ pub fn OSError::is_ENOTDIR(err : OSError) -> Bool {
 }
 
 ///|
-pub let errno_ENOTSUP : Int = match @env_util.platform {
+pub let errno_ENOTSUP : Int32 = match @env_util.platform {
   Linux => linux_ENOTSUP
   MacOS => macos_ENOTSUP
   Windows => windows_ERROR_NOT_SUPPORTED

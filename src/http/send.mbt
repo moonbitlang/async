@@ -28,7 +28,7 @@ priv struct Sender {
   writer : &@io.Writer
   mut mode : SenderMode
   mut send_buf : FixedArray[Byte]
-  mut send_len : Int
+  mut send_len : Int32
   headers : Bytes
   has_accept_encoding : Bool
 }
@@ -352,7 +352,7 @@ async fn Sender::send_request(
 ///|
 async fn Sender::send_response(
   self : Sender,
-  code : Int,
+  code : Int32,
   reason : String,
   extra_headers~ : Headers,
   cookies~ : Array[Cookie],

@@ -16,9 +16,9 @@
 priv struct Waiter {
   coro : @coroutine.Coroutine
   /// For intrusive cancellable queue
-  mut index : Int
-  mut next : Int
-  mut prev : Int
+  mut index : Int32
+  mut next : Int32
+  mut prev : Int32
 }
 
 ///|

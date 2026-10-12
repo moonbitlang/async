@@ -22,18 +22,18 @@ extern "C" fn get_curr_env() -> OsEnv = "moonbitlang_async_get_curr_env"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnv::length(self : OsEnv) -> Int = "moonbitlang_async_env_block_length"
+extern "C" fn OsEnv::length(self : OsEnv) -> Int32 = "moonbitlang_async_env_block_length"
 
 ///|
 #cfg(platform="windows")
-extern "C" fn OsEnv::new(size : Int) -> OsEnv = "moonbitlang_async_allocate_env_block"
+extern "C" fn OsEnv::new(size : Int32) -> OsEnv = "moonbitlang_async_allocate_env_block"
 
 ///|
 #cfg(platform="windows")
 extern "C" fn OsEnv::write_env_block(
   dst : OsEnv,
   block : OsEnv,
-  offset~ : Int,
+  offset~ : Int32,
 ) -> Unit = "moonbitlang_async_write_env_block"
 
 ///|
@@ -44,12 +44,12 @@ extern "C" fn OsEnv::write_env_block(
 #borrow(key, value)
 extern "C" fn OsEnv::add_entry(
   dst : OsEnv,
-  offset : Int,
+  offset : Int32,
   key~ : String,
-  key_len~ : Int,
+  key_len~ : Int32,
   value~ : String,
-  value_len~ : Int,
-) -> Int = "moonbitlang_async_env_block_add_entry"
+  value_len~ : Int32,
+) -> Int32 = "moonbitlang_async_env_block_add_entry"
 
 ///|
 #cfg(platform="windows")
@@ -105,7 +105,7 @@ fn StringBuilder::write_arg_with_windows_escape(
   let mut segment_start = 0
   let mut index = 0
   let mut trailing_backslash = 0
-  fn flush(skip : Int) {
+  fn flush(skip : Int32) {
     if index > segment_start {
       builder.write_stringview(arg[segment_start:index - trailing_backslash])
       if trailing_backslash > 0 {

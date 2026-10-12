@@ -19,7 +19,7 @@ pub(all) enum Encoding {
 
 ///|
 pub(open) trait Writer {
-  async fn write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+  async fn write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
   async fn write(Self, &Data) -> Unit = _
   async fn write_reader(Self, &Reader) -> Unit = _
 }

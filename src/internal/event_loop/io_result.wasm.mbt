@@ -26,13 +26,13 @@ priv struct IoResultHandle(UInt64)
 #valtype
 priv struct IoResult {
   handle : IoResultHandle
-  copy_output : ((IoResultHandle, Int) -> Unit)?
+  copy_output : ((IoResultHandle, Int32) -> Unit)?
 }
 
 ///|
 fn IoResult::IoResult(
   handle : IoResultHandle,
-  copy_output? : (IoResultHandle, Int) -> Unit,
+  copy_output? : (IoResultHandle, Int32) -> Unit,
 ) -> IoResult {
   { handle, copy_output, }
 }
@@ -40,7 +40,7 @@ fn IoResult::IoResult(
 ///|
 #unsafe_skip_stub_check
 fn IoResultHandle::for_file_read(
-  len~ : Int,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResultHandle = "moonbitlang/async" "io/make_file_read_io_result/windows"
 
@@ -50,15 +50,15 @@ fn IoResultHandle::for_file_read(
 fn IoResultHandle::copy_read(
   result : IoResultHandle,
   dst : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
 ) -> Unit = "moonbitlang/async" "io/io_result_copy_read/windows"
 
 ///|
 fn IoResult::for_file_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResult {
   IoResult(IoResultHandle::for_file_read(len~, position~), copy_output=(
@@ -72,16 +72,16 @@ fn IoResult::for_file_read(
 #borrow(buf)
 fn IoResultHandle::for_file_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResultHandle = "moonbitlang/async" "io/make_file_write_io_result/windows"
 
 ///|
 fn IoResult::for_file_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   position~ : Int64,
 ) -> IoResult {
   IoResult(IoResultHandle::for_file_write(buf, offset~, len~, position~))
@@ -89,14 +89,17 @@ fn IoResult::for_file_write(
 
 ///|
 #unsafe_skip_stub_check
-fn IoResultHandle::for_socket_read(len~ : Int, flags~ : Int) -> IoResultHandle = "moonbitlang/async" "io/make_socket_read_io_result/windows"
+fn IoResultHandle::for_socket_read(
+  len~ : Int32,
+  flags~ : Int32,
+) -> IoResultHandle = "moonbitlang/async" "io/make_socket_read_io_result/windows"
 
 ///|
 fn IoResult::for_socket_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
 ) -> IoResult {
   IoResult(IoResultHandle::for_socket_read(len~, flags~), copy_output=(
     handle,
@@ -109,17 +112,17 @@ fn IoResult::for_socket_read(
 #borrow(buf)
 fn IoResultHandle::for_socket_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
 ) -> IoResultHandle = "moonbitlang/async" "io/make_socket_write_io_result/windows"
 
 ///|
 fn IoResult::for_socket_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
 ) -> IoResult {
   IoResult(IoResultHandle::for_socket_write(buf, offset~, len~, flags~))
 }
@@ -128,10 +131,10 @@ fn IoResult::for_socket_write(
 #unsafe_skip_stub_check
 #borrow(addr)
 fn IoResultHandle::for_socket_with_addr_read(
-  len~ : Int,
-  flags~ : Int,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
-  addr_len~ : Int = addr.length(),
+  addr_len~ : Int32 = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_socket_with_addr_read_io_result/windows"
 
 ///|
@@ -140,18 +143,18 @@ fn IoResultHandle::for_socket_with_addr_read(
 fn IoResultHandle::copy_read_with_addr(
   result : IoResultHandle,
   dst : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   addr~ : Bytes,
-  addr_len~ : Int = addr.length(),
+  addr_len~ : Int32 = addr.length(),
 ) -> Unit = "moonbitlang/async" "io/io_result_copy_read_with_addr/windows"
 
 ///|
 fn IoResult::for_socket_with_addr_read(
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
 ) -> IoResult {
   let handle = IoResultHandle::for_socket_with_addr_read(len~, flags~, addr~)
@@ -165,19 +168,19 @@ fn IoResult::for_socket_with_addr_read(
 #borrow(buf, addr)
 fn IoResultHandle::for_socket_with_addr_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
-  addr_len~ : Int = addr.length(),
+  addr_len~ : Int32 = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_socket_with_addr_write_io_result/windows"
 
 ///|
 fn IoResult::for_socket_with_addr_write(
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
-  flags~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
+  flags~ : Int32,
   addr~ : Bytes,
 ) -> IoResult {
   IoResult(
@@ -196,7 +199,7 @@ fn IoResult::for_socket_with_addr_write(
 #borrow(addr)
 fn IoResultHandle::for_connect(
   addr : Bytes,
-  addr_len~ : Int = addr.length(),
+  addr_len~ : Int32 = addr.length(),
 ) -> IoResultHandle = "moonbitlang/async" "io/make_connect_io_result/windows"
 
 ///|
@@ -206,10 +209,10 @@ fn IoResult::for_connect(addr : Bytes) -> IoResult {
 
 ///|
 #unsafe_skip_stub_check
-fn IoResultHandle::for_accept(addr_len : Int) -> IoResultHandle = "moonbitlang/async" "io/make_accept_io_result/windows"
+fn IoResultHandle::for_accept(addr_len : Int32) -> IoResultHandle = "moonbitlang/async" "io/make_accept_io_result/windows"
 
 ///|
-fn IoResult::for_accept(addr_len : Int) -> IoResult {
+fn IoResult::for_accept(addr_len : Int32) -> IoResult {
   IoResult(IoResultHandle::for_accept(addr_len))
 }
 
@@ -218,7 +221,7 @@ fn IoResult::for_accept(addr_len : Int) -> IoResult {
 fn IoResultHandle::for_read_dir_changes(buf : UInt64) -> IoResultHandle = "moonbitlang/async" "io/make_read_dir_changes_io_result/windows"
 
 ///|
-fn IoResult::for_read_dir_changes(buf : UInt64, len~ : Int) -> IoResult {
+fn IoResult::for_read_dir_changes(buf : UInt64, len~ : Int32) -> IoResult {
   ignore(len)
   IoResult(IoResultHandle::for_read_dir_changes(buf))
 }
@@ -229,7 +232,7 @@ fn IoResult::for_read_dir_changes(buf : UInt64, len~ : Int) -> IoResult {
 fn IoResultHandle::get_accept_peer_addr(
   self : IoResultHandle,
   dst : Bytes,
-  dst_len~ : Int = dst.length(),
+  dst_len~ : Int32 = dst.length(),
 ) -> Unit = "moonbitlang/async" "io/get_accept_peer_addr/windows"
 
 ///|
@@ -248,17 +251,17 @@ fn IoResult::free(self : IoResult) -> Unit {
 
 ///|
 #unsafe_skip_stub_check
-fn IoResultHandle::event(self : IoResultHandle) -> Int = "moonbitlang/async" "io/io_result_get_event/windows"
+fn IoResultHandle::event(self : IoResultHandle) -> Int32 = "moonbitlang/async" "io/io_result_get_event/windows"
 
 ///|
 #unsafe_skip_stub_check
 fn IoResultHandle::cancel_ffi(
   self : IoResultHandle,
   handle : @fd_util.Fd,
-) -> Int = "moonbitlang/async" "io/cancel_io_result/windows"
+) -> Int32 = "moonbitlang/async" "io/cancel_io_result/windows"
 
 ///|
-fn IoResult::cancel_ffi(self : IoResult, handle : @fd_util.Fd) -> Int {
+fn IoResult::cancel_ffi(self : IoResult, handle : @fd_util.Fd) -> Int32 {
   self.handle.cancel_ffi(handle)
 }
 
@@ -267,15 +270,15 @@ fn IoResult::cancel_ffi(self : IoResult, handle : @fd_util.Fd) -> Int {
 fn IoResultHandle::status_ffi(
   result : IoResultHandle,
   handle : @fd_util.Fd,
-) -> Int = "moonbitlang/async" "io/io_result_get_status/windows"
+) -> Int32 = "moonbitlang/async" "io/io_result_get_status/windows"
 
 ///|
-fn IoResult::status_ffi(result : IoResult, handle : @fd_util.Fd) -> Int {
+fn IoResult::status_ffi(result : IoResult, handle : @fd_util.Fd) -> Int32 {
   result.handle.status_ffi(handle)
 }
 
 ///|
-fn IoResult::copy_read_result(result : IoResult, n : Int) -> Unit {
+fn IoResult::copy_read_result(result : IoResult, n : Int32) -> Unit {
   if result.copy_output is Some(copy_output) {
     copy_output(result.handle, n)
   }

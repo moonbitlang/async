@@ -63,7 +63,7 @@ fn PlatformEventLoopExtra::handle_event(
 async fn PlatformEventLoopExtra::wait_pid(
   self : Self,
   evloop : EventLoop,
-  pid : Int,
+  pid : Int32,
 ) -> Unit {
   match self {
     Unix(extra) => extra.wait_pid(evloop, pid)

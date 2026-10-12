@@ -17,10 +17,10 @@
 #borrow(buf)
 extern "C" fn fstatx_sync(
   fd : @fd_util.Fd,
-  request : UInt,
+  request : UInt32,
   buf : FixedArray[Byte],
-  buf_len : Int,
-) -> Int = "moonbitlang_async_fstatx_sync"
+  buf_len : Int32,
+) -> Int32 = "moonbitlang_async_fstatx_sync"
 
 ///|
 #cfg(target="native")
@@ -42,7 +42,7 @@ fn kind_of_fd_sync(
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int = "moonbitlang/async" "fd_util/kind_of_fd"
+fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang/async" "fd_util/kind_of_fd"
 
 ///|
 #cfg(target="wasm")
@@ -59,18 +59,18 @@ fn kind_of_fd_sync(
 
 ///|
 #cfg(target="native")
-extern "C" fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
+extern "C" fn get_stdio_handle(id : Int32) -> @fd_util.Fd = "moonbitlang_async_get_stdio_handle"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn get_stdio_handle(id : Int) -> @fd_util.Fd = "moonbitlang/async" "stdio/get_stdio_handle"
+fn get_stdio_handle(id : Int32) -> @fd_util.Fd = "moonbitlang/async" "stdio/get_stdio_handle"
 
 ///|
 let stdio_handles : Map[@fd_util.Fd, IoHandle] = Map([])
 
 ///|
-fn setup_stdio(id : Int, context~ : String) -> IoHandle raise {
+fn setup_stdio(id : Int32, context~ : String) -> IoHandle raise {
   let fd = get_stdio_handle(id)
   if !@fd_util.fd_is_valid(fd) {
     @os_error.check_errno(context)

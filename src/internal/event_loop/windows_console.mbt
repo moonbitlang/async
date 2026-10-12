@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-const WINDOWS_CONSOLE_BUFFER_SIZE : Int = 4096
+const WINDOWS_CONSOLE_BUFFER_SIZE : Int32 = 4096
 
 ///|
 /// Intermediate buffer for automatic decoding in Windows console handling.
@@ -32,7 +32,7 @@ priv struct WindowsConsoleBuffer {
   /// - for console output: incomplete UTF-8 sequence from the last write
   pending : FixedArray[Byte]
   /// number of bytes in `pending`
-  mut pending_len : Int
+  mut pending_len : Int32
 }
 
 ///|
@@ -63,9 +63,9 @@ fn WindowsConsoleBuffer::WindowsConsoleBuffer(
 fn WindowsConsoleBuffer::write_pending(
   self : WindowsConsoleBuffer,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
-) -> Int {
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 {
   let n = @cmp.minimum(self.pending_len, len)
   self.pending.blit_to(
     buf,
@@ -78,7 +78,11 @@ fn WindowsConsoleBuffer::write_pending(
 }
 
 ///|
-fn encode_utf8_char(char : Int, buf : FixedArray[Byte], offset~ : Int) -> Unit {
+fn encode_utf8_char(
+  char : Int32,
+  buf : FixedArray[Byte],
+  offset~ : Int32,
+) -> Unit {
   match char {
     _..<0x80 => buf[offset] = char.to_byte()
     _..<0x800 => {

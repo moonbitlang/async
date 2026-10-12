@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn diff_timestamp(t1 : (Int64, Int), t2 : (Int64, Int)) -> Int64 {
+fn diff_timestamp(t1 : (Int64, Int32), t2 : (Int64, Int32)) -> Int64 {
   let (s1, ns1) = t1
   let (s2, ns2) = t2
   (s1 - s2) * 1_000_000_000 + (ns1 - ns2).to_int64()

@@ -13,34 +13,34 @@
 // limitations under the License.
 
 ///|
-let windows_ERROR_IO_INCOMPLETE : Int = 996
+let windows_ERROR_IO_INCOMPLETE : Int32 = 996
 
 ///|
-let windows_ERROR_IO_PENDING : Int = 997
+let windows_ERROR_IO_PENDING : Int32 = 997
 
 ///|
-let windows_ERROR_FILE_NOT_FOUND : Int = 2
+let windows_ERROR_FILE_NOT_FOUND : Int32 = 2
 
 ///|
-let windows_ERROR_PATH_NOT_FOUND : Int = 3
+let windows_ERROR_PATH_NOT_FOUND : Int32 = 3
 
 ///|
-let windows_ERROR_FILE_EXISTS : Int = 80
+let windows_ERROR_FILE_EXISTS : Int32 = 80
 
 ///|
-let windows_ERROR_ALREADY_EXISTS : Int = 183
+let windows_ERROR_ALREADY_EXISTS : Int32 = 183
 
 ///|
-let windows_ERROR_ACCESS_DENIED : Int = 5
+let windows_ERROR_ACCESS_DENIED : Int32 = 5
 
 ///|
-let windows_ERROR_CONNECTION_REFUSED : Int = 1225
+let windows_ERROR_CONNECTION_REFUSED : Int32 = 1225
 
 ///|
-let windows_ERROR_NOTIFY_ENUM_DIR : Int = 1022
+let windows_ERROR_NOTIFY_ENUM_DIR : Int32 = 1022
 
 ///|
-let windows_ERROR_DIRECTORY : Int = 267
+let windows_ERROR_DIRECTORY : Int32 = 267
 
 ///|
-let windows_ERROR_NOT_SUPPORTED : Int = 50
+let windows_ERROR_NOT_SUPPORTED : Int32 = 50

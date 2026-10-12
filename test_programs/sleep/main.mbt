@@ -20,7 +20,7 @@ extern "C" fn register_termination_handler() = "register_termination_handler"
 extern "C" fn set_swallow_cancel_signal() = "set_swallow_cancel_signal"
 
 ///|
-extern "C" fn exit(code : Int) = "exit"
+extern "C" fn exit(code : Int32) = "exit"
 
 ///|
 async fn main {

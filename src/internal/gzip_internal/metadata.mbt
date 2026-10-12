@@ -21,18 +21,18 @@ priv suberror FormatError {
 } derive(Debug, ToJson)
 
 ///|
-pub const HEADER_SIZE : Int = 10
+pub const HEADER_SIZE : Int32 = 10
 
 ///|
 priv struct Header {
-  mtime : UInt
+  mtime : UInt32
   extra_flags : Byte
   operating_system : Byte
 }
 
 ///|
 fn Header::new(
-  mtime~ : UInt = 0U,
+  mtime~ : UInt32 = 0U,
   extra_flags~ : Byte = b'\x00',
   operating_system~ : Byte = b'\xff',
 ) -> Header {
@@ -77,12 +77,12 @@ fn Header::from_bytes(buf : BytesView) -> Header raise {
 
 ///|
 priv struct Trailer {
-  crc32 : UInt
-  input_size : UInt
+  crc32 : UInt32
+  input_size : UInt32
 }
 
 ///|
-fn Trailer::new(crc32 : UInt, input_size : UInt) -> Trailer {
+fn Trailer::new(crc32 : UInt32, input_size : UInt32) -> Trailer {
   { crc32, input_size, }
 }
 
@@ -96,14 +96,14 @@ fn Trailer::to_bytes(self : Trailer) -> Bytes {
 
 ///|
 priv struct TrailerState {
-  mut crc32 : UInt
-  mut input_size : UInt
+  mut crc32 : UInt32
+  mut input_size : UInt32
 }
 
 ///|
 fn TrailerState::new(
-  crc32~ : UInt = 0xffffffffU,
-  input_size~ : UInt = 0U,
+  crc32~ : UInt32 = 0xffffffffU,
+  input_size~ : UInt32 = 0U,
 ) -> TrailerState {
   { crc32, input_size, }
 }

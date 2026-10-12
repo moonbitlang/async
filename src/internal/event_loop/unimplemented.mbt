@@ -15,8 +15,8 @@
 ///|
 #coverage.skip
 let _ignore_unused_import : Unit = {
-  let _ : (@deque.Deque[Int]) -> Unit = ignore
-  let _ : (@sorted_set.SortedSet[Int]) -> Unit = ignore
+  let _ : (@deque.Deque[Int32]) -> Unit = ignore
+  let _ : (@sorted_set.SortedSet[Int32]) -> Unit = ignore
   ignore(@cmp.minimum(0, 0))
   ignore(@debug.to_string(0))
   ignore(@c_buffer.unimplemented)
@@ -38,7 +38,7 @@ pub fn now() -> Int64 {
 type Timer
 
 ///|
-pub fn Timer::new(duration : Int, callback : () -> Unit) -> Timer {
+pub fn Timer::new(duration : Int32, callback : () -> Unit) -> Timer {
   ignore(duration)
   ignore(callback)
   abort("`Timer::new()` is unimplemented on WASM backend")
@@ -52,7 +52,7 @@ pub fn Timer::cancel(timer : Timer) -> Unit {
 
 ///|
 #warnings("-unused_async")
-pub async fn sleep(duration : Int) -> Unit {
+pub async fn sleep(duration : Int32) -> Unit {
   ignore(duration)
   abort("`sleep()` is unimplemented on WASM backend")
 }

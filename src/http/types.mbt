@@ -45,7 +45,7 @@ pub(all) struct Request {
 
 ///|
 pub(all) struct Response {
-  code : Int
+  code : Int32
   reason : String
   headers : Headers
   /// The list of cookies specified in `Set-Cookie` headers.

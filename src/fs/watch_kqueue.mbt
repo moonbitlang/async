@@ -26,9 +26,9 @@ priv struct KqueueWatcher {
   watched : Map[@fd_util.Fd, KqueueWatchedFile]
   watcher : Watcher
   event_buffer : KqueueEventBuffer
-  event_buffer_len : Int
-  debounce_timeout : Int
-  max_debounce_delay : Int
+  event_buffer_len : Int32
+  debounce_timeout : Int32
+  max_debounce_delay : Int32
 }
 
 ///|
@@ -46,19 +46,19 @@ priv struct KqueueEventBuffer(@c_buffer.Buffer)
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn KqueueEventBuffer::size() -> Int = "moonbitlang_async_kqueue_watcher_buffer_size"
+extern "C" fn KqueueEventBuffer::size() -> Int32 = "moonbitlang_async_kqueue_watcher_buffer_size"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn KqueueEventBuffer::size() -> Int = "moonbitlang/async" "fs/kqueue_watcher/buffer_size"
+fn KqueueEventBuffer::size() -> Int32 = "moonbitlang/async" "fs/kqueue_watcher/buffer_size"
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))
 fn KqueueWatcher::KqueueWatcher(
   watcher : Watcher,
-  debounce_timeout~ : Int,
-  max_debounce_delay~ : Int,
+  debounce_timeout~ : Int32,
+  max_debounce_delay~ : Int32,
   context~ : String,
 ) -> KqueueWatcher raise {
   let kqueue = KqueueWatcher::new_ffi()
@@ -99,7 +99,7 @@ extern "C" fn KqueueWatcher::add_file_ffi(
   kqueue : @fd_util.Fd,
   fd : @fd_util.Fd,
   is_dir~ : Bool,
-) -> Int = "moonbitlang_async_kqueue_watcher_add_file"
+) -> Int32 = "moonbitlang_async_kqueue_watcher_add_file"
 
 ///|
 #cfg(target="wasm")
@@ -108,7 +108,7 @@ fn KqueueWatcher::add_file_ffi(
   kqueue : @fd_util.Fd,
   fd : @fd_util.Fd,
   is_dir~ : Bool,
-) -> Int = "moonbitlang/async" "fs/kqueue_watcher/add_file"
+) -> Int32 = "moonbitlang/async" "fs/kqueue_watcher/add_file"
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))
@@ -158,8 +158,8 @@ impl WatcherBackend for KqueueWatcher with fn remove_file(self, fd, context~) {
 extern "C" fn KqueueWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
   buf : KqueueEventBuffer,
-  len~ : Int,
-) -> Int = "moonbitlang_async_kqueue_watcher_fetch_event"
+  len~ : Int32,
+) -> Int32 = "moonbitlang_async_kqueue_watcher_fetch_event"
 
 ///|
 #cfg(target="wasm")
@@ -168,28 +168,28 @@ extern "C" fn KqueueWatcher::fetch_os_event(
 fn KqueueWatcher::fetch_os_event(
   watcher : @fd_util.Fd,
   buf : KqueueEventBuffer,
-  len~ : Int,
-) -> Int = "moonbitlang/async" "fs/kqueue_watcher/fetch_event"
+  len~ : Int32,
+) -> Int32 = "moonbitlang/async" "fs/kqueue_watcher/fetch_event"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn KqueueEventBuffer::fd(self : Self, index : Int) -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_event_get_fd"
+extern "C" fn KqueueEventBuffer::fd(self : Self, index : Int32) -> @fd_util.Fd = "moonbitlang_async_kqueue_watcher_event_get_fd"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn KqueueEventBuffer::fd(self : Self, index : Int) -> @fd_util.Fd = "moonbitlang/async" "fs/kqueue_watcher/event_get_fd"
+fn KqueueEventBuffer::fd(self : Self, index : Int32) -> @fd_util.Fd = "moonbitlang/async" "fs/kqueue_watcher/event_get_fd"
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-extern "C" fn KqueueEventBuffer::has_modify(self : Self, index : Int) -> Bool = "moonbitlang_async_kqueue_watcher_event_has_modify"
+extern "C" fn KqueueEventBuffer::has_modify(self : Self, index : Int32) -> Bool = "moonbitlang_async_kqueue_watcher_event_has_modify"
 
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
 #borrow(self)
-fn KqueueEventBuffer::has_modify(self : Self, index : Int) -> Bool = "moonbitlang/async" "fs/kqueue_watcher/event_has_modify"
+fn KqueueEventBuffer::has_modify(self : Self, index : Int32) -> Bool = "moonbitlang/async" "fs/kqueue_watcher/event_has_modify"
 
 ///|
 #cfg(any(target="wasm", not(platform="windows")))
@@ -217,7 +217,7 @@ impl WatcherBackend for KqueueWatcher with fn wait(self) {
 #cfg(any(target="wasm", not(platform="windows")))
 async fn KqueueWatcher::process_events(
   self : KqueueWatcher,
-  timeout~ : Int?,
+  timeout~ : Int32?,
   context~ : String,
 ) -> Unit {
   let n = KqueueWatcher::fetch_os_event(

@@ -49,7 +49,7 @@ async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
 async fn client(
   addr : @socket.Addr,
   println : Printer,
-  id : Int,
+  id : Int32,
   msg : String,
 ) -> Unit {
   let conn = @socket.Tcp::connect(addr)

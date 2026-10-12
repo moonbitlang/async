@@ -17,17 +17,17 @@
 #borrow(name)
 fn if_nametoindex_ffi(
   name : @os_string.OsString,
-  name_len~ : Int = name.to_string().length(),
-) -> UInt = "moonbitlang/async" "socket/if_nametoindex"
+  name_len~ : Int32 = name.to_string().length(),
+) -> UInt32 = "moonbitlang/async" "socket/if_nametoindex"
 
 ///|
 #unsafe_skip_stub_check
-fn if_indextoname_ffi(index : UInt) -> @c_buffer.Buffer = "moonbitlang/async" "socket/if_indextoname"
+fn if_indextoname_ffi(index : UInt32) -> @c_buffer.Buffer = "moonbitlang/async" "socket/if_indextoname"
 
 ///|
 #doc(hidden)
 #internal(internal, "for internal use only")
-pub fn if_nametoindex(name : StringView, context~ : String) -> UInt raise {
+pub fn if_nametoindex(name : StringView, context~ : String) -> UInt32 raise {
   let os_name = @os_string.encode(name)
   let index = if_nametoindex_ffi(os_name)
   if index is 0 {
@@ -39,7 +39,7 @@ pub fn if_nametoindex(name : StringView, context~ : String) -> UInt raise {
 ///|
 #doc(hidden)
 #internal(internal, "for internal use only")
-pub fn if_indextoname(index : UInt, context~ : String) -> String raise {
+pub fn if_indextoname(index : UInt32, context~ : String) -> String raise {
   let name = if_indextoname_ffi(index)
   if name.is_null() {
     @os_error.check_errno("\{context}: if_indextoname(\{index})")

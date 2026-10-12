@@ -39,7 +39,7 @@ extern "js" fn JsHeaders::to_array(
 priv type JsResponse
 
 ///|
-extern "js" fn JsResponse::status(response : JsResponse) -> Int =
+extern "js" fn JsResponse::status(response : JsResponse) -> Int32 =
   #| (response) => response.status
 
 ///|

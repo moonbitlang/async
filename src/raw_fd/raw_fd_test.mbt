@@ -146,7 +146,7 @@ extern "C" fn make_udp_socket() -> @fd_util.Fd = "moonbitlang_async_raw_fd_test_
 
 ///|
 #borrow(addr)
-extern "C" fn connect(sock : @fd_util.Fd, addr : @socket.Addr) -> Int = "moonbitlang_async_raw_fd_test_connect"
+extern "C" fn connect(sock : @fd_util.Fd, addr : @socket.Addr) -> Int32 = "moonbitlang_async_raw_fd_test_connect"
 
 ///|
 async test "socket as raw fd" {

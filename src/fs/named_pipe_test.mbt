@@ -15,7 +15,7 @@
 ///|
 #cfg(not(platform="windows"))
 #borrow(path)
-extern "C" fn mkfifo(path : @os_string.OsString, mode : Int) -> Int = "mkfifo"
+extern "C" fn mkfifo(path : @os_string.OsString, mode : Int32) -> Int32 = "mkfifo"
 
 ///|
 #cfg(not(platform="windows"))

@@ -31,17 +31,17 @@ pub extend OsString with Show::{to_string}
 ///|
 #unsafe_skip_stub_check
 #borrow(os_str)
-fn decode_len(os_str : @c_buffer.Buffer, offset : Int, len : Int) -> Int = "moonbitlang/async" "os_string/decode_len"
+fn decode_len(os_str : @c_buffer.Buffer, offset : Int32, len : Int32) -> Int32 = "moonbitlang/async" "os_string/decode_len"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(os_str, str)
 fn fill_string(
   os_str : @c_buffer.Buffer,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
   str : String,
-  str_len : Int,
+  str_len : Int32,
 ) -> Unit = "moonbitlang/async" "os_string/decode"
 
 ///|
@@ -50,8 +50,8 @@ fn fill_string(
 /// units into guest-owned MoonBit String storage.
 pub fn decode(
   os_str : @c_buffer.Buffer,
-  offset~ : Int = 0,
-  len~ : Int = -1,
+  offset~ : Int32 = 0,
+  len~ : Int32 = -1,
 ) -> String {
   let str_len = decode_len(os_str, offset, len)
   let str = String::make(str_len, '\u{0}')

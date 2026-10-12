@@ -16,13 +16,13 @@
 let encoder_block_overhead_bits = 10
 
 ///|
-let encoder_window_size_shift : Int = 10
+let encoder_window_size_shift : Int32 = 10
 
 ///|
-let encoder_window_size : Int = 1 << encoder_window_size_shift
+let encoder_window_size : Int32 = 1 << encoder_window_size_shift
 
 ///|
-let encoder_window_mask : Int = encoder_window_size - 1
+let encoder_window_mask : Int32 = encoder_window_size - 1
 
 ///|
 let encoder_max_match_len = 64
@@ -31,36 +31,36 @@ let encoder_max_match_len = 64
 let encoder_min_match_len = 3
 
 ///|
-let encoder_hash_bits : Int = encoder_window_size_shift + 2
+let encoder_hash_bits : Int32 = encoder_window_size_shift + 2
 
 ///|
-let encoder_hash_size : Int = 1 << encoder_hash_bits
+let encoder_hash_size : Int32 = 1 << encoder_hash_bits
 
 ///|
-let encoder_hash_mask : Int = encoder_hash_size - 1
+let encoder_hash_mask : Int32 = encoder_hash_size - 1
 
 ///|
-let encoder_hash_shift : Int = (encoder_hash_bits + encoder_min_match_len - 1) /
+let encoder_hash_shift : Int32 = (encoder_hash_bits + encoder_min_match_len - 1) /
   encoder_min_match_len
 
 ///|
-let encoder_hash_chain_length : Int = 8
+let encoder_hash_chain_length : Int32 = 8
 
 ///|
 struct Encoder {
   header : Header
   trailer_state : TrailerState
-  mut bit_buffer : UInt
-  mut bit_count : Int
+  mut bit_buffer : UInt32
+  mut bit_count : Int32
   mut finished : Bool
   mut started : Bool
   history : FixedArray[Byte]
   hash_heads : FixedArray[Int64]
   hash_prev : FixedArray[Int64]
-  mut hash_value : Int
+  mut hash_value : Int32
   mut history_offset : Int64
-  mut history_pos : Int
-  mut history_len : Int
+  mut history_pos : Int32
+  mut history_len : Int32
 }
 
 ///|
@@ -68,7 +68,7 @@ struct Encoder {
 /// The gzip header is written by the first successful `write` or `end` call.
 #alias(new, deprecated)
 pub fn Encoder::Encoder(
-  mtime~ : UInt = 0U,
+  mtime~ : UInt32 = 0U,
   extra_flags~ : Byte = b'\x00',
   operating_system~ : Byte = b'\xff',
 ) -> Encoder {
@@ -90,7 +90,7 @@ pub fn Encoder::Encoder(
 }
 
 ///|
-fn hash_sequence(first : Byte, second : Byte, third : Byte) -> Int {
+fn hash_sequence(first : Byte, second : Byte, third : Byte) -> Int32 {
   (
     (
       ((first.to_int() << encoder_hash_shift) ^ second.to_int()) <<
@@ -102,7 +102,7 @@ fn hash_sequence(first : Byte, second : Byte, third : Byte) -> Int {
 }
 
 ///|
-fn fixed_literal_code(symbol : Int) -> (UInt, Int) {
+fn fixed_literal_code(symbol : Int32) -> (UInt32, Int32) {
   if symbol <= 143 {
     (reverse_bits(symbol + 0x30, 8).reinterpret_as_uint(), 8)
   } else if symbol <= 255 {
@@ -118,10 +118,10 @@ fn fixed_literal_code(symbol : Int) -> (UInt, Int) {
 fn Encoder::push_byte(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   byte : Byte,
-) -> Int {
+) -> Int32 {
   ignore(self)
   output[output_offset + produced] = byte
   produced + 1
@@ -131,10 +131,10 @@ fn Encoder::push_byte(
 fn Encoder::push_bytes(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   bytes : Bytes,
-) -> Int {
+) -> Int32 {
   ignore(self)
   output.blit_from_bytes(output_offset + produced, bytes, 0, bytes.length())
   produced + bytes.length()
@@ -144,11 +144,11 @@ fn Encoder::push_bytes(
 fn Encoder::write_bits(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-  bits : UInt,
-  count : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+  bits : UInt32,
+  count : Int32,
+) -> Int32 {
   self.bit_buffer = self.bit_buffer | (bits << self.bit_count)
   self.bit_count += count
   let mut produced = produced
@@ -169,9 +169,9 @@ fn Encoder::write_bits(
 fn Encoder::write_header(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+) -> Int32 {
   let produced = self.push_bytes(
     output,
     output_offset,
@@ -186,10 +186,10 @@ fn Encoder::write_header(
 fn Encoder::write_literal(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   literal : Byte,
-) -> Int {
+) -> Int32 {
   let (code, bit_len) = fixed_literal_code(literal.to_int())
   self.write_bits(output, output_offset, produced, code, bit_len)
 }
@@ -198,20 +198,20 @@ fn Encoder::write_literal(
 fn Encoder::write_end_of_block(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+) -> Int32 {
   let (code, bit_len) = fixed_literal_code(256)
   self.write_bits(output, output_offset, produced, code, bit_len)
 }
 
 ///|
-fn fixed_distance_code(symbol : Int) -> (UInt, Int) {
+fn fixed_distance_code(symbol : Int32) -> (UInt32, Int32) {
   (reverse_bits(symbol, 5).reinterpret_as_uint(), 5)
 }
 
 ///|
-fn find_length_code(length : Int) -> (Int, Int, Int) {
+fn find_length_code(length : Int32) -> (Int32, Int32, Int32) {
   for i in 0..<length_bases.length() {
     let base = length_bases[i]
     let extra_bits = length_extras[i]
@@ -224,7 +224,7 @@ fn find_length_code(length : Int) -> (Int, Int, Int) {
 }
 
 ///|
-fn find_distance_code(distance : Int) -> (Int, Int, Int) {
+fn find_distance_code(distance : Int32) -> (Int32, Int32, Int32) {
   for i in 0..<distance_bases.length() {
     let base = distance_bases[i]
     let extra_bits = distance_extras[i]
@@ -240,11 +240,11 @@ fn find_distance_code(distance : Int) -> (Int, Int, Int) {
 fn Encoder::write_match(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-  length : Int,
-  distance : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+  length : Int32,
+  distance : Int32,
+) -> Int32 {
   let (length_symbol, length_extra_bits, length_extra) = find_length_code(
     length,
   )
@@ -310,8 +310,8 @@ fn Encoder::append_history_byte(self : Encoder, byte : Byte) -> Unit {
 fn Encoder::append_history_bytes(
   self : Encoder,
   input : Bytes,
-  input_offset : Int,
-  input_len : Int,
+  input_offset : Int32,
+  input_len : Int32,
 ) -> Unit {
   for i in 0..<input_len {
     self.append_history_byte(input[input_offset + i])
@@ -322,10 +322,10 @@ fn Encoder::append_history_bytes(
 fn Encoder::match_byte(
   self : Encoder,
   input : Bytes,
-  input_offset : Int,
-  pos : Int,
-  distance : Int,
-  matched : Int,
+  input_offset : Int32,
+  pos : Int32,
+  distance : Int32,
+  matched : Int32,
 ) -> Byte {
   if matched < distance {
     let history_index = (self.history_pos - distance + matched) &
@@ -340,10 +340,10 @@ fn Encoder::match_byte(
 fn Encoder::find_match(
   self : Encoder,
   input : Bytes,
-  input_offset : Int,
-  input_len : Int,
-  pos : Int,
-) -> (Int, Int) {
+  input_offset : Int32,
+  input_len : Int32,
+  pos : Int32,
+) -> (Int32, Int32) {
   let max_distance = @cmp.minimum(self.history_len, encoder_window_size)
   let max_match_len = @cmp.minimum(input_len - pos, encoder_max_match_len)
   if max_distance <= 0 || max_match_len < encoder_min_match_len {
@@ -393,10 +393,10 @@ fn Encoder::find_match(
 fn Encoder::write_fixed_block_header(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   is_final : Bool,
-) -> Int {
+) -> Int32 {
   self.write_bits(
     output,
     output_offset,
@@ -414,13 +414,13 @@ fn Encoder::write_fixed_block_header(
 fn Encoder::encode_chunk(
   self : Encoder,
   input : Bytes,
-  input_offset : Int,
-  input_len : Int,
+  input_offset : Int32,
+  input_len : Int32,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
+  output_offset : Int32,
+  produced : Int32,
   is_final : Bool,
-) -> Int {
+) -> Int32 {
   let mut produced = self.write_fixed_block_header(
     output, output_offset, produced, is_final,
   )
@@ -453,9 +453,9 @@ fn Encoder::encode_chunk(
 fn Encoder::flush_partial_byte(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset : Int,
-  produced : Int,
-) -> Int {
+  output_offset : Int32,
+  produced : Int32,
+) -> Int32 {
   if self.bit_count > 0 {
     let produced = self.push_byte(
       output,
@@ -475,7 +475,7 @@ fn Encoder::flush_partial_byte(
 /// Return the minimum output space required for the next successful call.
 /// `end=true` means the caller wants to terminate the stream now, so this
 /// includes the final block and trailer.
-pub fn Encoder::minimum_output_space(self : Encoder, end~ : Bool) -> Int {
+pub fn Encoder::minimum_output_space(self : Encoder, end~ : Bool) -> Int32 {
   guard !self.finished else { return 0 }
   let header = if self.started { 0 } else { HEADER_SIZE }
   if end {
@@ -497,11 +497,11 @@ pub fn Encoder::write(
   self : Encoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset~ : Int = 0,
-  input_len~ : Int = input.length() - input_offset,
-  output_offset~ : Int = 0,
-  output_len~ : Int = output.length() - output_offset,
-) -> (Int, Int) {
+  input_offset~ : Int32 = 0,
+  input_len~ : Int32 = input.length() - input_offset,
+  output_offset~ : Int32 = 0,
+  output_len~ : Int32 = output.length() - output_offset,
+) -> (Int32, Int32) {
   guard! !self.finished
   guard input_len > 0 else { return (0, 0) }
   let mut produced = 0
@@ -529,9 +529,9 @@ pub fn Encoder::write(
 pub fn Encoder::end(
   self : Encoder,
   output : FixedArray[Byte],
-  output_offset~ : Int = 0,
-  output_len~ : Int = output.length() - output_offset,
-) -> Int {
+  output_offset~ : Int32 = 0,
+  output_len~ : Int32 = output.length() - output_offset,
+) -> Int32 {
   guard !self.finished else { return 0 }
   let mut produced = 0
   let trailer = self.trailer_state.snapshot()

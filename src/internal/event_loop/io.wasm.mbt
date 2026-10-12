@@ -16,10 +16,10 @@
 async fn IoHandle::read_via_event_bus(
   handle : IoHandle,
   buf : FixedArray[Byte],
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   if platform is Windows {
     handle.read_via_event_bus_windows(buf, offset~, len~, context~)
   } else {
@@ -31,10 +31,10 @@ async fn IoHandle::read_via_event_bus(
 async fn IoHandle::write_via_event_bus(
   handle : IoHandle,
   buf : Bytes,
-  offset~ : Int,
-  len~ : Int,
+  offset~ : Int32,
+  len~ : Int32,
   context~ : String,
-) -> Int {
+) -> Int32 {
   if platform is Windows {
     handle.write_via_event_bus_windows(buf, offset~, len~, context~)
   } else {

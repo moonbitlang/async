@@ -20,29 +20,29 @@ pub type Buffer
 #borrow(src)
 pub extern "C" fn Buffer::blit_from_bytes(
   dst : Buffer,
-  dst_offset~ : Int = 0,
+  dst_offset~ : Int32 = 0,
   src~ : Bytes,
-  src_offset~ : Int = 0,
-  len~ : Int,
+  src_offset~ : Int32 = 0,
+  len~ : Int32,
 ) = "moonbitlang_async_blit_to_c"
 
 ///|
 #borrow(dst)
 pub extern "C" fn Buffer::blit_to_bytes(
   src : Buffer,
-  src_offset~ : Int = 0,
+  src_offset~ : Int32 = 0,
   dst~ : FixedArray[Byte],
-  dst_offset~ : Int = 0,
-  len~ : Int,
+  dst_offset~ : Int32 = 0,
+  len~ : Int32,
 ) = "moonbitlang_async_blit_from_c"
 
 ///|
 #borrow(buf)
 #alias("_[_]")
-pub extern "C" fn Buffer::get(buf : Buffer, index : Int) -> Byte = "moonbitlang_async_c_buffer_get"
+pub extern "C" fn Buffer::get(buf : Buffer, index : Int32) -> Byte = "moonbitlang_async_c_buffer_get"
 
 ///|
-pub extern "C" fn Buffer::strlen(buf : Buffer, offset~ : Int = 0) -> Int = "moonbitlang_async_strlen"
+pub extern "C" fn Buffer::strlen(buf : Buffer, offset~ : Int32 = 0) -> Int32 = "moonbitlang_async_strlen"
 
 ///|
 pub extern "C" fn Buffer::is_null(ptr : Buffer) -> Bool = "moonbitlang_async_pointer_is_null"
@@ -52,4 +52,4 @@ pub extern "C" fn Buffer::free(buf : Buffer) = "free"
 
 ///|
 #as_free_fn
-pub extern "C" fn Buffer::new(size : Int) -> Buffer = "moonbitlang_async_make_c_buffer"
+pub extern "C" fn Buffer::new(size : Int32) -> Buffer = "moonbitlang_async_make_c_buffer"

@@ -16,7 +16,7 @@
 suberror ServerTerminate
 
 ///|
-async fn server_main(server : @socket.TcpServer) -> Int {
+async fn server_main(server : @socket.TcpServer) -> Int32 {
   let mut num_connection = 0
   (server.run_forever(allow_failure=false) <| ((conn, _) => {
     num_connection += 1

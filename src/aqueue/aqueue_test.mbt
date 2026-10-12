@@ -81,7 +81,7 @@ async test "aqueue multi-reader" {
 ///|
 async test "aqueue cancellation" {
   let log = StringBuilder()
-  let queue : @aqueue.Queue[Int] = Queue(kind=Unbounded)
+  let queue : @aqueue.Queue[Int32] = Queue(kind=Unbounded)
   @async.with_timeout(350, () => {
     match @async.handle_cancellation(() => queue.get()) {
       None => log.write_string("`queue.get()` cancelled\n")

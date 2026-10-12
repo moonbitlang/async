@@ -18,11 +18,16 @@ pub(open) trait Reader {
   fn _get_internal_buffer(Self) -> ReaderBuffer
 
   // API for internal implementation only, do not use
-  async fn _direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
-  async fn read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int = _
-  async fn drop(Self, Int) -> Int = _
-  async fn read_exactly(Self, len : Int) -> Bytes = _
-  async fn read_some(Self, max_len? : Int) -> Bytes? = _
+  async fn _direct_read(
+    Self,
+    FixedArray[Byte],
+    offset~ : Int32,
+    max_len~ : Int32,
+  ) -> Int32
+  async fn read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32 = _
+  async fn drop(Self, Int32) -> Int32 = _
+  async fn read_exactly(Self, len : Int32) -> Bytes = _
+  async fn read_some(Self, max_len? : Int32) -> Bytes? = _
   async fn read_all(Self) -> &Data = _
   async fn read_until(Self, StringView) -> String? = _
 }
@@ -101,8 +106,8 @@ impl Reader with fn read_exactly(self, len) {
 ///|
 fn ReaderBuffer::take_owned(
   self : ReaderBuffer,
-  start : Int,
-  len : Int,
+  start : Int32,
+  len : Int32,
 ) -> Bytes {
   if start == 0 && len == self.buf.length() {
     let buf = self.buf
@@ -159,7 +164,7 @@ impl Reader with fn read_some(self, max_len?) {
 pub async fn[R : Reader] read_all(
   reader : R,
   prefix_list~ : FixedArray[BytesView] = [],
-  chunk_size~ : Int = 4096,
+  chunk_size~ : Int32 = 4096,
 ) -> Bytes {
   let buffer_list = []
   let mut buffer = FixedArray::make(chunk_size, b'\x00')

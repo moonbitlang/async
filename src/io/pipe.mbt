@@ -19,9 +19,9 @@ priv enum PipeReader {
   HasReader(
     coro~ : @coroutine.Coroutine,
     buf~ : FixedArray[Byte],
-    offset~ : Int,
-    max_len~ : Int,
-    mut result~ : Int
+    offset~ : Int32,
+    max_len~ : Int32,
+    mut result~ : Int32
   )
 }
 
@@ -32,9 +32,9 @@ priv enum PipeWriter {
   HasWriter(
     coro~ : @coroutine.Coroutine,
     buf~ : Bytes,
-    offset~ : Int,
-    len~ : Int,
-    mut result~ : Int
+    offset~ : Int32,
+    len~ : Int32,
+    mut result~ : Int32
   )
 }
 

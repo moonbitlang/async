@@ -17,10 +17,10 @@
 priv struct UnixEventLoopExtra {
   // On MacOS, PID waiting is implemented directly via kqueue, 
   // so we need to separately maintain waiters for each PID.
-  pids : Map[Int, @coroutine.Coroutine]
+  pids : Map[Int32, @coroutine.Coroutine]
   // On Linux/MacOS, notifications for completion of thread pool job
   // are transferred via a pipe, this buffer is used to read from the pipe.
-  completed_jobs_buffer : FixedArray[Int]
+  completed_jobs_buffer : FixedArray[Int32]
 }
 
 ///|
@@ -96,7 +96,7 @@ fn UnixEventLoopExtra::handle_event(
 async fn UnixEventLoopExtra::wait_pid(
   self : Self,
   evloop : EventLoop,
-  pid : Int,
+  pid : Int32,
 ) -> Unit {
   guard! self.pids.get(pid) is None
   self.pids[pid] = @coroutine.current_coroutine()

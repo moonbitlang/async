@@ -81,7 +81,7 @@ extern "js" fn rejection_name(
   #| }
 
 ///|
-extern "js" fn abort_listener_count(signal : @js_async.AbortSignal) -> Int =
+extern "js" fn abort_listener_count(signal : @js_async.AbortSignal) -> Int32 =
   #| (signal) => require('node:events').getEventListeners(signal, 'abort').length
 
 ///|

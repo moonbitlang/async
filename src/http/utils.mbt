@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn encode_int(value : Int, base~ : Int) -> Bytes {
+fn encode_int(value : Int32, base~ : Int32) -> Bytes {
   let len = for x = value, len = 1; x >= base; {
     continue x / base, len + 1
   } nobreak {

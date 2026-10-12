@@ -17,11 +17,11 @@
 type Timer
 
 ///|
-extern "js" fn set_timeout(duration : Int, f : () -> Unit) -> Timer =
+extern "js" fn set_timeout(duration : Int32, f : () -> Unit) -> Timer =
   #| (duration, f) => setTimeout(f, duration)
 
 ///|
-pub fn Timer::new(duration : Int, f : () -> Unit) -> Timer {
+pub fn Timer::new(duration : Int32, f : () -> Unit) -> Timer {
   set_timeout(duration) <| () => {
     f()
     reschedule()
@@ -33,7 +33,7 @@ pub extern "js" fn Timer::cancel(self : Timer) =
   #| (timer) => clearTimeout(timer)
 
 ///|
-pub async fn sleep(duration : Int) -> Unit noraise {
+pub async fn sleep(duration : Int32) -> Unit noraise {
   let coro = @coroutine.current_coroutine()
   let timer = Timer::new(duration, () => coro.wake())
   defer timer.cancel()
