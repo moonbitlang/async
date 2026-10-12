@@ -59,8 +59,8 @@ fn join_multicast_group_ffi(
   sock : @fd_util.Fd,
   multi_addr : Addr,
   local_addr : Addr,
-  multi_addr_len? : Int = multi_addr.0.length(),
-  local_addr_len? : Int = local_addr.0.length(),
+  multi_addr_len~ : Int = multi_addr.0.length(),
+  local_addr_len~ : Int = local_addr.0.length(),
 ) -> Int = "moonbitlang/async" "socket/join_multicast_group"
 
 ///|
@@ -82,7 +82,7 @@ fn join_multicast_group_v6_ffi(
   sock : @fd_util.Fd,
   multi_addr : Addr,
   interface_index : UInt,
-  multi_addr_len? : Int = multi_addr.0.length(),
+  multi_addr_len~ : Int = multi_addr.0.length(),
 ) -> Int = "moonbitlang/async" "socket/join_multicast_group_v6"
 
 ///|
@@ -103,7 +103,7 @@ fn join_multicast_group_v6(
 fn set_multicast_interface_ffi(
   sock : @fd_util.Fd,
   local_addr : Addr,
-  local_addr_len? : Int = local_addr.0.length(),
+  local_addr_len~ : Int = local_addr.0.length(),
 ) -> Int = "moonbitlang/async" "socket/set_multicast_interface"
 
 ///|
@@ -189,7 +189,7 @@ fn listen_ffi(sock : @fd_util.Fd) -> Int = "moonbitlang/async" "socket/listen"
 fn connect_ffi(
   sock : @fd_util.Fd,
   addr : Addr,
-  addr_len? : Int = addr.0.length(),
+  addr_len~ : Int = addr.0.length(),
 ) -> Int = "moonbitlang/async" "socket/udp_client_connect"
 
 ///|
@@ -219,7 +219,7 @@ fn enable_keepalive_ffi(
 fn getsockname_ffi(
   sock : @fd_util.Fd,
   addr_out : Addr,
-  addr_len? : Int = addr_out.0.length(),
+  addr_len~ : Int = addr_out.0.length(),
 ) -> Int = "moonbitlang/async" "socket/getsockname"
 
 ///|

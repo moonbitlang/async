@@ -125,7 +125,7 @@ pub fn set_external_event_loop(extloop : &ExternalEventLoop) -> Unit {
 ///|
 pub fn with_event_loop(
   f : async () -> Unit,
-  max_worker_count? : Int = 1024,
+  max_worker_count~ : Int = 1024,
 ) -> Unit raise {
   guard! curr_loop.val is None
   let evloop = EventLoop::new(max_worker_count~)
@@ -500,7 +500,7 @@ fn errno_is_cancelled(errno : Int) -> Bool = "moonbitlang/async" "thread_pool/er
 async fn perform_job_in_worker(
   job : Job,
   context~ : String,
-  cancellable? : Bool = false,
+  cancellable~ : Bool = false,
 ) -> Int {
   @coroutine.check_cancellation()
   guard! curr_loop.val is Some(evloop)

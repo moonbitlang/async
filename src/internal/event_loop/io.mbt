@@ -95,8 +95,8 @@ pub fn IoHandle::close(handle : IoHandle) -> Unit {
 pub fn IoHandle::from_fd(
   fd : @fd_util.Fd,
   kind~ : @fd_util.FileKind,
-  is_async? : Bool = true,
-  read_only? : Bool = false,
+  is_async~ : Bool = true,
+  read_only~ : Bool = false,
 ) -> IoHandle raise {
   let context = "@event_loop.IoHandle::from_fd()"
   errdefer @fd_util.close(fd, kind~, context~)
@@ -202,13 +202,13 @@ async fn IoHandle::read_console(
   for rest = handle.console_state.buffer[:n], produced = 0 {
     let (char, rest) = match rest {
       [] => break produced
-      [0xD800..=0xDBFF as high, 0xDC00..=0xDFFF as low, .. rest] => {
+      [0xD800..<=0xDBFF as high, 0xDC00..<=0xDFFF as low, .. rest] => {
         let c = ((high.to_int() - 0xD800) << 10) +
           (low.to_int() - 0xDC00) +
           0x10000
         (if c > 0x10FFFF { 0xFFFD } else { c }, rest)
       }
-      [0xD800..=0xDBFF as high] =>
+      [0xD800..<=0xDBFF as high] =>
         if produced > 0 {
           handle.console_state.unpaired_surrogate = high
           break produced
@@ -224,7 +224,7 @@ async fn IoHandle::read_console(
           handle.console_state.unpaired_surrogate = high
           return handle.read_console(buf, offset~, len~, context~)
         }
-      [0xD800..=0xDFFF, .. rest] => (0xFFFD, rest)
+      [0xD800..<=0xDFFF, .. rest] => (0xFFFD, rest)
       [c, .. rest] => (c.to_int(), rest)
     }
     let char_bytes = match char {
@@ -354,7 +354,7 @@ async fn IoHandle::write_console(
     let total = match handle.console_state.pending[0] {
       0xC0..<0xE0 => 2
       0xE0..<0xF0 => 3
-      0xF0..=0xF4 => 4
+      0xF0..<=0xF4 => 4
       _ => panic()
     }
     let required = total - handle.console_state.pending_len
@@ -400,9 +400,9 @@ async fn IoHandle::write_console(
     [.., 0xC0..<0xE0] => 1
     [.., 0xE0..<0xF0] => 1
     [.., 0xE0..<0xF0, 0x80..<0xC0] => 2
-    [.., 0xF0..=0xF4] => 1
-    [.., 0xF0..=0xF4, 0x80..<0xC0] => 2
-    [.., 0xF0..=0xF4, 0x80..<0XC0, 0x80..<0xC0] => 3
+    [.., 0xF0..<=0xF4] => 1
+    [.., 0xF0..<=0xF4, 0x80..<0xC0] => 2
+    [.., 0xF0..<=0xF4, 0x80..<0XC0, 0x80..<0xC0] => 3
     _ => 0
   }
 

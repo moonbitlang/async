@@ -32,7 +32,7 @@ struct BufferedWriter[W] {
 /// Create a buffered writer with fixed buffer size `size`.
 pub fn[W] BufferedWriter::new(
   writer : W,
-  size? : Int = 1024,
+  size~ : Int = 1024,
 ) -> BufferedWriter[W] {
   { writer, buf: FixedArray::make(size, 0), len: 0, }
 }

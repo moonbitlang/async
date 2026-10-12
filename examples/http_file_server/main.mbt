@@ -129,7 +129,7 @@ async fn serve_404(conn : @http.ServerConnection) -> Unit {
 pub async fn server_main(
   server : @http.Server,
   path~ : String,
-  log? : (String) -> Unit = println,
+  log~ : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
   server.run_forever() <| ((request, _body, conn) => {

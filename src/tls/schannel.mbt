@@ -191,9 +191,9 @@ async fn Tls::connect(self : Tls) -> Unit {
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   reader : R,
   writer : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   ignore(sni)

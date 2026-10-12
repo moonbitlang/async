@@ -276,11 +276,11 @@ fn Watcher::new_backend(
 /// Currently, the behavior when `path` itself is renamed or removed is undefined.
 pub async fn Watcher::Watcher(
   path : String,
-  debounce_timeout? : Int = 20,
-  max_debounce_delay? : Int = 200,
-  report_child_event? : Bool = false,
-  report_event_on_init? : Bool = false,
-  ignored_paths? : (String) -> Bool = _ => false,
+  debounce_timeout~ : Int = 20,
+  max_debounce_delay~ : Int = 200,
+  report_child_event~ : Bool = false,
+  report_event_on_init~ : Bool = false,
+  ignored_paths~ : (String) -> Bool = _ => false,
 ) -> Watcher {
   let context = "@fs.Watcher()"
   let path = path.trim_end(chars="/")

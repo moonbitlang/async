@@ -24,9 +24,9 @@ fn Buffer::is_null_ffi(buf : Buffer) -> Bool = "moonbitlang/async" "c_buffer/is_
 #borrow(src)
 pub fn Buffer::blit_from_bytes(
   dst : Buffer,
-  dst_offset? : Int = 0,
+  dst_offset~ : Int = 0,
   src~ : Bytes,
-  src_offset? : Int = 0,
+  src_offset~ : Int = 0,
   len~ : Int,
 ) -> Unit = "moonbitlang/async" "c_buffer/blit_to_c"
 
@@ -35,9 +35,9 @@ pub fn Buffer::blit_from_bytes(
 #borrow(dst)
 pub fn Buffer::blit_to_bytes(
   src : Buffer,
-  src_offset? : Int = 0,
+  src_offset~ : Int = 0,
   dst~ : FixedArray[Byte],
-  dst_offset? : Int = 0,
+  dst_offset~ : Int = 0,
   len~ : Int,
 ) -> Unit = "moonbitlang/async" "c_buffer/blit_from_c"
 

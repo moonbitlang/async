@@ -211,7 +211,7 @@ pub fn UdpServer::fd(self : UdpServer) -> @fd_util.Fd {
 #alias(new, deprecated)
 pub async fn UdpServer::UdpServer(
   addr : Addr,
-  dual_stack? : Bool = true,
+  dual_stack~ : Bool = true,
 ) -> UdpServer {
   let context = "@socket.UdpServer::new()"
   let family = addr.family()
@@ -253,7 +253,7 @@ pub async fn UdpServer::UdpServer(
 /// There is no simple way to implement multicast-only IPv6 socket on Linux/MacOS.
 pub async fn UdpServer::multicast(
   multi_addr : Addr,
-  interface_addr? : Addr = Addr::new(0, 0),
+  interface_addr~ : Addr = Addr::new(0, 0),
 ) -> UdpServer {
   let context = "@socket.UdpServer::multicast()"
   let family = multi_addr.family()
@@ -373,7 +373,7 @@ pub fn UdpServer::set_multicast_loopback(
 pub fn UdpServer::join_multicast_group(
   self : UdpServer,
   multi_addr : Addr,
-  interface_addr? : Addr = Addr::new(0, 0),
+  interface_addr~ : Addr = Addr::new(0, 0),
 ) -> Unit raise {
   let context = "@socket.UdpServer::join_multicast_group()"
   guard self.addr.family() is IPv4 else { abort("\{context} is IPv4 only") }
@@ -405,7 +405,7 @@ pub fn UdpServer::join_multicast_group(
 pub fn UdpServer::join_multicast_group_v6(
   self : UdpServer,
   multi_addr : Addr,
-  interface? : String = "0",
+  interface~ : String = "0",
 ) -> Unit raise {
   let context = "@socket.UdpServer::join_multicast_group_v6()"
   guard self.addr.family() is IPv6 else { abort("\{context} is IPv6 only") }
@@ -437,8 +437,8 @@ pub fn UdpServer::join_multicast_group_v6(
 pub async fn UdpClient::recv(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  max_len~ : Int = buf.length() - offset,
 ) -> Int {
   self.io.read(buf, offset~, len=max_len, context="@socket.UdpClient::recv()")
 }
@@ -450,8 +450,8 @@ pub async fn UdpClient::recv(
 pub async fn UdpClient::recvfrom(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  max_len~ : Int = buf.length() - offset,
 ) -> (Int, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
@@ -482,8 +482,8 @@ pub async fn UdpClient::recvfrom(
 pub async fn UdpServer::recvfrom(
   self : UdpServer,
   buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  max_len~ : Int = buf.length() - offset,
 ) -> (Int, Addr) {
   // Create a big enough Addr to hold both IPv4 and IPv6 address
   let addr = Addr::empty(self.addr.family())
@@ -508,8 +508,8 @@ pub async fn UdpServer::recvfrom(
 pub async fn UdpClient::send(
   self : UdpClient,
   buf : Bytes,
-  offset? : Int = 0,
-  len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  len~ : Int = buf.length() - offset,
 ) -> Unit {
   let context = "@socket.UdpClient::send()"
   let _ = match self.dst_addr {
@@ -530,8 +530,8 @@ pub async fn UdpServer::sendto(
   self : UdpServer,
   buf : Bytes,
   addr : Addr,
-  offset? : Int = 0,
-  len? : Int = buf.length() - offset,
+  offset~ : Int = 0,
+  len~ : Int = buf.length() - offset,
 ) -> Unit {
   guard !self.is_multicast_only else {
     raise Failure::Failure(

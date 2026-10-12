@@ -25,8 +25,9 @@ import {
   "moonbitlang/async/internal/test_util",
 } for "wbtest"
 
+max_concurrent_tests = 5
+
 options(
-  "max-concurrent-tests": 5,
   "native-stub": [ "unix.c", "windows.c" ],
   targets: {
     "deprecated.mbt": [ "native", "wasm" ],

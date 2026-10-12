@@ -49,7 +49,7 @@ priv enum Sink {
 pub async fn Cmd::output(
   self : Cmd,
   timeout_ms? : Int,
-  max_output_bytes? : Int = default_max_output_bytes,
+  max_output_bytes~ : Int = default_max_output_bytes,
 ) -> Output {
   validate_output_limit(max_output_bytes)
   Pipeline::{ commands: [self], }.execute(Buffer(max_output_bytes), timeout_ms)
@@ -131,7 +131,7 @@ pub async fn Cmd::each_line(
   self : Cmd,
   on_line : async (String) -> Unit,
   timeout_ms? : Int,
-  max_line_bytes? : Int = default_max_output_bytes,
+  max_line_bytes~ : Int = default_max_output_bytes,
 ) -> Int {
   validate_output_limit(max_line_bytes)
   Pipeline::{ commands: [self], }.execute(
@@ -159,7 +159,7 @@ pub async fn Cmd::each_line(
 pub async fn Pipeline::output(
   self : Pipeline,
   timeout_ms? : Int,
-  max_output_bytes? : Int = default_max_output_bytes,
+  max_output_bytes~ : Int = default_max_output_bytes,
 ) -> Output {
   validate_output_limit(max_output_bytes)
   self.execute(Buffer(max_output_bytes), timeout_ms)
@@ -208,7 +208,7 @@ pub async fn Pipeline::each_line(
   self : Pipeline,
   on_line : async (String) -> Unit,
   timeout_ms? : Int,
-  max_line_bytes? : Int = default_max_output_bytes,
+  max_line_bytes~ : Int = default_max_output_bytes,
 ) -> Int {
   validate_output_limit(max_line_bytes)
   self.execute(Lines(on_line, max_line_bytes), timeout_ms).exit_code

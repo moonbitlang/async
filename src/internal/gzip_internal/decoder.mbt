@@ -211,8 +211,8 @@ fn Decoder::copy_to_pending(
 pub fn Decoder::write_partial_data(
   self : Decoder,
   input : Bytes,
-  input_offset? : Int = 0,
-  input_len? : Int = input.length() - input_offset,
+  input_offset~ : Int = 0,
+  input_len~ : Int = input.length() - input_offset,
 ) -> Unit {
   guard! input_len < self.minimum_input_size()
   self.ensure_pending_capacity(self.raw_minimum_input_size())
@@ -316,7 +316,7 @@ fn Decoder::decode_dynamic_length_step(
   let mut previous = previous
   let symbol = input.decode_symbol(code_tree)
   match symbol {
-    0..=15 => {
+    0..<=15 => {
       lengths[length_index] = symbol
       previous = symbol
       length_index += 1
@@ -685,7 +685,7 @@ fn Decoder::decode_huffman_step(
 ) -> Unit raise {
   let symbol = input.decode_symbol(literal_tree)
   match symbol {
-    0..=255 => {
+    0..<=255 => {
       self.copy_remaining = -symbol - 1
       self.copy_distance = 0
       input.commit(self)
@@ -761,10 +761,10 @@ fn Decoder::write_direct(
   self : Decoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset? : Int = 0,
-  input_len? : Int = input.length() - input_offset,
-  output_offset? : Int = 0,
-  output_len? : Int = output.length() - output_offset,
+  input_offset~ : Int = 0,
+  input_len~ : Int = input.length() - input_offset,
+  output_offset~ : Int = 0,
+  output_len~ : Int = output.length() - output_offset,
 ) -> (Int, Int) raise {
   let input_state = DecodeInput::new(
     input,
@@ -951,10 +951,10 @@ pub fn Decoder::write(
   self : Decoder,
   input : Bytes,
   output : FixedArray[Byte],
-  input_offset? : Int = 0,
-  input_len? : Int = input.length() - input_offset,
-  output_offset? : Int = 0,
-  output_len? : Int = output.length() - output_offset,
+  input_offset~ : Int = 0,
+  input_len~ : Int = input.length() - input_offset,
+  output_offset~ : Int = 0,
+  output_len~ : Int = output.length() - output_offset,
 ) -> (Int, Int) raise {
   guard! input_offset >= 0 && input_offset <= input.length()
   guard! input_len >= 0 && input_len <= input.length() - input_offset

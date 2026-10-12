@@ -17,7 +17,7 @@
 #borrow(name)
 fn if_nametoindex_ffi(
   name : @os_string.OsString,
-  name_len? : Int = name.to_string().length(),
+  name_len~ : Int = name.to_string().length(),
 ) -> UInt = "moonbitlang/async" "socket/if_nametoindex"
 
 ///|

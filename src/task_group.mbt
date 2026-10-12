@@ -135,8 +135,8 @@ fn[X] TaskGroup::spawn_coroutine(
 pub fn[X] TaskGroup::spawn_bg(
   self : TaskGroup[X],
   f : async () -> Unit,
-  no_wait? : Bool = false,
-  allow_failure? : Bool = false,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
   loc~ : SourceLoc,
 ) -> Unit {
   ignore(self.spawn_coroutine(f, no_wait~, allow_failure~, loc~))
@@ -180,8 +180,8 @@ pub fn[X] TaskGroup::spawn_bg(
 pub fn[G, X] TaskGroup::spawn(
   self : TaskGroup[G],
   f : async () -> X,
-  no_wait? : Bool = false,
-  allow_failure? : Bool = false,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
   loc~ : SourceLoc,
 ) -> Task[X] {
   let value = Ref(None)
@@ -311,8 +311,8 @@ pub async fn[X] TaskGroup::return_immediately(
 pub fn[X] TaskGroup::spawn_loop(
   self : TaskGroup[X],
   f : async () -> Unit,
-  no_wait? : Bool = false,
-  allow_failure? : Bool = false,
+  no_wait~ : Bool = false,
+  allow_failure~ : Bool = false,
   retry? : RetryMethod,
   max_retry? : Int,
   fatal_error? : (Error) -> Bool,

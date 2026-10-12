@@ -55,7 +55,7 @@ fn OsArgv::add_encoded_entry(
   self : OsArgv,
   offset : Int,
   arg : @os_string.OsString,
-  arg_len? : Int = arg.to_string().length(),
+  arg_len~ : Int = arg.to_string().length(),
 ) -> Unit = "moonbitlang/async" "process/argv_array_add_encoded_entry/unix"
 
 ///|
@@ -65,7 +65,7 @@ fn OsArgv::add_entry(
   self : OsArgv,
   offset : Int,
   arg : String,
-  arg_len? : Int = arg.length(),
+  arg_len~ : Int = arg.length(),
 ) -> Unit = "moonbitlang/async" "process/argv_array_add_entry/unix"
 
 ///|

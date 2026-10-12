@@ -90,7 +90,7 @@ extern "C" fn OsArgv::add_encoded_entry(
   self : OsArgv,
   offset : Int,
   arg : @os_string.OsString,
-  arg_len? : Int = arg.bytes_length(),
+  arg_len~ : Int = arg.bytes_length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_encoded_entry"
 
 ///|
@@ -100,7 +100,7 @@ extern "C" fn OsArgv::add_entry(
   self : OsArgv,
   offset : Int,
   arg : String,
-  arg_len? : Int = arg.length(),
+  arg_len~ : Int = arg.length(),
 ) -> Unit = "moonbitlang_async_argv_array_add_entry"
 
 ///|

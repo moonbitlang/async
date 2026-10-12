@@ -39,10 +39,10 @@ pub suberror ProxyError {
 ///|
 async fn Client::connect(
   host : StringView,
-  headers? : Headers = Map([]),
-  protocol? : Protocol = Https,
+  headers~ : Headers = Map([]),
+  protocol~ : Protocol = Https,
   proxy? : Client,
-  trust? : @tls.TrustedRoot = SystemRoot,
+  trust~ : @tls.TrustedRoot = SystemRoot,
 ) -> Client {
   let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
@@ -116,9 +116,9 @@ async fn Client::connect(
 #label_migration(verify, fill=false, msg="use `trust` instead")
 pub async fn Client::Client(
   uri : String,
-  headers? : Headers = Map([]),
+  headers~ : Headers = Map([]),
   proxy? : Client,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   trust? : @tls.TrustedRoot,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
@@ -284,7 +284,7 @@ pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
   path : StringView,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Unit {
   self.auto_decompress = self.sender.send_request(meth, path, extra_headers~)
   self.request_method = Some(meth)
@@ -303,7 +303,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit {
 pub async fn Client::get(
   self : Client,
   path : String,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
   body? : &@io.Data,
 ) -> Response {
   self.request(Get, path, extra_headers~)
@@ -319,7 +319,7 @@ pub async fn Client::put(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
@@ -330,7 +330,7 @@ pub async fn Client::post(
   self : Client,
   path : String,
   body : &@io.Data,
-  extra_headers? : Headers = Map([]),
+  extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
 }

@@ -18,6 +18,4 @@ import {
 
 supported_targets = "native+wasm"
 
-options(
-  "max-concurrent-tests": 5,
-)
+max_concurrent_tests = 5

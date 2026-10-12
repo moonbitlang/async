@@ -74,7 +74,7 @@ fn TlsConnectionHandle::new() -> TlsConnectionHandle = "moonbitlang/async" "tls/
 fn TlsConnectionHandle::set_client(
   self : TlsConnectionHandle,
   host : String,
-  host_len? : Int = host.length(),
+  host_len~ : Int = host.length(),
   sni~ : Bool,
   trust : TlsTrustMode,
 ) -> Int = "moonbitlang/async" "tls/connection/set_client"
@@ -85,7 +85,7 @@ fn TlsConnectionHandle::set_client(
 fn TlsConnectionHandle::add_root_certificate(
   self : TlsConnectionHandle,
   root : Bytes,
-  root_len? : Int = root.length(),
+  root_len~ : Int = root.length(),
 ) -> Int = "moonbitlang/async" "tls/connection/add_root_certificate"
 
 ///|
@@ -94,10 +94,10 @@ fn TlsConnectionHandle::add_root_certificate(
 fn TlsConnectionHandle::set_server_files(
   self : TlsConnectionHandle,
   private_key_file : @os_string.OsString,
-  private_key_file_len? : Int = private_key_file.to_string().length(),
+  private_key_file_len~ : Int = private_key_file.to_string().length(),
   private_key_type : X509FileType,
   certificate_file : @os_string.OsString,
-  certificate_file_len? : Int = certificate_file.to_string().length(),
+  certificate_file_len~ : Int = certificate_file.to_string().length(),
   certificate_type : X509FileType,
 ) -> Int = "moonbitlang/async" "tls/connection/set_server_files"
 
@@ -107,7 +107,7 @@ fn TlsConnectionHandle::set_server_files(
 fn TlsConnectionHandle::set_server_pfx(
   self : TlsConnectionHandle,
   pfx_content : Bytes,
-  pfx_content_len? : Int = pfx_content.length(),
+  pfx_content_len~ : Int = pfx_content.length(),
 ) -> Int = "moonbitlang/async" "tls/connection/set_server_pfx"
 
 ///|
@@ -324,9 +324,9 @@ async fn Tls::accept(self : Tls) -> Unit {
 pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   r : R,
   w : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   let trust = match trust {

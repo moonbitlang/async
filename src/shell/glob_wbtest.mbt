@@ -23,7 +23,7 @@
 fn parsed(
   text : String,
   windows~ : Bool,
-  escapes? : Bool = true,
+  escapes~ : Bool = true,
 ) -> (String, Array[String], Bool) {
   let (root, segments, directories_only) = parse_path(text, windows~, escapes~)
   let shown = match root {

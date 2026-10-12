@@ -29,8 +29,8 @@ async fn run_lock_file_prog(
   file : String,
   lock : @fs.Lock,
   log : Array[String],
-  duration? : Int = 500,
-  prefix? : String = "",
+  duration~ : Int = 500,
+  prefix~ : String = "",
 ) -> @async.Task[Unit] {
   let prog = lock_file_prog.wait()
   let (r, w) = @process.read_from_process()

@@ -21,8 +21,8 @@ enum Step {
 ///|
 fn encode(
   data : Bytes,
-  input_step? : Step = Max,
-  output_step? : Step = Max,
+  input_step~ : Step = Max,
+  output_step~ : Step = Max,
 ) -> Bytes raise {
   let output = FixedArray::make(data.length() * 4 + 256, b'\x00')
   let encoder = @gzip_internal.Encoder()
@@ -68,8 +68,8 @@ fn encode(
 fn decode(
   compressed : Bytes,
   expected_len~ : Int,
-  input_step? : Step = Max,
-  output_step? : Step = Max,
+  input_step~ : Step = Max,
+  output_step~ : Step = Max,
 ) -> Bytes raise {
   let output = FixedArray::make(
     if expected_len > 0 {

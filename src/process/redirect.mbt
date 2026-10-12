@@ -46,7 +46,7 @@ struct WriteToProcess(@event_loop.IoHandle)
 /// If you forgot to close `w` or close it too late,
 /// the read end `r` will fail to observe EOF from children process.
 pub fn read_from_process(
-  shared? : Bool = false,
+  shared~ : Bool = false,
 ) -> (ReadFromProcess, &ProcessOutput) raise {
   let context = "@process.read_from_process()"
   let (r, w) = @fd_util.pipe(
@@ -175,10 +175,10 @@ fn @fs.CreateMode::to_int(self : @fs.CreateMode) -> Int = "%identity"
 /// there is no need to wait for the termination of the child process.
 pub async fn redirect_to_file(
   path : String,
-  append? : Bool = false,
-  create_mode? : @fs.CreateMode = CreateOrTruncate,
-  permission? : Int = 0o644,
-  shared? : Bool = false,
+  append~ : Bool = false,
+  create_mode~ : @fs.CreateMode = CreateOrTruncate,
+  permission~ : Int = 0o644,
+  shared~ : Bool = false,
 ) -> &ProcessOutput {
   let (file, _) = @event_loop.open(
     path,

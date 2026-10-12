@@ -33,7 +33,7 @@ struct ServerConnection {
 /// - Content-Length, Transfer-Encoding
 pub fn ServerConnection::new(
   conn : @socket.Tcp,
-  headers? : Headers = Map([]),
+  headers~ : Headers = Map([]),
 ) -> ServerConnection {
   {
     reader: Reader::new(conn),
@@ -199,8 +199,8 @@ pub async fn ServerConnection::send_response(
   self : ServerConnection,
   code : Int,
   reason : String,
-  extra_headers? : Headers = Map([]),
-  cookies? : Array[Cookie] = [],
+  extra_headers~ : Headers = Map([]),
+  cookies~ : Array[Cookie] = [],
 ) -> Unit {
   self.sender.send_response(
     code,
@@ -232,7 +232,7 @@ pub async fn Server::Server(
   addr : @socket.Addr,
   dual_stack? : Bool,
   reuse_addr? : Bool,
-  headers? : Headers = Map([]),
+  headers~ : Headers = Map([]),
 ) -> Server {
   let server = @socket.TcpServer(addr, dual_stack?, reuse_addr?)
   { addr: server.addr, server, headers, }

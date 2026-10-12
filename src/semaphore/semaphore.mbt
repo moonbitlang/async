@@ -68,7 +68,7 @@ pub struct Semaphore {
 #alias(new, deprecated)
 pub fn Semaphore::Semaphore(
   size : Int,
-  initial_value? : Int = size,
+  initial_value~ : Int = size,
 ) -> Semaphore {
   if size <= 0 {
     abort("size of semaphore must be positive")
