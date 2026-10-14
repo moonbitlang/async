@@ -21,19 +21,19 @@ async test "timestamp for path" {
     return
   }
   let path = "/tmp/timestamp_test"
-  @fs.write_file(path, "abcd", sync=Full)
+  @fs.write_text(path, "abcd", sync=Full)
   defer @fs.remove(path)
   let mtime_1 = @fs.mtime(path)
   let ctime_1 = @fs.ctime(path)
   @async.sleep(600)
-  @fs.write_file(path, "1234", create_mode=OpenExisting, sync=Full)
+  @fs.write_text(path, "1234", create_mode=OpenExisting, sync=Full)
   let atime_2 = @fs.atime(path)
   let mtime_2 = @fs.mtime(path)
   let ctime_2 = @fs.ctime(path)
   assert_true((mtime_2 - mtime_1).msec() > 500)
   assert_true((ctime_2 - ctime_1).msec() > 500)
   @async.sleep(600)
-  inspect(@fs.read_file(path, sync_timestamp=true).text(), content="1234")
+  inspect(@fs.read_text(path, sync_timestamp=true), content="1234")
   let atime_3 = @fs.atime(path)
   let mtime_3 = @fs.mtime(path)
   let ctime_3 = @fs.ctime(path)
@@ -56,12 +56,12 @@ async test "mtime for path" {
     return
   }
   let path = "_build/timestamp_test"
-  @fs.write_file(path, "abcd", sync=Full)
+  @fs.write_text(path, "abcd", sync=Full)
   defer @fs.remove(path)
   let mtime_1 = @fs.mtime(path)
   let ctime_1 = @fs.ctime(path)
   @async.sleep(600)
-  @fs.write_file(path, "1234", create_mode=OpenExisting, sync=Full)
+  @fs.write_text(path, "1234", create_mode=OpenExisting, sync=Full)
   let mtime_2 = @fs.mtime(path)
   let ctime_2 = @fs.ctime(path)
   assert_true((mtime_2 - mtime_1).msec() > 500)
@@ -77,7 +77,7 @@ async test "timestamp for opened file" {
     return
   }
   let path = "/tmp/opened_file_timestamp_test"
-  @fs.write_file(path, "abcd", sync=Full)
+  @fs.write_text(path, "abcd", sync=Full)
   defer @fs.remove(path)
   let file = @fs.open(path, mode=ReadWrite, sync=Full)
   defer file.close()
@@ -91,7 +91,7 @@ async test "timestamp for opened file" {
   assert_true((mtime_2 - mtime_1).msec() > 500)
   assert_true((ctime_2 - ctime_1).msec() > 500)
   @async.sleep(600)
-  inspect(file.read_all().text(), content="1234")
+  inspect(file.text.read_all(), content="1234")
   file.sync()
   let atime_3 = file.atime()
   let mtime_3 = file.mtime()
@@ -115,7 +115,7 @@ async test "mtime for opened file" {
     return
   }
   let path = "_build/opened_file_timestamp_test"
-  @fs.write_file(path, "abcd", sync=Full)
+  @fs.write_text(path, "abcd", sync=Full)
   defer @fs.remove(path)
   let file = @fs.open(path, mode=ReadWrite, sync=Full)
   defer file.close()

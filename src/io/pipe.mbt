@@ -42,65 +42,82 @@ priv enum PipeWriter {
 priv struct Pipe {
   mut reader : PipeReader
   mut writer : PipeWriter
-  read_buf : ReaderBuffer
 }
 
 ///|
 /// The read end of a pipe.
 /// Data written to the write end can be read from here.
-struct PipeRead(Pipe)
+#valtype
+struct PipeRead {
+  pipe : Pipe
+  ctrl : BinaryReaderController
+}
 
 ///|
 /// The write end of a pipe.
 /// Data written here can be read from the read end.
-struct PipeWrite(Pipe)
+#valtype
+struct PipeWrite {
+  pipe : Pipe
+  ctrl : BinaryWriterController
+}
 
 ///|
 /// Create a new in-memory pipe.
 /// Data written to the write end can be obtained from the read end.
 /// Useful for testing and converting writer-based function to reader.
 pub fn pipe() -> (PipeRead, PipeWrite) {
-  let p = { reader: NoReader, writer: NoWriter, read_buf: ReaderBuffer::new(), }
-  (PipeRead(p), PipeWrite(p))
+  let pipe : Pipe = { reader: NoReader, writer: NoWriter, }
+  (
+    { pipe, ctrl: BinaryReaderController(), },
+    { pipe, ctrl: BinaryWriterController(), },
+  )
 }
 
 ///|
 /// Close the read end of a pipe.
 /// After closing the read end, writing to the write end result in error.
 pub fn PipeRead::close(self : PipeRead) -> Unit {
-  let PipeRead(self) = self
-  if self.writer is (HasWriter(_) as writer) {
+  if self.pipe.writer is (HasWriter(_) as writer) {
     writer.result = 0
     writer.coro.wake()
   }
-  self.reader = ReadEndClosed
+  self.pipe.reader = ReadEndClosed
 }
 
 ///|
 /// Close the write end of a pipe.
 /// After closing the write end, reading from the read end result in EOF.
 pub fn PipeWrite::close(self : PipeWrite) -> Unit {
-  let PipeWrite(self) = self
-  if self.reader is (HasReader(_) as reader) {
+  if self.pipe.reader is (HasReader(_) as reader) {
     reader.result = 0
     reader.coro.wake()
   }
-  self.writer = WriteEndClosed
+  self.pipe.writer = WriteEndClosed
 }
 
 ///|
 /// Read data from a pipe. The data come from the write end of the pipe.
 /// Data transfer only happen when reader and writer are present at the same time.
-pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) {
-  let PipeRead(self) = self
-  guard! self.reader is NoReader
+pub impl BinaryReader for PipeRead
+
+///|
+impl BinaryReaderImpl for PipeRead with fn raw_read_impl(
+  self,
+  dst,
+  offset~,
+  max_len~,
+) {
+  guard! self.pipe.reader is NoReader
   @coroutine.check_cancellation()
-  match self.writer {
+  match self.pipe.writer {
     NoWriter => {
       let coro = @coroutine.current_coroutine()
       let reader = HasReader(coro~, buf=dst, offset~, max_len~, result=0)
-      self.reader = reader
-      defer (if self.reader is HasReader(_) { self.reader = NoReader })
+      self.pipe.reader = reader
+      defer (if self.pipe.reader is HasReader(_) {
+        self.pipe.reader = NoReader
+      })
       match @coroutine.suspend_check_cancel() {
         Continue => {
           guard! reader is HasReader(result~, ..)
@@ -130,19 +147,24 @@ pub impl Reader for PipeRead with fn _direct_read(self, dst, offset~, max_len~) 
 }
 
 ///|
-pub impl Reader for PipeRead with fn _get_internal_buffer(self) {
-  let PipeRead(self) = self
-  self.read_buf
+impl BinaryReaderImpl for PipeRead with fn get_controller(self) {
+  self.ctrl
 }
 
 ///|
-pub extend PipeRead with Reader::{
+pub extend PipeRead with BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
@@ -153,23 +175,32 @@ pub suberror PipeClosed derive(Debug, ToJson)
 ///|
 /// Write data to a pipe. The data can be read from the read end of the pipe.
 /// Data transfer only happen when reader and writer are present at the same time.
-pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
-  let PipeWrite(self) = self
-  guard! self.writer is NoWriter
+pub impl BinaryWriter for PipeWrite
+
+///|
+impl BinaryWriterImpl for PipeWrite with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  guard! self.pipe.writer is NoWriter
   @coroutine.check_cancellation()
-  match self.reader {
+  match self.pipe.reader {
     NoReader => {
       let coro = @coroutine.current_coroutine()
       let writer = HasWriter(coro~, buf~, offset~, len~, result=0)
-      self.writer = writer
-      defer (if self.writer is HasWriter(_) { self.writer = NoWriter })
+      self.pipe.writer = writer
+      defer (if self.pipe.writer is HasWriter(_) {
+        self.pipe.writer = NoWriter
+      })
       match @coroutine.suspend_check_cancel() {
         Continue => {
           guard! writer is HasWriter(result~, ..)
           guard result > 0 else { raise PipeClosed }
           result
         }
-        Cancelled if self.writer is HasWriter(result~, ..) && result > 0 =>
+        Cancelled if self.pipe.writer is HasWriter(result~, ..) && result > 0 =>
           // if data is already transferred to the reader
           // within the same scheduler round of cancellaiton,
           // swallow the cancellation so that the writer side
@@ -203,4 +234,9 @@ pub impl Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
-pub extend PipeWrite with Writer::{write_once, write, write_reader}
+impl BinaryWriterImpl for PipeWrite with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+pub extend PipeWrite with BinaryWriter::{write, write_reader}

@@ -39,7 +39,7 @@ async test "redirect_file" {
     stdout=@process.redirect_to_file(out_file),
   )
   inspect(code, content="0")
-  assert_eq(@fs.read_file(out_file).text(), @fs.read_file("moon.mod").text())
+  assert_eq(@fs.read_binary(out_file), @fs.read_binary("moon.mod"))
 }
 
 ///|
@@ -62,7 +62,7 @@ async test "redirect pipe" {
     }
     defer child.stdout.close()
     inspect(
-      child.stdout.read_all().text(),
+      child.stdout.text.read_all(),
       content=(
         #|abcd
         #|defg
@@ -89,17 +89,17 @@ async test "stdio cancel" {
     defer child.stdin.close()
     defer child.stdout.close()
     defer child.stderr.close()
-    child.stdin.write("abcd")
+    child.stdin.write(b"abcd")
     debug_inspect(
-      child.stdout.read_some(),
+      child.stdout.read(),
       content=(
         #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),
     )
     @async.sleep(750)
-    assert_eq(child.stdout.read_all().text(), "")
+    assert_eq(child.stdout.text.read_all(), "")
     inspect(
-      child.stderr.read_all().text().trim(chars="\r\n"),
+      child.stderr.text.read_all().trim(chars="\r\n"),
       content="TimeoutError",
     )
     inspect(child.wait(), content="1")
@@ -122,10 +122,10 @@ async test "stdout and stderr are the same" {
     defer child.stdout.close()
     {
       defer child.stdin.close()
-      child.stdin.write("abcd")
+      child.stdin.write(b"abcd")
     }
     inspect(
-      child.stdout.read_all().text(),
+      child.stdout.text.read_all(),
       content=(
         #|abcd
       ),

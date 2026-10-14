@@ -19,7 +19,7 @@ async test "merge multiple" {
     let (r, w) = @process.read_from_process_shared()
     root.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      inspect(r.read_all().text(), content="abcdefgh")
+      inspect(r.text.read_all(), content="abcdefgh")
     }
     @async.with_task_group() <| group => {
       defer w.close()
@@ -47,14 +47,14 @@ async test "redirect to file" {
     let output_file = "_build/process_redirect_test_out.txt"
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
-    @fs.write_file(input_file, "abcd")
+    @fs.write_text(input_file, "abcd")
     let _ = @process.run(
       cat,
       [],
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file),
     )
-    inspect(@fs.read_file(output_file).text(), content="abcd")
+    inspect(@fs.read_text(output_file), content="abcd")
   }
 }
 
@@ -81,7 +81,7 @@ async test "merge multiple to file" {
     )
   }
   inspect(
-    @fs.read_file(output_file).text(),
+    @fs.read_text(output_file),
     content=(
       #|abcdefgh
     ),
@@ -99,7 +99,7 @@ async test "merge stdout and stderr" {
       stderr=@process.duplicate_stdout(),
     )
     defer child.stdout.close()
-    inspect(child.stdout.read_all().text(), content="abcdefgh")
+    inspect(child.stdout.text.read_all(), content="abcdefgh")
   }
 }
 
@@ -114,7 +114,7 @@ async test "merge stdout and stderr to file" {
     stderr=@process.duplicate_stdout(),
   )
   inspect(
-    @fs.read_file(output_file).text(),
+    @fs.read_text(output_file),
     content=(
       #|abcdefgh
     ),
@@ -144,16 +144,16 @@ async test "pipe" {
       stdout=@process.read_from_process(),
     )
     defer child2.stdout.close()
-    child1.stdin.write("abcd")
+    child1.stdin.write(b"abcd")
     debug_inspect(
-      child2.stdout.read_some().map(data => @utf8.decode(data)),
+      child2.stdout.read().map(data => @utf8.decode(data)),
       content=(
         #|Some("abcd")
       ),
     )
-    child1.stdin.write("xyzw")
+    child1.stdin.write(b"xyzw")
     debug_inspect(
-      child2.stdout.read_some().map(data => @utf8.decode(data)),
+      child2.stdout.read().map(data => @utf8.decode(data)),
       content=(
         #|Some("xyzw")
       ),

@@ -12,10 +12,11 @@ Execute commands and collect their output:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "simple command execution" {
-  let (exit_code, output) = @process.collect_stdout("echo", ["Hello, World!"])
+  let (exit_code, output) = @process.collect_stdout_text("echo", [
+    "Hello, World!",
+  ])
   inspect(exit_code, content="0")
-  let text = output.text()
-  inspect(text.has_prefix("Hello"), content="true")
+  inspect(output.has_prefix("Hello"), content="true")
 }
 
 ///|
@@ -58,6 +59,9 @@ Child processes follow the rules of structured concurrency:
 
 ## Collecting Process Output
 
+Collection helpers have explicit text and binary variants. The `_text` variants
+decode UTF-8 and return `String`; the `_binary` variants return raw `Bytes`.
+
 ### Collect Standard Output
 
 Capture stdout from a process:
@@ -66,21 +70,20 @@ Capture stdout from a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stdout" {
-  let (code, output) = @process.collect_stdout("printf", ["test output"])
+  let (code, output) = @process.collect_stdout_text("printf", ["test output"])
   inspect(code, content="0")
-  inspect(output.text(), content="test output")
+  inspect(output, content="test output")
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stdout with args" {
-  let (code, output) = @process.collect_stdout("sh", [
+  let (code, output) = @process.collect_stdout_text("sh", [
     "-c", "echo 'line 1'; echo 'line 2'",
   ])
   inspect(code, content="0")
-  let text = output.text()
-  inspect(text.contains("line 1"), content="true")
-  inspect(text.contains("line 2"), content="true")
+  inspect(output.contains("line 1"), content="true")
+  inspect(output.contains("line 2"), content="true")
 }
 ```
 
@@ -92,11 +95,11 @@ Capture stderr from a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stderr" {
-  let (code, output) = @process.collect_stderr("sh", [
+  let (code, output) = @process.collect_stderr_text("sh", [
     "-c", "printf 'error message' >&2",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="error message")
+  inspect(output, content="error message")
 }
 ```
 
@@ -108,12 +111,12 @@ Capture both output streams separately:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect both streams" {
-  let (code, stdout, stderr) = @process.collect_output("sh", [
+  let (code, stdout, stderr) = @process.collect_output_text("sh", [
     "-c", "printf 'out msg'; printf 'err msg' >&2",
   ])
   inspect(code, content="0")
-  inspect(stdout.text(), content="out msg")
-  inspect(stderr.text(), content="err msg")
+  inspect(stdout, content="out msg")
+  inspect(stderr, content="err msg")
 }
 ```
 
@@ -125,11 +128,11 @@ Merge stdout and stderr into a single stream:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect merged output" {
-  let (code, output) = @process.collect_output_merged("sh", [
+  let (code, output) = @process.collect_output_merged_text("sh", [
     "-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcdef")
+  inspect(output, content="abcdef")
 }
 ```
 
@@ -152,7 +155,7 @@ async test "read from process with pipe" {
       stdout=@process.read_from_process(),
     )
     defer child.stdout.close()
-    let output = child.stdout.read_all().text()
+    let output = child.stdout.text.read_all()
     inspect(output.has_prefix("Hello"), content="true")
   })
 }
@@ -178,11 +181,11 @@ async test "write to process with pipe" {
     )
     group.spawn_bg(() => {
       defer child.stdin.close()
-      child.stdin.write(b"test input\n")
+      child.stdin.text.write("test input\n")
     })
     group.spawn_bg(() => {
       defer child.stdout.close()
-      let output = child.stdout.read_all().text()
+      let output = child.stdout.text.read_all()
       inspect(output.contains("test input"), content="true")
     })
   })
@@ -206,15 +209,15 @@ Use a file as process input:
 async test "redirect input from file" {
   @async.with_task_group(root => {
     let input_file = "_build/process_test_input.txt"
-    @fs.write_file(input_file, "file content")
+    @fs.write_text(input_file, "file content")
     root.add_defer(() => @fs.remove(input_file))
-    let (code, output) = @process.collect_stdout(
+    let (code, output) = @process.collect_stdout_text(
       "cat",
       [],
       stdin=@process.redirect_from_file(input_file),
     )
     inspect(code, content="0")
-    inspect(output.text(), content="file content")
+    inspect(output, content="file content")
   })
 }
 ```
@@ -236,7 +239,7 @@ async test "redirect output to file" {
       stdout=@process.redirect_to_file(output_file),
     )
     inspect(code, content="0")
-    let content = @fs.read_file(output_file).text()
+    let content = @fs.read_text(output_file)
     inspect(content.has_prefix("test output"), content="true")
   })
 }
@@ -253,7 +256,7 @@ async test "file to file redirection" {
   @async.with_task_group(root => {
     let input_file = "_build/process_redirect_in.txt"
     let output_file = "_build/process_redirect_out.txt"
-    @fs.write_file(input_file, "redirect test")
+    @fs.write_text(input_file, "redirect test")
     root.add_defer(() => @fs.remove(input_file))
     root.add_defer(() => @fs.remove(output_file))
     let _ = @process.run(
@@ -262,7 +265,7 @@ async test "file to file redirection" {
       stdin=@process.redirect_from_file(input_file),
       stdout=@process.redirect_to_file(output_file),
     )
-    inspect(@fs.read_file(output_file).text(), content="redirect test")
+    inspect(@fs.read_text(output_file), content="redirect test")
   })
 }
 ```
@@ -292,7 +295,7 @@ async test "redirect multiple processes to one file" {
       @process.spawn(group, "printf", ["second"], stdout=output) |> ignore
     })
   }
-  let content = @fs.read_file(output_file).text()
+  let content = @fs.read_text(output_file)
   inspect(content.contains("first"), content="true")
   inspect(content.contains("second"), content="true")
 }
@@ -313,23 +316,25 @@ Pass custom environment variables to processes:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "set environment variable" {
-  let (code, output) = @process.collect_stdout("sh", ["-c", "echo $MY_VAR"], extra_env={
-    "MY_VAR": "my_value",
-  })
+  let (code, output) = @process.collect_stdout_text(
+    "sh",
+    ["-c", "echo $MY_VAR"],
+    extra_env={ "MY_VAR": "my_value" },
+  )
   inspect(code, content="0")
-  inspect(output.text().trim(), content="my_value")
+  inspect(output.trim(), content="my_value")
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple environment variables" {
-  let (code, output) = @process.collect_stdout(
+  let (code, output) = @process.collect_stdout_text(
     "sh",
     ["-c", "echo $VAR1-$VAR2"],
     extra_env={ "VAR1": "first", "VAR2": "second" },
   )
   inspect(code, content="0")
-  inspect(output.text().trim(), content="first-second")
+  inspect(output.trim(), content="first-second")
 }
 ```
 
@@ -341,17 +346,16 @@ Run process without inheriting parent environment:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "isolated environment" {
-  let (code, output) = @process.collect_stdout(
+  let (code, output) = @process.collect_stdout_text(
     "env",
     [],
     extra_env={ "ONLY_VAR": "only_value" },
     inherit_env=false,
   )
   inspect(code, content="0")
-  let text = output.text()
-  inspect(text.contains("ONLY_VAR=only_value"), content="true")
+  inspect(output.contains("ONLY_VAR=only_value"), content="true")
   // Parent environment variables won't be present
-  inspect(text.contains("PATH="), content="false")
+  inspect(output.contains("PATH="), content="false")
 }
 ```
 
@@ -365,9 +369,9 @@ Execute processes in a specific directory:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "set working directory" {
-  let (code, output) = @process.collect_stdout("pwd", [], cwd="src")
+  let (code, output) = @process.collect_stdout_text("pwd", [], cwd="src")
   inspect(code, content="0")
-  let text = output.text().trim()
+  let text = output.trim()
   // Check that the path ends with "src" (works across OSes)
   inspect(text.has_suffix("src"), content="true")
 }
@@ -375,9 +379,9 @@ async test "set working directory" {
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "relative path in cwd" {
-  let (code, output) = @process.collect_stdout("ls", [], cwd="src")
+  let (code, output) = @process.collect_stdout_text("ls", [], cwd="src")
   inspect(code, content="0")
-  let text = output.text()
+  let text = output
   // Should list contents of src directory
   let has_content = text.length() > 0
   inspect(has_content, content="true")
@@ -481,7 +485,7 @@ async test "merge stdout and stderr" {
       stderr=@process.duplicate_stdout(),
     )
     defer child.stdout.close()
-    let output = child.stdout.read_all().text()
+    let output = child.stdout.text.read_all()
     inspect(output.contains("to stdout"), content="true")
     inspect(output.contains("to stderr"), content="true")
   })
@@ -502,7 +506,7 @@ async test "multiple processes to one pipe" {
     let (reader, writer) = @process.read_from_process_shared()
     root.spawn_bg(no_wait=true, () => {
       defer reader.close()
-      let output = reader.read_all().text()
+      let output = reader.text.read_all()
       inspect(output.contains("first"), content="true")
       inspect(output.contains("second"), content="true")
     })
@@ -537,6 +541,10 @@ writer can prevent readers from observing end-of-file.
 
 `ProcessInput` and `ProcessOutput` are the redirection types accepted by
 `run()`, `spawn()`, `spawn_orphan()`, and the collection helpers.
+
+Parent-facing process pipes are binary readers or writers. Use their `.text`
+view for UTF-8 text I/O, as in `child.stdout.text.read_all()` and
+`child.stdin.text.write(...)`.
 
 | API or value | Redirection role | Ownership and closing |
 |---|---|---|

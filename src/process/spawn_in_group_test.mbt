@@ -37,7 +37,7 @@ async test "spawn_in_group cancel" {
     let (r, w) = @process.read_from_process_shared()
     outer.spawn_bg() <| () => {
       defer r.close()
-      inspect(r.read_all().text().trim(), content="received termination signal")
+      inspect(r.text.read_all().trim(), content="received termination signal")
     }
     @async.with_task_group() <| inner => {
       let _ = {
@@ -90,7 +90,7 @@ async test "Process::cancel" {
     group.spawn_bg() <| () => {
       defer child.stdout.close()
       inspect(
-        child.stdout.read_all().text().trim(),
+        child.stdout.text.read_all().trim(),
         content="received termination signal",
       )
     }

@@ -13,70 +13,46 @@
 // limitations under the License.
 
 ///|
-let decoder_buffer_size = 4096
-
-///|
-fn @io.ReaderBuffer::repr(buf : Self) -> @io_buffer.Buffer = "%identity"
-
-///|
 struct Decoder[R] {
   inner : R
   core : @gzip_internal.Decoder
-  read_buf : @io.ReaderBuffer
+  ctrl : @io.BinaryReaderController
 }
 
 ///|
 #alias(new, deprecated)
-pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
-  let decoder = {
-    inner,
-    core: @gzip_internal.Decoder(),
-    read_buf: @io.ReaderBuffer::new(),
-  }
-  decoder.inner._get_internal_buffer().repr().enlarge_to(decoder_buffer_size)
-  decoder
+pub fn[R] Decoder::Decoder(inner : R) -> Decoder[R] {
+  { inner, core: @gzip_internal.Decoder(), ctrl: @io.BinaryReaderController(), }
 }
 
 ///|
-async fn[R : @io.Reader] Decoder::read_more_input(self : Decoder[R]) -> Unit {
-  let input = self.inner._get_internal_buffer().repr()
-  let need = @cmp.maximum(self.core.minimum_input_size(), 1)
-  input.enlarge_to(input.len + @cmp.maximum(need, decoder_buffer_size))
-  let end = input.start + input.len
-  let max_len = input.buf.length() - end
-  let n = self.inner._direct_read(input.buf, offset=end, max_len~)
-  guard n > 0 else { raise @io.ReaderClosed }
-  input.len += n
-}
+pub impl[R : @io.BinaryReader] @io.BinaryReader for Decoder[R]
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _get_internal_buffer(
+impl[R : @io.BinaryReader] @io.BinaryReaderImpl for Decoder[R] with fn get_controller(
   self,
 ) {
-  self.read_buf
+  self.ctrl
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
+impl[R : @io.BinaryReader] @io.BinaryReaderImpl for Decoder[R] with fn raw_read_impl(
   self,
   dst,
   offset~,
   max_len~,
 ) {
-  let input = self.inner._get_internal_buffer().repr()
   while !self.core.is_finished() {
-    while input.len < self.core.minimum_input_size() {
-      self.read_more_input()
-    }
+    let input = self.inner.peek_at_least(self.core.minimum_input_size())
     let (consumed, produced) = self.core.write(
-      input.buf.unsafe_reinterpret_as_bytes(),
+      input.data(),
       dst,
-      input_offset=input.start,
-      input_len=input.len,
+      input_offset=input.start_offset(),
+      input_len=input.length(),
       output_offset=offset,
       output_len=max_len,
     )
-    input.drop(consumed)
+    self.inner.drop_exactly(consumed)
     if produced > 0 {
       return produced
     }
@@ -86,11 +62,17 @@ pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
 }
 
 ///|
-pub extend Decoder with @io.Reader::{
+pub extend Decoder with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }

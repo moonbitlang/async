@@ -24,8 +24,9 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@socket.unimplemented)
   ignore(@tls.unimplemented)
-  ignore(@io_buffer.new)
   ignore(@gzip.Decoder::is_finished)
+  ignore(@utf8.encode(""))
+  ignore((_ : @json.JsonPath) => ())
 }
 
 ///|

@@ -362,7 +362,7 @@ async fn write_standard_input(
 ) -> Unit {
   defer writer.close()
   match input {
-    Some(Text(text)) => writer.write(text)
+    Some(Text(text)) => writer.text.write(text)
     Some(Binary(bytes)) => writer.write(bytes)
     // `FromFile` and `Inherit` never reach here: those descriptors are handed
     // to the child directly.
@@ -390,9 +390,7 @@ async fn read_bounded(
 ) -> Bytes {
   let buffer = @buffer.Buffer(size_hint=4096)
   for ;; {
-    let remaining = limit - captured.val
-    let chunk_size = if remaining < 4096 { remaining + 1 } else { 4096 }
-    match reader.read_some(max_len=chunk_size) {
+    match reader.read() {
       None => break
       Some(chunk) => {
         let next_total = captured.val + chunk.length()
@@ -410,10 +408,10 @@ async fn read_bounded(
 ///|
 /// Deliver every line the child writes, including a final unterminated one.
 ///
-/// This splits `read_some` chunks itself rather than using the reader's
-/// `read_until`: that helper decodes strictly, so one invalid byte would abort
-/// the run, and it stops early once its internal buffer fills. Decoding here is
-/// lossy and per line, matching how `Output` treats captured text.
+/// This splits binary `read` chunks itself rather than using `read_until`, so
+/// the line-length limit can be enforced incrementally without first buffering
+/// an unbounded line. Decoding here is lossy and per line, matching how
+/// `Output` treats captured text.
 ///
 /// Only one line is held at a time, and `limit` caps that line's content
 /// exactly, so a child that never emits a newline cannot grow it without
@@ -425,7 +423,7 @@ async fn read_lines(
   limit : Int32,
 ) -> Unit {
   let pending = @buffer.Buffer(size_hint=4096)
-  while reader.read_some(max_len=4096) is Some(chunk) {
+  while reader.read() is Some(chunk) {
     let mut start = 0
     for index in 0..<chunk.length() {
       if chunk[index] == b'\n' {

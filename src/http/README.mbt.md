@@ -8,17 +8,17 @@ Simple HTTP request can be made in just one line:
 ///|
 #cfg(any(target="native", target="js"))
 async test {
-  let (response, body) = @http.get("https://www.moonbitlang.com")
+  let (response, body) = @http.get_text("https://www.moonbitlang.com")
   inspect(response.code, content="200")
-  assert_true(body.text().has_prefix("<!doctype html>"))
+  assert_true(body.has_prefix("<!doctype html>"))
 }
 ```
 
-You can use use `body.text()` to get a `String` (decoded via UTF8)
-or `body.json()` for a `Json` from the response body.
+Use `@http.get_text()` to get a UTF-8-decoded `String`,
+`@http.get_binary()` to get raw `Bytes`, or `@http.get_json()` to get `Json`.
 
 ## Generic HTTP client
-Sometimes, the simple one-time `@http.get` etc. is insufficient,
+Sometimes, the simple one-time `@http.get_xxx` etc. is insufficient,
 for example you need to reuse the same connection for multiple requests,
 or the request/response body is very large and need to be processed lazily.
 In this case, you can use the `@http.Client` type.
@@ -27,15 +27,18 @@ In this case, you can use the `@http.Client` type.
 The workflow of performing a request with `@http.Client` is:
 
 1. initiate the request via `client.request(..)`
-1. send the request body by using `@http.Client` as a `@io.Writer`
+1. send the request body by using `@http.Client` as a `@io.BinaryWriter`.
+   Text payload can also be written through `client.text` as an `@io.TextWriter`.
 1. complete the request and obtain response header from the server
   via `client.end_request()`
-1. read the response body by using `@http.Client` as a `@io.Reader`,
-  or use `client.read_all()` to obtain the whole response body.
-  Yon can also ignore the body via `client.skip_response_body()`
+1. read the response body by using `@http.Client` as a `@io.BinaryReader`.
+   You can also ignore the body via `client.skip_response_body()`.
+   Text responses can be read through `client.text` as an `@io.TextReader`.
 
-The helpers `client.get(..)`, `client.put(..)` etc.
+The helpers `client.get(..)`, `client.put_text(..)` etc.
 can be used to perform step (1)-(3) above.
+For a one-shot streaming request, `@http.get_stream()`, `@http.post_stream()` etc.
+can be used to perform client creation plus step (1) above.
 
 A complete example:
 
@@ -47,12 +50,12 @@ async test {
   defer client.close()
   let response = client..request(Get, "/").end_request()
   inspect(response.code, content="200")
-  let body = client.read_all()
-  assert_true(body.text().has_prefix("<!doctype html>"))
+  let body = client.text.read_all()
+  assert_true(body.has_prefix("<!doctype html>"))
 }
 ```
 
-All HTTP client API, including the simple request helpers `@http.get` etc.,
+All HTTP client API, including the simple request helpers `@http.get_xxx` etc.,
 are supported on JavaScript backend using `fetch` API,
 meaning that you can use these API in browser environment.
 Notice that some feature, such as proxy, is not supported on JavaScript backend.
@@ -65,11 +68,13 @@ The callback function `f` is used to handle HTTP requests.
 It receives three parameters:
 
 - the request to process
-- a `&@io.Reader` that can be used to read request body
+- a `&@io.BinaryReader` that can be used to read request body
 - a `@http.ServerConnection` that can be used to send response.
     The procedure to send a response is:
     1. initiate a response and send response header via `.send_response()`
-    2. send response body by using the `@http.ServerConnection` as `@io.Writer`
+    2. send response body by using the `@http.ServerConnection` as `@io.BinaryWriter`.
+       Text content can be written directly via `conn.text`
+       through the `@io.TextWriter` interface as well
     3. (optional) complete the response via `.end_response()`.
         If `.end_response()` is not called, it will be called automatically
         after `f` returns normally.
@@ -81,7 +86,8 @@ Here's an example server that returns 404 to every request:
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
   @http.Server(listen_addr).run_forever((request, _body, conn) => {
-    conn..send_response(404, "NotFound").write("`\{request.path}` not found")
+    conn.send_response(404, "NotFound")
+    conn.text.write("`\{request.path}` not found")
   })
 }
 ```

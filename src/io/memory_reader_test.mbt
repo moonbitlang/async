@@ -16,14 +16,14 @@
 async test "MemoryReader basic" {
   let log = []
   let r = @io.MemoryReader() <| w => {
-    for data in ["abcd", "1234", "xyzw"] {
-      log.push("writing \{data}")
+    for data in [b"abcd", b"1234", b"xyzw"] {
+      log.push("writing \{@utf8.decode(data)}")
       w.write(data)
       @async.sleep(150)
     }
   }
   defer r.close()
-  while r.read_some() is Some(data) {
+  while r.read() is Some(data) {
     log.push("received \{@utf8.decode(data)}")
   }
   json_inspect(log, content=[
@@ -37,7 +37,7 @@ async test "MemoryReader cancel" {
   let log = []
   let r = @io.MemoryReader() <| w => {
     for i = 0; ; i = i + 1 {
-      match @async.handle_cancellation(() => w.write("#\{i}")) {
+      match @async.handle_cancellation(() => w.write(b"#\{i}")) {
         None => {
           log.push("`write` cancelled")
           break
@@ -47,7 +47,7 @@ async test "MemoryReader cancel" {
     }
   }
   for _ in 0..<3 {
-    guard r.read_some() is Some(data) else { break }
+    guard r.read() is Some(data) else { break }
     @async.sleep(50)
     log.push("received \{@utf8.decode(data)}")
   }
@@ -66,7 +66,7 @@ async test "MemoryReader failure" {
     raise Failure::Failure("failure")
   }
   defer r.close()
-  try r.read_all().text() catch {
+  try r.read_all() catch {
     err =>
       inspect(
         err,

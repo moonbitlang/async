@@ -21,18 +21,18 @@ async test "BufferedWriter" {
       defer w.close()
       let w = @io.BufferedWriter::new(w, size=4)
       log <+ "2 bytes written\n"
-      w.write("ab")
+      w.write(b"ab")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("cd")
+      w.write(b"cd")
       @async.sleep(20)
       log <+ "2 bytes written\n"
-      w.write("ef")
+      w.write(b"ef")
       w.flush()
     }
     root.spawn_bg() <| () => {
       defer r.close()
-      while r.read_some() is Some(data) {
+      while r.read() is Some(data) {
         log.write_string("received: \{@utf8.decode(data)}\n")
       }
     }
@@ -65,7 +65,7 @@ async test "BufferedWriter::write_reader" {
     }
     root.spawn_bg() <| () => {
       defer r1.close()
-      while r1.read_some() is Some(data) {
+      while r1.read() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }

@@ -1,677 +1,289 @@
-# I/O API (`@moonbitlang/async/io`)
+# Asynchronous I/O (`@moonbitlang/async/io`)
 
-Asynchronous I/O abstraction for MoonBit. This package provides fundamental abstractions for reading from and writing to various data sources, including buffering capabilities, backpressure-aware copies, and helpers that pair naturally with other MoonBit async packages such as `@async`, `@socket`, and `@fs`.
+This package defines asynchronous byte and text streams for MoonBit. Binary I/O
+uses `BinaryReader` and `BinaryWriter`; text I/O uses `TextReader` and
+`TextWriter`. Keeping the two forms separate makes encoding explicit and keeps
+binary protocols free of implicit UTF-8 conversions.
 
-## Table of Contents
+The package also provides in-memory pipes, a callback-backed `MemoryReader`,
+UTF-8 adapters, and buffered writing.
 
-- [Quick Start](#quick-start)
-- [Core Traits](#core-traits)
-  - [Reader Trait](#reader-trait)
-  - [Writer Trait](#writer-trait)
-  - [Data Trait](#data-trait)
-- [wrap in-memory data into reader](#wrap-in-memory-data-into-reader)
-- [Buffered I/O](#buffered-io)
-  - [BufferedWriter](#bufferedwriter)
-- [Working with Task Groups and Pipes](#working-with-task-groups-and-pipes)
-- [Flow Control & Buffering Strategies](#flow-control--buffering-strategies)
-- [Types Reference](#types-reference)
-- [Best Practices](#best-practices)
+## Quick start
 
-## Quick Start
-
-The fastest way to experiment with `@moonbitlang/async/io` is to couple it with an in-memory pipe and an async task group. The writer task produces bytes, while the reader task consumes them:
+`pipe()` returns connected binary endpoints. Writes apply backpressure until a
+reader accepts the data, and closing the write end makes the reader reach EOF.
 
 ```moonbit check
 ///|
-async test "quick start pipeline" {
-  @async.with_task_group(root => {
-    // Create a pair of connected endpoints that speak the Reader/Writer protocols.
-    // Data written to the write end (`writer`) can be read from the read end (`reader`)
+async test "binary pipe quick start" {
+  @async.with_task_group() <| root => {
     let (reader, writer) = @io.pipe()
-
-    // Spawn a background writer that sends a UTF-8 string in three chunks.
-    root.spawn_bg(() => {
+    defer reader.close()
+    root.spawn_bg() <| () => {
       defer writer.close()
       writer.write(b"Hello, ")
-      @async.sleep(10)
-      writer.write(b"MoonBit")
-      @async.sleep(10)
-      writer.write(b"!\n")
-    })
-
-    // Read everything that arrives and print it as text.
-    defer reader.close()
-    let message = reader.read_all().text()
-    inspect(message, content="Hello, MoonBit!\n")
-  })
-}
-```
-
-This pattern generalises to sockets, files, and any type that implements the `Reader` and `Writer` traits. The following sections dive deeper into the building blocks.
-
-## Core Traits
-
-### Data Trait
-
-`Data` is a lightweight trait for types that can be read/write via IO endpoints.
-On the sender side, `Data` is implemented by `Bytes`, `BytesView`, `String`, `StringView` and `Json`.
-If an API accepts `&Data` as input (for example `Writer::write`), any value of the above types can be passed directly.
-On the receiver side, the trait object type `&Data` provides helper methods `.binary()`, `.text()` and `.json()`,
-which converts receive data to raw binary/UTF-8 encoded string/UTF-8 encoded JSON string in respect.
-This allows convenient conversion of received data to various formats.
-
-```moonbit check
-///|
-async test "data as binary" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Send raw binary bytes.
-      w.write(b"binary data")
-    })
-    let data = r.read_all()
-    let binary = data.binary()
-    inspect(@utf8.decode(binary), content="binary data")
-  })
-}
-
-///|
-async test "data as text" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Send UTF-8 encoded string
-      w.write("Hello, MoonBit!")
-    })
-    let data = r.read_all()
-    // Decoding happens lazily when `.text()` is invoked.
-    inspect(data.text(), content="Hello, MoonBit!")
-  })
-}
-
-///|
-async test "data as json" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // send UTF-8 encoded JSON string
-      let data : Json = { "name": "John", "age": 30 }
-      w.write(data)
-    })
-    let data = r.read_all()
-    let json = data.json()
-    // `json_inspect` asserts that the parsed JSON matches the expected structure.
-    json_inspect(json, content={ "name": "John", "age": 30 })
-  })
-}
-```
-
-### Reader Trait
-
-The `Reader` trait exposes three complementary levels of granularity:
-
-- `read` performs a best-effort read into an existing buffer and is ideal for incremental protocols. A zero return value indicates EOF.
-- `read_exactly` loops until it fills the requested number of bytes or raises `ReaderClosed`, which is helpful when parsing fixed-width frames.
-- `read_some` read the next chunk of data once any new data is available
-- `read_all` drains the stream into memory, returning a `&Data` handle for convenient conversion to text, JSON, or binary.
-- `read_until` read UTF-8 encoded string from the input until a separator is reached
-
-Each example below shows how a reader pairs with `@io.pipe()` and includes inline comments that highlight the important steps.
-
-```moonbit check
-///|
-async test "read from reader" {
-  @async.with_task_group(root => {
-    // Create connected endpoints. `r` is a Reader, `w` is a Writer.
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Emit the payload in a single chunk.
-      w.write(b"Hello, World!")
-    })
-    let buf = FixedArray::make(13, b'0')
-    // Read up to 13 bytes into the fixed buffer.
-    let n = r.read(buf, offset=0, max_len=13)
-    inspect(n, content="13")
-    // Convert the binary slice to UTF-8 text for inspection.
-    inspect(
-      @utf8.decode(buf.unsafe_reinterpret_as_bytes()),
-      content="Hello, World!",
-    )
-  })
-}
-
-///|
-async test "read_exactly - read exact number of bytes" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Produce a fixed-size frame.
-      w.write(b"0123456789")
-    })
-    // Blocks until exactly 5 bytes are received or ReaderClosed is raised.
-    let data1 = r.read_exactly(5)
-    inspect(@utf8.decode(data1), content="01234")
-    let data2 = r.read_exactly(5)
-    inspect(@utf8.decode(data2), content="56789")
-  })
-}
-
-///|
-async test "read_some - read next chunk of data" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // the writer supplieds data in two chunks
-      w.write("abcd")
-      @async.sleep(200)
-      w.write("efgh")
-      @async.sleep(200)
-      w.write("ijkl")
-    })
-    debug_inspect(
-      r.read_some(),
-      content=(
-        #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
-      ),
-    )
-    // `read_some` can optionally accept a length limit
-    debug_inspect(
-      r.read_some(max_len=2),
-      content=(
-        #|Some(<Bytes: [0x65, 0x66]>)
-      ),
-    )
-    // the amount of data returned may be smaller than `max_len`
-    debug_inspect(
-      r.read_some(max_len=4),
-      content=(
-        #|Some(<Bytes: [0x67, 0x68]>)
-      ),
-    )
-    debug_inspect(
-      r.read_some(),
-      content=(
-        #|Some(<Bytes: [0x69, 0x6a, 0x6b, 0x6c]>)
-      ),
-    )
-    // on EOF, `None` is returned
-    debug_inspect(r.read_some(), content="None")
-  })
-}
-
-///|
-async test "read_all - read entire content" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      w.write(b"Complete content")
-    })
-    // `read_all` accumulates everything into a `&Data` handle.
-    let data = r.read_all()
-    // Convert to text on demand.
-    inspect(data.text(), content="Complete content")
-  })
-}
-
-///|
-async test "read_all large data" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Large payloads can be streamed without precomputing the size.
-      w.write(Bytes::make(4097, 0))
-    })
-    inspect(r.read_all().binary().length(), content="4097")
-  })
-}
-
-///|
-async test "drop - advance stream by discarding data" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      w.write(b"0123456789")
-    })
-    // Advance the window by five bytes; subsequent reads start after this point.
-    // The number of bytes actually dropped would be returned.
-    inspect(r.drop(5), content="5")
-    let data = r.read_exactly(5)
-    inspect(@utf8.decode(data), content="56789")
-  })
-}
-
-///|
-async test "read_until - read text from stream until a separator is found" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      w.write("abcd|")
-      w.write("defg")
-    })
-    // read until the separator "|" is met. The separator will be consumed as well
-    debug_inspect(
-      r.read_until("|"),
-      content=(
-        #|Some("abcd")
-      ),
-    )
-    // .. or read until EOF is reached
-    debug_inspect(
-      r.read_until("|"),
-      content=(
-        #|Some("defg")
-      ),
-    )
-    // `None` will be returned when no more data is available
-    debug_inspect(r.read_until("|"), content="None")
-  })
-}
-
-///|
-#cfg(any(target="native", target="wasm"))
-async test "read_until - used to read file line by line" {
-  let file = @fs.open("LICENSE", mode=ReadOnly)
-  defer file.close()
-  let lines = []
-  while file.read_until("\n") is Some(line) {
-    // Push each decoded line into a growable array.
-    lines.push(line)
-  }
-  inspect(lines.length(), content="202")
-  assert_eq(lines.join("\n") + "\n", @fs.read_file("LICENSE").text())
-}
-```
-
-## Wrap In-memory Data Into Reader
-
-`MemoryReader` wraps an async writer callback as a `Reader`. The callback receives an auxiliary writer, runs in the background, and any data written to that writer becomes readable from the `MemoryReader`. This is useful when an API expects a `Reader`, but the data is produced in memory or generated incrementally.
-
-The reader reaches EOF when the callback returns normally. If the callback raises an error, read operations fail with the same error. Closing the reader cancels the background callback if it is still running.
-
-```moonbit check
-///|
-async test "MemoryReader - generate reader content in memory" {
-  let r = @io.MemoryReader() <| w => {
-    w.write("hello, ")
-    @async.sleep(10)
-    w.write("MoonBit")
-  }
-  defer r.close()
-  inspect(r.read_all().text(), content="hello, MoonBit")
-}
-
-///|
-async test "MemoryReader - stream generated chunks" {
-  let r = @io.MemoryReader() <| w => {
-    for part in ["ab", "cd", "ef"] {
-      w.write(part)
-      @async.sleep(10)
+      writer.write(b"MoonBit!")
     }
+    inspect(@utf8.decode(reader.read_all()), content="Hello, MoonBit!")
   }
-  defer r.close()
-  debug_inspect(
-    r.read_some().map(data => @utf8.decode(data)),
-    content=(
-      #|Some("ab")
-    ),
-  )
-  debug_inspect(
-    r.read_some().map(data => @utf8.decode(data)),
-    content=(
-      #|Some("cd")
-    ),
-  )
-  debug_inspect(
-    r.read_some().map(data => @utf8.decode(data)),
-    content=(
-      #|Some("ef")
-    ),
-  )
-  debug_inspect(r.read_some(), content="None")
 }
 ```
 
-### Writer Trait
+## Binary streams
 
-`Writer` focuses on pushing bytes downstream. The three key helpers build on top of the fundamental `write_once` contract:
+### `BinaryReader`
 
-- `write_once` performs a single best-effort write and returns how many bytes were accepted. Note that partial write is allowed for `write_once`: only a portion of data may be succesfully written. End users should not call `write_once` directly in general.
-- `write` encodes and writes a `&Data` to the writer, is will keep calling `write_once` until all data are succesfully written. This is the most common helper users should use.
-- `write_reader` streams from any `Reader`, making it perfect for relaying pipes, sockets, or files without copying into intermediate strings.
+`BinaryReader` owns a read-ahead buffer. Its methods provide three useful styles
+of reading:
 
-The snippets below demonstrate each mode with progressive complexity.
+- `read_into(dst, offset?, max_len?)` reads into caller-owned storage and
+  returns the number of bytes read. A zero return value indicates EOF.
+- `read()` returns an owned chunk as soon as data is available, or `None` at EOF.
+- `read_at_least(min_len)` returns an owned chunk containing at least `min_len`
+  bytes, and may return more.
+- `peek()` returns a zero-copy view as soon as data is available, or `None` at
+  EOF, without consuming it.
+- `peek_at_least(min_len)` returns a zero-copy view containing at least
+  `min_len` bytes without consuming it.
+
+If EOF arrives before `min_len` bytes are buffered, `read_at_least` and
+`peek_at_least` raise `ReaderClosed`. Any shorter trailing data remains buffered
+and can still be obtained by a later operation with a smaller minimum.
 
 ```moonbit check
 ///|
-async test "write to writer" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Each call appends to the outgoing stream.
-      w.write(b"Hello")
-      w.write(b", ")
-      w.write(b"World!")
-    })
-    // `read_all` collapses everything for verification.
-    let data = r.read_all()
-    inspect(data.text(), content="Hello, World!")
-  })
-}
-
-///|
-async test "write_once - single write operation" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      let data : Bytes = b"Test data"
-      // Manually call `write_once` to demonstrate partial write accounting.
-      let written = w.write_once(data, offset=0, len=data.length())
-      inspect(written, content="9")
-    })
-    let content = r.read_all()
-    inspect(content.text(), content="Test data")
-  })
-}
-
-///|
-async test "write large data" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
-      defer w.close()
-      let data = Bytes::make(1024 * 16, 0)
-      // `write` handles chunking internally, avoiding manual loops.
-      w.write(data)
-    })
-    root.spawn_bg(() => {
-      defer r.close()
-      inspect(r.read_all().binary().length(), content="16384")
-    })
-  })
-}
-
-///|
-async test "write_reader - copy from reader to writer" {
-  let log = StringBuilder()
-  @async.with_task_group(root => {
-    let (r1, w1) = @io.pipe()
-    let (r2, w2) = @io.pipe()
-    root.spawn_bg(() => {
-      defer r2.close()
-      defer w1.close()
-      // Stream everything from `r2` into `w1` via `write_reader`.
-      w1.write_reader(r2)
-    })
-    root.spawn_bg(() => {
-      defer r1.close()
-      while r1.read_some() is Some(data) {
-        let data = @utf8.decode(data)
-        log.write_string("received \{data}\n")
-      }
-    })
-    root.spawn_bg(() => {
-      defer w2.close()
-      // Simulate a producer that emits three frames with pauses in between.
-      log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
-      @async.sleep(300)
-      log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
-      @async.sleep(300)
-      log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
-    })
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|sending 4 bytes
-      #|received abcd
-      #|sending 4 bytes
-      #|received efgh
-      #|sending 4 bytes
-      #|received ijkl
-      #|
-    ),
-  )
-}
-
-///|
-async test "write string" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      // Unicode data is transparently encoded via UTF-8.
-      w.write("abcd中文☺")
-    })
-    inspect(r.read_all().text(), content="abcd中文☺")
-  })
+async test "read into caller-owned storage" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      writer.write(b"hello")
+    }
+    let dst = FixedArray::make(9, b'.')
+    let count = reader.read_into(dst, offset=2, max_len=5)
+    inspect(count, content="5")
+    inspect(
+      @utf8.decode(dst.unsafe_reinterpret_as_bytes()[2:7]),
+      content="hello",
+    )
+  }
 }
 ```
-
-## Buffered I/O
-
-### BufferedWriter
-
-`BufferedWriter` batches small writes into a fixed-capacity buffer before flushing them to the underlying destination. This greatly reduces syscall overhead and network chatter when dealing with chatty protocols. You can control the buffer size at construction time and decide when to `flush` explicitly—for example before handing the underlying writer to a different subsystem.
 
 ```moonbit check
 ///|
-async test "BufferedWriter - basic buffering" {
-  let log = StringBuilder()
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    root.spawn_bg(() => {
-      defer w.close()
-      let w = @io.BufferedWriter::new(w, size=4)
-      log <+ "2 bytes written\n"
-      w.write("ab")
-      @async.sleep(20)
-      log <+ "2 bytes written\n"
-      w.write("cd")
-      @async.sleep(20)
-      log <+ "2 bytes written\n"
-      w.write("ef")
-      // Force the remaining bytes out of the buffer.
-      w.flush()
-    })
-    root.spawn_bg(() => {
-      defer r.close()
-      while r.read_some() is Some(data) {
-        log.write_string("received: \{@utf8.decode(data)}\n")
-      }
-    })
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|2 bytes written
-      #|2 bytes written
-      #|2 bytes written
-      #|received: abcd
-      #|received: ef
-      #|
-    ),
-  )
-}
-
-///|
-async test "BufferedWriter::new with custom size" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      let w = @io.BufferedWriter::new(w, size=8)
-      inspect(w.capacity(), content="8")
-      // Writes remain buffered until an explicit flush.
-      w.write(b"test")
-      w.flush()
-    })
-    let data = r.read_all()
-    inspect(data.text(), content="test")
-  })
-}
-
-///|
-async test "BufferedWriter::flush - commit buffered data" {
-  @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
-    defer r.close()
-    root.spawn_bg(() => {
-      defer w.close()
-      let w = @io.BufferedWriter::new(w, size=16)
-      w.write(b"buffer")
-      w.flush()
-      // Data written after the flush remains buffered until the next flush.
-      w.write(b"more")
-      w.flush()
-    })
-    let data = r.read_all()
-    inspect(data.text(), content="buffermore")
-  })
-}
-
-///|
-async test "BufferedWriter::write_reader - buffered copy" {
-  let log = StringBuilder()
-  @async.with_task_group(root => {
-    let (r1, w1) = @io.pipe()
-    let (r2, w2) = @io.pipe()
-    root.spawn_bg(() => {
-      defer r2.close()
-      defer w1.close()
-      let w1 = @io.BufferedWriter::new(w1, size=6)
-      w1.write_reader(r2)
-      // Flush ensures the trailing fragment is committed before closing.
-      w1.flush()
-    })
-    root.spawn_bg(() => {
-      defer r1.close()
-      while r1.read_some() is Some(data) {
-        let data = @utf8.decode(data)
-        log.write_string("received \{data}\n")
-      }
-    })
-    root.spawn_bg(() => {
-      defer w2.close()
-      log <+ "sending 4 bytes\n"
-      w2.write(b"abcd")
-      @async.sleep(100)
-      log <+ "sending 4 bytes\n"
-      w2.write(b"efgh")
-      @async.sleep(100)
-      log <+ "sending 4 bytes\n"
-      w2.write(b"ijkl")
-    })
-  })
-  inspect(
-    log.to_string(),
-    content=(
-      #|sending 4 bytes
-      #|sending 4 bytes
-      #|received abcdef
-      #|sending 4 bytes
-      #|received ghijkl
-      #|
-    ),
-  )
+async test "peek then consume an exact frame" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      writer.write(b"HEADbody")
+    }
+    let preview = reader.peek_exactly(4).to_owned()
+    inspect(@utf8.decode(preview), content="HEAD")
+    inspect(@utf8.decode(reader.read_exactly(4)), content="HEAD")
+    inspect(@utf8.decode(reader.read_all()), content="body")
+  }
 }
 ```
 
-## Flow Control & Buffering Strategies
+The view returned by `peek`, `peek_at_least`, `peek_exactly`, or `peek_until` is
+valid only until the next operation on that reader. Call `.to_owned()` if the
+bytes must outlive that operation.
 
-Efficient asynchronous I/O is mostly about balancing throughput and memory usage. Some guiding principles:
+Other binary reader operations are:
 
-- **Prefer streaming copies for large payloads.** `Writer::write_reader` efficiently bridges readers and writers without allocating entire buffers up front.
-- **Tune write buffer sizes per transport.** A 4 KB buffer is often enough for network sockets, whereas disk-backed streams may benefit from larger chunks. Use `BufferedWriter::new(size=...)` to select an appropriate size.
-- **Flush deliberately.** Frequent flushes lower latency but reduce batching efficiency; schedule them at protocol boundaries (e.g., end of a response frame).
+- `read_exactly(len)` and `peek_exactly(len)` wait for exactly `len` bytes and
+  raise `ReaderClosed` if EOF arrives first.
+- `drop_exactly(len)` consumes exactly `len` bytes without returning them.
+- `read_all()` drains the stream into a `Bytes` value.
+- `drop_all()` drains the stream and returns the number of discarded bytes.
+- `read_until(pattern, include_delimiter?)` reads through the next delimiter.
+- `peek_until(pattern, include_delimiter?)` finds the same segment without
+  consuming it.
 
-## Types Reference
+`read_until` always consumes a delimiter it finds. By default the delimiter is
+excluded from the result; set `include_delimiter=true` to retain it. EOF acts as
+an implicit delimiter, so a final unterminated segment is returned once, then
+the next call returns `None`.
 
-### Reader
+```moonbit check
+///|
+async test "read delimiter-separated binary records" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      writer.write(b"alpha|beta")
+    }
+    guard reader.read_until(b"|") is Some(first) else {
+      fail("missing first record")
+    }
+    inspect(@utf8.decode(first), content="alpha")
+    guard reader.read_until(b"|") is Some(second) else {
+      fail("missing final record")
+    }
+    inspect(@utf8.decode(second), content="beta")
+    assert_eq(reader.read_until(b"|"), None)
+  }
+}
+```
 
-Trait for reading data from a source. Methods include:
-- `read(buffer, offset?, max_len?)` - Read data into buffer
-- `drop(len)` - Consume and discard up to `len` bytes
-- `read_exactly(len)` - Read exact number of bytes
-- `read_some(max_len?)` - Read the next available chunk
-- `read_all()` - Read entire content
-- `read_until(separator)` - Read UTF-8 text up to a separator or EOF, consuming the separator when present
+### `BinaryWriter`
 
-### Writer
+`write(data)` accepts a `BytesView` and does not return until the complete view
+has been committed to the underlying writer. A slice can therefore be forwarded
+without first copying it into a new `Bytes` value.
 
-Trait for writing data to a destination. Methods include:
-- `write_once(data, offset~, len~)` - Single write operation
-- `write(data)` - Write data (may require multiple operations)
-- `write_reader(reader)` - Copy data from reader to writer
+`write_reader(reader)` copies a binary reader into a writer until EOF.
 
-### Data
+```moonbit check
+///|
+async test "write a byte view" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      let packet = b"xxpayloadyy"
+      writer.write(packet[2:9])
+    }
+    inspect(@utf8.decode(reader.read_all()), content="payload")
+  }
+}
+```
 
-Trait for abstracting various data formats. Implementations:
-- `Bytes` - Raw binary data
-- `BytesView` - View of binary data
-- `String` - UTF-8 encoded string
-- `StringView` - View of string
-- `Json` - JSON data
+`write` guarantees delivery to the underlying writer object, but not a
+destination-specific durability property such as an operating-system file
+flush.
 
-Helper methods for received data:
-- `binary()` - Extract raw binary data
-- `text()` - Decode as UTF-8 string
-- `json()` - Decode as JSON
+## Text streams and UTF-8 adapters
 
-### MemoryReader
+Text is opt-in. `Utf8Reader` adapts a `BinaryReader` to `TextReader`, and
+`Utf8Writer` adapts a `BinaryWriter` to `TextWriter`.
 
-A reader backed by an async in-memory writer callback. Methods include:
-- `MemoryReader(callback)` - Create a reader and run `callback` in the background with an auxiliary writer
-- `close()` - Close the reader and cancel the background callback if it is still running
+- `TextReader::read_all()` decodes all remaining bytes as UTF-8.
+- `TextReader::read_until(pattern, include_delimiter?)` searches for a text
+  delimiter and returns decoded text.
+- `TextWriter::write(text)` UTF-8 encodes a `StringView`.
+- `TextWriter::write_json(json)` writes the JSON text representation.
 
-### BufferedWriter
+```moonbit check
+///|
+async test "UTF-8 text adapters" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      let text_writer = @io.Utf8Writer(writer)
+      text_writer.write("你好|MoonBit")
+    }
+    let text_reader = @io.Utf8Reader(reader)
+    guard text_reader.read_until("|") is Some(first) else {
+      fail("missing first text record")
+    }
+    inspect(first, content="你好")
+    inspect(text_reader.read_all(), content="MoonBit")
+  }
+}
+```
 
-A buffered writer with fixed-size buffer. Methods include:
-- `new(writer, size?)` - Create new buffered writer
-- `capacity()` - Get buffer size
-- `flush()` - Commit buffered data
-- `write_once(data, offset~, len~)` - Single write operation
-- `write(data)` - Write data
-- `write_reader(reader)` - Copy from reader
+Decoding invalid UTF-8 raises an error. Use the binary interfaces when arbitrary
+bytes must be preserved.
 
-### ReaderClosed
+## `MemoryReader`
 
-Error raised when attempting to read from a closed reader.
+`MemoryReader` turns an asynchronous writer callback into a binary reader. The
+callback runs in a background coroutine; returning closes the stream, raising an
+error propagates it to the reader, and closing the reader cancels the callback.
 
-## Best Practices
+```moonbit check
+///|
+async test "callback-backed memory reader" {
+  let reader = @io.MemoryReader() <| writer => {
+    writer.write(b"generated ")
+    @async.sleep(10)
+    writer.write(b"content")
+  }
+  defer reader.close()
+  inspect(@utf8.decode(reader.read_all()), content="generated content")
+}
+```
 
-1. **Only one reader/writer at the same time**. Attempting to read from/write to the same reader/writer from multiple tasks easily lead to race condition.
-  When multiple readers/writers are needed, it is recommended to adapt the actor pattern by spawning a dedicated reader/writer task and use `@aqueue.Queue` to distribute data atomically.
-2. **Use buffered I/O for performance**: Readers manage their read-ahead buffers internally; wrap writers with `BufferedWriter` when performing many small writes.
-3. **Pick the right data view and cache the result**: Prefer `.text()` for UTF-8, `.json()` for structured payloads, and `.binary()` when forwarding raw bytes.
-  `.text()` and `.json()` methods need to perform decoding and parsing, so users should cache the result of these conversion methods instead of calling them repeatedly
+## Buffered writing
 
-For more examples and detailed usage, explore the test suites in this package—they double as executable documentation.
+`BufferedWriter::new(writer, size?)` batches small writes in a fixed-size
+buffer. Call `flush()` before accessing the underlying destination through
+another path or before closing it. The buffer size must be positive.
+
+```moonbit check
+///|
+async test "buffered writer" {
+  @async.with_task_group() <| root => {
+    let (reader, writer) = @io.pipe()
+    defer reader.close()
+    root.spawn_bg() <| () => {
+      defer writer.close()
+      let buffered = @io.BufferedWriter::new(writer, size=4)
+      buffered.write(b"ab")
+      buffered.write(b"cd")
+      buffered.write(b"ef")
+      buffered.flush()
+    }
+    inspect(@utf8.decode(reader.read_all()), content="abcdef")
+  }
+}
+```
+
+## Implementing an endpoint
+
+Application code normally depends on `BinaryReader` and `BinaryWriter`.
+Endpoint implementations use the lower-level traits:
+
+```mbt nocheck
+///|
+pub(open) trait BinaryReaderImpl {
+  fn get_controller(Self) -> BinaryReaderController
+  async fn raw_read_impl(
+    Self,
+    FixedArray[Byte],
+    offset~ : Int32,
+    max_len~ : Int32,
+  ) -> Int32
+}
+
+///|
+pub(open) trait BinaryWriterImpl {
+  fn get_controller(Self) -> BinaryWriterController
+  async fn raw_write_impl(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
+}
+```
+
+A binary reader stores one `BinaryReaderController`, returns it from
+`get_controller`, implements `raw_read_impl`, and explicitly implements
+`BinaryReader` to opt into the default high-level methods. A writer similarly
+stores one `BinaryWriterController`, returns it from `get_controller`, implements
+`raw_write_impl`, and explicitly implements `BinaryWriter`. Writer controller
+internals are intentionally hidden so shared behavior can evolve without
+changing endpoint implementations or the high-level writer API.
+
+Raw operations communicate directly with the underlying endpoint. On success
+they must make positive progress, may return fewer bytes than requested, and
+must not call the high-level methods recursively. For readers, zero means EOF.
+
+## Usage notes
+
+- Run only one operation at a time on a given reader or writer. The interfaces
+  do not serialize concurrent calls.
+- Use `peek` for parser lookahead, but copy a returned view before another
+  reader operation if it must be retained.
+- Prefer `read_into` for caller-managed buffers, `read` for streaming chunks,
+  and `read_all` only when the remaining input comfortably fits in memory.
+- Use `Utf8Reader` and `Utf8Writer` at the text boundary instead of mixing text
+  conversion into binary protocol code.
+- Flush a `BufferedWriter` at protocol boundaries and before closing its
+  underlying writer.

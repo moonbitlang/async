@@ -47,7 +47,7 @@ async test "UTF8 validation" {
       defer client.close()
       client..start_message(Text)..write(msg).end_message()
       let err = @test_util.expect_error_async <| () => {
-        client.recv().read_all().binary()
+        client.recv().read_all()
       }
       log.push(
         "client: \{@debug.to_string(msg.to_array())} => Err(\{@debug.to_string(err)})",
@@ -108,7 +108,7 @@ async test "UTF8 validation large message" {
       let chunk_bin = @utf8.encode(chunk_text)
       group.spawn_bg() <| () => {
         client.start_message(Text)
-        client.write("a")
+        client.write(b"a")
         for n = 0; n < 10240; n = n + chunk_bin.length() {
           client.write(chunk_bin)
         }
@@ -120,7 +120,7 @@ async test "UTF8 validation large message" {
         let reply_chunk = reply.read_exactly(chunk_bin.length())
         assert_eq(@utf8.decode(reply_chunk), chunk_text)
       }
-      debug_inspect(reply.read_some(), content="None")
+      debug_inspect(reply.read(), content="None")
     }
   }
 }

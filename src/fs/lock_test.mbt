@@ -47,7 +47,7 @@ async fn run_lock_file_prog(
   let queue = @async.Queue(kind=Unbounded)
   group.spawn_bg() <| () => {
     defer lock_proc.stdout.close()
-    while lock_proc.stdout.read_until("\n") is Some(line) {
+    while lock_proc.stdout.text.read_until("\n") is Some(line) {
       match line {
         "acquired lock" => queue.put(Acquire)
         "releasing lock" => queue.put(Release)
@@ -281,13 +281,13 @@ async test "flock cancelled" {
 async test "flock advisory" {
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, "abcd")
+    @fs.write_text(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     let events = run_lock_file_prog(group, file_name, Exclusive)
     debug_inspect(events.get(), content="Acquire")
-    inspect(file.read_all().text(), content="abcd")
+    inspect(file.text.read_all(), content="abcd")
     debug_inspect(events.try_get(), content="None")
   }
 }

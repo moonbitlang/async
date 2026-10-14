@@ -231,13 +231,14 @@ struct Tls {
   host : String?
   is_client : Bool
   transport : Transport
-  read_buf : @io.ReaderBuffer
+  reader_ctrl : @io.BinaryReaderController
+  writer_ctrl : @io.BinaryWriterController
   mut shutdown : Bool
   mut closed : Bool
 }
 
 ///|
-fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
+fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::from_pair(
   conn : TlsConnectionHandle,
   r : R,
   w : W,
@@ -249,7 +250,8 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
     host,
     is_client,
     transport: Transport::new(r, w),
-    read_buf: @io.ReaderBuffer::new(),
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
     shutdown: false,
     closed: false,
   }
@@ -257,18 +259,19 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
 
 ///|
 async fn Tls::connect(self : Tls) -> Unit {
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
   for ;; {
+    let read_buf = controller.buffered()
     let ret = self.conn.connect(
-      in_buffer=read_buf.buf,
-      in_buffer_offset=read_buf.start,
-      in_buffer_len=read_buf.len,
+      in_buffer=controller.raw_buffer(),
+      in_buffer_offset=read_buf.start_offset(),
+      in_buffer_len=read_buf.length(),
       out_buffer=write_buf.buf,
       out_buffer_offset=write_buf.start + write_buf.len,
       out_buffer_len=write_buf.buf.length() - write_buf.start - write_buf.len,
     )
-    read_buf.drop(self.conn.bytes_read())
+    controller.drop(self.conn.bytes_read())
     write_buf.len += self.conn.bytes_to_write()
     match ret {
       Completed => {
@@ -289,18 +292,19 @@ async fn Tls::connect(self : Tls) -> Unit {
 
 ///|
 async fn Tls::accept(self : Tls) -> Unit {
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
   for ;; {
+    let read_buf = controller.buffered()
     let ret = self.conn.accept(
-      in_buffer=read_buf.buf,
-      in_buffer_offset=read_buf.start,
-      in_buffer_len=read_buf.len,
+      in_buffer=controller.raw_buffer(),
+      in_buffer_offset=read_buf.start_offset(),
+      in_buffer_len=read_buf.length(),
       out_buffer=write_buf.buf,
       out_buffer_offset=write_buf.start + write_buf.len,
       out_buffer_len=write_buf.buf.length() - write_buf.start - write_buf.len,
     )
-    read_buf.drop(self.conn.bytes_read())
+    controller.drop(self.conn.bytes_read())
     write_buf.len += self.conn.bytes_to_write()
     match ret {
       Completed => {
@@ -321,7 +325,7 @@ async fn Tls::accept(self : Tls) -> Unit {
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   r : R,
   w : W,
   verify~ : Bool = true,
@@ -341,7 +345,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   let self = Tls::from_pair(conn, r, w, is_client=true, host~)
   errdefer self.close()
   if trust is CustomPemFile(path) {
-    let pem = @fs.read_file(path).text()
+    let pem = @fs.read_text(path)
     for cert in decode_pem_certificates(pem) {
       let status = conn.add_root_certificate(cert)
       if status != 0 {
@@ -359,7 +363,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 
 ///|
 #internal(internal, "do not use, for internal testing only")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   r : R,
   w : W,
   private_key_file? : String,
@@ -377,7 +381,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
       None =>
         raise TlsError("pfx_file is required for TLS servers on Windows hosts")
     }
-    let pfx_content = @fs.read_file(pfx_file).binary()
+    let pfx_content = @fs.read_binary(pfx_file)
     conn.set_server_pfx(pfx_content)
   } else {
     let private_key_file = match private_key_file {
@@ -424,7 +428,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 
 ///|
 #internal(internal, "do not use, for internal testing only")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   inner : Inner,
   private_key_file? : String,
   private_key_type? : X509FileType,
@@ -444,13 +448,19 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
-  while self.conn.read_plain(
-          in_buffer=read_buf.buf,
-          in_buffer_offset=read_buf.start,
-          in_buffer_len=read_buf.len,
+  while controller.buffered() is read_buf &&
+        self.conn.read_plain(
+          in_buffer=controller.raw_buffer(),
+          in_buffer_offset=read_buf.start_offset(),
+          in_buffer_len=read_buf.length(),
           out_buffer=write_buf.buf,
           out_buffer_offset=write_buf.start + write_buf.len,
           out_buffer_len=write_buf.buf.length() -
@@ -462,7 +472,7 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
         )
         is n {
     let bytes_read = self.conn.bytes_read()
-    read_buf.drop(bytes_read)
+    controller.drop(bytes_read)
     let bytes_to_write = self.conn.bytes_to_write()
     write_buf.len += bytes_to_write
     if bytes_to_write > 0 {
@@ -484,7 +494,7 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
         if bytes_read > 0 || bytes_to_write > 0 {
           continue
         } else if self.transport.state is Closed &&
-          self.transport.reader._get_internal_buffer().repr().len == 0 {
+          controller.buffered().length() == 0 {
           return 0
         } else if self.conn.wants_read() {
           self.transport.read_more()
@@ -502,29 +512,25 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for Tls with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
-pub extend Tls with @io.Reader::{
-  read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
-  read_exactly,
-}
-
-///|
-pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   self.transport.flush_write()
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
-  while self.conn.write_plain(
-          in_buffer=read_buf.buf,
-          in_buffer_offset=read_buf.start,
-          in_buffer_len=read_buf.len,
+  while controller.buffered() is read_buf &&
+        self.conn.write_plain(
+          in_buffer=controller.raw_buffer(),
+          in_buffer_offset=read_buf.start_offset(),
+          in_buffer_len=read_buf.length(),
           out_buffer=write_buf.buf,
           out_buffer_offset=write_buf.start + write_buf.len,
           out_buffer_len=write_buf.buf.length() -
@@ -536,7 +542,7 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
         )
         is n {
     let bytes_read = self.conn.bytes_read()
-    read_buf.drop(bytes_read)
+    controller.drop(bytes_read)
     let bytes_to_write = self.conn.bytes_to_write()
     write_buf.len += bytes_to_write
     if bytes_to_write > 0 {
@@ -570,7 +576,9 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
-pub extend Tls with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  self.writer_ctrl
+}
 
 ///|
 pub fn Tls::close(self : Tls) -> Unit {
@@ -660,4 +668,5 @@ let _unused : Unit = {
   ignore((transport : Transport) => transport.flush_write())
   ignore((_ : @fs.File) => ())
   ignore(@errno_util.errno_to_string)
+  ignore(@cmp.minimum(1, 2))
 }

@@ -14,7 +14,7 @@
 
 ///|
 #cfg(all(not(target="wasm"), not(platform="windows")))
-async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+async fn test_server(r : &@io.BinaryReader, w : &@io.BinaryWriter) -> @tls.Tls {
   @tls.Tls::server_from_pair(
     r,
     w,
@@ -27,13 +27,13 @@ async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
 
 ///|
 #cfg(all(not(target="wasm"), platform="windows"))
-async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+async fn test_server(r : &@io.BinaryReader, w : &@io.BinaryWriter) -> @tls.Tls {
   @tls.Tls::server_from_pair(r, w, pfx_file="test_keys/cert.pfx")
 }
 
 ///|
 #cfg(target="wasm")
-async fn test_server(r : &@io.Reader, w : &@io.Writer) -> @tls.Tls {
+async fn test_server(r : &@io.BinaryReader, w : &@io.BinaryWriter) -> @tls.Tls {
   @tls.Tls::server_from_pair(
     r,
     w,
@@ -59,7 +59,7 @@ async test "one way" {
       }
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
-      while server.read_some() is Some(data) {
+      while server.read() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("server received: \{data}\n")
       } nobreak {
@@ -84,7 +84,7 @@ async test "one way" {
       @async.sleep(50)
       client.write(b"ijkl")
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(@utf8.decode(client.read_all()), content="")
     }
   }
   inspect(
@@ -112,7 +112,7 @@ async test "echo" {
       }
       let server = test_server(server_read_from_client, server_write_to_client)
       defer server.close()
-      while server.read_some() is Some(data) {
+      while server.read() is Some(data) {
         log.write_string("server received: \{@utf8.decode(data)}\n")
         server.write(data)
       } nobreak {
@@ -137,7 +137,7 @@ async test "echo" {
         @async.sleep(50)
       }
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(@utf8.decode(client.read_all()), content="")
     }
   }
   inspect(
@@ -162,7 +162,7 @@ async test "`connect` accidental close" {
         server_read_from_client.close()
         server_write_to_client.close()
       }
-      let _ = server_read_from_client.read_some()
+      let _ = server_read_from_client.read()
       @async.sleep(100)
     }
     // client
@@ -211,7 +211,7 @@ async test "`read` already closed" {
         trust=NoVerification,
       )
       defer client.close()
-      debug_inspect(client.read_some(), content="None")
+      debug_inspect(client.read(), content="None")
     }
   }
 }
@@ -219,8 +219,8 @@ async test "`read` already closed" {
 ///|
 #cfg(all(not(target="wasm"), not(platform="windows")))
 async fn custom_root_test_server(
-  r : &@io.Reader,
-  w : &@io.Writer,
+  r : &@io.BinaryReader,
+  w : &@io.BinaryWriter,
   private_key_file : String,
   certificate_file : String,
   _pfx_file : String,
@@ -238,8 +238,8 @@ async fn custom_root_test_server(
 ///|
 #cfg(all(not(target="wasm"), platform="windows"))
 async fn custom_root_test_server(
-  r : &@io.Reader,
-  w : &@io.Writer,
+  r : &@io.BinaryReader,
+  w : &@io.BinaryWriter,
   _private_key_file : String,
   _certificate_file : String,
   pfx_file : String,
@@ -250,8 +250,8 @@ async fn custom_root_test_server(
 ///|
 #cfg(target="wasm")
 async fn custom_root_test_server(
-  r : &@io.Reader,
-  w : &@io.Writer,
+  r : &@io.BinaryReader,
+  w : &@io.BinaryWriter,
   private_key_file : String,
   certificate_file : String,
   pfx_file : String,
@@ -299,7 +299,7 @@ async test "client custom root certificate" {
       defer client.close()
       client.write(b"ok")
       client.shutdown()
-      inspect(client.read_all().text(), content="")
+      inspect(@utf8.decode(client.read_all()), content="")
     }
   }
 }

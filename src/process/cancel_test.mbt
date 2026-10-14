@@ -26,7 +26,7 @@ async test "cancel `@process.run()`" {
     })
     root.spawn_bg() <| () => {
       defer r.close()
-      while r.read_some() is Some(data) {
+      while r.read() is Some(data) {
         let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
         log.write_string("from process: \{data}")
       }
@@ -59,7 +59,7 @@ async test "cancel process timeout" {
     )
     let t_receive_graceful_termination = group.spawn(() => {
       defer child.stdout.close()
-      guard! child.stdout.read_some() is Some(data)
+      guard! child.stdout.read() is Some(data)
       let data = @utf8.decode(data).trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
@@ -93,7 +93,7 @@ async test "cancel process hard" {
     )
     group.spawn_bg() <| () => {
       defer child.stdout.close()
-      inspect(child.stdout.read_all().text(), content="")
+      inspect(child.stdout.text.read_all(), content="")
     }
     @async.sleep(500)
     let t0 = @async.now()
@@ -125,7 +125,7 @@ async test "orphan process" {
     inspect(@utf8.decode(proc.stdout.read_exactly(5)), content="first")
     wait_task.cancel()
     log <+ "cancelling task running process\n"
-    inspect(proc.stdout.read_all().text(), content="second")
+    inspect(proc.stdout.text.read_all(), content="second")
   }
   inspect(
     log.to_string(),
@@ -153,7 +153,7 @@ async test "kill children on hard cancel" {
     defer child.stdout.close()
     @async.sleep(300)
     child.cancel()
-    inspect(child.stdout.read_all().text().trim(), content="")
+    inspect(child.stdout.text.read_all().trim(), content="")
   }
 }
 
@@ -172,6 +172,6 @@ async test "do not kill orphan children on hard cancel" {
     defer child.stdout.close()
     @async.sleep(300)
     child.cancel()
-    inspect(child.stdout.read_all().text().trim(), content="after sleep")
+    inspect(child.stdout.text.read_all().trim(), content="after sleep")
   }
 }

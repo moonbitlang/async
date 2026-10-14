@@ -14,12 +14,15 @@
 
 ///|
 /// A single HTTP server connection
-struct ServerConnection {
-  reader : Reader
-  conn : @socket.Tcp
-  sender : Sender
-  mut closed : Bool
-  mut request_method : RequestMethod
+pub struct ServerConnection {
+  /// A builtin text view for reading UTF-8 request bodies
+  /// and writing UTF-8 response payloads
+  text : @io.Utf8TextView
+  priv reader : Reader
+  priv conn : @socket.Tcp
+  priv sender : Sender
+  priv mut closed : Bool
+  priv mut request_method : RequestMethod
 }
 
 ///|
@@ -35,13 +38,16 @@ pub fn ServerConnection::new(
   conn : @socket.Tcp,
   headers~ : Headers = Map([]),
 ) -> ServerConnection {
-  {
+  let conn = {
+    text: @io.Utf8TextView::new_uninitialized(),
     reader: Reader::new(conn),
     conn,
     sender: Sender::new(conn, headers~),
     closed: false,
     request_method: Get,
   }
+  conn.text.set_inner(conn)
+  conn
 }
 
 ///|
@@ -49,6 +55,7 @@ pub fn ServerConnection::new(
 /// This function is idempotent: it is safe to call `.close()` multiple times,
 /// only the first `.close()` call takes effect.
 pub fn ServerConnection::close(self : ServerConnection) -> Unit {
+  self.text.close()
   if !self.closed {
     self.closed = true
     self.conn.close()
@@ -62,28 +69,37 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> @socket.Addr {
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _direct_read(
+pub impl @io.BinaryReader for ServerConnection
+
+///|
+impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  self.reader._direct_read(buf, offset~, max_len~)
+  @io.BinaryReaderImpl::raw_read_impl(self.reader, buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
-  self.reader._get_internal_buffer()
+impl @io.BinaryReaderImpl for ServerConnection with fn get_controller(self) {
+  @io.BinaryReaderImpl::get_controller(self.reader)
 }
 
 ///|
-pub extend ServerConnection with @io.Reader::{
+pub extend ServerConnection with @io.BinaryReader::{
+  read_into,
   read,
-  drop,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
-  read_some,
+  drop_exactly,
+  peek_exactly,
   read_all,
+  drop_all,
   read_until,
+  peek_until,
 }
 
 ///|
@@ -104,7 +120,7 @@ pub fn ServerConnection::trailer(self : ServerConnection) -> Headers {
 ///
 /// After calling `read_request`,
 /// the body of the request can be obtained by using `ServerConnection`
-/// as a `@io.Reader`.
+/// as an `@io.BinaryReader`, or through `.text` as an `@io.TextReader`.
 pub async fn ServerConnection::read_request(self : ServerConnection) -> Request {
   self.reader.skip_body()
   let request = self.reader.read_request()
@@ -122,27 +138,35 @@ pub async fn ServerConnection::skip_request_body(
 
 ///|
 /// Write data to the body of the response currently being sent.
-/// Must be called after `send_response`.
+/// Writer API must be called after `send_response`.
 /// `end_response` must be called after all content of response body has been sent.
 ///
 /// Writing to `@http.ServerConnection` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
-pub impl @io.Writer for ServerConnection with fn write_once(
+pub impl @io.BinaryWriter for ServerConnection
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn raw_write_impl(
   self,
   buf,
   offset~,
   len~,
 ) {
   guard! !(self.sender.mode is SendingHeader)
-  self.sender.write_once(buf, offset~, len~)
+  @io.BinaryWriterImpl::raw_write_impl(self.sender, buf, offset~, len~)
 }
 
 ///|
-pub async fn ServerConnection::write_string_interpolation(
+impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
+  @io.BinaryWriterImpl::get_controller(self.sender)
+}
+
+///|
+pub async fn[X : Show] ServerConnection::write_string_interpolation(
   self : ServerConnection,
-  data : &@io.Data,
+  data : X,
 ) -> Unit {
-  self.write(data)
+  self.text.write(data.to_string())
 }
 
 ///|
@@ -152,17 +176,20 @@ pub async fn ServerConnection::write_string(
   self : ServerConnection,
   s : String,
 ) -> Unit {
-  @io.Writer::write(self, s)
+  self.text.write(s)
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with fn write_reader(self, reader) {
+pub impl @io.BinaryWriter for ServerConnection with fn write_reader(
+  self,
+  reader,
+) {
   guard! !(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
 
 ///|
-pub extend ServerConnection with @io.Writer::{write_once, write, write_reader}
+pub extend ServerConnection with @io.BinaryWriter::{write, write_reader}
 
 ///|
 /// Flush buffered data in the response body being sent, if any.
@@ -179,7 +206,8 @@ pub async fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 
 ///|
 /// Send a response to the peer.
-/// The `ServerConnection` can be used as a `@io.Writer` later for sending response body.
+/// The response body can then be sent through `ServerConnection` as an
+/// `@io.BinaryWriter`, or through `.text` as an `@io.TextWriter`.
 /// After calling `send_response`,
 /// `end_response` must be called before sending the next response.
 ///
@@ -266,11 +294,12 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 ///
 /// The callback function `f` accepts three arguments:
 /// - the request to process
-/// - a `&@io.Reader` that can be used to read request body
+/// - a `&@io.BinaryReader` that can be used to read the request body
 /// - a `@http.ServerConnection` that can be used to send response.
 ///     The procedure to send a response is:
 ///     1. initiate a response and send response header via `.send_response()`
-///     2. send response body by using the `@http.ServerConnection` as `@io.Writer`
+///     2. send the response body through `@http.ServerConnection` as an
+///        `@io.BinaryWriter`, or through `.text` as an `@io.TextWriter`
 ///     3. (optional) complete the response via `.end_response()`.
 ///         If `.end_response()` is not called, it will be called automatically
 ///         after `f` returns.
@@ -291,7 +320,7 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 /// On error or cancellation, the server will be closed automatically.
 pub async fn Server::run_forever(
   self : Server,
-  f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  f : async (Request, &@io.BinaryReader, ServerConnection) -> Unit,
   allow_failure? : Bool,
   max_connections? : Int32,
 ) -> Unit {
@@ -318,7 +347,7 @@ pub async fn Server::run_forever(
 ///
 /// In passthrough mode,
 /// Read/write the server becomes direct read/write on the underlying connection,
-/// and all API except `@io.Reader` and `@io.Writer` must not be used anymore.
+/// and only its `@io.BinaryReader` and `@io.BinaryWriter` APIs may be used.
 ///
 /// When entering pass through mode,
 /// the server must be in a clean state

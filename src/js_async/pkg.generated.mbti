@@ -33,14 +33,20 @@ pub async fn[X] Promise::wait(Self[X], abort_controller? : AbortController) -> X
 
 type ReadableStream
 pub fn ReadableStream::close(Self) -> Unit
-pub async fn ReadableStream::drop(Self, Int32) -> Int32
+pub async fn ReadableStream::drop_all(Self) -> Int64
+pub async fn ReadableStream::drop_exactly(Self, Int32) -> Unit
 pub fn ReadableStream::from_js(JsReadableStream) -> Self
-pub async fn ReadableStream::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
-pub async fn ReadableStream::read_all(Self) -> &@io.Data
+pub async fn ReadableStream::peek(Self) -> BytesView?
+pub async fn ReadableStream::peek_at_least(Self, Int32) -> BytesView
+pub async fn ReadableStream::peek_exactly(Self, Int32) -> BytesView
+pub async fn ReadableStream::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn ReadableStream::read(Self) -> Bytes?
+pub async fn ReadableStream::read_all(Self) -> Bytes
+pub async fn ReadableStream::read_at_least(Self, Int32) -> Bytes
 pub async fn ReadableStream::read_exactly(Self, Int32) -> Bytes
-pub async fn ReadableStream::read_some(Self, max_len? : Int32) -> Bytes?
-pub async fn ReadableStream::read_until(Self, StringView) -> String?
-pub impl @io.Reader for ReadableStream
+pub async fn ReadableStream::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn ReadableStream::read_until(Self, BytesView, include_delimiter? : Bool) -> Bytes?
+pub impl @io.BinaryReader for ReadableStream
 
 // Type aliases
 

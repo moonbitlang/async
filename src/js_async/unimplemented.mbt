@@ -171,7 +171,7 @@ type JsReadableStream
 
 ///|
 /// A wrapper around `JsReadableStream`
-/// that allows reading the content of the stream via the `@io.Reader` interface.
+/// that allows reading the content via the `@io.BinaryReader` interface.
 ///
 /// This type SHOULD NOT be used on FFI directly:
 /// its ABI is NOT the same as `JsReadableStream`,
@@ -201,14 +201,17 @@ pub fn ReadableStream::close(self : ReadableStream) -> Unit {
 }
 
 ///|
+pub impl @io.BinaryReader for ReadableStream
+
+///|
 #coverage.skip
-pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(_) {
+impl @io.BinaryReaderImpl for ReadableStream with fn get_controller(_) {
   abort("unimplemented in native backend")
 }
 
 ///|
 #coverage.skip
-pub impl @io.Reader for ReadableStream with fn _direct_read(
+impl @io.BinaryReaderImpl for ReadableStream with fn raw_read_impl(
   _,
   _,
   offset~,
@@ -220,13 +223,19 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
 }
 
 ///|
-pub extend ReadableStream with @io.Reader::{
+pub extend ReadableStream with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|

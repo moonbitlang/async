@@ -126,9 +126,9 @@ test "non-blocking read & external waiter race" {
       group.spawn_bg() <| () => {
         defer w.close()
         // The `write` here will generate a read-readiness event for the pipe
-        w.write("abcd")
+        w.write(b"abcd")
         @async.sleep(150)
-        w.write("xyzw")
+        w.write(b"xyzw")
       }
       group.spawn_bg() <| () => {
         // do some spinning here to ensure the waiter thread has generated
@@ -141,7 +141,7 @@ test "non-blocking read & external waiter race" {
         // so it would immediately succeed and drain all data in the pipe.
         // At this point, the read readiness event for the pipe
         // is still in the event bus and not yet consumed.
-        guard r.read_some() is Some(data) else {
+        guard r.read() is Some(data) else {
           fail("expected data, no data found")
         }
         inspect(@utf8.decode(data), content="abcd")
@@ -157,7 +157,7 @@ test "non-blocking read & external waiter race" {
         // and the stale read readiness event will wake this task up.
         // But at this point, there is still no data in the pipe,
         // so the second `read` attempt still fail with `EAGAIN`, failing the whole test
-        guard r.read_some() is Some(data) else {
+        guard r.read() is Some(data) else {
           fail("expected data, no data found")
         }
         inspect(@utf8.decode(data), content="xyzw")

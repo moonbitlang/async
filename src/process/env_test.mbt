@@ -25,7 +25,7 @@ async test "set_env" {
       extra_env={ "MAGIC_VAR": "MAGIC_VALUE" },
     )
     defer child.stdout.close()
-    inspect(child.stdout.read_all().text(), content="MAGIC_VALUE")
+    inspect(child.stdout.text.read_all(), content="MAGIC_VALUE")
   }
 }
 
@@ -48,7 +48,7 @@ async test "set_env no inherit" {
     )
     defer child.stdout.close()
     inspect(
-      child.stdout.read_all().text().replace_all(old="\r\n", new="\n"),
+      child.stdout.text.read_all().replace_all(old="\r\n", new="\n"),
       content=(
         #|MAGIC_VAR_1=MAGIC_VALUE_1
         #|MAGIC_VAR_2=MAGIC_VALUE_2
@@ -66,13 +66,13 @@ async test "set_env override" {
   @env.set_env_var(name, "old_value")
   // On Windows, environment variables are case-insensitive
   let env_var = if is_windows { "$env:\{name.to_lower()}" } else { "$\{name}" }
-  let (_, output) = @process.collect_stdout(
+  let (_, output) = @process.collect_stdout_text(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env=Map([(name, "overwritten")]),
   )
   inspect(
-    output.text().trim_end(chars="\r\n"),
+    output.trim_end(chars="\r\n"),
     content=(
       #|overwritten
     ),
@@ -82,28 +82,28 @@ async test "set_env override" {
 ///|
 async test "set_env injection key" {
   let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
-  let (_, output) = @process.collect_stdout(
+  let (_, output) = @process.collect_stdout_text(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(output.trim_end(chars="\r\n"))
   let env_var2 = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
-  let (_, output) = @process.collect_stdout(
+  let (_, output) = @process.collect_stdout_text(
     shell,
     ["-c", "\{write_stdout} \{env_var2}"],
     extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(output.trim_end(chars="\r\n"))
 }
 
 ///|
 async test "set_env injection value" {
   let env_var = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
-  let (_, output) = @process.collect_stdout(
+  let (_, output) = @process.collect_stdout_text(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env={ "MAGIC_VAR": "abc\u{0000}MAGIC_VAR2=def" },
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(output.trim_end(chars="\r\n"))
 }

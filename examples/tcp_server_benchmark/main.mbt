@@ -47,7 +47,7 @@ async fn client(
               send_count += data.length().to_int64()
             }
             conn_group.spawn_loop(no_wait=true) <| () => {
-              let n = conn.read(buf)
+              let n = conn.read_into(buf)
               if recv_count == 0 {
                 latency_sum += @env.now() - before
               }

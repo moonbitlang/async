@@ -41,6 +41,7 @@ options(
     "basic_test.mbt": [ "native", "wasm" ],
     "cancel_test.mbt": [ "native", "wasm" ],
     "cancellation.mbt": [ "native", "wasm" ],
+    "collect_helpers.mbt": [ "native", "wasm" ],
     "commands_for_test.mbt": [ "native", "wasm" ],
     "cwd_test.mbt": [ "native", "wasm" ],
     "env_test.mbt": [ "native", "wasm" ],

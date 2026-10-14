@@ -15,43 +15,43 @@
 
 ///|
 async test "collect_stdout" {
-  let (code, output) = @process.collect_stdout(shell, [
+  let (code, output) = @process.collect_stdout_text(shell, [
     "-c",
     "\{write_stdout} abcd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcd")
+  inspect(output, content="abcd")
 }
 
 ///|
 async test "collect_error" {
-  let (code, output) = @process.collect_stderr(shell, [
+  let (code, output) = @process.collect_stderr_text(shell, [
     "-c",
     "\{write_stderr} abcd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="abcd")
+  inspect(output, content="abcd")
 }
 
 ///|
 async test "collect_output" {
-  let (code, stdout, stderr) = @process.collect_output(shell, [
+  let (code, stdout, stderr) = @process.collect_output_text(shell, [
     "-c",
     "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
-  inspect(stdout.text(), content="abcd")
-  inspect(stderr.text(), content="abcd")
+  inspect(stdout, content="abcd")
+  inspect(stderr, content="abcd")
 }
 
 ///|
 async test "collect_output_merged" {
-  let (code, output) = @process.collect_output_merged(shell, [
+  let (code, output) = @process.collect_output_merged_text(shell, [
     "-c",
     "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
   ])
   inspect(code, content="0")
-  inspect(output.text(), content="ababcdcd")
+  inspect(output, content="ababcdcd")
 }
 
 ///|
@@ -67,13 +67,13 @@ async test "collect_output blocked" {
       }
     }
     defer cat_read.close()
-    let (code, stdout, stderr) = @process.collect_output(
+    let (code, stdout, stderr) = @process.collect_output_binary(
       test_prog,
       ["-stderr"],
       stdin=cat_read,
     )
     inspect(code, content="0")
-    inspect(stdout.text(), content="")
-    inspect(stderr.binary().length(), content="1048576")
+    inspect(stdout.length(), content="0")
+    inspect(stderr.length(), content="1048576")
   }
 }

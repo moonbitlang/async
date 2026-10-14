@@ -23,7 +23,7 @@ async test "write large data" {
     }
     root.spawn_bg() <| () => {
       defer r.close()
-      inspect(r.read_all().binary().length(), content="16384")
+      inspect(r.read_all().length(), content="16384")
     }
   }
 }
@@ -41,7 +41,7 @@ async test "write reader" {
     }
     root.spawn_bg() <| () => {
       defer r1.close()
-      while r1.read_some() is Some(data) {
+      while r1.read() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("received \{data}\n")
       }
@@ -76,10 +76,24 @@ async test "write reader" {
 struct DummyWriter {
   logger : &Logger
   base_timeout : Int32
+  ctrl : @io.BinaryWriterController
 }
 
 ///|
-impl @io.Writer for DummyWriter with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriter for DummyWriter
+
+///|
+impl @io.BinaryWriterImpl for DummyWriter with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+impl @io.BinaryWriterImpl for DummyWriter with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   guard! offset + len <= buf.length()
   @async.sleep(self.base_timeout)
   let logger = self.logger
@@ -88,12 +102,16 @@ impl @io.Writer for DummyWriter with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
-extend DummyWriter with @io.Writer::{write}
+extend DummyWriter with @io.BinaryWriter::{write}
 
 ///|
 async test "write cancel" {
   let log = StringBuilder()
-  let writer = { logger: log, base_timeout: 300, }
+  let writer = {
+    logger: log,
+    base_timeout: 300,
+    ctrl: BinaryWriterController(),
+  }
   @async.with_timeout_opt(450, () => writer.write(b"abcd")) |> ignore
   // The `write` here is partial and corrupted,
   // but we have no choice because making `write` atomic may cause hang
@@ -113,8 +131,8 @@ async test "write_string" {
     defer r.close()
     root.spawn_bg() <| () => {
       defer w.close()
-      w.write("abcd中文☺")
+      @io.Utf8Writer(w).write("abcd中文☺")
     }
-    inspect(r.read_all().text(), content="abcd中文☺")
+    inspect(@io.Utf8Reader(r).read_all(), content="abcd中文☺")
   }
 }

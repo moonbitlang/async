@@ -21,14 +21,14 @@ async test "reuse addr" {
       group.spawn_bg() <| () => {
         let (conn, _) = server.accept()
         defer conn.close()
-        conn.write("abcd")
+        conn.write(b"abcd")
       }
       group.spawn_bg() <| () => {
         let conn = @socket.Tcp::connect(
           @socket.Addr::parse("127.0.0.1:\{port}"),
         )
         defer conn.close()
-        inspect(conn.read_all().text(), content="abcd")
+        inspect(@utf8.decode(conn.read_all()), content="abcd")
       }
     }
   }

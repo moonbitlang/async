@@ -33,11 +33,11 @@ The `open` function provides flexible file opening with various modes and option
 #cfg(target="native")
 async test "open file for reading" {
   let test_file = "_build/test_open_read.txt"
-  @fs.write_file(test_file, b"Hello, MoonBit!")
+  @fs.write_text(test_file, "Hello, MoonBit!")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
-  let content = file.read_all().text()
+  let content = file.text.read_all()
   inspect(content, content="Hello, MoonBit!")
 }
 
@@ -48,7 +48,7 @@ async test "open file for writing" {
   let file = @fs.open(test_file, mode=WriteOnly, create_mode=CreateOrTruncate)
   defer @fs.remove(test_file)
   defer file.close()
-  file.write(b"Hello, World!")
+  file.text.write("Hello, World!")
 }
 
 ///|
@@ -56,21 +56,21 @@ async test "open file for writing" {
 async test "open with append mode" {
   let test_file = "_build/test_append.txt"
   // Create initial file
-  @fs.write_file(test_file, b"First line\n")
+  @fs.write_text(test_file, "First line\n")
   defer @fs.remove(test_file)
 
   // Append to existing file
   {
     let file = @fs.open(test_file, mode=WriteOnly, append=true)
     defer file.close()
-    file.write(b"Second line\n")
+    file.text.write("Second line\n")
   }
-  let content = @fs.read_file(test_file).text()
+  let content = @fs.read_text(test_file)
   inspect(content, content="First line\nSecond line\n")
 }
 ```
 
-When `append=true`, sequential writes through the `@io.Writer` interface
+When `append=true`, sequential writes through the `@io.BinaryWriter` interface
 always append to the current end of the file, even if another process extends
 the file after it is opened. Append mode does not change read behavior, and
 random-access writes with `write_at` are not supported on append-mode files.
@@ -95,29 +95,30 @@ async test "create new file" {
 
 ### Reading Files
 
-Read entire files or read data in chunks:
+Use `read_text` for UTF-8 text, `read_binary` for raw bytes, or open a `File`
+and use its binary reader methods (or its `.text` UTF-8 view):
 
 ```moonbit check
 ///|
 #cfg(target="native")
-async test "read_file - read entire file" {
-  let test_file = "_build/test_read_file.txt"
-  @fs.write_file(test_file, b"Hello, MoonBit!")
+async test "read_text - read an entire UTF-8 file" {
+  let test_file = "_build/test_read_text.txt"
+  @fs.write_text(test_file, "Hello, MoonBit!")
   defer @fs.remove(test_file)
-  let content = @fs.read_file(test_file)
-  inspect(content.text(), content="Hello, MoonBit!")
+  let content = @fs.read_text(test_file)
+  inspect(content, content="Hello, MoonBit!")
 }
 
 ///|
 #cfg(target="native")
 async test "read in chunks using File" {
   let test_file = "_build/test_chunk_read.txt"
-  @fs.write_file(test_file, b"0123456789")
+  @fs.write_binary(test_file, b"0123456789")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
   let buf = FixedArray::make(5, b'0')
-  let n = file.read(buf)
+  let n = file.read_into(buf)
   inspect(n, content="5")
   inspect(@utf8.decode(buf.unsafe_reinterpret_as_bytes()), content="01234")
 }
@@ -126,19 +127,19 @@ async test "read in chunks using File" {
 #cfg(target="native")
 async test "read_all from file" {
   let test_file = "_build/test_read_all.txt"
-  @fs.write_file(test_file, b"Complete content")
+  @fs.write_binary(test_file, b"Complete content")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
   let data = file.read_all()
-  inspect(data.text(), content="Complete content")
+  inspect(@utf8.decode(data), content="Complete content")
 }
 
 ///|
 #cfg(target="native")
 async test "read_exactly specific bytes" {
   let test_file = "_build/test_read_exact.txt"
-  @fs.write_file(test_file, b"1234567890")
+  @fs.write_binary(test_file, b"1234567890")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
@@ -147,22 +148,24 @@ async test "read_exactly specific bytes" {
 }
 ```
 
-When reading through the `@io.Reader` interface, a `File` is read as a byte
-stream. The read stream position is independent of the write stream position.
+`File` implements `@io.BinaryReader`, so its direct reader methods operate on
+bytes. Use `file.text` when the file should be decoded as UTF-8 text. The read
+stream position is independent of the write stream position.
 
 ### Writing Files
 
-Write data to files using various methods:
+Use `write_binary` for bytes, `write_text` for UTF-8 text, or write through an
+open `File` (and its `.text` view):
 
 ```moonbit check
 ///|
 #cfg(target="native")
-async test "write_file - write entire file" {
+async test "write_binary - write an entire file" {
   let test_file = "_build/test_write.txt"
-  @fs.write_file(test_file, b"File content")
+  @fs.write_binary(test_file, b"File content")
   defer @fs.remove(test_file)
-  let content = @fs.read_file(test_file).text()
-  inspect(content, content="File content")
+  let content = @fs.read_binary(test_file)
+  inspect(@utf8.decode(content), content="File content")
 }
 
 ///|
@@ -170,9 +173,9 @@ async test "write_file - write entire file" {
 async test "write with sync modes" {
   let test_file = "_build/test_sync.txt"
   // Write with data sync
-  @fs.write_file(test_file, b"Synced data", sync=Data)
+  @fs.write_text(test_file, "Synced data", sync=Data)
   defer @fs.remove(test_file)
-  let content = @fs.read_file(test_file).text()
+  let content = @fs.read_text(test_file)
   inspect(content, content="Synced data")
 }
 
@@ -184,27 +187,25 @@ async test "write using File methods" {
   defer @fs.remove(test_file)
   {
     defer file.close()
-    file.write(b"Line 1\n")
-    file.write(b"Line 2\n")
+    file.text.write("Line 1\n")
+    file.text.write("Line 2\n")
   }
-  let content = @fs.read_file(test_file).text()
+  let content = @fs.read_text(test_file)
   inspect(content, content="Line 1\nLine 2\n")
 }
 
 ///|
 #cfg(target="native")
-async test "write_once for single write operation" {
-  let test_file = "_build/test_write_once.txt"
+async test "write bytes through File" {
+  let test_file = "_build/test_binary_write.txt"
   let file = @fs.create(test_file)
   defer @fs.remove(test_file)
   defer file.close()
-  let data : Bytes = b"Single write"
-  let written = file.write_once(data, offset=0, len=data.length())
-  inspect(written, content="12")
+  file.write(b"Binary data")
 }
 ```
 
-Sequential writes through the `@io.Writer` interface write a byte stream
+Sequential writes through the `@io.BinaryWriter` interface write a byte stream
 starting at offset `0` by default. The write stream position is independent of
 the read stream position. For files opened with `append=true`, sequential writes
 append to the end of the file instead.
@@ -218,7 +219,7 @@ Read and write file from specified position:
 #cfg(target="native")
 async test "read at specific position" {
   let test_file = "_build/read_at_test.txt"
-  @fs.write_file(test_file, b"0123456789")
+  @fs.write_binary(test_file, b"0123456789")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
@@ -241,19 +242,19 @@ async test "write at specific position" {
   defer @fs.remove(test_file)
   {
     defer file.close()
-    file.write("abcdef")
+    file.write(b"abcdef")
     file.write_at(b"CD", position=2)
   }
 
   // read 3 bytes at position 5
-  inspect(@fs.read_file(test_file).text(), content="abCDef")
+  inspect(@fs.read_text(test_file), content="abCDef")
 }
 
 ///|
 #cfg(target="native")
 async test "size - get file size" {
   let test_file = "_build/test_size.txt"
-  @fs.write_file(test_file, b"Hello")
+  @fs.write_binary(test_file, b"Hello")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
@@ -304,8 +305,8 @@ async test "readdir - read directory entries" {
   let dir_path = "_build/test_readdir"
   @fs.mkdir(dir_path, permission=0o755)
   defer @fs.rmdir(dir_path, recursive=true)
-  @fs.write_file("\{dir_path}/test1.txt", b"")
-  @fs.write_file("\{dir_path}/test2.txt", b"")
+  @fs.write_binary("\{dir_path}/test1.txt", b"")
+  @fs.write_binary("\{dir_path}/test2.txt", b"")
   let entries = @fs.readdir(
     dir_path,
     include_hidden=false,
@@ -322,9 +323,9 @@ async test "readdir with sorting" {
   let dir_path = "_build/test_readdir_sort"
   @fs.mkdir(dir_path, permission=0o755)
   defer @fs.rmdir(dir_path, recursive=true)
-  @fs.write_file("\{dir_path}/c.txt", b"")
-  @fs.write_file("\{dir_path}/a.txt", b"")
-  @fs.write_file("\{dir_path}/b.txt", b"")
+  @fs.write_binary("\{dir_path}/c.txt", b"")
+  @fs.write_binary("\{dir_path}/a.txt", b"")
+  @fs.write_binary("\{dir_path}/b.txt", b"")
   let entries = @fs.readdir(dir_path, sort=true)
   json_inspect(entries, content=["a.txt", "b.txt", "c.txt"])
 }
@@ -335,8 +336,8 @@ async test "opendir and Directory::read_all" {
   let dir_path = "_build/test_opendir"
   @fs.mkdir(dir_path, permission=0o755)
   defer @fs.rmdir(dir_path, recursive=true)
-  @fs.write_file("\{dir_path}/file1.txt", b"test")
-  @fs.write_file("\{dir_path}/file2.txt", b"test")
+  @fs.write_binary("\{dir_path}/file1.txt", b"test")
+  @fs.write_binary("\{dir_path}/file2.txt", b"test")
   let dir = @fs.opendir(dir_path)
   defer dir.close()
   let entries = dir
@@ -359,8 +360,8 @@ async test "walk directory tree" {
   defer @fs.rmdir(base, recursive=true)
   @fs.mkdir("\{base}/sub1")
   @fs.mkdir("\{base}/sub2")
-  @fs.write_file("\{base}/file.txt", b"")
-  @fs.write_file("\{base}/sub1/file1.txt", b"")
+  @fs.write_binary("\{base}/file.txt", b"")
+  @fs.write_binary("\{base}/sub1/file1.txt", b"")
   let visited : Ref[Int32] = Ref(0)
   @fs.walk(base, fn(_path, _files) { visited.val = visited.val + 1 })
   inspect(visited.val >= 3, content="true")
@@ -403,8 +404,8 @@ async test "rmdir recursive - remove directory tree" {
   let base = "_build/test_rmdir_recursive"
   @fs.mkdir(base)
   @fs.mkdir("\{base}/subdir")
-  @fs.write_file("\{base}/file.txt", b"test")
-  @fs.write_file("\{base}/subdir/nested.txt", b"test")
+  @fs.write_binary("\{base}/file.txt", b"test")
+  @fs.write_binary("\{base}/subdir/nested.txt", b"test")
   @fs.rmdir(base, recursive=true)
   let exists = @fs.exists(base)
   inspect(exists, content="false")
@@ -422,7 +423,7 @@ Determine the type of file system entries:
 #cfg(target="native")
 async test "kind - regular file" {
   let test_file = "_build/test_kind_file.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let kind = @fs.kind(test_file)
   debug_inspect(kind, content="Regular")
@@ -442,7 +443,7 @@ async test "kind - directory" {
 #cfg(target="native")
 async test "File::kind method" {
   let test_file = "_build/test_file_kind.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
@@ -460,7 +461,7 @@ Access file timestamps (atime, mtime, ctime):
 #cfg(all(target="native", not(platform="windows")))
 async test "atime - access time" {
   let test_file = "_build/test_atime.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let ts = @fs.atime(test_file)
   inspect(ts.sec() > 0, content="true")
@@ -471,7 +472,7 @@ async test "atime - access time" {
 #cfg(target="native")
 async test "mtime - modification time" {
   let test_file = "_build/test_mtime.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let ts = @fs.mtime(test_file)
   inspect(ts.sec() > 0, content="true")
@@ -482,7 +483,7 @@ async test "mtime - modification time" {
 #cfg(target="native")
 async test "ctime - status change time" {
   let test_file = "_build/test_ctime.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let ts = @fs.ctime(test_file)
   inspect(ts.sec() > 0, content="true")
@@ -493,7 +494,7 @@ async test "ctime - status change time" {
 #cfg(target="native")
 async test "File timestamp methods" {
   let test_file = "_build/test_file_times.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let file = @fs.open(test_file, mode=ReadOnly)
   defer file.close()
@@ -515,7 +516,7 @@ Check file access permissions:
 #cfg(target="native")
 async test "exists - check file existence" {
   let test_file = "_build/test_exists.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let exists = @fs.exists(test_file)
   inspect(exists, content="true")
@@ -532,7 +533,7 @@ async test "exists - non-existent file" {
 #cfg(target="native")
 async test "can_read - check read permission" {
   let test_file = "_build/test_can_read.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let can_read = @fs.can_read(test_file)
   inspect(can_read, content="true")
@@ -542,7 +543,7 @@ async test "can_read - check read permission" {
 #cfg(target="native")
 async test "can_write - check write permission" {
   let test_file = "_build/test_can_write.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer @fs.remove(test_file)
   let can_write = @fs.can_write(test_file)
   inspect(can_write, content="true")
@@ -552,7 +553,7 @@ async test "can_write - check write permission" {
 #cfg(target="native")
 async test "can_execute - check execute permission" {
   let test_file = "_build/test_can_execute.txt"
-  @fs.write_file(test_file, b"test", create_mode=CreateNew, permission=0o755)
+  @fs.write_binary(test_file, b"test", create_mode=CreateNew, permission=0o755)
   defer @fs.remove(test_file)
   let can_execute = @fs.can_execute(test_file)
   inspect(can_execute, content="true")
@@ -565,7 +566,7 @@ async test "can_execute - check execute permission" {
 #cfg(target="native")
 async test "get file size by path" {
   let test_file = "_build/test_size_by_path.txt"
-  @fs.write_file(test_file, b"Hello")
+  @fs.write_binary(test_file, b"Hello")
   inspect(@fs.file_size(test_file), content="5")
 }
 ```
@@ -598,7 +599,7 @@ async test "realpath - resolve absolute path" {
 #cfg(target="native")
 async test "remove - delete file" {
   let test_file = "_build/test_remove.txt"
-  @fs.write_file(test_file, b"test")
+  @fs.write_binary(test_file, b"test")
   defer (if @fs.exists(test_file) { @fs.remove(test_file) })
   @fs.remove(test_file)
   let exists = @fs.exists(test_file)
@@ -717,11 +718,12 @@ How to interpret seek offsets:
 Main file handle type. Methods include:
 - `fd()` - Get file descriptor
 - `close()` - Close file
-- `read()` - Read data into buffer
+- `read_into()` - Read data into a caller-provided buffer
+- `read()` - Read and return the next chunk of bytes
 - `read_all()` - Read entire file content
 - `read_exactly()` - Read exact number of bytes
 - `write()` - Write data
-- `write_once()` - Single write operation
+- `text` - UTF-8 text reader/writer view over the same file streams
 - `read_at()` - Read file at specified position
 - `read_exact_at()` - Read exect number of bytes at specified position
 - `write_at()` - Write file at specified position
@@ -751,7 +753,7 @@ All paths are relative to the watched directory and use `/` as the path separato
 2. **Use appropriate sync modes**: `NoSync` for performance, `Data` or `Full` for durability
 3. **Handle permissions**: Specify appropriate UNIX permissions (e.g., `0o644` for files, `0o755` for directories)
 4. **Check existence**: Use `exists()` before performing operations on files
-5. **Use convenience functions**: `read_file()` and `write_file()` are simpler for common cases
+5. **Use convenience functions**: `read_binary()`/`write_binary()` and `read_text()`/`write_text()` are simpler for common cases
 6. **Walk with limits**: Use `max_concurrency` parameter when walking large directory trees
 
 ## Error Handling
@@ -762,7 +764,7 @@ All async file operations can raise errors. Use proper error handling:
 ///|
 #cfg(target="native")
 async test "error handling example" {
-  @test_util.assert_raise_async(() => @fs.read_file("nonexistent.txt"))
+  @test_util.assert_raise_async(() => @fs.read_binary("nonexistent.txt"))
 }
 ```
 

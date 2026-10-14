@@ -11,13 +11,21 @@ import {
 }
 
 // Values
-pub async fn collect_output(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, &@io.Data, &@io.Data)
+pub async fn collect_output_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes, Bytes)
 
-pub async fn collect_output_merged(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, &@io.Data)
+pub async fn collect_output_merged_binary(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
 
-pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, &@io.Data)
+pub async fn collect_output_merged_text(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
 
-pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, &@io.Data)
+pub async fn collect_output_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String, String)
+
+pub async fn collect_stderr_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
+
+pub async fn collect_stderr_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
+
+pub async fn collect_stdout_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
+
+pub async fn collect_stdout_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
 
 pub fn duplicate_stdout() -> &ProcessOutput
 
@@ -77,15 +85,24 @@ pub fn Process::cancel(Self) -> Unit
 pub fn Process::try_wait(Self) -> Int32? raise
 pub async fn Process::wait(Self) -> Int32
 
-type ReadFromProcess
+pub struct ReadFromProcess {
+  text : @io.Utf8Reader
+  // private fields
+}
 pub fn ReadFromProcess::close(Self) -> Unit
-pub async fn ReadFromProcess::drop(Self, Int32) -> Int32
-pub async fn ReadFromProcess::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
-pub async fn ReadFromProcess::read_all(Self) -> &@io.Data
+pub async fn ReadFromProcess::drop_all(Self) -> Int64
+pub async fn ReadFromProcess::drop_exactly(Self, Int32) -> Unit
+pub async fn ReadFromProcess::peek(Self) -> BytesView?
+pub async fn ReadFromProcess::peek_at_least(Self, Int32) -> BytesView
+pub async fn ReadFromProcess::peek_exactly(Self, Int32) -> BytesView
+pub async fn ReadFromProcess::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn ReadFromProcess::read(Self) -> Bytes?
+pub async fn ReadFromProcess::read_all(Self) -> Bytes
+pub async fn ReadFromProcess::read_at_least(Self, Int32) -> Bytes
 pub async fn ReadFromProcess::read_exactly(Self, Int32) -> Bytes
-pub async fn ReadFromProcess::read_some(Self, max_len? : Int32) -> Bytes?
-pub async fn ReadFromProcess::read_until(Self, StringView) -> String?
-pub impl @io.Reader for ReadFromProcess
+pub async fn ReadFromProcess::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn ReadFromProcess::read_until(Self, BytesView, include_delimiter? : Bool) -> Bytes?
+pub impl @io.BinaryReader for ReadFromProcess
 
 type SharedProcessInput
 pub fn SharedProcessInput::close(Self) -> Unit
@@ -95,12 +112,14 @@ type SharedProcessOutput
 pub fn SharedProcessOutput::close(Self) -> Unit
 pub impl ProcessOutput for SharedProcessOutput
 
-type WriteToProcess
+pub struct WriteToProcess {
+  text : @io.Utf8Writer
+  // private fields
+}
 pub fn WriteToProcess::close(Self) -> Unit
-pub async fn WriteToProcess::write(Self, &@io.Data) -> Unit
-pub async fn WriteToProcess::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
-pub async fn WriteToProcess::write_reader(Self, &@io.Reader) -> Unit
-pub impl @io.Writer for WriteToProcess
+pub async fn WriteToProcess::write(Self, BytesView) -> Unit
+pub async fn WriteToProcess::write_reader(Self, &@io.BinaryReader) -> Unit
+pub impl @io.BinaryWriter for WriteToProcess
 
 // Type aliases
 

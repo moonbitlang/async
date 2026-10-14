@@ -31,11 +31,11 @@ async fn node_gzip(mode : String, input : Bytes) -> Bytes {
     }
     let stdout = group.spawn() <| () => {
       defer node_proc.stdout.close()
-      node_proc.stdout.read_all().binary()
+      node_proc.stdout.read_all()
     }
     let stderr = group.spawn() <| () => {
       defer node_proc.stderr.close()
-      node_proc.stderr.read_all().binary()
+      node_proc.stderr.read_all()
     }
     assert_eq(node_proc.wait(), 0)
     assert_eq(stderr.wait().length(), 0)
@@ -55,7 +55,7 @@ async fn encode_with_moonbit(input : Bytes) -> Bytes {
       @gzip.Encoder(w)..write(input).end()
     }
     defer r.close()
-    result = r.read_all().binary()
+    result = r.read_all()
   }
   result
 }
@@ -71,7 +71,7 @@ async fn decode_with_moonbit(input : Bytes) -> Bytes {
       w.write(input)
     }
     defer r.close()
-    result = @gzip.Decoder(r).read_all().binary()
+    result = @gzip.Decoder(r).read_all()
   }
   result
 }
@@ -89,7 +89,7 @@ async fn assert_node_compatibility(input : Bytes) -> Unit {
 ///|
 async test "encode decode roundtrip" {
   @async.with_task_group() <| root => {
-    let source_chunks = ["hello ", "gzip ", "world"]
+    let source_chunks = [b"hello ", b"gzip ", b"world"]
     let (compressed_r, compressed_w) = @io.pipe()
     root.spawn_bg() <| () => {
       defer compressed_w.close()
@@ -106,7 +106,7 @@ async test "encode decode roundtrip" {
     }
 
     let decoder = @gzip.Decoder(compressed_r)
-    inspect(decoder.read_all().text(), content="hello gzip world")
+    inspect(@utf8.decode(decoder.read_all()), content="hello gzip world")
     compressed_r.close()
   }
 }
@@ -124,7 +124,7 @@ async test "encoder uses valid blocks across large writes" {
     }
 
     let decoder = @gzip.Decoder(compressed_r)
-    inspect(decoder.read_all().binary() == payload, content="true")
+    inspect(decoder.read_all() == payload, content="true")
     compressed_r.close()
   }
 }
@@ -140,11 +140,11 @@ async test "encoder emits output when flushed" {
       let encoder = @gzip.Encoder(w)
       log.push("encoder ready")
       log.push("write plain ab")
-      encoder.write("ab")
+      encoder.write(b"ab")
       encoder.flush()
       @async.sleep(60)
       log.push("write plain cd")
-      encoder.write("cd")
+      encoder.write(b"cd")
       encoder.flush()
       @async.sleep(60)
       log.push("end")
@@ -152,7 +152,7 @@ async test "encoder emits output when flushed" {
     }
     root.spawn_bg() <| () => {
       defer r.close()
-      while r.read_some() is Some(chunk) {
+      while r.read() is Some(chunk) {
         log.push("receive compressed \{chunk.length()}")
       }
     }
@@ -186,19 +186,12 @@ async test "decoder yields plain chunks lazily across delayed chunks" {
       compressed_w.write(b"\xef\x39\x8e\x4b\x06\x00\x00\x00")
     }
     let decoder = @gzip.Decoder(compressed_r)
-    match decoder.read_some(max_len=2) {
-      Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
-      None => assert_true(false)
+    let buf = FixedArray::make(2, b'\x00')
+    while decoder.read_into(buf, max_len=2) is 2 {
+      let chunk = buf.unsafe_reinterpret_as_bytes()
+      log.push("read plain \{@utf8.decode(chunk)}")
     }
-    match decoder.read_some(max_len=2) {
-      Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
-      None => assert_true(false)
-    }
-    match decoder.read_some(max_len=2) {
-      Some(chunk) => log.push("read plain \{@utf8.decode(chunk)}")
-      None => assert_true(false)
-    }
-    debug_inspect(decoder.read_some(max_len=2), content="None")
+    debug_inspect(decoder.read(), content="None")
   }
   json_inspect(log, content=[
     "write plain ab", "read plain ab", "write plain cd", "read plain cd", "write plain ef",
@@ -220,38 +213,21 @@ async test "decoder supports reads smaller than writer chunks" {
       compressed_w.write(b"\x50\x2a\xef\xae\x08\x00\x00\x00")
     }
     let decoder = @gzip.Decoder(compressed_r)
-    debug_inspect(
-      decoder.read_some(max_len=2),
-      content=(
-        #|Some(<Bytes: [0x61, 0x62]>)
-      ),
-    )
-    debug_inspect(
-      decoder.read_some(max_len=2),
-      content=(
-        #|Some(<Bytes: [0x63, 0x64]>)
-      ),
-    )
-    debug_inspect(
-      decoder.read_some(max_len=2),
-      content=(
-        #|Some(<Bytes: [0x65, 0x66]>)
-      ),
-    )
-    debug_inspect(
-      decoder.read_some(max_len=2),
-      content=(
-        #|Some(<Bytes: [0x67, 0x68]>)
-      ),
-    )
-    debug_inspect(decoder.read_some(max_len=2), content="None")
+    let buf = FixedArray::make(2, b'\x00')
+    let chunks = [
+      for ; decoder.read_into(buf, max_len=2) is 2; => {
+        @utf8.decode(buf.unsafe_reinterpret_as_bytes())
+      }
+    ]
+    json_inspect(chunks, content=["ab", "cd", "ef", "gh"])
+    debug_inspect(decoder.read(), content="None")
   }
 }
 
 ///|
 #cfg(any(target="native", target="wasm"))
 async test "node compatibility on source text file" {
-  let input = @fs.read_file("src/internal/gzip_internal/decoder.mbt").binary()
+  let input = @fs.read_binary("src/internal/gzip_internal/decoder.mbt")
   assert_node_compatibility(input)
 }
 

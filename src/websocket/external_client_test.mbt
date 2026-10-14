@@ -25,18 +25,20 @@ async test "external client" {
         defer ws.close()
         for ;; {
           let msg = ws.recv()
-          let data = msg.read_all().text()
+          let data = msg.text.read_all()
           log.push("\{@debug.to_string(msg.kind)}: \{data}")
-          ws..start_message(msg.kind)..write(data).end_message()
+          ws.start_message(msg.kind)
+          ws.text.write(data)
+          ws.end_message()
         }
       })
     }
-    let (_, output) = @process.collect_stdout("node", [
+    let (_, output) = @process.collect_stdout_text("node", [
       "src/websocket/client.ts",
       "ws://127.0.0.1:\{port}",
     ])
     inspect(
-      output.text(),
+      output,
       content=(
         #|Connection opened
         #|Message from server:  Hello, Server!

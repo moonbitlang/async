@@ -21,7 +21,7 @@ async test "tmpdir" {
   assert_not_eq(t1, t2)
   assert_true(@fs.exists(t1))
   assert_true(@fs.exists(t2))
-  @fs.write_file(
+  @fs.write_text(
     "\{t1}/file.txt",
     "abcd",
     create_mode=CreateNew,
