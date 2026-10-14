@@ -18,11 +18,11 @@ let cat : @async.Lazy[String] = Lazy(() => {
   // Note: the `cat` example program lies in another MoonBit module.
   // Currently, dependencies of a module is built locally in that module,
   // so there will be no build lock conflict between this test and the `cat` program.
-  let exit_code = @process.run("moon", [
+  let result = @process.run("moon", [
     "build", "--debug", "test_programs/cat", "--target-dir", "_build/test_programs",
   ])
-  guard exit_code is 0 else {
-    fail("failed to build `cat` program: \{exit_code}")
+  guard result.exit_code is 0 else {
+    fail("failed to build `cat` program: \{result.exit_code}")
   }
   "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
 })
@@ -32,13 +32,13 @@ let cat : @async.Lazy[String] = Lazy(() => {
 async test "redirect_file" {
   let cat = cat.wait()
   let out_file = "_build/stdio_file_test"
-  let code = @process.run(
+  let result = @process.run(
     cat,
     [],
     stdin=@process.redirect_from_file("moon.mod"),
     stdout=@process.redirect_to_file(out_file),
   )
-  inspect(code, content="0")
+  inspect(result.exit_code, content="0")
   assert_eq(@fs.read_binary(out_file), @fs.read_binary("moon.mod"))
 }
 

@@ -14,48 +14,60 @@
 // limitations under the License.
 
 ///|
-async test "collect_stdout" {
-  let (code, output) = @process.collect_stdout_text(shell, [
-    "-c",
-    "\{write_stdout} abcd",
-  ])
-  inspect(code, content="0")
-  inspect(output, content="abcd")
+async test "run with captured stdout" {
+  let result = @process.run(
+    shell,
+    ["-c", "\{write_stdout} abcd"],
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="abcd")
 }
 
 ///|
-async test "collect_error" {
-  let (code, output) = @process.collect_stderr_text(shell, [
-    "-c",
-    "\{write_stderr} abcd",
-  ])
-  inspect(code, content="0")
-  inspect(output, content="abcd")
+async test "run with captured stderr" {
+  let result = @process.run(
+    shell,
+    ["-c", "\{write_stderr} abcd"],
+    stderr=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stderr_text(), content="abcd")
 }
 
 ///|
-async test "collect_output" {
-  let (code, stdout, stderr) = @process.collect_output_text(shell, [
-    "-c",
-    "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
-  ])
-  inspect(code, content="0")
-  inspect(stdout, content="abcd")
-  inspect(stderr, content="abcd")
+async test "run with captured stdout and stderr" {
+  let result = @process.run(
+    shell,
+    [
+      "-c",
+      "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
+    ],
+    stdout=@process.read_from_process(),
+    stderr=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="abcd")
+  inspect(result.stderr_text(), content="abcd")
 }
 
 ///|
-async test "collect_output_merged" {
-  let (code, output) = @process.collect_output_merged_text(shell, [
-    "-c",
-    "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
-  ])
-  inspect(code, content="0")
-  inspect(output, content="ababcdcd")
+async test "run with merged stdout and stderr" {
+  let result = @process.run(
+    shell,
+    [
+      "-c",
+      "\{write_stdout} ab; \{write_stderr} ab; \{write_stdout} cd; \{write_stderr} cd",
+    ],
+    stdout=@process.read_from_process(),
+    stderr=@process.duplicate_stdout(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="ababcdcd")
 }
 
 ///|
-async test "collect_output blocked" {
+async test "run drains captured output concurrently" {
   let test_prog = cat.wait()
   @async.with_task_group() <| group => {
     let (cat_read, we_write) = @process.write_to_process_shared()
@@ -67,13 +79,15 @@ async test "collect_output blocked" {
       }
     }
     defer cat_read.close()
-    let (code, stdout, stderr) = @process.collect_output_binary(
+    let result = @process.run(
       test_prog,
       ["-stderr"],
       stdin=cat_read,
+      stdout=@process.read_from_process(),
+      stderr=@process.read_from_process(),
     )
-    inspect(code, content="0")
-    inspect(stdout.length(), content="0")
-    inspect(stderr.length(), content="1048576")
+    inspect(result.exit_code, content="0")
+    inspect(result.stdout_binary().length(), content="0")
+    inspect(result.stderr_binary().length(), content="1048576")
   }
 }

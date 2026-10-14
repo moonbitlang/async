@@ -11,22 +11,6 @@ import {
 }
 
 // Values
-pub async fn collect_output_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes, Bytes)
-
-pub async fn collect_output_merged_binary(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
-
-pub async fn collect_output_merged_text(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
-
-pub async fn collect_output_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String, String)
-
-pub async fn collect_stderr_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
-
-pub async fn collect_stderr_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
-
-pub async fn collect_stdout_binary(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, Bytes)
-
-pub async fn collect_stdout_text(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool) -> (Int32, String)
-
 pub fn duplicate_stdout() -> &ProcessOutput
 
 pub fn graceful_cancel(timeout~ : Int32, signal? : @signal.Signal) -> CancellationHandler
@@ -47,7 +31,7 @@ pub fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, p
 
 pub async fn redirect_to_file_shared(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int32) -> SharedProcessOutput
 
-pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler) -> Int32
+pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler) -> ProcessResult
 
 pub async fn spawn(@async.TaskGroup, StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, no_console_window? : Bool, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
 
@@ -84,6 +68,15 @@ pub struct Process {
 pub fn Process::cancel(Self) -> Unit
 pub fn Process::try_wait(Self) -> Int32? raise
 pub async fn Process::wait(Self) -> Int32
+
+pub struct ProcessResult {
+  exit_code : Int32
+  // private fields
+}
+pub fn ProcessResult::stderr_binary(Self) -> Bytes
+pub fn ProcessResult::stderr_text(Self) -> String raise
+pub fn ProcessResult::stdout_binary(Self) -> Bytes
+pub fn ProcessResult::stdout_text(Self) -> String raise
 
 pub struct ReadFromProcess {
   text : @io.Utf8Reader

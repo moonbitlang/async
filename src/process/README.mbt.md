@@ -12,18 +12,20 @@ Execute commands and collect their output:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "simple command execution" {
-  let (exit_code, output) = @process.collect_stdout_text("echo", [
-    "Hello, World!",
-  ])
-  inspect(exit_code, content="0")
-  inspect(output.has_prefix("Hello"), content="true")
+  let result = @process.run(
+    "echo",
+    ["Hello, World!"],
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text().has_prefix("Hello"), content="true")
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "command with exit code" {
-  let exit_code = @process.run("sh", ["-c", "exit 42"])
-  inspect(exit_code, content="42")
+  let result = @process.run("sh", ["-c", "exit 42"])
+  inspect(result.exit_code, content="42")
 }
 ```
 
@@ -59,8 +61,11 @@ Child processes follow the rules of structured concurrency:
 
 ## Collecting Process Output
 
-Collection helpers have explicit text and binary variants. The `_text` variants
-decode UTF-8 and return `String`; the `_binary` variants return raw `Bytes`.
+`run()` collects a stream when it is redirected with
+`@process.read_from_process()`. Use `stdout_binary()` or `stderr_binary()` for
+raw `Bytes`, and `stdout_text()` or `stderr_text()` to decode the corresponding
+stream as UTF-8. An output accessor fails if that stream was not redirected
+with `read_from_process()`.
 
 ### Collect Standard Output
 
@@ -70,18 +75,25 @@ Capture stdout from a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stdout" {
-  let (code, output) = @process.collect_stdout_text("printf", ["test output"])
-  inspect(code, content="0")
-  inspect(output, content="test output")
+  let result = @process.run(
+    "printf",
+    ["test output"],
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="test output")
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stdout with args" {
-  let (code, output) = @process.collect_stdout_text("sh", [
-    "-c", "echo 'line 1'; echo 'line 2'",
-  ])
-  inspect(code, content="0")
+  let result = @process.run(
+    "sh",
+    ["-c", "echo 'line 1'; echo 'line 2'"],
+    stdout=@process.read_from_process(),
+  )
+  let output = result.stdout_text()
+  inspect(result.exit_code, content="0")
   inspect(output.contains("line 1"), content="true")
   inspect(output.contains("line 2"), content="true")
 }
@@ -95,11 +107,13 @@ Capture stderr from a process:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect stderr" {
-  let (code, output) = @process.collect_stderr_text("sh", [
-    "-c", "printf 'error message' >&2",
-  ])
-  inspect(code, content="0")
-  inspect(output, content="error message")
+  let result = @process.run(
+    "sh",
+    ["-c", "printf 'error message' >&2"],
+    stderr=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stderr_text(), content="error message")
 }
 ```
 
@@ -111,12 +125,15 @@ Capture both output streams separately:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect both streams" {
-  let (code, stdout, stderr) = @process.collect_output_text("sh", [
-    "-c", "printf 'out msg'; printf 'err msg' >&2",
-  ])
-  inspect(code, content="0")
-  inspect(stdout, content="out msg")
-  inspect(stderr, content="err msg")
+  let result = @process.run(
+    "sh",
+    ["-c", "printf 'out msg'; printf 'err msg' >&2"],
+    stdout=@process.read_from_process(),
+    stderr=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="out msg")
+  inspect(result.stderr_text(), content="err msg")
 }
 ```
 
@@ -128,11 +145,14 @@ Merge stdout and stderr into a single stream:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "collect merged output" {
-  let (code, output) = @process.collect_output_merged_text("sh", [
-    "-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'",
-  ])
-  inspect(code, content="0")
-  inspect(output, content="abcdef")
+  let result = @process.run(
+    "sh",
+    ["-c", "printf 'ab'; printf 'cd' >&2; printf 'ef'"],
+    stdout=@process.read_from_process(),
+    stderr=@process.duplicate_stdout(),
+  )
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text(), content="abcdef")
 }
 ```
 
@@ -211,13 +231,14 @@ async test "redirect input from file" {
     let input_file = "_build/process_test_input.txt"
     @fs.write_text(input_file, "file content")
     root.add_defer(() => @fs.remove(input_file))
-    let (code, output) = @process.collect_stdout_text(
+    let result = @process.run(
       "cat",
       [],
       stdin=@process.redirect_from_file(input_file),
+      stdout=@process.read_from_process(),
     )
-    inspect(code, content="0")
-    inspect(output, content="file content")
+    inspect(result.exit_code, content="0")
+    inspect(result.stdout_text(), content="file content")
   })
 }
 ```
@@ -233,12 +254,12 @@ async test "redirect output to file" {
   @async.with_task_group(root => {
     let output_file = "_build/process_test_output.txt"
     root.add_defer(() => @fs.remove(output_file))
-    let code = @process.run(
+    let result = @process.run(
       "echo",
       ["test output"],
       stdout=@process.redirect_to_file(output_file),
     )
-    inspect(code, content="0")
+    inspect(result.exit_code, content="0")
     let content = @fs.read_text(output_file)
     inspect(content.has_prefix("test output"), content="true")
   })
@@ -316,25 +337,27 @@ Pass custom environment variables to processes:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "set environment variable" {
-  let (code, output) = @process.collect_stdout_text(
+  let result = @process.run(
     "sh",
     ["-c", "echo $MY_VAR"],
     extra_env={ "MY_VAR": "my_value" },
+    stdout=@process.read_from_process(),
   )
-  inspect(code, content="0")
-  inspect(output.trim(), content="my_value")
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text().trim(), content="my_value")
 }
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "multiple environment variables" {
-  let (code, output) = @process.collect_stdout_text(
+  let result = @process.run(
     "sh",
     ["-c", "echo $VAR1-$VAR2"],
     extra_env={ "VAR1": "first", "VAR2": "second" },
+    stdout=@process.read_from_process(),
   )
-  inspect(code, content="0")
-  inspect(output.trim(), content="first-second")
+  inspect(result.exit_code, content="0")
+  inspect(result.stdout_text().trim(), content="first-second")
 }
 ```
 
@@ -346,13 +369,15 @@ Run process without inheriting parent environment:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "isolated environment" {
-  let (code, output) = @process.collect_stdout_text(
+  let result = @process.run(
     "env",
     [],
     extra_env={ "ONLY_VAR": "only_value" },
     inherit_env=false,
+    stdout=@process.read_from_process(),
   )
-  inspect(code, content="0")
+  let output = result.stdout_text()
+  inspect(result.exit_code, content="0")
   inspect(output.contains("ONLY_VAR=only_value"), content="true")
   // Parent environment variables won't be present
   inspect(output.contains("PATH="), content="false")
@@ -369,9 +394,14 @@ Execute processes in a specific directory:
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "set working directory" {
-  let (code, output) = @process.collect_stdout_text("pwd", [], cwd="src")
-  inspect(code, content="0")
-  let text = output.trim()
+  let result = @process.run(
+    "pwd",
+    [],
+    cwd="src",
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  let text = result.stdout_text().trim()
   // Check that the path ends with "src" (works across OSes)
   inspect(text.has_suffix("src"), content="true")
 }
@@ -379,9 +409,14 @@ async test "set working directory" {
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "relative path in cwd" {
-  let (code, output) = @process.collect_stdout_text("ls", [], cwd="src")
-  inspect(code, content="0")
-  let text = output
+  let result = @process.run(
+    "ls",
+    [],
+    cwd="src",
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.exit_code, content="0")
+  let text = result.stdout_text()
   // Should list contents of src directory
   let has_content = text.length() > 0
   inspect(has_content, content="true")
@@ -410,8 +445,8 @@ async test "spawn and wait" {
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "wait for specific exit code" {
-  let exit_code = @process.run("sh", ["-c", "exit 5"])
-  inspect(exit_code, content="5")
+  let result = @process.run("sh", ["-c", "exit 5"])
+  inspect(result.exit_code, content="5")
 }
 ```
 
@@ -524,9 +559,9 @@ async test "multiple processes to one pipe" {
 
 `write_to_process_shared()` returns a `SharedProcessInput` for children and a
 `WriteToProcess` for the parent. It is useful when the same input stream must be
-passed to multiple children, or when using `run()`, `spawn_orphan()`, or a
-collection helper instead of `spawn()`. Children share the stream: each byte is
-consumed by only one reader.
+passed to multiple children, or when using `run()` or `spawn_orphan()` instead
+of `spawn()`. Children share the stream: each byte is consumed by only one
+reader.
 
 `pipe()` returns a `(SharedProcessInput, SharedProcessOutput)` pair for direct
 child-to-child communication. Pass the output to the producer and the input to
@@ -540,7 +575,7 @@ writer can prevent readers from observing end-of-file.
 ## Types Reference
 
 `ProcessInput` and `ProcessOutput` are the redirection types accepted by
-`run()`, `spawn()`, `spawn_orphan()`, and the collection helpers.
+`run()`, `spawn()`, and `spawn_orphan()`.
 
 Parent-facing process pipes are binary readers or writers. Use their `.text`
 view for UTF-8 text I/O, as in `child.stdout.text.read_all()` and
@@ -568,7 +603,7 @@ separate handle.
 
 1. **Close every caller-owned channel**, preferably immediately after acquiring
    it with `defer channel.close()`.
-2. **Use collection helpers** for simple output capture.
+2. **Use `run()`** for simple output capture.
 3. **Use `spawn()` for interactive pipes**, because the parent endpoints are
    returned on the `Process` handle.
 4. **Use shared redirections only when sharing is required**, and close them
@@ -580,9 +615,10 @@ separate handle.
 ## Error Handling
 
 Failure to create a process or initialize a redirection raises an error. Once a
-process starts successfully, its exit status is returned as an integer; a
-nonzero status is not raised as an error. If a process is killed by a signal on
-POSIX systems, its status is the negative signal number.
+process starts successfully, its exit status is returned in
+`ProcessResult.exit_code`; a nonzero status is not raised as an error. If a
+process is killed by a signal on POSIX systems, its status is the negative
+signal number.
 
 ```moonbit check
 ///|
@@ -595,8 +631,8 @@ async test "handle process errors" {
 ///|
 #cfg(all(target="native", not(platform="windows")))
 async test "exit code indicates failure" {
-  let exit_code = @process.run("sh", ["-c", "exit 1"])
-  let is_failure = exit_code != 0
+  let result = @process.run("sh", ["-c", "exit 1"])
+  let is_failure = result.exit_code != 0
   inspect(is_failure, content="true")
 }
 ```
