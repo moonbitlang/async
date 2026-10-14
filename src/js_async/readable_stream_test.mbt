@@ -25,7 +25,7 @@ async test "ReadableStream roundtrip" {
     group.spawn_bg() <| () => {
       defer w.close()
       async fn write(msg : String) {
-        w.write(msg)
+        w.write(@utf8.encode(msg))
         log.push("writer: \{msg} at tick #\{tick()}")
       }
       write("message1")
@@ -38,7 +38,7 @@ async test "ReadableStream roundtrip" {
     group.spawn_bg() <| () => {
       defer r.close()
       @async.sleep(200)
-      while r.read_some() is Some(data) {
+      while r.read() is Some(data) {
         log.push("reader: \{@utf8.decode(data)} at tick #\{tick()}")
       }
     }
@@ -56,9 +56,9 @@ async test "ReadableStream read cancelled" {
   let r = @js_async.ReadableStream::from_js(r)
   defer w.close()
   defer r.close()
-  json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=null)
-  w.write("message")
-  json_inspect(@async.with_timeout_opt(300, () => r.read_some()), content=[
+  json_inspect(@async.with_timeout_opt(300, () => r.read()), content=null)
+  w.write(b"message")
+  json_inspect(@async.with_timeout_opt(300, () => r.read()), content=[
     ["message"],
   ])
 }
@@ -70,18 +70,18 @@ async test "ReadableStream write cancelled" {
   let r = @js_async.ReadableStream::from_js(r)
   defer w.close()
   defer r.close()
-  w.write("message1")
-  w.write("message2")
+  w.write(b"message1")
+  w.write(b"message2")
   json_inspect(
-    @async.with_timeout_opt(300, () => w.write("message3")),
+    @async.with_timeout_opt(300, () => w.write(b"message3")),
     content=null,
   )
   for _ in 0..<2 {
-    msgs.push(r.read_some())
+    msgs.push(r.read())
   }
   @async.with_task_group() <| group => {
-    group.spawn_bg(() => msgs.push(r.read_some()))
-    json_inspect(@async.with_timeout_opt(300, () => w.write("message4")), content=[
+    group.spawn_bg(() => msgs.push(r.read()))
+    json_inspect(@async.with_timeout_opt(300, () => w.write(b"message4")), content=[
       null,
     ])
   }
@@ -99,7 +99,7 @@ extern "js" fn failing_readable_stream() -> @js_async.JsReadableStream =
 ///|
 async test "ReadableStream propagates JS stream errors" {
   let r = @js_async.ReadableStream::from_js(failing_readable_stream())
-  let err = @test_util.expect_error_async(() => r.read_some())
+  let err = @test_util.expect_error_async(() => r.read())
   debug_inspect(
     err,
     content=(

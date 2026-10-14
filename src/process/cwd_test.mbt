@@ -29,9 +29,8 @@ async test "set cwd" {
     defer child.stdout.close()
     guard! @env.current_dir() is Some(new_cwd)
     guard! prev_cwd == new_cwd
-    let files = child.stdout
+    let files = child.stdout.text
       .read_all()
-      .text()
       .trim(char_set="\n\r ")
       .replace_all(old="\r\n", new="\n")
       .split("\n")

@@ -42,7 +42,7 @@ async fn run_lock_file_prog(
   )
   group.spawn() <| () => {
     defer lock_proc.stdout.close()
-    while lock_proc.stdout.read_until("\n") is Some(line) {
+    while lock_proc.stdout.text.read_until("\n") is Some(line) {
       log.push(prefix + line)
     }
   }
@@ -328,7 +328,7 @@ async test "flock advisory" {
   let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, "abcd")
+    @fs.write_text(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
@@ -341,7 +341,7 @@ async test "flock advisory" {
     )
     @async.sleep(250)
     log.push("attempting to read")
-    log.push("read from file: \{file.read_all().text()}")
+    log.push("read from file: \{file.text.read_all()}")
   }
   json_inspect(log, content=[
     "child: acquired lock", "attempting to read", "read from file: abcd", "child: releasing lock",

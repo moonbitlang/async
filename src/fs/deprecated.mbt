@@ -58,11 +58,6 @@ pub extend FileKind with Show::{output}
 ///|
 #deprecated
 #doc(hidden)
-pub extend File with @io.Reader::{_direct_read, _get_internal_buffer}
-
-///|
-#deprecated
-#doc(hidden)
 pub extend FsEvent with Eq::{not_equal, equal}
 
 ///|

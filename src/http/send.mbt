@@ -25,10 +25,11 @@ priv enum SenderMode {
 ///|
 /// Provide send buffering & chunked encoding handling for sending HTTP request/response.
 priv struct Sender {
-  writer : &@io.Writer
+  writer : &@io.BinaryWriter
   mut mode : SenderMode
   mut send_buf : FixedArray[Byte]
   mut send_len : Int32
+  ctrl : @io.BinaryWriterController
   headers : Bytes
   has_accept_encoding : Bool
 }
@@ -61,7 +62,10 @@ fn sanitize_header_value(s : String) -> String {
 }
 
 ///|
-fn[W : @io.Writer] Sender::new(w : W, headers~ : Headers = Map([])) -> Sender {
+fn[W : @io.BinaryWriter] Sender::new(
+  w : W,
+  headers~ : Headers = Map([]),
+) -> Sender {
   let header_text = Buffer()
   let mut has_accept_encoding = false
   for k, v in headers {
@@ -84,6 +88,7 @@ fn[W : @io.Writer] Sender::new(w : W, headers~ : Headers = Map([])) -> Sender {
     mode: SendingHeader,
     send_buf: FixedArray::make(1024, 0),
     send_len: 0,
+    ctrl: @io.BinaryWriterController(),
     headers: header_text.contents(),
     has_accept_encoding,
   }
@@ -109,7 +114,20 @@ const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 pub suberror IncorrectBodyLength derive(Debug, ToJson)
 
 ///|
-impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriter for Sender
+
+///|
+impl @io.BinaryWriterImpl for Sender with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+impl @io.BinaryWriterImpl for Sender with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   match self.mode {
     SendingHeader => {
       if self.send_len >= self.send_buf.length() {
@@ -144,7 +162,7 @@ impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
       )
       self.send_len += NON_EMPTY_MESSAGE_HEADER_END.length()
       self.mode = SendingBody
-      self.write_once(buf, offset~, len~)
+      @io.BinaryWriterImpl::raw_write_impl(self, buf, offset~, len~)
     }
     SendingBody => {
       // Reserve enough space for chunk length and '\r\n' in the buffer,
@@ -168,19 +186,20 @@ impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
       self.send_len = curr_len + 2
       len
     }
-    PassThrough => self.writer.write_once(buf, offset~, len~)
+    PassThrough =>
+      @io.BinaryWriterImpl::raw_write_impl(self.writer, buf, offset~, len~)
   }
 }
 
 ///|
-impl @io.Writer for Sender with fn write_reader(self, reader) {
+impl @io.BinaryWriter for Sender with fn write_reader(self, reader) {
   match self.mode {
     SendingHeader =>
       for ;; {
         if self.send_len >= self.send_buf.length() {
           self.flush()
         }
-        let n = reader.read(self.send_buf, offset=self.send_len)
+        let n = reader.read_into(self.send_buf, offset=self.send_len)
         if n == 0 {
           break
         }
@@ -190,7 +209,7 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
         if self.send_len >= self.send_buf.length() {
           self.flush()
         }
-        let n = reader.read(self.send_buf, offset=self.send_len)
+        let n = reader.read_into(self.send_buf, offset=self.send_len)
         if n == 0 {
           mode.remaining = remaining
           break
@@ -224,7 +243,7 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
       self.send_buf[4] = b'\n'
       let max_len = self.send_buf.length() - 7
       for ;; {
-        let len = reader.read(self.send_buf, offset=5, max_len~)
+        let len = reader.read_into(self.send_buf, offset=5, max_len~)
         if len == 0 {
           break
         }
@@ -243,7 +262,7 @@ impl @io.Writer for Sender with fn write_reader(self, reader) {
 }
 
 ///|
-extend Sender with @io.Writer::{write_once, write, write_reader}
+extend Sender with @io.BinaryWriter::{write, write_reader}
 
 ///|
 async fn Sender::end_body(self : Sender) -> Unit {
@@ -302,9 +321,9 @@ async fn Sender::send_headers(self : Sender, headers : Headers) -> Int64? {
       continue
     }
     self
-    ..write(k.0)
+    ..write(@utf8.encode(k.0))
     ..write(b": ")
-    ..write(sanitize_header_value(v))
+    ..write(@utf8.encode(sanitize_header_value(v)))
     .write(b"\r\n")
   }
   content_length
@@ -331,7 +350,7 @@ async fn Sender::send_request(
     Patch => self.write(b"PATCH ")
   }
   let content_length = self
-    ..write(path)
+    ..write(@utf8.encode(path))
     ..write(b" HTTP/1.1\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
@@ -363,7 +382,7 @@ async fn Sender::send_response(
     ..write(b"HTTP/1.1 ")
     ..write(encode_int(code, base=10))
     ..write(b" ")
-    ..write(sanitize_header_value(reason))
+    ..write(@utf8.encode(sanitize_header_value(reason)))
     ..write(b"\r\n")
     ..write(self.headers)
     .send_headers(extra_headers)
@@ -373,7 +392,7 @@ async fn Sender::send_response(
     self.write(b"\r\n")
   }
   if should_not_have_body(Some(request_method), code) {
-    self.write("\r\n")
+    self.write(b"\r\n")
     self.mode = SendingFixed(remaining=0)
   } else if content_length is Some(len) {
     self.write(b"\r\n")

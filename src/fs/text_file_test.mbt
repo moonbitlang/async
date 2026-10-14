@@ -15,7 +15,7 @@
 ///|
 async test "text file" {
   let path = "_build/basic_text_file_test"
-  @fs.write_file(path, "abcd")
+  @fs.write_text(path, "abcd")
   defer @fs.remove(path)
-  inspect(@fs.read_file(path).text(), content="abcd")
+  inspect(@fs.read_text(path), content="abcd")
 }

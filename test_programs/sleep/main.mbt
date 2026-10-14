@@ -69,7 +69,7 @@ async fn main {
   }
   defer (if msg_finally is Some(msg) { println(msg) })
   if wait_on_init {
-    ignore(@stdio.stdin.read_some())
+    ignore(@stdio.stdin.read())
   }
   if !use_default_handler {
     @signal.set_global_cancellation_signals([])

@@ -16,11 +16,10 @@
 #cfg(not(any(target="native", target="wasm")))
 fn _ignore_unused_import() -> Unit {
   ignore(@debug.to_string(0))
-  let _ : (@gzip_stream.Decoder[&@io.Reader]) -> Unit = ignore
+  let _ : (@gzip_stream.Decoder[&@io.BinaryReader]) -> Unit = ignore
   ignore(() => @test.assert_raise(() => ()))
   ignore(@async.sleep)
   ignore(@fs.unimplemented)
   ignore(@bytes_util.ascii_to_string)
-  ignore(@utf8.encode(""))
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
 }

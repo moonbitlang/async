@@ -13,9 +13,12 @@
 // limitations under the License.
 
 ///|
-struct Input {
-  io : Result[@event_loop.IoHandle, Error]
-  read_buf : @io.ReaderBuffer
+pub struct Input {
+  /// A builtin UTF-8 text view of the input channel,
+  /// for text input convenience
+  text : @io.Utf8Reader
+  priv io : Result[@event_loop.IoHandle, Error]
+  priv ctrl : @io.BinaryReaderController
 }
 
 ///|
@@ -30,29 +33,54 @@ pub fn Input::fd(self : Input) -> @fd_util.Fd raise {
 }
 
 ///|
-pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.BinaryReader for Input
+
+///|
+impl @io.BinaryReaderImpl for Input with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   self.io
   .unwrap_or_error()
-  .read(buf, offset~, len=max_len, context="@stdio.Input::read()")
+  .read(
+    buf,
+    offset~,
+    len=max_len,
+    context="impl @io.BinaryReader for @stdio.Input",
+  )
 }
 
 ///|
-pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for Input with fn get_controller(self) {
+  self.ctrl
 }
 
 ///|
-pub extend Input with @io.Reader::{
+pub extend Input with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
-struct Output(Result[@event_loop.IoHandle, Error])
+pub struct Output {
+  /// A builtin UTF-8 text view of the output channel,
+  /// for text output convenience
+  text : @io.Utf8Writer
+  priv io : Result[@event_loop.IoHandle, Error]
+  priv ctrl : @io.BinaryWriterController
+}
 
 ///|
 /// Return the file descriptor of an output channel.
@@ -62,18 +90,31 @@ struct Output(Result[@event_loop.IoHandle, Error])
 /// This method will fail with error.
 /// So `.fd()` can be used as a way to tell if `stdout`/`stderr` is valid.
 pub fn Output::fd(self : Output) -> @fd_util.Fd raise {
-  self.0.unwrap_or_error().fd()
+  self.io.unwrap_or_error().fd()
 }
 
 ///|
-pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
-  self.0
+pub impl @io.BinaryWriter for Output
+
+///|
+impl @io.BinaryWriterImpl for Output with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.io
   .unwrap_or_error()
-  .write(buf, offset~, len~, context="@stdio.Output::write()")
+  .write(buf, offset~, len~, context="impl @io.BinaryWriter for @stdio.Output")
 }
 
 ///|
-pub extend Output with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Output with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+pub extend Output with @io.BinaryWriter::{write, write_reader}
 
 ///|
 /// The standard input channel.
@@ -85,8 +126,15 @@ pub extend Output with @io.Writer::{write_once, write, write_reader}
 /// If `stdin` is a Windows console input,
 /// unicode text read from the console will be decoded to UTF-8.
 pub let stdin : Input = {
-  io: @event_loop.stdin,
-  read_buf: @io.ReaderBuffer::new(),
+  let stdin : Input = {
+    text: @io.Utf8Reader::new_uninitialized(),
+    io: @event_loop.stdin,
+    ctrl: @io.BinaryReaderController(),
+  }
+  @event_loop.register_hook(init=() => stdin.text.set_inner(stdin), exit=() => {
+    stdin.text.close()
+  })
+  stdin
 }
 
 ///|
@@ -101,7 +149,17 @@ pub let stdin : Input = {
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stdout : Output = @event_loop.stdout
+pub let stdout : Output = {
+  let stdout : Output = {
+    text: @io.Utf8Writer::new_uninitialized(),
+    io: @event_loop.stdout,
+    ctrl: @io.BinaryWriterController(),
+  }
+  @event_loop.register_hook(init=() => stdout.text.set_inner(stdout), exit=() => {
+    stdout.text.close()
+  })
+  stdout
+}
 
 ///|
 /// The standard error channel.
@@ -115,4 +173,14 @@ pub let stdout : Output = @event_loop.stdout
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stderr : Output = @event_loop.stderr
+pub let stderr : Output = {
+  let stderr : Output = {
+    text: @io.Utf8Writer::new_uninitialized(),
+    io: @event_loop.stderr,
+    ctrl: @io.BinaryWriterController(),
+  }
+  @event_loop.register_hook(init=() => stderr.text.set_inner(stderr), exit=() => {
+    stderr.text.close()
+  })
+  stderr
+}

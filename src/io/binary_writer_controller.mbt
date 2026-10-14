@@ -13,6 +13,9 @@
 // limitations under the License.
 
 ///|
-#deprecated
-#doc(hidden)
-pub extend ReadFromProcess with @io.Reader::{_direct_read, _get_internal_buffer}
+struct BinaryWriterController {}
+
+///|
+pub fn BinaryWriterController::BinaryWriterController() -> BinaryWriterController {
+  BinaryWriterController::{ }
+}

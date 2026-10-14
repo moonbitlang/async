@@ -23,10 +23,10 @@ pub(all) struct Printer((String) -> Unit)
 async fn server_main(server : @socket.TcpServer, println : Printer) -> Unit {
   server.run_forever(allow_failure=false, (conn, _) => {
     println("received new connection")
-    while conn.read_some() is Some(msg) {
+    while conn.read() is Some(msg) {
       @async.sleep(10)
       println("server received: \{@utf8.decode(msg)}")
-      let reply = "pong"
+      let reply = b"pong"
       conn.write(reply)
       println("server sent: \{reply}")
       if msg == b"exit" {
@@ -50,7 +50,7 @@ async fn client(
   addr : @socket.Addr,
   println : Printer,
   id : Int32,
-  msg : String,
+  msg : Bytes,
 ) -> Unit {
   let conn = @socket.Tcp::connect(addr)
   defer conn.close()
@@ -61,7 +61,7 @@ async fn client(
   println("client \{id}: connection established")
   conn.write(msg)
   println("client \{id} sent: \{msg}")
-  if conn.read_some() is Some(msg) {
+  if conn.read() is Some(msg) {
     @async.sleep(10)
     let msg = @utf8.decode(msg)
     println("client \{id} received: \{msg}")
@@ -79,12 +79,12 @@ pub async fn main_prog(println : Printer) -> Unit {
     root.spawn_bg() <| () => {
       @async.with_task_group <| ctx => {
         for i in 0..<6 {
-          let msg = if i % 3 == 1 { "pong" } else { "ping" }
+          let msg = if i % 3 == 1 { b"pong" } else { b"ping" }
           ctx.spawn_bg(() => client(addr, println, i, msg))
           @async.sleep(100)
         }
       }
-      root.spawn_bg(() => client(addr, println, 6, "exit"))
+      root.spawn_bg(() => client(addr, println, 6, b"exit"))
     }
   }) catch {
     ServerTerminate => ()

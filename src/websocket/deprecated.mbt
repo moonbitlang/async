@@ -117,8 +117,3 @@ pub extend WebSocketError with Debug::{to_repr}
 #deprecated
 #doc(hidden)
 pub extend WebSocketError with Show::{output}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend Message with @io.Reader::{_direct_read, _get_internal_buffer}

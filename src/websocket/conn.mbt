@@ -20,7 +20,7 @@ const MAX_HEADER_SIZE : Int32 = 8 + 8 + 16
 const MASK_SIZE : Int32 = 4
 
 ///|
-priv trait Transport: @io.Reader + @io.Writer {
+priv trait Transport: @io.BinaryReader + @io.BinaryWriter {
   fn close(Self) -> Unit
 }
 
@@ -35,21 +35,21 @@ impl Transport for @http.ServerConnection with fn close(self) {
 }
 
 ///|
-extend &Transport with @io.Reader::{read, read_exactly}
+extend &Transport with @io.BinaryReader::{read_into, read_exactly}
 
 ///|
-extend &Transport with @io.Writer::{write}
+extend &Transport with @io.BinaryWriter::{write}
 
 ///|
 /// A WebSocket connection
-struct Conn {
-  mut closed : WebSocketError?
-  transport : &Transport
+pub struct Conn {
+  priv mut closed : WebSocketError?
+  priv transport : &Transport
 
   // =================
   // state for reading
   // =================
-  read_buf : @io.ReaderBuffer
+  priv reader_ctrl : @io.BinaryReaderController
 
   // if `read_opcode` is `Some(opcode)`,
   // we are in the middle of a fragmented message,
@@ -57,23 +57,23 @@ struct Conn {
   // if `read_opcode` is `None`,
   // the last frame of current message has been received,
   // but the last frame itself may not be completely consumed yet.
-  mut read_opcode : OpCode?
+  priv mut read_opcode : OpCode?
 
   // the number of remaining bytes in the frame being processed.
-  mut curr_frame_remaining : Int64
+  priv mut curr_frame_remaining : Int64
 
   // the message currently being received.
   // If `recv` is called while `curr_message` is present,
   // the current message must be discarded.
-  mut curr_message : Message?
+  priv mut curr_message : Message?
 
   // the mask of the frame being processed, if any
-  mut read_mask : Bytes?
+  priv mut read_mask : Bytes?
 
   // when perform masking on the receiving side,
   // user may request data in a non 4-byte aligned manner.
   // In this case, we use `mask_offset` to store current offset in the mask.
-  mut mask_offset : Int32
+  priv mut mask_offset : Int32
 
   // when receiving a text message,
   // we perform rolling UTF8 validation to confront to the protocol spec.
@@ -82,11 +82,13 @@ struct Conn {
   // the remaining number of bytes expected in the current UTF8 character,
   // so that we can continue UTF8 validation when more data arrives.
   // `-1` indicates that current message is a binary message.
-  mut utf8_remaining : Int32
+  priv mut utf8_remaining : Int32
 
   // =================
   // state for writing
   // =================
+  text : @io.Utf8Writer
+  priv writer_ctrl : @io.BinaryWriterController
 
   // In general, we require only one writer at any time in `moonbitlang/async`,
   // violating this principle is undefined behavior.
@@ -100,39 +102,39 @@ struct Conn {
   //
   // All modification to existing content of `write_buf`
   // and direct writing to `transport` must be protected by this lock.
-  write_lock : @semaphore.Semaphore
+  priv write_lock : @semaphore.Semaphore
 
   // If present, `write_mask` is a random generator used to generate frame masks.
   // If absent, frames will be unmasked.
-  write_mask : @random.Rand?
+  priv write_mask : @random.Rand?
 
   // We reserve some fixed space at the start of `write_buf` for header,
   // `payload_start` is the start offset of message payload in the buffer.
-  payload_start : Int32
+  priv payload_start : Int32
 
   // The kind of the message currently being sent.
   // If the value is `None`, we are not in the middle of a message.
-  mut write_opcode : OpCode?
+  priv mut write_opcode : OpCode?
 
   // Whether we are currently sending the first frame of current message.
   // If `false`, new frames should have op code `CONTINUATION`.
-  mut is_first_frame : Bool
+  priv mut is_first_frame : Bool
 
   // Buffer holding message content to write.
   // We perform auto fragmentation for WebSocket message:
   // as soon as `write_buf` is full,
   // we split the message and send a frame immediately.
-  write_buf : FixedArray[Byte]
+  priv write_buf : FixedArray[Byte]
 
   // the length of *payload* currently buffered in `write_buf`
-  mut write_len : Int32
+  priv mut write_len : Int32
 
   // The set of PING requests that are sent but not yet acknowledged.
   // According to the WebSocket protocol,
   // PING should be replied with a PONG with exactly the same payload,
   // so here we use the payload of PING frames to identify
   // different PING requests.
-  pings : Map[Bytes, @coroutine.Coroutine]
+  priv pings : Map[Bytes, @coroutine.Coroutine]
 }
 
 ///|
@@ -147,6 +149,7 @@ priv enum MessageState {
 /// A message received from a WebSocket tunnel
 pub struct Message {
   kind : MessageKind
+  text : @io.Utf8Reader
   priv mut state : MessageState
   priv conn : Conn
 }
@@ -157,16 +160,18 @@ fn Conn::new(
   max_frame_size : Int32,
   mask~ : @random.Rand?,
 ) -> Conn {
-  {
+  let conn = {
     closed: None,
     transport,
-    read_buf: @io.ReaderBuffer::new(),
+    reader_ctrl: @io.BinaryReaderController(),
     read_opcode: None,
     curr_frame_remaining: 0,
     curr_message: None,
     read_mask: None,
     mask_offset: 0,
     utf8_remaining: -1,
+    text: @io.Utf8Writer::new_uninitialized(),
+    writer_ctrl: @io.BinaryWriterController(),
     write_lock: Semaphore(1),
     write_mask: mask,
     payload_start: if mask is Some(_) {
@@ -180,6 +185,8 @@ fn Conn::new(
     write_len: 0,
     pings: Map([]),
   }
+  conn.text.set_inner(conn)
+  conn
 }
 
 ///|
@@ -187,6 +194,7 @@ fn Conn::new(
 /// The underlying HTTP connection will be closed as well.
 pub fn Conn::close(self : Conn) -> Unit {
   if self.curr_message is Some(message) {
+    message.text.close()
     message.state = Error(ConnectionClosed(Normal, None))
     self.curr_message = None
   }
@@ -194,6 +202,7 @@ pub fn Conn::close(self : Conn) -> Unit {
     self.closed = Some(ConnectionClosed(Normal, None))
   }
   self.transport.close()
+  self.text.close()
 }
 
 ///|
@@ -380,7 +389,7 @@ async fn Conn::handle_ping(self : Conn, frame : FrameHeader) -> Unit {
     len.to_byte()
   }
   for received = 0; received < len; {
-    let n = self.transport.read(
+    let n = self.transport.read_into(
       pong_message,
       offset=payload_start + received,
       max_len=len - received,
@@ -407,7 +416,11 @@ async fn Conn::handle_pong(self : Conn, frame : FrameHeader) -> Unit {
   let len = frame.payload_len.to_int()
   let msg = FixedArray::make(len, b'\x00')
   for received = 0; received < len; {
-    let n = self.transport.read(msg, offset=received, max_len=len - received)
+    let n = self.transport.read_into(
+      msg,
+      offset=received,
+      max_len=len - received,
+    )
     guard n > 0 else { self.protocol_error("Unexpected EOF") }
     continue received + n
   }
@@ -436,7 +449,7 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
     len.to_byte()
   }
   for received = 0; received < len; {
-    let n = self.transport.read(
+    let n = self.transport.read_into(
       reply,
       offset=payload_start + received,
       max_len=len - received,
@@ -476,9 +489,8 @@ async fn Conn::handle_close(self : Conn, frame : FrameHeader) -> Unit {
 ///|
 pub async fn Conn::recv(self : Conn) -> Message {
   if self.curr_message is Some(msg) {
-    while msg.drop(1024) == 1024 {
-      ()
-    }
+    msg.text.close()
+    let _ = msg.drop_all()
     if msg.state is (Active | Closed) {
       msg.state = Interrupted
     }
@@ -516,19 +528,28 @@ pub async fn Conn::recv(self : Conn) -> Message {
       }
     }
   }
-  let message = { kind, conn: self, state: Active, }
+  let message = {
+    kind,
+    text: @io.Utf8Reader::new_uninitialized(),
+    conn: self,
+    state: Active,
+  }
+  message.text.set_inner(message)
   self.curr_message = Some(message)
   message
 }
 
 ///|
-pub impl @io.Reader for Message with fn _get_internal_buffer(self) {
-  self.conn.read_buf
+pub impl @io.BinaryReader for Message
+
+///|
+impl @io.BinaryReaderImpl for Message with fn get_controller(self) {
+  self.conn.reader_ctrl
 }
 
 ///|
 #warnings("-fragile_catch_all")
-pub impl @io.Reader for Message with fn _direct_read(
+impl @io.BinaryReaderImpl for Message with fn raw_read_impl(
   self,
   buf,
   offset~,
@@ -552,6 +573,9 @@ pub impl @io.Reader for Message with fn _direct_read(
     // the end of this frame is the end of the whole message
     if conn.read_opcode is None {
       self.state = Closed
+      if conn.curr_message is Some(message) {
+        message.text.close()
+      }
       conn.curr_message = None
       return 0
     }
@@ -586,7 +610,7 @@ pub impl @io.Reader for Message with fn _direct_read(
 
   // we have a non-empty frame pending, read from that frame
   let max_len = @cmp.minimum(conn.curr_frame_remaining, max_len.to_int64()).to_int()
-  let n = conn.transport.read(buf, offset~, max_len~) catch {
+  let n = conn.transport.read_into(buf, offset~, max_len~) catch {
     err => {
       self.state = Error(err)
       raise err
@@ -613,19 +637,25 @@ pub impl @io.Reader for Message with fn _direct_read(
 }
 
 ///|
-pub extend Message with @io.Reader::{
+pub extend Message with @io.BinaryReader::{
+  read_into,
   read,
-  drop,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
-  read_some,
+  drop_exactly,
+  peek_exactly,
   read_all,
+  drop_all,
   read_until,
+  peek_until,
 }
 
 ///|
 /// Start sending a new message to the server.
-/// The content of the message can be sent by using the `self` as a `@io.Writer`
-/// after calling `start_message`.
+/// The content can then be sent through `self` as an `@io.BinaryWriter`,
+/// or through `self.text` as an `@io.TextWriter`.
 /// `end_message` must be explicitly called to terminate the message.
 ///
 /// Writing message content is buffered.
@@ -689,7 +719,15 @@ async fn Conn::flush(self : Conn) -> Unit {
 /// The message may be fragmented into multiple WebSocket frames automatically.
 /// Writing message content is buffered.
 /// To ensure immediate delivery of data, call `flush` manually.
-pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
+pub impl @io.BinaryWriter for Conn
+
+///|
+impl @io.BinaryWriterImpl for Conn with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   if self.payload_start + self.write_len >= self.write_buf.length() {
     self.flush()
   }
@@ -703,13 +741,20 @@ pub impl @io.Writer for Conn with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
-pub extend Conn with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Conn with fn get_controller(self) {
+  self.writer_ctrl
+}
+
+///|
+pub extend Conn with @io.BinaryWriter::{write, write_reader}
 
 ///|
 /// Convenient helper for sending a single text message.
 /// To send large message lazily, see `start_message`.
 pub async fn Conn::send_text(self : Conn, text : StringView) -> Unit {
-  self..start_message(Text)..write(text).end_message()
+  self.start_message(Text)
+  self.text.write(text)
+  self.end_message()
 }
 
 ///|

@@ -84,7 +84,7 @@ extern "js" fn JsReadableStream::get_reader(stream : Self) -> StreamReader =
 
 ///|
 /// A wrapper around `JsReadableStream`
-/// that allows reading the content of the stream via the `@io.Reader` interface.
+/// that allows reading the content via the `@io.BinaryReader` interface.
 ///
 /// This type SHOULD NOT be used on FFI directly:
 /// its ABI is NOT the same as `JsReadableStream`,
@@ -133,18 +133,26 @@ pub fn ReadableStream::close(self : ReadableStream) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.read_end)
+pub impl @io.BinaryReader for ReadableStream
+
+///|
+impl @io.BinaryReaderImpl for ReadableStream with fn get_controller(self) {
+  @io.BinaryReaderImpl::get_controller(self.read_end as &@io.BinaryReader)
 }
 
 ///|
-pub impl @io.Reader for ReadableStream with fn _direct_read(
+impl @io.BinaryReaderImpl for ReadableStream with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  let n = @io.Reader::_direct_read(self.read_end, buf, offset~, max_len~)
+  let n = @io.BinaryReaderImpl::raw_read_impl(
+    self.read_end as &@io.BinaryReader,
+    buf,
+    offset~,
+    max_len~,
+  )
   if n == 0 && self.worker_error.val is Some(err) {
     raise err
   }
@@ -152,13 +160,19 @@ pub impl @io.Reader for ReadableStream with fn _direct_read(
 }
 
 ///|
-pub extend ReadableStream with @io.Reader::{
+pub extend ReadableStream with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
@@ -177,9 +191,7 @@ pub fn JsReadableStream::new_pipe() -> (JsReadableStream, @io.PipeWrite) {
   let (pipe_r, pipe_w) = @io.pipe()
   fn pull(controller : ReadableStreamController) {
     Promise::from_async(abort_signal~) <| () => {
-      guard pipe_r.read_some(max_len=1024) is Some(chunk) else {
-        controller.close()
-      }
+      guard pipe_r.read() is Some(chunk) else { controller.close() }
       controller.enqueue(chunk)
     }
   }

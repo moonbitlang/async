@@ -21,7 +21,7 @@ async fn main {
       println("You have not type anything for 5 seconds, exit now...")
       group.return_immediately()
     }
-    while @stdio.stdin.read_some() is Some(_) {
+    while @stdio.stdin.read() is Some(_) {
       idle_timer.refresh()
     }
   }

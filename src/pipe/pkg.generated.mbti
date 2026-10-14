@@ -13,22 +13,27 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise
 // Types and methods
 type PipeRead
 pub fn PipeRead::close(Self) -> Unit
-pub async fn PipeRead::drop(Self, Int) -> Int
+pub async fn PipeRead::drop_all(Self) -> Int64
+pub async fn PipeRead::drop_exactly(Self, Int) -> Unit
 pub fn PipeRead::fd(Self) -> Int
-pub async fn PipeRead::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-pub async fn PipeRead::read_all(Self) -> &@io.Data
+pub async fn PipeRead::peek(Self) -> BytesView?
+pub async fn PipeRead::peek_at_least(Self, Int) -> BytesView
+pub async fn PipeRead::peek_exactly(Self, Int) -> BytesView
+pub async fn PipeRead::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn PipeRead::read(Self) -> Bytes?
+pub async fn PipeRead::read_all(Self) -> Bytes
+pub async fn PipeRead::read_at_least(Self, Int) -> Bytes
 pub async fn PipeRead::read_exactly(Self, Int) -> Bytes
-pub async fn PipeRead::read_some(Self, max_len? : Int) -> Bytes?
-pub async fn PipeRead::read_until(Self, StringView) -> String?
-pub impl @io.Reader for PipeRead
+pub async fn PipeRead::read_into(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn PipeRead::read_until(Self, BytesView, include_delimiter? : Bool) -> Bytes?
+pub impl @io.BinaryReader for PipeRead
 
 type PipeWrite
 pub fn PipeWrite::close(Self) -> Unit
 pub fn PipeWrite::fd(Self) -> Int
-pub async fn PipeWrite::write(Self, &@io.Data) -> Unit
-pub async fn PipeWrite::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-pub async fn PipeWrite::write_reader(Self, &@io.Reader) -> Unit
-pub impl @io.Writer for PipeWrite
+pub async fn PipeWrite::write(Self, BytesView) -> Unit
+pub async fn PipeWrite::write_reader(Self, &@io.BinaryReader) -> Unit
+pub impl @io.BinaryWriter for PipeWrite
 
 // Type aliases
 

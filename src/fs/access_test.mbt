@@ -56,7 +56,7 @@ async test "chmod" {
     return
   }
   let path = "_build/chmod_test"
-  @fs.write_file(path, "abcd", create_mode=CreateNew, permission=0o444)
+  @fs.write_text(path, "abcd", create_mode=CreateNew, permission=0o444)
   defer @fs.remove(path)
   inspect(@fs.can_read(path), content="true")
   inspect(@fs.can_write(path), content="false")

@@ -24,9 +24,8 @@ async test "basic_ls" {
       extra_env={ "LC_ALL": "C" },
     )
     defer child.stdout.close()
-    let files = child.stdout
+    let files = child.stdout.text
       .read_all()
-      .text()
       .trim(char_set="\n\r ")
       .replace_all(old="\r\n", new="\n")
       .split("\n")
@@ -55,7 +54,7 @@ async test "basic_cat" {
     }
     group.spawn_bg() <| () => {
       defer child.stdout.close()
-      inspect(child.stdout.read_all().text(), content="abcdefgh")
+      inspect(child.stdout.text.read_all(), content="abcdefgh")
     }
   }
 }
@@ -63,8 +62,8 @@ async test "basic_cat" {
 ///|
 #cfg(platform="windows")
 async test "execute .com file" {
-  let (_, output) = @process.collect_stdout("chcp.com", [])
-  guard output.binary().strip_suffix(b"\r\n") is Some(output) &&
+  let (_, output) = @process.collect_stdout_binary("chcp.com", [])
+  guard output.strip_suffix(b"\r\n") is Some(output) &&
     output.rev_find(b" ") is Some(index) &&
     index + 1 < output.length() else {
     fail("invalid output format from chcp")
@@ -82,10 +81,10 @@ async test "execute .com file" {
 async test "prevent NUL command injection" {
   let prog = sleep_prog.wait()
   let bad_arg = "abc\u{0000}def"
-  let (_, output) = @process.collect_stdout(prog, [
+  let (_, output) = @process.collect_stdout_text(prog, [
     "100", "-print-after-sleep", bad_arg,
   ])
-  inspect(output.text().trim_end(chars="\r\n"), content="abc")
+  inspect(output.trim_end(chars="\r\n"), content="abc")
 }
 
 ///|

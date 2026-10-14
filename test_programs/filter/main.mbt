@@ -69,16 +69,16 @@ async fn main {
   }
   if print_cwd {
     guard @env.current_dir() is Some(cwd) else { fail("no working directory") }
-    @stdio.stdout.write("\{cwd}\n")
+    @stdio.stdout.text.write("\{cwd}\n")
   } else {
     let mut emitted = 0
-    while @stdio.stdin.read_until("\n") is Some(line) {
+    while @stdio.stdin.text.read_until("\n") is Some(line) {
       let line = line.trim_end(chars="\r").to_owned()
       if keep is Some(substr) && !line.contains(substr) {
         continue
       }
       let line = if upper { line.to_upper() } else { line }
-      @stdio.stdout.write("\{line}\n")
+      @stdio.stdout.text.write("\{line}\n")
       emitted += 1
       if head is Some(limit) && emitted >= limit {
         break
@@ -86,7 +86,7 @@ async fn main {
     }
   }
   if stderr_msg is Some(msg) {
-    @stdio.stderr.write(msg)
+    @stdio.stderr.text.write(msg)
   }
   exit(exit_code)
 }

@@ -347,17 +347,3 @@ pub extend Cookie with Debug::{to_repr}
 #deprecated
 #doc(hidden)
 pub extend Cookie with ToJson::{to_json}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend Client with @io.Reader::{_direct_read, _get_internal_buffer}
-
-///|
-#cfg(any(target="native", target="wasm"))
-#deprecated
-#doc(hidden)
-pub extend ServerConnection with @io.Reader::{
-  _direct_read,
-  _get_internal_buffer,
-}

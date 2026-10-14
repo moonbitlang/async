@@ -15,31 +15,48 @@
 ///|
 /// A pipe for reading the output of child process.
 /// Must be closed when it is no longer used.
-struct ReadFromProcess {
-  io : @event_loop.IoHandle?
-  read_buf : @io.ReaderBuffer
+pub struct ReadFromProcess {
+  text : @io.Utf8Reader
+  priv io : @event_loop.IoHandle?
+  priv ctrl : @io.BinaryReaderController
 }
 
 ///|
-let no_output : ReadFromProcess = {
-  io: None,
-  read_buf: @io.ReaderBuffer::new(),
+fn ReadFromProcess::ReadFromProcess(
+  io : @event_loop.IoHandle?,
+) -> ReadFromProcess {
+  let output : ReadFromProcess = {
+    text: @io.Utf8Reader::new_uninitialized(),
+    io,
+    ctrl: @io.BinaryReaderController(),
+  }
+  if io is Some(_) {
+    output.text.set_inner(output)
+  }
+  output
 }
+
+///|
+let no_output : ReadFromProcess = ReadFromProcess(None)
 
 ///|
 pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
+  self.text.close()
   if self.io is Some(io) {
     io.close()
   }
 }
 
 ///|
-pub impl @io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
-  self.read_buf
+pub impl @io.BinaryReader for ReadFromProcess
+
+///|
+impl @io.BinaryReaderImpl for ReadFromProcess with fn get_controller(self) {
+  self.ctrl
 }
 
 ///|
-pub impl @io.Reader for ReadFromProcess with fn _direct_read(
+impl @io.BinaryReaderImpl for ReadFromProcess with fn raw_read_impl(
   self,
   buf,
   offset~,
@@ -54,52 +71,89 @@ pub impl @io.Reader for ReadFromProcess with fn _direct_read(
     buf,
     offset~,
     len=max_len,
-    context="impl @io.Reader for ReadFromProcess",
+    context="impl @io.BinaryReader for ReadFromProcess",
   )
 }
 
 ///|
-pub extend ReadFromProcess with @io.Reader::{
+pub extend ReadFromProcess with @io.BinaryReader::{
+  read_into,
   read,
-  drop,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
-  read_some,
+  drop_exactly,
+  peek_exactly,
   read_all,
+  drop_all,
   read_until,
+  peek_until,
 }
 
 ///|
 /// A pipe for writing to the input of child process.
 /// Must be closed when it is no longer used.
-struct WriteToProcess(@event_loop.IoHandle?)
+pub struct WriteToProcess {
+  text : @io.Utf8Writer
+  priv io : @event_loop.IoHandle?
+  priv ctrl : @io.BinaryWriterController
+}
+
+///|
+fn WriteToProcess::WriteToProcess(io : @event_loop.IoHandle?) -> WriteToProcess {
+  let output : WriteToProcess = {
+    text: @io.Utf8Writer::new_uninitialized(),
+    io,
+    ctrl: @io.BinaryWriterController(),
+  }
+  if io is Some(_) {
+    output.text.set_inner(output)
+  }
+  output
+}
 
 ///|
 let no_input : WriteToProcess = WriteToProcess(None)
 
 ///|
 pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
-  if self is WriteToProcess(Some(io)) {
+  self.text.close()
+  if self.io is Some(io) {
     io.close()
   }
 }
 
 ///|
-pub impl @io.Writer for WriteToProcess with fn write_once(
+pub impl @io.BinaryWriter for WriteToProcess
+
+///|
+impl @io.BinaryWriterImpl for WriteToProcess with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+impl @io.BinaryWriterImpl for WriteToProcess with fn raw_write_impl(
   self,
   buf,
   offset~,
   len~,
 ) {
-  guard self is WriteToProcess(Some(io)) else {
+  guard self.io is Some(io) else {
     abort(
       "cannot write input of a process whose stdin is not `@process.write_to_process()`",
     )
   }
-  io.write(buf, offset~, len~, context="impl @io.Writer for WriteToProcess")
+  io.write(
+    buf,
+    offset~,
+    len~,
+    context="impl @io.BinaryWriter for WriteToProcess",
+  )
 }
 
 ///|
-pub extend WriteToProcess with @io.Writer::{write_once, write, write_reader}
+pub extend WriteToProcess with @io.BinaryWriter::{write, write_reader}
 
 ///|
 /// Trait for objects that can be used to redirect stdin of child process
@@ -192,7 +246,7 @@ impl ProcessOutput for PipeWithParentLazy with fn init_stdout(_self, context~) {
   )
   let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
   let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
-  ({ io: Some(r), read_buf: @io.ReaderBuffer::new(), }, Some(w))
+  (ReadFromProcess(Some(r)), Some(w))
 }
 
 ///|
@@ -281,7 +335,7 @@ pub fn read_from_process_shared() -> (ReadFromProcess, SharedProcessOutput) rais
   )
   let r = @event_loop.IoHandle::from_fd(r, kind=Pipe)
   let w = @event_loop.IoHandle::from_fd(w, kind=Pipe, is_async=false)
-  ({ io: Some(r), read_buf: @io.ReaderBuffer::new(), }, SharedProcessOutput(w))
+  (ReadFromProcess(Some(r)), SharedProcessOutput(w))
 }
 
 ///|

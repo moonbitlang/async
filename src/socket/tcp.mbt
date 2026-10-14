@@ -18,7 +18,8 @@ pub struct Tcp {
   /// The local address of a TCP connection
   addr : Addr
   priv io : @event_loop.IoHandle
-  priv read_buf : @io.ReaderBuffer
+  priv reader_ctrl : @io.BinaryReaderController
+  priv writer_ctrl : @io.BinaryWriterController
 }
 
 ///|
@@ -194,7 +195,15 @@ async fn TcpServer::accept_unix(self : TcpServer) -> (Tcp, Addr) {
   }
   @fd_util.set_cloexec(conn.fd(), context="@socket.TcpServer::accept()")
   // The local address of a server connection is the same as the listen address
-  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
+  (
+    {
+      io: conn,
+      addr: self.addr,
+      reader_ctrl: @io.BinaryReaderController(),
+      writer_ctrl: @io.BinaryWriterController(),
+    },
+    addr,
+  )
 }
 
 ///|
@@ -213,7 +222,15 @@ async fn TcpServer::accept_windows(self : TcpServer) -> (Tcp, Addr) {
     @os_error.check_errno("@socket.TcpServer::accept(): set TCP_NODELAY")
   }
   // The local address of a server connection is the same as the listen address
-  ({ io: conn, addr: self.addr, read_buf: @io.ReaderBuffer::new(), }, addr)
+  (
+    {
+      io: conn,
+      addr: self.addr,
+      reader_ctrl: @io.BinaryReaderController(),
+      writer_ctrl: @io.BinaryWriterController(),
+    },
+    addr,
+  )
 }
 
 ///|
@@ -284,7 +301,12 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
   }
   conn.connect(addr.0, context~)
   let addr = getsockname(sock, family, context~)
-  { io: conn, addr, read_buf: @io.ReaderBuffer::new(), }
+  {
+    io: conn,
+    addr,
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
+  }
 }
 
 ///|
@@ -294,37 +316,66 @@ pub fn Tcp::addr(sock : Tcp) -> Addr {
 }
 
 ///|
-/// Receive data from a TCP connection.
-/// For `tcp.recv(buf, offset~, max_len~)`,
-/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
-/// The number of received bytes will be returned.
-///
-/// At most one task can read from a TCP socket at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
-  self.io.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
+pub impl @io.BinaryReader for Tcp
+
+///|
+impl @io.BinaryReaderImpl for Tcp with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.io.read(
+    buf,
+    offset~,
+    len=max_len,
+    context="impl @io.BinaryReader for @socket.Tcp",
+  )
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for Tcp with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
-pub extend Tcp with @io.Reader::{
+pub extend Tcp with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
-pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
-  self.io.write(buf, offset~, len~, context="@socket.Tcp::write()")
+pub impl @io.BinaryWriter for Tcp
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.io.write(
+    buf,
+    offset~,
+    len~,
+    context="impl @io.BinaryWriter for @socket.Tcp",
+  )
 }
 
 ///|
-pub extend Tcp with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
+  self.writer_ctrl
+}
+
+///|
+pub extend Tcp with @io.BinaryWriter::{write, write_reader}

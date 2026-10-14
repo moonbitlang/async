@@ -32,7 +32,7 @@ async fn client(
   let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger <+ "\{conn.read_all().text()}"
+    None => logger <+ "\{conn.text.read_all()}"
     Some(f) => f(conn)
   }
 }
@@ -81,7 +81,9 @@ async test "basic" {
     let zip_content = []
     for i = 0; ; i = i + 1 {
       if is_windows {
-        guard unzip_proc.stdout.read_until("\r\n") is Some(line) else { break }
+        guard unzip_proc.stdout.text.read_until("\r\n") is Some(line) else {
+          break
+        }
         let name = if line is [.. "./", .. name] {
           name.to_owned()
         } else {
@@ -89,7 +91,9 @@ async test "basic" {
         }
         zip_content.push(name)
       } else {
-        guard unzip_proc.stdout.read_until("\n") is Some(line) else { break }
+        guard unzip_proc.stdout.text.read_until("\n") is Some(line) else {
+          break
+        }
         guard line.rev_find(" ") is Some(i) else {
           fail("invalid output from `unzip`")
         }
