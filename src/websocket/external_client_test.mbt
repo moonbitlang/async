@@ -33,12 +33,13 @@ async test "external client" {
         }
       })
     }
-    let (_, output) = @process.collect_stdout_text("node", [
-      "src/websocket/client.ts",
-      "ws://localhost:\{port}",
-    ])
+    let result = @process.run(
+      "node",
+      ["src/websocket/client.ts", "ws://localhost:\{port}"],
+      stdout=@process.read_from_process(),
+    )
     inspect(
-      output,
+      result.stdout_text(),
       content=(
         #|Connection opened
         #|Message from server:  Hello, Server!

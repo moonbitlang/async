@@ -13,11 +13,53 @@
 // limitations under the License.
 
 ///|
+pub struct ProcessResult {
+  exit_code : Int32
+  priv stdout : Bytes?
+  priv stderr : Bytes?
+}
+
+///|
+/// Obtain the collected content of a child process's stdout.
+/// The child process's `stdout` must be redirected to `@process.read_from_process()`.
+pub fn ProcessResult::stdout_binary(self : ProcessResult) -> Bytes {
+  guard self.stdout is Some(stdout) else {
+    abort(
+      "cannot read output of a process whose stdout is not `@process.read_from_process()`",
+    )
+  }
+  stdout
+}
+
+///|
+/// Obtain the collected content of a child process's stdout, as UTF-8 encoded text.
+/// The child process's `stdout` must be redirected to `@process.read_from_process()`.
+pub fn ProcessResult::stdout_text(self : ProcessResult) -> String raise {
+  @utf8.decode(self.stdout_binary())
+}
+
+///|
+/// Obtain the collected content of a child process's stderr.
+/// The child process's `stderr` must be redirected to `@process.read_from_process()`.
+pub fn ProcessResult::stderr_binary(self : ProcessResult) -> Bytes {
+  guard self.stderr is Some(stderr) else {
+    abort(
+      "cannot read output of a process whose stderr is not `@process.read_from_process()`",
+    )
+  }
+  stderr
+}
+
+///|
+/// Obtain the collected content of a child process's stderr, as UTF-8 encoded text.
+/// The child process's `stderr` must be redirected to `@process.read_from_process()`.
+pub fn ProcessResult::stderr_text(self : ProcessResult) -> String raise {
+  @utf8.decode(self.stderr_binary())
+}
+
+///|
 /// Execute a system process with command `cmd`,
-/// and provide `args` as extra arguments to `cmd.
-///
-/// All arguments of `@process.run` has the same meaning as `@process.spawn`,
-/// see `@process.spawn` for more details.
+/// and provide `args` as extra arguments to `cmd`.
 ///
 /// Instead of spawning the child process in a task group,
 /// run will simply block and wait for completion of the child process in current task.
@@ -26,12 +68,19 @@
 /// only after the child completes its cleanup and actually terminates.
 ///
 /// `@process.run()` does not expose a `Process` object for the child,
-/// so the caller cannot retrieve the PID of the child process,
-/// or access `.stdin`/`.stdout`/`.stderr` of the child process.
-/// As a consequence, `@process.read_from_process()`/`@process.write_to_process()`
-/// cannot be used with `@process.run()`.
-/// When current process need to interact with the child,
-/// use `@process.collect_*` helpers or `@process.spawn` instead.
+/// so the caller cannot retrieve the PID or `.stdin` channel of the child process.
+/// As a consequence, `@process.write_to_process()` cannot be used with `@process.run()`.
+/// When the current process needs to interact with the child's `stdin`,
+/// use `@process.spawn` instead or `@process.write_to_process_shared()` instead.
+///
+/// When `stdout`/`stderr` of `@process.run()` is redirected to `@process.read_from_process()`,
+/// `@process.run` will collect the output of the corresponding channel automatically.
+/// The result can be obtained by calling
+/// `.stdout_binary()`/`.stderr_binary()`/`.stdout_text()`/`.stderr_text()`
+/// on the returned `struct ProcessResult`.
+///
+/// All remaining arguments of `@process.run` have the same meaning as `@process.spawn`,
+/// see `@process.spawn` for more details.
 pub async fn run(
   cmd : StringView,
   args : ArrayView[String],
@@ -43,7 +92,7 @@ pub async fn run(
   cwd? : StringView,
   no_console_window~ : Bool = false,
   cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
-) -> Int32 {
+) -> ProcessResult {
   let context = "@process.run()"
   let (process, stdin, stdout, stderr) = raw_spawn(
     cmd,
@@ -59,25 +108,40 @@ pub async fn run(
     context~,
   )
   defer process.close()
-  // The caller of `run` has no way to obtain these parent side channels,
-  // so close them immediately to avoid leak & hang up.
-  // Caller of `run` should not use `read_from_process`/`write_to_process` in general.
+  // The caller of `run` has no way to obtain this channel,
+  // so close it immediately to avoid leak & hang up.
   stdin.close()
-  stdout.close()
-  stderr.close()
   let pid = process.pid
-  match @async.handle_cancellation(() => process.wait_pid(context~)) {
-    None => {
-      @async.protect_from_cancel() <| () => {
-        @async.with_task_group() <| group => {
-          group.spawn_bg(no_wait=true, () => cancel_handler(pid))
-          ignore <| process.wait_pid(context~)
-        }
+  let mut exit_code = 0
+  let mut stdout_result = None
+  let mut stderr_result = None
+  @async.with_task_group <| group => {
+    group.spawn_bg() <| () => {
+      defer stdout.close()
+      if stdout.io is Some(_) {
+        stdout_result = Some(stdout.read_all())
       }
-      @coroutine.raise_cancellation_signal()
     }
-    Some(ret) => ret
+    group.spawn_bg() <| () => {
+      defer stderr.close()
+      if stderr.io is Some(_) {
+        stderr_result = Some(stderr.read_all())
+      }
+    }
+    match @async.handle_cancellation(() => process.wait_pid(context~)) {
+      None => {
+        @async.protect_from_cancel() <| () => {
+          @async.with_task_group() <| group => {
+            group.spawn_bg(no_wait=true, () => cancel_handler(pid))
+            ignore <| process.wait_pid(context~)
+          }
+        }
+        @coroutine.raise_cancellation_signal()
+      }
+      Some(ret) => exit_code = ret
+    }
   }
+  { exit_code, stdout: stdout_result, stderr: stderr_result, }
 }
 
 ///|

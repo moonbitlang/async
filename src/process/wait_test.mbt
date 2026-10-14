@@ -26,7 +26,7 @@ async test "basic wait" {
     }
     @async.sleep(10)
     let result = @process.run(test_prog, ["750"])
-    log.write_string("process completed with \{result}\n")
+    log.write_string("process completed with \{result.exit_code}\n")
   }
   inspect(
     log.to_string(),
@@ -41,7 +41,8 @@ async test "basic wait" {
 
 ///|
 async test "wait exitcode" {
-  inspect(@process.run(shell, ["-c", "exit 42"]), content="42")
+  let result = @process.run(shell, ["-c", "exit 42"])
+  inspect(result.exit_code, content="42")
 }
 
 ///|
@@ -75,10 +76,8 @@ async test "spawn without standard handles on Windows" {
   guard @event_loop.platform is Windows else {  }
   let spawn = spawn_prog.wait()
   let sleep = sleep_prog.wait()
-  inspect(
-    @process.run(spawn, ["-no-stdio", "-orphan", sleep, "0"]),
-    content="0",
-  )
+  let result = @process.run(spawn, ["-no-stdio", "-orphan", sleep, "0"])
+  inspect(result.exit_code, content="0")
 }
 
 ///|
@@ -88,12 +87,8 @@ async test "wait exitcode STILL_ACTIVE" {
   // wihch is returned by `GetExitCodeProcess` when the process is still running on Windows.
   // However, 259 can also be a valid exit code,
   // so we should not use it to determine whether the process has exited or not.
-  inspect(
-    @process.run(shell, ["-c", "exit 259"]),
-    content=(
-      #|259
-    ),
-  )
+  let result = @process.run(shell, ["-c", "exit 259"])
+  inspect(result.exit_code, content="259")
 }
 
 ///|

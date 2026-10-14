@@ -62,7 +62,8 @@ async test "basic_cat" {
 ///|
 #cfg(platform="windows")
 async test "execute .com file" {
-  let (_, output) = @process.collect_stdout_binary("chcp.com", [])
+  let result = @process.run("chcp.com", [], stdout=@process.read_from_process())
+  let output = result.stdout_binary()
   guard output.strip_suffix(b"\r\n") is Some(output) &&
     output.rev_find(b" ") is Some(index) &&
     index + 1 < output.length() else {
@@ -81,10 +82,12 @@ async test "execute .com file" {
 async test "prevent NUL command injection" {
   let prog = sleep_prog.wait()
   let bad_arg = "abc\u{0000}def"
-  let (_, output) = @process.collect_stdout_text(prog, [
-    "100", "-print-after-sleep", bad_arg,
-  ])
-  inspect(output.trim_end(chars="\r\n"), content="abc")
+  let result = @process.run(
+    prog,
+    ["100", "-print-after-sleep", bad_arg],
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.stdout_text().trim_end(chars="\r\n"), content="abc")
 }
 
 ///|

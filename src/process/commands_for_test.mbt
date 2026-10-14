@@ -39,15 +39,15 @@ let ls : String = if is_windows { "Get-ChildItem -Name" } else { "ls" }
 ///|
 fn make_test_prog(name : String) -> @async.Lazy[String] {
   Lazy() <| () => {
-    let code = @process.run("moon", [
+    let result = @process.run("moon", [
       "build",
       "test_programs/\{name}",
       "--debug",
       "--target-dir",
       "_build/test_programs",
     ])
-    if code != 0 {
-      fail("failed to build test program `\{name}`: \{code}")
+    if result.exit_code != 0 {
+      fail("failed to build test program `\{name}`: \{result.exit_code}")
     }
     "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/\{name}/\{name}.exe"
   }

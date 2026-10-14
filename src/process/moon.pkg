@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",
@@ -41,7 +42,6 @@ options(
     "basic_test.mbt": [ "native", "wasm" ],
     "cancel_test.mbt": [ "native", "wasm" ],
     "cancellation.mbt": [ "native", "wasm" ],
-    "collect_helpers.mbt": [ "native", "wasm" ],
     "commands_for_test.mbt": [ "native", "wasm" ],
     "cwd_test.mbt": [ "native", "wasm" ],
     "env_test.mbt": [ "native", "wasm" ],

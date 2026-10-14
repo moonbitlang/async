@@ -28,6 +28,7 @@ pub let unimplemented : Unit = {
   ignore(@signal.unimplemented)
   ignore(@c_buffer.unimplemented)
   ignore(@os_error.unimplemented)
+  ignore(@utf8.encode(""))
 }
 
 ///|
