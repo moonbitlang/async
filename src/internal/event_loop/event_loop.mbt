@@ -175,7 +175,7 @@ async fn EventLoop::suspend(evloop : EventLoop) -> Unit noraise {
 ///|
 async fn EventLoop::suspend_check_cancel(
   evloop : EventLoop,
-) -> @coroutine.SuspendResult noraise {
+) -> @coroutine.SuspendResult noraise + nocancel {
   evloop.blocked_tasks += 1
   defer {
     evloop.blocked_tasks -= 1

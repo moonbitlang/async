@@ -468,7 +468,7 @@ void cancellation_signal_handler(int signum) {
     // So the max number of items in bounded by max worker count,
     // which currently never exceed 1024 (not configurable by users).
     // The default size of pipe buffer on Linux/MacOS is large enough to hold all items.
-    write(pool.notify_send, &data, sizeof(data));
+    (void)!write(pool.notify_send, &data, sizeof(data));
   }
 }
 
@@ -601,11 +601,6 @@ struct worker *moonbitlang_async_spawn_worker(
 #else
   pthread_attr_t attr;
   pthread_attr_init(&attr);
-#ifdef __ANDROID__
-  pthread_attr_setstacksize(&attr, 64 * 1024);
-#else
-  pthread_attr_setstacksize(&attr, 512);
-#endif
 
   // make sure the worker thread has correct sigmask immediately
   sigset_t all_signals, curr_sigmask;
@@ -1302,7 +1297,7 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     job->command_line,
     NULL, // security attributes for process
     NULL, // security attributes for main thread
-    TRUE, // do not inherit handle
+    handles_to_inherit > 0,
     create_flags,
     job->environment,
     job->cwd,
@@ -1328,6 +1323,8 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
     if (!AssignProcessToJobObject(global_job_object, process_info.hProcess)) {
       *err_out = GetLastError();
       TerminateProcess(process_info.hProcess, 1);
+      CloseHandle(process_info.hThread);
+      CloseHandle(process_info.hProcess);
       return 0;
     }
     ResumeThread(process_info.hThread);
@@ -1363,7 +1360,7 @@ struct spawn_job *moonbitlang_async_make_spawn_job(
     // To avoid race condition, we must initialize the global job object
     // in the main thread. However job spawning functions cannot report error,
     // so we delay the error reporting to the thread pool job
-    job->init_error = errno;
+    job->init_error = GetLastError();
 
   return job;
 }
@@ -1451,22 +1448,20 @@ void free_spawn_job(struct spawn_job *job) {
     close(job->pidfd);
 }
 
+static
+int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 
-// posix_spawn is unavailable on Android API < 28.
-// Return a job pre-filled with ENOSYS so the caller gets a proper error
-// instead of hanging forever (a NULL job causes the worker thread to exit
-// without sending a completion notification).
-static
-int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
+  // posix_spawn is unavailable on Android API < 28.
+  // Return a job pre-filled with ENOSYS so the caller gets a proper error
+  // instead of hanging forever (a NULL job causes the worker thread to exit
+  // without sending a completion notification).
+  // 
   *err_out = ENOSYS;
   return 0;
-}
 
-#else // posix_spawn available
+#else
 
-static
-int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
   posix_spawnattr_t attr;
   posix_spawnattr_init(&attr);
   posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
@@ -1530,15 +1525,15 @@ exit:
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&file_actions);
   return ret;
+
+#endif // posix_spawn availability
 }
 
-int moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
+int32_t moonbitlang_async_get_spawn_job_result_handle(struct spawn_job *job) {
   int result = job->pidfd;
   job->pidfd = -1;
   return result;
 }
-
-#endif // posix_spawn availability
 
 struct spawn_job *moonbitlang_async_make_spawn_job(
   char *path,

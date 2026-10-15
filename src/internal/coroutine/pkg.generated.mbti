@@ -33,7 +33,7 @@ pub fn spawn(async () -> Unit, loc~ : SourceLoc) -> Coroutine
 
 pub async fn suspend() -> Unit noraise
 
-pub async fn suspend_check_cancel() -> SuspendResult noraise
+pub async fn suspend_check_cancel() -> SuspendResult noraise + nocancel
 
 // Errors
 

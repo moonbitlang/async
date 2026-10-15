@@ -236,7 +236,7 @@ void moonbitlang_async_start_signal_handler() {
 #endif
 
   sigset_t prev_mask;
-  pthread_sigmask(SIG_SETMASK, &signal_config.interested_signals, &prev_mask);
+  pthread_sigmask(SIG_BLOCK, &signal_config.interested_signals, &prev_mask);
 
   pthread_create(&signal_config.handler, &attr, &sigwait_thread_worker, 0);
 
