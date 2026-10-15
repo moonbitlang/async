@@ -78,8 +78,8 @@ int32_t moonbitlang_async_inotify_fetch_event(int inotify, void *buf, int32_t bu
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_event_get_size(char *buf, int32_t offset) {
-  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
   return sizeof(struct inotify_event) + event->len;
 #else
   moonbit_panic();
@@ -88,8 +88,8 @@ int32_t moonbitlang_async_inotify_event_get_size(char *buf, int32_t offset) {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_event_get_wd(char *buf, int32_t offset) {
-  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
   return event->wd;
 #else
   moonbit_panic();
@@ -98,8 +98,8 @@ int32_t moonbitlang_async_inotify_event_get_wd(char *buf, int32_t offset) {
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_event_has_relevant_event(char *buf, int32_t offset) {
-  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
   return (event->mask & (IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO)) != 0;
 #else
   moonbit_panic();
@@ -108,8 +108,8 @@ int32_t moonbitlang_async_inotify_event_has_relevant_event(char *buf, int32_t of
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_event_has_overflow(char *buf, int32_t offset) {
-  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
   return (event->mask & IN_Q_OVERFLOW) != 0;
 #else
   moonbit_panic();
@@ -118,8 +118,8 @@ int32_t moonbitlang_async_inotify_event_has_overflow(char *buf, int32_t offset) 
 
 MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_inotify_event_has_ignore(char *buf, int32_t offset) {
-  struct inotify_event *event = (struct inotify_event*)(buf + offset);
 #ifdef __linux__
+  struct inotify_event *event = (struct inotify_event*)(buf + offset);
   return (event->mask & IN_IGNORED) != 0;
 #else
   moonbit_panic();

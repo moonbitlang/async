@@ -361,6 +361,8 @@ int moonbitlang_async_enable_keepalive(
       return -1;
   }
 #endif
+
+  return 0;
 }
 
 #endif
