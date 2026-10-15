@@ -39,12 +39,6 @@ pub fn FileKind::unsafe_from_int(Int) -> Self
 #deprecated
 pub impl Show for FileKind
 
-type FileTime
-pub fn FileTime::atime(Self) -> (Int64, Int)
-pub fn FileTime::ctime(Self) -> (Int64, Int)
-pub fn FileTime::mtime(Self) -> (Int64, Int)
-pub fn FileTime::new() -> Self
-
 // Type aliases
 pub type Fd = Int
 
