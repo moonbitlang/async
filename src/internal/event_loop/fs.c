@@ -34,7 +34,6 @@
 #endif
 
 typedef LPWSTR os_string_t;
-#define EINVAL ERROR_INVALID_PARAMETER
 
 // #ifdef _WIN32
 #else
@@ -69,6 +68,8 @@ typedef char *os_string_t;
 
 #define GetLastError() errno
 #define SetLastError(err) errno = (err)
+
+#define ERROR_INVALID_PARAMETER EINVAL
 
 // #ifndef _WIN32
 #endif
@@ -353,7 +354,7 @@ int32_t moonbit_generic_stat(
   struct StatOutputBuffer *output = (struct StatOutputBuffer*)output_buf;
 
   if (buf_len < 8 || request & ~STAT_SUPPORTED_PROPERTY_MASK) {
-    SetLastError(EINVAL);
+    SetLastError(ERROR_INVALID_PARAMETER);
     return -1;
   }
 
@@ -366,7 +367,7 @@ int32_t moonbit_generic_stat(
   }
 
   if (output->length > buf_len) {
-    SetLastError(EINVAL);
+    SetLastError(ERROR_INVALID_PARAMETER);
     return -1;
   }
 
@@ -394,7 +395,7 @@ int32_t moonbit_generic_stat(
      | STAT_FILE_KIND;
 
    struct {
-     uint32_t file_type;
+     int32_t  file_type;
      DWORD    attributes;
      int64_t  file_size;
      uint64_t dev_id;

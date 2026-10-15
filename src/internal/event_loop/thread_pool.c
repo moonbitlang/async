@@ -783,7 +783,7 @@ int32_t read_job_worker(struct read_job *job, int32_t *err_out) {
       if (errno != EAGAIN && errno != EWOULDBLOCK)
         break;
 
-      struct pollfd pfd = { job->fd, POLL_IN, 0 };
+      struct pollfd pfd = { job->fd, POLLIN, 0 };
       if (moonbitlang_async_enter_cancellable_region(worker)) {
         *err_out = EINTR;
         return -1;
@@ -897,7 +897,7 @@ int32_t write_job_worker(struct write_job *job, int32_t *err_out) {
       if (errno != EAGAIN && errno != EWOULDBLOCK)
         break;
 
-      struct pollfd pfd = { job->fd, POLL_OUT, 0 };
+      struct pollfd pfd = { job->fd, POLLOUT, 0 };
       if (moonbitlang_async_enter_cancellable_region(worker)) {
         *err_out = EINTR;
         return -1;
@@ -1260,7 +1260,7 @@ int32_t spawn_job_worker(struct spawn_job *job, int32_t *err_out) {
 
 #ifdef PROC_THREAD_ATTRIBUTE_JOB_LIST
 
-  if (!job->is_orphan) {
+  if (!job->is_orphan && global_job_object != INVALID_HANDLE_VALUE) {
     // On Windows 10 and later, there is a way to
     // atomically assign a child process to new job atomically on creation.
     // This can avoid race condition when main process is killed after `CreateProcess`,
@@ -1589,7 +1589,7 @@ int32_t wait_for_process_job_worker(struct wait_for_process_job *job, int32_t *e
   moonbitlang_async_leave_cancellable_region(worker);
 
   if (ret == job->pid) {
-    return WEXITSTATUS(status);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -WTERMSIG(status);
   } else {
     *err_out = errno;
     return 0;
