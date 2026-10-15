@@ -28,6 +28,11 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#if _WIN32_WINNT >= 0x0602
+#include <pathcch.h>
+#pragma comment(lib, "Pathcch.lib")
+#endif
+
 typedef LPWSTR os_string_t;
 #define EINVAL ERROR_INVALID_PARAMETER
 
@@ -1629,7 +1634,53 @@ int32_t moonbitlang_async_symlink_sync(os_string_t target, os_string_t path, int
 
   int target_len = Moonbit_array_length(target);
 
-  DWORD attrs = GetFileAttributesW(target);
+  PWSTR resolved_target = NULL;
+
+  // A plain relative symlink target is resolved relative to the directory
+  // containing the link, not relative to the process's current directory.
+  // Root-relative and drive-relative paths have separate DOS path semantics and
+  // are intentionally left to Windows.
+  BOOL target_is_relative =
+    target_len > 0
+    && target[0] != L'\\'
+    && target[0] != L'/'
+    && !(target_len >= 2 && target[1] == L':');
+
+  if (target_is_relative) {
+#if _WIN32_WINNT >= 0x0602
+    PWSTR link_directory = NULL;
+    HRESULT hr = PathAllocCombine(
+      path,
+      L"..",
+      PATHCCH_ALLOW_LONG_PATHS,
+      &link_directory
+    );
+    if (FAILED(hr)) {
+      SetLastError(HRESULT_CODE(hr));
+      return -1;
+    }
+
+    hr = PathAllocCombine(
+      link_directory,
+      target,
+      PATHCCH_ALLOW_LONG_PATHS,
+      &resolved_target
+    );
+    LocalFree(link_directory);
+    if (FAILED(hr)) {
+      SetLastError(HRESULT_CODE(hr));
+      return -1;
+    }
+#else
+    SetLastError(ERROR_NOT_SUPPORTED);
+    return -1;
+#endif
+  }
+
+  DWORD attrs = GetFileAttributesW(resolved_target ? resolved_target : target);
+  if (resolved_target)
+    LocalFree(resolved_target);
+
   BOOL is_dir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
 
   // create NTFS junction if possible
