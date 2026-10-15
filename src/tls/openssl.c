@@ -157,10 +157,6 @@ void moonbitlang_async_tls_bio_set_flags(BIO * bio, int flags) {
   return BIO_set_flags(bio, flags);
 }
 
-void moonbitlang_async_tls_bio_set_shutdown(BIO * bio, int flags) {
-  return BIO_set_flags(bio, flags);
-}
-
 static
 long dummy_bio_ctrl(BIO *bio, int cmd, long larg, void *parg) {
   if (cmd == BIO_CTRL_FLUSH) {

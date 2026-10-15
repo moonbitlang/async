@@ -453,6 +453,7 @@ int moonbitlang_async_write(HANDLE handle, struct IoResult *result_obj) {
   return success ? n_written : -1;
 }
 
+static
 void *get_WSA_extension(HANDLE handle, GUID *guid) {
   void *result;
   DWORD pointer_size;

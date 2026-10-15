@@ -62,7 +62,8 @@ int moonbitlang_async_get_signal_by_index(int32_t code) {
 static
 int interested_console_ctrl_event = 0;
 
-BOOL WINAPI moonbitlang_async_console_control_handler(DWORD ctrl_type) {
+static
+BOOL WINAPI console_control_handler(DWORD ctrl_type) {
   if (interested_console_ctrl_event & (1 << ctrl_type)) {
     moonbitlang_async_notify_event_loop(ctrl_type | (1 << 31));
     return TRUE;
@@ -88,7 +89,7 @@ void moonbitlang_async_set_global_cancellation_signals(
 
 MOONBIT_FFI_EXPORT
 int moonbitlang_async_set_console_control_handler(int32_t add) {
-  return SetConsoleCtrlHandler(moonbitlang_async_console_control_handler, add);
+  return SetConsoleCtrlHandler(console_control_handler, add);
 }
 
 MOONBIT_FFI_EXPORT

@@ -89,17 +89,6 @@ int moonbitlang_async_kqueue_watcher_add_file(int kq, int fd, int32_t is_dir) {
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_kqueue_watcher_remove_file(int kq, int fd) {
-#ifdef __MACH__
-  struct kevent event;
-  EV_SET(&event, fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
-  return kevent(kq, &event, 1, 0, 0, 0);
-#else
-  moonbit_panic();
-#endif
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_kqueue_watcher_fetch_event(int kq, void *buf, int32_t buf_len) {
 #ifdef __MACH__
   int buffer_size = buf_len / sizeof(struct kevent);
