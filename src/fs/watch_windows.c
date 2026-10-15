@@ -39,11 +39,6 @@ int32_t moonbitlang_async_has_ReadDirectoryChangesExW() {
 }
 
 MOONBIT_FFI_EXPORT
-fs_event_t *moonbitlang_async_watcher_get_event(char *buf, int32_t offset) {
-  return (fs_event_t*)(buf + offset);
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_watcher_event_get_size(char *buf, int32_t offset) {
   fs_event_t *event = (fs_event_t*)(buf + offset);
   return event->NextEntryOffset;

@@ -34,21 +34,10 @@
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_fd_is_valid(HANDLE handle) {
-  return handle == INVALID_HANDLE_VALUE;
-}
-
-MOONBIT_FFI_EXPORT
 HANDLE moonbitlang_async_get_invalid_handle() {
   return INVALID_HANDLE_VALUE;
 }
 
-
-#else
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_fd_is_valid(int fd) {
-  return fd < 0;
-}
 #endif
 
 #ifdef _WIN32
@@ -70,18 +59,6 @@ int moonbitlang_async_fd_is_nonblocking(int fd) {
     return flags;
 
   return (flags & O_NONBLOCK) > 0;
-}
-
-int moonbitlang_async_set_blocking(int fd) {
-  int flags = fcntl(fd, F_GETFL);
-  if (flags < 0) return flags;
-
-  if (flags & O_NONBLOCK) {
-    if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0)
-      return -1;
-  }
-
-  return 0;
 }
 
 int moonbitlang_async_set_nonblocking(int fd) {

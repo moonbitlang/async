@@ -52,11 +52,6 @@ int32_t moonbitlang_async_strlen(char *str, int32_t offset) {
 }
 
 MOONBIT_FFI_EXPORT
-char *moonbitlang_async_null_pointer() {
-  return 0;
-}
-
-MOONBIT_FFI_EXPORT
 int32_t moonbitlang_async_pointer_is_null(void *ptr) {
   return ptr == 0;
 }

@@ -35,15 +35,6 @@
 #endif
 
 
-#ifndef _WIN32
-
-int moonbitlang_async_dir_is_null(DIR *dir) {
-  return dir == 0;
-}
-
-#endif
-
-
 #ifdef _WIN32
 
 MOONBIT_FFI_EXPORT
