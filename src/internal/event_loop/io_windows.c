@@ -333,6 +333,11 @@ int32_t moonbitlang_async_cancel_io_result(LPOVERLAPPED overlapped, HANDLE handl
   // The operation may have already completed before cancellation (`ERROR_NOT_FOUND`),
   // or `CancelIoEx` may have taken effect immediately.
   // So we should check the status of the operation immediately here.
+  //
+  // Notice that the status block of `OVERLAPPED` structure
+  // is only updated when the completion packet is consumed.
+  // So it is safe to return immediately without waiting for completion packet here.
+  // This can happen if cancellation and completion happen within the same scheduler slice.
   DWORD bytes_transferred;
   if (GetOverlappedResult(handle, overlapped, &bytes_transferred, FALSE))
     return 0;
@@ -522,13 +527,12 @@ int32_t moonbitlang_async_setup_connected_socket(HANDLE handle) {
   // We need to setup the `SO_UPDATE_CONNECT_CONTEXT` option
   // to obtain various properties such as socket address after `connect`.
   // See https://learn.microsoft.com/en-us/windows/win32/winsock/sol-socket-socket-options
-  DWORD yes = TRUE;
   return setsockopt(
     (SOCKET)handle,
     SOL_SOCKET,
     SO_UPDATE_CONNECT_CONTEXT,
-    (char*)&yes,
-    sizeof(DWORD)
+    NULL,
+    0
   );
 }
 

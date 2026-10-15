@@ -55,7 +55,7 @@ async fn IoHandle::wait_read_result(
   handle : IoHandle,
   io_result : IoResult,
   context~ : String,
-) -> Unit {
+) -> Unit nocancel {
   guard! curr_loop.val is Some(evloop)
   guard! handle.read is Idle
   handle.read = Waiting(@coroutine.current_coroutine())

@@ -342,7 +342,7 @@ int32_t moonbitlang_async_schannel_connect(
   );
 
   ctx->bytes_read = in_buffer_len;
-  if (input[1].BufferType == SECBUFFER_EXTRA)
+  if (ctx->state == ContextInitialized && input[1].BufferType == SECBUFFER_EXTRA)
     ctx->bytes_read -= input[1].cbBuffer;
 
   switch (ret) {
@@ -488,11 +488,19 @@ int32_t moonbitlang_async_schannel_read(
 
   switch (ret) {
     case SEC_E_OK:
-      ctx->msg_trailer = buffers[2].cbBuffer;
       ctx->bytes_read = len;
-      if (buffers[3].BufferType == SECBUFFER_EXTRA) {
-        ctx->bytes_read -= buffers[3].cbBuffer;
-        ctx->msg_trailer -= buffers[3].cbBuffer;
+      for (int32_t i = 0; i < 4; ++i) {
+        switch (buffers[i].BufferType) {
+          case SECBUFFER_STREAM_TRAILER:
+            ctx->msg_trailer = buffers[i].cbBuffer;
+            break;
+          case SECBUFFER_EXTRA:
+            ctx->bytes_read -= buffers[i].cbBuffer;
+            // It seems that the reported `cbBuffer` of `SECBUFFER_STREAM_TRAILER`
+            // contains all remaining data, including `SECBUFFER_EXTRA`.
+            ctx->msg_trailer -= buffers[i].cbBuffer;
+            break;
+        }
       }
       return Completed;
     case SEC_E_INCOMPLETE_MESSAGE:

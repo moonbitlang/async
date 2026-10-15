@@ -88,7 +88,14 @@ void *moonbitlang_async_get_tmp_path() {
 
   static wchar_t buffer[MAX_PATH + 1];
 
+  // `GetTempPath2W` was initially available since Windows 11,
+  // and has been back ported to Windows 10 on 2025.
+  // Here we deliberately ignore "old" Windows 10 versions for simplicity
+#if _WIN32_WINNT >= 0x0A00
   DWORD len = GetTempPath2W(MAX_PATH + 1, buffer);
+#else
+  DWORD len = GetTempPathW(MAX_PATH + 1, buffer);
+#endif
 
   if (len == 0) {
     return NULL;

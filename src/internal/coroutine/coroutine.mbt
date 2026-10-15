@@ -117,7 +117,7 @@ pub async fn pause_nocancel() -> Unit noraise + nocancel {
 }
 
 ///|
-pub async fn suspend_check_cancel() -> SuspendResult noraise {
+pub async fn suspend_check_cancel() -> SuspendResult noraise + nocancel {
   guard! scheduler.curr_coro is Some(coro)
   if coro.cancelled && !coro.shielded {
     return Cancelled
