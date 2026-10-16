@@ -129,28 +129,28 @@ async test "merge stdout and stderr to file" {
 
 ///|
 async test "pipe" {
-  let log = []
   @async.with_task_group() <| group => {
     let cat = cat.wait()
     let (r1, w1) = @process.write_to_process()
     defer w1.close()
     let (r2, w2) = @process.pipe()
     let (r3, w3) = @process.read_from_process()
-    group.spawn_bg() <| () => {
-      defer r3.close()
-      while r3.read_some() is Some(msg) {
-        log.push("received: \{@utf8.decode(msg)}")
-      }
-    }
+    defer r3.close()
     let _ = @process.spawn(group, cat, [], stdin=r1, stdout=w2)
     let _ = @process.spawn(group, cat, [], stdin=r2, stdout=w3)
-    log.push("writing: abcd")
     w1.write("abcd")
-    @async.sleep(150)
-    log.push("writing: xyzw")
+    debug_inspect(
+      r3.read_some().map(data => @utf8.decode(data)),
+      content=(
+        #|Some("abcd")
+      ),
+    )
     w1.write("xyzw")
+    debug_inspect(
+      r3.read_some().map(data => @utf8.decode(data)),
+      content=(
+        #|Some("xyzw")
+      ),
+    )
   }
-  json_inspect(log, content=[
-    "writing: abcd", "received: abcd", "writing: xyzw", "received: xyzw",
-  ])
 }
