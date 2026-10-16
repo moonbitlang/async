@@ -804,7 +804,7 @@ async test "watch debounce" {
     let watcher = @fs.Watcher(
       watched_path,
       debounce_timeout=400,
-      max_debounce_delay=650,
+      max_debounce_delay=600,
     )
     group.spawn_bg(no_wait=true) <| () => {
       defer watcher.close()
@@ -813,25 +813,32 @@ async test "watch debounce" {
         log.write("watcher received: \{Repr(events)}\n")
       }
     }
+    let immediate_watcher = @fs.Watcher(watched_path, debounce_timeout=0)
+    defer immediate_watcher.close()
 
     // 1. multiple events happen within debounce interval
     log.write("rename happen within debounce interval\n")
     @fs.rename("\{watched_path}/file", "\{path}/file")
+    immediate_watcher.wait_any()
     @async.sleep(200)
     @fs.rename("\{path}/file", "\{watched_path}/file2")
+    immediate_watcher.wait_any()
     @async.sleep(600)
 
     // 2. exceed debounce interval
     log.write("rename longer than debounce interval\n")
     @fs.rename("\{watched_path}/file2", "\{path}/file")
-    @async.sleep(500)
+    immediate_watcher.wait_any()
+    @async.sleep(450)
     @fs.rename("\{path}/file", "\{watched_path}/file")
+    immediate_watcher.wait_any()
     @async.sleep(600)
 
     // 3. exceed max interval
     log.write("rename exceed max debounce delay\n")
-    let timers = [@async.Timer(250), @async.Timer(500), @async.Timer(750)]
     @fs.write_file("\{watched_path}/file", "xyzw")
+    immediate_watcher.wait_any()
+    let timers = [@async.Timer(250), @async.Timer(400), @async.Timer(750)]
     timers[0].wait()
     @fs.rename("\{watched_path}/file", "\{path}/file")
     timers[1].wait()
