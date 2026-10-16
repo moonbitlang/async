@@ -150,14 +150,6 @@ async fn IoHandle::read_via_worker(
 }
 
 ///|
-#cfg(platform="windows")
-const IS_NATIVE_WINDOWS : Bool = true
-
-///|
-#cfg(not(platform="windows"))
-const IS_NATIVE_WINDOWS : Bool = false
-
-///|
 async fn IoHandle::read_console(
   handle : IoHandle,
   buf : FixedArray[Byte],
@@ -263,8 +255,7 @@ pub async fn IoHandle::read(
   context~ : String,
 ) -> Int32 {
   @coroutine.check_cancellation()
-  // TODO: port to Wasm
-  let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
+  let n = if platform is Windows && handle.kind is Console {
     handle.read_console(buf, offset~, len~, context~)
   } else if handle.is_async {
     /// The implementation of `read_via_event_bus` is platform dependent,
@@ -455,8 +446,7 @@ pub async fn IoHandle::write(
   context~ : String,
 ) -> Int32 {
   @coroutine.check_cancellation()
-  // TODO: port to Wasm
-  let n = if IS_NATIVE_WINDOWS && handle.kind is Console {
+  let n = if platform is Windows && handle.kind is Console {
     handle.write_console(buf, offset~, len~, context~)
   } else if handle.is_async {
     /// The implementation of `write_via_event_bus` is platform dependent,

@@ -41,20 +41,25 @@ fn kind_of_fd_sync(
 
 ///|
 #cfg(target="wasm")
-#unsafe_skip_stub_check
-fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang/async" "fd_util/kind_of_fd"
-
-///|
-#cfg(target="wasm")
 fn kind_of_fd_sync(
   fd : @fd_util.Fd,
   context~ : String,
 ) -> @fd_util.FileKind raise {
-  let kind = kind_of_fd_sync_ffi(fd)
-  if kind < 0 {
-    @os_error.check_errno(context)
+  // The legacy kind_of_fd import predates Console. Use the same stat query
+  // as native so terminal detection does not depend on that older enum.
+  let buf = FixedArray::make(16, b'\x00')
+  let job = Job::fstatx(fd, STAT_FILE_KIND, buf, buf.length())
+  defer job.free()
+  job.run_sync()
+  if job.err() != 0 {
+    raise @os_error.OSError(job.err(), context~)
   }
-  @fd_util.FileKind::unsafe_from_int(kind)
+  job.copy_output()
+  guard! buf is [u32le(_), u32le(mask), i64le(kind)]
+  guard mask == STAT_FILE_KIND else {
+    raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
+  }
+  @fd_util.FileKind::unsafe_from_int(kind.to_int())
 }
 
 ///|
