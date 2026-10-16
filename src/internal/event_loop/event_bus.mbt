@@ -78,6 +78,16 @@ fn EventBus::register_pid(self : EventBus, pid : Int32) -> Bool raise {
 }
 
 ///|
+extern "C" fn EventBus::remove_ffi(self : EventBus, fd : @fd_util.Fd) -> Int32 = "moonbitlang_async_event_bus_remove"
+
+///|
+fn EventBus::remove(self : EventBus, fd : @fd_util.Fd) -> Unit raise {
+  if self.remove_ffi(fd) < 0 {
+    @os_error.check_errno("runtime internal: @event_loop.EventBus::remove()")
+  }
+}
+
+///|
 #external
 priv type Event
 

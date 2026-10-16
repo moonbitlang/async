@@ -65,6 +65,11 @@ pub fn IoHandle::detach_from_event_loop(handle : IoHandle) -> Unit {
   guard! curr_loop.val is Some(evloop)
   guard @fd_util.fd_is_valid(handle.fd) else { return }
   evloop.fds.remove(handle.fd)
+  if handle.is_async {
+    evloop.bus.remove(handle.fd) catch {
+      _ => ()
+    }
+  }
 }
 
 ///|

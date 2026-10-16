@@ -73,6 +73,14 @@ int moonbitlang_async_event_bus_register_pid(int epfd, pid_t pid) {
   moonbit_panic();
 }
 
+int32_t moonbitlang_async_event_bus_remove(int epfd, int fd) {
+  // `epoll` is description based. Even after closing a fd,
+  // we may still receive stale events.
+  // Things get worse if the fd number is later reused.
+  // Hence we must manually unregister a fd before closing it.
+  return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+}
+
 #define EVENT_BUFFER_SIZE 1024
 static struct epoll_event event_buffer[EVENT_BUFFER_SIZE];
 

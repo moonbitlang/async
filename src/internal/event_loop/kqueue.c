@@ -105,6 +105,12 @@ int moonbitlang_async_event_bus_register_pid(int kqfd, pid_t pid) {
   }
 }
 
+int32_t moonbitlang_async_event_bus_remove(int kqfd, int fd) {
+  // `kqueue` is descriptor based: closing a fd automatically unregister it from `kqueue`.
+  // So there is no need for explicit removal.
+  return 0;
+}
+
 #define EVENT_BUFFER_SIZE 1024
 static struct kevent event_buffer[EVENT_BUFFER_SIZE];
 
