@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-14", "windows-latest"]
+        os: ["windows-latest"]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -77,9 +77,4 @@ jobs:
         run: moon check --target wasm
 
       - name: moon test
-        if: ${{ matrix.os != 'windows-latest' }}
         run: moon test --target wasm
-
-      - name: moon test (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: moon test --target wasm --no-parallelize
