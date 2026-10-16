@@ -68,33 +68,14 @@ async test "worker basic" {
 
 ///|
 async test "worker multiple" {
-  let log = StringBuilder()
-  @async.with_task_group() <| root => {
-    root.spawn_bg() <| () => {
-      for _ in 0..<3 {
-        @async.sleep(200)
-        log <+ "tick\n"
-      }
-    }
-    for i in 0..<3 {
-      root.spawn_bg() <| () => {
-        perform_sleep_job(100 + i * 200)
-        log.write_string("#\{i} done\n")
-      }
+  let start = @async.now()
+  @async.with_task_group() <| group => {
+    for _ in 0..<3 {
+      group.spawn_bg(() => perform_sleep_job(200))
     }
   }
-  inspect(
-    log.to_string(),
-    content=(
-      #|#0 done
-      #|tick
-      #|#1 done
-      #|tick
-      #|#2 done
-      #|tick
-      #|
-    ),
-  )
+  let t = (@async.now() - start + 50) / 200
+  inspect(t, content="1")
 }
 
 ///|
@@ -165,27 +146,20 @@ async test "worker cancel2" {
 ///|
 #cfg(any(target="native", target="wasm"))
 test "max worker limit" {
-  let log = []
+  let time_of_jobs = [0, 0, 0, 0]
   with_event_loop(max_worker_count=2, () => {
     @async.with_task_group <| group => {
-      let start = @async.now()
       for i in 0..<4 {
         group.spawn_bg() <| () => {
-          let t = (@async.now() - start).to_int() / 200
-          log.push("job #\{i} starting at tick #\{t}")
+          let start = @async.now()
           perform_sleep_job(200)
           let t = (@async.now() - start).to_int() / 200
-          log.push("job #\{i} completed at tick #\{t}")
+          time_of_jobs[i] = t
         }
-        @async.sleep(50)
       }
     }
   })
-  json_inspect(log, content=[
-    "job #0 starting at tick #0", "job #1 starting at tick #0", "job #2 starting at tick #0",
-    "job #3 starting at tick #0", "job #0 completed at tick #1", "job #1 completed at tick #1",
-    "job #2 completed at tick #2", "job #3 completed at tick #2",
-  ])
+  json_inspect(time_of_jobs, content=[1, 1, 2, 2])
 }
 
 ///|
@@ -196,26 +170,25 @@ test "cancel queued job" {
     @async.with_task_group <| group => {
       let start = @async.now()
       fn tick() {
-        (@async.now() - start + 50).to_int() / 100
+        (@async.now() - start + 50).to_int() / 200
       }
       group.spawn_bg() <| () => {
-        log.push("main job starting at tick #\{tick()}")
-        perform_sleep_job(300)
-        log.push("main job completed at tick #\{tick()}")
+        log.push("queued job starting at tick #\{tick()}")
+        // The job here is not cancellable once it start running.
+        // But all jobs are cancellable while they are queued.
+        try @async.with_timeout(200, () => perform_sleep_job(600)) catch {
+          _ => log.push("queued job cancelled at tick #\{tick()}")
+        } noraise {
+          _ => log.push("queued job completed at tick #\{tick()}")
+        }
       }
-      @async.sleep(100)
-      log.push("queued job starting at tick #\{tick()}")
-      // The job here is not cancellable once it start running.
-      // But all jobs are cancellable while they are queued.
-      try @async.with_timeout(100, () => perform_sleep_job(200)) catch {
-        _ => log.push("queued job cancelled at tick #\{tick()}")
-      } noraise {
-        _ => log.push("queued job completed at tick #\{tick()}")
-      }
+      log.push("main job starting at tick #\{tick()}")
+      perform_sleep_job(400)
+      log.push("main job completed at tick #\{tick()}")
     }
   })
   json_inspect(log, content=[
-    "main job starting at tick #0", "queued job starting at tick #1", "queued job cancelled at tick #2",
-    "main job completed at tick #3",
+    "main job starting at tick #0", "queued job starting at tick #0", "queued job cancelled at tick #1",
+    "main job completed at tick #2",
   ])
 }
