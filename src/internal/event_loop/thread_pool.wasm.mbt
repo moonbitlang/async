@@ -111,17 +111,6 @@ fn Job::Job(handle : JobHandle, copy_output? : (JobHandle) -> Unit) -> Job {
 }
 
 ///|
-// Stdio is initialized before the event loop exists. Reuse the same owned job
-// and result-copying protocol, but execute its small stat query synchronously.
-#unsafe_skip_stub_check
-fn JobHandle::run_sync(self : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/run_job"
-
-///|
-fn Job::run_sync(self : Job) -> Unit {
-  self.handle.run_sync()
-}
-
-///|
 #unsafe_skip_stub_check
 fn JobHandle::free(self : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/free_job"
 
