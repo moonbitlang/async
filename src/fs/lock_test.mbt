@@ -24,14 +24,18 @@ let lock_file_prog : @async.Lazy[String] = Lazy(() => {
 })
 
 ///|
+enum LockEvent {
+  Acquire
+  Release
+} derive(Debug)
+
+///|
 async fn run_lock_file_prog(
   group : @async.TaskGroup[Unit],
   file : String,
   lock : @fs.Lock,
-  log : Array[String],
   duration~ : Int32 = 500,
-  prefix~ : String = "",
-) -> @async.Task[Unit] {
+) -> @async.Queue[LockEvent] {
   let prog = lock_file_prog.wait()
   let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
@@ -41,310 +45,250 @@ async fn run_lock_file_prog(
     duration.to_string(),
     lock_kind,
   ])
-  group.spawn() <| () => {
+  let queue = @async.Queue(kind=Unbounded)
+  group.spawn_bg() <| () => {
     defer r.close()
     while r.read_until("\n") is Some(line) {
-      log.push(prefix + line)
+      match line {
+        "acquired lock" => queue.put(Acquire)
+        "releasing lock" => queue.put(Release)
+        _ => ()
+      }
     }
+    queue.close()
   }
+  queue
+}
+
+///|
+#callsite(autofill(loc))
+fn @fs.File::assert_can_lock(
+  file : @fs.File,
+  kind : @fs.Lock,
+  loc~ : SourceLoc,
+) -> Unit raise {
+  let result = file.try_lock(kind)
+  if result {
+    file.unlock()
+  }
+  assert_true(result, loc~)
+}
+
+///|
+#callsite(autofill(loc))
+fn @fs.File::assert_cannot_lock(
+  file : @fs.File,
+  kind : @fs.Lock,
+  loc~ : SourceLoc,
+) -> Unit raise {
+  let result = file.try_lock(kind)
+  if result {
+    file.unlock()
+  }
+  assert_false(result, loc~)
 }
 
 ///|
 async test "flock exclusive vs exclusive" {
-  let log = []
   let file_name = "_build/flock_ex_ex"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let prog = run_lock_file_prog(group, file_name, Exclusive, log)
-    @async.sleep(250)
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    prog.wait()
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
+    file.assert_cannot_lock(Exclusive)
+    debug_inspect(events.get(), content="Release")
+    @async.sleep(50)
+    file.assert_can_lock(Exclusive)
   }
-  json_inspect(log, content=[
-    "acquired lock", "try_lock() => false", "releasing lock", "try_lock() => true",
-  ])
 }
 
 ///|
 async test "flock exclusive vs exclusive blocking" {
-  let log = []
   let file_name = "_build/flock_ex_ex_blocking"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Exclusive,
-      log,
-      prefix="child: ",
-    )
-    @async.sleep(250)
-    log.push("attempting to acquire lock")
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
     file.lock(Exclusive)
     defer file.unlock()
-    @async.sleep(10)
-    log.push("acquired lock")
+    debug_inspect(events.try_get(), content="Some(Release)")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to acquire lock", "child: releasing lock",
-    "acquired lock",
-  ])
 }
 
 ///|
 async test "flock shared vs exclusive" {
-  let log = []
   let file_name = "_build/flock_sh_ex"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let prog = run_lock_file_prog(group, file_name, Shared, log)
-    @async.sleep(250)
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    prog.wait()
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
+    let events = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
+    file.assert_cannot_lock(Exclusive)
+    debug_inspect(events.get(), content="Release")
+    @async.sleep(50)
+    file.assert_can_lock(Exclusive)
   }
-  json_inspect(log, content=[
-    "acquired lock", "try_lock() => false", "releasing lock", "try_lock() => true",
-  ])
 }
 
 ///|
 async test "flock shared vs exclusive blocking" {
-  let log = []
   let file_name = "_build/flock_sh_ex_blocking"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
-    @async.sleep(250)
-    log.push("attempting to acquire lock")
+    let events = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
     file.lock(Exclusive)
     defer file.unlock()
-    @async.sleep(10)
-    log.push("acquired lock")
+    debug_inspect(events.try_get(), content="Some(Release)")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to acquire lock", "child: releasing lock",
-    "acquired lock",
-  ])
 }
 
 ///|
 async test "flock exclusive vs shared" {
-  let log = []
   let file_name = "_build/flock_ex_sh"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let prog = run_lock_file_prog(group, file_name, Exclusive, log)
-    @async.sleep(250)
-    log.push("try_lock() => \{file.try_lock(Shared)}")
-    prog.wait()
-    log.push("try_lock() => \{file.try_lock(Shared)}")
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
+    file.assert_cannot_lock(Shared)
+    debug_inspect(events.get(), content="Release")
+    @async.sleep(50)
+    file.assert_can_lock(Shared)
   }
-  json_inspect(log, content=[
-    "acquired lock", "try_lock() => false", "releasing lock", "try_lock() => true",
-  ])
 }
 
 ///|
 async test "flock exclusive vs shared blocking" {
-  let log = []
   let file_name = "_build/flock_ex_sh_blocking"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Exclusive,
-      log,
-      prefix="child: ",
-    )
-    @async.sleep(250)
-    log.push("attempting to acquire lock")
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(events.try_get(), content="None")
     file.lock(Shared)
     defer file.unlock()
-    @async.sleep(10)
-    log.push("acquired lock")
+    debug_inspect(events.try_get(), content="Some(Release)")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to acquire lock", "child: releasing lock",
-    "acquired lock",
-  ])
 }
 
 ///|
 async test "flock shared vs shared" {
-  let log = []
   let file_name = "_build/flock_sh_sh"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(group, file_name, Shared, log)
-    @async.sleep(250)
-    log.push("try_lock() => \{file.try_lock(Shared)}")
+    let events = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events.get(), content="Acquire")
+    file.assert_can_lock(Shared)
+    debug_inspect(events.try_get(), content="None")
   }
-  json_inspect(log, content=[
-    "acquired lock", "try_lock() => true", "releasing lock",
-  ])
 }
 
 ///|
 async test "flock shared vs shared blocking" {
-  let log = []
   let file_name = "_build/flock_sh_sh_blocking"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(group, file_name, Shared, log, prefix="child: ")
-    @async.sleep(250)
-    log.push("attempting to acquire lock")
+    let events = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events.get(), content="Acquire")
     file.lock(Shared)
     defer file.unlock()
-    @async.sleep(10)
-    log.push("acquired lock")
+    debug_inspect(events.try_get(), content="None")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to acquire lock", "acquired lock", "child: releasing lock",
-  ])
 }
 
 ///|
 async test "flock shared vs shared vs exclusive" {
-  let log = []
   let file_name = "_build/flock_sh_sh_ex"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let prog1 = run_lock_file_prog(
-      group,
-      file_name,
-      Shared,
-      log,
-      prefix="child #1: ",
-    )
-    @async.sleep(250)
-    let prog2 = run_lock_file_prog(
-      group,
-      file_name,
-      Shared,
-      log,
-      prefix="child #2: ",
-    )
+    let events1 = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events1.get(), content="Acquire")
     @async.sleep(100)
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    prog1.wait()
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
-    prog2.wait()
-    log.push("try_lock() => \{file.try_lock(Exclusive)}")
+    let events2 = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events2.get(), content="Acquire")
+    debug_inspect(events1.try_get(), content="None")
+    file.assert_cannot_lock(Exclusive)
+    debug_inspect(events1.get(), content="Release")
+    debug_inspect(events2.try_get(), content="None")
+    file.assert_cannot_lock(Exclusive)
+    debug_inspect(events2.get(), content="Release")
+    @async.sleep(50)
+    file.assert_can_lock(Exclusive)
   }
-  json_inspect(log, content=[
-    "child #1: acquired lock", "child #2: acquired lock", "try_lock() => false",
-    "child #1: releasing lock", "try_lock() => false", "child #2: releasing lock",
-    "try_lock() => true",
-  ])
 }
 
 ///|
 async test "flock shared vs shared vs exclusive blocking" {
-  let log = []
   let file_name = "_build/flock_sh_sh_ex_blocking"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Shared,
-      log,
-      prefix="child #1: ",
-    )
-    @async.sleep(250)
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Shared,
-      log,
-      prefix="child #2: ",
-    )
+    let events1 = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events1.get(), content="Acquire")
     @async.sleep(100)
-    log.push("attempting to acquire lock")
+    let events2 = run_lock_file_prog(group, file_name, Shared)
+    debug_inspect(events2.get(), content="Acquire")
     file.lock(Exclusive)
     defer file.unlock()
-    @async.sleep(10)
-    log.push("acquired lock")
+    debug_inspect(events1.try_get(), content="Some(Release)")
+    debug_inspect(events2.try_get(), content="Some(Release)")
   }
-  json_inspect(log, content=[
-    "child #1: acquired lock", "child #2: acquired lock", "attempting to acquire lock",
-    "child #1: releasing lock", "child #2: releasing lock", "acquired lock",
-  ])
 }
 
 ///|
 async test "flock cancelled" {
-  let log = []
   let file_name = "_build/flock_cancel"
   @async.with_task_group() <| group => {
     let file = @fs.open(file_name, create_mode=CreateOrTruncate, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Exclusive,
-      log,
-      prefix="child: ",
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    debug_inspect(
+      @async.with_timeout_opt(100, () => {
+        file.lock(Exclusive)
+        file.unlock()
+      }),
+      content="None",
     )
-    @async.sleep(250)
-    log.push("attempting to acquire lock")
-    let result = @async.with_timeout_opt(100, () => file.lock(Exclusive))
-    log.push("lock() with timeout: \{@debug.to_string(result)}")
-    if result is Some(_) {
-      file.unlock()
-    }
+    debug_inspect(events.try_get(), content="None")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to acquire lock", "lock() with timeout: None",
-    "child: releasing lock",
-  ])
 }
 
 ///|
 async test "flock advisory" {
-  let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
     @fs.write_file(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
-    let _ = run_lock_file_prog(
-      group,
-      file_name,
-      Exclusive,
-      log,
-      prefix="child: ",
-    )
-    @async.sleep(250)
-    log.push("attempting to read")
-    log.push("read from file: \{file.read_all().text()}")
+    let events = run_lock_file_prog(group, file_name, Exclusive)
+    debug_inspect(events.get(), content="Acquire")
+    inspect(file.read_all().text(), content="abcd")
+    debug_inspect(events.try_get(), content="None")
   }
-  json_inspect(log, content=[
-    "child: acquired lock", "attempting to read", "read from file: abcd", "child: releasing lock",
-  ])
 }
