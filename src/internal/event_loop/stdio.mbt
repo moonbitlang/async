@@ -42,7 +42,9 @@ fn kind_of_fd_sync(
 ///|
 #cfg(target="wasm")
 #unsafe_skip_stub_check
-fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang/async" "fd_util/kind_of_fd"
+// Scalar result: stdio initializes before runtimes can bind exported memory.
+// The historical fd_util/kind_of_fd enum does not distinguish Console.
+fn kind_of_fd_sync_ffi(fd : @fd_util.Fd) -> Int32 = "moonbitlang/async" "stdio/kind_of_fd"
 
 ///|
 #cfg(target="wasm")
