@@ -71,6 +71,12 @@ fn EventBus::register_pid(self : EventBus, pid : Int32) -> Bool raise {
 }
 
 ///|
+#warnings("-unused_error_type")
+fn EventBus::remove(_self : EventBus, _fd : @fd_util.Fd) -> Unit raise {
+  // TODO: add explicit unregister support for Wasm on Linux
+}
+
+///|
 #unsafe_skip_stub_check
 fn EventBus::wait(self : EventBus, timeout~ : Int32) -> Int32 = "moonbitlang/async" "event_bus/wait"
 

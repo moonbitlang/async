@@ -36,6 +36,11 @@ int moonbitlang_async_event_bus_register(HANDLE iocp, HANDLE fd, int32_t read_on
   return CreateIoCompletionPort(fd, iocp, (ULONG_PTR)fd, 0) == NULL ? -1 : 1;
 }
 
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_event_bus_remove(HANDLE iocp, HANDLE fd) {
+  return 0;
+}
+
 #define EVENT_BUFFER_SIZE 1024
 static OVERLAPPED_ENTRY event_buffer[EVENT_BUFFER_SIZE];
 
