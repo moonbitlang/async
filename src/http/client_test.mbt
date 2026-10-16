@@ -31,7 +31,7 @@ async test "responses with null Web API bodies are empty readable streams" {
       client.request(meth, path)
       let response = client.end_request()
       assert_eq(response.code, expected_status)
-      assert_eq(client.read_all().text(), "")
+      assert_eq(client.text.read_all(), "")
     }
   }
 }
@@ -50,7 +50,7 @@ async test "request streaming" {
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
-      while client.read_some() is Some(data) {
+      while client.read() is Some(data) {
         let data = @utf8.decode(data)
         log.write_string("client received: \{data}")
       }
@@ -71,10 +71,10 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending PUT data part 1\n"
-      client..write("PUT data part 1\n").flush()
+      client..write(b"PUT data part 1\n").flush()
       @async.sleep(100)
       log <+ "client: sending PUT data part 2\n"
-      client.write("PUT data part 2\n")
+      client.write(b"PUT data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       fetch_response(client)
@@ -85,10 +85,10 @@ async test "request streaming" {
       defer client.close()
       @async.sleep(100)
       log <+ "client: sending POST data part 1\n"
-      client..write("POST data part 1\n").flush()
+      client..write(b"POST data part 1\n").flush()
       @async.sleep(100)
       log <+ "client: sending POST data part 2\n"
-      client.write("POST data part 2\n")
+      client.write(b"POST data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       fetch_response(client)
@@ -175,10 +175,10 @@ async test "multiple request" {
   defer client.close()
   let response1 = client.get("/")
   inspect(response1.code, content="200")
-  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+  assert_true(client.text.read_all().has_prefix("<!doctype html>"))
   let response2 = client.get("/download")
   inspect(response2.code, content="200")
-  assert_true(client.read_all().text().has_prefix("<!doctype html>"))
+  assert_true(client.text.read_all().has_prefix("<!doctype html>"))
 }
 
 ///|

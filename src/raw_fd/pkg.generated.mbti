@@ -26,17 +26,22 @@ pub struct RawFdStream {
 }
 pub async fn RawFdStream::RawFdStream(Int) -> Self
 pub fn RawFdStream::close(Self) -> Unit
-pub async fn RawFdStream::drop(Self, Int) -> Int
-pub async fn RawFdStream::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-pub async fn RawFdStream::read_all(Self) -> &@io.Data
+pub async fn RawFdStream::drop_all(Self) -> Int64
+pub async fn RawFdStream::drop_exactly(Self, Int) -> Unit
+pub async fn RawFdStream::peek(Self) -> BytesView?
+pub async fn RawFdStream::peek_at_least(Self, Int) -> BytesView
+pub async fn RawFdStream::peek_exactly(Self, Int) -> BytesView
+pub async fn RawFdStream::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn RawFdStream::read(Self) -> Bytes?
+pub async fn RawFdStream::read_all(Self) -> Bytes
+pub async fn RawFdStream::read_at_least(Self, Int) -> Bytes
 pub async fn RawFdStream::read_exactly(Self, Int) -> Bytes
-pub async fn RawFdStream::read_some(Self, max_len? : Int) -> Bytes?
-pub async fn RawFdStream::read_until(Self, StringView) -> String?
-pub async fn RawFdStream::write(Self, &@io.Data) -> Unit
-pub async fn RawFdStream::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
-pub async fn RawFdStream::write_reader(Self, &@io.Reader) -> Unit
-pub impl @io.Reader for RawFdStream
-pub impl @io.Writer for RawFdStream
+pub async fn RawFdStream::read_into(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn RawFdStream::read_until(Self, BytesView, include_delimiter? : Bool) -> Bytes?
+pub async fn RawFdStream::write(Self, BytesView) -> Unit
+pub async fn RawFdStream::write_reader(Self, &@io.BinaryReader) -> Unit
+pub impl @io.BinaryReader for RawFdStream
+pub impl @io.BinaryWriter for RawFdStream
 
 // Type aliases
 

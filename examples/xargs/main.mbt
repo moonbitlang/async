@@ -54,7 +54,7 @@ async fn main {
     _ => []
   }
   @async.with_task_group <| group => {
-    while @stdio.stdin.read_until("\n") is Some(line) {
+    while @stdio.stdin.text.read_until("\n") is Some(line) {
       if max_jobs is Some(limit) {
         limit.acquire()
       }

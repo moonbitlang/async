@@ -16,19 +16,16 @@
 ///|
 async test "basic_ls" {
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    @process.spawn(
+    let child = @process.spawn(
       group,
       shell,
       ["-c", "\{ls} test_directory/dir1"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={ "LC_ALL": "C" },
     )
-    |> ignore
-    let files = r
+    defer child.stdout.close()
+    let files = child.stdout.text
       .read_all()
-      .text()
       .trim(char_set="\n\r ")
       .replace_all(old="\r\n", new="\n")
       .split("\n")
@@ -42,18 +39,22 @@ async test "basic_ls" {
 async test "basic_cat" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
-    let (cat_read, we_write) = @process.write_to_process()
-    let (we_read, cat_write) = @process.read_from_process()
-    @process.spawn(group, cat, [], stdin=cat_read, stdout=cat_write) |> ignore
+    let child = @process.spawn(
+      group,
+      cat,
+      [],
+      stdin=@process.write_to_process(),
+      stdout=@process.read_from_process(),
+    )
     group.spawn_bg() <| () => {
-      defer we_write.close()
-      we_write.write(b"abcd")
+      defer child.stdin.close()
+      child.stdin.write(b"abcd")
       @async.sleep(50)
-      we_write.write(b"efgh")
+      child.stdin.write(b"efgh")
     }
     group.spawn_bg() <| () => {
-      defer we_read.close()
-      inspect(we_read.read_all().text(), content="abcdefgh")
+      defer child.stdout.close()
+      inspect(child.stdout.text.read_all(), content="abcdefgh")
     }
   }
 }
@@ -61,8 +62,9 @@ async test "basic_cat" {
 ///|
 #cfg(platform="windows")
 async test "execute .com file" {
-  let (_, output) = @process.collect_stdout("chcp.com", [])
-  guard output.binary().strip_suffix(b"\r\n") is Some(output) &&
+  let result = @process.run("chcp.com", [], stdout=@process.read_from_process())
+  let output = result.stdout_binary()
+  guard output.strip_suffix(b"\r\n") is Some(output) &&
     output.rev_find(b" ") is Some(index) &&
     index + 1 < output.length() else {
     fail("invalid output format from chcp")
@@ -80,10 +82,12 @@ async test "execute .com file" {
 async test "prevent NUL command injection" {
   let prog = sleep_prog.wait()
   let bad_arg = "abc\u{0000}def"
-  let (_, output) = @process.collect_stdout(prog, [
-    "100", "-print-after-sleep", bad_arg,
-  ])
-  inspect(output.text().trim_end(chars="\r\n"), content="abc")
+  let result = @process.run(
+    prog,
+    ["100", "-print-after-sleep", bad_arg],
+    stdout=@process.read_from_process(),
+  )
+  inspect(result.stdout_text().trim_end(chars="\r\n"), content="abc")
 }
 
 ///|

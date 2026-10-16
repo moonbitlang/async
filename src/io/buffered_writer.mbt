@@ -26,6 +26,7 @@ struct BufferedWriter[W] {
   writer : W
   buf : FixedArray[Byte]
   mut len : Int32
+  ctrl : BinaryWriterController
 }
 
 ///|
@@ -34,7 +35,12 @@ pub fn[W] BufferedWriter::new(
   writer : W,
   size~ : Int32 = 1024,
 ) -> BufferedWriter[W] {
-  { writer, buf: FixedArray::make(size, 0), len: 0, }
+  {
+    writer,
+    buf: FixedArray::make(size, 0),
+    len: 0,
+    ctrl: BinaryWriterController(),
+  }
 }
 
 ///|
@@ -45,7 +51,7 @@ pub fn[W] BufferedWriter::capacity(self : BufferedWriter[W]) -> Int32 {
 
 ///|
 /// Flush all buffered data and commit them to the underlying writer.
-pub async fn[W : Writer] BufferedWriter::flush(
+pub async fn[W : BinaryWriter] BufferedWriter::flush(
   self : BufferedWriter[W],
 ) -> Unit {
   if self.len > 0 {
@@ -55,7 +61,10 @@ pub async fn[W : Writer] BufferedWriter::flush(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_once(
+pub impl[W : BinaryWriter] BinaryWriter for BufferedWriter[W]
+
+///|
+impl[W : BinaryWriter] BinaryWriterImpl for BufferedWriter[W] with fn raw_write_impl(
   self,
   buf,
   offset~,
@@ -71,25 +80,11 @@ pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_once(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_reader(
+impl[W : BinaryWriter] BinaryWriterImpl for BufferedWriter[W] with fn get_controller(
   self,
-  reader,
 ) {
-  for ;; {
-    if self.len >= self.buf.length() {
-      self.flush()
-    }
-    let n = reader.read(
-      self.buf,
-      offset=self.len,
-      max_len=self.buf.length() - self.len,
-    )
-    if n == 0 {
-      break
-    }
-    self.len += n
-  }
+  self.ctrl
 }
 
 ///|
-pub extend BufferedWriter with Writer::{write_once, write, write_reader}
+pub extend BufferedWriter with BinaryWriter::{write, write_reader}

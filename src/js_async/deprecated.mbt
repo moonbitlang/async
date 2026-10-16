@@ -16,8 +16,3 @@
 #deprecated
 #doc(hidden)
 pub extend JsError with Show::{output}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend ReadableStream with @io.Reader::{_direct_read, _get_internal_buffer}

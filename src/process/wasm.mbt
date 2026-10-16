@@ -74,14 +74,14 @@ async fn raw_spawn(
   args : ArrayView[String],
   extra_env~ : Map[String, String],
   inherit_env~ : Bool,
-  stdin~ : &ProcessInput?,
-  stdout~ : &ProcessOutput?,
-  stderr~ : &ProcessOutput?,
+  stdin~ : &ProcessInput,
+  stdout~ : &ProcessOutput,
+  stderr~ : &ProcessOutput,
   cwd~ : StringView?,
   no_console_window~ : Bool,
   is_orphan~ : Bool,
   context~ : String,
-) -> @event_loop.Process {
+) -> (@event_loop.Process, WriteToProcess, ReadFromProcess, ReadFromProcess) {
   match @event_loop.platform {
     Windows =>
       raw_spawn_windows(

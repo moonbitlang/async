@@ -106,27 +106,30 @@ fn Cookie::parse(line : StringView) -> Cookie raise {
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn[W : @io.Writer] Cookie::write_to(cookie : Cookie, w : W) -> Unit {
-  w..write(cookie.name)..write("=").write(cookie.value)
+async fn[W : @io.BinaryWriter] Cookie::write_to(cookie : Cookie, w : W) -> Unit {
+  w
+  ..write(@utf8.encode(cookie.name))
+  ..write(b"=")
+  .write(@utf8.encode(cookie.value))
   if cookie.path is Some(path) {
-    w..write("; Path=").write(path)
+    w..write(b"; Path=").write(@utf8.encode(path))
   }
   if cookie.expires_raw is Some(expires_raw) {
-    w..write("; Expires=").write(expires_raw)
+    w..write(b"; Expires=").write(@utf8.encode(expires_raw))
   }
   if cookie.max_age is Some(max_age) {
-    w..write("; Max-Age=").write(max_age.to_string())
+    w..write(b"; Max-Age=").write(@utf8.encode(max_age.to_string()))
   }
   if cookie.domain is Some(domain) {
-    w..write("; Domain=").write(domain)
+    w..write(b"; Domain=").write(@utf8.encode(domain))
   }
   if cookie.secure {
-    w.write("; Secure")
+    w.write(b"; Secure")
   }
   if cookie.http_only {
-    w.write("; HttpOnly")
+    w.write(b"; HttpOnly")
   }
   for ext in cookie.extensions {
-    w..write("; ").write(ext)
+    w..write(b"; ").write(@utf8.encode(ext))
   }
 }

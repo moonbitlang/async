@@ -20,7 +20,7 @@ async fn server_main(server : @socket.TcpServer) -> Int32 {
   let mut num_connection = 0
   (server.run_forever(allow_failure=false) <| ((conn, _) => {
     num_connection += 1
-    while conn.read_some() is Some(msg) {
+    while conn.read() is Some(msg) {
       if msg == b"exit" {
         @async.sleep(20)
         raise ServerTerminate

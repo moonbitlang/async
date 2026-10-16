@@ -31,7 +31,9 @@ pub async fn Conn::from_http_server(
 ) -> Conn {
   errdefer conn.close()
   async fn bad_request(msg : String) {
-    conn..send_response(400, "Bad Request")..write(msg).end_response()
+    conn.send_response(400, "Bad Request")
+    conn.text.write(msg)
+    conn.end_response()
     raise InvalidHandshake(msg)
   }
 

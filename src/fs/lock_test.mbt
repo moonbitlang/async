@@ -14,18 +14,18 @@
 
 ///|
 let lock_file_prog : @async.Lazy[String] = Lazy(() => {
-  let code = @process.run("moon", [
+  let proc = @process.run("moon", [
     "build", "test_programs/lock_file", "--debug", "--target-dir", "_build/test_programs",
   ])
-  if code != 0 {
-    fail("failed to build test program `lock_file`: \{code}")
+  if proc.exit_code != 0 {
+    fail("failed to build test program `lock_file`: \{proc.exit_code}")
   }
   "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/lock_file/lock_file.exe"
 })
 
 ///|
 async fn run_lock_file_prog(
-  group : @async.TaskGroup[Unit],
+  group : @async.TaskGroup,
   file : String,
   lock : @fs.Lock,
   log : Array[String],
@@ -33,17 +33,16 @@ async fn run_lock_file_prog(
   prefix~ : String = "",
 ) -> @async.Task[Unit] {
   let prog = lock_file_prog.wait()
-  let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
-  let _ = @process.spawn(group, prog, stdout=w, [
-    file,
-    "-duration",
-    duration.to_string(),
-    lock_kind,
-  ])
+  let lock_proc = @process.spawn(
+    group,
+    prog,
+    stdout=@process.read_from_process(),
+    [file, "-duration", duration.to_string(), lock_kind],
+  )
   group.spawn() <| () => {
-    defer r.close()
-    while r.read_until("\n") is Some(line) {
+    defer lock_proc.stdout.close()
+    while lock_proc.stdout.text.read_until("\n") is Some(line) {
       log.push(prefix + line)
     }
   }
@@ -329,7 +328,7 @@ async test "flock advisory" {
   let log = []
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, "abcd")
+    @fs.write_text(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
@@ -342,7 +341,7 @@ async test "flock advisory" {
     )
     @async.sleep(250)
     log.push("attempting to read")
-    log.push("read from file: \{file.read_all().text()}")
+    log.push("read from file: \{file.text.read_all()}")
   }
   json_inspect(log, content=[
     "child: acquired lock", "attempting to read", "read from file: abcd", "child: releasing lock",

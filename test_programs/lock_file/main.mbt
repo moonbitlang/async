@@ -53,7 +53,7 @@ async fn main {
   defer file.close()
   file.lock(kind)
   defer file.unlock()
-  @stdio.stdout.write("acquired lock\n")
+  @stdio.stdout.text.write("acquired lock\n")
   @async.sleep(duration)
-  @stdio.stdout.write("releasing lock\n")
+  @stdio.stdout.text.write("releasing lock\n")
 }

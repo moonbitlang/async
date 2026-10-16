@@ -31,12 +31,12 @@ async test "rename basic" {
     }
   }
   defer file.close()
-  file.write("abcd")
-  inspect(@fs.read_file(old_path).text(), content="abcd")
+  file.write(b"abcd")
+  inspect(@fs.read_text(old_path), content="abcd")
   @fs.rename(old_path, new_path)
-  inspect(@fs.read_file(new_path).text(), content="abcd")
+  inspect(@fs.read_text(new_path), content="abcd")
   file.write_at(b"ABCD", position=0)
-  inspect(@fs.read_file(new_path).text(), content="ABCD")
+  inspect(@fs.read_text(new_path), content="ABCD")
   inspect(@fs.exists(old_path), content="false")
 }
 
@@ -44,7 +44,7 @@ async test "rename basic" {
 async test "rename replace" {
   let old_path = "_build/rename_replace_test_old"
   let new_path = "_build/rename_replace_test_new"
-  @fs.write_file(new_path, "xyzw")
+  @fs.write_text(new_path, "xyzw")
   defer {
     if @fs.exists(old_path) {
       @fs.remove(old_path)
@@ -62,16 +62,16 @@ async test "rename replace" {
   defer old_file.close()
   let new_file = @fs.open(new_path, mode=ReadOnly, create_mode=OpenExisting)
   defer new_file.close()
-  old_file.write("abcd")
-  inspect(@fs.read_file(old_path).text(), content="abcd")
-  inspect(@fs.read_file(new_path).text(), content="xyzw")
+  old_file.write(b"abcd")
+  inspect(@fs.read_text(old_path), content="abcd")
+  inspect(@fs.read_text(new_path), content="xyzw")
   @test_util.assert_raise_async <| () => {
     @fs.rename(old_path, new_path, replace=false)
   }
   @fs.rename(old_path, new_path, replace=true)
-  inspect(@fs.read_file(new_path).text(), content="abcd")
-  inspect(new_file.read_all().text(), content="xyzw")
+  inspect(@fs.read_text(new_path), content="abcd")
+  inspect(new_file.text.read_all(), content="xyzw")
   old_file.write_at(b"ABCD", position=0)
-  inspect(@fs.read_file(new_path).text(), content="ABCD")
+  inspect(@fs.read_text(new_path), content="ABCD")
   inspect(@fs.exists(old_path), content="false")
 }

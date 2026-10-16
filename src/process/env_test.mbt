@@ -16,17 +16,16 @@
 ///|
 async test "set_env" {
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
     let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       shell,
       ["-c", "\{write_stdout} \{env_var}"],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={ "MAGIC_VAR": "MAGIC_VALUE" },
     )
-    inspect(r.read_all().text(), content="MAGIC_VALUE")
+    defer child.stdout.close()
+    inspect(child.stdout.text.read_all(), content="MAGIC_VALUE")
   }
 }
 
@@ -34,13 +33,11 @@ async test "set_env" {
 async test "set_env no inherit" {
   let test_prog = dump_env_prog.wait()
   @async.with_task_group() <| group => {
-    let (r, w) = @process.read_from_process()
-    defer r.close()
-    let _ = @process.spawn(
+    let child = @process.spawn(
       group,
       test_prog,
       [],
-      stdout=w,
+      stdout=@process.read_from_process(),
       extra_env={
         "MAGIC_VAR_1": "MAGIC_VALUE_1",
         "MAGIC_VAR_2": "MAGIC_VALUE_2",
@@ -49,8 +46,9 @@ async test "set_env no inherit" {
       },
       inherit_env=false,
     )
+    defer child.stdout.close()
     inspect(
-      r.read_all().text().replace_all(old="\r\n", new="\n"),
+      child.stdout.text.read_all().replace_all(old="\r\n", new="\n"),
       content=(
         #|MAGIC_VAR_1=MAGIC_VALUE_1
         #|MAGIC_VAR_2=MAGIC_VALUE_2
@@ -68,13 +66,14 @@ async test "set_env override" {
   @env.set_env_var(name, "old_value")
   // On Windows, environment variables are case-insensitive
   let env_var = if is_windows { "$env:\{name.to_lower()}" } else { "$\{name}" }
-  let (_, output) = @process.collect_stdout(
+  let result = @process.run(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env=Map([(name, "overwritten")]),
+    stdout=@process.read_from_process(),
   )
   inspect(
-    output.text().trim_end(chars="\r\n"),
+    result.stdout_text().trim_end(chars="\r\n"),
     content=(
       #|overwritten
     ),
@@ -84,28 +83,31 @@ async test "set_env override" {
 ///|
 async test "set_env injection key" {
   let env_var = if is_windows { "$env:MAGIC_VAR" } else { "$MAGIC_VAR" }
-  let (_, output) = @process.collect_stdout(
+  let result = @process.run(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
+    stdout=@process.read_from_process(),
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(result.stdout_text().trim_end(chars="\r\n"))
   let env_var2 = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
-  let (_, output) = @process.collect_stdout(
+  let result = @process.run(
     shell,
     ["-c", "\{write_stdout} \{env_var2}"],
     extra_env={ "MAGIC_VAR\u{0000}MAGIC_VAR2=def": "abc" },
+    stdout=@process.read_from_process(),
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(result.stdout_text().trim_end(chars="\r\n"))
 }
 
 ///|
 async test "set_env injection value" {
   let env_var = if is_windows { "$env:MAGIC_VAR2" } else { "$MAGIC_VAR2" }
-  let (_, output) = @process.collect_stdout(
+  let result = @process.run(
     shell,
     ["-c", "\{write_stdout} \{env_var}"],
     extra_env={ "MAGIC_VAR": "abc\u{0000}MAGIC_VAR2=def" },
+    stdout=@process.read_from_process(),
   )
-  inspect(output.text().trim_end(chars="\r\n"))
+  inspect(result.stdout_text().trim_end(chars="\r\n"))
 }

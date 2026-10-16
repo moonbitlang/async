@@ -27,7 +27,7 @@ async test "send_request basic" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -57,7 +57,7 @@ async test "send_request stream" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -310,16 +310,16 @@ async test "send_request stream2" {
         "Host": "x.y.org",
         "User-Agent": "MoonBit",
       })
-      sender.write("abcd")
+      sender.write(b"abcd")
       @async.sleep(50)
-      sender.write("efgh")
+      sender.write(b"efgh")
       @async.sleep(50)
-      sender.write("ijkl")
+      sender.write(b"ijkl")
       sender.end_body()
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -357,7 +357,7 @@ async test "send invalid header" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -379,8 +379,8 @@ async test "send fixed length" {
       let sender = Sender::new(w)
       let license_file = @fs.open("LICENSE", mode=ReadOnly)
       defer license_file.close()
-      let header = "===== header =====\n"
-      let trailer = "===== trailer =====\n"
+      let header = b"===== header =====\n"
+      let trailer = b"===== trailer =====\n"
       let total_size = license_file.size() +
         header.length().to_int64() +
         trailer.length().to_int64()
@@ -395,7 +395,7 @@ async test "send fixed length" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Content-Length: 11397\r
@@ -617,7 +617,7 @@ async test "sender write incorrect length" {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      while r.read_some() is Some(_) {
+      while r.read() is Some(_) {
 
       }
     }
@@ -643,7 +643,7 @@ async test "sender write_reader incorrect length" {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      while r.read_some() is Some(_) {
+      while r.read() is Some(_) {
 
       }
     }
@@ -669,7 +669,7 @@ async test "sender end_body incorrect length" {
     let (r, w) = @io.pipe()
     group.spawn_bg(no_wait=true) <| () => {
       defer r.close()
-      while r.read_some() is Some(_) {
+      while r.read() is Some(_) {
 
       }
     }
@@ -723,7 +723,7 @@ async test "send_response cookies" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 OK\r
         #|Set-Cookie: Cookie1=value1\r
@@ -746,7 +746,7 @@ async test "send_request empty body" {
       defer w.close()
       let sender = Sender::new(w)
       let _ = sender.send_request(Get, "/", extra_headers=Map([]))
-      sender..write("").end_body()
+      sender..write(b"").end_body()
       let _ = sender.send_request(Head, "/", extra_headers=Map([]))
       sender.end_body()
       let _ = sender.send_request(Post, "/", extra_headers=Map([]))
@@ -754,7 +754,7 @@ async test "send_request empty body" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Accept-Encoding: gzip,identity\r
@@ -793,7 +793,7 @@ async test "send_response empty body" {
         request_method=Head,
         extra_headers=Map([]),
       )
-      sender..write("").end_body()
+      sender..write(b"").end_body()
       let _ = sender.send_response(
         102,
         "OK",
@@ -809,7 +809,7 @@ async test "send_response empty body" {
         request_method=Get,
         extra_headers=Map([]),
       )
-      sender..write("").end_body()
+      sender..write(b"").end_body()
       let _ = sender.send_response(
         304,
         "OK",
@@ -821,7 +821,7 @@ async test "send_response empty body" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 OK\r
         #|Content-Length: 0\r
@@ -855,7 +855,7 @@ async test "sender persistent header" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|GET / HTTP/1.1\r
         #|Host: x.y.org\r
@@ -885,7 +885,7 @@ async test "HEAD response with Content-Length" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 Ok\r
         #|Host: x.y.org\r
@@ -912,14 +912,14 @@ async test "HEAD response with non-empty body" {
         "Content-Length": "4",
       })
       debug_inspect(
-        @test_util.expect_error_async(() => sender..write("abcd").end_body()),
+        @test_util.expect_error_async(() => sender..write(b"abcd").end_body()),
         content=(
           #|IncorrectBodyLength
         ),
       )
     }
     defer r.close()
-    ignore(r.read_all().binary())
+    ignore(r.read_all())
   }
 }
 
@@ -940,7 +940,7 @@ async test "reject header injection" {
     }
     defer r.close()
     inspect(
-      r.read_all().binary() |> @bytes_util.ascii_to_string,
+      r.read_all() |> @bytes_util.ascii_to_string,
       content=(
         #|HTTP/1.1 200 Ok\r
         #|Host: x.y.orgInjected: xxx\r

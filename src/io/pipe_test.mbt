@@ -19,7 +19,7 @@ async test "PipeRead blocked cancellation safety" {
     let reader = group.spawn() <| () => {
       defer r.close()
       debug_inspect(
-        r.read_some(),
+        r.read(),
         content=(
           #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
         ),
@@ -28,7 +28,7 @@ async test "PipeRead blocked cancellation safety" {
     defer w.close()
     @async.pause()
     reader.cancel()
-    inspect(w.write_once(b"abcd", offset=0, len=4), content="4")
+    w.write(b"abcd")
     // `reader` should succeed here
     reader.wait()
   }
@@ -40,18 +40,13 @@ async test "PipeWrite blocked cancellation safety" {
   @async.with_task_group <| group => {
     let writer = group.spawn() <| () => {
       defer w.close()
-      inspect(
-        w.write_once(b"abcd", offset=0, len=4),
-        content=(
-          #|4
-        ),
-      )
+      w.write(b"abcd")
     }
     defer r.close()
     @async.pause()
     writer.cancel()
     debug_inspect(
-      r.read_some(),
+      r.read(),
       content=(
         #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),
@@ -68,14 +63,14 @@ async test "PipeRead immediate cancellation safety" {
     let reader = group.spawn() <| () => {
       defer r.close()
       debug_inspect(
-        r.read_some(),
+        r.read(),
         content=(
           #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
         ),
       )
     }
     defer w.close()
-    inspect(w.write_once(b"abcd", offset=0, len=4), content="4")
+    w.write(b"abcd")
     reader.cancel()
     // `reader` should succeed here
     reader.wait()
@@ -88,16 +83,11 @@ async test "PipeWrite immediate cancellation safety" {
   @async.with_task_group <| group => {
     let writer = group.spawn() <| () => {
       defer w.close()
-      inspect(
-        w.write_once(b"abcd", offset=0, len=4),
-        content=(
-          #|4
-        ),
-      )
+      w.write(b"abcd")
     }
     defer r.close()
     debug_inspect(
-      r.read_some(),
+      r.read(),
       content=(
         #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),

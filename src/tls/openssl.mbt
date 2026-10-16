@@ -279,18 +279,19 @@ fn BIO::read(bio : BIO, dst : @c_buffer.Buffer, len : Int32) -> Int32 {
     Closed => return 0
     Error(_) => return -1
   }
-  let read_buf = ep.reader._get_internal_buffer().repr()
-  guard read_buf.len > 0 else {
+  let controller = @io.BinaryReaderImpl::get_controller(ep.reader)
+  let buffered = controller.buffered()
+  guard buffered.length() > 0 else {
     bio.set_flags(BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY)
     -1
   }
-  let len = @cmp.minimum(read_buf.len, len)
+  let len = @cmp.minimum(buffered.length(), len)
   dst.blit_from_bytes(
-    src=read_buf.buf.unsafe_reinterpret_as_bytes(),
-    src_offset=read_buf.start,
+    src=buffered.data(),
+    src_offset=buffered.start_offset(),
     len~,
   )
-  read_buf.drop(len)
+  controller.drop(len)
   len
 }
 
@@ -320,14 +321,15 @@ struct Tls {
   host : String?
   is_client : Bool
   transport : Transport
-  read_buf : @io.ReaderBuffer
+  reader_ctrl : @io.BinaryReaderController
+  writer_ctrl : @io.BinaryWriterController
   mut shutdown : Bool
   mut closed : Bool
 }
 
 ///|
 #cfg(not(platform="windows"))
-fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
+fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::from_pair(
   ctx : SSL_CTX,
   r : R,
   w : W,
@@ -344,7 +346,8 @@ fn[R : @io.Reader, W : @io.Writer] Tls::from_pair(
     host,
     is_client,
     transport,
-    read_buf: @io.ReaderBuffer::new(),
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
     shutdown: false,
     closed: false,
   }
@@ -358,7 +361,7 @@ async fn SSL_CTX::client_with_custom_root(root_cert : String) -> SSL_CTX {
     return ctx
   }
   errdefer ctx.free()
-  let pem = @fs.read_file(root_cert).text()
+  let pem = @fs.read_text(root_cert)
   for cert in decode_pem_certificates(pem) {
     if ctx.add_root_certificate(cert) != 1 {
       raise TlsError(err_get_error())
@@ -398,7 +401,7 @@ async fn Tls::handle_error(self : Tls, err : Int32) -> Unit {
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
 #cfg(not(platform="windows"))
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   r : R,
   w : W,
   verify~ : Bool = true,
@@ -449,7 +452,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
 #cfg(not(platform="windows"))
 #internal(internal, "do not use, for internal testing only")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   r : R,
   w : W,
   private_key_file~ : String,
@@ -491,7 +494,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 /// `certificate_file` and `certificate_type` specifies the certificate of the server.
 #cfg(not(platform="windows"))
 #internal(internal, "do not use, for internal testing only")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   inner : Inner,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
@@ -510,7 +513,13 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let n = while self.ssl.read(buf, offset, max_len) is ret {
     if ret > 0 {
       break ret
@@ -521,8 +530,7 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
       self.shutdown()
       break 0
     }
-    if self.transport.state is Closed &&
-      self.transport.reader._get_internal_buffer().repr().len is 0 {
+    if self.transport.state is Closed && controller.buffered().length() is 0 {
       // Not all TLS client/servers close the connection properly.
       // Some peers just close the underlying TCP connection
       // without performing a TLS closure.
@@ -540,24 +548,18 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 
 ///|
 #cfg(not(platform="windows"))
-pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for Tls with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
 #cfg(not(platform="windows"))
-pub extend Tls with @io.Reader::{
-  read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
-  read_exactly,
-}
-
-///|
-#cfg(not(platform="windows"))
-pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let n = while self.ssl.write(buf, offset, len) is ret {
     if ret > 0 {
       break ret
@@ -573,7 +575,9 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
 
 ///|
 #cfg(not(platform="windows"))
-pub extend Tls with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  self.writer_ctrl
+}
 
 ///|
 /// Close a TLS connection and release related resource.
@@ -709,4 +713,5 @@ let _unused : Unit = {
   ignore(@os_error.check_errno)
   ignore(@os_string.encode)
   ignore((_ : @fs.File) => ())
+  ignore(@errno_util.errno_to_string)
 }

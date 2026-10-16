@@ -25,51 +25,51 @@ async test "main" {
     content=(
       #|received new connection
       #|client 0: connection established
-      #|client 0 sent: ping
+      #|client 0 sent: b"ping"
       #|server received: ping
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 0 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 1: connection established
-      #|client 1 sent: pong
+      #|client 1 sent: b"pong"
       #|server received: pong
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 1 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 2: connection established
-      #|client 2 sent: ping
+      #|client 2 sent: b"ping"
       #|server received: ping
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 2 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 3: connection established
-      #|client 3 sent: ping
+      #|client 3 sent: b"ping"
       #|server received: ping
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 3 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 4: connection established
-      #|client 4 sent: pong
+      #|client 4 sent: b"pong"
       #|server received: pong
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 4 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 5: connection established
-      #|client 5 sent: ping
+      #|client 5 sent: b"ping"
       #|server received: ping
-      #|server sent: pong
+      #|server sent: b"pong"
       #|client 5 received: pong
       #|server: connection closed by peer
       #|received new connection
       #|client 6: connection established
-      #|client 6 sent: exit
+      #|client 6 sent: b"exit"
       #|server received: exit
-      #|server sent: pong
+      #|server sent: b"pong"
       #|server initiate terminate
       #|client 6 received: pong
       #|server terminate: ServerTerminate

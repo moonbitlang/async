@@ -25,8 +25,8 @@ priv enum BodyKind {
 /// A HTTP reader type that can parse and deliver HTTP request/response
 priv struct Reader {
   mut body : BodyKind
-  transport : &@io.Reader
-  read_buf : @io.ReaderBuffer
+  transport : &@io.BinaryReader
+  ctrl : @io.BinaryReaderController
   mut auto_decompress : Bool
   mut gzip : @gzip.Decoder?
   mut trailer : Headers?
@@ -35,11 +35,11 @@ priv struct Reader {
 ///|
 /// Create a new HTTP reader wrapping around existing reader `transport`.
 /// The HTTP reader will read data from `transport`.
-fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
+fn[R : @io.BinaryReader] Reader::new(transport : R) -> Reader {
   {
     body: Empty,
     transport,
-    read_buf: @io.ReaderBuffer::new(),
+    ctrl: @io.BinaryReaderController(),
     auto_decompress: false,
     gzip: None,
     trailer: None,
@@ -66,53 +66,44 @@ async fn Reader::decode_chunk(
 ) -> (Int32, Int32) {
   guard self.gzip is Some(gzip) else {
     let max_len = @cmp.minimum(max_len, limit)
-    let n = self.transport.read(buf, offset~, max_len~)
+    let n = self.transport.read_into(buf, offset~, max_len~)
     (n, n)
   }
-  let inner_buf = self.transport._get_internal_buffer().get_repr()
+
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport)
   for consumed = 0; !gzip.is_finished(); {
     let limit = limit - consumed
     let min_len = gzip.minimum_input_size()
     let target = @cmp.minimum(min_len, limit)
 
     // Read from underlying transport until we have enough data to make progress
-    inner_buf.enlarge_to(target)
-    let available = for available = @cmp.minimum(inner_buf.len, limit); available <
-                       target; {
-      let end = inner_buf.start + inner_buf.len
-      let delta = self.transport._direct_read(
-        inner_buf.buf,
-        offset=end,
-        max_len=@cmp.minimum(inner_buf.buf.length() - end, target - available),
-      )
-      guard delta > 0 else { raise BadRequest }
-      inner_buf.len += delta
-      continue available + delta
-    } nobreak {
-      available
+    guard @io.BinaryReaderImpl::ensure_buffered(self.transport, target) else {
+      raise BadRequest
     }
 
+    let data = controller.buffered()
+    let available = @cmp.minimum(data.length(), limit)
     if limit < min_len {
       gzip.write_partial_data(
-        inner_buf.buf.unsafe_reinterpret_as_bytes(),
-        input_offset=inner_buf.start,
+        data.data(),
+        input_offset=data.start_offset(),
         input_len=available,
       )
-      inner_buf.drop(available)
+      self.transport.drop_exactly(available)
       let consumed = consumed + available
       break (consumed, 0)
     }
 
     // Perform the decoding
     let (new_consumed, produced) = gzip.write(
-      inner_buf.buf.unsafe_reinterpret_as_bytes(),
-      input_offset=inner_buf.start,
-      input_len=@cmp.minimum(available, limit),
+      data.data(),
+      input_offset=data.start_offset(),
+      input_len=available,
       buf,
       output_offset=offset,
       output_len=max_len,
     )
-    inner_buf.drop(new_consumed)
+    self.transport.drop_exactly(new_consumed)
     let consumed = consumed + new_consumed
     if produced > 0 {
       break (consumed, produced)
@@ -126,12 +117,20 @@ async fn Reader::decode_chunk(
 }
 
 ///|
+impl @io.BinaryReader for Reader
+
+///|
 /// Read from the body of the HTTP request/response
 /// that is currently being processed by the HTTP reader.
 /// All reader related API of `HttpReader` should be called
 /// after a successful call to `read_request` or `read_response`,
 /// otherwise reading always result in EOF.
-impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Reader with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
@@ -157,15 +156,16 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         Fixed(remaining)
       }
       if produced == 0 && !(self.body is Empty) {
-        self._direct_read(buf, offset~, max_len~)
+        @io.BinaryReaderImpl::raw_read_impl(self, buf, offset~, max_len~)
       } else {
         produced
       }
     }
     Chunked(0) => {
-      guard self.transport.read_until("\r\n") is Some(len_str) else {
+      guard self.transport.read_until(b"\r\n") is Some(len_bytes) else {
         raise @io.ReaderClosed
       }
+      let len_str = @utf8.decode(len_bytes)
       let len_str = if len_str.find(";") is Some(semi_index) {
         validate_chunk_extension(len_str[semi_index:])
         len_str[:semi_index].trim_end(chars=" \t")
@@ -201,7 +201,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
       self.body = Chunked(remaining)
       if produced == 0 {
-        self._direct_read(buf, offset~, max_len~)
+        @io.BinaryReaderImpl::raw_read_impl(self, buf, offset~, max_len~)
       } else {
         produced
       }
@@ -225,14 +225,25 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       }
       self.body = Chunked(remaining)
       if produced == 0 {
-        self._direct_read(buf, offset~, max_len~)
+        @io.BinaryReaderImpl::raw_read_impl(self, buf, offset~, max_len~)
       } else {
         produced
       }
     }
-    PassThrough => self.transport._direct_read(buf, offset~, max_len~)
+    PassThrough =>
+      @io.BinaryReaderImpl::raw_read_impl(
+        self.transport,
+        buf,
+        offset~,
+        max_len~,
+      )
     WaitConnectionClose => {
-      let n = self.transport._direct_read(buf, offset~, max_len~)
+      let n = @io.BinaryReaderImpl::raw_read_impl(
+        self.transport,
+        buf,
+        offset~,
+        max_len~,
+      )
       if n is 0 {
         self.trailer = Some({})
       }
@@ -242,40 +253,40 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-impl @io.Reader for Reader with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Reader with fn get_controller(self) {
   if self.body is PassThrough || self.body is WaitConnectionClose {
-    self.transport._get_internal_buffer()
+    @io.BinaryReaderImpl::get_controller(self.transport)
   } else {
-    self.read_buf
+    self.ctrl
   }
 }
 
 ///|
-extend Reader with @io.Reader::{_direct_read, _get_internal_buffer, drop}
+extend Reader with @io.BinaryReader::{drop_all}
 
 ///|
 async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
   let headers : Headers = Map([])
   let cookies = []
   for ;; {
-    guard self.transport.read_until("\r\n") is Some(header_line) else {
+    guard self.transport.read_until(b"\r\n") is Some(header_line) else {
       raise @io.ReaderClosed
     }
-    if header_line is "" {
+    if header_line.length() is 0 {
       // empty line indicates end of header
       break
     }
-    guard header_line.find(":") is Some(colon_index) else { raise BadRequest }
-    let key = CaseInsensitiveString(header_line[:colon_index].to_owned())
+    guard header_line.find(b":") is Some(colon_index) else { raise BadRequest }
+    let key = CaseInsensitiveString(@utf8.decode(header_line[:colon_index]))
     if !is_valid_http_header_field_name(key.0) {
       raise BadRequest
     }
     let value = if colon_index + 1 == header_line.length() {
       ""
-    } else if header_line.code_unit_at(colon_index + 1) == ' ' {
-      header_line[colon_index + 2:].to_owned()
+    } else if header_line[colon_index + 1] == b' ' {
+      @utf8.decode(header_line[colon_index + 2:])
     } else {
-      header_line[colon_index + 1:].to_owned()
+      @utf8.decode(header_line[colon_index + 1:])
     }
     if key == "Set-Cookie" {
       cookies.push(Cookie::parse(value))
@@ -346,28 +357,28 @@ fn Reader::setup_message_body(
 async fn Reader::read_request(self : Reader) -> Request {
   guard! self.body is Empty
   self.trailer = None
-  guard self.transport.read_until("\r\n") is Some(request_line) else {
+  guard self.transport.read_until(b"\r\n") is Some(request_line) else {
     raise @io.ReaderClosed
   }
-  guard request_line.find(" ") is Some(meth_len) else { raise BadRequest }
+  guard request_line.find(b" ") is Some(meth_len) else { raise BadRequest }
   let meth = match request_line[:meth_len] {
-    "GET" => Get
-    "HEAD" => Head
-    "POST" => Post
-    "PUT" => Put
-    "DELETE" => Delete
-    "CONNECT" => Connect
-    "OPTIONS" => Options
-    "TRACE" => Trace
-    "PATCH" => Patch
+    b"GET" => Get
+    b"HEAD" => Head
+    b"POST" => Post
+    b"PUT" => Put
+    b"DELETE" => Delete
+    b"CONNECT" => Connect
+    b"OPTIONS" => Options
+    b"TRACE" => Trace
+    b"PATCH" => Patch
     _ => raise BadRequest
   }
   let request_line = request_line[meth_len + 1:]
-  guard request_line.find(" ") is Some(path_len) else { raise BadRequest }
-  let path = request_line[:path_len].to_owned()
+  guard request_line.find(b" ") is Some(path_len) else { raise BadRequest }
+  let path = @utf8.decode(request_line[:path_len])
   match request_line[path_len + 1:] {
-    "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol => raise HttpVersionNotSupported(protocol.to_owned())
+    b"HTTP/1.1" | b"HTTP/1.0" => ()
+    protocol => raise HttpVersionNotSupported(@utf8.decode(protocol))
   }
   let (headers, cookies) = self.read_headers()
   guard cookies.length() is 0 else { raise BadRequest }
@@ -401,20 +412,20 @@ async fn Reader::read_response(
   self.auto_decompress = auto_decompress
   guard! self.body is Empty
   self.trailer = None
-  guard self.transport.read_until("\r\n") is Some(response_line) else {
+  guard self.transport.read_until(b"\r\n") is Some(response_line) else {
     raise @io.ReaderClosed
   }
-  guard response_line.find(" ") is Some(protocol_len) else { raise BadRequest }
+  guard response_line.find(b" ") is Some(protocol_len) else { raise BadRequest }
   match response_line[:protocol_len] {
-    "HTTP/1.1" | "HTTP/1.0" => ()
-    protocol => raise HttpVersionNotSupported(protocol.to_owned())
+    b"HTTP/1.1" | b"HTTP/1.0" => ()
+    protocol => raise HttpVersionNotSupported(@utf8.decode(protocol))
   }
   let response_line = response_line[protocol_len + 1:]
-  guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
-  let code = @string.parse_int(response_line[:code_len], base=10) catch {
+  guard response_line.find(b" ") is Some(code_len) else { raise BadRequest }
+  let code = @string.parse_int(@utf8.decode(response_line[:code_len]), base=10) catch {
     _ => raise BadRequest
   }
-  let reason = response_line[code_len + 1:].to_owned()
+  let reason = @utf8.decode(response_line[code_len + 1:])
   let (headers, cookies) = self.read_headers()
   if should_not_have_body(request_method, code) {
     self.body = Empty
@@ -434,17 +445,12 @@ async fn Reader::skip_body(self : Reader) -> Unit {
   if self.body is Empty {
     return
   }
-  while self.drop(1024) == 1024 {
-
-  }
+  ignore(self.drop_all())
 }
-
-///|
-fn @io.ReaderBuffer::get_repr(self : Self) -> @io_buffer.Buffer = "%identity"
 
 ///|
 async fn Reader::enter_passthrough_mode(self : Reader) -> Unit {
   self.skip_body()
-  self.read_buf.get_repr().clear()
+  self.ctrl.clear()
   self.body = PassThrough
 }

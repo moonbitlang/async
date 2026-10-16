@@ -22,5 +22,5 @@ async test "/dev/null" {
   defer file.close()
   assert_eq(file.kind(), CharDevice)
   file.write(Bytes::make(1024, 0))
-  assert_eq(file.read_all().text(), "")
+  assert_eq(file.text.read_all(), "")
 }

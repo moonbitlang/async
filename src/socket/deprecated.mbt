@@ -126,8 +126,3 @@ pub extend IpProtocolPreference with Debug::{to_repr}
 #deprecated
 #doc(hidden)
 pub extend IpProtocolPreference with Show::{output}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend Tcp with @io.Reader::{_direct_read, _get_internal_buffer}

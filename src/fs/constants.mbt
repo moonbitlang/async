@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#non_exhaustive
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -22,23 +23,10 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
+  Console = 8
 } derive(Eq, Debug)
 
 ///|
 // currently we cannot re-export constructors,
 // so we have to use a hack to make the `FileKind` type available to users.
-fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind {
-  match k {
-    Unknown => Unknown
-    Regular => Regular
-    Directory => Directory
-    SymLink => SymLink
-    Socket => Socket
-    Pipe => Pipe
-    BlockDevice => BlockDevice
-    CharDevice => CharDevice
-    Console =>
-      // For backward compatibility
-      CharDevice
-  }
-}
+fn FileKind::from_fd_util_file_kind(k : @fd_util.FileKind) -> FileKind = "%identity"

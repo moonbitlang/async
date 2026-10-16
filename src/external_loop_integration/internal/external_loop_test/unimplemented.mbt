@@ -22,7 +22,7 @@ pub let unimplemented : Unit = {
 ///|
 #cfg(target="wasm")
 let _unused_wasm : Unit = {
-  let _ : (@os_error.OSError) -> Unit = ignore
+  let _ : (@os_error.OsError) -> Unit = ignore
   let _ : (@fd_util.Fd) -> Unit = ignore
 }
 

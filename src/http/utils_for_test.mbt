@@ -14,7 +14,7 @@
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int32 {
+async fn non_responding_tcp_server(group : @async.TaskGroup) -> Int32 {
   let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
   group.add_defer(() => server.close())
   server.addr.port()
@@ -49,7 +49,7 @@ extern "js" fn TcpServer::port(server : TcpServer) -> Int32 =
 
 ///|
 #cfg(target="js")
-async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int32 {
+async fn non_responding_tcp_server(group : @async.TaskGroup) -> Int32 {
   let server = TcpServer::create().wait()
   group.add_defer(() => server.close())
   server.port()
@@ -57,7 +57,7 @@ async fn non_responding_tcp_server(group : @async.TaskGroup[Unit]) -> Int32 {
 
 ///|
 #cfg(any(target="native", target="wasm"))
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int32 {
+async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int32 {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true) <| () => {
     server.run_forever() <| ((request, body, conn) => {
@@ -74,16 +74,18 @@ async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int32 {
         "/get-streaming" | "/put-streaming" | "/post-streaming" => {
           let meth = @debug.to_string(request.meth).to_upper()
           log.write_string("server received request: \{meth} \{request.path}\n")
-          while body.read_some() is Some(data) {
+          while body.read() is Some(data) {
             let data = @utf8.decode(data)
             log.write_string("server received: \{data}")
           }
           conn.send_response(200, "OK")
           log.write_string("server: sending \{meth} response part 1\n")
-          conn..write("\{meth} response part 1\n").flush()
+          conn.text.write("\{meth} response part 1\n")
+          conn.flush()
           @async.sleep(100)
           log.write_string("server: sending \{meth} response part 2\n")
-          conn.write("\{meth} response part 2\n")
+          conn.text.write("\{meth} response part 2\n")
+          conn.flush()
         }
         "/informational" => {
           conn
@@ -190,7 +192,7 @@ extern "js" fn Server::create(
 
 ///|
 #cfg(target="js")
-async fn test_server(group : @async.TaskGroup[Unit], log : &Logger) -> Int32 {
+async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int32 {
   let server = Server::create(msg => log.write_string(msg)).wait()
   group.add_defer(() => server.close())
   server.port()

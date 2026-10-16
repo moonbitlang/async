@@ -17,7 +17,7 @@
 async fn download(
   url : String,
   proxy~ : String?,
-  output~ : &@io.Writer,
+  output~ : &@io.BinaryWriter,
 ) -> Unit {
   let proxy = match proxy {
     None => None

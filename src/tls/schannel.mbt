@@ -119,7 +119,8 @@ struct Tls {
   context : Schannel
   is_client : Bool
   host : String?
-  read_buf : @io.ReaderBuffer
+  reader_ctrl : @io.BinaryReaderController
+  writer_ctrl : @io.BinaryWriterController
   transport : Transport
   mut curr_msg_remaining : Int32
   mut curr_msg_trailer : Int32
@@ -150,19 +151,20 @@ async fn Tls::connect(self : Tls) -> Unit {
     None => None
     Some(str) => Some(@os_string.encode(str))
   }
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
   for ;; {
+    let read_buf = controller.buffered()
     let ret = self.context.connect(
       host,
-      in_buffer=read_buf.buf.unsafe_reinterpret_as_bytes(),
-      in_buffer_offset=read_buf.start,
-      in_buffer_len=read_buf.len,
+      in_buffer=read_buf.data(),
+      in_buffer_offset=read_buf.start_offset(),
+      in_buffer_len=read_buf.length(),
       out_buffer=write_buf.buf,
       out_buffer_offset=write_buf.start,
       out_buffer_len=write_buf.buf.length() - write_buf.start - write_buf.len,
     )
-    read_buf.drop(self.context.bytes_read())
+    controller.drop(self.context.bytes_read())
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
@@ -172,8 +174,8 @@ async fn Tls::connect(self : Tls) -> Unit {
       WantRead => self.transport.read_more()
       WantWrite => self.transport.flush_write()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -194,7 +196,7 @@ async fn Tls::connect(self : Tls) -> Unit {
 /// `sni=false` is currently unsupported on Windows.
 #cfg(platform="windows")
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   reader : R,
   writer : W,
   verify~ : Bool = true,
@@ -213,7 +215,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     context,
     is_client: true,
     host,
-    read_buf: @io.ReaderBuffer::new(),
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
     curr_msg_remaining: 0,
     curr_msg_trailer: 0,
     transport,
@@ -222,13 +225,13 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   }
   errdefer tls.close()
   if context.init_client(verify=trust is SystemRoot) is err && err != 0 {
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   if trust is CustomPemFile(root_cert) {
-    let pem = @fs.read_file(root_cert).text()
+    let pem = @fs.read_text(root_cert)
     for cert in decode_pem_certificates(pem) {
       if context.add_root_certificate(cert) is err && err != 0 {
-        raise TlsError(@os_error.errno_to_string(err))
+        raise TlsError(@errno_util.errno_to_string(err))
       }
     }
   }
@@ -239,7 +242,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
       Some(str) => Some(@os_string.encode(str))
     }
     if tls.context.verify_peer_certificate(host) is err && err != 0 {
-      raise TlsError(@os_error.errno_to_string(err))
+      raise TlsError(@errno_util.errno_to_string(err))
     }
   }
   tls
@@ -248,18 +251,19 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 ///|
 #cfg(platform="windows")
 async fn Tls::accept(self : Tls) -> Unit {
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   let write_buf = self.transport.write_buf
   for ;; {
+    let read_buf = controller.buffered()
     let ret = self.context.accept(
-      in_buffer=read_buf.buf.unsafe_reinterpret_as_bytes(),
-      in_buffer_offset=read_buf.start,
-      in_buffer_len=read_buf.len,
+      in_buffer=read_buf.data(),
+      in_buffer_offset=read_buf.start_offset(),
+      in_buffer_len=read_buf.length(),
       out_buffer=write_buf.buf,
       out_buffer_offset=write_buf.start + write_buf.len,
       out_buffer_len=write_buf.buf.length() - write_buf.start - write_buf.len,
     )
-    read_buf.drop(self.context.bytes_read())
+    controller.drop(self.context.bytes_read())
     write_buf.len += self.context.bytes_to_write()
     match ret {
       Completed | Eof => {
@@ -269,8 +273,8 @@ async fn Tls::accept(self : Tls) -> Unit {
       WantRead => self.transport.read_more()
       WantWrite => self.transport.flush_write()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation => panic()
     }
@@ -280,23 +284,24 @@ async fn Tls::accept(self : Tls) -> Unit {
 ///|
 #internal(internal, "do not use, for internal testing only")
 #cfg(platform="windows")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   reader : R,
   writer : W,
   pfx_file~ : String,
 ) -> Tls {
   let context = Schannel::new()
-  let pfx_content = @fs.read_file(pfx_file).binary()
+  let pfx_content = @fs.read_binary(pfx_file)
   if context.init_server(pfx_content) is err && err != 0 {
     context.free()
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   let transport = Transport::new(reader, writer)
   let tls = {
     context,
     is_client: false,
     host: None,
-    read_buf: @io.ReaderBuffer::new(),
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
     transport,
     curr_msg_remaining: 0,
     curr_msg_trailer: 0,
@@ -310,8 +315,8 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for Tls with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
@@ -330,28 +335,33 @@ extern "C" fn Schannel::msg_trailer(ch : Schannel) -> Int32 = "moonbitlang_async
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   if self.closed {
     return 0
   }
-  let read_buf = self.transport.reader._get_internal_buffer().repr()
+  let controller = @io.BinaryReaderImpl::get_controller(self.transport.reader)
   while self.curr_msg_remaining == 0 {
-    read_buf.enlarge_to(self.context.record_overhead() + 1)
+    let read_buf = controller.buffered()
     let ret = self.context.read(
-      read_buf.buf,
-      offset=read_buf.start,
-      len=read_buf.len,
+      controller.raw_buffer(),
+      offset=read_buf.start_offset(),
+      len=read_buf.length(),
     )
     match ret {
       Completed => {
         let msg_size = self.context.bytes_read()
-        read_buf.drop(self.context.header_size())
+        controller.drop(self.context.header_size())
         self.curr_msg_trailer = self.context.msg_trailer()
         self.curr_msg_remaining = msg_size -
           self.context.header_size() -
           self.curr_msg_trailer
       }
-      WantRead if read_buf.len == 0 && self.transport.state is Closed =>
+      WantRead if read_buf.length() == 0 && self.transport.state is Closed =>
         return 0
       WantRead => self.transport.read_more()
       Eof => {
@@ -360,8 +370,8 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
       }
       WantWrite => panic()
       Error => {
-        let errno = @os_error.get_errno()
-        raise TlsError(@os_error.errno_to_string(errno))
+        let errno = @errno_util.get_errno()
+        raise TlsError(@errno_util.errno_to_string(errno))
       }
       ReNegotiation =>
         if self.is_client {
@@ -374,24 +384,16 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 
   // check if there is remaining data
   let len = @cmp.minimum(self.curr_msg_remaining, max_len)
-  read_buf.buf.blit_to(buf, len~, src_offset=read_buf.start, dst_offset=offset)
-  read_buf.drop(len)
+  let read_buf = controller.buffered()
+  controller
+  .raw_buffer()
+  .blit_to(buf, len~, src_offset=read_buf.start_offset(), dst_offset=offset)
+  controller.drop(len)
   self.curr_msg_remaining -= len
   if self.curr_msg_remaining == 0 {
-    read_buf.drop(self.curr_msg_trailer)
+    controller.drop(self.curr_msg_trailer)
   }
   len
-}
-
-///|
-#cfg(platform="windows")
-pub extend Tls with @io.Reader::{
-  read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
-  read_exactly,
 }
 
 ///|
@@ -406,7 +408,12 @@ extern "C" fn Schannel::write(
 
 ///|
 #cfg(platform="windows")
-pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let write_buf = self.transport.write_buf
   guard! write_buf.len == 0
   let max_len = write_buf.buf.length() -
@@ -425,14 +432,16 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
     self.transport.flush_write()
     len
   } else {
-    let errno = @os_error.get_errno()
-    raise TlsError(@os_error.errno_to_string(errno))
+    let errno = @errno_util.get_errno()
+    raise TlsError(@errno_util.errno_to_string(errno))
   }
 }
 
 ///|
 #cfg(platform="windows")
-pub extend Tls with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  self.writer_ctrl
+}
 
 ///|
 #cfg(platform="windows")
@@ -450,7 +459,7 @@ pub async fn Tls::shutdown(self : Tls) -> Unit {
     Error(err) => raise err
   }
   if self.context.shutdown() is err && err != 0 {
-    raise TlsError(@os_error.errno_to_string(err))
+    raise TlsError(@errno_util.errno_to_string(err))
   }
   if self.is_client {
     self.connect()
@@ -554,9 +563,9 @@ fn ChannelBinding::to_bytes(self : ChannelBinding) -> Bytes {
 pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
   let binding = self.context.unique_channel_binding()
   if binding.0.is_null() {
-    let errno = @os_error.get_errno()
+    let errno = @errno_util.get_errno()
     if errno != 0 {
-      raise TlsError(@os_error.errno_to_string(errno))
+      raise TlsError(@errno_util.errno_to_string(errno))
     } else {
       raise TlsError("tls-unique channel binding unavailable")
     }
@@ -573,9 +582,9 @@ pub fn Tls::unique_channel_binding(self : Tls) -> Bytes raise {
 pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
   let binding = self.context.server_endpoint_channel_binding()
   if binding.0.is_null() {
-    let errno = @os_error.get_errno()
+    let errno = @errno_util.get_errno()
     if errno != 0 {
-      raise TlsError(@os_error.errno_to_string(errno))
+      raise TlsError(@errno_util.errno_to_string(errno))
     } else {
       raise TlsError("tls-server-endpoint channel binding unavailable")
     }
