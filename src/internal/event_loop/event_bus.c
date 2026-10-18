@@ -323,7 +323,8 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
   mutex_unlock(&waiter->lock);
 
 #ifdef _WIN32
-  WaitForSingleObject(waiter->thread_id, INFINITE);
+  if (WaitForSingleObject(waiter->thread_id, INFINITE) != WAIT_OBJECT_0)
+    moonbit_panic();
   CloseHandle(waiter->thread_id);
 #else
   pthread_join(waiter->thread_id, 0);
