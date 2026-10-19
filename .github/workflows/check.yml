@@ -130,20 +130,10 @@ jobs:
         run: moon check
 
       - name: moon test
-        if: ${{ matrix.os != 'windows-latest' }}
         run: moon test
 
-      - name: moon test (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: moon test --no-parallelize
-
       - name: moon test (release)
-        if: ${{ matrix.os != 'windows-latest' }}
         run: moon test --release
-
-      - name: moon test (release) (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: moon test --release --no-parallelize
 
   js-build:
     runs-on: ubuntu-latest

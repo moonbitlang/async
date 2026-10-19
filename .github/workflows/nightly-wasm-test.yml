@@ -77,9 +77,4 @@ jobs:
         run: moon check --target wasm
 
       - name: moon test
-        if: ${{ matrix.os != 'windows-latest' }}
         run: moon test --target wasm
-
-      - name: moon test (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: moon test --target wasm --no-parallelize
