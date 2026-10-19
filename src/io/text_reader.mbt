@@ -16,11 +16,16 @@
 /// `TextReader` is the trait for an asynchronous text input stream.
 /// `TextReader` implementations are usually UTF-8 wrappers over `BinaryReader`.
 ///
+/// `read()` fetch and returns a chunk of text from the stream.
+/// The length of the returned chunk is random.
+/// `read()` will return as soon as enough data has arrived.
+///
 /// `read_all()` returns all remaining text in the stream.
 ///
 /// `read_until()` is similar to `BinaryReader::read_until`,
 /// except that it operates over text instead of binary input.
 pub(open) trait TextReader {
+  async fn read(Self) -> String?
   async fn read_all(Self) -> String
   async fn read_until(Self, StringView, include_delimiter? : Bool) -> String?
 }
@@ -59,6 +64,41 @@ pub fn Utf8Reader::close(self : Utf8Reader) -> Unit {
 }
 
 ///|
+pub impl TextReader for Utf8Reader with fn read(self) {
+  guard! self.inner is Some(inner)
+  let controller = BinaryReaderImpl::get_controller(inner)
+  guard inner.peek() is Some(binary) else { return None }
+  let (data, missing_bytes) = match binary {
+    [.. data, 0xC0..<0xE0] => (data, 1)
+    [.. data, 0xE0..<0xF0] => (data, 2)
+    [.. data, 0xE0..<0xF0, 0x80..<0xC0] => (data, 1)
+    [.. data, 0xF0..<=0xF4] => (data, 3)
+    [.. data, 0xF0..<=0xF4, 0x80..<0xC0] => (data, 2)
+    [.. data, 0xF0..<=0xF4, 0x80..<0XC0, 0x80..<0xC0] => (data, 1)
+    data => (data, 0)
+  }
+  if data.length() > 0 {
+    let text = @utf8.decode(data)
+    inner.drop_exactly(data.length())
+    return Some(text)
+  }
+
+  guard BinaryReaderImpl::ensure_buffered(
+    inner,
+    binary.length() + missing_bytes,
+  ) else {
+    // The decode operation here should fail
+    let data = controller.buffered()
+    let text = @utf8.decode(data)
+    inner.drop_exactly(data.length())
+    return Some(text)
+  }
+
+  // We have obtained enough data, retry again
+  self.read()
+}
+
+///|
 pub impl TextReader for Utf8Reader with fn read_all(self) {
   guard! self.inner is Some(inner)
   @utf8.decode(inner.read_all())
@@ -79,4 +119,4 @@ pub impl TextReader for Utf8Reader with fn read_until(
 }
 
 ///|
-pub extend Utf8Reader with TextReader::{read_all, read_until}
+pub extend Utf8Reader with TextReader::{read, read_all, read_until}

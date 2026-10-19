@@ -91,9 +91,9 @@ async test "stdio cancel" {
     defer child.stderr.close()
     child.stdin.write(b"abcd")
     debug_inspect(
-      child.stdout.read(),
+      child.stdout.text.read(),
       content=(
-        #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
+        #|Some("abcd")
       ),
     )
     @async.sleep(750)

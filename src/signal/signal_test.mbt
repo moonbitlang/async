@@ -52,8 +52,8 @@ async test "cancel with default signal" {
     }
     group.spawn_bg() <| () => {
       defer child.stdout.close()
-      while child.stdout.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+      while child.stdout.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
@@ -89,8 +89,8 @@ async test "cancel with ctrl+c" {
     }
     group.spawn_bg() <| () => {
       defer child.stdout.close()
-      while child.stdout.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+      while child.stdout.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
@@ -126,8 +126,8 @@ async test "cancel with SIGHUP" {
     }
     group.spawn_bg() <| () => {
       defer child.stdout.close()
-      while child.stdout.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+      while child.stdout.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
@@ -156,8 +156,8 @@ async test "change cancellation signal set in the middle #1" {
     )
     group.spawn_bg() <| () => {
       defer proc.stdout.close()
-      while proc.stdout.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+      while proc.stdout.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }
@@ -188,8 +188,8 @@ async test "change cancellation signal set in the middle #2" {
     )
     group.spawn_bg() <| () => {
       defer proc.stdout.close()
-      while proc.stdout.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n").trim()
+      while proc.stdout.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n").trim()
         log.push("from process: \{data}")
       }
     }

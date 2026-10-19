@@ -26,8 +26,8 @@ async test "cancel `@process.run()`" {
     })
     root.spawn_bg() <| () => {
       defer r.close()
-      while r.read() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
+      while r.text.read() is Some(data) {
+        let data = data.replace_all(old="\r\n", new="\n")
         log.write_string("from process: \{data}")
       }
     }
@@ -59,8 +59,8 @@ async test "cancel process timeout" {
     )
     let t_receive_graceful_termination = group.spawn(() => {
       defer child.stdout.close()
-      guard! child.stdout.read() is Some(data)
-      let data = @utf8.decode(data).trim_end(chars="\r\n")
+      guard! child.stdout.text.read() is Some(data)
+      let data = data.trim_end(chars="\r\n")
       let t = @async.now()
       inspect(data, content="received termination signal")
       t

@@ -146,14 +146,14 @@ async test "pipe" {
     defer child2.stdout.close()
     child1.stdin.write(b"abcd")
     debug_inspect(
-      child2.stdout.read().map(data => @utf8.decode(data)),
+      child2.stdout.text.read(),
       content=(
         #|Some("abcd")
       ),
     )
     child1.stdin.write(b"xyzw")
     debug_inspect(
-      child2.stdout.read().map(data => @utf8.decode(data)),
+      child2.stdout.text.read(),
       content=(
         #|Some("xyzw")
       ),

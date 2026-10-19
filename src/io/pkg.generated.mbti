@@ -74,11 +74,13 @@ pub impl BinaryWriter for PipeWrite
 
 type Utf8Reader
 pub fn[R : BinaryReader] Utf8Reader::Utf8Reader(R) -> Self
+pub async fn Utf8Reader::read(Self) -> String?
 pub async fn Utf8Reader::read_all(Self) -> String
 pub async fn Utf8Reader::read_until(Self, StringView, include_delimiter? : Bool) -> String?
 pub impl TextReader for Utf8Reader
 
 type Utf8TextView
+pub async fn Utf8TextView::read(Self) -> String?
 pub async fn Utf8TextView::read_all(Self) -> String
 pub async fn Utf8TextView::read_until(Self, StringView, include_delimiter? : Bool) -> String?
 pub async fn Utf8TextView::write(Self, StringView) -> Unit
@@ -127,6 +129,7 @@ pub(open) trait BinaryWriterImpl {
 }
 
 pub(open) trait TextReader {
+  async fn read(Self) -> String?
   async fn read_all(Self) -> String
   async fn read_until(Self, StringView, include_delimiter? : Bool) -> String?
 }

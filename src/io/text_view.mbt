@@ -49,6 +49,11 @@ pub fn Utf8TextView::close(self : Utf8TextView) -> Unit {
 }
 
 ///|
+pub impl TextReader for Utf8TextView with fn read(self) {
+  self.reader.read()
+}
+
+///|
 pub impl TextReader for Utf8TextView with fn read_all(self) {
   self.reader.read_all()
 }
@@ -63,7 +68,7 @@ pub impl TextReader for Utf8TextView with fn read_until(
 }
 
 ///|
-pub extend Utf8TextView with TextReader::{read_all, read_until}
+pub extend Utf8TextView with TextReader::{read, read_all, read_until}
 
 ///|
 pub impl TextWriter for Utf8TextView with fn write(self, data) {

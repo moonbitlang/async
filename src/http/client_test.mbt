@@ -50,8 +50,7 @@ async test "request streaming" {
   @async.with_task_group() <| group => {
     let port = test_server(group, log)
     async fn fetch_response(client : @http.Client) {
-      while client.read() is Some(data) {
-        let data = @utf8.decode(data)
+      while client.text.read() is Some(data) {
         log.write_string("client received: \{data}")
       }
     }
