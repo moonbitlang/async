@@ -17,7 +17,7 @@ pub(all) enum Signal {
   SIGHUP
   SIGBREAK
 } derive(@debug.Debug)
-pub fn Signal::to_int(Self) -> Int
+pub fn Signal::to_int(Self) -> Int32
 
 // Type aliases
 

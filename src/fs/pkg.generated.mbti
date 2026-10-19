@@ -7,7 +7,7 @@ import {
 }
 
 // Values
-pub async fn atime(StringView, follow_symlink? : Bool) -> (Int64, Int)
+pub async fn atime(StringView, follow_symlink? : Bool) -> (Int64, Int32)
 
 pub async fn can_execute(StringView) -> Bool
 
@@ -15,11 +15,11 @@ pub async fn can_read(StringView) -> Bool
 
 pub async fn can_write(StringView) -> Bool
 
-pub async fn chmod(StringView, Int) -> Unit
+pub async fn chmod(StringView, Int32) -> Unit
 
-pub async fn create(StringView, allow_existing? : Bool, permission? : Int, sync? : SyncMode) -> File
+pub async fn create(StringView, allow_existing? : Bool, permission? : Int32, sync? : SyncMode) -> File
 
-pub async fn ctime(StringView, follow_symlink? : Bool) -> (Int64, Int)
+pub async fn ctime(StringView, follow_symlink? : Bool) -> (Int64, Int32)
 
 pub async fn exists(StringView) -> Bool
 
@@ -27,11 +27,11 @@ pub async fn file_size(StringView) -> Int64
 
 pub async fn kind(StringView, follow_symlink? : Bool) -> FileKind
 
-pub async fn mkdir(StringView, permission? : Int, recursive? : Bool, allow_exist? : Bool) -> Unit
+pub async fn mkdir(StringView, permission? : Int32, recursive? : Bool, allow_exist? : Bool) -> Unit
 
-pub async fn mtime(StringView, follow_symlink? : Bool) -> (Int64, Int)
+pub async fn mtime(StringView, follow_symlink? : Bool) -> (Int64, Int32)
 
-pub async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, create_mode? : CreateMode, permission? : Int) -> File
+pub async fn open(StringView, mode~ : Mode, sync? : SyncMode, append? : Bool, create_mode? : CreateMode, permission? : Int32) -> File
 
 pub async fn opendir(StringView) -> Directory
 
@@ -51,9 +51,9 @@ pub async fn symlink(target~ : StringView, StringView, force_symlink? : Bool) ->
 
 pub async fn tmpdir(prefix~ : StringView) -> String
 
-pub async fn walk(StringView, async (String, Array[String]) -> Unit, exclude? : (String) -> Bool, max_concurrency? : Int, allow_failure? : Bool) -> Unit
+pub async fn walk(StringView, async (String, Array[String]) -> Unit, exclude? : (String) -> Bool, max_concurrency? : Int32, allow_failure? : Bool) -> Unit
 
-pub async fn write_file(StringView, &@io.Data, create_mode? : CreateMode, permission? : Int, sync? : SyncMode, append? : Bool) -> Unit
+pub async fn write_file(StringView, &@io.Data, create_mode? : CreateMode, permission? : Int32, sync? : SyncMode, append? : Bool) -> Unit
 
 // Errors
 
@@ -79,20 +79,20 @@ pub struct DirectoryEntry {
 
 type File
 pub fn File::as_dir(Self) -> Directory raise
-pub async fn File::atime(Self) -> (Int64, Int)
+pub async fn File::atime(Self) -> (Int64, Int32)
 pub fn File::close(Self) -> Unit
-pub async fn File::ctime(Self) -> (Int64, Int)
-pub async fn File::drop(Self, Int) -> Int
-pub fn File::fd(Self) -> Int
+pub async fn File::ctime(Self) -> (Int64, Int32)
+pub async fn File::drop(Self, Int32) -> Int32
+pub fn File::fd(Self) -> Int32
 pub fn File::kind(Self) -> FileKind
 pub async fn File::lock(Self, Lock) -> Unit
-pub async fn File::mtime(Self) -> (Int64, Int)
-pub async fn File::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn File::mtime(Self) -> (Int64, Int32)
+pub async fn File::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn File::read_all(Self) -> &@io.Data
-pub async fn File::read_at(Self, FixedArray[Byte], position~ : Int64, offset? : Int, len? : Int) -> Int
-pub async fn File::read_exactly(Self, Int) -> Bytes
-pub async fn File::read_exactly_at(Self, Int, position~ : Int64) -> Bytes
-pub async fn File::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn File::read_at(Self, FixedArray[Byte], position~ : Int64, offset? : Int32, len? : Int32) -> Int32
+pub async fn File::read_exactly(Self, Int32) -> Bytes
+pub async fn File::read_exactly_at(Self, Int32, position~ : Int64) -> Bytes
+pub async fn File::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn File::read_until(Self, StringView) -> String?
 pub async fn File::size(Self) -> Int64
 pub async fn File::sync(Self, only_data? : Bool) -> Unit
@@ -100,7 +100,7 @@ pub fn File::try_lock(Self, Lock) -> Bool raise
 pub fn File::unlock(Self) -> Unit
 pub async fn File::write(Self, &@io.Data) -> Unit
 pub async fn File::write_at(Self, BytesView, position~ : Int64) -> Unit
-pub async fn File::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn File::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
 pub async fn File::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for File
 pub impl @io.Writer for File
@@ -143,7 +143,7 @@ pub(all) enum SyncMode {
 }
 
 type Watcher
-pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, report_child_event? : Bool, report_event_on_init? : Bool, ignored_paths? : (String) -> Bool) -> Self
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int32, max_debounce_delay? : Int32, report_child_event? : Bool, report_event_on_init? : Bool, ignored_paths? : (String) -> Bool) -> Self
 pub fn Watcher::close(Self) -> Unit
 pub async fn Watcher::wait(Self) -> Array[FsEvent]
 pub async fn Watcher::wait_any(Self) -> Unit

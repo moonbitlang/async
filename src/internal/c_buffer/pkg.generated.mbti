@@ -8,15 +8,15 @@ package "moonbitlang/async/internal/c_buffer"
 // Types and methods
 #external
 pub type Buffer
-pub fn Buffer::blit_from_bytes(Self, dst_offset? : Int, src~ : Bytes, src_offset? : Int, len~ : Int) -> Unit
-pub fn Buffer::blit_to_bytes(Self, src_offset? : Int, dst~ : FixedArray[Byte], dst_offset? : Int, len~ : Int) -> Unit
+pub fn Buffer::blit_from_bytes(Self, dst_offset? : Int32, src~ : Bytes, src_offset? : Int32, len~ : Int32) -> Unit
+pub fn Buffer::blit_to_bytes(Self, src_offset? : Int32, dst~ : FixedArray[Byte], dst_offset? : Int32, len~ : Int32) -> Unit
 pub fn Buffer::free(Self) -> Unit
 #alias("_[_]")
-pub fn Buffer::get(Self, Int) -> Byte
+pub fn Buffer::get(Self, Int32) -> Byte
 pub fn Buffer::is_null(Self) -> Bool
 #as_free_fn
-pub fn Buffer::new(Int) -> Self
-pub fn Buffer::strlen(Self, offset? : Int) -> Int
+pub fn Buffer::new(Int32) -> Self
+pub fn Buffer::strlen(Self, offset? : Int32) -> Int32
 
 // Type aliases
 

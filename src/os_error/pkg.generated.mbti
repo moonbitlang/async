@@ -8,19 +8,19 @@ import {
 // Values
 pub fn check_errno(String) -> Unit raise OSError
 
-pub let errno_ENOTDIR : Int
+pub let errno_ENOTDIR : Int32
 
-pub let errno_ENOTSUP : Int
+pub let errno_ENOTSUP : Int32
 
-pub fn errno_to_string(Int) -> String
+pub fn errno_to_string(Int32) -> String
 
-pub fn get_errno() -> Int
+pub fn get_errno() -> Int32
 
 pub fn is_nonblocking_io_error() -> Bool
 
 // Errors
 pub(all) suberror OSError {
-  OSError(Int, context~ : String)
+  OSError(Int32, context~ : String)
 } derive(ToJson)
 pub fn OSError::is_EACCES(Self) -> Bool
 pub fn OSError::is_ECONNREFUSED(Self) -> Bool
