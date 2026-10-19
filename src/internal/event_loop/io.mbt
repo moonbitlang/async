@@ -325,12 +325,13 @@ fn utf8_decode_lossy_to_utf16(
   dst~ : FixedArray[UInt16],
   dst_offset~ : Int32,
 ) -> Int32 {
-  ignore(src)
-  ignore(src_offset)
-  ignore(src_len)
-  ignore(dst)
-  ignore(dst_offset)
-  panic()
+  // Reuse core's lossy decoding, including surrogate pairs and malformed input,
+  // then copy code units into the console's existing output buffer.
+  let decoded = @utf8.decode_lossy(src[src_offset:src_offset + src_len])
+  for i, unit in decoded.code_units() {
+    dst[dst_offset + i] = unit
+  }
+  decoded.length()
 }
 
 ///|
