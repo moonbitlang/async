@@ -15,9 +15,9 @@ pub impl Show for QueueAlreadyClosed
 // Types and methods
 pub(all) enum Kind {
   Unbounded
-  Blocking(Int)
-  DiscardOldest(Int)
-  DiscardLatest(Int)
+  Blocking(Int32)
+  DiscardOldest(Int32)
+  DiscardLatest(Int32)
 }
 
 pub struct Queue[X] {

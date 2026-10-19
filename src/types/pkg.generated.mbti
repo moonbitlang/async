@@ -13,6 +13,6 @@ pub(all) enum Platform {
 }
 
 // Type aliases
-pub type Fd = Int
+pub type Fd = Int32
 
 // Traits

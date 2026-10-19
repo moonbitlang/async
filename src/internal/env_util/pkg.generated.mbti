@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub let current_process : UInt
+pub let current_process : UInt32
 
 pub let platform : @types.Platform
 

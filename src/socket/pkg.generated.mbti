@@ -21,13 +21,13 @@ pub impl Show for ResolveHostnameError
 
 // Types and methods
 type Addr derive(Compare, Eq, Hash)
-pub fn Addr::ip(Self) -> UInt
+pub fn Addr::ip(Self) -> UInt32
 pub fn Addr::is_ipv6(Self) -> Bool
 pub fn Addr::is_multicast(Self) -> Bool
-pub fn Addr::new(UInt, Int) -> Self
+pub fn Addr::new(UInt32, Int32) -> Self
 pub fn Addr::parse(String) -> Self raise
-pub fn Addr::port(Self) -> Int
-pub async fn Addr::resolve(String, port~ : Int, protocol? : IpProtocolPreference) -> Self
+pub fn Addr::port(Self) -> Int32
+pub async fn Addr::resolve(String, port~ : Int32, protocol? : IpProtocolPreference) -> Self
 pub fn Addr::to_string(Self) -> String
 pub impl Show for Addr
 pub impl @debug.Debug for Addr
@@ -49,17 +49,17 @@ pub struct Tcp {
 pub fn Tcp::addr(Self) -> Addr
 pub fn Tcp::close(Self) -> Unit
 pub async fn Tcp::connect(Addr) -> Self
-pub async fn Tcp::connect_to_host(StringView, port~ : Int, protocol? : IpProtocolPreference) -> Self
-pub async fn Tcp::drop(Self, Int) -> Int
-pub fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int, keep_alive_count? : Int, keep_alive_interval? : Int) -> Unit raise
-pub fn Tcp::fd(Self) -> Int
-pub async fn Tcp::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn Tcp::connect_to_host(StringView, port~ : Int32, protocol? : IpProtocolPreference) -> Self
+pub async fn Tcp::drop(Self, Int32) -> Int32
+pub fn Tcp::enable_keepalive(Self, idle_before_keep_alive? : Int32, keep_alive_count? : Int32, keep_alive_interval? : Int32) -> Unit raise
+pub fn Tcp::fd(Self) -> Int32
+pub async fn Tcp::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn Tcp::read_all(Self) -> &@io.Data
-pub async fn Tcp::read_exactly(Self, Int) -> Bytes
-pub async fn Tcp::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn Tcp::read_exactly(Self, Int32) -> Bytes
+pub async fn Tcp::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn Tcp::read_until(Self, StringView) -> String?
 pub async fn Tcp::write(Self, &@io.Data) -> Unit
-pub async fn Tcp::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn Tcp::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
 pub async fn Tcp::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for Tcp
 pub impl @io.Writer for Tcp
@@ -74,8 +74,8 @@ pub async fn TcpServer::accept(Self) -> (Tcp, Addr)
 #deprecated
 pub fn TcpServer::addr(Self) -> Addr
 pub fn TcpServer::close(Self) -> Unit
-pub fn TcpServer::fd(Self) -> Int
-pub async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit
+pub fn TcpServer::fd(Self) -> Int32
+pub async fn TcpServer::run_forever(Self, async (Tcp, Addr) -> Unit, allow_failure? : Bool, max_connections? : Int32) -> Unit
 
 pub struct UdpClient {
   addr : Addr
@@ -87,14 +87,14 @@ pub async fn UdpClient::UdpClient(Addr) -> Self
 pub fn UdpClient::addr(Self) -> Addr
 pub fn UdpClient::close(Self) -> Unit
 pub fn UdpClient::connect(Self, Addr) -> Unit raise
-pub fn UdpClient::fd(Self) -> Int
-pub async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
-pub async fn UdpClient::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
-pub async fn UdpClient::send(Self, Bytes, offset? : Int, len? : Int) -> Unit
+pub fn UdpClient::fd(Self) -> Int32
+pub async fn UdpClient::recv(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn UdpClient::recvfrom(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> (Int32, Addr)
+pub async fn UdpClient::send(Self, Bytes, offset? : Int32, len? : Int32) -> Unit
 pub fn UdpClient::set_multicast_interface(Self, Addr) -> Unit raise
 pub fn UdpClient::set_multicast_interface_v6(Self, String) -> Unit raise
 pub fn UdpClient::set_multicast_loopback(Self, Bool) -> Unit raise
-pub fn UdpClient::set_multicast_ttl(Self, Int) -> Unit raise
+pub fn UdpClient::set_multicast_ttl(Self, Int32) -> Unit raise
 
 pub struct UdpServer {
   addr : Addr
@@ -105,16 +105,16 @@ pub async fn UdpServer::UdpServer(Addr, dual_stack? : Bool) -> Self
 #deprecated
 pub fn UdpServer::addr(Self) -> Addr
 pub fn UdpServer::close(Self) -> Unit
-pub fn UdpServer::fd(Self) -> Int
+pub fn UdpServer::fd(Self) -> Int32
 pub fn UdpServer::join_multicast_group(Self, Addr, interface_addr? : Addr) -> Unit raise
 pub fn UdpServer::join_multicast_group_v6(Self, Addr, interface? : String) -> Unit raise
 pub async fn UdpServer::multicast(Addr, interface_addr? : Addr) -> Self
-pub async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> (Int, Addr)
-pub async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int, len? : Int) -> Unit
+pub async fn UdpServer::recvfrom(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> (Int32, Addr)
+pub async fn UdpServer::sendto(Self, Bytes, Addr, offset? : Int32, len? : Int32) -> Unit
 pub fn UdpServer::set_multicast_interface(Self, Addr) -> Unit raise
 pub fn UdpServer::set_multicast_interface_v6(Self, String) -> Unit raise
 pub fn UdpServer::set_multicast_loopback(Self, Bool) -> Unit raise
-pub fn UdpServer::set_multicast_ttl(Self, Int) -> Unit raise
+pub fn UdpServer::set_multicast_ttl(Self, Int32) -> Unit raise
 
 // Type aliases
 

@@ -6,19 +6,19 @@ import {
 }
 
 // Values
-pub fn close(Int, kind~ : FileKind, context~ : String) -> Unit raise
+pub fn close(Int32, kind~ : FileKind, context~ : String) -> Unit raise
 
-pub fn fd_is_nonblocking(Int, context~ : String) -> Bool raise
+pub fn fd_is_nonblocking(Int32, context~ : String) -> Bool raise
 
-pub fn fd_is_valid(Int) -> Bool
+pub fn fd_is_valid(Int32) -> Bool
 
-pub let invalid_fd : Int
+pub let invalid_fd : Int32
 
-pub fn pipe(read_end_is_async~ : Bool, write_end_is_async~ : Bool, context~ : String) -> (Int, Int) raise
+pub fn pipe(read_end_is_async~ : Bool, write_end_is_async~ : Bool, context~ : String) -> (Int32, Int32) raise
 
-pub fn set_cloexec(Int, context~ : String) -> Unit raise
+pub fn set_cloexec(Int32, context~ : String) -> Unit raise
 
-pub fn set_nonblocking(Int, context~ : String) -> Unit raise
+pub fn set_nonblocking(Int32, context~ : String) -> Unit raise
 
 // Errors
 
@@ -35,11 +35,11 @@ pub(all) enum FileKind {
   Console
 } derive(Eq, @debug.Debug)
 pub fn FileKind::can_poll(Self) -> Bool
-pub fn FileKind::unsafe_from_int(Int) -> Self
+pub fn FileKind::unsafe_from_int(Int32) -> Self
 #deprecated
 pub impl Show for FileKind
 
 // Type aliases
-pub type Fd = Int
+pub type Fd = Int32
 
 // Traits

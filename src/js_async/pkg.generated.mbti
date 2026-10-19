@@ -33,12 +33,12 @@ pub async fn[X] Promise::wait(Self[X], abort_controller? : AbortController) -> X
 
 type ReadableStream
 pub fn ReadableStream::close(Self) -> Unit
-pub async fn ReadableStream::drop(Self, Int) -> Int
+pub async fn ReadableStream::drop(Self, Int32) -> Int32
 pub fn ReadableStream::from_js(JsReadableStream) -> Self
-pub async fn ReadableStream::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn ReadableStream::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn ReadableStream::read_all(Self) -> &@io.Data
-pub async fn ReadableStream::read_exactly(Self, Int) -> Bytes
-pub async fn ReadableStream::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn ReadableStream::read_exactly(Self, Int32) -> Bytes
+pub async fn ReadableStream::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn ReadableStream::read_until(Self, StringView) -> String?
 pub impl @io.Reader for ReadableStream
 

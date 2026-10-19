@@ -11,10 +11,10 @@ import {
 }
 
 // Values
-pub async fn[X] all(ArrayView[async () -> X], max_concurrent? : Int) -> Array[X]
+pub async fn[X] all(ArrayView[async () -> X], max_concurrent? : Int32) -> Array[X]
 
 #callsite(autofill(loc))
-pub async fn[X] any(ArrayView[async () -> X], max_concurrent? : Int, allow_failure? : Bool, loc~ : SourceLoc) -> X
+pub async fn[X] any(ArrayView[async () -> X], max_concurrent? : Int32, allow_failure? : Bool, loc~ : SourceLoc) -> X
 
 pub async fn[X] handle_cancellation(async () -> X) -> X?
 
@@ -31,13 +31,13 @@ pub let platform : @types.Platform
 
 pub async fn[X] protect_from_cancel(async () -> X) -> X nocancel
 
-pub async fn[X] retry(RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool, async () -> X) -> X
+pub async fn[X] retry(RetryMethod, max_retry? : Int32, fatal_error? : (Error) -> Bool, async () -> X) -> X
 
 pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
 
 pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
-pub async fn sleep(Int) -> Unit noraise
+pub async fn sleep(Int32) -> Unit noraise
 
 #deprecated
 pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> Unit) -> X
@@ -45,9 +45,9 @@ pub async fn[X] with_cancellation_handler(async () -> X, handler~ : async () -> 
 #callsite(autofill(loc))
 pub async fn[X] with_task_group(async (TaskGroup[X]) -> X, loc~ : SourceLoc) -> X
 
-pub async fn[X] with_timeout(Int, async () -> X, error? : Error) -> X
+pub async fn[X] with_timeout(Int32, async () -> X, error? : Error) -> X
 
-pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
+pub async fn[X] with_timeout_opt(Int32, async () -> X) -> X?
 
 // Errors
 pub(all) suberror BreakFromSpawnLoop
@@ -79,8 +79,8 @@ pub fn Mutex::try_acquire(Self) -> Bool
 
 pub(all) enum RetryMethod {
   Immediate
-  FixedDelay(Int)
-  ExponentialDelay(initial~ : Int, factor~ : Double, maximum~ : Int)
+  FixedDelay(Int32)
+  ExponentialDelay(initial~ : Int32, factor~ : Double, maximum~ : Int32)
 }
 
 type Task[X]
@@ -95,14 +95,14 @@ pub async fn[X] TaskGroup::return_immediately(Self[X], X) -> Unit noraise
 pub fn[G, X] TaskGroup::spawn(Self[G], async () -> X, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Task[X]
 #callsite(autofill(loc))
 pub fn[X] TaskGroup::spawn_bg(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, loc~ : SourceLoc) -> Unit
-pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int, fatal_error? : (Error) -> Bool) -> Unit
+pub fn[X] TaskGroup::spawn_loop(Self[X], async () -> Unit, no_wait? : Bool, allow_failure? : Bool, retry? : RetryMethod, max_retry? : Int32, fatal_error? : (Error) -> Bool) -> Unit
 
 pub struct Timer {
-  duration : Int
+  duration : Int32
   // private fields
 }
 #alias(new, deprecated)
-pub fn Timer::Timer(Int) -> Self
+pub fn Timer::Timer(Int32) -> Self
 pub fn Timer::cancel(Self, err? : Error) -> Unit
 pub fn Timer::refresh(Self) -> Unit
 pub async fn Timer::wait(Self) -> Unit
