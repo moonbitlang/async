@@ -20,7 +20,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
   let server = @http.Server(addr)
   // WebSocket server are built on top of a HTTP server.
   // This allows mixing WebSocket and HTTP in a single server.
-  server.run_forever((request, _, conn) => {
+  server.run_forever((request, conn) => {
     guard request.path is "/ws" else { conn.send_response(404, "NotFound") }
     let ws = @websocket.from_http_server(request, conn)
     defer ws.close()

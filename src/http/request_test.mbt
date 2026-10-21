@@ -73,7 +73,7 @@ async test "manual Accept-Encoding" {
   let test_server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   @async.with_task_group <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      test_server.run_forever() <| ((req, _body, conn) => {
+      test_server.run_forever() <| ((req, conn) => {
         let accept_encoding = req.headers.get("accept-encoding")
         log.push("server received: \{Repr(accept_encoding)}")
         let file = @fs.open("LICENSE", mode=ReadOnly)

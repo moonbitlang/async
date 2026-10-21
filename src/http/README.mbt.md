@@ -68,16 +68,20 @@ The callback function `f` is used to handle HTTP requests.
 It receives three parameters:
 
 - the request to process
-- a `&@io.BinaryReader` that can be used to read request body
-- a `@http.ServerConnection` that can be used to send response.
-    The procedure to send a response is:
-    1. initiate a response and send response header via `.send_response()`
-    2. send response body by using the `@http.ServerConnection` as `@io.BinaryWriter`.
-       Text content can be written directly via `conn.text`
-       through the `@io.TextWriter` interface as well
-    3. (optional) complete the response via `.end_response()`.
-        If `.end_response()` is not called, it will be called automatically
-        after `f` returns normally.
+- a `@http.ServerConnection` that can be used to read request body or send response.
+
+Content of the incoming request body can be read streamingly
+using `@io.BinaryReader` interface (or `@io.TextReader` interface through the builtin `.text` view)
+on the `@http.ServerConnection` directly.
+
+The procedure to send a response is:
+1. initiate a response and send response header via `.send_response()`
+2. send response body by using the `@http.ServerConnection` as `@io.BinaryWriter`.
+   Text content can be written directly via `conn.text`
+   through the `@io.TextWriter` interface as well
+3. (optional) complete the response via `.end_response()`.
+    If `.end_response()` is not called, it will be called automatically
+    after `f` returns normally.
 
 Here's an example server that returns 404 to every request:
 
@@ -85,7 +89,7 @@ Here's an example server that returns 404 to every request:
 ///|
 #cfg(target="native")
 pub async fn server(listen_addr : @socket.Addr) -> Unit {
-  @http.Server(listen_addr).run_forever((request, _body, conn) => {
+  @http.Server(listen_addr).run_forever((request, conn) => {
     conn.send_response(404, "NotFound")
     conn.text.write("`\{request.path}` not found")
   })

@@ -60,7 +60,7 @@ async fn non_responding_tcp_server(group : @async.TaskGroup) -> Int32 {
 async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int32 {
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
   group.spawn_bg(no_wait=true) <| () => {
-    server.run_forever() <| ((request, body, conn) => {
+    server.run_forever() <| ((request, conn) => {
       match request.path {
         "/no-response" => {
           @async.sleep(10000)
@@ -74,8 +74,7 @@ async fn test_server(group : @async.TaskGroup, log : &Logger) -> Int32 {
         "/get-streaming" | "/put-streaming" | "/post-streaming" => {
           let meth = @debug.to_string(request.meth).to_upper()
           log.write_string("server received request: \{meth} \{request.path}\n")
-          while body.read() is Some(data) {
-            let data = @utf8.decode(data)
+          while conn.text.read() is Some(data) {
             log.write_string("server received: \{data}")
           }
           conn.send_response(200, "OK")

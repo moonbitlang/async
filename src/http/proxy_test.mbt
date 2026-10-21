@@ -77,7 +77,6 @@ async test "passthrough mode remaining data" {
 async fn handle_connect(
   log : Array[String],
   request : @http.Request,
-  _body : &@io.BinaryReader,
   conn : @http.ServerConnection,
 ) -> Unit {
   guard request.meth is Connect else {
@@ -116,9 +115,7 @@ async test "proxied https request" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
-      })
+      server.run_forever() <| ((req, conn) => handle_connect(log, req, conn))
     }
     let (_, result) = @http.get_text(
       "https://www.moonbitlang.com",
@@ -138,9 +135,7 @@ async test "proxied http request" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
-      })
+      server.run_forever() <| ((req, conn) => handle_connect(log, req, conn))
     }
     let (_, result) = @http.get_text(
       "http://www.example.org",
@@ -162,8 +157,8 @@ async test "proxied misc request" {
   let port = server.addr.port()
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      proxy_server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
+      proxy_server.run_forever() <| ((req, conn) => {
+        handle_connect(log, req, conn)
       })
     }
     group.spawn_bg(no_wait=true) <| () => {
@@ -204,7 +199,7 @@ async test "proxy error" {
   let port = proxy_server.addr.port()
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      proxy_server.run_forever() <| ((_, _, conn) => {
+      proxy_server.run_forever() <| ((_, conn) => {
         conn.send_response(407, "ProxyAuthenticationRequired")
         conn.end_response()
       })

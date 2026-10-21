@@ -19,7 +19,7 @@ async test "external client" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((request, _, conn) => {
+      server.run_forever() <| ((request, conn) => {
         log.push("new client to \{request.path}")
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()

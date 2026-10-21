@@ -19,7 +19,7 @@ async test "bad client" {
     let port = server.addr.port()
     let server_result_queue = @async.Queue(kind=Unbounded)
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((req, _, conn) => {
+      server.run_forever() <| ((req, conn) => {
         let ws = @websocket.from_http_server(req, conn)
         defer ws.close()
         let result = @test_util.expect_error_async <| () => {

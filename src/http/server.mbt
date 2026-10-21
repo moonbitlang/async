@@ -293,16 +293,20 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 /// Requests are handled by the callback function `f`.
 ///
 /// The callback function `f` accepts three arguments:
-/// - the request to process
-/// - a `&@io.BinaryReader` that can be used to read the request body
-/// - a `@http.ServerConnection` that can be used to send response.
-///     The procedure to send a response is:
-///     1. initiate a response and send response header via `.send_response()`
-///     2. send the response body through `@http.ServerConnection` as an
-///        `@io.BinaryWriter`, or through `.text` as an `@io.TextWriter`
-///     3. (optional) complete the response via `.end_response()`.
-///         If `.end_response()` is not called, it will be called automatically
-///         after `f` returns.
+/// - header of the request to process
+/// - a `@http.ServerConnection` that can be used to read request body or send response.
+///
+///   Content of the incoming request body can be read streamingly
+///   using `@io.BinaryReader` interface (or `@io.TextReader` interface through the builtin `.text` view)
+///   on the `@http.ServerConnection` directly.
+///
+///   The procedure to send a response is:
+///   1. initiate a response and send response header via `.send_response()`
+///   2. send the response body through `@http.ServerConnection` as an
+///      `@io.BinaryWriter`, or through `.text` as an `@io.TextWriter`
+///   3. (optional) complete the response via `.end_response()`.
+///       If `.end_response()` is not called, it will be called automatically
+///       after `f` returns.
 ///
 /// If `allow_failure` is `true` (`true` by default),
 /// error raised by `f` will not crash the whole server.
@@ -320,7 +324,7 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 /// On error or cancellation, the server will be closed automatically.
 pub async fn Server::run_forever(
   self : Server,
-  f : async (Request, &@io.BinaryReader, ServerConnection) -> Unit,
+  f : async (Request, ServerConnection) -> Unit,
   allow_failure? : Bool,
   max_connections? : Int32,
 ) -> Unit {
@@ -329,7 +333,7 @@ pub async fn Server::run_forever(
     defer conn.close()
     for ;; {
       let request = conn.read_request()
-      f(request, conn, conn)
+      f(request, conn)
       if conn.closed {
         break
       } else if conn.sender.mode

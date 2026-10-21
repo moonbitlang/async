@@ -173,7 +173,7 @@ pub async fn Server::accept(Self) -> (ServerConnection, @socket.Addr)
 #deprecated
 pub fn Server::addr(Self) -> @socket.Addr
 pub fn Server::close(Self) -> Unit
-pub async fn Server::run_forever(Self, async (Request, &@io.BinaryReader, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int32) -> Unit
+pub async fn Server::run_forever(Self, async (Request, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int32) -> Unit
 
 pub struct ServerConnection {
   text : @io.Utf8TextView

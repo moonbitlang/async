@@ -188,7 +188,7 @@ async test "user agent" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((request, _body, conn) => {
+      server.run_forever() <| ((request, conn) => {
         let meth = @debug.to_string(request.meth).to_upper()
         log <+ "server received request: \{meth} \{request.path}\n"
         let ua = request.headers.get("user-agent").unwrap_or("none")

@@ -129,7 +129,7 @@ pub async fn server_main(
   log~ : (String) -> Unit = println,
 ) -> Unit {
   let base_path = path
-  server.run_forever() <| ((request, _body, conn) => {
+  server.run_forever() <| ((request, conn) => {
     let (path, download_zip) = match request.path {
       [.. path, .. "?download_zip"] => (path.to_owned(), true)
       path => (path, false)
