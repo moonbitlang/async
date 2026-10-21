@@ -124,10 +124,10 @@ pub extend Protocol with Show::{to_string}
 
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
-pub impl Show for URIParseError
+pub impl Show for UriParseError
 
 ///|
-pub impl Show for URIParseError with fn output(self, logger) {
+pub impl Show for UriParseError with fn output(self, logger) {
   match self {
     InvalidFormat => logger <+ "InvalidFormat"
     UnsupportedProtocol(protocol) =>
@@ -138,7 +138,7 @@ pub impl Show for URIParseError with fn output(self, logger) {
 ///|
 #deprecated("`Show` implementation for this type is deprecated, use `Debug` related API, or use `@debug.to_string` instead.")
 #doc(hidden)
-pub extend URIParseError with Show::{to_string}
+pub extend UriParseError with Show::{to_string}
 
 ///|
 #cfg(any(target="native", target="wasm"))
@@ -314,17 +314,17 @@ pub extend Protocol with Show::{output}
 ///|
 #deprecated
 #doc(hidden)
-pub extend URIParseError with Debug::{to_repr}
+pub extend UriParseError with Debug::{to_repr}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend URIParseError with ToJson::{to_json}
+pub extend UriParseError with ToJson::{to_json}
 
 ///|
 #deprecated
 #doc(hidden)
-pub extend URIParseError with Show::{output}
+pub extend UriParseError with Show::{output}
 
 ///|
 #cfg(any(target="native", target="wasm"))

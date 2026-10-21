@@ -27,7 +27,7 @@ pub fn Protocol::default_port(p : Protocol) -> Int32 {
 }
 
 ///|
-pub suberror URIParseError {
+pub suberror UriParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 } derive(Debug, ToJson)

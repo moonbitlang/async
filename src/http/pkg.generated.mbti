@@ -56,12 +56,12 @@ pub suberror ProxyError {
 #deprecated
 pub impl Show for ProxyError
 
-pub suberror URIParseError {
+pub suberror UriParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 } derive(ToJson, @debug.Debug)
 #deprecated
-pub impl Show for URIParseError
+pub impl Show for UriParseError
 
 // Types and methods
 pub(all) struct CaseInsensitiveString(String) derive(ToJson)
