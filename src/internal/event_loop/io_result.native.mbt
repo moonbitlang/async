@@ -109,10 +109,6 @@ extern "C" fn IoResult::free(self : IoResult) = "moonbitlang_async_free_io_resul
 
 ///|
 #cfg(platform="windows")
-extern "C" fn IoResult::event(self : IoResult) -> Int32 = "moonbitlang_async_io_result_get_event"
-
-///|
-#cfg(platform="windows")
 extern "C" fn IoResult::cancel_ffi(
   self : IoResult,
   handle : @fd_util.Fd,

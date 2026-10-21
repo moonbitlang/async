@@ -17,25 +17,13 @@
 priv type Worker
 
 ///|
-extern "C" fn init_thread_pool_ffi(event_bus : EventBus) -> @fd_util.Fd = "moonbitlang_async_init_thread_pool"
+extern "C" fn Worker::spawn(init_job_id : Int32, init_job : Job) -> Worker = "moonbit_rt_spawn_worker"
 
 ///|
-extern "C" fn destroy_thread_pool() = "moonbitlang_async_destroy_thread_pool"
+extern "C" fn Worker::wake(worker : Worker, job_id : Int32, job : Job) = "moonbit_rt_wake_worker"
 
 ///|
-extern "C" fn Worker::spawn(init_job_id : Int32, init_job : Job) -> Worker = "moonbitlang_async_spawn_worker"
-
-///|
-extern "C" fn Worker::free(worker : Worker) = "moonbitlang_async_free_worker"
-
-///|
-extern "C" fn Worker::wake(worker : Worker, job_id : Int32, job : Job) = "moonbitlang_async_wake_worker"
-
-///|
-extern "C" fn Worker::enter_idle(worker : Worker) = "moonbitlang_async_worker_enter_idle"
-
-///|
-extern "C" fn Worker::cancel_ffi(worker : Worker) -> Int32 = "moonbitlang_async_cancel_worker"
+extern "C" fn Worker::cancel_ffi(worker : Worker) -> Int32 = "moonbit_rt_cancel_worker"
 
 ///|
 fn Worker::cancel(
@@ -53,28 +41,17 @@ fn Worker::cancel(
 }
 
 ///|
-extern "C" fn Worker::check_cancellation_retry(worker : Worker) -> Bool = "moonbitlang_async_worker_check_cancellation_retry"
-
-///|
-#cfg(not(platform="windows"))
-#borrow(output)
-extern "C" fn fetch_completion_ffi(
-  notify_recv : @fd_util.Fd,
-  output : FixedArray[Int32],
-) -> Int32 = "moonbitlang_async_fetch_completion"
-
-///|
 #external
 priv type Job
 
 ///|
-extern "C" fn Job::free(self : Job) -> Unit = "moonbitlang_async_free_job"
+extern "C" fn Job::free(self : Job) -> Unit = "moonbit_rt_free_job"
 
 ///|
-extern "C" fn Job::ret(self : Job) -> Int32 = "moonbitlang_async_job_get_ret"
+extern "C" fn Job::ret(self : Job) -> Int32 = "moonbit_rt_job_get_ret"
 
 ///|
-extern "C" fn Job::err(self : Job) -> Int32 = "moonbitlang_async_job_get_err"
+extern "C" fn Job::err(self : Job) -> Int32 = "moonbit_rt_job_get_err"
 
 ///|
 /// This is no-op on native, just to align API shape with Wasm.
@@ -91,7 +68,7 @@ extern "C" fn Job::read(
   len : Int32,
   // `-1` indicates no offset
   position~ : Int64,
-) -> Job = "moonbitlang_async_make_read_job"
+) -> Job = "moonbit_rt_make_read_job"
 
 ///|
 #owned(buf)
@@ -102,7 +79,7 @@ extern "C" fn Job::write(
   len : Int32,
   // `-1` indicates no offset
   position~ : Int64,
-) -> Job = "moonbitlang_async_make_write_job"
+) -> Job = "moonbit_rt_make_write_job"
 
 ///|
 #owned(buf)
@@ -111,7 +88,7 @@ extern "C" fn Job::read_console(
   buf : FixedArray[UInt16],
   offset : Int32,
   len : Int32,
-) -> Job = "moonbitlang_async_make_read_console_job"
+) -> Job = "moonbit_rt_make_read_console_job"
 
 ///|
 #owned(buf)
@@ -120,7 +97,7 @@ extern "C" fn Job::write_console(
   buf : FixedArray[UInt16],
   offset : Int32,
   len : Int32,
-) -> Job = "moonbitlang_async_make_write_console_job"
+) -> Job = "moonbit_rt_make_write_console_job"
 
 ///|
 #owned(filename, stat_buf)
@@ -272,7 +249,7 @@ extern "C" fn Job::spawn_unix_ffi(
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
   is_orphan~ : Bool,
-) -> SpawnJob = "moonbitlang_async_make_spawn_job"
+) -> SpawnJob = "moonbit_rt_make_spawn_job"
 
 ///|
 #cfg(platform="windows")
@@ -284,20 +261,20 @@ extern "C" fn Job::spawn_windows_ffi(
   stdout~ : @fd_util.Fd,
   stderr~ : @fd_util.Fd,
   is_orphan~ : Bool,
-) -> SpawnJob = "moonbitlang_async_make_spawn_job"
+) -> SpawnJob = "moonbit_rt_make_spawn_job"
 
 ///|
 #borrow(job)
 #owned(cwd)
-extern "C" fn SpawnJob::set_cwd(job : SpawnJob, cwd : @os_string.OsString) = "moonbitlang_async_spawn_job_set_cwd"
+extern "C" fn SpawnJob::set_cwd(job : SpawnJob, cwd : @os_string.OsString) = "moonbit_rt_spawn_job_set_cwd"
 
 ///|
 #cfg(platform="windows")
 #borrow(job)
-extern "C" fn SpawnJob::set_no_console_window(job : SpawnJob) = "moonbitlang_async_spawn_job_set_no_console_window"
+extern "C" fn SpawnJob::set_no_console_window(job : SpawnJob) = "moonbit_rt_spawn_job_set_no_console_window"
 
 ///|
-extern "C" fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbitlang_async_get_spawn_job_result_handle"
+extern "C" fn SpawnJob::result_handle(job : SpawnJob) -> @fd_util.Fd = "moonbit_rt_get_spawn_job_result_handle"
 
 ///|
 #cfg(not(platform="windows"))
@@ -357,18 +334,18 @@ fn Job::spawn_windows(
 
 ///|
 // `handle` is used by Windows, `pid` is used by Linux
-extern "C" fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int32) -> Job = "moonbitlang_async_make_wait_for_process_job"
+extern "C" fn Job::wait_for_process(handle : @fd_util.Fd, pid~ : Int32) -> Job = "moonbit_rt_make_wait_for_process_job"
 
 ///|
 #owned(addr)
-extern "C" fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job = "moonbitlang_async_make_bind_job"
+extern "C" fn Job::bind(socket : @fd_util.Fd, addr : Bytes) -> Job = "moonbit_rt_make_bind_job"
 
 ///|
 #owned(host)
-extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbitlang_async_make_getaddrinfo_job"
+extern "C" fn Job::getaddrinfo(host : @os_string.OsString) -> Job = "moonbit_rt_make_getaddrinfo_job"
 
 ///|
-extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbitlang_async_get_getaddrinfo_result"
+extern "C" fn Job::get_getaddrinfo_result(job : Job) -> AddrInfo = "moonbit_rt_get_getaddrinfo_result"
 
 ///|
 #cfg(not(platform="windows"))

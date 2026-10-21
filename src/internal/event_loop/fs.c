@@ -79,23 +79,28 @@ typedef char *os_string_t;
 
 // defined in `thread_pool.c`
 MOONBIT_FFI_EXPORT
-void *moonbitlang_async_make_job(
+void *moonbit_rt_make_job(
   int32_t size,
   void (*free)(void*),
   int32_t (*worker)(void*, int32_t*),
   int32_t (*cancel_handler)(void*)
 );
 
-#define MAKE_JOB(name, cancel_handler) (struct name##_job*)moonbitlang_async_make_job(\
+#define MAKE_JOB(name, cancel_handler) (struct name##_job*)moonbit_rt_make_job(\
   sizeof(struct name##_job),\
   (void (*)(void*))free_##name##_job,\
   (int32_t (*)(void*, int32_t*)) name##_job_worker,\
   (int32_t (*)(void*))cancel_handler\
 )
 
-void *moonbitlang_async_get_current_worker();
-int32_t moonbitlang_async_enter_cancellable_region(void *worker);
-void moonbitlang_async_leave_cancellable_region(void *worker);
+void *moonbit_rt_get_current_worker();
+#define moonbitlang_async_get_current_worker moonbit_rt_get_current_worker
+
+int32_t moonbit_rt_enter_cancellable_region(void *worker);
+#define moonbitlang_async_enter_cancellable_region moonbit_rt_enter_cancellable_region
+
+void moonbit_rt_leave_cancellable_region(void *worker);
+#define moonbitlang_async_leave_cancellable_region moonbit_rt_leave_cancellable_region
 
 #ifdef _WIN32
 

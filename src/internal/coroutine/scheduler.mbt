@@ -21,12 +21,28 @@ priv struct Scheduler {
 }
 
 ///|
-let scheduler : Scheduler = {
-  coro_id: 0,
-  curr_coro: None,
-  run_later: Deque([]),
-  all_coros: Set([]),
-}
+// An intermediate type compiled to `void*` on C backend.
+// Used to work around `-Wincompatible-pointer-types` from the C compiler.
+priv type CoreScheduler
+
+///|
+#warnings("-alert_internal")
+fn CoreScheduler::from_impl(
+  scheduler : @runtime_internal.Scheduler,
+) -> CoreScheduler = "%identity"
+
+///|
+fn from_core_scheduler(x : CoreScheduler) -> Scheduler = "%identity"
+
+///|
+// Here the cast is decomposed into two parts: core type -> void* -> our type.
+// This works around `-Wincompatible-pointer-types` from the C compiler.
+// This is hacky, but the whole runtime sharing mechanism is a big temporary hack,
+// so we choose to live with it here.
+#warnings("-alert_internal")
+let scheduler : Scheduler = from_core_scheduler(
+  CoreScheduler::from_impl(@runtime_internal.get_current_scheduler()),
+)
 
 ///|
 pub fn current_coroutine() -> Coroutine {

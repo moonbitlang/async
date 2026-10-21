@@ -17,14 +17,6 @@ priv struct Worker(UInt64)
 
 ///|
 #unsafe_skip_stub_check
-fn init_thread_pool_ffi(bus : EventBus) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/init_thread_pool"
-
-///|
-#unsafe_skip_stub_check
-fn destroy_thread_pool() -> Unit = "moonbitlang/async" "thread_pool/destroy_thread_pool"
-
-///|
-#unsafe_skip_stub_check
 fn Worker::spawn_ffi(init_job_id : Int32, init_job : JobHandle) -> Worker = "moonbitlang/async" "thread_pool/spawn_worker"
 
 ///|
@@ -34,20 +26,12 @@ fn Worker::spawn(init_job_id : Int32, init_job : Job) -> Worker {
 
 ///|
 #unsafe_skip_stub_check
-fn Worker::free(worker : Worker) -> Unit = "moonbitlang/async" "thread_pool/free_worker"
-
-///|
-#unsafe_skip_stub_check
 fn Worker::wake_ffi(worker : Worker, job_id : Int32, job : JobHandle) -> Unit = "moonbitlang/async" "thread_pool/wake_worker"
 
 ///|
 fn Worker::wake(worker : Worker, job_id : Int32, job : Job) -> Unit {
   worker.wake_ffi(job_id, job.handle)
 }
-
-///|
-#unsafe_skip_stub_check
-fn Worker::enter_idle(worker : Worker) -> Unit = "moonbitlang/async" "thread_pool/worker_enter_idle"
 
 ///|
 // 0: retry later; 1: keep waiting; 2: the job result is ready.
@@ -70,22 +54,6 @@ fn Worker::cancel(
     }
   }
 }
-
-///|
-fn Worker::check_cancellation_retry(worker : Worker) -> Bool {
-  // Use the same host call for initial cancellation and completion checks.
-  // Native also keeps waiting if a cancellation attempt reports an error.
-  worker.cancel_ffi() != 2
-}
-
-///|
-#unsafe_skip_stub_check
-#borrow(output)
-fn fetch_completion_ffi(
-  notify_recv : @fd_util.Fd,
-  output : FixedArray[Int32],
-  len~ : Int32 = output.length(),
-) -> Int32 = "moonbitlang/async" "thread_pool/fetch_completion/unix"
 
 ///|
 /// The actual job object submitted to the thread pool in runtime

@@ -2,9 +2,9 @@ import {
   "moonbitlang/core/deque",
   "moonbitlang/core/sorted_set",
   "moonbitlang/core/cmp",
-  "moonbitlang/core/env",
-  "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/async" @core_async,
+  "moonbitlang/core/async/runtime_internal",
   "moonbitlang/async/os_error",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",
@@ -16,16 +16,10 @@ import {
 
 import {
   "moonbitlang/async",
-  "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/test_util",
   "moonbitlang/async/io",
 } for "test"
-
-import {
-  "moonbitlang/async",
-  "moonbitlang/async/internal/test_util",
-} for "wbtest"
 
 options(
   "native-stub": [

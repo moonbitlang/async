@@ -151,7 +151,7 @@ pub using @coroutine {protect_from_cancel}
 /// `now` can be used to measure elapsed time, such as benchmarking,
 /// but the meaning of the absolute time value returned by `now`
 /// is undefined, and should not be depended on.
-pub using @event_loop {now}
+pub using @core_async {now}
 
 ///|
 /// When `moonbitlang/async` detects a a deadlock situation

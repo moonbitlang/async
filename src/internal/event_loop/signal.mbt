@@ -27,11 +27,6 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 )
 
 ///|
-pub suberror KilledBySignal {
-  KilledBySignal(Int32)
-}
-
-///|
 #cfg(target="native")
 #borrow(all_signals, signals)
 extern "C" fn set_global_cancellation_signals_ffi(
@@ -64,120 +59,6 @@ pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int32]) -> Unit {
     signals,
     signals.length(),
   )
-}
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-extern "C" fn start_signal_handler_ffi() -> Unit = "moonbitlang_async_start_signal_handler"
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-extern "C" fn terminate_signal_handler_ffi() -> Unit = "moonbitlang_async_terminate_signal_handler"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn start_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/start_signal_handler"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn terminate_signal_handler_ffi() -> Unit = "moonbitlang/async" "signal/terminate_signal_handler"
-
-///|
-#cfg(not(platform="windows"))
-fn setup_signal_handler_unix() -> Unit {
-  if !global_signal_handler_initialized.val {
-    set_global_cancellation_signals(all_signals)
-  }
-  start_signal_handler_ffi()
-}
-
-///|
-#cfg(not(platform="windows"))
-fn EventLoop::terminate_signal_handler_unix(evloop : EventLoop) -> Unit raise {
-  global_signal_handler_initialized.val = false
-  terminate_signal_handler_ffi()
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
-}
-
-///|
-#cfg(platform="windows")
-extern "C" fn set_console_control_handler(add : Int32) -> Int32 = "moonbitlang_async_set_console_control_handler"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn set_console_control_handler(add : Int32) -> Int32 = "moonbitlang/async" "signal/set_console_control_handler"
-
-///|
-#cfg(any(target="wasm", platform="windows"))
-fn setup_signal_handler_windows() -> Unit raise {
-  if !global_signal_handler_initialized.val {
-    set_global_cancellation_signals(all_signals)
-  }
-  if set_console_control_handler(1) is 0 {
-    @os_error.check_errno("setup_signal_handler()")
-  }
-}
-
-///|
-#cfg(any(target="wasm", platform="windows"))
-fn EventLoop::terminate_signal_handler_windows(
-  evloop : EventLoop,
-) -> Unit raise {
-  if set_console_control_handler(0) is 0 {
-    @os_error.check_errno("terminate_signal_handler()")
-  }
-  if evloop.killed_by_signal is Some(signal) {
-    raise KilledBySignal(signal)
-  }
-}
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-fn setup_signal_handler() -> Unit {
-  setup_signal_handler_unix()
-}
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
-  evloop.terminate_signal_handler_unix()
-}
-
-///|
-#cfg(platform="windows")
-fn setup_signal_handler() -> Unit raise {
-  setup_signal_handler_windows()
-}
-
-///|
-#cfg(platform="windows")
-fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
-  global_signal_handler_initialized.val = false
-  evloop.terminate_signal_handler_windows()
-}
-
-///|
-#cfg(target="wasm")
-fn setup_signal_handler() -> Unit raise {
-  match platform {
-    Linux | MacOS => setup_signal_handler_unix()
-    Windows => setup_signal_handler_windows()
-  }
-}
-
-///|
-#cfg(target="wasm")
-fn EventLoop::terminate_signal_handler(evloop : EventLoop) -> Unit raise {
-  global_signal_handler_initialized.val = false
-  match platform {
-    Linux | MacOS => evloop.terminate_signal_handler_unix()
-    Windows => evloop.terminate_signal_handler_windows()
-  }
 }
 
 ///|

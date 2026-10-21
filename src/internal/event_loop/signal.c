@@ -41,7 +41,7 @@ enum SignalCode {
   SIGBREAK_CODE = 3
 };
 
-void moonbitlang_async_notify_event_loop(int32_t data);
+void moonbit_rt_notify_event_loop(int32_t data);
 
 #ifdef _WIN32
 
@@ -65,7 +65,7 @@ int interested_console_ctrl_event = 0;
 static
 BOOL WINAPI console_control_handler(DWORD ctrl_type) {
   if (interested_console_ctrl_event & (1 << ctrl_type)) {
-    moonbitlang_async_notify_event_loop(ctrl_type | (1 << 31));
+    moonbit_rt_notify_event_loop(ctrl_type | (1 << 31));
     return TRUE;
   } else {
     return FALSE;
@@ -163,7 +163,7 @@ void *sigwait_thread_worker(void *data) {
       break;
 
     if (is_interested) {
-      moonbitlang_async_notify_event_loop(sig | (1 << 31)); 
+      moonbit_rt_notify_event_loop(sig | (1 << 31)); 
       continue;
     }
 
