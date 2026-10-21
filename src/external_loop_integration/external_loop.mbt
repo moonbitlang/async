@@ -76,3 +76,25 @@ pub(open) trait ExternalEventLoop {
   fn get_wakeup_callback_for_foreign_thread(Self) -> FuncRef[() -> Unit]
   fn terminate(Self) -> Unit raise
 }
+
+///|
+pub impl @core_external_loop.ExternalEventLoop for &ExternalEventLoop with fn poll(
+  self,
+  timeout?,
+) {
+  self.poll(timeout?)
+}
+
+///|
+pub impl @core_external_loop.ExternalEventLoop for &ExternalEventLoop with fn get_wakeup_callback_for_foreign_thread(
+  self,
+) {
+  self.get_wakeup_callback_for_foreign_thread()
+}
+
+///|
+pub impl @core_external_loop.ExternalEventLoop for &ExternalEventLoop with fn terminate(
+  self,
+) {
+  self.terminate()
+}

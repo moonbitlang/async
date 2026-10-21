@@ -15,48 +15,15 @@
 ///|
 // Package imports are shared across target-specific files. Native event-loop
 // files need `@c_buffer`, while the wasm target does not otherwise touch it.
-let _target_specific_imports : Unit = ignore(@c_buffer.Buffer::is_null)
+let _target_specific_imports : Unit = {
+  ignore(@c_buffer.Buffer::is_null)
+  ignore((_ : &@external_loop_integration.ExternalEventLoop) => ())
+}
 
 ///|
 priv enum PlatformEventLoopExtra {
   Unix(UnixEventLoopExtra)
   Windows(WindowsEventLoopExtra)
-}
-
-///|
-fn PlatformEventLoopExtra::new() -> Self raise {
-  match platform {
-    Linux | MacOS => Unix(UnixEventLoopExtra::new())
-    Windows => Windows(WindowsEventLoopExtra::new())
-  }
-}
-
-///|
-fn PlatformEventLoopExtra::destroy(self : PlatformEventLoopExtra) -> Unit {
-  match self {
-    Unix(extra) => extra.destroy()
-    Windows(extra) => extra.destroy()
-  }
-}
-
-///|
-fn PlatformEventLoopExtra::cleanup(self : PlatformEventLoopExtra) -> Unit {
-  match self {
-    Unix(extra) => extra.cleanup()
-    Windows(extra) => extra.cleanup()
-  }
-}
-
-///|
-fn PlatformEventLoopExtra::handle_event(
-  self : Self,
-  evloop : EventLoop,
-  event : Event,
-) -> Unit raise {
-  match self {
-    Unix(extra) => extra.handle_event(evloop, event)
-    Windows(extra) => extra.handle_event(evloop, event)
-  }
 }
 
 ///|

@@ -23,22 +23,6 @@
 priv struct EventBus(@fd_util.Fd)
 
 ///|
-const ReadEvent = 1
-
-///|
-const WriteEvent = 2
-
-///|
-#cfg(not(platform="windows"))
-const ProcessEvent = 4
-
-///|
-extern "C" fn EventBus::new() -> EventBus = "moonbitlang_async_event_bus_create"
-
-///|
-extern "C" fn EventBus::destroy(self : EventBus) = "moonbitlang_async_event_bus_destroy"
-
-///|
 extern "C" fn EventBus::register_ffi(
   self : EventBus,
   fd : @fd_util.Fd,
@@ -86,52 +70,3 @@ fn EventBus::remove(self : EventBus, fd : @fd_util.Fd) -> Unit raise {
     @os_error.check_errno("runtime internal: @event_loop.EventBus::remove()")
   }
 }
-
-///|
-#external
-priv type Event
-
-///|
-extern "C" fn EventBus::get_event(self : EventBus, index : Int32) -> Event = "moonbitlang_async_event_list_get"
-
-///|
-extern "C" fn Event::fd(self : Event) -> @fd_util.Fd = "moonbitlang_async_event_get_fd"
-
-///|
-#cfg(not(platform="windows"))
-fn Event::pid(self : Event) -> Int32 {
-  self.fd()
-}
-
-///|
-#cfg(not(platform="windows"))
-extern "C" fn Event::events(self : Event) -> Int32 = "moonbitlang_async_event_get_events"
-
-///|
-#cfg(platform="windows")
-extern "C" fn Event::io_result(self : Event) -> IoResult = "moonbitlang_async_event_get_io_result"
-
-///|
-#cfg(platform="windows")
-extern "C" fn Event::bytes_transferred(self : Event) -> Int32 = "moonbitlang_async_event_get_bytes_transferred"
-
-///|
-extern "C" fn EventBus::wait(self : EventBus, timeout~ : Int32) -> Int32 = "moonbitlang_async_event_bus_wait"
-
-///|
-priv struct EventBusWaiter(@c_buffer.Buffer)
-
-///|
-extern "C" fn EventBus::spawn_waiter(
-  bus : EventBus,
-  wakeup_callback~ : FuncRef[() -> Unit],
-) -> EventBusWaiter = "moonbitlang_async_spawn_event_bus_waiter"
-
-///|
-extern "C" fn EventBusWaiter::terminate(self : Self) -> Unit = "moonbitlang_async_terminate_event_bus_waiter"
-
-///|
-extern "C" fn EventBusWaiter::get_events(self : Self) -> Int32 = "moonbitlang_async_event_bus_waiter_get_events"
-
-///|
-extern "C" fn EventBusWaiter::wake(self : Self) -> Unit = "moonbitlang_async_wake_event_bus_waiter"

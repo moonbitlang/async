@@ -11,32 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-///|
-test "missing_close" {
-  let log = StringBuilder()
-  @event_loop.check_fd_leak.val = false
-  @event_loop.with_event_loop() <| () => {
-    @async.with_task_group() <| root => {
-      let (r, w) = @pipe.pipe()
-      root.spawn_bg() <| () => {
-        let data = r.read_exactly(4) |> @utf8.decode
-        @async.sleep(10)
-        log.write_string("received \{data}\n")
-      }
-      root.spawn_bg() <| () => {
-        let data = "abcd"
-        w.write(data)
-        log.write_string("written \{data}\n")
-      }
-    }
-  }
-  inspect(
-    log.to_string(),
-    content=(
-      #|written abcd
-      #|received abcd
-      #|
-    ),
-  )
-}

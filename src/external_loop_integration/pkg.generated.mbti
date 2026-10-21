@@ -15,3 +15,4 @@ pub(open) trait ExternalEventLoop {
   fn get_wakeup_callback_for_foreign_thread(Self) -> FuncRef[() -> Unit]
   fn terminate(Self) -> Unit raise
 }
+pub impl @moonbitlang/core/async/external_loop_integration.ExternalEventLoop for &ExternalEventLoop

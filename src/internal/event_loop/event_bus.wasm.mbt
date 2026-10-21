@@ -18,23 +18,6 @@
 priv struct EventBus(UInt64)
 
 ///|
-const ReadEvent = 1
-
-///|
-const WriteEvent = 2
-
-///|
-const ProcessEvent = 4
-
-///|
-#unsafe_skip_stub_check
-fn EventBus::new() -> EventBus = "moonbitlang/async" "event_bus/create"
-
-///|
-#unsafe_skip_stub_check
-fn EventBus::destroy(self : EventBus) -> Unit = "moonbitlang/async" "event_bus/destroy"
-
-///|
 #unsafe_skip_stub_check
 fn EventBus::try_register_ffi(
   self : EventBus,
@@ -75,34 +58,3 @@ fn EventBus::register_pid(self : EventBus, pid : Int32) -> Bool raise {
 fn EventBus::remove(_self : EventBus, _fd : @fd_util.Fd) -> Unit raise {
   // TODO: add explicit unregister support for Wasm on Linux
 }
-
-///|
-#unsafe_skip_stub_check
-fn EventBus::wait(self : EventBus, timeout~ : Int32) -> Int32 = "moonbitlang/async" "event_bus/wait"
-
-///|
-priv struct Event(UInt64)
-
-///|
-#unsafe_skip_stub_check
-fn EventBus::get_event(self : EventBus, index : Int32) -> Event = "moonbitlang/async" "event_bus/get_event"
-
-///|
-#unsafe_skip_stub_check
-fn Event::fd(event : Event) -> @fd_util.Fd = "moonbitlang/async" "event_bus/event_fd"
-
-///|
-#unsafe_skip_stub_check
-fn Event::pid(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_pid"
-
-///|
-#unsafe_skip_stub_check
-fn Event::events(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_events/unix"
-
-///|
-#unsafe_skip_stub_check
-fn Event::io_result(event : Event) -> IoResultHandle = "moonbitlang/async" "event_bus/event_io_result/windows"
-
-///|
-#unsafe_skip_stub_check
-fn Event::bytes_transferred(event : Event) -> Int32 = "moonbitlang/async" "event_bus/event_bytes_transferred/windows"

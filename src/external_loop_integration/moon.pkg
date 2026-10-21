@@ -1,4 +1,8 @@
 import {
+  "moonbitlang/core/async/external_loop_integration" @core_external_loop,
+}
+
+import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/socket",

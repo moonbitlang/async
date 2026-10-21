@@ -16,18 +16,9 @@
 /// This function is used for integration of `moonbitlang/async`
 /// into the MoonBit toolchain, do not call directly.
 #coverage.skip
-#cfg(target="native")
+#cfg(not(target="wasm-gc"))
 #doc(hidden)
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  @event_loop.with_event_loop(() => main()) catch {
-    @event_loop.KilledBySignal(signal) =>
-      @event_loop.terminate_process_by_signal(signal)
-    err => {
-      eprintln(err.to_string())
-      exit(1)
-    }
-  }
-}
+pub using @core_async {run_async_main}
 
 ///|
 /// Set a custom event loop implementation
@@ -52,23 +43,3 @@ pub fn run_async_main(main : async () -> Unit) -> Unit {
 /// `moonbitlang/async` may still modify state of the main thread, such as changing signal mask.
 #cfg(target="native")
 pub using @event_loop {set_external_event_loop}
-
-///|
-#cfg(target="native")
-extern "C" fn exit(code : Int32) = "exit"
-
-///|
-#coverage.skip
-#cfg(target="js")
-#doc(hidden)
-pub fn run_async_main(main : async () -> Unit) -> Unit {
-  let _ = @coroutine.spawn <| () => {
-    main() catch {
-      err => {
-        eprintln(err.to_string())
-        panic()
-      }
-    }
-  }
-  @event_loop.reschedule()
-}

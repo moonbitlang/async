@@ -30,7 +30,7 @@ pub using @types {type Platform}
 
 ///|
 #cfg(target="native")
-extern "C" fn get_platform() -> Platform = "moonbitlang_async_get_platform"
+extern "C" fn get_platform() -> Platform = "moonbit_rt_get_platform"
 
 ///|
 #cfg(target="wasm")

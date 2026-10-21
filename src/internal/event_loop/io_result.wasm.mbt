@@ -251,10 +251,6 @@ fn IoResult::free(self : IoResult) -> Unit {
 
 ///|
 #unsafe_skip_stub_check
-fn IoResultHandle::event(self : IoResultHandle) -> Int32 = "moonbitlang/async" "io/io_result_get_event/windows"
-
-///|
-#unsafe_skip_stub_check
 fn IoResultHandle::cancel_ffi(
   self : IoResultHandle,
   handle : @fd_util.Fd,

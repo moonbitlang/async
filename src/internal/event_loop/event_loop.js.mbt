@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
+#warnings("-alert_internal")
 let _ignore_unused_import : Unit = {
   let _ : (@deque.Deque[Int32]) -> Unit = ignore
   let _ : (@sorted_set.SortedSet[Int32]) -> Unit = ignore
   ignore(@cmp.minimum(0, 0))
-  ignore(@debug.to_string(0))
   ignore(@c_buffer.unimplemented)
   ignore(@fd_util.unimplemented)
   ignore(@os_string.unimplemented)
@@ -25,12 +25,11 @@ let _ignore_unused_import : Unit = {
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
   ignore((_ : @env_util.Platform) => ())
   ignore(@utf8.encode(""))
+  ignore(@runtime_internal.get_current_scheduler())
 }
 
 ///|
-pub fn now() -> Int64 {
-  @env.now().reinterpret_as_int64()
-}
+pub using @core_async {now}
 
 ///|
 pub fn reschedule() -> Unit {

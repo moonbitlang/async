@@ -7,7 +7,6 @@ import {
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/types",
-  "moonbitlang/core/ref",
 }
 
 // Values
@@ -34,8 +33,6 @@ pub let all_signals : ReadOnlyArray[Int32]
 pub async fn atime(Int32, context~ : String) -> (Int64, Int32)
 
 pub async fn atime_by_path(StringView, follow_symlink~ : Bool, context~ : String) -> (Int64, Int32)
-
-pub let check_fd_leak : @ref.Ref[Bool]
 
 pub async fn chmod(StringView, Int32, context~ : String) -> Unit
 
@@ -104,9 +101,6 @@ pub fn terminate_process_by_signal(Int32) -> Unit
 pub fn with_event_loop(async () -> Unit, max_worker_count? : Int32) -> Unit raise
 
 // Errors
-pub suberror KilledBySignal {
-  KilledBySignal(Int32)
-}
 
 // Types and methods
 pub(all) enum Access {
