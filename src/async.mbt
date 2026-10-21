@@ -196,7 +196,7 @@ pub using @aqueue {type Queue}
 pub using @semaphore {type Semaphore}
 
 ///|
-pub type CondVar = @cond_var.Cond
+pub using @cond_var {type Cond}
 
 ///|
 /// `RetryMethod` describes different retry strategies used by various APIs:
