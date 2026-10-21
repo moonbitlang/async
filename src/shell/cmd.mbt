@@ -106,7 +106,7 @@ struct Cmd {
 /// ```
 pub fn Cmd::Cmd(
   program : String,
-  arguments : Array[String],
+  arguments : ArrayView[String],
   cwd? : String,
   env~ : Map[String, String] = {},
   inherit_env~ : Bool = true,
@@ -116,7 +116,7 @@ pub fn Cmd::Cmd(
 ) -> Cmd {
   {
     program,
-    arguments: arguments.copy(),
+    arguments: arguments.to_owned(),
     cwd,
     env: env.copy(),
     inherit_env,
