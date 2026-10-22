@@ -47,7 +47,13 @@ async fn Client::connect(
   let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
     errdefer proxy.close()
-    let response = proxy..request(Connect, "\{hostname}:\{port}").end_request()
+    // An IPv6 address keeps its brackets in the authority form of CONNECT.
+    let authority = if hostname.contains(":") {
+      "[\{hostname}]:\{port}"
+    } else {
+      "\{hostname}:\{port}"
+    }
+    let response = proxy..request(Connect, authority).end_request()
     guard response.code is (200..<300) else { raise ProxyError(response) }
     proxy..skip_response_body().enter_passthrough_mode()
     Proxy(proxy)
