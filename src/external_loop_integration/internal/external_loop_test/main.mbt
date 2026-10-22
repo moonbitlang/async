@@ -25,11 +25,20 @@ extern "C" fn wakeup_main_loop() -> Unit = "wakeup_main_loop"
 extern "C" fn wait_main_loop(timeout~ : Int32) -> Int32 = "wait_main_loop"
 
 ///|
-pub extern "C" fn trigger_event(
+extern "C" fn trigger_event_ffi(
+  pipe_w : @fd_util.Fd,
+  data : Int32,
+  deadline : UInt64,
+) -> Unit = "trigger_event"
+
+///|
+pub fn trigger_event(
   pipe_w : @fd_util.Fd,
   data : Int32,
   delay~ : Int32,
-) -> Unit = "trigger_event"
+) -> Unit {
+  trigger_event_ffi(pipe_w, data, @env.now() + delay.to_uint64())
+}
 
 ///|
 pub fn trigger_main_loop_event(delay~ : Int32) -> Unit {
