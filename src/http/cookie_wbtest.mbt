@@ -17,33 +17,37 @@ test "parse cookie success" {
   debug_inspect(
     Cookie::parse("Cookie=value"),
     content=(
-      #|{
-      #|  name: "Cookie",
-      #|  value: "value",
-      #|  path: None,
-      #|  expires_raw: None,
-      #|  max_age: None,
-      #|  domain: None,
-      #|  secure: false,
-      #|  http_only: false,
-      #|  extensions: [],
-      #|}
+      #|Some(
+      #|  {
+      #|    name: "Cookie",
+      #|    value: "value",
+      #|    path: None,
+      #|    expires_raw: None,
+      #|    max_age: None,
+      #|    domain: None,
+      #|    secure: false,
+      #|    http_only: false,
+      #|    extensions: [],
+      #|  },
+      #|)
     ),
   )
   debug_inspect(
     Cookie::parse("Cookie="),
     content=(
-      #|{
-      #|  name: "Cookie",
-      #|  value: "",
-      #|  path: None,
-      #|  expires_raw: None,
-      #|  max_age: None,
-      #|  domain: None,
-      #|  secure: false,
-      #|  http_only: false,
-      #|  extensions: [],
-      #|}
+      #|Some(
+      #|  {
+      #|    name: "Cookie",
+      #|    value: "",
+      #|    path: None,
+      #|    expires_raw: None,
+      #|    max_age: None,
+      #|    domain: None,
+      #|    secure: false,
+      #|    http_only: false,
+      #|    extensions: [],
+      #|  },
+      #|)
     ),
   )
   debug_inspect(
@@ -51,33 +55,38 @@ test "parse cookie success" {
       "Cookie2=value2;path=/path/to/xxx; EXPIRES=Sun, 06 Nov 1994 08:49:37 GMT;Max-age=420000; domain=example.moonbitlang.com;SECURE; httponly; whatever=whatever",
     ),
     content=(
-      #|{
-      #|  name: "Cookie2",
-      #|  value: "value2",
-      #|  path: Some("/path/to/xxx"),
-      #|  expires_raw: Some("Sun, 06 Nov 1994 08:49:37 GMT"),
-      #|  max_age: Some(420000),
-      #|  domain: Some("example.moonbitlang.com"),
-      #|  secure: true,
-      #|  http_only: true,
-      #|  extensions: ["whatever=whatever"],
-      #|}
+      #|Some(
+      #|  {
+      #|    name: "Cookie2",
+      #|    value: "value2",
+      #|    path: Some("/path/to/xxx"),
+      #|    expires_raw: Some("Sun, 06 Nov 1994 08:49:37 GMT"),
+      #|    max_age: Some(420000),
+      #|    domain: Some("example.moonbitlang.com"),
+      #|    secure: true,
+      #|    http_only: true,
+      #|    extensions: ["whatever=whatever"],
+      #|  },
+      #|)
     ),
   )
 }
 
 ///|
-test "parse cookie failure" {
-  debug_inspect(
-    @test.expect_error(() => Cookie::parse("Cookie")),
-    content=(
-      #|BadRequest
-    ),
-  )
-  debug_inspect(
-    @test.expect_error(() => Cookie::parse("Cookie=value;Max-Age=xxx")),
-    content=(
-      #|BadRequest
-    ),
-  )
+test "parse cookie ignores what RFC 6265 ignores" {
+  // No `=` in the name-value pair: the whole line is ignored.
+  debug_inspect(Cookie::parse("Cookie"), content="None")
+  debug_inspect(Cookie::parse("Cookie; Path=/"), content="None")
+  // A `Max-Age` that is not `-?DIGIT+` is ignored, as RFC 6265 requires, and
+  // so is one that does not fit in `Int64`.
+  for max_age in ["xxx", "soon", "+60", "", "3600, c=d", "99999999999999999999"] {
+    guard Cookie::parse("Cookie=value; Max-Age=\{max_age}") is Some(cookie) else {
+      fail("cookie with Max-Age=\{max_age} was dropped")
+    }
+    debug_inspect(cookie.max_age, content="None")
+  }
+  guard Cookie::parse("Cookie=value; Max-Age=-1") is Some(cookie) else {
+    fail("cookie with Max-Age=-1 was dropped")
+  }
+  debug_inspect(cookie.max_age, content="Some(-1)")
 }
