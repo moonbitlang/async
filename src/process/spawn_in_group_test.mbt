@@ -66,16 +66,15 @@ async test "Process::wait" {
 async test "Process::try_wait" {
   let sleep = sleep_prog.wait()
   @async.with_task_group() <| group => {
-    let child = @process.spawn(group, sleep, ["450", "-exit-code", "42"])
-    @async.sleep(300)
+    let child = @process.spawn(group, sleep, ["200", "-exit-code", "42"])
     debug_inspect(child.try_wait(), content="None")
-    @async.sleep(300)
+    @async.sleep(400)
     debug_inspect(child.try_wait(), content="Some(42)")
   }
 }
 
 ///|
-async test "Process:cancel" {
+async test "Process::cancel" {
   let sleep = sleep_prog.wait()
   let mut t0 = 0L
   @async.with_task_group() <| group => {
