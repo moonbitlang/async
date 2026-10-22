@@ -770,6 +770,32 @@ async test "read_response ignores malformed Set-Cookie" {
 }
 
 ///|
+async test "Set-Cookie outside a response is rejected" {
+  let messages = [
+    "GET / HTTP/1.1\r\nSet-Cookie: a=b\r\n\r\n", "GET / HTTP/1.1\r\nSet-Cookie: nameless\r\n\r\n",
+  ]
+  for message in messages {
+    let (r, w) = @io.pipe()
+    defer r.close()
+    @async.with_task_group() <| group => {
+      group.spawn_bg() <| () => {
+        defer w.close()
+        w.write(message)
+      }
+      let input = Reader::new(r)
+      let result = try {
+        ignore(input.read_request())
+        "accepted"
+      } catch {
+        BadRequest => "BadRequest"
+        err => raise err
+      }
+      inspect(result, content="BadRequest")
+    }
+  }
+}
+
+///|
 async test "chunk extension" {
   @async.with_task_group() <| root => {
     let (r, w) = @io.pipe()
