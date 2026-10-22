@@ -635,6 +635,34 @@ async test "fixed length gzip direct bytes one byte reads" {
 }
 
 ///|
+async test "close-delimited gzip" {
+  let (r, w) = @io.pipe()
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
+      defer w.close()
+      w
+      ..write("HTTP/1.1 200 OK\r\n")
+      ..write("Content-Encoding: gzip\r\n")
+      .write("\r\n")
+      @gzip_stream.Encoder(w)..write("A simple message to compress").end()
+    }
+    defer r.close()
+    let input = Reader::new(r)
+    let response = input.read_response(
+      request_method=None,
+      auto_decompress=true,
+    )
+    inspect(response.code, content="200")
+    inspect(
+      input.read_all().text(),
+      content=(
+        #|A simple message to compress
+      ),
+    )
+  }
+}
+
+///|
 async test "read_response parse cookie" {
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()
