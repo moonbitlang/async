@@ -232,18 +232,41 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
     }
     PassThrough => self.transport._direct_read(buf, offset~, max_len~)
     WaitConnectionClose => {
-      let n = self.transport._direct_read(buf, offset~, max_len~)
-      if n is 0 {
-        self.trailer = Some({})
+      let (consumed, produced) = self.decode_chunk(
+        buf,
+        offset~,
+        max_len~,
+        limit=@int.MAX_VALUE,
+      )
+      if self.gzip is Some(gzip) {
+        if gzip.is_finished() {
+          guard self.transport.read(buf, offset~, max_len~) == 0 else {
+            raise BadRequest
+          }
+          self.gzip = None
+          self.body = Empty
+          self.trailer = Some({})
+          0
+        } else if produced is 0 {
+          guard consumed > 0 else { raise BadRequest }
+          self._direct_read(buf, offset~, max_len~)
+        } else {
+          produced
+        }
+      } else {
+        if produced is 0 {
+          self.body = Empty
+          self.trailer = Some({})
+        }
+        produced
       }
-      n
     }
   }
 }
 
 ///|
 impl @io.Reader for Reader with fn _get_internal_buffer(self) {
-  if self.body is PassThrough || self.body is WaitConnectionClose {
+  if self.body is PassThrough {
     self.transport._get_internal_buffer()
   } else {
     self.read_buf
