@@ -51,12 +51,15 @@ fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {
 }
 
 ///|
+/// Split the authority `host` into the host name and the port to connect to.
+/// The brackets around an IPv6 address such as `[::1]:8080` are removed, so
+/// that the address can be passed to the resolver.
 #cfg(any(target="native", target="wasm"))
 fn resolve_host(
   host : StringView,
   protocol~ : Protocol,
 ) -> (StringView, Int32) raise {
-  if host =~ (
+  let (host, port) = if host =~ (
       re"^" +
       (re".*" as host) +
       re":" +
@@ -68,6 +71,16 @@ fn resolve_host(
     (host, port)
   } else {
     (host, protocol.default_port())
+  }
+  if host.has_prefix("[") && host.has_suffix("]") {
+    // Brackets hold an IP literal (RFC 3986 section 3.2.2). Only reject what
+    // cannot be an IPv6 address, such as `[localhost]`; the resolver checks
+    // the rest.
+    let address = host[1:host.length() - 1]
+    guard address.contains(":") else { raise InvalidFormat }
+    (address, port)
+  } else {
+    (host, port)
   }
 }
 
