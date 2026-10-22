@@ -246,7 +246,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
           self.gzip = None
           self.body = Empty
           self.trailer = Some({})
-          0
+          produced
         } else if produced is 0 {
           guard consumed > 0 else { raise BadRequest }
           self._direct_read(buf, offset~, max_len~)
