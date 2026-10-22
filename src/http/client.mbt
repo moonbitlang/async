@@ -47,9 +47,10 @@ async fn Client::connect(
   let (hostname, port) = resolve_host(host, protocol~)
   let transport = if proxy is Some(proxy) {
     errdefer proxy.close()
-    // An IPv6 address keeps its brackets in the authority form of CONNECT.
+    // An IPv6 address keeps its brackets, and its zone ID its `%25`, in the
+    // authority form of CONNECT.
     let authority = if hostname.contains(":") {
-      "[\{hostname}]:\{port}"
+      "[\{hostname.replace(old="%", new="%25")}]:\{port}"
     } else {
       "\{hostname}:\{port}"
     }
