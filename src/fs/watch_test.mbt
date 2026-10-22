@@ -842,7 +842,7 @@ async test "watch debounce" {
     timers[0].wait()
     @fs.rename("\{watched_path}/file", "\{path}/file")
     timers[1].wait()
-    @fs.write_file("\{watched_path}/another_file", "1234")
+    @fs.write_file("\{watched_path}/another_file", "1234", sync=Full)
     timers[2].wait()
     @fs.rename("\{path}/file", "\{watched_path}/file2")
     @async.sleep(600)
