@@ -59,7 +59,7 @@ async test "WebSocket client example" {
 
     // Create a new client via `@websocket.connect`.
     // TLs encrypted WebSocket tunnel can be created via `wss://` URL.
-    let ws = @websocket.connect("ws://localhost:\{port}/ws")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}/ws")
     defer ws.close()
     // convenient helper for sending small text message
     ws.send_text("abcd")

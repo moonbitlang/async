@@ -33,7 +33,7 @@ async test "passthrough mode" {
         log.push("server received: \{packet}")
       }
     }
-    let client = @http.Client("http://localhost:\{server_addr.port()}")
+    let client = @http.Client("http://127.0.0.1:\{server_addr.port()}")
     defer client.close()
     let response = client..request(Connect, "/path").end_request()
     inspect(response.code, content="200")
@@ -123,7 +123,7 @@ async test "proxied https request" {
     }
     let (_, result) = @http.get(
       "https://www.moonbitlang.com",
-      proxy=Client("http://localhost:\{port}"),
+      proxy=Client("http://127.0.0.1:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -145,7 +145,7 @@ async test "proxied http request" {
     }
     let (_, result) = @http.get(
       "http://www.example.org",
-      proxy=Client("http://localhost:\{port}"),
+      proxy=Client("http://127.0.0.1:\{port}"),
     )
     assert_true(result.text().has_prefix("<!doctype html>"))
   }
@@ -181,20 +181,20 @@ async test "proxied misc request" {
       })
     }
     async fn proxy() {
-      @http.Client("http://localhost:\{proxy_server_addr.port()}")
+      @http.Client("http://127.0.0.1:\{proxy_server_addr.port()}")
     }
 
-    let _ = @http.get("http://localhost:\{port}", proxy=proxy())
-    let _ = @http.put("http://localhost:\{port}", "abcd", proxy=proxy())
-    let _ = @http.post("http://localhost:\{port}", "efgh", proxy=proxy())
+    let _ = @http.get("http://127.0.0.1:\{port}", proxy=proxy())
+    let _ = @http.put("http://127.0.0.1:\{port}", "abcd", proxy=proxy())
+    let _ = @http.post("http://127.0.0.1:\{port}", "efgh", proxy=proxy())
   }
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")
   }
   json_inspect(log, content=[
-    "proxy server: connected to localhost:XXXXX successfully", "target server: received request Get / ",
-    "proxy server: connected to localhost:XXXXX successfully", "target server: received request Put / abcd",
-    "proxy server: connected to localhost:XXXXX successfully", "target server: received request Post / efgh",
+    "proxy server: connected to 127.0.0.1:XXXXX successfully", "target server: received request Get / ",
+    "proxy server: connected to 127.0.0.1:XXXXX successfully", "target server: received request Put / abcd",
+    "proxy server: connected to 127.0.0.1:XXXXX successfully", "target server: received request Post / efgh",
   ])
 }
 
@@ -212,7 +212,7 @@ async test "proxy error" {
     try
       @http.get(
         "https://www.moonbitlang.com",
-        proxy=Client("http://localhost:\{port}"),
+        proxy=Client("http://127.0.0.1:\{port}"),
       )
     catch {
       err =>
