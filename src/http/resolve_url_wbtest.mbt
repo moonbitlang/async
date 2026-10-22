@@ -99,6 +99,12 @@ test "resolve_host" {
       #|("2001:db8::1", 443)
     ),
   )
+  debug_inspect(
+    to_owned(resolve_host("[fe80::1%25eth0]:8080", protocol=Http)),
+    content=(
+      #|("fe80::1%eth0", 8080)
+    ),
+  )
   for host in ["[localhost]:8080", "[127.0.0.1]"] {
     debug_inspect(
       @test.expect_error(() => to_owned(resolve_host(host, protocol=Http))),

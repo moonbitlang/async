@@ -78,7 +78,9 @@ fn resolve_host(
     // the rest.
     let address = host[1:host.length() - 1]
     guard address.contains(":") else { raise InvalidFormat }
-    (address, port)
+    // A zone ID is written `fe80::1%25eth0` in a URI (RFC 6874), and
+    // `fe80::1%eth0` for the resolver.
+    (address.replace(old="%25", new="%"), port)
   } else {
     (host, port)
   }
