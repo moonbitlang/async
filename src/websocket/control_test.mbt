@@ -26,7 +26,7 @@ async test "ping auto-reply" {
       defer ws.close()
       inspect(ws.recv().read_all().text(), content="1234")
     }
-    let http_client = @http.Client("http://localhost:\{port}")
+    let http_client = @http.Client("http://127.0.0.1:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
@@ -52,7 +52,7 @@ async test "pong ignored" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("1234")
     }
-    let http_client = @http.Client("http://localhost:\{port}")
+    let http_client = @http.Client("http://127.0.0.1:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     let ping_frame : Bytes = [0x89, 0x04, ..b"abcd"]
@@ -83,7 +83,7 @@ async test "ping auto-reply race-with-write" {
         ws.end_message()
       }
     }
-    let http_client = @http.Client("http://localhost:\{port}")
+    let http_client = @http.Client("http://127.0.0.1:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     @async.sleep(200)
@@ -127,7 +127,7 @@ async test "close test" {
         ws.end_message()
       }
     }
-    let http_client = @http.Client("http://localhost:\{port}")
+    let http_client = @http.Client("http://127.0.0.1:\{port}")
     let ws_client = @websocket.from_http_client(http_client, "/")
     defer ws_client.close()
     @async.sleep(200)
@@ -157,7 +157,7 @@ async test "send ping" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
     }
-    let ws = @websocket.connect("ws://localhost:\{port}")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}")
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
@@ -184,7 +184,7 @@ async test "ping inside message" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
     }
-    let ws = @websocket.connect("ws://localhost:\{port}")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}")
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
@@ -211,7 +211,7 @@ async test "multiple ping" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
     }
-    let ws = @websocket.connect("ws://localhost:\{port}")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}")
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
@@ -242,7 +242,7 @@ async test "ping cancelled" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
     }
-    let ws = @websocket.connect("ws://localhost:\{port}")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}")
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
@@ -274,7 +274,7 @@ async test "duplicated ping" {
       inspect(ws.recv().read_all().text(), content="1234")
       ws.send_text("abcd")
     }
-    let ws = @websocket.connect("ws://localhost:\{port}")
+    let ws = @websocket.connect("ws://127.0.0.1:\{port}")
     defer ws.close()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {

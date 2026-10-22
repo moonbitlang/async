@@ -40,7 +40,7 @@ async test "websocket basic" {
         _ => raise Failure::Failure("expected error, but nothing happens")
       }
     }
-    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
     client.send_binary(b"abcd")
     let msg = client.recv()
@@ -74,7 +74,7 @@ async test "single frame multiple read" {
       json_inspect(msg.read_exactly(2), content="ab")
       json_inspect(msg.read_exactly(2), content="cd")
     }
-    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
     client.send_text("abc")
     @async.sleep(200)
@@ -103,7 +103,7 @@ async test "ignored message" {
       debug_inspect(msg2.kind, content="Text")
       inspect(msg2.read_all().text(), content="1234")
     }
-    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
     client.send_text("abcd")
     @async.sleep(200)
@@ -137,7 +137,7 @@ async test "write buffering" {
         }
       }
     }
-    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
     client..start_message(Text).write("ab")
     @async.sleep(100)
@@ -174,7 +174,7 @@ async test "large message" {
       }
       checksum
     })
-    let client = @websocket.connect("ws://localhost:\{addr.port()}")
+    let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
     client.start_message(Binary)
     let chunk = Bytes::makei(1500, i => (i % 0x100).to_byte())

@@ -43,7 +43,7 @@ async test "UTF8 validation" {
       }
     }
     async fn send_bad_message(msg : Bytes) {
-      let client = @websocket.connect("ws://localhost:\{addr.port()}")
+      let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
       defer client.close()
       client..start_message(Text)..write(msg).end_message()
       let err = @test_util.expect_error_async <| () => {
@@ -101,7 +101,7 @@ async test "UTF8 validation large message" {
         ws..start_message(Text)..write_reader(msg).end_message()
       })
     }
-    let client = @websocket.connect("ws://localhost:\{port}")
+    let client = @websocket.connect("ws://127.0.0.1:\{port}")
     defer client.close()
     @async.with_task_group() <| group => {
       let chunk_text = String::make(1024, '☺')
