@@ -169,16 +169,19 @@ int32_t wait_main_loop(int32_t timeout) {
 struct TriggerEventWorker {
   HANDLE pipe_w; // invalid => wake up main loop
   int32_t data;
-  int32_t delay;
+  uint64_t deadline;
 };
+
+uint64_t moonbit_get_ms_since_epoch();
 
 static
 thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(void *payload) {
   struct TriggerEventWorker *request = (struct TriggerEventWorker*)payload;
+  uint64_t delay = request->deadline - moonbit_get_ms_since_epoch();
 
 #ifdef _WIN32
 
-  Sleep(request->delay);
+  Sleep(delay);
 
   if (request->pipe_w == INVALID_HANDLE_VALUE) {
     SetEvent(main_loop.main_event);
@@ -189,7 +192,7 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(voi
 
 #else
 
-  struct timespec duration = { request->delay / 1000, (request->delay % 1000) * 1000000 };
+  struct timespec duration = { delay / 1000, (delay % 1000) * 1000000 };
 
 #ifdef __MACH__
   // On GitHub CI MacOS runner, `nanosleep` is very imprecise,
@@ -217,13 +220,13 @@ thread_worker_result_t THREAD_PROC_CALLING_CONVENTION main_loop_event_worker(voi
 }
 
 MOONBIT_FFI_EXPORT
-void trigger_event(HANDLE pipe_w, int32_t data, int32_t delay) {
+void trigger_event(HANDLE pipe_w, int32_t data, uint64_t deadline) {
   struct TriggerEventWorker *request =
     (struct TriggerEventWorker*)malloc(sizeof(struct TriggerEventWorker));
 
   request->pipe_w = pipe_w;
   request->data = data;
-  request->delay = delay;
+  request->deadline = deadline;
 
 #ifdef _WIN32
 

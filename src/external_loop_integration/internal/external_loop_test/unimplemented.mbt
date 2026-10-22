@@ -17,6 +17,7 @@
 pub let unimplemented : Unit = {
   let _ : (@cond_var.Cond) -> Unit = ignore
   let _ : (&@external_loop_integration.ExternalEventLoop) -> Unit = ignore
+  ignore(@env.now())
 }
 
 ///|
