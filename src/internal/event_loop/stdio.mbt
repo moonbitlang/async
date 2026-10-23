@@ -36,7 +36,7 @@ fn kind_of_fd_sync(
   guard mask == STAT_FILE_KIND else {
     raise @os_error.OSError(@os_error.errno_ENOTSUP, context~)
   }
-  @fd_util.FileKind::unsafe_from_int(kind.to_int())
+  @fd_util.FileKind::from_int(kind.to_int())
 }
 
 ///|
@@ -56,7 +56,7 @@ fn kind_of_fd_sync(
   if kind < 0 {
     @os_error.check_errno(context)
   }
-  @fd_util.FileKind::unsafe_from_int(kind)
+  @fd_util.FileKind::from_int(kind)
 }
 
 ///|
