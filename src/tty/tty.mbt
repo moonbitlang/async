@@ -39,22 +39,6 @@ pub(all) enum Event {
 } derive(Debug, Eq)
 
 ///|
-pub extend Event with @debug.Debug::{to_repr}
-
-///|
-pub extend Event with Eq::{equal, not_equal}
-
-///|
-/// Raised when a read is started on a `Tty` while another read is still in progress.
-pub suberror ReadInProgress derive(Debug, ToJson)
-
-///|
-pub extend ReadInProgress with @debug.Debug::{to_repr}
-
-///|
-pub extend ReadInProgress with ToJson::{to_json}
-
-///|
 let instance : Ref[Tty?] = Ref(None)
 
 ///|
@@ -127,7 +111,8 @@ async fn Tty::read_once(
   len~ : Int32,
   context~ : String,
 ) -> Int32 {
-  guard !self.reading else { raise ReadInProgress }
+  // Like concurrent reads on any other `IoHandle`, this is a usage error.
+  guard! !self.reading
   self.reading = true
   defer {
     self.reading = false
@@ -140,7 +125,7 @@ async fn Tty::read_once(
 /// Return `None` on EOF.
 ///
 /// Only one read (`read_event` or the `@io.Reader` methods)
-/// may be in progress at a time, otherwise `ReadInProgress` is raised.
+/// may be in progress at a time, starting another one aborts the program.
 pub async fn Tty::read_event(self : Tty) -> Event? {
   if self.resize_pending || self.handle.take_resize_event() {
     self.resize_pending = false
@@ -186,8 +171,6 @@ pub impl @io.Reader for Tty with fn _get_internal_buffer(self) {
 
 ///|
 pub extend Tty with @io.Reader::{
-  _direct_read,
-  _get_internal_buffer,
   read,
   read_some,
   drop,

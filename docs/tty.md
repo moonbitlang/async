@@ -32,7 +32,6 @@ pub(all) enum Event {
   Resize         // coalesced; call size() for the new dimensions
 }
 pub async fn Tty::read_event(Self) -> Event?     // None on EOF
-pub suberror ReadInProgress                      // two reads at once
 
 pub impl @io.Reader for Tty                      // same bytes, no resize
 pub impl @io.Writer for Tty
@@ -208,8 +207,9 @@ pub async fn Tty::read_event(self : Self) -> Event? {
 struct is opaque to MoonBit. It is called only after the job has completed,
 when the worker no longer touches the struct, so it needs no atomics.
 
-- `read_once` guards the "read in progress" flag and raises `ReadInProgress`
-  if a read is already parked. It then calls `@event_loop.Tty::read`, which
+- `read_once` guards the "read in progress" flag with `guard!`: a second
+  read while one is parked is a usage error, as for any `IoHandle`, whose
+  read path has the same `guard!`. It then calls `@event_loop.Tty::read`, which
   builds one `tty_read` job on the `FixedArray[Byte]` with `#owned(buf)` and
   runs it with `perform_job_in_worker(cancellable=true)`.
 - The `@io.Reader` impl reads through the same job. When the job returns zero
@@ -230,9 +230,8 @@ when the worker no longer touches the struct, so it needs no atomics.
 - macOS `kqueue` does not support `/dev/tty`, which is why libuv keeps a
   `select` fallback and why the current community package avoids registering
   it. `poll` does not work on it either (`poll(2)` BUGS: "The poll() system
-  call currently does not support devices"; see
-  `tty-probes/dev_tty_pollable.c`). A macOS read ends in a worker and a
-  `select` either way.
+  call currently does not support devices"). A macOS read ends in a worker
+  and a `select` either way.
 - Linux could use `epoll`, but doing so would require a second, `#cfg`-gated
   read path. One path is easier to keep correct than two.
 
@@ -324,8 +323,9 @@ while every thread blocks it is parked on one particular thread (the first
 one) and is never handed to another thread that unblocks it later. A resize
 arriving between two reads was lost, and a resize during a read could end up
 on the main thread and leave the worker parked forever. Both cases were
-reproduced with a standalone C program before switching; the programs behind
-this and the `kqueue` claims below are in `tty-probes/`.
+reproduced with standalone C programs before switching. Those probes are not
+part of the repository, so what follows records their output rather than
+pointing at runnable code.
 
 The `signal.c` correction is still required, for Linux: `sigwait_thread_worker`
 used to set its mask to its wait set with `SIG_SETMASK`, leaving every other
@@ -423,12 +423,12 @@ to whichever event loop is running.
   methods, `Job::tty_read`. Native only.
 - `src/internal/event_loop/signal.c`: `sigfillset` mask in
   `sigwait_thread_worker`.
-- `src/tty/moon.pkg`: `supported_targets = "-all+native"`,
-  `max_concurrent_tests = 1`, native stub `test_stub.c`.
-- `src/tty/tty.mbt`: `Tty`, `Event`, `ReadInProgress`, `open`, `read_event`,
+- `src/tty/moon.pkg`: `supported_targets = "-all+native"`.
+- `src/tty/tty.mbt`: `Tty`, `Event`, `open`, `read_event`,
   Reader and Writer impls, singleton `Ref`, exit hook.
-- `src/tty/test_stub.c`: pseudo-terminal helpers for tests only.
-- `src/tty/tty_wbtest.mbt`, `src/tty/README.mbt.md`.
+- `src/tty/tty_test.mbt`, `src/tty/README.mbt.md`.
+- `test_programs/ttyd`: the program the tests run in a pseudo terminal,
+  serving one `@tty` operation per JSON-RPC request.
 
 ## API And Interface Diff
 
@@ -439,20 +439,28 @@ to whichever event loop is running.
 
 ## Validation
 
-Done for Unix (`moon test src/tty --target native`, 8 tests on macOS):
+Verified on macOS (`moon test src/tty --target native`, 13 tests):
 
-- White-box tests create a pty pair with `posix_openpt`, open the slave
-  through the internal `Tty::open_path`, and drive the master through
-  `@raw_fd.RawFd`: cooked mode holds back a partial line, raw mode is
-  idempotent and restores exactly, `size` follows `TIOCSWINSZ`, a
-  `kill(getpid(), SIGWINCH)` during a parked read and while idle is reported
-  once, a burst of three is coalesced, `with_timeout` cancels a parked read
-  and the terminal stays usable, a second concurrent read raises
-  `ReadInProgress`, and the Reader and Writer impls round-trip bytes with a
-  resize seen by a plain read surfacing at the next `read_event`.
-- `SIGWINCH` is process-wide, so the package runs its tests one at a time
-  (`max_concurrent_tests = 1`); concurrent tests made the resize tests wake
-  the parked reads of the others.
+- The tests are end to end and need no test-only FFI. Each one runs
+  `test_programs/ttyd` under `script`, which gives it a fresh pseudo terminal
+  as its controlling terminal. The program's stdin and stdout are redirected
+  to `/dev/null`, so it reaches the terminal only through `@tty.open()`. The
+  test types on the terminal through `script`'s stdin, reads the terminal
+  display from `script`'s stdout, and resizes it with `stty -F`/`-f` on the
+  terminal's path, so `SIGWINCH` comes from the kernel.
+- `ttyd` serves one `@tty` operation per JSON-RPC request on a loopback
+  socket and answers synchronously, so a test step advances on the reply and
+  only the 200ms "nothing arrives" checks depend on time.
+- Covered: `size`; cooked mode holds back a partial line, echoes it back as
+  `\r\n`, and reports `^D` at line start as EOF; raw mode returns bytes
+  without line buffering and without echo, is idempotent, and one
+  `leave_raw_mode` restores the canonical state; `^C` kills a cooked-mode
+  program but arrives as `\x03` in raw mode; a resize interrupts a parked
+  read, and three resizes while idle collapse into one `Resize`; a resize
+  seen by a plain `@io.Reader` read surfaces at the next `read_event`;
+  `@io.Writer` writes bytes unchanged in raw mode.
+- `script` and `stty` take different flags on macOS and Linux; the test picks
+  them from `@async.platform`. Windows has neither, the tests are Unix only.
 - `moon test src/signal src/stdio src/process --target native` passes with
   the `signal.c` change.
 - `moon fmt`, `moon check --target native`, `moon info`, `git diff --check`.

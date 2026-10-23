@@ -10,22 +10,14 @@ import {
 pub fn open() -> Tty raise
 
 // Errors
-pub suberror ReadInProgress derive(ToJson, @debug.Debug)
-pub fn ReadInProgress::to_json(Self) -> Json
-pub fn ReadInProgress::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) enum Event {
   Input(Bytes)
   Resize
 } derive(Eq, @debug.Debug)
-pub fn Event::equal(Self, Self) -> Bool
-pub fn Event::not_equal(Self, Self) -> Bool
-pub fn Event::to_repr(Self) -> @debug.Repr
 
 type Tty
-pub async fn Tty::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
-pub fn Tty::_get_internal_buffer(Self) -> @io.ReaderBuffer
 pub async fn Tty::drop(Self, Int32) -> Int32
 pub fn Tty::enter_raw_mode(Self) -> Unit raise
 pub fn Tty::leave_raw_mode(Self) -> Unit raise

@@ -37,5 +37,6 @@ Notes:
 - `Resize` carries no size, call `size()`. Several resizes in a row may be
   reported as one event.
 - `Tty` implements `@io.Reader` and `@io.Writer`. Only one read, through
-  `read_event` or the reader methods, may be in progress at a time.
+  `read_event` or the reader methods, may be in progress at a time;
+  starting another one aborts the program, as with any other reader.
 - Native only. Windows support is not implemented yet: `open()` raises.

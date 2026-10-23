@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/tty",
+}
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")
