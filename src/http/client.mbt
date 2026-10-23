@@ -50,7 +50,7 @@ async fn Client::connect(
     // An IPv6 address keeps its brackets, and its zone ID its `%25`, in the
     // authority form of CONNECT.
     let authority = if hostname.contains(":") {
-      "[\{hostname.replace(old="%", new="%25")}]:\{port}"
+      "[\{encode_ip_literal(hostname)}]:\{port}"
     } else {
       "\{hostname}:\{port}"
     }
@@ -359,4 +359,29 @@ pub async fn Client::enter_passthrough_mode(self : Client) -> Unit {
   guard! self.sender.mode is SendingHeader
   self.reader.enter_passthrough_mode()
   self.sender.enter_passthrough_mode()
+}
+
+///|
+/// Write the IPv6 address `fe80::1%eth0` as `fe80::1%25eth0` for a URI, with
+/// the characters of the zone ID that RFC 6874 does not allow percent-encoded
+/// as UTF-8.
+fn encode_ip_literal(address : StringView) -> String {
+  guard address.find("%") is Some(i) else { return address.to_owned() }
+  let buf = StringBuilder()
+  buf.write_view(address[:i])
+  buf.write_string("%25")
+  for c in address[i + 1:] {
+    match c {
+      'a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | '.' | '_' | '~' =>
+        buf.write_char(c)
+      _ =>
+        for octet in @utf8.encode(c.to_string()) {
+          let octet = octet.to_int()
+          buf.write_char('%')
+          buf.write_char("0123456789ABCDEF"[octet >> 4].unsafe_to_char())
+          buf.write_char("0123456789ABCDEF"[octet & 15].unsafe_to_char())
+        }
+    }
+  }
+  buf.to_string()
 }

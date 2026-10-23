@@ -80,10 +80,51 @@ fn resolve_host(
     guard address.contains(":") else { raise InvalidFormat }
     // A zone ID is written `fe80::1%25eth0` in a URI (RFC 6874), and
     // `fe80::1%eth0` for the resolver.
-    (address.replace(old="%25", new="%"), port)
+    guard address.find("%") is Some(i) else { return (address, port) }
+    guard address[i:].has_prefix("%25") else { raise InvalidFormat }
+    let zone = decode_zone_id(address[i + 3:])
+    ("\{address[:i]}%\{zone}", port)
   } else {
     (host, port)
   }
+}
+
+///|
+/// Decode an RFC 6874 zone ID, which consists of unreserved characters and
+/// percent-encoded UTF-8 octets. Zone IDs are interface names or numbers, so
+/// whitespace and control characters are rejected.
+#cfg(any(target="native", target="wasm"))
+fn decode_zone_id(zone : StringView) -> String raise URIParseError {
+  fn hex(c : Char) -> Int32 raise URIParseError {
+    match c {
+      '0'..<='9' => c.to_int() - '0'.to_int()
+      'a'..<='f' => c.to_int() - 'a'.to_int() + 10
+      'A'..<='F' => c.to_int() - 'A'.to_int() + 10
+      _ => raise InvalidFormat
+    }
+  }
+
+  guard zone.length() > 0 else { raise InvalidFormat }
+  let octets = @buffer.Buffer()
+  let mut rest = zone
+  while rest is [c, .. tail] {
+    match (c, tail) {
+      ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | '.' | '_' | '~', _) => {
+        octets.write_byte(c.to_int().to_byte())
+        rest = tail
+      }
+      ('%', [hi, lo, .. after]) => {
+        octets.write_byte((hex(hi) * 16 + hex(lo)).to_byte())
+        rest = after
+      }
+      _ => raise InvalidFormat
+    }
+  }
+  let zone = @utf8.decode(octets.contents()) catch { _ => raise InvalidFormat }
+  for c in zone {
+    guard c > ' ' && c != '\u{7f}' else { raise InvalidFormat }
+  }
+  zone
 }
 
 ///|
