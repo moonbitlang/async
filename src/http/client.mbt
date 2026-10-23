@@ -67,17 +67,22 @@ async fn Client::connect(
   if !headers.contains("User-Agent") {
     headers["User-Agent"] = "moonbit-http-client/1.1"
   }
+  // A certificate names an IPv6 address without its zone ID.
+  let tls_host = match hostname.find("%") {
+    Some(i) if hostname.contains(":") => hostname[:i].to_owned()
+    _ => hostname.to_owned()
+  }
   let (tls, reader, sender) = match (protocol, transport) {
     (Http, Plain(conn)) =>
       (None, Reader::new(conn), Sender::new(conn, headers~))
     (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~)
+      let tls = @tls.Tls::client(conn, host=tls_host, trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
     (Http, Proxy(proxy)) =>
       (None, Reader::new(proxy), Sender::new(proxy, headers~))
     (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~)
+      let tls = @tls.Tls::client(proxy, host=tls_host, trust~)
       (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
     }
   }
