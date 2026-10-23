@@ -14,18 +14,7 @@
 
 ///|
 #cfg(any(target="native", target="wasm"))
-let cat : @async.Lazy[String] = Lazy(() => {
-  // Note: the `cat` example program lies in another MoonBit module.
-  // Currently, dependencies of a module is built locally in that module,
-  // so there will be no build lock conflict between this test and the `cat` program.
-  let exit_code = @process.run("moon", [
-    "build", "--debug", "test_programs/cat", "--target-dir", "_build/test_programs",
-  ])
-  guard exit_code is 0 else {
-    fail("failed to build `cat` program: \{exit_code}")
-  }
-  "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/cat/cat.exe"
-})
+let cat : @async.Lazy[String] = Lazy(() => @test_util.build_test_program("cat"))
 
 ///|
 #cfg(any(target="native", target="wasm"))
