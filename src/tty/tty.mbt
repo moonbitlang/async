@@ -186,7 +186,7 @@ fn Tty::output(self : Tty) -> @event_loop.IoHandle raise {
   }
   let out = @event_loop.IoHandle::from_fd(
     self.out_fd,
-    kind=CharDevice,
+    kind=@event_loop.tty_output_kind,
     is_async=false,
   )
   self.out = Some(out)

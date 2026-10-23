@@ -39,4 +39,6 @@ Notes:
 - `Tty` implements `@io.Reader` and `@io.Writer`. Only one read, through
   `read_event` or the reader methods, may be in progress at a time;
   starting another one aborts the program, as with any other reader.
-- Native only. Windows support is not implemented yet: `open()` raises.
+- Native only. On Windows `open()` opens the console (`CONIN$`/`CONOUT$`).
+  Console input is converted to the same VT byte stream as on Unix, and
+  `Resize` is only reported in raw mode.

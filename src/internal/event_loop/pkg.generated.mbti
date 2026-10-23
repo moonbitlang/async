@@ -101,6 +101,8 @@ pub async fn symlink(StringView, StringView, force_symlink~ : Bool, context~ : S
 
 pub fn terminate_process_by_signal(Int32) -> Unit
 
+pub let tty_output_kind : @fd_util.FileKind
+
 pub fn with_event_loop(async () -> Unit, max_worker_count? : Int32) -> Unit raise
 
 // Errors
@@ -169,6 +171,12 @@ pub fn Tty::open(Bytes, context~ : String) -> (Self, Int32) raise
 pub async fn Tty::read(Self, FixedArray[Byte], offset~ : Int32, len~ : Int32, context~ : String) -> Int32
 pub fn Tty::size(Self, context~ : String) -> (Int32, Int32) raise
 pub fn Tty::take_resize_event(Self) -> Bool
+
+#external
+pub type TtyEncoder
+pub fn TtyEncoder::encode(Self, Bytes, rows~ : Int32, cols~ : Int32, FixedArray[Byte]) -> (Int32, Bool)
+pub fn TtyEncoder::free(Self) -> Unit
+pub fn TtyEncoder::new(Int32, Int32) -> Self
 
 // Type aliases
 

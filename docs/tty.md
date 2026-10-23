@@ -158,8 +158,8 @@ struct tty {
 };
 ```
 
-`struct tty` on Windows (not implemented yet, every entry point fails with
-`ERROR_CALL_NOT_IMPLEMENTED`):
+`struct tty` on Windows (the encoder fields live in a `struct tty_encoder`
+shared with the portable encoder; `path` is ignored by `open`):
 
 ```c
 struct tty {
@@ -262,10 +262,22 @@ Windows:
 2. `GetNumberOfConsoleInputEvents`, then one `ReadConsoleInputW` for at most
    `len / 4` records (minimum one), since each record expands to at most four
    bytes. Only a caller buffer smaller than four bytes can overflow, hence the
-   4-byte `pending` area.
-3. Encode the whole batch into `buf`, setting `resized` if a size record
-   changed `srWindow`. If the batch produced no bytes and did not set the
+   small `pending` area.
+3. Encode the whole batch into `buf`, setting `resized` if `srWindow` differs
+   from the last batch. If the batch produced no bytes and did not set the
    flag, loop back to step 1; returning zero bytes otherwise means EOF.
+
+The job has its own cancel handler: it sets the auto-reset cancel event and
+reports `NEED_WAIT`. The job resets the event before its first wait, so a
+request that arrived after an earlier job stopped waiting cannot cancel a
+later one; a request for the current job is caught either by
+`enter_cancellable_region` (the worker state is set before the event) or by
+the wait.
+
+The raw/cooked choice is made when the job is created, on the main thread,
+which owns `is_in_raw`. Outside raw mode the job reads with `ReadConsoleW`
+and converts UTF-16 with the same encoder state, and uses the default
+`CancelSynchronousIo` cancellation like `@stdio.stdin`.
 
 Both: the cancellable region wraps only the blocking call. Encoding and
 bookkeeping run outside it. Records already consumed by `ReadConsoleInputW`
@@ -281,8 +293,9 @@ thread-safety story.
 | Record | Effect |
 |---|---|
 | `KEY_EVENT`, key down | UTF-8 of `UnicodeChar`; surrogate pairs joined across records |
-| `KEY_EVENT`, key up, or `UnicodeChar == 0` | dropped (conhost already produced VT for special keys) |
-| `WINDOW_BUFFER_SIZE_EVENT` | dropped from the stream; sets `resized` if `srWindow` differs from the last report |
+| `KEY_EVENT`, `VK_MENU` key up, `UnicodeChar != 0` | UTF-8 of `UnicodeChar` (Alt+Numpad and unmappable characters) |
+| other `KEY_EVENT`s, or `UnicodeChar == 0` | dropped (conhost already produced VT for special keys) |
+| `WINDOW_BUFFER_SIZE_EVENT` | dropped from the stream; it only wakes the job, which compares `srWindow` on every batch |
 | `FOCUS_EVENT` | `CSI I` / `CSI O` |
 | `MOUSE_EVENT`, `MENU_EVENT` | dropped in v1 |
 
@@ -294,10 +307,17 @@ unreported. Mitigation: compare `srWindow` against the last report on every
 batch, so a missed resize is reported with the next input. Windows Terminal
 and ConPTY resize the buffer with the viewport, so every resize fires there.
 
-Only the key-down surrogate half is carried, since key-up characters are
-dropped. The encoder takes a portable packed struct with the 20-byte
-`INPUT_RECORD` layout rather than the Windows type, and is exported so MoonBit
-tests can feed hand-built records on Linux and macOS.
+Characters that the console cannot map to a key arrive the way Alt+Numpad
+input does: a `VK_MENU` key down without a character, then a `VK_MENU` key up
+that carries it. ConPTY sends text outside the BMP like this, one surrogate
+half per key up, which is why that one kind of key-up record is kept. A plain
+Alt release has `UnicodeChar == 0` and is still dropped.
+
+An unpaired high surrogate is dropped and an unpaired low one becomes U+FFFD,
+which keeps every record at four bytes or fewer. `wRepeatCount` is ignored
+for the same reason. The encoder reads the raw 20-byte `INPUT_RECORD` layout
+rather than the Windows type, so it is compiled on every platform, and
+`@event_loop.TtyEncoder` exposes it so tests feed hand-built records anywhere.
 
 ### Resize notification
 
@@ -429,12 +449,17 @@ to whichever event loop is running.
 - `src/tty/tty_test.mbt`, `src/tty/README.mbt.md`.
 - `test_programs/ttyd`: the program the tests run in a pseudo terminal,
   serving one `@tty` operation per JSON-RPC request.
+- `src/tty/tty_windows_wbtest.mbt`, `src/tty/test_stub.c`: Windows tests
+  against a pseudo console, and the helpers that create it.
+- `src/tty/encoder_wbtest.mbt`: record encoder tests, on every platform.
 
 ## API And Interface Diff
 
 - New package `moonbitlang/async/tty` with the surface listed above.
 - `src/internal/event_loop/pkg.generated.mbti` gains the `Tty` type and its
-  six methods. It is an internal package.
+  six methods, `tty_output_kind` (`Console` on Windows so that writes use
+  `WriteConsoleW`, `CharDevice` elsewhere) and the test-only `TtyEncoder`.
+  It is an internal package.
 - `src/signal/pkg.generated.mbti` unchanged. No other public package changes.
 
 ## Validation
@@ -465,13 +490,41 @@ Verified on macOS (`moon test src/tty --target native`, 13 tests):
   the `signal.c` change.
 - `moon fmt`, `moon check --target native`, `moon info`, `git diff --check`.
 
+Done for Windows (`moon test src/tty --target native`, 14 tests on
+Windows 11):
+
+- Encoder tests on every OS through `TtyEncoder`: ASCII, BMP, surrogate
+  pairs split across batches, the `VK_MENU` key-up form, unpaired
+  surrogates, key-up and mouse drops, focus, resize dedupe and a caller
+  buffer smaller than one character.
+- Console tests need no real console. Each one creates a pseudo console
+  with `CreatePseudoConsole`, starts a placeholder child on it, and attaches
+  the test process to the child's console, so `CONIN$`/`CONOUT$` resolve to
+  the pseudo console. VT input is written to its input pipe and the window
+  is resized with `ResizePseudoConsole`. They cover raw input (text, arrow
+  key, Ctrl-C, BMP and non-BMP text), cooked lines and cancelling a parked
+  cooked read, idempotent raw mode and restore, `size` and `Resize` during
+  a parked read, and cancelling a parked raw read, and writing.
+  This is what found the `VK_MENU` key-up form.
+- Harness details that matter: the child needs `STARTF_USESTDHANDLES`, or
+  it inherits the runner's redirected stdout instead of using the pseudo
+  console; `CREATE_NO_WINDOW` must not be passed, or the child gets a fresh
+  hidden console instead; attaching resets the process's console control
+  handlers, so the stub re-registers the event loop's; the test detaches
+  before `ClosePseudoConsole`, which sends `CTRL_CLOSE_EVENT` to attached
+  processes; and the output drain thread is cancelled rather than joined,
+  because a `Tty` is never closed and keeps the pseudo console alive.
+- Attaching is process-wide, so the console tests take a shared
+  `@async.Mutex` instead of relying on `max_concurrent_tests = 1`.
+- `tty.c` and `test_stub.c` compile without warnings under `-Wall -Wextra`
+  with gcc for Linux and clang for the Windows MSVC target, and build with
+  MSVC through `moon`.
+
 Still to do:
 
-- Record encoder: black-box tests on every OS through the portable-struct
-  export, covering ASCII, BMP, surrogate pairs split across batches, key-up
-  drops, focus, resize dedupe and the empty-batch loop.
 - Linux run of the pty tests (the `signalfd` path).
-- Windows console behaviour: manual, CI runners have no console.
+- Manual check in a real Windows Terminal and legacy conhost window,
+  including mouse reporting (see Open Questions).
 
 ## Known Limitations
 

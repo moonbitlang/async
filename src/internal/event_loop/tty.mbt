@@ -32,6 +32,7 @@ extern "C" fn Tty::open_ffi(
 
 ///|
 /// Open the terminal at `path` (normally `/dev/tty`).
+/// On Windows `path` is ignored and the console (`CONIN$`/`CONOUT$`) is opened.
 /// Return the handle together with a second descriptor for the same terminal,
 /// intended to be wrapped in an `IoHandle` for output.
 ///
@@ -121,4 +122,55 @@ pub async fn Tty::read(
   let job = Job::tty_read(self, buf, offset, len)
   defer job.free()
   perform_job_in_worker(job, context~, cancellable=true)
+}
+
+///|
+/// The kind to give the `IoHandle` wrapping the output descriptor from `Tty::open`.
+/// On Windows it is a console handle, so that output goes through `WriteConsoleW`
+/// with UTF-8 to UTF-16 conversion.
+#cfg(platform="windows")
+pub let tty_output_kind : @fd_util.FileKind = Console
+
+///|
+#cfg(not(platform="windows"))
+pub let tty_output_kind : @fd_util.FileKind = CharDevice
+
+///|
+/// The encoder used on Windows to turn console `INPUT_RECORD`s into VT bytes.
+/// It is compiled on every platform and exposed for tests only.
+#external
+pub type TtyEncoder
+
+///|
+/// Create an encoder that last saw a `rows` x `cols` window.
+pub extern "C" fn TtyEncoder::new(rows : Int32, cols : Int32) -> TtyEncoder = "moonbitlang_async_tty_encoder_new"
+
+///|
+pub extern "C" fn TtyEncoder::free(self : TtyEncoder) = "moonbitlang_async_tty_encoder_free"
+
+///|
+#borrow(records, buf, result)
+extern "C" fn TtyEncoder::encode_ffi(
+  self : TtyEncoder,
+  records : Bytes,
+  rows : Int32,
+  cols : Int32,
+  buf : FixedArray[Byte],
+  result : FixedArray[Int32],
+) -> Int32 = "moonbitlang_async_tty_encoder_encode"
+
+///|
+/// Encode `records`, a sequence of 20-byte `INPUT_RECORD`s, into `buf`.
+/// `rows`/`cols` is the window size at the time of the batch.
+/// Return the number of bytes written and whether the window size changed.
+pub fn TtyEncoder::encode(
+  self : TtyEncoder,
+  records : Bytes,
+  rows~ : Int32,
+  cols~ : Int32,
+  buf : FixedArray[Byte],
+) -> (Int32, Bool) {
+  let result = FixedArray::make(1, 0)
+  let n = self.encode_ffi(records, rows, cols, buf, result)
+  (n, result[0] != 0)
 }

@@ -13,4 +13,12 @@ import {
   "moonbitlang/core/encoding/base64",
 } for "test"
 
+import {
+  "moonbitlang/async",
+} for "wbtest"
+
 supported_targets = "-all+native"
+
+options(
+  "native-stub": [ "test_stub.c" ],
+)
