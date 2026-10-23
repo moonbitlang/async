@@ -270,13 +270,13 @@ async test "CONNECT keeps the zone ID of an IPv6 address" {
       let conn = @http.ServerConnection::new(conn)
       defer conn.close()
       let request = conn.read_request()
-      inspect(request.path, content="[fe80::1%25eth0]:8080")
+      inspect(request.path, content="[fe80::1%25eth%2B%C3%A9]:8080")
       conn..send_response(502, "BadGateway").end_response()
     }
     let result = try {
       ignore(
         @http.get(
-          "http://[fe80::1%25eth0]:8080/",
+          "http://[fe80::1%25eth%2b%c3%a9]:8080/",
           proxy=Client("http://127.0.0.1:\{proxy_port}"),
         ),
       )
