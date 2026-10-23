@@ -3,17 +3,17 @@ import {
   "moonbitlang/core/int",
   "moonbitlang/core/string",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
   "moonbitlang/async/tls",
-  "moonbitlang/async/internal/io_buffer",
   "moonbitlang/async/js_async",
   "moonbitlang/async/internal/gzip_internal" @gzip,
 }
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/gzip" @gzip_stream,
@@ -22,7 +22,6 @@ import {
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/test",
   "moonbitlang/async",
   "moonbitlang/async/fs",

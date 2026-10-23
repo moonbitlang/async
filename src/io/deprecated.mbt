@@ -69,13 +69,3 @@ pub extend PipeClosed with ToJson::{to_json}
 #deprecated
 #doc(hidden)
 pub extend PipeClosed with Show::{output}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend MemoryReader with Reader::{_direct_read, _get_internal_buffer}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend PipeRead with Reader::{_direct_read, _get_internal_buffer}

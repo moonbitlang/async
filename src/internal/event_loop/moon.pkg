@@ -11,6 +11,7 @@ import {
   "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/env_util",
+  "moonbitlang/async/internal/errno_util",
   "moonbitlang/async/external_loop_integration",
 }
 
@@ -19,7 +20,6 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/test_util",
-  "moonbitlang/async/io",
 } for "test"
 
 import {

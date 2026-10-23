@@ -71,8 +71,3 @@ pub extend ConnectionClosed with ToJson::{to_json}
 #deprecated
 #doc(hidden)
 pub extend ConnectionClosed with Show::{output}
-
-///|
-#deprecated
-#doc(hidden)
-pub extend Tls with @io.Reader::{_direct_read, _get_internal_buffer}

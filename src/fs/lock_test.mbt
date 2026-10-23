@@ -14,11 +14,11 @@
 
 ///|
 let lock_file_prog : @async.Lazy[String] = Lazy(() => {
-  let code = @process.run("moon", [
+  let proc = @process.run("moon", [
     "build", "test_programs/lock_file", "--debug", "--target-dir", "_build/test_programs",
   ])
-  if code != 0 {
-    fail("failed to build test program `lock_file`: \{code}")
+  if proc.exit_code != 0 {
+    fail("failed to build test program `lock_file`: \{proc.exit_code}")
   }
   "./_build/test_programs/native/debug/build/moonbitlang/async_test_programs/lock_file/lock_file.exe"
 })
@@ -31,24 +31,23 @@ enum LockEvent {
 
 ///|
 async fn run_lock_file_prog(
-  group : @async.TaskGroup[Unit],
+  group : @async.TaskGroup,
   file : String,
   lock : @fs.Lock,
   duration~ : Int32 = 500,
 ) -> @async.Queue[LockEvent] {
   let prog = lock_file_prog.wait()
-  let (r, w) = @process.read_from_process()
   let lock_kind = if lock is Exclusive { "-exclusive" } else { "-shared" }
-  let _ = @process.spawn(group, prog, stdout=w, [
-    file,
-    "-duration",
-    duration.to_string(),
-    lock_kind,
-  ])
+  let lock_proc = @process.spawn(
+    group,
+    prog,
+    stdout=@process.read_from_process(),
+    [file, "-duration", duration.to_string(), lock_kind],
+  )
   let queue = @async.Queue(kind=Unbounded)
   group.spawn_bg() <| () => {
-    defer r.close()
-    while r.read_until("\n") is Some(line) {
+    defer lock_proc.stdout.close()
+    while lock_proc.stdout.text.read_until("\n") is Some(line) {
       match line {
         "acquired lock" => queue.put(Acquire)
         "releasing lock" => queue.put(Release)
@@ -282,13 +281,13 @@ async test "flock cancelled" {
 async test "flock advisory" {
   let file_name = "_build/flock_advisory"
   @async.with_task_group() <| group => {
-    @fs.write_file(file_name, "abcd")
+    @fs.write_text(file_name, "abcd")
     let file = @fs.open(file_name, mode=ReadWrite)
     defer file.close()
     group.add_defer(() => @fs.remove(file_name))
     let events = run_lock_file_prog(group, file_name, Exclusive)
     debug_inspect(events.get(), content="Acquire")
-    inspect(file.read_all().text(), content="abcd")
+    inspect(file.text.read_all(), content="abcd")
     debug_inspect(events.try_get(), content="None")
   }
 }

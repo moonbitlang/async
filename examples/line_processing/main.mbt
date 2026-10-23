@@ -26,8 +26,8 @@ fn line_prefix(line_no : Int32) -> String {
 ///|
 async fn process_lines(
   name : String,
-  input : &@io.Reader,
-  output : &@io.Writer,
+  input : &@io.TextReader,
+  output : &@io.TextWriter,
   options : Options,
   show_name~ : Bool,
 ) -> Unit {
@@ -50,16 +50,16 @@ async fn process_lines(
 ///|
 async fn process_input(
   path : String,
-  output : &@io.Writer,
+  output : &@io.TextWriter,
   options : Options,
   show_name~ : Bool,
 ) -> Unit {
   if path == "-" {
-    process_lines("stdin", @stdio.stdin, output, options, show_name~)
+    process_lines("stdin", @stdio.stdin.text, output, options, show_name~)
   } else {
     let file = @fs.open(path, mode=ReadOnly)
     defer file.close()
-    process_lines(path, file, output, options, show_name~)
+    process_lines(path, file.text, output, options, show_name~)
   }
 }
 
@@ -96,7 +96,7 @@ async fn main {
   let show_name = inputs.length() > 1
   let out = @io.BufferedWriter::new(@stdio.stdout, size=16 * 1024)
   for path in inputs {
-    process_input(path, out, options, show_name~)
+    process_input(path, @io.Utf8Writer(out), options, show_name~)
   }
   out.flush()
 }

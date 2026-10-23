@@ -88,7 +88,7 @@ pub(all) enum X509FileType {
 /// Server Name Indication (SNI) field of TLS will be set to `host`.
 /// `sni=false` is currently unsupported on Windows.
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::client(
   inner : Inner,
   verify~ : Bool = true,
   host? : String,
@@ -101,3 +101,28 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   }
   Tls::client_from_pair(inner, inner, host?, sni~, trust~)
 }
+
+///|
+pub impl @io.BinaryReader for Tls
+
+///|
+pub extend Tls with @io.BinaryReader::{
+  read_into,
+  read,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tls
+
+///|
+pub extend Tls with @io.BinaryWriter::{write, write_reader}

@@ -1,6 +1,6 @@
 # WebSocket API for MoonBit Async Library
 
-This module provides RFC 6455 compilant WebSocket client & server support for `moonbitlanga/async`.
+This module provides RFC 6455-compliant WebSocket client and server support for `moonbitlang/async`.
 
 ## Features
 
@@ -20,7 +20,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
   let server = @http.Server(addr)
   // WebSocket server are built on top of a HTTP server.
   // This allows mixing WebSocket and HTTP in a single server.
-  server.run_forever((request, _, conn) => {
+  server.run_forever((request, conn) => {
     guard request.path is "/ws" else { conn.send_response(404, "NotFound") }
     let ws = @websocket.from_http_server(request, conn)
     defer ws.close()
@@ -29,7 +29,7 @@ async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
       // WebSocket message can be very long,
       // so `ws.recv()` does not read the full message into memory.
       // Instead, it returns a `@websocket.Message` type,
-      // whose content can be read lazily via `@io.Reader`.
+      // whose content can be read lazily via `@io.BinaryReader`.
       let msg = ws.recv()
       // Reply the client with the message we just received.
       // `msg.kind` is either `Text` (UTF-8 encoded text message)
@@ -63,7 +63,7 @@ async test "WebSocket client example" {
     defer ws.close()
     // convenient helper for sending small text message
     ws.send_text("abcd")
-    inspect(ws.recv().read_all().text(), content="abcd")
+    inspect(ws.recv().text.read_all(), content="abcd")
     // gracefully terminate the WebSocket tunnel
     ws.send_close()
   })
@@ -98,14 +98,14 @@ the following API can be used to do things with the tunnel:
 - `send_binary(data : BytesView)`: send a new binary message
 - `start_message(kind : MessageKind)`: start a new message of kind `kind`.
      The content of the new message can be written to the WebSocket tunnel
-     via API in `@io.Writer`
+     through its `@io.BinaryWriter` API, or through `.text` as `@io.TextWriter`
 - `end_message()`: terminate current message created via `start_message()`,
      flush remaining content of message to the server
 - `send_close()`: gracefully terminate the WebSocket tunnel by sending a `CLOSE` frame.
      This method should only be used when no network or protocol error occurs.
 - `close()`: dispose a WebSocket tunnel, release related resource.
      The underlying HTTP connection will be closed as well.
-- `impl @io.Writer for Conn`: write content to the message currently being sent, created via `.start_message()`
+- `impl @io.BinaryWriter for Conn`: write binary content to the message currently being sent, created via `.start_message()`
 - `ping()`: actively send a WebSocket PING message and wait for corresponding PONG reply.
     `.ping()` can be called inside another message being sent.
     However, `.ping()` must be called when there is another task receiving message from the tunnel in parallel,
@@ -115,7 +115,7 @@ the following API can be used to do things with the tunnel:
 A single message received from a WebSocket tunnel.
 
 - field `kind`: the kind of the message
-- `impl @io.Reader for Message`: read content of the message.
+- `impl @io.BinaryReader for Message`: read binary content of the message.
     For example, content of the whole message can be obtained via `.read_all()`
 
 

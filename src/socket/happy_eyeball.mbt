@@ -65,7 +65,7 @@ pub async fn Tcp::connect_to_host(
           } else {
             conn.close()
           }
-          group.return_immediately(())
+          group.return_immediately()
         }
         @async.sleep(250)
       }

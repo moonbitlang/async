@@ -35,7 +35,7 @@ struct MemoryReader {
 /// the callback will be cancelled automatically.
 #callsite(autofill(loc))
 pub fn MemoryReader::MemoryReader(
-  f : async (&Writer) -> Unit,
+  f : async (&BinaryWriter) -> Unit,
   loc~ : SourceLoc,
 ) -> MemoryReader {
   let (r, w) = pipe()
@@ -55,28 +55,37 @@ pub fn MemoryReader::close(self : MemoryReader) -> Unit {
 }
 
 ///|
-pub impl Reader for MemoryReader with fn _get_internal_buffer(self) {
-  Reader::_get_internal_buffer(self.reader)
+pub impl BinaryReader for MemoryReader
+
+///|
+impl BinaryReaderImpl for MemoryReader with fn get_controller(self) {
+  BinaryReaderImpl::get_controller(self.reader)
 }
 
 ///|
-pub impl Reader for MemoryReader with fn _direct_read(
+impl BinaryReaderImpl for MemoryReader with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  let n = Reader::_direct_read(self.reader, buf, offset~, max_len~)
+  let n = BinaryReaderImpl::raw_read_impl(self.reader, buf, offset~, max_len~)
   self.writer.check_error()
   n
 }
 
 ///|
-pub extend MemoryReader with Reader::{
+pub extend MemoryReader with BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }

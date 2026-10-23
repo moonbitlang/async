@@ -63,20 +63,25 @@ priv struct OngoingRequest {
   meth : String
   uri : String
   body : @buffer.Buffer
+  ctrl : @io.BinaryWriterController
   headers : JsHeaders
 }
 
 ///|
-struct Client {
-  host : String
-  protocol : Protocol
-  headers : Headers
-  mut request : OngoingRequest?
-  mut response_body : @js_async.ReadableStream?
+pub struct Client {
+  /// A builtin text view for reading UTF-8 response bodies
+  /// and writing UTF-8 request payloads
+  text : @io.Utf8TextView
+  priv host : String
+  priv protocol : Protocol
+  priv headers : Headers
+  priv mut request : OngoingRequest?
+  priv mut response_body : @js_async.ReadableStream?
 }
 
 ///|
 pub fn Client::close(self : Client) -> Unit {
+  self.text.close()
   self.request = None
   if self.response_body is Some(response_body) {
     response_body.close()
@@ -91,7 +96,16 @@ fn Client::connect(
   proxy? : Client,
 ) -> Client {
   ignore(proxy)
-  { host, headers, protocol, request: None, response_body: None, }
+  let client = {
+    text: @io.Utf8TextView::new_uninitialized(),
+    host,
+    headers,
+    protocol,
+    request: None,
+    response_body: None,
+  }
+  client.text.set_inner(client)
+  client
 }
 
 ///|
@@ -129,14 +143,28 @@ pub async fn Client::Client(
 }
 
 ///|
-pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
+pub impl @io.BinaryWriter for Client
+
+///|
+impl @io.BinaryWriterImpl for Client with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   guard! self.request is Some(request)
   request.body.write_bytes(buf[offset:offset + len])
   len
 }
 
 ///|
-pub extend Client with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for Client with fn get_controller(self) {
+  guard! self.request is Some(request)
+  request.ctrl
+}
+
+///|
+pub extend Client with @io.BinaryWriter::{write, write_reader}
 
 ///|
 #warnings("-unused_async")
@@ -146,30 +174,44 @@ pub async fn Client::flush(_ : Client) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
+pub impl @io.BinaryReader for Client
+
+///|
+impl @io.BinaryReaderImpl for Client with fn get_controller(self) {
   guard! self.response_body is Some(stream)
-  @io.Reader::_get_internal_buffer(stream)
+  @io.BinaryReaderImpl::get_controller(stream as &@io.BinaryReader)
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(
+impl @io.BinaryReaderImpl for Client with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
   guard! self.response_body is Some(stream)
-  @io.Reader::_direct_read(stream, buf, offset~, max_len~)
+  @io.BinaryReaderImpl::raw_read_impl(
+    stream as &@io.BinaryReader,
+    buf,
+    offset~,
+    max_len~,
+  )
 }
 
 ///|
-pub extend Client with @io.Reader::{
+pub extend Client with @io.BinaryReader::{
+  read_into,
   read,
-  drop,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
-  read_some,
+  drop_exactly,
+  peek_exactly,
   read_all,
+  drop_all,
   read_until,
+  peek_until,
 }
 
 ///|
@@ -178,7 +220,8 @@ pub extend Client with @io.Reader::{
 /// Should be called immediately after request body is fully sent.
 ///
 /// Only the header of the response will be received and returned,
-/// the body of the response can be extracted by using `Client` as a `@io.Reader`.
+/// the response body can be read through `Client` as an `@io.BinaryReader`,
+/// or through `client.text` as an `@io.TextReader`.
 ///
 /// If the body of the last response is still not consumed,
 /// it will be discarded.
@@ -239,7 +282,8 @@ extern "js" fn Client::request_ffi(
 ///|
 /// Send a HTTP request to the server.
 /// Only the header of the request will be sent,
-/// request body can be sent by using `Client` as a `@io.Writer`.
+/// the request body can be sent through `Client` as an `@io.BinaryWriter`,
+/// or through `client.text` as an `@io.TextWriter`.
 /// Once request body has been sent,
 /// `end_request` must be called to complete the request and obtain response from the server.
 ///
@@ -283,44 +327,102 @@ pub async fn Client::request(
   for k, v in extra_headers {
     headers.append(k.0, v)
   }
-  let request : OngoingRequest = { meth, uri, headers, body: Buffer(), }
+  let request : OngoingRequest = {
+    meth,
+    uri,
+    headers,
+    body: Buffer(),
+    ctrl: @io.BinaryWriterController(),
+  }
   self.request = Some(request)
 }
 
 ///|
 /// Perform a `GET` request to the server, see `Client::request` for more details.
-#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers~ : Headers = Map([]),
-  body? : &@io.Data,
 ) -> Response {
-  self.request(Get, path, extra_headers~)
-  if body is Some(body) {
-    self.write(body)
-  }
-  self.end_request()
+  self..request(Get, path, extra_headers~).end_request()
 }
 
 ///|
-/// Perform a `PUT` request to the server, see `Client::request` for more details.
-pub async fn Client::put(
+/// Perform a `PUT` request to the server with binary payload.
+/// See `Client::request` for more details.
+pub async fn Client::put_binary(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : BytesView,
   extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Put, path, extra_headers~)..write(body).end_request()
 }
 
 ///|
-/// Perform a `POST` request to the server, see `Client::request` for more details.
-pub async fn Client::post(
+/// Perform a `PUT` request to the server with UTF-8 encoded text payload.
+/// See `Client::request` for more details.
+pub async fn Client::put_text(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : StringView,
+  extra_headers~ : Headers = Map([]),
+) -> Response {
+  self.request(Put, path, extra_headers~)
+  self.text.write(body)
+  self.end_request()
+}
+
+///|
+/// Perform a `PUT` request to the server with UTF-8 encoded text JSON payload.
+/// See `Client::request` for more details.
+pub async fn Client::put_json(
+  self : Client,
+  path : String,
+  body : Json,
+  extra_headers~ : Headers = Map([]),
+) -> Response {
+  self.request(Put, path, extra_headers~)
+  self.text.write(body.stringify())
+  self.end_request()
+}
+
+///|
+/// Perform a `POST` request to the server with binary payload.
+/// See `Client::request` for more details.
+pub async fn Client::post_binary(
+  self : Client,
+  path : String,
+  body : BytesView,
   extra_headers~ : Headers = Map([]),
 ) -> Response {
   self..request(Post, path, extra_headers~)..write(body).end_request()
+}
+
+///|
+/// Perform a `POST` request to the server with UTF-8 encoded text payload.
+/// See `Client::request` for more details.
+pub async fn Client::post_text(
+  self : Client,
+  path : String,
+  body : StringView,
+  extra_headers~ : Headers = Map([]),
+) -> Response {
+  self.request(Post, path, extra_headers~)
+  self.text.write(body)
+  self.end_request()
+}
+
+///|
+/// Perform a `POST` request to the server with UTF-8 encoded text JSON payload.
+/// See `Client::request` for more details.
+pub async fn Client::post_json(
+  self : Client,
+  path : String,
+  body : Json,
+  extra_headers~ : Headers = Map([]),
+) -> Response {
+  self.request(Post, path, extra_headers~)
+  self.text.write(body.stringify())
+  self.end_request()
 }

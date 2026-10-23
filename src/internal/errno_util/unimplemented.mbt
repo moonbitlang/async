@@ -13,6 +13,10 @@
 // limitations under the License.
 
 ///|
-#deprecated
-#doc(hidden)
-pub extend ReadFromProcess with @io.Reader::{_direct_read, _get_internal_buffer}
+#cfg(not(any(target="native", target="wasm")))
+#coverage.skip
+pub let unimplemented : Unit = {
+  ignore(@os_string.unimplemented)
+  ignore((_ : @env_util.Platform) => ())
+  ignore(@c_buffer.unimplemented)
+}

@@ -1,10 +1,10 @@
 import {
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/coroutine",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/internal/os_string",
   "moonbitlang/async/internal/c_buffer",
-  "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
   "moonbitlang/async",
   "moonbitlang/async/io",
@@ -26,12 +26,16 @@ import {
 } for "wbtest"
 
 max_concurrent_tests = 5
+// workaround an upstream compiler bug temporarily
+
+warnings = "-implicit_impl_as_method"
 
 options(
   "native-stub": [ "unix.c", "windows.c" ],
   targets: {
     "deprecated.mbt": [ "native", "wasm" ],
     "process.mbt": [ "native", "wasm" ],
+    "orphan_process.mbt": [ "native", "wasm" ],
     "unix.mbt": [ "native", "wasm" ],
     "windows.mbt": [ "native", "wasm" ],
     "wasm.mbt": [ "wasm" ],

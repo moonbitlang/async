@@ -40,7 +40,7 @@ async fn main {
 async fn start_echo_server(port~ : Int32 = 9001) -> Unit {
   println("Starting WebSocket echo server on localhost:\{port}")
   let server = @http.Server(@socket.Addr::parse("127.0.0.1:\{port}"))
-  server.run_forever() <| ((request, _, conn) => {
+  server.run_forever() <| ((request, conn) => {
     let client_addr = conn.client_addr()
     println("New WebSocket connection from \{client_addr}")
     let ws = @websocket.from_http_server(request, conn)
@@ -50,12 +50,12 @@ async fn start_echo_server(port~ : Int32 = 9001) -> Unit {
         let msg = ws.recv()
         match msg.kind {
           Text => {
-            let text = msg.read_all().text()
+            let text = msg.text.read_all()
             println("Received text \{text.char_length()} chars")
             ws.send_text(text)
           }
           Binary => {
-            let data = msg.read_all().binary()
+            let data = msg.read_all()
             println("Received binary data (\{data.length()} bytes)")
             ws.send_binary(data)
           }

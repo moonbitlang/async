@@ -27,7 +27,7 @@ pub fn Protocol::default_port(p : Protocol) -> Int32 {
 }
 
 ///|
-pub suberror URIParseError {
+pub suberror UriParseError {
   InvalidFormat
   UnsupportedProtocol(String)
 } derive(Debug, ToJson)
@@ -72,7 +72,7 @@ fn resolve_host(
 }
 
 ///|
-/// Perform a single HTTP request to `uri`.
+/// Perform a single HTTP request to `uri` with binary payload/response.
 /// Supported protocols are `http://` and `https://`.
 /// The HTTP response message and the whole response body will be returned.
 ///
@@ -81,13 +81,13 @@ fn resolve_host(
 /// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
-pub async fn request(
+pub async fn request_binary(
   uri : String,
   meth : RequestMethod,
   headers : Headers,
-  body : &@io.Data,
+  body : BytesView,
   proxy? : Client,
-) -> (Response, &@io.Data) {
+) -> (Response, Bytes) {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
   defer client.close()
@@ -96,7 +96,7 @@ pub async fn request(
 }
 
 ///|
-/// Perform a HTTP `GET` request to `uri`.
+/// Perform a single HTTP request to `uri` with UTF-8 encoded payload/response.
 /// Supported protocols are `http://` and `https://`.
 /// The HTTP response message and the whole response body will be returned.
 ///
@@ -105,72 +105,207 @@ pub async fn request(
 /// `proxy` is not supported on JavaScript backend.
 ///
 /// See `Client::request` for more details.
-#label_migration(body, fill=false, msg="`GET` request should not contain a body")
-pub async fn get(
+pub async fn request_text(
   uri : String,
-  headers~ : Headers = Map([]),
-  body~ : &@io.Data = b"",
+  meth : RequestMethod,
+  headers : Headers,
+  body : StringView,
   proxy? : Client,
-) -> (Response, &@io.Data) {
-  request(uri, Get, headers, body, proxy?)
+) -> (Response, String) {
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, headers~, protocol~, proxy?)
+  defer client.close()
+  client.request(meth, path)
+  client.text.write(body)
+  let response = client.end_request()
+  (response, client.text.read_all())
 }
 
 ///|
-/// Similar to `get`, but performs a `PUT` request instead.
-pub async fn put(
+/// Perform a single HTTP request to `uri` with UTF-8 encoded JSON payload/response.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn request_json(
   uri : String,
-  content : &@io.Data,
-  headers~ : Headers = Map([]),
+  meth : RequestMethod,
+  headers : Headers,
+  body : Json?,
   proxy? : Client,
-) -> (Response, &@io.Data) {
-  request(uri, Put, headers, content, proxy?)
+) -> (Response, Json) {
+  let (protocol, host, path) = resolve_url(uri)
+  let client = Client::connect(host, headers~, protocol~, proxy?)
+  defer client.close()
+  client.request(meth, path)
+  if body is Some(body) {
+    client.text.write(body.stringify())
+  }
+  let response = client.end_request()
+  (response, @json.parse(client.text.read_all()))
 }
 
 ///|
-/// Similar to `get`, but performs a `POST` request instead.
-pub async fn post(
+/// Perform a HTTP `GET` request to `uri` with binary response.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn get_binary(
   uri : String,
-  content : &@io.Data,
   headers~ : Headers = Map([]),
   proxy? : Client,
-) -> (Response, &@io.Data) {
-  request(uri, Post, headers, content, proxy?)
+) -> (Response, Bytes) {
+  request_binary(uri, Get, headers, b"", proxy?)
 }
 
 ///|
-/// Similar to `@http.get`, but allow reading response body streamingly.
+/// Perform a HTTP `GET` request to `uri` with UTF-8 encoded response.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn get_text(
+  uri : String,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, String) {
+  request_text(uri, Get, headers, "", proxy?)
+}
+
+///|
+/// Perform a HTTP `GET` request to `uri` with UTF-8 encoded JSON response.
+/// Supported protocols are `http://` and `https://`.
+/// The HTTP response message and the whole response body will be returned.
+///
+/// `proxy`, if present, specifies the proxy to use for this request.
+/// See `@http.Client::new` for more details.
+/// `proxy` is not supported on JavaScript backend.
+///
+/// See `Client::request` for more details.
+pub async fn get_json(
+  uri : String,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, Json) {
+  request_json(uri, Get, headers, None, proxy?)
+}
+
+///|
+/// Similar to `get_binary`, but performs a `PUT` request instead.
+pub async fn put_binary(
+  uri : String,
+  content : BytesView,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, Bytes) {
+  request_binary(uri, Put, headers, content, proxy?)
+}
+
+///|
+/// Similar to `get_text`, but performs a `PUT` request instead.
+pub async fn put_text(
+  uri : String,
+  content : StringView,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, String) {
+  request_text(uri, Put, headers, content, proxy?)
+}
+
+///|
+/// Similar to `get_json`, but performs a `PUT` request instead.
+pub async fn put_json(
+  uri : String,
+  content : Json,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, Json) {
+  request_json(uri, Put, headers, Some(content), proxy?)
+}
+
+///|
+/// Similar to `get_binary`, but performs a `POST` request instead.
+pub async fn post_binary(
+  uri : String,
+  content : BytesView,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, Bytes) {
+  request_binary(uri, Post, headers, content, proxy?)
+}
+
+///|
+/// Similar to `get_text`, but performs a `POST` request instead.
+pub async fn post_text(
+  uri : String,
+  content : StringView,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, String) {
+  request_text(uri, Post, headers, content, proxy?)
+}
+
+///|
+/// Similar to `get_json`, but performs a `POST` request instead.
+pub async fn post_json(
+  uri : String,
+  content : Json,
+  headers~ : Headers = Map([]),
+  proxy? : Client,
+) -> (Response, Json) {
+  request_json(uri, Post, headers, Some(content), proxy?)
+}
+
+///|
+/// Similar to `@http.get_xxx`, but allow reading response body streamingly.
 /// A pair `(response, client)` will be returned,
 /// where `response` is the response header from the server,
 /// and `client` is the HTTP client that performs the request.
-/// `client` can be used to read the content of response body via `@io.Reader`,
-/// see `@http.Client` for more details.
+/// `client` can be used to read the content of response body
+/// via `@io.BinaryReader` or `@io.TextReader` interface.
+/// See `@http.Client` and its `.text` field for more details.
 ///
 /// Note that the returned client must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
-#label_migration(body, fill=false, msg="`GET` request should not contain a body")
 pub async fn get_stream(
   uri : String,
   headers~ : Headers = Map([]),
-  body~ : &@io.Data = b"",
   proxy? : Client,
 ) -> (Response, Client) {
   let (protocol, host, path) = resolve_url(uri)
   let client = Client::connect(host, headers~, protocol~, proxy?)
   errdefer client.close()
-  let response = client..request(Get, path)..write(body).end_request()
+  let response = client..request(Get, path).end_request()
   (response, client)
 }
 
 ///|
-/// Similar to `@http.put`, but allow writing request body streamingly.
+/// Similar to `@http.put_xxx`, but allow writing request body streamingly.
 /// The return value `client` is the HTTP client that performs the request,
-/// it can be used to write the content of request body via `@io.Writer`.
+/// it can be used to write the content of request body via `@io.BinaryWriter`.
+/// Text content can be written via `client.text` through the `@io.TextWriter` interface as well.
+/// See `@http.Client` and its `.text` field for more details.
+///
 /// Notice that writing to `@http.Client` is buffered,
 /// so if you need to send data to the server immediately, `.flush()` must be called.
 /// After writing all the content, `.end_request()` must be called
 /// to complete the request and obtain response from the server.
 /// After that, the response body from the server can be obtained 
-/// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+/// by using `client` as `@io.BinaryReader` or `client.text` as `@io.TextReader`.
+/// See `@http.Client` and its `.text` field for more details.
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.
@@ -187,15 +322,19 @@ pub async fn put_stream(
 }
 
 ///|
-/// Similar to `@http.post`, but allow writing request body streamingly.
+/// Similar to `@http.post_xxx`, but allow writing request body streamingly.
 /// The return value `client` is the HTTP client that performs the request,
-/// it can be used to write the content of request body via `@io.Writer`.
+/// it can be used to write the content of request body via `@io.BinaryWriter`.
+/// Text content can be written via `client.text` through the `@io.TextWriter` interface as well.
+/// See `@http.Client` and its `.text` field for more details.
+///
 /// Notice that writing to `@http.Client` is buffered,
 /// so if you need to send data to the server immediately, `.flush()` must be called.
 /// After writing all the content, `.end_request()` must be called
 /// to complete the request and obtain response from the server.
 /// After that, the response body from the server can be obtained 
-/// by using `client` as a `@io.Reader`. See `@http.Client` for more details.
+/// by using `client` as `@io.BinaryReader` or `client.text` as `@io.TextReader`.
+/// See `@http.Client` and its `.text` field for more details.
 ///
 /// Note that the returned `client` must be manually closed via `.close()`
 /// to close the underlying connection used for the request.

@@ -22,10 +22,10 @@ priv enum TransportState {
 ///|
 priv struct Transport {
   mut state : TransportState
-  reader : &@io.Reader
+  reader : &@io.BinaryReader
   read_lock : @semaphore.Semaphore
   write_buf : @io_buffer.Buffer
-  writer : &@io.Writer
+  writer : &@io.BinaryWriter
   write_lock : @semaphore.Semaphore
 }
 
@@ -33,11 +33,10 @@ priv struct Transport {
 const BUFFER_SIZE = 4096
 
 ///|
-fn @io.ReaderBuffer::repr(buf : Self) -> @io_buffer.Buffer = "%identity"
-
-///|
-fn Transport::new(reader : &@io.Reader, writer : &@io.Writer) -> Transport {
-  reader._get_internal_buffer().repr().enlarge_to(BUFFER_SIZE)
+fn Transport::new(
+  reader : &@io.BinaryReader,
+  writer : &@io.BinaryWriter,
+) -> Transport {
   {
     state: Normal,
     reader,
@@ -58,20 +57,16 @@ async fn Transport::read_more(self : Transport) -> Unit {
     Closed => raise ConnectionClosed
     Error(err) => raise err
   }
-  let read_buf = self.reader._get_internal_buffer().repr()
-  read_buf.enlarge_to(read_buf.len + 1)
-  let end = read_buf.start + read_buf.len
-  let max_len = @cmp.minimum(BUFFER_SIZE, read_buf.buf.length() - end)
-  let n = self.reader._direct_read(read_buf.buf, offset=end, max_len~) catch {
+  let controller = @io.BinaryReaderImpl::get_controller(self.reader)
+  let prev_len = controller.buffered().length()
+  try @io.BinaryReaderImpl::ensure_buffered(self.reader, prev_len + 1) catch {
     err => {
       self.state = Error(err)
       raise err
     }
-  }
-  if n is 0 {
-    self.state = Closed
-  } else {
-    read_buf.len += n
+  } noraise {
+    true => ()
+    false => self.state = Closed
   }
 }
 

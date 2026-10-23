@@ -28,8 +28,7 @@ async test "passthrough mode" {
       inspect(request.path, content="/path")
       conn..send_response(200, "OK").end_response()
       conn.enter_passthrough_mode()
-      while conn.read_some() is Some(packet) {
-        let packet = @utf8.decode(packet)
+      while conn.text.read() is Some(packet) {
         log.push("server received: \{packet}")
       }
     }
@@ -40,7 +39,7 @@ async test "passthrough mode" {
     client.enter_passthrough_mode()
     for packet in ["abcd", "efgh", "ijkl"] {
       log.push("client sending: \{packet}")
-      client.write(packet)
+      client.text.write(packet)
       @async.sleep(200)
     }
   }
@@ -64,13 +63,13 @@ async test "passthrough mode remaining data" {
       debug_inspect(request.meth, content="Get")
       inspect(request.path, content="/")
       conn.enter_passthrough_mode()
-      inspect(conn.read_all().text(), content="remaining data")
+      inspect(conn.text.read_all(), content="remaining data")
     }
     let client = @socket.Tcp::connect(
       @socket.Addr::parse("127.0.0.1:\{server_addr.port()}"),
     )
     defer client.close()
-    client.write("GET / HTTP/1.1\r\n\r\nremaining data")
+    client.write(b"GET / HTTP/1.1\r\n\r\nremaining data")
   }
 }
 
@@ -78,7 +77,6 @@ async test "passthrough mode remaining data" {
 async fn handle_connect(
   log : Array[String],
   request : @http.Request,
-  _body : &@io.Reader,
   conn : @http.ServerConnection,
 ) -> Unit {
   guard request.meth is Connect else {
@@ -117,15 +115,13 @@ async test "proxied https request" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
-      })
+      server.run_forever() <| ((req, conn) => handle_connect(log, req, conn))
     }
-    let (_, result) = @http.get(
+    let (_, result) = @http.get_text(
       "https://www.moonbitlang.com",
       proxy=Client("http://127.0.0.1:\{port}"),
     )
-    assert_true(result.text().has_prefix("<!doctype html>"))
+    assert_true(result.has_prefix("<!doctype html>"))
   }
   json_inspect(log, content=[
     "proxy server: connected to www.moonbitlang.com:443 successfully",
@@ -139,15 +135,13 @@ async test "proxied http request" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
-      })
+      server.run_forever() <| ((req, conn) => handle_connect(log, req, conn))
     }
-    let (_, result) = @http.get(
+    let (_, result) = @http.get_text(
       "http://www.example.org",
       proxy=Client("http://127.0.0.1:\{port}"),
     )
-    assert_true(result.text().has_prefix("<!doctype html>"))
+    assert_true(result.has_prefix("<!doctype html>"))
   }
   json_inspect(log, content=[
     "proxy server: connected to www.example.org:80 successfully",
@@ -163,16 +157,17 @@ async test "proxied misc request" {
   let port = server.addr.port()
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      proxy_server.run_forever() <| ((req, body, conn) => {
-        handle_connect(log, req, body, conn)
+      proxy_server.run_forever() <| ((req, conn) => {
+        handle_connect(log, req, conn)
       })
     }
     group.spawn_bg(no_wait=true) <| () => {
       server.run_forever() <| ((conn, _) => {
         let conn = @http.ServerConnection::new(conn)
+        defer conn.close()
         for ;; {
           let request = conn.read_request()
-          let body = conn.read_all().text()
+          let body = conn.text.read_all()
           log.push(
             "target server: received request \{@debug.to_string(request.meth)} \{request.path} \{body}",
           )
@@ -184,9 +179,9 @@ async test "proxied misc request" {
       @http.Client("http://127.0.0.1:\{proxy_server_addr.port()}")
     }
 
-    let _ = @http.get("http://127.0.0.1:\{port}", proxy=proxy())
-    let _ = @http.put("http://127.0.0.1:\{port}", "abcd", proxy=proxy())
-    let _ = @http.post("http://127.0.0.1:\{port}", "efgh", proxy=proxy())
+    let _ = @http.get_text("http://127.0.0.1:\{port}", proxy=proxy())
+    let _ = @http.put_text("http://127.0.0.1:\{port}", "abcd", proxy=proxy())
+    let _ = @http.post_text("http://127.0.0.1:\{port}", "efgh", proxy=proxy())
   }
   for i in 0..<log.length() {
     log[i] = log[i].replace_all(old=":\{port}", new=":XXXXX")
@@ -204,13 +199,13 @@ async test "proxy error" {
   let port = proxy_server.addr.port()
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      proxy_server.run_forever() <| ((_, _, conn) => {
+      proxy_server.run_forever() <| ((_, conn) => {
         conn.send_response(407, "ProxyAuthenticationRequired")
         conn.end_response()
       })
     }
     try
-      @http.get(
+      @http.get_binary(
         "https://www.moonbitlang.com",
         proxy=Client("http://127.0.0.1:\{port}"),
       )

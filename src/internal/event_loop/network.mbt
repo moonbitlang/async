@@ -43,8 +43,8 @@ pub async fn getaddrinfo(
     @coroutine.spawn(() => {
       defer job.free()
       let ret = perform_job_in_worker(job, context~) catch {
-        @os_error.OSError(errno, context~) =>
-          raise @os_error.OSError(errno, context="\{context}: \{host.escape()}")
+        @os_error.OsError(_) as err =>
+          raise err.wrap_context(context => "\{context}: \{host.escape()}")
         err => raise err
       }
       // if the outer `getaddrinfo` call already terminated,

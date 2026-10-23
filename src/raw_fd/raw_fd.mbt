@@ -90,13 +90,14 @@ pub async fn RawFd::write(
 ///|
 /// A wrapper around a raw file descriptor that can be used to
 /// perform asynchronous stream-based IO on the raw file descriptor
-/// via the `@io.Reader`/`@io.Writer` interface.
+/// via the `@io.BinaryReader`/`@io.BinaryWriter` interfaces.
 /// This is useful for binding special file descriptors
 /// that are not natively supported by `moonbitlang/async`.
 pub struct RawFdStream {
   fd : @fd_util.Fd
   priv io : @event_loop.IoHandle
-  priv read_buf : @io.ReaderBuffer
+  priv reader_ctrl : @io.BinaryReaderController
+  priv writer_ctrl : @io.BinaryWriterController
 }
 
 ///|
@@ -109,8 +110,12 @@ pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
   let context = "@raw_fd.RawFdStream()"
   let kind = @event_loop.kind_of_fd(fd, context~)
   let is_async = @fd_util.fd_is_nonblocking(fd, context~)
-  let read_buf = @io.ReaderBuffer::new()
-  { fd, io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~), read_buf, }
+  {
+    fd,
+    io: @event_loop.IoHandle::from_fd(fd, kind~, is_async~),
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
+  }
 }
 
 ///|
@@ -124,11 +129,11 @@ pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
 pub async fn RawFdStream::RawFdStream(fd : @fd_util.Fd) -> RawFdStream {
   let context = "@raw_fd.RawFdStream()"
   let kind = @event_loop.kind_of_fd(fd, context~)
-  let read_buf = @io.ReaderBuffer::new()
   {
     fd,
     io: @event_loop.IoHandle::from_fd(fd, kind~, is_async=false),
-    read_buf,
+    reader_ctrl: @io.BinaryReaderController(),
+    writer_ctrl: @io.BinaryWriterController(),
   }
 }
 
@@ -138,34 +143,66 @@ pub fn RawFdStream::close(self : RawFdStream) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for RawFdStream with fn _get_internal_buffer(self) {
-  self.read_buf
+pub impl @io.BinaryReader for RawFdStream
+
+///|
+impl @io.BinaryReaderImpl for RawFdStream with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
-pub impl @io.Reader for RawFdStream with fn _direct_read(
+impl @io.BinaryReaderImpl for RawFdStream with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  self.io.read(buf, offset~, len=max_len, context="@raw_fd.RawFdStream::read()")
+  self.io.read(
+    buf,
+    offset~,
+    len=max_len,
+    context="impl @io.BinaryReader for @raw_fd.RawFdStream",
+  )
 }
 
 ///|
-pub extend RawFdStream with @io.Reader::{
+pub extend RawFdStream with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
-pub impl @io.Writer for RawFdStream with fn write_once(self, buf, offset~, len~) {
-  self.io.write(buf, offset~, len~, context="@raw_fd.RawFdStream::write()")
+pub impl @io.BinaryWriter for RawFdStream
+
+///|
+impl @io.BinaryWriterImpl for RawFdStream with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.io.write(
+    buf,
+    offset~,
+    len~,
+    context="impl @io.BinaryWriter for @raw_fd.RawFdStream",
+  )
 }
 
 ///|
-pub extend RawFdStream with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for RawFdStream with fn get_controller(self) {
+  self.writer_ctrl
+}
+
+///|
+pub extend RawFdStream with @io.BinaryWriter::{write, write_reader}

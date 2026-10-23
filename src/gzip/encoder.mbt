@@ -21,6 +21,7 @@ struct Encoder[W] {
   buf : FixedArray[Byte]
   mut buf_len : Int32
   core : @gzip_internal.Encoder
+  ctrl : @io.BinaryWriterController
 }
 
 ///|
@@ -37,11 +38,12 @@ pub fn[W] Encoder::Encoder(
     buf,
     buf_len: 0,
     core: @gzip_internal.Encoder(mtime~, extra_flags~, operating_system~),
+    ctrl: @io.BinaryWriterController(),
   }
 }
 
 ///|
-async fn[W : @io.Writer] Encoder::flush_output(self : Encoder[W]) -> Unit {
+async fn[W : @io.BinaryWriter] Encoder::flush_output(self : Encoder[W]) -> Unit {
   if self.buf_len > 0 {
     self.inner.write(self.buf.unsafe_reinterpret_as_bytes()[:self.buf_len])
     self.buf_len = 0
@@ -49,12 +51,12 @@ async fn[W : @io.Writer] Encoder::flush_output(self : Encoder[W]) -> Unit {
 }
 
 ///|
-pub async fn[W : @io.Writer] Encoder::flush(self : Encoder[W]) -> Unit {
+pub async fn[W : @io.BinaryWriter] Encoder::flush(self : Encoder[W]) -> Unit {
   self.flush_output()
 }
 
 ///|
-pub async fn[W : @io.Writer] Encoder::end(self : Encoder[W]) -> Unit {
+pub async fn[W : @io.BinaryWriter] Encoder::end(self : Encoder[W]) -> Unit {
   if self.core.minimum_output_space(end=true) > self.buf.length() - self.buf_len {
     self.flush_output()
   }
@@ -67,7 +69,10 @@ pub async fn[W : @io.Writer] Encoder::end(self : Encoder[W]) -> Unit {
 }
 
 ///|
-pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
+pub impl[W : @io.BinaryWriter] @io.BinaryWriter for Encoder[W]
+
+///|
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn raw_write_impl(
   self,
   buf,
   offset~,
@@ -90,4 +95,11 @@ pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
 }
 
 ///|
-pub extend Encoder with @io.Writer::{write_once, write, write_reader}
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn get_controller(
+  self,
+) {
+  self.ctrl
+}
+
+///|
+pub extend Encoder with @io.BinaryWriter::{write, write_reader}

@@ -25,15 +25,19 @@ async test "websocket basic" {
       let ws = @websocket.from_http_server(request, conn)
       defer ws.close()
       let msg = ws.recv()
-      let msg_content = msg.read_all().text()
+      let msg_content = msg.text.read_all()
       debug_inspect(msg.kind, content="Binary")
       inspect(msg_content, content="abcd")
-      ws..start_message(msg.kind)..write(msg_content).end_message()
+      ws.start_message(msg.kind)
+      ws.text.write(msg_content)
+      ws.end_message()
       let msg = ws.recv()
-      let msg_content = msg.read_all().text()
+      let msg_content = msg.text.read_all()
       debug_inspect(msg.kind, content="Text")
       inspect(msg_content, content="abcd")
-      ws..start_message(msg.kind)..write(msg_content).end_message()
+      ws.start_message(msg.kind)
+      ws.text.write(msg_content)
+      ws.end_message()
       try ws.recv() catch {
         err => inspect(err, content="ConnectionClosed(Normal, None)")
       } noraise {
@@ -45,11 +49,11 @@ async test "websocket basic" {
     client.send_binary(b"abcd")
     let msg = client.recv()
     debug_inspect(msg.kind, content="Binary")
-    inspect(msg.read_all().text(), content="abcd")
+    inspect(msg.text.read_all(), content="abcd")
     client.send_text("abcd")
     let msg = client.recv()
     debug_inspect(msg.kind, content="Text")
-    inspect(msg.read_all().text(), content="abcd")
+    inspect(msg.text.read_all(), content="abcd")
     client.send_close()
   }
 }
@@ -68,7 +72,7 @@ async test "single frame multiple read" {
       defer ws.close()
       let msg = ws.recv()
       debug_inspect(msg.kind, content="Text")
-      json_inspect(msg.read_all().text(), content="abc")
+      json_inspect(msg.text.read_all(), content="abc")
       let msg = ws.recv()
       debug_inspect(msg.kind, content="Text")
       json_inspect(msg.read_exactly(2), content="ab")
@@ -101,7 +105,7 @@ async test "ignored message" {
       let msg2 = ws.recv()
       // trying to read from `msg1` here should result in panic
       debug_inspect(msg2.kind, content="Text")
-      inspect(msg2.read_all().text(), content="1234")
+      inspect(msg2.text.read_all(), content="1234")
     }
     let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
@@ -131,18 +135,17 @@ async test "write buffering" {
           err => raise err
         }
         log.push("server received new message: \{@debug.to_string(msg.kind)}")
-        while msg.read_some() is Some(chunk) {
-          let chunk = @utf8.decode(chunk)
+        while msg.text.read() is Some(chunk) {
           log.push("server received: \{chunk}")
         }
       }
     }
     let client = @websocket.connect("ws://127.0.0.1:\{addr.port()}")
     defer client.close()
-    client..start_message(Text).write("ab")
+    client..start_message(Text).write(b"ab")
     @async.sleep(100)
     // due to buffering, this message will not be sent directly
-    client..write("cd").end_message()
+    client..write(b"cd").end_message()
 
     // close the channel
     client.send_close()
@@ -167,7 +170,7 @@ async test "large message" {
       let msg = ws.recv()
       debug_inspect(msg.kind, content="Binary")
       let mut checksum = 0
-      while msg.read_some() is Some(chunk) {
+      while msg.read() is Some(chunk) {
         for byte in chunk {
           checksum += byte.to_int()
         }

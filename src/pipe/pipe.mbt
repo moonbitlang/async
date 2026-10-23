@@ -16,7 +16,7 @@
 /// The read end of a pipe
 struct PipeRead {
   io : @event_loop.IoHandle
-  read_buf : @io.ReaderBuffer
+  ctrl : @io.BinaryReaderController
 }
 
 ///|
@@ -26,12 +26,14 @@ pub fn PipeRead::fd(self : PipeRead) -> @fd_util.Fd {
 
 ///|
 /// The write end of a pipe
-struct PipeWrite(@event_loop.IoHandle)
+struct PipeWrite {
+  io : @event_loop.IoHandle
+  ctrl : @io.BinaryWriterController
+}
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> @fd_util.Fd {
-  let PipeWrite(io) = self
-  io.fd()
+  self.io.fd()
 }
 
 ///|
@@ -44,11 +46,15 @@ pub fn pipe() -> (PipeRead, PipeWrite) raise {
     write_end_is_async=true,
     context~,
   )
-  let r = {
+  let r : PipeRead = {
     io: @event_loop.IoHandle::from_fd(r, kind=Pipe),
-    read_buf: @io.ReaderBuffer::new(),
+    ctrl: @io.BinaryReaderController(),
   }
-  (r, PipeWrite(@event_loop.IoHandle::from_fd(w, kind=Pipe)))
+  let w : PipeWrite = {
+    io: @event_loop.IoHandle::from_fd(w, kind=Pipe),
+    ctrl: @io.BinaryWriterController(),
+  }
+  (r, w)
 }
 
 ///|
@@ -58,48 +64,70 @@ pub fn PipeRead::close(self : PipeRead) -> Unit {
 
 ///|
 pub fn PipeWrite::close(self : PipeWrite) -> Unit {
-  let PipeWrite(io) = self
-  io.close()
+  self.io.close()
 }
 
 ///|
-/// Read data from the read end of a pipe using `read(2)` system call.
-/// For `pipe.read(buf, offset~, max_len~)`,
-/// at most `max_len` bytes of data will be written to `buf`, starting from `offset`.
-/// The number of read bytes will be returned.
-///
-/// At most one task can read from a pipe at any time.
-/// To allow multiple reader,
-/// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for PipeRead with fn _direct_read(
+pub impl @io.BinaryReader for PipeRead
+
+///|
+impl @io.BinaryReaderImpl for PipeRead with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  self.io.read(buf, offset~, len=max_len, context="@pipe.PipeRead::read()")
+  self.io.read(
+    buf,
+    offset~,
+    len=max_len,
+    context="impl @io.BinaryReader for @pipe.PipeRead",
+  )
 }
 
 ///|
-pub impl @io.Reader for PipeRead with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for PipeRead with fn get_controller(self) {
+  self.ctrl
 }
 
 ///|
-pub extend PipeRead with @io.Reader::{
+pub extend PipeRead with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
-pub impl @io.Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
-  let PipeWrite(io) = self
-  io.write(buf, offset~, len~, context="@pipe.PipeWrite::write()")
+pub impl @io.BinaryWriter for PipeWrite
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.io.write(
+    buf,
+    offset~,
+    len~,
+    context="impl @io.BinaryWriter for @pipe.PipeWrite",
+  )
 }
 
 ///|
-pub extend PipeWrite with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
+  self.ctrl
+}
+
+///|
+pub extend PipeWrite with @io.BinaryWriter::{write, write_reader}

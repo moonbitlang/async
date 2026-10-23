@@ -13,6 +13,31 @@
 // limitations under the License.
 
 ///|
-#deprecated
-#doc(hidden)
-pub extend Decoder with @io.Reader::{_direct_read, _get_internal_buffer}
+pub let linux_EINTR : Int32 = 4
+
+///|
+pub let linux_ENOENT : Int32 = 2
+
+///|
+pub let linux_EEXIST : Int32 = 17
+
+///|
+pub let linux_EACCES : Int32 = 13
+
+///|
+pub let linux_ECONNREFUSED : Int32 = 111
+
+///|
+pub let linux_ENOTDIR : Int32 = 20
+
+///|
+pub let linux_ENOTSUP : Int32 = 95
+
+///|
+pub let linux_EAGAIN : Int32 = 11
+
+///|
+pub let linux_EINPROGRESS : Int32 = 115
+
+///|
+pub let linux_EWOULDBLOCK : Int32 = linux_EAGAIN

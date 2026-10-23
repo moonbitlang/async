@@ -1,7 +1,6 @@
 import {
-  "moonbitlang/async/internal/c_buffer",
   "moonbitlang/async/internal/env_util",
-  "moonbitlang/async/internal/os_string",
+  "moonbitlang/async/internal/errno_util" @errno,
 }
 
 import {
@@ -11,12 +10,9 @@ import {
 } for "test"
 
 options(
-  "native-stub": [ "stub.c" ],
   targets: {
     "error.mbt": [ "native", "wasm" ],
-    "errno_linux.mbt": [ "native", "wasm" ],
-    "errno_macos.mbt": [ "native", "wasm" ],
-    "errno_windows.mbt": [ "native", "wasm" ],
+    "error_kind.mbt": [ "native", "wasm" ],
     "deprecated.mbt": [ "native", "wasm" ],
     "os_error_test.mbt": [ "native", "wasm" ],
   },

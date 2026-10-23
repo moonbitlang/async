@@ -32,7 +32,7 @@ async fn client(
   let response = conn.get(path)
   output_response(response, logger)
   match handle_response {
-    None => logger <+ "\{conn.read_all().text()}"
+    None => logger <+ "\{conn.text.read_all()}"
     Some(f) => f(conn)
   }
 }
@@ -62,18 +62,28 @@ async test "basic" {
       tmp_file.write_reader(body)
     })
     tmp_file.close()
-    let (from_unzip, w) = @process.read_from_process()
-    defer from_unzip.close()
-    if is_windows {
-      @process.spawn(root, "tar", ["-t", "-f", tmp_file_name], stdout=w)
-      |> ignore
+    let unzip_proc = if is_windows {
+      @process.spawn(
+        root,
+        "tar",
+        ["-t", "-f", tmp_file_name],
+        stdout=@process.read_from_process(),
+      )
     } else {
-      @process.spawn(root, "unzip", ["-l", tmp_file_name], stdout=w) |> ignore
+      @process.spawn(
+        root,
+        "unzip",
+        ["-l", tmp_file_name],
+        stdout=@process.read_from_process(),
+      )
     }
+    defer unzip_proc.stdout.close()
     let zip_content = []
     for i = 0; ; i = i + 1 {
       if is_windows {
-        guard from_unzip.read_until("\r\n") is Some(line) else { break }
+        guard unzip_proc.stdout.text.read_until("\r\n") is Some(line) else {
+          break
+        }
         let name = if line is [.. "./", .. name] {
           name.to_owned()
         } else {
@@ -81,7 +91,9 @@ async test "basic" {
         }
         zip_content.push(name)
       } else {
-        guard from_unzip.read_until("\n") is Some(line) else { break }
+        guard unzip_proc.stdout.text.read_until("\n") is Some(line) else {
+          break
+        }
         guard line.rev_find(" ") is Some(i) else {
           fail("invalid output from `unzip`")
         }

@@ -19,23 +19,23 @@ async test "trailer chunked" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Transfer-Encoding: chunked\r\n")
-      ..write("\r\n")
-      ..write("4\r\nabcd\r\n")
-      ..write("4\r\nxyzw\r\n")
-      ..write("0\r\n")
-      ..write("Trailer: value\r\n")
-      .write("\r\n")
+      ..write(b"HTTP/1.1 200 OK\r\n")
+      ..write(b"Transfer-Encoding: chunked\r\n")
+      ..write(b"\r\n")
+      ..write(b"4\r\nabcd\r\n")
+      ..write(b"4\r\nxyzw\r\n")
+      ..write(b"0\r\n")
+      ..write(b"Trailer: value\r\n")
+      .write(b"\r\n")
       // second message
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Transfer-Encoding: chunked\r\n")
-      ..write("\r\n")
-      ..write("4\r\n1234\r\n")
-      ..write("0\r\n")
-      ..write("Trailer2: value2\r\n")
-      .write("\r\n")
+      ..write(b"HTTP/1.1 200 OK\r\n")
+      ..write(b"Transfer-Encoding: chunked\r\n")
+      ..write(b"\r\n")
+      ..write(b"4\r\n1234\r\n")
+      ..write(b"0\r\n")
+      ..write(b"Trailer2: value2\r\n")
+      .write(b"\r\n")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -46,10 +46,10 @@ async test "trailer chunked" {
     )
     inspect(response.code, content="200")
     debug_inspect(input.trailer, content="None")
-    let chunk = @io.Reader::read_exactly(input, 4)
+    let chunk = input.read_exactly(4)
     inspect(@utf8.decode(chunk), content="abcd")
     debug_inspect(input.trailer, content="None")
-    inspect(input.read_all().text(), content="xyzw")
+    inspect(@utf8.decode(input.read_all()), content="xyzw")
     debug_inspect(
       input.trailer,
       content=(
@@ -63,7 +63,7 @@ async test "trailer chunked" {
     )
     inspect(response.code, content="200")
     debug_inspect(input.trailer, content="None")
-    inspect(input.read_all().text(), content="1234")
+    inspect(@utf8.decode(input.read_all()), content="1234")
     debug_inspect(
       input.trailer,
       content=(
@@ -80,11 +80,11 @@ async test "trailer fixed length" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("Content-Length: 8\r\n")
-      ..write("\r\n")
-      ..write("abcd")
-      .write("xyzw")
+      ..write(b"HTTP/1.1 200 OK\r\n")
+      ..write(b"Content-Length: 8\r\n")
+      ..write(b"\r\n")
+      ..write(b"abcd")
+      .write(b"xyzw")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -94,10 +94,10 @@ async test "trailer fixed length" {
     )
     inspect(response.code, content="200")
     debug_inspect(input.trailer, content="None")
-    let chunk = @io.Reader::read_exactly(input, 4)
+    let chunk = input.read_exactly(4)
     inspect(@utf8.decode(chunk), content="abcd")
     debug_inspect(input.trailer, content="None")
-    inspect(input.read_all().text(), content="xyzw")
+    inspect(@utf8.decode(input.read_all()), content="xyzw")
     debug_inspect(
       input.trailer,
       content=(
@@ -114,10 +114,10 @@ async test "trailer close delimited" {
     root.spawn_bg() <| () => {
       defer w.close()
       w
-      ..write("HTTP/1.1 200 OK\r\n")
-      ..write("\r\n")
-      ..write("abcd")
-      .write("xyzw")
+      ..write(b"HTTP/1.1 200 OK\r\n")
+      ..write(b"\r\n")
+      ..write(b"abcd")
+      .write(b"xyzw")
     }
     defer r.close()
     let input = Reader::new(r)
@@ -127,10 +127,10 @@ async test "trailer close delimited" {
     )
     inspect(response.code, content="200")
     debug_inspect(input.trailer, content="None")
-    let chunk = @io.Reader::read_exactly(input, 4)
+    let chunk = input.read_exactly(4)
     inspect(@utf8.decode(chunk), content="abcd")
     debug_inspect(input.trailer, content="None")
-    inspect(input.read_all().text(), content="xyzw")
+    inspect(@utf8.decode(input.read_all()), content="xyzw")
     debug_inspect(
       input.trailer,
       content=(

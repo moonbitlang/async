@@ -34,7 +34,7 @@ async fn make_tree(root : String, files : Array[String]) -> Unit {
         @fs.mkdir(directory, recursive=true)
       }
     }
-    @fs.write_file("\{root}/\{file}", b"")
+    @fs.write_binary("\{root}/\{file}", b"")
   }
 }
 

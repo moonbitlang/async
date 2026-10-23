@@ -19,24 +19,27 @@ async test "external client" {
     let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     group.spawn_bg(no_wait=true) <| () => {
-      server.run_forever() <| ((request, _, conn) => {
+      server.run_forever() <| ((request, conn) => {
         log.push("new client to \{request.path}")
         let ws = @websocket.from_http_server(request, conn)
         defer ws.close()
         for ;; {
           let msg = ws.recv()
-          let data = msg.read_all().text()
+          let data = msg.text.read_all()
           log.push("\{@debug.to_string(msg.kind)}: \{data}")
-          ws..start_message(msg.kind)..write(data).end_message()
+          ws.start_message(msg.kind)
+          ws.text.write(data)
+          ws.end_message()
         }
       })
     }
-    let (_, output) = @process.collect_stdout("node", [
-      "src/websocket/client.ts",
-      "ws://127.0.0.1:\{port}",
-    ])
+    let result = @process.run(
+      "node",
+      ["src/websocket/client.ts", "ws://127.0.0.1:\{port}"],
+      stdout=@process.read_from_process(),
+    )
     inspect(
-      output.text(),
+      result.stdout_text(),
       content=(
         #|Connection opened
         #|Message from server:  Hello, Server!

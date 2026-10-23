@@ -13,9 +13,13 @@
 // limitations under the License.
 
 ///|
-struct File {
-  io : @event_loop.IoHandle
-  read_buf : @io.ReaderBuffer
+pub struct File {
+  /// `text` is a builtin UTF-8 view of the file's content.
+  /// It can be used for direct UTF-8 based text IO over the file.
+  text : @io.Utf8TextView
+  priv io : @event_loop.IoHandle
+  priv reader_ctrl : @io.BinaryReaderController
+  priv writer_ctrl : @io.BinaryWriterController
 }
 
 ///|
@@ -25,6 +29,7 @@ pub fn File::fd(self : File) -> @fd_util.Fd {
 
 ///|
 pub fn File::close(self : File) -> Unit {
+  self.text.close()
   self.io.close()
 }
 
@@ -87,7 +92,7 @@ fn CreateMode::to_int(self : CreateMode) -> Int32 = "%identity"
 ///   see `SyncMode` for more details. The default is `NoSync`
 ///
 /// - if `append` is `true` (`false` by default), the file will be opened in append mode.
-///   Under append mode, sequential write (via the `@io.Writer` interface)
+///   Under append mode, sequential write (via the `@io.BinaryWriter` interface)
 ///   will always write to the end of the file, even if the file is modified externally.
 ///   The semantic of reading from the file is unaffected by `append`.
 ///   Random access write (`write_at`) is forbidden for file opened in append mode.
@@ -134,7 +139,14 @@ pub async fn open(
     mode=permission,
     context="@fs.open()",
   )
-  { io, read_buf: @io.ReaderBuffer::new(), }
+  let file = {
+    text: @io.Utf8TextView::new_uninitialized(),
+    io,
+    reader_ctrl: BinaryReaderController(),
+    writer_ctrl: BinaryWriterController(),
+  }
+  file.text.set_inner(file)
+  file
 }
 
 ///|
@@ -165,50 +177,55 @@ pub async fn create(
 }
 
 ///|
-/// `file.read(buf, offset~, len~) read `len` bytes from `file`,
-/// store data into `buf`, starting with `offset`.
-/// By default, `offset` is `0` and `len` is `buf.length() - offset`.
-///
-/// The number of data actually read will be returned.
-/// The number can be smaller than the requested size for various reasons:
-///
-/// - EOF is reached before reading all requested data
-/// - the file is a named pipe, and not enough data is available
-///
-/// When reading a file via the `@io.Reader` interface,
+/// When reading a file via the `@io.BinaryReader` interface,
 /// the content of the file will be read as a byte stream.
 /// The position of the read stream in the file is
-/// independent of the write stream (via the `@io.Writer` interface)
-pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
-  self.io.read(buf, offset~, len=max_len, context="@fs.File::read()")
+/// independent of the write stream (via the `@io.BinaryWriter` interface)
+pub impl @io.BinaryReader for File
+
+///|
+impl @io.BinaryReaderImpl for File with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.io.read(
+    buf,
+    offset~,
+    len=max_len,
+    context="impl @io.BinaryReader for @fs.File",
+  )
 }
 
 ///|
-pub impl @io.Reader for File with fn _get_internal_buffer(self) {
-  self.read_buf
+impl @io.BinaryReaderImpl for File with fn get_controller(self) {
+  self.reader_ctrl
 }
 
 ///|
-pub impl @io.Reader for File with fn read_all(self) {
-  guard self.io.kind() is Regular else { @io.read_all(self) }
+pub impl @io.BinaryReader for File with fn read_all(self) {
+  guard self.io.kind() is Regular else { @io.read_all_binary(self) }
   let size = (self.size() - self.io.read_offset) catch {
-    _ => return @io.read_all(self)
+    _ => return @io.read_all_binary(self)
   }
-  guard size > 0 && size < @int.MAX_VALUE.to_int64() else { @io.read_all(self) }
+  guard size > 0 && size < @int.MAX_VALUE.to_int64() else {
+    @io.read_all_binary(self)
+  }
   let size_hint = size.to_int()
   let buf = FixedArray::make(size_hint, b'\x00')
-  let n = @io.Reader::read(self, buf, offset=0, max_len=size_hint)
+  let n = self.read_into(buf, offset=0, max_len=size_hint)
   if n is 0 {
     return b""
   }
   // The only reliable way to detect EOF is `read` returning `0`,
   // even for regular files. So do a simple EOF probe here.
   let eof_probe = FixedArray::make(1, b'\x00')
-  if @io.Reader::read(self, eof_probe, offset=0, max_len=1) is 0 {
+  if self.read_into(eof_probe, offset=0, max_len=1) is 0 {
     // happy path, the file size is accurate
     return buf.unsafe_reinterpret_as_bytes()[:n].to_owned()
   }
-  @io.read_all(
+  @io.read_all_binary(
     self,
     prefix_list=[
       buf.unsafe_reinterpret_as_bytes()[:n],
@@ -219,13 +236,19 @@ pub impl @io.Reader for File with fn read_all(self) {
 }
 
 ///|
-pub extend File with @io.Reader::{
+pub extend File with @io.BinaryReader::{
+  read_into,
   read,
-  read_some,
-  drop,
-  read_all,
-  read_until,
+  read_at_least,
+  peek,
+  peek_at_least,
   read_exactly,
+  drop_exactly,
+  peek_exactly,
+  read_all,
+  drop_all,
+  read_until,
+  peek_until,
 }
 
 ///|
@@ -234,7 +257,7 @@ pub extend File with @io.Reader::{
 /// calling `read_at` on unsupported file, such as pipe or socket, result in error.
 ///
 /// This function does not change the cursor for reading/writing the file
-/// as a stream (i.e. using API based on `@io.Reader` and `@io.Writer`),
+/// as a stream (i.e. using `@io.BinaryReader` and `@io.BinaryWriter` APIs),
 /// so it is safe to perform multiple `read_at` on the same file simutaneously.
 ///
 /// Up to `len` bytes of data will be read into `buf[offset:]`.
@@ -272,20 +295,38 @@ pub async fn File::read_exactly_at(
 
 ///|
 /// If the file is opened with `append=true`,
-/// writing to the file via the `@io.Writer` interface
+/// writing to the file via the `@io.BinaryWriter` interface
 /// always append content at the end of the file.
 ///
 /// If the file is opened with `append=false` (the default),
-/// content written to the file via the `@io.Writer` interface
+/// content written to the file via the `@io.BinaryWriter` interface
 /// will be written as a byte stream, starting at offset 0.
 /// The position of the write stream in the file is
-/// independent of the read stream (via the `@io.Reader` interface)
-pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
-  self.io.write(buf, offset~, len~, context="@fs.File::write()")
+/// independent of the read stream (via the `@io.BinaryReader` interface)
+pub impl @io.BinaryWriter for File
+
+///|
+impl @io.BinaryWriterImpl for File with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.io.write(
+    buf,
+    offset~,
+    len~,
+    context="impl @io.BinaryWriter for @fs.File",
+  )
 }
 
 ///|
-pub extend File with @io.Writer::{write_once, write, write_reader}
+impl @io.BinaryWriterImpl for File with fn get_controller(self) {
+  self.writer_ctrl
+}
+
+///|
+pub extend File with @io.BinaryWriter::{write, write_reader}
 
 ///|
 /// Write to a file at the offset given by `position`.
@@ -293,7 +334,7 @@ pub extend File with @io.Writer::{write_once, write, write_reader}
 /// calling `write_at` on unsupported file, such as pipe or socket, result in error.
 ///
 /// This function does not change the cursor for reading/writing the file
-/// as a stream (i.e. using API based on `@io.Reader` and `@io.Writer`),
+/// as a stream (i.e. using `@io.BinaryReader` and `@io.BinaryWriter` APIs),
 /// so it is safe to perform multiple `write_at` on the same file simutaneously,
 /// as long as the regions they write do not overlap.
 ///
@@ -347,15 +388,6 @@ pub async fn File::lock(self : File, lock : Lock) -> Unit {
 
 ///|
 #cfg(target="native")
-extern "C" fn errno_is_lock_violation(err : Int32) -> Bool = "moonbitlang_async_errno_is_lock_violation"
-
-///|
-#cfg(target="wasm")
-#unsafe_skip_stub_check
-fn errno_is_lock_violation(err : Int32) -> Bool = "moonbitlang/async" "fs/errno_is_lock_violation"
-
-///|
-#cfg(target="native")
 extern "C" fn try_lock_ffi(fd : @fd_util.Fd, exclusive~ : Bool) -> Int32 = "moonbitlang_async_try_lock_file"
 
 ///|
@@ -381,7 +413,7 @@ pub fn File::try_lock(self : File, lock : Lock) -> Bool raise {
   let ret = try_lock_ffi(self.fd(), exclusive=lock is Exclusive)
   if ret >= 0 {
     true
-  } else if errno_is_lock_violation(@os_error.get_errno()) {
+  } else if @errno_util.get_errno() == @errno_util.lock_violation {
     false
   } else {
     @os_error.check_errno("@fs.File::try_lock()")
@@ -455,11 +487,12 @@ pub async fn file_size(path : StringView) -> Int64 {
 pub fn File::as_dir(self : File) -> Directory raise {
   guard self.io.kind() is Directory else {
     self.close()
-    raise @os_error.OSError(
-      @os_error.errno_ENOTDIR,
+    raise @os_error.from_errno(
+      @errno_util.not_directory,
       context="@fs.File::as_dir()",
     )
   }
+  self.text.close()
   Directory::from_io_handle(self.io)
 }
 
@@ -475,53 +508,70 @@ pub fn File::kind(self : File) -> FileKind {
 
 ///|
 /// Get the last access time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::atime(self : File) -> (Int64, Int32) {
-  @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
+pub async fn File::atime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.atime(self.io.fd(), context="@fs.File::atime()")
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last modification time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::mtime(self : File) -> (Int64, Int32) {
-  @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
+pub async fn File::mtime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.mtime(self.io.fd(), context="@fs.File::mtime()")
+  { sec, nsec, }
 }
 
 ///|
 /// Get the last status change time of a file.
-/// The return value is a pair `(s, ns)`,
-/// representing the time of `s` seconds + `ns` nanoseconds.
-pub async fn File::ctime(self : File) -> (Int64, Int32) {
-  @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
+pub async fn File::ctime(self : File) -> Timestamp {
+  let (sec, nsec) = @event_loop.ctime(self.io.fd(), context="@fs.File::ctime()")
+  { sec, nsec, }
 }
 
 ///|
-/// Read the contents of the file located at `path`.
+/// Read the content of the file located at `path` in binary.
 /// If `sync_timestamp` is `true` (`false` by default),
-/// `read_file` will block until timestamp change is written to the file system.
-pub async fn read_file(
+/// `read_binary` will block until timestamp change is written to the file system.
+pub async fn read_binary(
   path : StringView,
   sync_timestamp~ : Bool = false,
-) -> &@io.Data {
+) -> Bytes {
   let file = open(path, mode=ReadOnly)
   defer file.close()
-  let result = @io.Reader::read_all(file)
+  let result = file.read_all()
   if sync_timestamp {
-    file.io.fsync(only_data=false, context="@fs.read_file(sync_timestamp=true)")
+    file.io.fsync(
+      only_data=false,
+      context="@fs.read_binary(sync_timestamp=true)",
+    )
   }
   result
 }
 
 ///|
-/// Write data to a file located at `path`.
+/// Read the text content of the UTF-8 encoded file located at `path`.
+/// If `sync_timestamp` is `true` (`false` by default),
+/// `read_text` will block until timestamp change is written to the file system.
+pub async fn read_text(
+  path : StringView,
+  sync_timestamp~ : Bool = false,
+) -> String {
+  let file = open(path, mode=ReadOnly)
+  defer file.close()
+  let result = file.text.read_all()
+  if sync_timestamp {
+    file.io.fsync(only_data=false, context="@fs.read_text(sync_timestamp=true)")
+  }
+  result
+}
+
+///|
+/// Write binary data to a file located at `path`.
 /// The meaning of `sync`, `append`, `create_mode` and `permission`,
 /// is the same as `open`, except that `create_mode` is `TruncateExisting` by default.
 /// See `open` for more details.
-pub async fn write_file(
+pub async fn write_binary(
   path : StringView,
-  content : &@io.Data,
+  content : BytesView,
   create_mode~ : CreateMode = CreateOrTruncate,
   permission~ : Int32 = 0o644,
   sync~ : SyncMode = Data,
@@ -536,5 +586,30 @@ pub async fn write_file(
     permission~,
   )
   defer file.close()
-  @io.Writer::write(file, content.binary())
+  file.write(content)
+}
+
+///|
+/// Write UTF-8 encoded text data to a file located at `path`.
+/// The meaning of `sync`, `append`, `create_mode` and `permission`,
+/// is the same as `open`, except that `create_mode` is `TruncateExisting` by default.
+/// See `open` for more details.
+pub async fn write_text(
+  path : StringView,
+  content : StringView,
+  create_mode~ : CreateMode = CreateOrTruncate,
+  permission~ : Int32 = 0o644,
+  sync~ : SyncMode = Data,
+  append~ : Bool = false,
+) -> Unit {
+  let file = open(
+    path,
+    mode=WriteOnly,
+    sync~,
+    append~,
+    create_mode~,
+    permission~,
+  )
+  defer file.close()
+  file.text.write(content)
 }
