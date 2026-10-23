@@ -63,7 +63,7 @@ pub async fn open(
           context="\{context}: \{path.escape()}",
         )
       }
-      let kind = @fd_util.FileKind::unsafe_from_int(kind.to_int())
+      let kind = @fd_util.FileKind::from_int(kind.to_int())
       let io = IoHandle::from_fd(
         fd,
         kind~,
@@ -162,7 +162,7 @@ pub async fn kind_of_fd(
   context~ : String,
 ) -> @fd_util.FileKind {
   guard! fstatx_single(fd, STAT_FILE_KIND, 1, context~) is [u64le(kind)]
-  @fd_util.FileKind::unsafe_from_int(kind.to_int())
+  @fd_util.FileKind::from_int(kind.to_int())
 }
 
 ///|
@@ -185,7 +185,7 @@ pub async fn file_kind_by_path(
       context~,
     )
     is [u64le(kind)]
-  @fd_util.FileKind::unsafe_from_int(kind.to_int())
+  @fd_util.FileKind::from_int(kind.to_int())
 }
 
 ///|
