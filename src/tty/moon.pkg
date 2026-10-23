@@ -9,16 +9,10 @@ import {
   "moonbitlang/async/process",
   "moonbitlang/async/socket",
   "moonbitlang/core/json",
+  "moonbitlang/core/buffer",
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
 } for "test"
 
-import {
-  "moonbitlang/async",
-} for "wbtest"
-
 supported_targets = "-all+native"
-
-options(
-  "native-stub": [ "test_stub.c" ],
-)
