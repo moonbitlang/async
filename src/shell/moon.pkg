@@ -12,7 +12,6 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/internal/env_util",
-  "moonbitlang/core/env",
   "moonbitlang/async/internal/test_util",
 } for "test"
 

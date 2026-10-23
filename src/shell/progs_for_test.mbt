@@ -18,23 +18,7 @@
 /// `printf`, `grep`, or `sh`, so every execution test exercises the same code
 /// path on every platform. Building them goes through `@shell.Cmd` itself.
 fn make_test_prog(name : String) -> @async.Lazy[String] {
-  Lazy() <| () => {
-    let code = @shell.Cmd("moon", [
-      "build",
-      "test_programs/\{name}",
-      "--debug",
-      "--target-dir",
-      "_build/test_programs",
-    ]).status()
-    if code != 0 {
-      fail("failed to build test program `\{name}`: \{code}")
-    }
-    // Absolute, so a command that sets `cwd` can still name the program.
-    guard @env.current_dir() is Some(module_root) else {
-      fail("no working directory")
-    }
-    "\{module_root}/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/\{name}/\{name}.exe"
-  }
+  Lazy(() => @test_util.build_test_program(name))
 }
 
 ///|

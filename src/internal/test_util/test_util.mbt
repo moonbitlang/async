@@ -47,3 +47,30 @@ pub extern "C" fn increase_current_thread_priority() -> Unit = "moonbitlang_asyn
 pub fn increase_current_thread_priority() -> Unit {
 
 }
+
+///|
+/// Build test utility in `async/internal/test_programs`, and return the path of the executable
+#cfg(any(target="native", target="wasm"))
+pub async fn build_test_program(name : String) -> String {
+  guard! @env.current_dir() is Some(cwd)
+  let (exit_code, output) = @process.collect_output_merged("moon", [
+    "build",
+    "test_programs/\{name}",
+    "--target",
+    "native",
+    "--debug",
+    "--target-dir",
+    "_build/test_programs",
+  ])
+  guard exit_code is 0 else {
+    fail("failed to build test program `\{name}`: \{output.text()}")
+  }
+  "\{cwd}/_build/test_programs/native/debug/build/moonbitlang/async_test_programs/\{name}/\{name}.exe"
+}
+
+///|
+#cfg(not(any(target="native", target="wasm")))
+let _unused_import : Unit = {
+  ignore(@process.unimplemented)
+  ignore(@env.now())
+}
