@@ -161,6 +161,15 @@ type Timer
 pub fn Timer::cancel(Self) -> Unit
 pub fn Timer::new(Int32, () -> Unit) -> Self
 
+#external
+pub type Tty
+pub fn Tty::enter_raw(Self, context~ : String) -> Unit raise
+pub fn Tty::leave_raw(Self, context~ : String) -> Unit raise
+pub fn Tty::open(Bytes, context~ : String) -> (Self, Int32) raise
+pub async fn Tty::read(Self, FixedArray[Byte], offset~ : Int32, len~ : Int32, context~ : String) -> Int32
+pub fn Tty::size(Self, context~ : String) -> (Int32, Int32) raise
+pub fn Tty::take_resize_event(Self) -> Bool
+
 // Type aliases
 
 // Traits

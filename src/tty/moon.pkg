@@ -1,0 +1,20 @@
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/internal/fd_util",
+  "moonbitlang/async/io",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/raw_fd",
+  "moonbitlang/async/internal/test_util",
+} for "wbtest"
+
+supported_targets = "-all+native"
+
+max_concurrent_tests = 1
+
+options(
+  "native-stub": [ "test_stub.c" ],
+)

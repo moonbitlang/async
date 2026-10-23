@@ -131,16 +131,18 @@ static
 void *sigwait_thread_worker(void *data) {
   sigset_t wait_set;
 
-  pthread_mutex_lock(&signal_config.lock);
-  memcpy(&wait_set, &signal_config.interested_signals, sizeof(sigset_t));
-  pthread_mutex_unlock(&signal_config.lock);
-
-  pthread_sigmask(SIG_SETMASK, &wait_set, 0);
+  // Block every signal in this thread: `sigwait` only requires the awaited
+  // signals to be blocked, and leaving the others unblocked would let the
+  // kernel deliver a process-directed signal with a handler (for example
+  // `SIGWINCH` installed by `@tty`) to this thread, where the handler would
+  // consume it unseen by whoever is actually waiting for it.
+  sigset_t all_signals;
+  sigfillset(&all_signals);
+  pthread_sigmask(SIG_SETMASK, &all_signals, 0);
 
   while (1) {
     pthread_mutex_lock(&signal_config.lock);
     memcpy(&wait_set, &signal_config.interested_signals, sizeof(sigset_t));
-    pthread_sigmask(SIG_SETMASK, &wait_set, 0);
     pthread_mutex_unlock(&signal_config.lock);
 
     int sig = 0;

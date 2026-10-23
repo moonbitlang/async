@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/tty"
+
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn open() -> Tty raise
+
+// Errors
+pub suberror ReadInProgress derive(ToJson, @debug.Debug)
+pub fn ReadInProgress::to_json(Self) -> Json
+pub fn ReadInProgress::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) enum Event {
+  Input(Bytes)
+  Resize
+} derive(Eq, @debug.Debug)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
+
+type Tty
+pub async fn Tty::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
+pub fn Tty::_get_internal_buffer(Self) -> @io.ReaderBuffer
+pub async fn Tty::drop(Self, Int32) -> Int32
+pub fn Tty::enter_raw_mode(Self) -> Unit raise
+pub fn Tty::leave_raw_mode(Self) -> Unit raise
+pub async fn Tty::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn Tty::read_all(Self) -> &@io.Data
+pub async fn Tty::read_event(Self) -> Event?
+pub async fn Tty::read_exactly(Self, Int32) -> Bytes
+pub async fn Tty::read_some(Self, max_len? : Int32) -> Bytes?
+pub async fn Tty::read_until(Self, StringView) -> String?
+pub fn Tty::size(Self) -> (Int32, Int32) raise
+pub async fn Tty::write(Self, &@io.Data) -> Unit
+pub async fn Tty::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
+pub async fn Tty::write_reader(Self, &@io.Reader) -> Unit
+pub impl @io.Reader for Tty
+pub impl @io.Writer for Tty
+
+// Type aliases
+
+// Traits
