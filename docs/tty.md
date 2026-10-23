@@ -464,67 +464,43 @@ to whichever event loop is running.
 
 ## Validation
 
-Verified on macOS (`moon test src/tty --target native`, 13 tests):
+`src/tty/tty_test.mbt` runs the same end-to-end tests through
+`test_programs/pty` on Linux, macOS and Windows:
 
-- The tests are end to end and need no test-only FFI. Each one runs
-  `test_programs/ttyd` under `script`, which gives it a fresh pseudo terminal
-  as its controlling terminal. The program's stdin and stdout are redirected
-  to `/dev/null`, so it reaches the terminal only through `@tty.open()`. The
-  test types on the terminal through `script`'s stdin, reads the terminal
-  display from `script`'s stdout, and resizes it with `stty -F`/`-f` on the
-  terminal's path, so `SIGWINCH` comes from the kernel.
-- `ttyd` serves one `@tty` operation per JSON-RPC request on a loopback
-  socket and answers synchronously, so a test step advances on the reply and
-  only the 200ms "nothing arrives" checks depend on time.
-- Covered: `size`; cooked mode holds back a partial line, echoes it back as
-  `\r\n`, and reports `^D` at line start as EOF; raw mode returns bytes
-  without line buffering and without echo, is idempotent, and one
-  `leave_raw_mode` restores the canonical state; `^C` kills a cooked-mode
-  program but arrives as `\x03` in raw mode; a resize interrupts a parked
-  read, and three resizes while idle collapse into one `Resize`; a resize
-  seen by a plain `@io.Reader` read surfaces at the next `read_event`;
-  `@io.Writer` writes bytes unchanged in raw mode.
-- `script` and `stty` take different flags on macOS and Linux; the test picks
-  them from `@async.platform`. Windows has neither, the tests are Unix only.
-- `moon test src/signal src/stdio src/process --target native` passes with
-  the `signal.c` change.
-- `moon fmt`, `moon check --target native`, `moon info`, `git diff --check`.
+- The helper creates a fresh controlling terminal using a Unix PTY or
+  `CreatePseudoConsole`, initially 24 rows by 80 columns, and launches
+  `test_programs/ttyd` with separate executable and argument values. No shell,
+  `script`, `stty`, or existing interactive console is needed.
+- `ttyd` opens the terminal through `@tty.open()`. On Unix, all three standard
+  descriptors are redirected to `/dev/null`; on Windows, the child does not
+  inherit the helper's redirected standard handles. The test process never
+  attaches to the child's console.
+- The helper accepts `input <byte count>\n` followed by exactly that many
+  bytes, or `resize <rows> <cols>\n`, on stdin. Resize uses `TIOCSWINSZ` or
+  `ResizePseudoConsole` and acknowledges success with `ok\n` on stderr.
+  A separate thread continuously drains terminal output to stdout. Closing
+  stdin ends the command stream; the caller also closes the RPC connection
+  so `ttyd` can exit. The helper waits for the child and output drain before
+  exiting. Unix signal termination is reported as `128 + signal`; Windows
+  exit codes, including `STATUS_CONTROL_C_EXIT`, are preserved.
+- `ttyd` serves one `@tty` operation per JSON-RPC request on a loopback socket
+  and answers synchronously. The canonical-mode probe sends a partial line,
+  checks that the read stays parked for 200ms, then completes the line.
+  Raw-mode and cancellation tests also use bounded waits where the expected
+  behavior is that no input arrives.
+- Shared cases cover size and resize, cooked and raw input, echo, repeated
+  raw-mode entry and restoration, Ctrl-C, cancellation of parked reads,
+  coalescing resize events, and resize during a plain `@io.Reader` read. Unix additionally checks Ctrl-D and byte-exact
+  writes; Windows checks Ctrl-Z and rendered Unicode output. ConPTY emits a
+  rendered VT stream, so its output assertions search for displayed text
+  rather than requiring the original byte stream.
+- Windows encoder tests independently cover ASCII, BMP, surrogate pairs
+  split across batches, the `VK_MENU` key-up form, unpaired surrogates,
+  ignored records, focus, resize deduplication, and small caller buffers.
 
-Done for Windows (`moon test src/tty --target native`, 14 tests on
-Windows 11):
-
-- Encoder tests on every OS through `TtyEncoder`: ASCII, BMP, surrogate
-  pairs split across batches, the `VK_MENU` key-up form, unpaired
-  surrogates, key-up and mouse drops, focus, resize dedupe and a caller
-  buffer smaller than one character.
-- Console tests need no real console. Each one creates a pseudo console
-  with `CreatePseudoConsole`, starts a placeholder child on it, and attaches
-  the test process to the child's console, so `CONIN$`/`CONOUT$` resolve to
-  the pseudo console. VT input is written to its input pipe and the window
-  is resized with `ResizePseudoConsole`. They cover raw input (text, arrow
-  key, Ctrl-C, BMP and non-BMP text), cooked lines and cancelling a parked
-  cooked read, idempotent raw mode and restore, `size` and `Resize` during
-  a parked read, and cancelling a parked raw read, and writing.
-  This is what found the `VK_MENU` key-up form.
-- Harness details that matter: the child needs `STARTF_USESTDHANDLES`, or
-  it inherits the runner's redirected stdout instead of using the pseudo
-  console; `CREATE_NO_WINDOW` must not be passed, or the child gets a fresh
-  hidden console instead; attaching resets the process's console control
-  handlers, so the stub re-registers the event loop's; the test detaches
-  before `ClosePseudoConsole`, which sends `CTRL_CLOSE_EVENT` to attached
-  processes; and the output drain thread is cancelled rather than joined,
-  because a `Tty` is never closed and keeps the pseudo console alive.
-- Attaching is process-wide, so the console tests take a shared
-  `@async.Mutex` instead of relying on `max_concurrent_tests = 1`.
-- `tty.c` and `test_stub.c` compile without warnings under `-Wall -Wextra`
-  with gcc for Linux and clang for the Windows MSVC target, and build with
-  MSVC through `moon`.
-
-Still to do:
-
-- Linux run of the pty tests (the `signalfd` path).
-- Manual check in a real Windows Terminal and legacy conhost window,
-  including mouse reporting (see Open Questions).
+Run `moon test src/tty --target native` on each OS. The helper and `ttyd` are
+built by the tests. Real Windows Terminal and conhost checks, including mouse
+reporting, remain useful in addition to ConPTY coverage (see Open Questions).
 
 ## Known Limitations
 

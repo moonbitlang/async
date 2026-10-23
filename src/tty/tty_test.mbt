@@ -21,20 +21,14 @@ fn make_test_prog(name : String) -> @async.Lazy[String] {
 let ttyd : @async.Lazy[String] = make_test_prog("ttyd")
 
 ///|
-let conpty : @async.Lazy[String] = make_test_prog("conpty")
-
-///|
-priv enum Terminal {
-  Posix(String)
-  Windows(@process.ReadFromProcess)
-}
+let pty : @async.Lazy[String] = make_test_prog("pty")
 
 ///|
 /// See `test_programs/ttyd`.
 priv struct Ttyd {
   input : @process.WriteToProcess
   output : @process.ReadFromProcess
-  terminal : Terminal
+  control : @process.ReadFromProcess
   rpc : @socket.Tcp
   mut next_id : Int32
 }
@@ -123,70 +117,40 @@ async fn Ttyd::write(self : Ttyd, bytes : Bytes) -> Unit {
 }
 
 ///|
-/// Terminal input is framed only for the Windows harness, so it can share the
-/// pipe with resize commands without interpreting any of the input bytes.
+/// Input is framed so it can share the harness pipe with control commands
+/// without interpreting any of the terminal input bytes.
 async fn Ttyd::send_input(self : Ttyd, bytes : Bytes) -> Unit {
-  if self.terminal is Windows(_) {
-    self.input.write("input \{bytes.length()}\n")
-  }
+  self.input.write("input \{bytes.length()}\n")
   self.input.write(bytes)
 }
 
 ///|
 async fn Ttyd::is_canonical(self : Ttyd) -> Bool {
-  match self.terminal {
-    Posix(path) => {
-      let flag = if @async.platform is MacOS { "-f" } else { "-F" }
-      let (code, output) = @process.collect_stdout("stty", ["-a", flag, path])
-      guard code == 0 else { fail("stty failed with \{code}") }
-      let output = output.text()
-      if output.contains("-icanon") {
-        false
-      } else if output.contains("icanon") {
-        true
+  @async.with_task_group(group => {
+    self.send_input(b"x")
+    let reading = group.spawn(() => self.read_event())
+    @async.sleep(200)
+    if reading.try_wait() is Some(event) {
+      assert_eq(event, Some(Input(b"x")))
+      false
+    } else {
+      // Finish the same read instead of cancelling a partially entered line.
+      let (enter, line) = if @async.platform is Windows {
+        (b"\r", b"x\r\n")
       } else {
-        fail("unrecognized `stty -a` output")
+        (b"\n", b"x\n")
       }
+      self.send_input(enter)
+      assert_eq(reading.wait(), Some(Input(line)))
+      true
     }
-    Windows(_) =>
-      @async.with_task_group(group => {
-        self.send_input(b"x")
-        let reading = group.spawn(() => self.read_event())
-        @async.sleep(200)
-        if reading.try_wait() is Some(event) {
-          assert_eq(event, Some(Input(b"x")))
-          false
-        } else {
-          // Finish the same ReadConsoleW call; cancellation need not preserve
-          // its partially entered line.
-          self.send_input(b"\r")
-          assert_eq(reading.wait(), Some(Input(b"x\r\n")))
-          true
-        }
-      })
-  }
+  })
 }
 
 ///|
 async fn Ttyd::resize(self : Ttyd, rows : Int32, cols : Int32) -> Unit {
-  match self.terminal {
-    Posix(path) => {
-      let flag = if @async.platform is MacOS { "-f" } else { "-F" }
-      let code = @process.run("stty", [
-        flag,
-        path,
-        "rows",
-        rows.to_string(),
-        "cols",
-        cols.to_string(),
-      ])
-      guard code == 0 else { fail("stty failed with \{code}") }
-    }
-    Windows(control) => {
-      self.input.write("resize \{rows} \{cols}\n")
-      assert_eq(control.read_until("\n"), Some("ok"))
-    }
-  }
+  self.input.write("resize \{rows} \{cols}\n")
+  assert_eq(self.control.read_until("\n"), Some("ok"))
 }
 
 ///|
@@ -215,11 +179,7 @@ async fn Ttyd::expect_output_text(self : Ttyd, expected : String) -> Unit {
 ///|
 async fn with_ttyd(f : async (Ttyd) -> Unit, exit_with~ : Int32 = 0) -> Unit {
   let ttyd_path = ttyd.wait()
-  let harness = if @async.platform is Windows {
-    conpty.wait()
-  } else {
-    "script"
-  }
+  let harness = pty.wait()
   @async.with_timeout(10000, () => {
     @async.with_task_group(group => {
       let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
@@ -228,50 +188,25 @@ async fn with_ttyd(f : async (Ttyd) -> Unit, exit_with~ : Int32 = 0) -> Unit {
       defer input.close()
       let (output, stdout) = @process.read_from_process()
       defer output.close()
-      let (script, terminal) = if @async.platform is Windows {
-        let (control, stderr) = @process.read_from_process()
-        // The owning task group also closes this stream on setup failure.
-        group.add_defer(() => control.close())
-        let script = @process.spawn(
-          group,
-          harness,
-          ["\"\{ttyd_path}\" \{server.addr.port()}"],
-          stdin~,
-          stdout~,
-          stderr~,
-          cancel_handler=@process.hard_cancel(),
-        )
-        (script, Terminal::Windows(control))
-      } else {
-        // Avoid shell-specific escaping by passing the setup through the env.
-        // Print the delimiter ourselves: some `tty` implementations omit it.
-        let setup_script = "stty rows 24 cols 80 && terminal=$(tty) && printf '%s\\n' \"$terminal\" && exec '\{ttyd_path}' \{server.addr.port()} </dev/null"
-        let setup_cmd_arg = "exec sh -c \"$TTYD_SETUP\""
-        let args = if @async.platform is MacOS {
-          ["-q", "/dev/null", "sh", "-c", setup_cmd_arg]
-        } else {
-          ["-q", "-e", "-c", setup_cmd_arg, "/dev/null"]
-        }
-        let script = @process.spawn(
-          group,
-          harness,
-          args,
-          extra_env={ "TTYD_SETUP": setup_script },
-          stdin~,
-          stdout~,
-        )
-        guard output.read_until("\n") is Some(path) else {
-          fail("terminal closed before printing its path")
-        }
-        (script, Terminal::Posix(path.trim().to_owned()))
-      }
+      let (control, stderr) = @process.read_from_process()
+      // The owning task group also closes this stream on setup failure.
+      group.add_defer(() => control.close())
+      let terminal = @process.spawn(
+        group,
+        harness,
+        [ttyd_path, server.addr.port().to_string()],
+        stdin~,
+        stdout~,
+        stderr~,
+        cancel_handler=@process.hard_cancel(),
+      )
       let (rpc, _) = server.accept()
       {
         defer rpc.close()
-        f({ input, output, terminal, rpc, next_id: 0, })
+        f({ input, output, control, rpc, next_id: 0, })
       }
       input.close()
-      let exit_code = script.wait()
+      let exit_code = terminal.wait()
       guard exit_code == exit_with else {
         fail(
           "terminal harness exited with \{exit_code}, expecting \{exit_with}",
@@ -415,7 +350,6 @@ async test "cooked mode handles EOF" {
 async test "^C interrupt cooked mode program" {
   let sigint = match @async.platform {
     Windows => -1073741510 // STATUS_CONTROL_C_EXIT (0xC000013A)
-    MacOS => 2
     _ => 130
   }
   with_ttyd(exit_with=sigint) <| ttyd => {

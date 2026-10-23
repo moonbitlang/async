@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 
 ///|
-/// The test program of `src/tty/tty_test.mbt`, run under `script` or `conpty`,
+/// The test program of `src/tty/tty_test.mbt`, run under `test_programs/pty`,
 /// which gives the child a fresh controlling terminal.
 ///
 /// `ttyd <port>` connects to `127.0.0.1:<port>` and serves JSON-RPC 2.0

@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/argparse",
+  "moonbitlang/core/encoding/utf8",
 }
 
 supported_targets = "-all+native"

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/async_test_programs/conpty"
+package "moonbitlang/async_test_programs/pty"
 
 // Values
 
