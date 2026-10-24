@@ -91,3 +91,21 @@ async test "manual Accept-Encoding" {
     ])
   }
 }
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "request to an IPv6 address" {
+  @async.with_task_group() <| group => {
+    let server = @http.Server(@socket.Addr::parse("[::1]:0"))
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((request, _, conn) => {
+        conn.send_response(200, "OK")
+        conn.write("Host: \{request.headers.get("Host").unwrap_or("")}")
+      })
+    }
+    let port = server.addr.port()
+    let (response, body) = @http.get("http://[::1]:\{port}/")
+    inspect(response.code, content="200")
+    inspect(body.text(), content="Host: [::1]:\{port}")
+  }
+}
