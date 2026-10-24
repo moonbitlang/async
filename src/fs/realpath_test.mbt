@@ -92,6 +92,10 @@ async test "realpath link to dir relative" {
 }
 
 ///|
+// wasm realpath comes from the host runtime, which does not preserve the
+// extended prefix; only the native backend goes through
+// GetFinalPathNameByHandleW.
+#cfg(target="native")
 async test "realpath keeps the extended prefix when the plain form is ambiguous" {
   // issue #675: Win32 resolution trims the trailing dot of `folder.`, so
   // dropping `\\?\` can reopen a sibling `folder` instead. The prefix must
