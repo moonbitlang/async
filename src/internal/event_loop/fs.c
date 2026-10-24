@@ -2112,16 +2112,89 @@ struct realpath_job *moonbitlang_async_make_realpath_job(os_string_t path) {
   return job;
 }
 
+#ifdef _WIN32
+// Win32 path resolution trims trailing dots and spaces from each component
+// and maps reserved device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9,
+// with any extension) to devices, so a path containing any of those changes
+// meaning once the \\?\ prefix is removed. Long paths would also become
+// unopenable without the prefix. Following the same rules as Rust's `dunce`,
+// only drop the prefix when the plain DOS form resolves to the same file.
+static
+int moonbitlang_async_win32_component_is_exact(const WCHAR *s, size_t len) {
+  if (len == 0)
+    return 0;
+  if (s[len - 1] == L'.' || s[len - 1] == L' ')
+    return 0;
+  size_t name_len = 0;
+  while (name_len < len && s[name_len] != L'.')
+    name_len++;
+  if (name_len < 3 || name_len > 4)
+    return 1;
+  WCHAR upper[4];
+  for (size_t i = 0; i < name_len; i++) {
+    WCHAR c = s[i];
+    if (c >= L'a' && c <= L'z')
+      c = c - L'a' + L'A';
+    upper[i] = c;
+  }
+  static const WCHAR reserved_prefixes[4][3] = {
+    {L'C', L'O', L'N'},
+    {L'P', L'R', L'N'},
+    {L'A', L'U', L'X'},
+    {L'N', L'U', L'L'},
+  };
+  for (int r = 0; r < 4; r++) {
+    for (int i = 0; i < 3; i++) {
+      if (upper[i] != reserved_prefixes[r][i])
+        goto next_prefix;
+    }
+    return 0;
+    next_prefix: ;
+  }
+  if (name_len == 4 && upper[3] >= L'0' && upper[3] <= L'9') {
+    if (upper[0] == L'C' && upper[1] == L'O' && upper[2] == L'M')
+      return 0;
+    if (upper[0] == L'L' && upper[1] == L'P' && upper[2] == L'T')
+      return 0;
+  }
+  return 1;
+}
+
+static
+int moonbitlang_async_dos_path_is_exact(const WCHAR *path, size_t len) {
+  // MAX_PATH with headroom for any suffix a caller may append
+  if (len >= 245)
+    return 0;
+  size_t start = 0;
+  while (start < len) {
+    size_t end = start;
+    while (end < len && path[end] != L'\\')
+      end++;
+    if (!moonbitlang_async_win32_component_is_exact(path + start, end - start))
+      return 0;
+    start = end + 1;
+  }
+  return 1;
+}
+#endif
+
 char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
 #ifdef _WIN32
+  size_t len = wcslen(job->result);
   if (wcsncmp(job->result, L"\\\\?\\UNC\\", 8) == 0) {
-    job->result[6] = L'\\';
-    return (char*)job->result + 6 * sizeof(WCHAR);
+    if (moonbitlang_async_dos_path_is_exact(job->result + 8, len - 8)) {
+      job->result[6] = L'\\';
+      return (char*)job->result + 6 * sizeof(WCHAR);
+    }
+    return (char*)job->result;
   }
-  else if (wcsncmp(job->result, L"\\\\?\\", 4) == 0)
-    return (char*)job->result + 4 * sizeof(WCHAR);
+  else if (wcsncmp(job->result, L"\\\\?\\", 4) == 0) {
+    if (moonbitlang_async_dos_path_is_exact(job->result + 4, len - 4))
+      return (char*)job->result + 4 * sizeof(WCHAR);
+    return (char*)job->result;
+  }
   else
-    return (char*)job->result + 8;
+    return (char*)job->result;
 #else
   return job->result;
 #endif
