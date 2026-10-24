@@ -13,7 +13,6 @@ options(
     "fd_util.wasm.mbt": [ "wasm" ],
     "pipe.mbt": [ "native" ],
     "pipe.wasm.mbt": [ "wasm" ],
-    "stat.mbt": [ "native" ],
-    "stat.wasm.mbt": [ "wasm" ],
+    "stat.mbt": [ "native", "wasm" ],
   },
 )

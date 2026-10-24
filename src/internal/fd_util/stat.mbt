@@ -26,7 +26,25 @@ pub(all) enum FileKind {
 } derive(Eq, Debug)
 
 ///|
-pub fn FileKind::unsafe_from_int(value : Int32) -> FileKind = "%identity"
+let known_kinds : ReadOnlyArray[FileKind] = [
+  Regular,
+  Directory,
+  SymLink,
+  Socket,
+  Pipe,
+  BlockDevice,
+  CharDevice,
+  Console,
+]
+
+///|
+pub fn FileKind::from_int(value : Int32) -> FileKind {
+  if value >= 1 && value - 1 < known_kinds.length() {
+    known_kinds[value - 1]
+  } else {
+    Unknown
+  }
+}
 
 ///|
 pub fn FileKind::can_poll(self : FileKind) -> Bool {

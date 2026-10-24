@@ -55,6 +55,7 @@ options(
     "io_result.native.mbt": [ "native" ],
     "io_result.wasm.mbt": [ "wasm" ],
     "windows_console.mbt": [ "native", "wasm" ],
+    "windows_console_wbtest.mbt": [ "native", "wasm" ],
     "missing_close_test.mbt": [ "native" ],
     "network.mbt": [ "native", "wasm" ],
     "network.wasm.mbt": [ "wasm" ],
