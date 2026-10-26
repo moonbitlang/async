@@ -2120,7 +2120,7 @@ struct realpath_job *moonbitlang_async_make_realpath_job(os_string_t path) {
 // unopenable without the prefix. Following the same rules as Rust's `dunce`,
 // only drop the prefix when the plain DOS form resolves to the same file.
 static
-int moonbitlang_async_win32_component_is_exact(const WCHAR *s, size_t len) {
+int win32_component_is_exact(const WCHAR *s, size_t len) {
   if (len == 0)
     return 0;
   if (s[len - 1] == L'.' || s[len - 1] == L' ')
@@ -2161,7 +2161,7 @@ int moonbitlang_async_win32_component_is_exact(const WCHAR *s, size_t len) {
 }
 
 static
-int moonbitlang_async_dos_path_is_exact(const WCHAR *path, size_t len) {
+int dos_path_is_exact(const WCHAR *path, size_t len) {
   // MAX_PATH with headroom for any suffix a caller may append
   if (len >= 245)
     return 0;
@@ -2170,7 +2170,7 @@ int moonbitlang_async_dos_path_is_exact(const WCHAR *path, size_t len) {
     size_t end = start;
     while (end < len && path[end] != L'\\')
       end++;
-    if (!moonbitlang_async_win32_component_is_exact(path + start, end - start))
+    if (!win32_component_is_exact(path + start, end - start))
       return 0;
     start = end + 1;
   }
@@ -2182,14 +2182,14 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
 #ifdef _WIN32
   size_t len = wcslen(job->result);
   if (wcsncmp(job->result, L"\\\\?\\UNC\\", 8) == 0) {
-    if (moonbitlang_async_dos_path_is_exact(job->result + 8, len - 8)) {
+    if (dos_path_is_exact(job->result + 8, len - 8)) {
       job->result[6] = L'\\';
       return (char*)job->result + 6 * sizeof(WCHAR);
     }
     return (char*)job->result;
   }
   else if (wcsncmp(job->result, L"\\\\?\\", 4) == 0) {
-    if (moonbitlang_async_dos_path_is_exact(job->result + 4, len - 4))
+    if (dos_path_is_exact(job->result + 4, len - 4))
       return (char*)job->result + 4 * sizeof(WCHAR);
     return (char*)job->result;
   }
