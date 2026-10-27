@@ -25,6 +25,7 @@
 
 #include <winsock2.h>
 #include <windows.h>
+#include <winternl.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -102,6 +103,88 @@ HMODULE ntdll_handle = NULL;
 
 static
 ULONG (NTAPI *RtlIsDosDeviceName_U)(PCWSTR DosFileName) = NULL;
+
+// `RTL_RELATIVE_NAME_U` is not exposed by the Windows SDK's `winternl.h`.
+typedef struct _RTL_RELATIVE_NAME_U {
+  UNICODE_STRING RelativeName;
+  HANDLE ContainingDirectory;
+  PVOID CurDirRef;
+} RTL_RELATIVE_NAME_U, *PRTL_RELATIVE_NAME_U;
+
+typedef NTSTATUS (NTAPI *pfn_NtCreateFile)(
+  PHANDLE,
+  ACCESS_MASK,
+  POBJECT_ATTRIBUTES,
+  PIO_STATUS_BLOCK,
+  PLARGE_INTEGER,
+  ULONG,
+  ULONG,
+  ULONG,
+  ULONG,
+  PVOID,
+  ULONG
+);
+
+typedef NTSTATUS (NTAPI *pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus)(
+  PCWSTR,
+  PUNICODE_STRING,
+  PWSTR *,
+  PRTL_RELATIVE_NAME_U
+);
+
+static
+pfn_NtCreateFile pNtCreateFile = NULL;
+
+static
+pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus
+pRtlDosPathNameToRelativeNtPathName_U_WithStatus = NULL;
+
+static
+VOID (NTAPI *pRtlReleaseRelativeName)(PRTL_RELATIVE_NAME_U) = NULL;
+
+static
+VOID (NTAPI *pRtlFreeUnicodeString)(PUNICODE_STRING) = NULL;
+
+static
+ULONG (NTAPI *pRtlNtStatusToDosError)(NTSTATUS) = NULL;
+
+static
+int load_ntdll_file_apis(void) {
+  if (
+    pNtCreateFile
+    && pRtlDosPathNameToRelativeNtPathName_U_WithStatus
+    && pRtlReleaseRelativeName
+    && pRtlFreeUnicodeString
+    && pRtlNtStatusToDosError
+  )
+    return 1;
+
+  if (!ntdll_handle) {
+    ntdll_handle = GetModuleHandleW(L"ntdll");
+    if (!ntdll_handle)
+      return 0;
+  }
+
+  pNtCreateFile = (pfn_NtCreateFile)GetProcAddress(ntdll_handle, "NtCreateFile");
+  pRtlDosPathNameToRelativeNtPathName_U_WithStatus =
+    (pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus)GetProcAddress(
+      ntdll_handle,
+      "RtlDosPathNameToRelativeNtPathName_U_WithStatus"
+    );
+  pRtlReleaseRelativeName = (VOID (NTAPI*)(PRTL_RELATIVE_NAME_U))
+    GetProcAddress(ntdll_handle, "RtlReleaseRelativeName");
+  pRtlFreeUnicodeString = (VOID (NTAPI*)(PUNICODE_STRING))
+    GetProcAddress(ntdll_handle, "RtlFreeUnicodeString");
+  pRtlNtStatusToDosError = (ULONG (NTAPI*)(NTSTATUS))
+    GetProcAddress(ntdll_handle, "RtlNtStatusToDosError");
+
+  return
+    pNtCreateFile
+    && pRtlDosPathNameToRelativeNtPathName_U_WithStatus
+    && pRtlReleaseRelativeName
+    && pRtlFreeUnicodeString
+    && pRtlNtStatusToDosError;
+}
 
 #endif
 
@@ -968,66 +1051,124 @@ HANDLE moonbitlang_async_open_sync(
 
 #ifdef _WIN32
 
-  static int access_flags[] = {
+  static ACCESS_MASK access_flags[] = {
     GENERIC_READ,
-    GENERIC_WRITE,
+    GENERIC_WRITE | FILE_READ_ATTRIBUTES,
     GENERIC_READ | GENERIC_WRITE,
-    FILE_LIST_DIRECTORY
+    FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES
   };
-  static int create_modes[] = { OPEN_EXISTING, TRUNCATE_EXISTING, OPEN_ALWAYS, CREATE_ALWAYS, CREATE_NEW };
-  static int sync_flags[] = { 0, FILE_FLAG_WRITE_THROUGH, FILE_FLAG_WRITE_THROUGH };
+  static ULONG create_modes[] = {
+    FILE_OPEN,
+    FILE_OVERWRITE,
+    FILE_OPEN_IF,
+    FILE_OVERWRITE_IF,
+    FILE_CREATE
+  };
+  static ULONG sync_flags[] = { 0, FILE_WRITE_THROUGH, FILE_WRITE_THROUGH };
 
-  DWORD flags =
-    FILE_ATTRIBUTE_NORMAL
-    | FILE_FLAG_BACKUP_SEMANTICS
-    | sync_flags[sync_mode];
+  ULONG create_options = sync_flags[sync_mode];
+  if (!is_async)
+    create_options |= FILE_SYNCHRONOUS_IO_NONALERT;
 
-  if (is_async)
-    flags |= FILE_FLAG_OVERLAPPED;
-
-  DWORD access_flag = access_flags[access_mode];
+  ACCESS_MASK access_flag = access_flags[access_mode];
   if (append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
+  if (!is_async)
+    access_flag |= SYNCHRONIZE;
+
+  if (!load_ntdll_file_apis()) {
+    SetLastError(ERROR_PROC_NOT_FOUND);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  UNICODE_STRING nt_name = { 0 };
+  RTL_RELATIVE_NAME_U relative_name = { 0 };
+  NTSTATUS nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
+    filename,
+    &nt_name,
+    NULL,
+    &relative_name
+  );
+  if (!NT_SUCCESS(nt_status)) {
+    SetLastError(pRtlNtStatusToDosError(nt_status));
+    return INVALID_HANDLE_VALUE;
+  }
+
+  PUNICODE_STRING object_name = &nt_name;
+  HANDLE root_directory = NULL;
+  if (relative_name.RelativeName.Length != 0) {
+    object_name = &relative_name.RelativeName;
+    root_directory = relative_name.ContainingDirectory;
+  }
+
+  OBJECT_ATTRIBUTES object_attributes;
+  InitializeObjectAttributes(
+    &object_attributes,
+    object_name,
+    OBJ_CASE_INSENSITIVE,
+    root_directory,
+    NULL
+  );
+
+  HANDLE result = INVALID_HANDLE_VALUE;
+  int err = ERROR_SUCCESS;
 
   while (1) {
+    IO_STATUS_BLOCK io_status;
+
     if (moonbitlang_async_enter_cancellable_region(worker)) {
-      SetLastError(ERROR_OPERATION_ABORTED);
-      return INVALID_HANDLE_VALUE;
+      err = ERROR_OPERATION_ABORTED;
+      break;
     }
 
-    HANDLE result = CreateFileW(
-      filename,
+    result = INVALID_HANDLE_VALUE;
+    nt_status = pNtCreateFile(
+      &result,
       access_flag, // desired access
+      &object_attributes,
+      &io_status,
+      NULL, // allocation size
+      FILE_ATTRIBUTE_NORMAL,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-      NULL, // security attributes
       create_modes[create_mode], // creation
-      flags, // flags and attributes. Note that we open files in synchronous mode
-      NULL // template file
+      create_options,
+      NULL, // extended attributes
+      0 // extended attributes length
     );
     moonbitlang_async_leave_cancellable_region(worker);
 
-    if (result != INVALID_HANDLE_VALUE)
-      return result;
+    if (NT_SUCCESS(nt_status))
+      break;
 
     // handle error
-    int err = GetLastError();
+    result = INVALID_HANDLE_VALUE;
+    err = pRtlNtStatusToDosError(nt_status);
     if (err != ERROR_PIPE_BUSY)
-      return INVALID_HANDLE_VALUE;
+      break;
 
     // We are trying to open a named pipe, but no pipe instance is available,
     // so wait until any instance is available.
     // This wait is cancellable via `CancelSynchronousIo`.
     if (moonbitlang_async_enter_cancellable_region(worker)) {
-      SetLastError(ERROR_OPERATION_ABORTED);
-      return INVALID_HANDLE_VALUE;
+      err = ERROR_OPERATION_ABORTED;
+      break;
     }
 
     BOOL status = WaitNamedPipeW(filename, NMPWAIT_WAIT_FOREVER);
     moonbitlang_async_leave_cancellable_region(worker);
 
-    if (!status)
-      return INVALID_HANDLE_VALUE;
+    if (!status) {
+      err = GetLastError();
+      break;
+    }
   }
+
+  pRtlReleaseRelativeName(&relative_name);
+  pRtlFreeUnicodeString(&nt_name);
+
+  if (result == INVALID_HANDLE_VALUE)
+    SetLastError(err);
+  return result;
 
 // #ifdef _WIN32
 #else
