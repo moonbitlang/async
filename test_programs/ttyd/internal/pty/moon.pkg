@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/process",
+  "moonbitlang/async/raw_fd",
+  "moonbitlang/async/types",
+}
+
+supported_targets = "-all+native"
+
+options(
+  "native-stub": [ "stub.c" ],
+)
