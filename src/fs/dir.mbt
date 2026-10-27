@@ -73,17 +73,17 @@ pub async fn rmdir(
 ) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
-    let base = if @event_loop.platform is Windows {
-      path.trim_end(chars="/\\")
+    let (base, sep) = if @event_loop.platform is Windows {
+      (path.trim_end(chars="/\\"), "\\")
     } else {
-      path.trim_end(chars="/")
+      (path.trim_end(chars="/"), "/")
     }
     @async.protect_from_cancel <| () => {
       let dir = opendir_aux(path, context~)
       defer dir.close()
       while dir.next_aux(include_special=false, include_hidden=true, context~)
             is Some(ent) {
-        let child_path = "\{base}/\{ent.name}"
+        let child_path = "\{base}\{sep}\{ent.name}"
         if ent.is_dir {
           rmdir(child_path, recursive=true)
         } else {
