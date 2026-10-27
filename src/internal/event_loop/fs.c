@@ -95,6 +95,16 @@ void *moonbitlang_async_get_current_worker();
 int32_t moonbitlang_async_enter_cancellable_region(void *worker);
 void moonbitlang_async_leave_cancellable_region(void *worker);
 
+#ifdef _WIN32
+
+static
+HMODULE ntdll_handle = NULL;
+
+static
+ULONG (NTAPI *RtlIsDosDeviceName_U)(PCWSTR DosFileName) = NULL;
+
+#endif
+
 
 // ===== stat related helpers =====
 
@@ -2114,64 +2124,51 @@ struct realpath_job *moonbitlang_async_make_realpath_job(os_string_t path) {
 
 #ifdef _WIN32
 // Win32 path resolution trims trailing dots and spaces from each component
-// and maps reserved device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9,
-// with any extension) to devices, so a path containing any of those changes
-// meaning once the \\?\ prefix is removed. Long paths would also become
-// unopenable without the prefix. Following the same rules as Rust's `dunce`,
-// only drop the prefix when the plain DOS form resolves to the same file.
+// and maps reserved device names (CON, PRN, etc.) to devices,
+// The `\\?` prefix prevent these special resolution rules.
+// So if the returned path may hit any of the above rules,
+// we must not trim the `\\?\` prefix or the meaning of the path changes.
 static
-int win32_component_is_exact(const WCHAR *s, size_t len) {
-  if (len == 0)
+int dos_path_is_exact(WCHAR *path, size_t len) {
+  if (len >= MAX_PATH)
     return 0;
-  if (s[len - 1] == L'.' || s[len - 1] == L' ')
-    return 0;
-  size_t name_len = 0;
-  while (name_len < len && s[name_len] != L'.')
-    name_len++;
-  if (name_len < 3 || name_len > 4)
-    return 1;
-  WCHAR upper[4];
-  for (size_t i = 0; i < name_len; i++) {
-    WCHAR c = s[i];
-    if (c >= L'a' && c <= L'z')
-      c = c - L'a' + L'A';
-    upper[i] = c;
-  }
-  static const WCHAR reserved_prefixes[4][3] = {
-    {L'C', L'O', L'N'},
-    {L'P', L'R', L'N'},
-    {L'A', L'U', L'X'},
-    {L'N', L'U', L'L'},
-  };
-  for (int r = 0; r < 4; r++) {
-    for (int i = 0; i < 3; i++) {
-      if (upper[i] != reserved_prefixes[r][i])
-        goto next_prefix;
-    }
-    return 0;
-    next_prefix: ;
-  }
-  if (name_len == 4 && upper[3] >= L'0' && upper[3] <= L'9') {
-    if (upper[0] == L'C' && upper[1] == L'O' && upper[2] == L'M')
-      return 0;
-    if (upper[0] == L'L' && upper[1] == L'P' && upper[2] == L'T')
-      return 0;
-  }
-  return 1;
-}
 
-static
-int dos_path_is_exact(const WCHAR *path, size_t len) {
-  // MAX_PATH with headroom for any suffix a caller may append
-  if (len >= 245)
-    return 0;
+  if (!RtlIsDosDeviceName_U) {
+    if (!ntdll_handle) {
+      ntdll_handle = GetModuleHandleW(L"ntdll");
+      if (!ntdll_handle)
+        return 0;
+    }
+
+    RtlIsDosDeviceName_U = (ULONG (NTAPI*)(PCWSTR))GetProcAddress(ntdll_handle, "RtlIsDosDeviceName_U");
+    if (!RtlIsDosDeviceName_U)
+      return 0;
+  }
+
   size_t start = 0;
   while (start < len) {
     size_t end = start;
     while (end < len && path[end] != L'\\')
       end++;
-    if (!win32_component_is_exact(path + start, end - start))
+
+    if (end == start)
       return 0;
+
+    if (path[end - 1] == L'.' || path[end - 1] == L' ')
+      return 0;
+
+    // temporarily turn the delimiter into nul for `RtlIsDosDeviceName_U`
+    if (end < len)
+      path[end] = 0;
+
+    BOOL is_dos_device = RtlIsDosDeviceName_U(path + start);
+
+    if (end < len)
+      path[end] = L'\\';
+
+    if (is_dos_device)
+      return 0;
+
     start = end + 1;
   }
   return 1;
@@ -2187,14 +2184,13 @@ char *moonbitlang_async_get_realpath_result(struct realpath_job *job) {
       return (char*)job->result + 6 * sizeof(WCHAR);
     }
     return (char*)job->result;
-  }
-  else if (wcsncmp(job->result, L"\\\\?\\", 4) == 0) {
+  } else if (wcsncmp(job->result, L"\\\\?\\", 4) == 0) {
     if (dos_path_is_exact(job->result + 4, len - 4))
       return (char*)job->result + 4 * sizeof(WCHAR);
     return (char*)job->result;
-  }
-  else
+  } else {
     return (char*)job->result;
+  }
 #else
   return job->result;
 #endif
