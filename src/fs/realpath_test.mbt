@@ -92,69 +92,30 @@ async test "realpath link to dir relative" {
 }
 
 ///|
-// wasm realpath comes from the host runtime, which does not preserve the
-// extended prefix; only the native backend goes through
-// GetFinalPathNameByHandleW.
+// TODO: port to Wasm
 #cfg(target="native")
 async test "realpath keeps the extended prefix when the plain form is ambiguous" {
-  // issue #675: Win32 resolution trims the trailing dot of `folder.`, so
-  // dropping `\\?\` can reopen a sibling `folder` instead. The prefix must
-  // be kept whenever the plain DOS form would resolve differently.
-  if !(match @event_loop.platform {
-      Windows => true
-      _ => false
-    }) {
-    return
+  guard @event_loop.platform is Windows else { return }
+  let build_dir = @fs.realpath("_build")
+  // Normal paths should still have the prefix truncated for better user code compatibility.
+  // If the users' repository directory has strange components, we wish them the best luck
+  assert_false(build_dir.has_prefix("\\\\?\\"))
+  let base = "\\\\?\\\{build_dir}\\realpath_extended_prefix_test"
+  @fs.mkdir(base)
+  defer @fs.rmdir(base, recursive=true)
+  for name in ["trailing_dot.", "trailing_space ", "CON"] {
+    let path = "\{base}\\\{name}"
+    @fs.write_file(path, b"abcd")
+    let realpath = @fs.realpath(path)
+    assert_true(realpath.has_prefix("\\\\?\\"))
+    assert_true(realpath.has_suffix("\\\{name}"))
+    @fs.remove(path)
+    // path with bad directory component should keep the extended prefix as well
+    @fs.mkdir(path)
+    let nested_path = "\{path}\\file.txt"
+    @fs.write_file(nested_path, b"abcd")
+    let realpath = @fs.realpath(nested_path)
+    assert_true(realpath.has_prefix("\\\\?\\"))
+    assert_true(realpath.has_suffix("\\\{name}\\file.txt"))
   }
-  // tmpdir() is unavailable in some sandboxes; anchor under the project's
-  // _build directory and make it absolute through a plain-path realpath call.
-  let base = @fs.realpath("_build")
-  let root = base + "\\realpath_675_dotted"
-  // plain DOS form here; recursive rmdir handles leftovers from failed runs
-  @fs.rmdir(root, recursive=true) catch {
-    _ => ()
-  }
-  @fs.mkdir(root, recursive=true)
-  defer @fs.rmdir(root, recursive=true)
-  // only the trailing-dot child needs the extended prefix; recursive rmdir
-  // joins child paths with `/`, which the extended form does not accept
-  let dotted = "\\\\?\\" + root + "\\folder."
-  @fs.mkdir(dotted)
-  defer {
-    for name in @fs.readdir(dotted) {
-      @fs.remove(dotted + "\\" + name) catch {
-        _ => ()
-      }
-    }
-    @fs.rmdir(dotted) catch {
-      _ => ()
-      // a plain rmdir would trim the trailing dot and delete the sibling
-    }
-  }
-  @fs.mkdir(root + "\\folder")
-  defer @fs.rmdir(root + "\\folder", recursive=true)
-  @fs.write_file(dotted + "\\marker", "intended")
-  @fs.write_file(root + "\\folder\\marker", "unrelated")
-  let resolved = @fs.realpath(dotted)
-  assert_true(resolved.has_prefix("\\\\?\\"))
-  assert_eq(@fs.read_file(resolved + "\\marker").text(), "intended")
-}
-
-///|
-async test "realpath still drops the prefix for plain paths" {
-  if !(match @event_loop.platform {
-      Windows => true
-      _ => false
-    }) {
-    return
-  }
-  let base = @fs.realpath("_build")
-  let root = base + "\\realpath_675_plain"
-  @fs.rmdir(root, recursive=true) catch {
-    _ => ()
-  }
-  @fs.mkdir(root, recursive=true)
-  defer @fs.rmdir(root, recursive=true)
-  let resolved = @fs.realpath(root)
-  assert_false(resolved.has_prefix("\\\\?\\"))
 }
