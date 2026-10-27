@@ -63,11 +63,11 @@ async fn IoHandle::recvfrom_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // A wake-up can be spurious: keep waiting while the socket would block.
+  let mut ret = ret
+  while ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
+    ret = recvfrom_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   }
   if ret < 0 {
     @os_error.check_errno(context)
@@ -128,11 +128,11 @@ async fn IoHandle::sendto_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // A wake-up can be spurious: keep waiting while the socket would block.
+  let mut ret = ret
+  while ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
-  } else {
-    ret
+    ret = sendto_unix_ffi(handle.fd, buf, offset~, len~, addr~)
   }
   if ret < 0 {
     @os_error.check_errno(context)
@@ -239,16 +239,18 @@ pub async fn IoHandle::accept_unix(
 ) -> IoHandle {
   @coroutine.check_cancellation()
   let conn = accept_unix_ffi(handle.fd, addr)
-  let conn = if @fd_util.fd_is_valid(conn) {
+  let mut conn = conn
+  if @fd_util.fd_is_valid(conn) {
     // The `pause` here prevent a busy `accept` loop from exhausting the whole program,
     // and give chance for other tasks to execute.
     @coroutine.pause_nocancel()
-    conn
-  } else if @os_error.is_nonblocking_io_error() {
-    handle.wait_read()
-    accept_unix_ffi(handle.fd, addr)
   } else {
-    conn
+    // A wake-up can be spurious (another acceptor or a stale event may have
+    // taken the connection): keep waiting while `accept` would block.
+    while !@fd_util.fd_is_valid(conn) && @os_error.is_nonblocking_io_error() {
+      handle.wait_read()
+      conn = accept_unix_ffi(handle.fd, addr)
+    }
   }
   if !@fd_util.fd_is_valid(conn) {
     @os_error.check_errno(context)
