@@ -9,6 +9,11 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+# Only supersede runs for the same PR; other events remain independent.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   MOON_WASM_NEW_ALLOCATOR: "1"
 
