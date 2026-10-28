@@ -55,8 +55,8 @@ async fn Ttyd::call(self : Ttyd, name : String, params~ : Json) -> Json {
 }
 
 ///|
-async fn Ttyd::enter_raw_mode(self : Ttyd) -> Unit {
-  self.call("enter_raw_mode", params={}) |> ignore()
+async fn Ttyd::make_raw(self : Ttyd) -> Unit {
+  self.call("make_raw", params={}) |> ignore()
 }
 
 ///|
@@ -197,7 +197,7 @@ async test "tty can be resized" {
 ///|
 async test "resize can interrupt a pending read" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
         guard ttyd.read_event() is Some(Resize) else {
@@ -226,7 +226,7 @@ async fn expect_read_event_to_timeout(ttyd : Ttyd, timeout~ : Int32) -> Unit {
 async test "multiple resize events collapse into one" {
   let sizes = [(25, 81), (26, 82), (27, 83)]
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     for (rows, cols) in sizes {
       ttyd.resize(rows, cols)
     }
@@ -259,7 +259,7 @@ async test "cooked mode respects line discipline" {
 ///|
 async test "raw mode delivers input without line buffering" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     let text = b"\x1b[A"
     ttyd.send_input(text)
     assert_eq(ttyd.read_exactly(text.length()), text)
@@ -269,7 +269,7 @@ async test "raw mode delivers input without line buffering" {
 ///|
 async test "read_event delivers bytes left by @io.Reader first" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     ttyd.send_input(b"abcdef")
     assert_eq(ttyd.read_exactly(3), b"abc")
     guard ttyd.read_event() is Some(Input(b"def")) else {
@@ -281,7 +281,7 @@ async test "read_event delivers bytes left by @io.Reader first" {
 ///|
 async test "@io.Reader should not consume resize event" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     @async.with_task_group() <| group => {
       group.spawn_bg() <| () => {
         guard ttyd.read_exactly(6) is b"hello\n" else {
@@ -331,7 +331,7 @@ async test "^C interrupt cooked mode program" {
 ///|
 async test "^C does not interrupt raw mode program" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     ttyd.send_input(b"\x03")
     guard ttyd.read_exactly(1) is b"\x03" else {
       fail("expected to read ^C as \\x03")
@@ -360,7 +360,7 @@ async test "cooked mode echoes back" {
 ///|
 async test "raw mode does not echo back" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     if @async.platform is Windows {
       ttyd.drain_output()
     }
@@ -378,7 +378,7 @@ async test "raw mode does not echo back" {
 #cfg(not(platform="windows"))
 async test "@io.Writer writes bytes as is under raw mode" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     let text = b"hello,\nworld!"
     ttyd.write(text)
     guard ttyd.pty.read_exactly(text.length()) == text else {
@@ -390,7 +390,7 @@ async test "@io.Writer writes bytes as is under raw mode" {
 ///|
 async test "raw mode delivers UTF-8 input" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     let text = b"\xc3\xa9\xe4\xb8\xad\xf0\x9f\x98\x80"
     ttyd.send_input(text)
     assert_eq(ttyd.read_exactly(text.length()), text)
@@ -402,7 +402,7 @@ async test "raw mode delivers UTF-8 input" {
 /// are kept for the next read.
 async test "raw mode delivers a character across small reads" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     let text = b"\xf0\x9f\x98\x80"
     ttyd.send_input(text)
     for byte in text {
@@ -414,7 +414,7 @@ async test "raw mode delivers a character across small reads" {
 ///|
 async test "cancelling a parked read keeps the terminal usable" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     expect_read_event_to_timeout(ttyd, timeout=100)
     ttyd.send_input(b"z")
     assert_eq(ttyd.read_event(), Some(Input(b"z")))
@@ -433,7 +433,7 @@ async test "a cooked read can be cancelled" {
 #cfg(platform="windows")
 async test "writer displays UTF-8 text through ConPTY" {
   with_ttyd() <| ttyd => {
-    ttyd.enter_raw_mode()
+    ttyd.make_raw()
     ttyd.drain_output()
     ttyd.write(@utf8.encode("héllo 😀"))
     ttyd.expect_output_text("héllo 😀")

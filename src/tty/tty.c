@@ -31,12 +31,14 @@
 #include <pthread.h>
 #include <signal.h>
 #include <sys/ioctl.h>
-#include <termios.h>
 #include <unistd.h>
 
 #ifdef __linux__
+#include <asm/ioctls.h>
+#include <asm/termbits.h>
 #include <sys/signalfd.h>
 #else
+#include <termios.h>
 #include <sys/event.h>
 #include <sys/time.h>
 #endif
@@ -110,37 +112,48 @@ fail_with_in_fd:
   return -1;
 }
 
+#ifdef __linux__
+// `@tty.State` interprets the bytes of the kernel `struct termios2`, which
+// `TCGETS2` and `TCSETS2` use, unlike the `struct termios` of glibc.
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_state_size(void) {
-  return sizeof(struct termios);
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_enter_raw(int32_t input, int32_t output, int32_t flags, uint8_t *state) {
+int32_t moonbitlang_async_tty_get_state(int32_t input, int32_t output, uint8_t *state) {
   (void)output;
-  (void)flags;
-  struct termios saved;
-  if (tcgetattr(input, &saved) < 0)
+  struct termios2 current;
+  if (ioctl(input, TCGETS2, &current) < 0)
     return -1;
 
-  struct termios raw = saved;
-  cfmakeraw(&raw);
-  raw.c_cc[VMIN] = 1;
-  raw.c_cc[VTIME] = 0;
-  if (tcsetattr(input, TCSANOW, &raw) < 0)
-    return -1;
-
-  memcpy(state, &saved, sizeof(saved));
+  memcpy(state, &current, sizeof(current));
   return 0;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_leave_raw(int32_t input, int32_t output, uint8_t *state) {
+int32_t moonbitlang_async_tty_set_state(int32_t input, int32_t output, uint8_t *state) {
   (void)output;
-  struct termios saved;
-  memcpy(&saved, state, sizeof(saved));
-  return tcsetattr(input, TCSANOW, &saved);
+  struct termios2 new_state;
+  memcpy(&new_state, state, sizeof(new_state));
+  return ioctl(input, TCSETS2, &new_state);
 }
+#else
+// `@tty.State` interprets the bytes of `struct termios`.
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_tty_get_state(int32_t input, int32_t output, uint8_t *state) {
+  (void)output;
+  struct termios current;
+  if (tcgetattr(input, &current) < 0)
+    return -1;
+
+  memcpy(state, &current, sizeof(current));
+  return 0;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moonbitlang_async_tty_set_state(int32_t input, int32_t output, uint8_t *state) {
+  (void)output;
+  struct termios new_state;
+  memcpy(&new_state, state, sizeof(new_state));
+  return tcsetattr(input, TCSANOW, &new_state);
+}
+#endif
 
 MOONBIT_FFI_EXPORT
 int64_t moonbitlang_async_tty_size(int32_t output) {
@@ -152,6 +165,8 @@ int64_t moonbitlang_async_tty_size(int32_t output) {
 }
 #else
 
+// The input and output console modes, little-endian.
+// `@tty.State` interprets these bytes.
 struct tty_state {
   DWORD in;
   DWORD out;
@@ -231,49 +246,32 @@ fail_with_in:
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_state_size(void) {
-  return sizeof(struct tty_state);
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_enter_raw(HANDLE input, HANDLE output, int32_t flags, uint8_t *state) {
-  (void)flags;
-  struct tty_state saved;
-  if (!GetConsoleMode(input, &saved.in) || !GetConsoleMode(output, &saved.out))
+int32_t moonbitlang_async_tty_get_state(HANDLE input, HANDLE output, uint8_t *state) {
+  struct tty_state current;
+  if (!GetConsoleMode(input, &current.in) || !GetConsoleMode(output, &current.out))
     return -1;
 
-  DWORD in_raw =
-    (saved.in & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE))
-    | ENABLE_VIRTUAL_TERMINAL_INPUT
-    | ENABLE_WINDOW_INPUT
-    | ENABLE_EXTENDED_FLAGS;
-  DWORD out_raw =
-    saved.out
-    | ENABLE_PROCESSED_OUTPUT
-    | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-    | DISABLE_NEWLINE_AUTO_RETURN;
-
-  if (!SetConsoleMode(input, in_raw))
-    return -1;
-
-  if (!SetConsoleMode(output, out_raw)) {
-    DWORD err = GetLastError();
-    SetConsoleMode(input, saved.in);
-    SetLastError(err);
-    return -1;
-  }
-
-  memcpy(state, &saved, sizeof(saved));
+  memcpy(state, &current, sizeof(current));
   return 0;
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_leave_raw(HANDLE input, HANDLE output, uint8_t *state) {
-  struct tty_state saved;
-  memcpy(&saved, state, sizeof(saved));
-  if (!SetConsoleMode(input, saved.in) || !SetConsoleMode(output, saved.out))
+int32_t moonbitlang_async_tty_set_state(HANDLE input, HANDLE output, uint8_t *state) {
+  struct tty_state new_state, old_state;
+  memcpy(&new_state, state, sizeof(new_state));
+  if (!GetConsoleMode(input, &old_state.in))
     return -1;
 
+  if (!SetConsoleMode(input, new_state.in))
+    return -1;
+
+  if (!SetConsoleMode(output, new_state.out)) {
+    // e.g. the legacy console rejects the VT output flags
+    DWORD err = GetLastError();
+    SetConsoleMode(input, old_state.in);
+    SetLastError(err);
+    return -1;
+  }
   return 0;
 }
 

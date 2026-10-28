@@ -20,7 +20,7 @@
 /// requests on that connection, one JSON value per line, one request at a time,
 /// until the connection is closed. Each method performs one `@tty` operation:
 ///
-/// - `enter_raw_mode`: result `null`
+/// - `make_raw`: `set_state(get_state().make_raw())`, result `null`
 /// - `size`: result `[rows, cols]`
 /// - `read_event`, params `{"timeout"?: ms}`: result `{"type":"input","bytes":"<base64>"}`,
 ///   `{"type":"resize"}`, `{"type":"eof"}`, or `{"type":"timeout"}`
@@ -87,8 +87,8 @@ async fn respond(tty : @tty.Tty, request : Json) -> Json {
 ///|
 async fn call(tty : @tty.Tty, name : String, params : Json) -> Json {
   match name {
-    "enter_raw_mode" => {
-      tty.enter_raw_mode()
+    "make_raw" => {
+      tty.set_state(tty.get_state().make_raw())
       null
     }
     "size" => {
