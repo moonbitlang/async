@@ -228,6 +228,9 @@ void moonbitlang_async_set_global_cancellation_signals(
     sigaddset(&signal_config.interested_signals, signals[i]);
   }
 
+  // `SIGWINCH` is always waited for, and reported to the event loop as a resize
+  sigaddset(&signals_to_block, SIGWINCH);
+  sigaddset(&signal_config.interested_signals, SIGWINCH);
   sigaddset(&signal_config.interested_signals, SIGUSR2);
   pthread_mutex_unlock(&signal_config.lock);
 

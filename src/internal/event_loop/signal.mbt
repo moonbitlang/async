@@ -38,8 +38,8 @@ fn get_sigwinch() -> Int32 {
 
 ///|
 /// `SIGWINCH` on Unix, `-1` where it does not exist.
-/// It is always waited for, and recorded in `EventLoop::resize`
-/// instead of cancelling the program.
+/// It is always waited for by the signal thread, and recorded in
+/// `EventLoop::resize` instead of cancelling the program.
 let sigwinch : Int32 = get_sigwinch()
 
 ///|
@@ -74,11 +74,6 @@ let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 ///|
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int32]) -> Unit {
   global_signal_handler_initialized.val = true
-  let signals = if sigwinch >= 0 {
-    ReadOnlyArray::from_array([..signals, sigwinch])
-  } else {
-    signals
-  }
   set_global_cancellation_signals_ffi(
     all_signals,
     all_signals.length(),
