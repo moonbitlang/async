@@ -102,7 +102,7 @@ static
 HMODULE ntdll_handle = NULL;
 
 static
-ULONG (NTAPI *RtlIsDosDeviceName_U)(PCWSTR DosFileName) = NULL;
+ULONG (NTAPI *pRtlIsDosDeviceName_U)(PCWSTR DosFileName) = NULL;
 
 // `RTL_RELATIVE_NAME_U` is not exposed by the Windows SDK's `winternl.h`.
 typedef struct _RTL_RELATIVE_NAME_U {
@@ -2274,15 +2274,15 @@ int dos_path_is_exact(WCHAR *path, size_t len) {
   if (len >= MAX_PATH)
     return 0;
 
-  if (!RtlIsDosDeviceName_U) {
+  if (!pRtlIsDosDeviceName_U) {
     if (!ntdll_handle) {
       ntdll_handle = GetModuleHandleW(L"ntdll");
       if (!ntdll_handle)
         return 0;
     }
 
-    RtlIsDosDeviceName_U = (ULONG (NTAPI*)(PCWSTR))GetProcAddress(ntdll_handle, "RtlIsDosDeviceName_U");
-    if (!RtlIsDosDeviceName_U)
+    pRtlIsDosDeviceName_U = (ULONG (NTAPI*)(PCWSTR))GetProcAddress(ntdll_handle, "RtlIsDosDeviceName_U");
+    if (!pRtlIsDosDeviceName_U)
       return 0;
   }
 
@@ -2302,7 +2302,7 @@ int dos_path_is_exact(WCHAR *path, size_t len) {
     if (end < len)
       path[end] = 0;
 
-    BOOL is_dos_device = RtlIsDosDeviceName_U(path + start);
+    BOOL is_dos_device = pRtlIsDosDeviceName_U(path + start);
 
     if (end < len)
       path[end] = L'\\';
