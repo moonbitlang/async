@@ -40,7 +40,7 @@ This library provides the following packages:
     - native integration with `moonbitlang/async/http`
 - `moonbitlang/async/signal`: control signal handling behavior
 
-To use these packages, add them to the `import` field of `moon.pkg.json`.
+To use these packages, add them to the `import` block of `moon.pkg` (legacy `moon.pkg.json` is no longer accepted by current toolchains — migrate with `moon fmt`).
 
 ## Features
 
