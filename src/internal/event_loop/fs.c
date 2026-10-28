@@ -1046,6 +1046,7 @@ enum OpenAccessMode {
 
 struct OpenOption {
   enum OpenAccessMode access_mode;
+  int32_t follow_symlink;
   int32_t is_async;
   int32_t create_mode;
   int32_t append;
@@ -1081,6 +1082,9 @@ HANDLE moonbitlang_async_open_sync(
   ULONG create_options = sync_flags[options->sync_mode];
   if (!options->is_async)
     create_options |= FILE_SYNCHRONOUS_IO_NONALERT;
+
+  if (!options->follow_symlink)
+    create_options |= FILE_OPEN_REPARSE_POINT;
 
   ACCESS_MASK access_flag = access_flags[options->access_mode];
   if (options->append)
@@ -1219,6 +1223,9 @@ HANDLE moonbitlang_async_open_sync(
     | create_modes[options->create_mode];
   if (options->append) flags |= O_APPEND;
 
+  if (!options->follow_symlink)
+    flags |= O_NOFOLLOW;
+
   if (moonbitlang_async_enter_cancellable_region(worker)) {
     errno = EINTR;
     return -1;
@@ -1321,6 +1328,7 @@ struct open_job *moonbitlang_async_make_open_job(
   job->filename = filename;
   job->options.access_mode = access_mode;
   job->options.is_async = access_mode == ListDirectory; // for `ReadDirectoryChangesW`
+  job->options.follow_symlink = 0; // TODO: expose this to end users
   job->options.create_mode = create_mode;
   job->options.append = append;
   job->options.sync_mode = sync_mode;
