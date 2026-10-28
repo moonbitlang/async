@@ -137,7 +137,7 @@ struct {
   int32_t cancelled;
 
   // the action of `SIGWINCH` before `start_signal_handler`
-  struct sigaction prev_sigwinch_action;
+  struct sigaction old_sigwinch_action;
 } signal_config = { 0, 0 };
 
 // On macOS, a signal ignored by default, such as `SIGWINCH`, is discarded
@@ -152,17 +152,16 @@ static
 void *sigwait_thread_worker(void *data) {
   sigset_t wait_set;
 
-  // Block every signal in this thread: `sigwait` only requires the awaited
-  // signals to be blocked, and leaving the others unblocked would let the
-  // kernel deliver a process-directed signal to this thread and run its
-  // default action instead.
-  sigset_t all_signals;
-  sigfillset(&all_signals);
-  pthread_sigmask(SIG_SETMASK, &all_signals, 0);
+  pthread_mutex_lock(&signal_config.lock);
+  memcpy(&wait_set, &signal_config.interested_signals, sizeof(sigset_t));
+  pthread_mutex_unlock(&signal_config.lock);
+
+  pthread_sigmask(SIG_SETMASK, &wait_set, 0);
 
   while (1) {
     pthread_mutex_lock(&signal_config.lock);
     memcpy(&wait_set, &signal_config.interested_signals, sizeof(sigset_t));
+    pthread_sigmask(SIG_SETMASK, &wait_set, 0);
     pthread_mutex_unlock(&signal_config.lock);
 
     int sig = 0;
@@ -249,8 +248,8 @@ void moonbitlang_async_start_signal_handler() {
 
   signal_config.started = 1;
 
-  sigaction(SIGWINCH, NULL, &signal_config.prev_sigwinch_action);
-  if (signal_config.prev_sigwinch_action.sa_handler == SIG_DFL) {
+  sigaction(SIGWINCH, NULL, &signal_config.old_sigwinch_action);
+  if (signal_config.old_sigwinch_action.sa_handler == SIG_DFL) {
     struct sigaction act;
     memset(&act, 0, sizeof(act));
     act.sa_handler = sigwinch_handler;
@@ -288,7 +287,7 @@ void moonbitlang_async_terminate_signal_handler() {
   pthread_kill(signal_config.handler, SIGUSR2);
   pthread_join(signal_config.handler, 0);
 
-  sigaction(SIGWINCH, &signal_config.prev_sigwinch_action, NULL);
+  sigaction(SIGWINCH, &signal_config.old_sigwinch_action, NULL);
 
   pthread_mutex_destroy(&signal_config.lock);
   signal_config.initialized = 0;
