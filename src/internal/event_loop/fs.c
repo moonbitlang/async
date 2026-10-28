@@ -189,6 +189,216 @@ int load_ntdll_file_apis(void) {
 #endif
 
 
+// ===== generic open function =====
+
+enum OpenAccessMode {
+  ReadOnly = 0,
+  WriteOnly = 1,
+  ReadWrite = 2,
+  ListDirectory = 3,
+  ReadAttributes = 4
+};
+
+struct OpenOption {
+  enum OpenAccessMode access_mode;
+  int32_t follow_symlink;
+  int32_t is_async;
+  int32_t create_mode;
+  int32_t append;
+  int32_t sync_mode;
+  int32_t permission;
+};
+
+static
+HANDLE moonbitlang_async_open_sync(
+  HANDLE parent,
+  os_string_t filename,
+  struct OpenOption *options
+) {
+  void *worker = moonbitlang_async_get_current_worker();
+
+#ifdef _WIN32
+
+  static ACCESS_MASK access_flags[] = {
+    GENERIC_READ,
+    GENERIC_WRITE | FILE_READ_ATTRIBUTES,
+    GENERIC_READ | GENERIC_WRITE,
+    FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES,
+    FILE_READ_ATTRIBUTES
+  };
+  static ULONG create_modes[] = {
+    FILE_OPEN,
+    FILE_OVERWRITE,
+    FILE_OPEN_IF,
+    FILE_OVERWRITE_IF,
+    FILE_CREATE
+  };
+  static ULONG sync_flags[] = { 0, FILE_WRITE_THROUGH, FILE_WRITE_THROUGH };
+
+  ULONG create_options = sync_flags[options->sync_mode];
+  if (!options->is_async)
+    create_options |= FILE_SYNCHRONOUS_IO_NONALERT;
+
+  if (!options->follow_symlink)
+    create_options |= FILE_OPEN_REPARSE_POINT;
+
+  ACCESS_MASK access_flag = access_flags[options->access_mode];
+  if (options->append)
+    access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
+  if (!options->is_async)
+    access_flag |= SYNCHRONIZE;
+
+  if (!load_ntdll_file_apis()) {
+    SetLastError(ERROR_PROC_NOT_FOUND);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  int relative_open = parent != INVALID_HANDLE_VALUE;
+  UNICODE_STRING nt_name = { 0 };
+  RTL_RELATIVE_NAME_U relative_name = { 0 };
+  PUNICODE_STRING object_name = &nt_name;
+  HANDLE root_directory = parent;
+  NTSTATUS nt_status;
+
+  if (relative_open) {
+    // With an explicit parent, `filename` is already an NT relative path.
+    int filename_len = lstrlenW(filename);
+    if (filename_len > 32767) {
+      SetLastError(ERROR_FILENAME_EXCED_RANGE);
+      return INVALID_HANDLE_VALUE;
+    }
+    nt_name.Length = (USHORT)(filename_len * sizeof(WCHAR));
+    nt_name.MaximumLength = nt_name.Length;
+    nt_name.Buffer = filename;
+  } else {
+    nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
+      filename,
+      &nt_name,
+      NULL,
+      &relative_name
+    );
+    if (!NT_SUCCESS(nt_status)) {
+      SetLastError(pRtlNtStatusToDosError(nt_status));
+      return INVALID_HANDLE_VALUE;
+    }
+
+    root_directory = NULL;
+    if (relative_name.RelativeName.Length != 0) {
+      object_name = &relative_name.RelativeName;
+      root_directory = relative_name.ContainingDirectory;
+    }
+  }
+
+  OBJECT_ATTRIBUTES object_attributes;
+  InitializeObjectAttributes(
+    &object_attributes,
+    object_name,
+    OBJ_CASE_INSENSITIVE,
+    root_directory,
+    NULL
+  );
+
+  HANDLE result = INVALID_HANDLE_VALUE;
+  int err = ERROR_SUCCESS;
+
+  while (1) {
+    IO_STATUS_BLOCK io_status;
+
+    if (moonbitlang_async_enter_cancellable_region(worker)) {
+      err = ERROR_OPERATION_ABORTED;
+      break;
+    }
+
+    result = INVALID_HANDLE_VALUE;
+    nt_status = pNtCreateFile(
+      &result,
+      access_flag, // desired access
+      &object_attributes,
+      &io_status,
+      NULL, // allocation size
+      FILE_ATTRIBUTE_NORMAL,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
+      create_modes[options->create_mode], // creation
+      create_options,
+      NULL, // extended attributes
+      0 // extended attributes length
+    );
+    moonbitlang_async_leave_cancellable_region(worker);
+
+    if (NT_SUCCESS(nt_status))
+      break;
+
+    // handle error
+    result = INVALID_HANDLE_VALUE;
+    err = pRtlNtStatusToDosError(nt_status);
+    if (err != ERROR_PIPE_BUSY || relative_open)
+      break;
+
+    // We are trying to open a named pipe, but no pipe instance is available,
+    // so wait until any instance is available.
+    // This wait is cancellable via `CancelSynchronousIo`.
+    if (moonbitlang_async_enter_cancellable_region(worker)) {
+      err = ERROR_OPERATION_ABORTED;
+      break;
+    }
+
+    BOOL status = WaitNamedPipeW(filename, NMPWAIT_WAIT_FOREVER);
+    moonbitlang_async_leave_cancellable_region(worker);
+
+    if (!status) {
+      err = GetLastError();
+      break;
+    }
+  }
+
+  if (!relative_open) {
+    pRtlReleaseRelativeName(&relative_name);
+    pRtlFreeUnicodeString(&nt_name);
+  }
+
+  if (result == INVALID_HANDLE_VALUE)
+    SetLastError(err);
+  return result;
+
+// #ifdef _WIN32
+#else
+
+  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY, O_RDONLY };
+  static int create_modes[] = {
+    0,
+    O_TRUNC,
+    O_CREAT,
+    O_CREAT | O_TRUNC,
+    O_CREAT | O_EXCL
+  };
+  static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
+
+  int flags =
+    access_flags[options->access_mode]
+    | sync_flags[options->sync_mode]
+    | create_modes[options->create_mode];
+  if (options->append) flags |= O_APPEND;
+
+  if (!options->follow_symlink)
+    flags |= O_NOFOLLOW;
+
+  if (moonbitlang_async_enter_cancellable_region(worker)) {
+    errno = EINTR;
+    return -1;
+  }
+
+  int ret = openat(
+    parent < 0 ? AT_FDCWD : parent,
+    filename,
+    flags | O_CLOEXEC,
+    options->permission
+  );
+  moonbitlang_async_leave_cancellable_region(worker);
+  return ret;
+
+#endif
+}
+
 // ===== stat related helpers =====
 
 #define STAT_FILE_KIND 0x0001
@@ -502,23 +712,16 @@ int32_t moonbit_generic_stat(
    HANDLE handle;
    if (file->kind == BY_HANDLE) {
      handle = file->fd;
-   } else if (file->path_spec.parent != INVALID_HANDLE_VALUE) {
-     SetLastError(ERROR_NOT_SUPPORTED);
-     return -1;
    } else {
-     DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS;
-     if (!file->path_spec.follow_symlink)
-       flags |= FILE_FLAG_OPEN_REPARSE_POINT;
-
-     handle = CreateFileW(
-       file->path_spec.path,
-       FILE_READ_ATTRIBUTES, // desired access
-       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-       NULL, // security attributes
-       OPEN_EXISTING, // creation mode
-       flags, // flags and attributes
-       NULL // template file
-     );
+     struct OpenOption options;
+     options.access_mode = ReadAttributes;
+     options.follow_symlink = file->path_spec.follow_symlink;
+     options.is_async = 0;
+     options.create_mode = 0;
+     options.append = 0;
+     options.sync_mode = 0;
+     options.permission = 0;
+     handle = moonbitlang_async_open_sync(file->path_spec.parent, file->path_spec.path, &options);
      if (handle == INVALID_HANDLE_VALUE)
        return -1;
    }
@@ -1036,212 +1239,6 @@ int32_t moonbitlang_async_statx_sync(
 }
 
 // ===== open job =====
-
-enum OpenAccessMode {
-  ReadOnly = 0,
-  WriteOnly = 1,
-  ReadWrite = 2,
-  ListDirectory = 3
-};
-
-struct OpenOption {
-  enum OpenAccessMode access_mode;
-  int32_t follow_symlink;
-  int32_t is_async;
-  int32_t create_mode;
-  int32_t append;
-  int32_t sync_mode;
-  int32_t permission;
-};
-
-static
-HANDLE moonbitlang_async_open_sync(
-  HANDLE parent,
-  os_string_t filename,
-  struct OpenOption *options
-) {
-  void *worker = moonbitlang_async_get_current_worker();
-
-#ifdef _WIN32
-
-  static ACCESS_MASK access_flags[] = {
-    GENERIC_READ,
-    GENERIC_WRITE | FILE_READ_ATTRIBUTES,
-    GENERIC_READ | GENERIC_WRITE,
-    FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES
-  };
-  static ULONG create_modes[] = {
-    FILE_OPEN,
-    FILE_OVERWRITE,
-    FILE_OPEN_IF,
-    FILE_OVERWRITE_IF,
-    FILE_CREATE
-  };
-  static ULONG sync_flags[] = { 0, FILE_WRITE_THROUGH, FILE_WRITE_THROUGH };
-
-  ULONG create_options = sync_flags[options->sync_mode];
-  if (!options->is_async)
-    create_options |= FILE_SYNCHRONOUS_IO_NONALERT;
-
-  if (!options->follow_symlink)
-    create_options |= FILE_OPEN_REPARSE_POINT;
-
-  ACCESS_MASK access_flag = access_flags[options->access_mode];
-  if (options->append)
-    access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
-  if (!options->is_async)
-    access_flag |= SYNCHRONIZE;
-
-  if (!load_ntdll_file_apis()) {
-    SetLastError(ERROR_PROC_NOT_FOUND);
-    return INVALID_HANDLE_VALUE;
-  }
-
-  int relative_open = parent != INVALID_HANDLE_VALUE;
-  UNICODE_STRING nt_name = { 0 };
-  RTL_RELATIVE_NAME_U relative_name = { 0 };
-  PUNICODE_STRING object_name = &nt_name;
-  HANDLE root_directory = parent;
-  NTSTATUS nt_status;
-
-  if (relative_open) {
-    // With an explicit parent, `filename` is already an NT relative path.
-    int filename_len = lstrlenW(filename);
-    if (filename_len > 32767) {
-      SetLastError(ERROR_FILENAME_EXCED_RANGE);
-      return INVALID_HANDLE_VALUE;
-    }
-    nt_name.Length = (USHORT)(filename_len * sizeof(WCHAR));
-    nt_name.MaximumLength = nt_name.Length;
-    nt_name.Buffer = filename;
-  } else {
-    nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
-      filename,
-      &nt_name,
-      NULL,
-      &relative_name
-    );
-    if (!NT_SUCCESS(nt_status)) {
-      SetLastError(pRtlNtStatusToDosError(nt_status));
-      return INVALID_HANDLE_VALUE;
-    }
-
-    root_directory = NULL;
-    if (relative_name.RelativeName.Length != 0) {
-      object_name = &relative_name.RelativeName;
-      root_directory = relative_name.ContainingDirectory;
-    }
-  }
-
-  OBJECT_ATTRIBUTES object_attributes;
-  InitializeObjectAttributes(
-    &object_attributes,
-    object_name,
-    OBJ_CASE_INSENSITIVE,
-    root_directory,
-    NULL
-  );
-
-  HANDLE result = INVALID_HANDLE_VALUE;
-  int err = ERROR_SUCCESS;
-
-  while (1) {
-    IO_STATUS_BLOCK io_status;
-
-    if (moonbitlang_async_enter_cancellable_region(worker)) {
-      err = ERROR_OPERATION_ABORTED;
-      break;
-    }
-
-    result = INVALID_HANDLE_VALUE;
-    nt_status = pNtCreateFile(
-      &result,
-      access_flag, // desired access
-      &object_attributes,
-      &io_status,
-      NULL, // allocation size
-      FILE_ATTRIBUTE_NORMAL,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-      create_modes[options->create_mode], // creation
-      create_options,
-      NULL, // extended attributes
-      0 // extended attributes length
-    );
-    moonbitlang_async_leave_cancellable_region(worker);
-
-    if (NT_SUCCESS(nt_status))
-      break;
-
-    // handle error
-    result = INVALID_HANDLE_VALUE;
-    err = pRtlNtStatusToDosError(nt_status);
-    if (err != ERROR_PIPE_BUSY || relative_open)
-      break;
-
-    // We are trying to open a named pipe, but no pipe instance is available,
-    // so wait until any instance is available.
-    // This wait is cancellable via `CancelSynchronousIo`.
-    if (moonbitlang_async_enter_cancellable_region(worker)) {
-      err = ERROR_OPERATION_ABORTED;
-      break;
-    }
-
-    BOOL status = WaitNamedPipeW(filename, NMPWAIT_WAIT_FOREVER);
-    moonbitlang_async_leave_cancellable_region(worker);
-
-    if (!status) {
-      err = GetLastError();
-      break;
-    }
-  }
-
-  if (!relative_open) {
-    pRtlReleaseRelativeName(&relative_name);
-    pRtlFreeUnicodeString(&nt_name);
-  }
-
-  if (result == INVALID_HANDLE_VALUE)
-    SetLastError(err);
-  return result;
-
-// #ifdef _WIN32
-#else
-
-  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY };
-  static int create_modes[] = {
-    0,
-    O_TRUNC,
-    O_CREAT,
-    O_CREAT | O_TRUNC,
-    O_CREAT | O_EXCL
-  };
-  static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
-
-  int flags =
-    access_flags[options->access_mode]
-    | sync_flags[options->sync_mode]
-    | create_modes[options->create_mode];
-  if (options->append) flags |= O_APPEND;
-
-  if (!options->follow_symlink)
-    flags |= O_NOFOLLOW;
-
-  if (moonbitlang_async_enter_cancellable_region(worker)) {
-    errno = EINTR;
-    return -1;
-  }
-
-  int ret = openat(
-    parent < 0 ? AT_FDCWD : parent,
-    filename,
-    flags | O_CLOEXEC,
-    options->permission
-  );
-  moonbitlang_async_leave_cancellable_region(worker);
-  return ret;
-
-#endif
-}
 
 struct open_job {
   HANDLE parent;
