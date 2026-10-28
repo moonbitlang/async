@@ -138,19 +138,20 @@ fn Tty::open(context~ : String) -> Tty raise {
     kind=Console,
     is_async=false,
   )
+  errdefer output.close()
+  errdefer (@fd_util.close(control_fd, kind=Console, context="") catch {
+    _ => ()
+  })
   let input = @event_loop.IoHandle::from_fd(
     input_fd,
     kind=Console,
     is_async=false,
   )
   let tty = @event_loop.Tty::new(input~, wakeup=wakeup_fd)
+  errdefer tty.close()
   let buf = FixedArray::make(state_size(), b'\x00')
+  // the handles are closed by `errdefer` after the error is read
   if tty_get_state(tty.input_fd(), control_fd, buf) < 0 {
-    output.close()
-    @fd_util.close(control_fd, kind=Console, context="") catch {
-      _ => ()
-    }
-    tty.close()
     @os_error.check_errno(context)
   }
   let state = State(buf.unsafe_reinterpret_as_bytes())
