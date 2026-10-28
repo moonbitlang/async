@@ -27,89 +27,57 @@
 #else
 
 #include <errno.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <signal.h>
+#include <stdio.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 #ifdef __linux__
 #include <asm/ioctls.h>
 #include <asm/termbits.h>
-#include <sys/signalfd.h>
 #else
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/sysctl.h>
+#include <sys/types.h>
 #include <termios.h>
-#include <sys/event.h>
-#include <sys/time.h>
 #endif
 
 #endif
 
 #ifndef _WIN32
 
-// Readable while `SIGWINCH` is pending. A signal handler does not work here:
-// on macOS, a signal blocked by every thread is never delivered to a thread
-// that unblocks it later.
-static
-int32_t open_sigwinch_fd() {
-#ifdef __linux__
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGWINCH);
-  return signalfd(-1, &set, SFD_CLOEXEC | SFD_NONBLOCK);
-#else
-  int kq = kqueue();
-  if (kq < 0)
-    return -1;
-
-  fcntl(kq, F_SETFD, FD_CLOEXEC);
-  struct kevent ev;
-  EV_SET(&ev, SIGWINCH, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
-  if (kevent(kq, &ev, 1, NULL, 0, NULL) < 0) {
-    int err = errno;
-    close(kq);
-    errno = err;
-    return -1;
-  }
-  return kq;
-#endif
-}
-
+// Write the path of the controlling terminal to `path`, return its length.
+// On macOS `/dev/tty` cannot be polled, so find the device behind it.
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_open(int32_t *fds) {
-  int in_fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
-  if (in_fd < 0)
+int32_t moonbitlang_async_tty_path(char *path, int32_t len) {
+#ifdef __linux__
+  const char *name = "/dev/tty";
+#else
+  struct kinfo_proc info;
+  size_t info_len = sizeof(info);
+  int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid() };
+  if (sysctl(mib, 4, &info, &info_len, NULL, 0) < 0)
     return -1;
 
-  int fd = fcntl(in_fd, F_DUPFD_CLOEXEC, 0);
-  if (fd < 0)
-    goto fail_with_in_fd;
-
-  int sig_fd = open_sigwinch_fd();
-  if (sig_fd < 0)
-    goto fail_with_fd;
-
-  // other threads already block every signal, so `SIGWINCH` stays pending
-  sigset_t winch;
-  sigemptyset(&winch);
-  sigaddset(&winch, SIGWINCH);
-  pthread_sigmask(SIG_BLOCK, &winch, NULL);
-
-  fds[0] = in_fd;
-  fds[1] = sig_fd;
-  fds[2] = in_fd;
-  fds[3] = fd;
-  return 0;
-
-fail_with_fd:
-  close(fd);
-fail_with_in_fd:
-  {
-    int err = errno;
-    close(in_fd);
-    errno = err;
+  if (info.kp_eproc.e_tdev == NODEV) {
+    errno = ENXIO;
+    return -1;
   }
-  return -1;
+  char *dev = devname(info.kp_eproc.e_tdev, S_IFCHR);
+  if (!dev) {
+    errno = ENXIO;
+    return -1;
+  }
+  char name[64];
+  snprintf(name, sizeof(name), "/dev/%s", dev);
+#endif
+  int32_t name_len = strlen(name);
+  if (name_len > len) {
+    errno = ENAMETOOLONG;
+    return -1;
+  }
+  memcpy(path, name, name_len);
+  return name_len;
 }
 
 #ifdef __linux__

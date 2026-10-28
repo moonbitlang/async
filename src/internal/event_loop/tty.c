@@ -17,27 +17,10 @@
 #include <stdint.h>
 #include <moonbit.h>
 
+// Only Windows needs a job: on Unix the terminal is read through the event bus
 #ifdef _WIN32
 
 #include <windows.h>
-
-#else
-
-#include <errno.h>
-#include <unistd.h>
-
-#ifdef __linux__
-#include <poll.h>
-#include <sys/signalfd.h>
-#else
-#include <sys/event.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#endif
-
-typedef int HANDLE;
-
-#endif
 
 struct worker;
 struct worker *moonbitlang_async_get_current_worker(void);
@@ -61,151 +44,6 @@ enum {
   TTY_READ_RESIZED = -1,
 };
 
-struct tty_read_job {
-  HANDLE input;
-  HANDLE wakeup;
-  char *buf;
-  int32_t offset;
-  int32_t len;
-};
-
-static
-void free_tty_read_job(struct tty_read_job *job) {
-  moonbit_decref(job->buf);
-}
-
-#ifndef _WIN32
-
-static
-void drain_sigwinch_fd(int32_t sig_fd) {
-#ifdef __linux__
-  struct signalfd_siginfo info;
-  while (read(sig_fd, &info, sizeof(info)) == sizeof(info))
-    ;
-#else
-  struct kevent ev;
-  struct timespec zero = { 0, 0 };
-  while (kevent(sig_fd, NULL, 0, &ev, 1, &zero) > 0)
-    ;
-#endif
-}
-
-enum {
-  TTY_WAIT_INPUT = 1,
-  TTY_WAIT_RESIZE = 2,
-};
-
-static
-int32_t tty_wait(int32_t input, int32_t wakeup) {
-  // `poll` ignores negative fds and `FD_SET` cannot take them
-  if (input < 0 || wakeup < 0) {
-    errno = EBADF;
-    return -1;
-  }
-#ifdef __linux__
-  struct pollfd pfds[2] = {
-    { input, POLLIN, 0 },
-    { wakeup, POLLIN, 0 },
-  };
-  if (poll(pfds, 2, -1) < 0)
-    return -1;
-
-  int32_t ready = 0;
-  if (pfds[0].revents)
-    ready |= TTY_WAIT_INPUT;
-  if (pfds[1].revents)
-    ready |= TTY_WAIT_RESIZE;
-  return ready;
-#else
-  // `poll` does not support devices on macOS
-  if (input >= FD_SETSIZE || wakeup >= FD_SETSIZE) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fd_set readfds;
-  FD_ZERO(&readfds);
-  FD_SET(input, &readfds);
-  FD_SET(wakeup, &readfds);
-  int nfds = (input > wakeup ? input : wakeup) + 1;
-  if (select(nfds, &readfds, NULL, NULL, NULL) < 0)
-    return -1;
-
-  int32_t ready = 0;
-  if (FD_ISSET(input, &readfds))
-    ready |= TTY_WAIT_INPUT;
-  if (FD_ISSET(wakeup, &readfds))
-    ready |= TTY_WAIT_RESIZE;
-  return ready;
-#endif
-}
-
-#endif
-
-static
-int32_t tty_read_job_worker(struct tty_read_job *job, int32_t *err_out) {
-#ifdef _WIN32
-
-  (void)job;
-  *err_out = ERROR_NOT_SUPPORTED;
-  return -1;
-
-#else
-
-  struct worker *worker = moonbitlang_async_get_current_worker();
-
-  if (moonbitlang_async_enter_cancellable_region(worker)) {
-    *err_out = EINTR;
-    return -1;
-  }
-
-  int32_t ready = tty_wait(job->input, job->wakeup);
-  moonbitlang_async_leave_cancellable_region(worker);
-
-  if (ready < 0) {
-    *err_out = errno;
-    return -1;
-  }
-
-  if (!(ready & TTY_WAIT_INPUT)) {
-    drain_sigwinch_fd(job->wakeup);
-    return TTY_READ_RESIZED;
-  }
-
-  if (moonbitlang_async_enter_cancellable_region(worker)) {
-    *err_out = EINTR;
-    return -1;
-  }
-
-  ssize_t n = read(job->input, job->buf + job->offset, job->len);
-  moonbitlang_async_leave_cancellable_region(worker);
-
-  if (n < 0) {
-    *err_out = errno;
-    return -1;
-  }
-  return (int32_t)n;
-
-#endif
-}
-
-MOONBIT_FFI_EXPORT
-struct tty_read_job *moonbitlang_async_make_tty_read_job(
-  HANDLE input,
-  HANDLE wakeup,
-  char *buf,
-  int32_t offset,
-  int32_t len
-) {
-  struct tty_read_job *job = MAKE_JOB(tty_read, 0);
-  job->input = input;
-  job->wakeup = wakeup;
-  job->buf = buf;
-  job->offset = offset;
-  job->len = len;
-  return job;
-}
-
 enum {
   TTY_MAX_RECORDS = 256,
 };
@@ -224,8 +62,6 @@ static
 void free_tty_read_console_input_job(struct tty_read_console_input_job *job) {
   moonbit_decref(job->buf);
 }
-
-#ifdef _WIN32
 
 static
 int32_t tty_records_to_text(
@@ -260,15 +96,11 @@ int32_t tty_records_to_text(
   return pos;
 }
 
-#endif
-
 static
 int32_t tty_read_console_input_job_worker(
   struct tty_read_console_input_job *job,
   int32_t *err_out
 ) {
-#ifdef _WIN32
-
   struct worker *worker = moonbitlang_async_get_current_worker();
   uint16_t *buf = job->buf + job->offset;
 
@@ -330,29 +162,13 @@ int32_t tty_read_console_input_job_worker(
     if (resized)
       return TTY_READ_RESIZED;
   }
-
-#else
-
-  (void)job;
-  *err_out = ENOSYS;
-  return -1;
-
-#endif
 }
-
-#ifdef _WIN32
 
 static
 int32_t cancel_tty_read_console_input_job(struct tty_read_console_input_job *job) {
   SetEvent(job->wakeup);
   return 1; // `CANCELLATION_STATUS_NEED_WAIT`
 }
-
-#else
-
-#define cancel_tty_read_console_input_job 0
-
-#endif
 
 MOONBIT_FFI_EXPORT
 struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input_job(
@@ -381,3 +197,5 @@ int32_t moonbitlang_async_tty_read_console_input_job_get_resized(
 ) {
   return job->resized;
 }
+
+#endif

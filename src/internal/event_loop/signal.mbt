@@ -27,6 +27,22 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 )
 
 ///|
+#cfg(target="native")
+extern "C" fn get_sigwinch() -> Int32 = "moonbitlang_async_get_sigwinch"
+
+///|
+#cfg(target="wasm")
+fn get_sigwinch() -> Int32 {
+  -1
+}
+
+///|
+/// `SIGWINCH` on Unix, `-1` where it does not exist.
+/// It is always waited for, and recorded in `EventLoop::resize`
+/// instead of cancelling the program.
+let sigwinch : Int32 = get_sigwinch()
+
+///|
 pub suberror KilledBySignal {
   KilledBySignal(Int32)
 }
@@ -58,6 +74,11 @@ let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 ///|
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int32]) -> Unit {
   global_signal_handler_initialized.val = true
+  let signals = if sigwinch >= 0 {
+    ReadOnlyArray::from_array([..signals, sigwinch])
+  } else {
+    signals
+  }
   set_global_cancellation_signals_ffi(
     all_signals,
     all_signals.length(),

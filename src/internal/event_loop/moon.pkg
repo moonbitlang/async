@@ -72,6 +72,8 @@ options(
     "stdio.mbt": [ "native", "wasm" ],
     "thread_pool.mbt": [ "native" ],
     "tty.mbt": [ "native" ],
+    "tty_unix.mbt": [ "native" ],
+    "tty_windows.mbt": [ "native" ],
     "timer.mbt": [ "native", "wasm" ],
     "io.wasm.mbt": [ "wasm" ],
     "unimplemented.mbt": [ "wasm-gc" ],

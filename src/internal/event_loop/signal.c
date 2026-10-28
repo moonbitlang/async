@@ -88,6 +88,11 @@ void moonbitlang_async_set_global_cancellation_signals(
 }
 
 MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_sigwinch() {
+  return -1;
+}
+
+MOONBIT_FFI_EXPORT
 int moonbitlang_async_set_console_control_handler(int32_t add) {
   return SetConsoleCtrlHandler(console_control_handler, add);
 }
@@ -112,6 +117,11 @@ int moonbitlang_async_get_signal_by_index(int32_t code) {
   }
 }
 
+MOONBIT_FFI_EXPORT
+int moonbitlang_async_get_sigwinch() {
+  return SIGWINCH;
+}
+
 static
 struct {
   int32_t initialized;
@@ -122,10 +132,21 @@ struct {
 
   // the following should be protected by `lock`
 
-  // the set of currently active cancellation signals + `SIGUSR2`.
+  // the set of currently active cancellation signals + `SIGWINCH` + `SIGUSR2`.
   sigset_t interested_signals;
   int32_t cancelled;
+
+  // the action of `SIGWINCH` before `start_signal_handler`
+  struct sigaction prev_sigwinch_action;
 } signal_config = { 0, 0 };
+
+// On macOS, a signal ignored by default, such as `SIGWINCH`, is discarded
+// when generated, even while blocked, unless it has a handler.
+// The handler never runs: `SIGWINCH` is blocked and taken by `sigwait`.
+static
+void sigwinch_handler(int sig) {
+  (void)sig;
+}
 
 static
 void *sigwait_thread_worker(void *data) {
@@ -133,9 +154,8 @@ void *sigwait_thread_worker(void *data) {
 
   // Block every signal in this thread: `sigwait` only requires the awaited
   // signals to be blocked, and leaving the others unblocked would let the
-  // kernel deliver a process-directed signal to this thread. A signal that
-  // must stay pending for someone else, such as `SIGWINCH` read through a
-  // signalfd by `@tty`, would then be discarded by its default action.
+  // kernel deliver a process-directed signal to this thread and run its
+  // default action instead.
   sigset_t all_signals;
   sigfillset(&all_signals);
   pthread_sigmask(SIG_SETMASK, &all_signals, 0);
@@ -229,6 +249,15 @@ void moonbitlang_async_start_signal_handler() {
 
   signal_config.started = 1;
 
+  sigaction(SIGWINCH, NULL, &signal_config.prev_sigwinch_action);
+  if (signal_config.prev_sigwinch_action.sa_handler == SIG_DFL) {
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = sigwinch_handler;
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGWINCH, &act, NULL);
+  }
+
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 #ifdef __ANDROID__
@@ -258,6 +287,8 @@ void moonbitlang_async_terminate_signal_handler() {
 
   pthread_kill(signal_config.handler, SIGUSR2);
   pthread_join(signal_config.handler, 0);
+
+  sigaction(SIGWINCH, &signal_config.prev_sigwinch_action, NULL);
 
   pthread_mutex_destroy(&signal_config.lock);
   signal_config.initialized = 0;
