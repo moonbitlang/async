@@ -1037,16 +1037,27 @@ int32_t moonbitlang_async_statx_sync(
 
 // ===== open job =====
 
+enum OpenAccessMode {
+  ReadOnly = 0,
+  WriteOnly = 1,
+  ReadWrite = 2,
+  ListDirectory = 3
+};
+
+struct OpenOption {
+  enum OpenAccessMode access_mode;
+  int32_t is_async;
+  int32_t create_mode;
+  int32_t append;
+  int32_t sync_mode;
+  int32_t permission;
+};
+
 static
 HANDLE moonbitlang_async_open_sync(
   HANDLE parent,
   os_string_t filename,
-  int32_t access_mode,
-  int32_t is_async,
-  int32_t create_mode,
-  int32_t append,
-  int32_t sync_mode,
-  int32_t permission
+  struct OpenOption *options
 ) {
   void *worker = moonbitlang_async_get_current_worker();
 
@@ -1067,14 +1078,14 @@ HANDLE moonbitlang_async_open_sync(
   };
   static ULONG sync_flags[] = { 0, FILE_WRITE_THROUGH, FILE_WRITE_THROUGH };
 
-  ULONG create_options = sync_flags[sync_mode];
-  if (!is_async)
+  ULONG create_options = sync_flags[options->sync_mode];
+  if (!options->is_async)
     create_options |= FILE_SYNCHRONOUS_IO_NONALERT;
 
-  ACCESS_MASK access_flag = access_flags[access_mode];
-  if (append)
+  ACCESS_MASK access_flag = access_flags[options->access_mode];
+  if (options->append)
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
-  if (!is_async)
+  if (!options->is_async)
     access_flag |= SYNCHRONIZE;
 
   if (!load_ntdll_file_apis()) {
@@ -1147,7 +1158,7 @@ HANDLE moonbitlang_async_open_sync(
       NULL, // allocation size
       FILE_ATTRIBUTE_NORMAL,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // shared mode
-      create_modes[create_mode], // creation
+      create_modes[options->create_mode], // creation
       create_options,
       NULL, // extended attributes
       0 // extended attributes length
@@ -1203,10 +1214,10 @@ HANDLE moonbitlang_async_open_sync(
   static int sync_flags[] = { 0, O_DSYNC, O_SYNC };
 
   int flags =
-    access_flags[access_mode]
-    | sync_flags[sync_mode]
-    | create_modes[create_mode];
-  if (append) flags |= O_APPEND;
+    access_flags[options->access_mode]
+    | sync_flags[options->sync_mode]
+    | create_modes[options->create_mode];
+  if (options->append) flags |= O_APPEND;
 
   if (moonbitlang_async_enter_cancellable_region(worker)) {
     errno = EINTR;
@@ -1217,7 +1228,7 @@ HANDLE moonbitlang_async_open_sync(
     parent < 0 ? AT_FDCWD : parent,
     filename,
     flags | O_CLOEXEC,
-    permission
+    options->permission
   );
   moonbitlang_async_leave_cancellable_region(worker);
   return ret;
@@ -1228,11 +1239,7 @@ HANDLE moonbitlang_async_open_sync(
 struct open_job {
   HANDLE parent;
   os_string_t filename;
-  int access_mode;
-  int create_mode;
-  int append;
-  int sync_mode;
-  int permission;
+  struct OpenOption options;
   HANDLE result;
 
   uint32_t stat_request;
@@ -1251,12 +1258,7 @@ int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
   job->result = moonbitlang_async_open_sync(
     job->parent,
     job->filename,
-    job->access_mode,
-    job->access_mode == 3, // only handles opened for `ReadDirectoryChangesW` need to be overlapped
-    job->create_mode,
-    job->append,
-    job->sync_mode,
-    job->permission
+    &job->options
   );
 
   // Retrieve basic stat about the newly opened file in the same job
@@ -1317,11 +1319,12 @@ struct open_job *moonbitlang_async_make_open_job(
 #endif
 
   job->filename = filename;
-  job->access_mode = access_mode;
-  job->create_mode = create_mode;
-  job->append = append;
-  job->sync_mode = sync_mode;
-  job->permission = permission;
+  job->options.access_mode = access_mode;
+  job->options.is_async = access_mode == ListDirectory; // for `ReadDirectoryChangesW`
+  job->options.create_mode = create_mode;
+  job->options.append = append;
+  job->options.sync_mode = sync_mode;
+  job->options.permission = permission;
   job->stat_buf = stat_buf;
   job->stat_buf_len = stat_buf_len;
   job->stat_request = stat_request;
