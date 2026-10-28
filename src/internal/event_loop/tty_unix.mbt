@@ -59,9 +59,18 @@ pub fn Tty::close(self : Tty) -> Unit {
 }
 
 ///|
-/// Read input, or return `-1` when woken by a resize unless `block_resize`.
 #cfg(not(platform="windows"))
-async fn Tty::read_input(
+pub fn Tty::input_fd(self : Tty) -> @fd_util.Fd {
+  self.input.fd()
+}
+
+///|
+/// Wait for input or a resize, then read input.
+/// Return `-1` for a resize, which may be reported after later input.
+/// With `block_resize`, like a blocked signal, a resize does not end the wait
+/// and stays pending until a read without `block_resize`.
+#cfg(not(platform="windows"))
+pub async fn Tty::read(
   self : Tty,
   buf : FixedArray[Byte],
   offset~ : Int32,
@@ -71,10 +80,12 @@ async fn Tty::read_input(
   context~ : String,
 ) -> Int32 {
   ignore(raw)
+  @coroutine.check_cancellation()
   guard! curr_loop.val is Some(evloop)
   for ;; {
     if !block_resize {
       if evloop.resize.pending {
+        evloop.resize.pending = false
         return -1
       }
       // `SIGWINCH` wakes the wait for input in `read`

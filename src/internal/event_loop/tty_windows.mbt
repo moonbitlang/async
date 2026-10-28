@@ -179,9 +179,19 @@ pub fn Tty::close(self : Tty) -> Unit {
 }
 
 ///|
-/// Read input, or return `-1` for a resize in `raw` mode.
 #cfg(platform="windows")
-async fn Tty::read_input(
+pub fn Tty::input_fd(self : Tty) -> @fd_util.Fd {
+  self.input.fd()
+}
+
+///|
+/// Wait for input or a resize, then read input.
+/// Return `-1` for a resize, which may be reported after later input.
+/// With `block_resize`, like a blocked signal, a resize does not end the wait
+/// and stays pending until a read without `block_resize`.
+/// Resizes are only read from console input records in `raw` mode.
+#cfg(platform="windows")
+pub async fn Tty::read(
   self : Tty,
   buf : FixedArray[Byte],
   offset~ : Int32,
@@ -190,15 +200,24 @@ async fn Tty::read_input(
   block_resize~ : Bool,
   context~ : String,
 ) -> Int32 {
-  ignore(block_resize)
+  @coroutine.check_cancellation()
+  guard! curr_loop.val is Some(evloop)
   let console = self.console_buffer
   if console.pending_len > 0 {
     return console.write_pending(buf, offset~, len~)
   }
-  if raw {
-    self.read_console_input(buf, offset~, len~, context~)
-  } else {
-    self.input.read(buf, offset~, len~, context~)
+  for ;; {
+    if evloop.resize.pending && !block_resize {
+      evloop.resize.pending = false
+      return -1
+    }
+    let n = if raw {
+      self.read_console_input(buf, offset~, len~, context~)
+    } else {
+      self.input.read(buf, offset~, len~, context~)
+    }
+    guard n < 0 else { return n }
+    evloop.resize.pending = true
   }
 }
 
