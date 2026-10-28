@@ -302,6 +302,12 @@ fn Job::open(
 }
 
 ///|
+// TODO: port to Wasm
+fn OpenJob::set_parent(_job : OpenJob, _parent : @fd_util.Fd) -> Unit {
+  panic()
+}
+
+///|
 #unsafe_skip_stub_check
 fn OpenJob::fd_ffi(job : JobHandle) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/open_job_get_fd"
 

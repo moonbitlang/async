@@ -167,6 +167,126 @@ async fn opendir_aux(path : StringView, context~ : String) -> Directory {
 }
 
 ///|
+fn validate_relative_open_filename(
+  path : StringView,
+  context~ : String,
+) -> String raise {
+  match @event_loop.platform {
+    Linux | MacOS =>
+      if path is ['/', ..] {
+        raise Failure(
+          "\{context}: relative open does not support absolute path",
+        )
+      }
+    Windows =>
+      if path is ([_, ':', ..] | ['\\' | '/', ..]) {
+        raise Failure(
+          "\{context}: relative open does not support absolute path",
+        )
+      }
+  }
+  let result = StringBuilder()
+  let sep = match @event_loop.platform {
+    Linux | MacOS => '/'
+    Windows => '\\'
+  }
+  fn check_component(component : StringView) -> Unit raise {
+    match component {
+      ".." => raise Failure("\{context}: relative open does not support `..`")
+      "." | "" => ()
+      _ => {
+        if !result.is_empty() {
+          result.write_char(sep)
+        }
+        result.write_stringview(component)
+      }
+    }
+  }
+  for i, c in path.code_units(); component_start = 0 {
+    match c {
+      '/' => ()
+      '\\' if @event_loop.platform is Windows => ()
+      _ => continue
+    }
+    check_component(path[component_start:i])
+    continue i + 1
+  } nobreak {
+    if component_start < path.length() {
+      check_component(path[component_start:])
+    }
+  }
+  result.to_string()
+}
+
+///|
+/// `dir.open(filename, ..)` open a file under an already-opened directory.
+/// `filename` must be a relative path and will be interpreted relative to `dir`.
+/// `filename` MUST NOT contain any `..` component.
+///
+/// Relative open protects against race condition over base directory renaming.
+/// If the base directory `dir` has been renamed after it was opened,
+/// accessing its child by path may accidentally open unrelated file under a different directory.
+/// `dir.open(..)` always open files under exactly the directory referred to by `dir`.
+///
+/// All other parameters of `dir.open(filename, ..)` has the same semantic as `@fs.open`,
+/// see `@fs.open` for more details.
+///
+/// This method currently does not support Wasm backend.
+pub async fn Directory::open(
+  dir : Directory,
+  filename : StringView,
+  mode~ : Mode,
+  sync~ : SyncMode = NoSync,
+  append~ : Bool = false,
+  create_mode~ : CreateMode = OpenExisting,
+  permission~ : Int32 = 0o644,
+) -> File {
+  dir.open_aux(
+    filename,
+    mode~,
+    sync~,
+    append~,
+    create_mode~,
+    permission~,
+    context="@fs.Directory::open()",
+  )
+}
+
+///|
+async fn Directory::open_aux(
+  dir : Directory,
+  filename : StringView,
+  mode~ : Mode,
+  sync~ : SyncMode,
+  append~ : Bool,
+  create_mode~ : CreateMode,
+  permission~ : Int32,
+  context~ : String,
+) -> File {
+  let access = match mode {
+    ReadOnly => 0
+    WriteOnly => 1
+    ReadWrite => 2
+  }
+  let sync = match sync {
+    NoSync => 0
+    Data => 1
+    Full => 2
+  }
+  let (io, _) = @event_loop.open(
+    parent=dir.io.fd(),
+    validate_relative_open_filename(filename, context~),
+    access,
+    create=create_mode.to_int(),
+    append~,
+    sync~,
+    mode=permission,
+    context~,
+  )
+  { io, read_buf: @io.ReaderBuffer::new(), }
+}
+
+///|
 fn Directory::from_io_handle(io : @event_loop.IoHandle) -> Directory {
   let buf_len = @cmp.maximum(1024, Directory::min_buffer_size())
   {

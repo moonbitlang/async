@@ -144,6 +144,9 @@ extern "C" fn Job::open(
 priv struct OpenJob(Job)
 
 ///|
+extern "C" fn OpenJob::set_parent(job : OpenJob, parent : @fd_util.Fd) -> Unit = "moonbitlang_async_open_job_set_parent"
+
+///|
 extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
 
 ///|

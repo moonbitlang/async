@@ -1039,6 +1039,7 @@ int32_t moonbitlang_async_statx_sync(
 
 static
 HANDLE moonbitlang_async_open_sync(
+  HANDLE parent,
   os_string_t filename,
   int32_t access_mode,
   int32_t is_async,
@@ -1081,24 +1082,40 @@ HANDLE moonbitlang_async_open_sync(
     return INVALID_HANDLE_VALUE;
   }
 
+  int relative_open = parent != INVALID_HANDLE_VALUE;
   UNICODE_STRING nt_name = { 0 };
   RTL_RELATIVE_NAME_U relative_name = { 0 };
-  NTSTATUS nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
-    filename,
-    &nt_name,
-    NULL,
-    &relative_name
-  );
-  if (!NT_SUCCESS(nt_status)) {
-    SetLastError(pRtlNtStatusToDosError(nt_status));
-    return INVALID_HANDLE_VALUE;
-  }
-
   PUNICODE_STRING object_name = &nt_name;
-  HANDLE root_directory = NULL;
-  if (relative_name.RelativeName.Length != 0) {
-    object_name = &relative_name.RelativeName;
-    root_directory = relative_name.ContainingDirectory;
+  HANDLE root_directory = parent;
+  NTSTATUS nt_status;
+
+  if (relative_open) {
+    // With an explicit parent, `filename` is already an NT relative path.
+    int filename_len = lstrlenW(filename);
+    if (filename_len > 32767) {
+      SetLastError(ERROR_FILENAME_EXCED_RANGE);
+      return INVALID_HANDLE_VALUE;
+    }
+    nt_name.Length = (USHORT)(filename_len * sizeof(WCHAR));
+    nt_name.MaximumLength = nt_name.Length;
+    nt_name.Buffer = filename;
+  } else {
+    nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
+      filename,
+      &nt_name,
+      NULL,
+      &relative_name
+    );
+    if (!NT_SUCCESS(nt_status)) {
+      SetLastError(pRtlNtStatusToDosError(nt_status));
+      return INVALID_HANDLE_VALUE;
+    }
+
+    root_directory = NULL;
+    if (relative_name.RelativeName.Length != 0) {
+      object_name = &relative_name.RelativeName;
+      root_directory = relative_name.ContainingDirectory;
+    }
   }
 
   OBJECT_ATTRIBUTES object_attributes;
@@ -1143,7 +1160,7 @@ HANDLE moonbitlang_async_open_sync(
     // handle error
     result = INVALID_HANDLE_VALUE;
     err = pRtlNtStatusToDosError(nt_status);
-    if (err != ERROR_PIPE_BUSY)
+    if (err != ERROR_PIPE_BUSY || relative_open)
       break;
 
     // We are trying to open a named pipe, but no pipe instance is available,
@@ -1163,8 +1180,10 @@ HANDLE moonbitlang_async_open_sync(
     }
   }
 
-  pRtlReleaseRelativeName(&relative_name);
-  pRtlFreeUnicodeString(&nt_name);
+  if (!relative_open) {
+    pRtlReleaseRelativeName(&relative_name);
+    pRtlFreeUnicodeString(&nt_name);
+  }
 
   if (result == INVALID_HANDLE_VALUE)
     SetLastError(err);
@@ -1194,7 +1213,12 @@ HANDLE moonbitlang_async_open_sync(
     return -1;
   }
 
-  int ret = open(filename, flags | O_CLOEXEC, permission);
+  int ret = openat(
+    parent < 0 ? AT_FDCWD : parent,
+    filename,
+    flags | O_CLOEXEC,
+    permission
+  );
   moonbitlang_async_leave_cancellable_region(worker);
   return ret;
 
@@ -1202,6 +1226,7 @@ HANDLE moonbitlang_async_open_sync(
 }
 
 struct open_job {
+  HANDLE parent;
   os_string_t filename;
   int access_mode;
   int create_mode;
@@ -1224,6 +1249,7 @@ void free_open_job(struct open_job *job) {
 static
 int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
   job->result = moonbitlang_async_open_sync(
+    job->parent,
     job->filename,
     job->access_mode,
     job->access_mode == 3, // only handles opened for `ReadDirectoryChangesW` need to be overlapped
@@ -1283,6 +1309,13 @@ struct open_job *moonbitlang_async_make_open_job(
   int32_t stat_buf_len
 ) {
   struct open_job *job = MAKE_JOB(open, 0);
+
+#ifdef _WIN32
+  job->parent = INVALID_HANDLE_VALUE;
+#else
+  job->parent = -1;
+#endif
+
   job->filename = filename;
   job->access_mode = access_mode;
   job->create_mode = create_mode;
@@ -1293,6 +1326,11 @@ struct open_job *moonbitlang_async_make_open_job(
   job->stat_buf_len = stat_buf_len;
   job->stat_request = stat_request;
   return job;
+}
+
+MOONBIT_FFI_EXPORT
+void moonbitlang_async_open_job_set_parent(struct open_job *job, HANDLE parent) {
+  job->parent = parent;
 }
 
 MOONBIT_FFI_EXPORT
