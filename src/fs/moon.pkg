@@ -55,6 +55,7 @@ options(
     "realpath_test.mbt": [ "native", "wasm" ],
     "rename_test.mbt": [ "native", "wasm" ],
     "stat_test.mbt": [ "native" ],
+    "symlink_test.mbt": [ "native", "wasm" ],
     "text_file_test.mbt": [ "native", "wasm" ],
     "timestamp_test.mbt": [ "native", "wasm" ],
     "tmpdir.mbt": [ "native" ],
