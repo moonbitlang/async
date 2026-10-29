@@ -1,0 +1,14 @@
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/async/internal/event_loop",
+  "moonbitlang/async/internal/coroutine",
+  "moonbitlang/async/internal/fd_util",
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+}
+
+supported_targets = "-all+native"
+
+options(
+  "native-stub": [ "tty.c" ],
+)

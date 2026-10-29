@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async_test_programs/ttyd/internal/pty"
+
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+}
+
+// Values
+pub async fn spawn(StringView, rows? : Int32, cols? : Int32, extra_env? : Map[String, String]) -> Pty
+
+// Errors
+
+// Types and methods
+type Pty
+pub fn Pty::close(Self) -> Unit
+pub async fn Pty::read_exactly(Self, Int32) -> Bytes
+pub async fn Pty::read_some(Self, max_len? : Int32) -> Bytes?
+pub fn Pty::resize(Self, rows~ : Int32, cols~ : Int32) -> Unit raise @os_error.OSError
+pub async fn Pty::wait(Self) -> Int32
+pub async fn Pty::write(Self, &@io.Data) -> Unit
+pub impl @io.Reader for Pty
+pub impl @io.Writer for Pty
+
+// Type aliases
+
+// Traits
