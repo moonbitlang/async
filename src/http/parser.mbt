@@ -176,7 +176,8 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
-        let (trailer, _) = self.read_headers(allow_set_cookie=false)
+        let (trailer, cookies) = self.read_headers()
+        guard cookies.is_empty() else { raise BadRequest }
         if self.gzip is Some(gzip) {
           guard gzip.is_finished() else { raise BadRequest }
           self.gzip = None
@@ -276,13 +277,7 @@ impl @io.Reader for Reader with fn _get_internal_buffer(self) {
 extend Reader with @io.Reader::{_direct_read, _get_internal_buffer, drop}
 
 ///|
-/// Read the header fields of a message. `Set-Cookie` only belongs in a
-/// response; elsewhere (`allow_set_cookie=false`) it raises `BadRequest`,
-/// whether or not the cookie itself is well-formed.
-async fn Reader::read_headers(
-  self : Reader,
-  allow_set_cookie~ : Bool,
-) -> (Headers, Array[Cookie]) {
+async fn Reader::read_headers(self : Reader) -> (Headers, Array[Cookie]) {
   let headers : Headers = Map([])
   let cookies = []
   for ;; {
@@ -306,7 +301,6 @@ async fn Reader::read_headers(
       header_line[colon_index + 1:].to_owned()
     }
     if key == "Set-Cookie" {
-      guard allow_set_cookie else { raise BadRequest }
       if Cookie::parse(value) is Some(cookie) {
         cookies.push(cookie)
       }
@@ -400,7 +394,8 @@ async fn Reader::read_request(self : Reader) -> Request {
     "HTTP/1.1" | "HTTP/1.0" => ()
     protocol => raise HttpVersionNotSupported(protocol.to_owned())
   }
-  let (headers, _) = self.read_headers(allow_set_cookie=false)
+  let (headers, cookies) = self.read_headers()
+  guard cookies.length() is 0 else { raise BadRequest }
   self.setup_message_body(headers, default=Empty)
   { meth, path, headers, }
 }
@@ -445,7 +440,7 @@ async fn Reader::read_response(
     _ => raise BadRequest
   }
   let reason = response_line[code_len + 1:].to_owned()
-  let (headers, cookies) = self.read_headers(allow_set_cookie=true)
+  let (headers, cookies) = self.read_headers()
   if should_not_have_body(request_method, code) {
     self.body = Empty
     self.trailer = Some({})
