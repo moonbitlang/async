@@ -36,7 +36,8 @@ pub async fn open(
 ) -> (IoHandle, FileIdentity) {
   let path_bytes = @os_string.encode(path)
   let stat_buf = FixedArray::make(32, b'\x00')
-  let job = Job::open(
+  let job = Job::openat(
+    parent,
     path_bytes,
     access,
     create~,
@@ -48,9 +49,6 @@ pub async fn open(
     stat_buf_len=stat_buf.length(),
   )
   defer job.0.free()
-  if @fd_util.fd_is_valid(parent) {
-    job.set_parent(parent)
-  }
   try perform_job_in_worker(job.0, context~, cancellable=true) catch {
     @os_error.OSError(errno, context~) =>
       raise @os_error.OSError(errno, context="\{context}: \{path.escape()}")
