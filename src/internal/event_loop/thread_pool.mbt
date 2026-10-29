@@ -101,7 +101,8 @@ extern "C" fn Job::write_console(
 
 ///|
 #owned(filename, stat_buf)
-extern "C" fn Job::open(
+extern "C" fn Job::openat(
+  parent : @fd_util.Fd,
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int32,
@@ -115,16 +116,13 @@ extern "C" fn Job::open(
   stat_request~ : UInt32,
   stat_buf~ : FixedArray[Byte],
   stat_buf_len~ : Int32,
-) -> OpenJob = "moonbitlang_async_make_open_job"
+) -> OpenAtJob = "moonbitlang_async_make_openat_job"
 
 ///|
-priv struct OpenJob(Job)
+priv struct OpenAtJob(Job)
 
 ///|
-extern "C" fn OpenJob::set_parent(job : OpenJob, parent : @fd_util.Fd) -> Unit = "moonbitlang_async_open_job_set_parent"
-
-///|
-extern "C" fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd = "moonbitlang_async_open_job_get_fd"
+extern "C" fn OpenAtJob::fd(job : OpenAtJob) -> @fd_util.Fd = "moonbitlang_async_openat_job_get_fd"
 
 ///|
 pub const STAT_FILE_KIND : UInt32 = 0x0001

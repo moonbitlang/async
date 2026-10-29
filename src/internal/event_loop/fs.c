@@ -1217,9 +1217,9 @@ int32_t moonbitlang_async_statx_sync(
   return moonbit_generic_stat(&file, request, buf, buf_len);
 }
 
-// ===== open job =====
+// ===== openat job =====
 
-struct open_job {
+struct openat_job {
   HANDLE parent;
   os_string_t filename;
   struct OpenOption options;
@@ -1231,13 +1231,13 @@ struct open_job {
 };
 
 static
-void free_open_job(struct open_job *job) {
+void free_openat_job(struct openat_job *job) {
   moonbit_decref(job->filename);
   moonbit_decref(job->stat_buf);
 }
 
 static
-int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
+int32_t openat_job_worker(struct openat_job *job, int32_t *err_out) {
   job->result = moonbitlang_async_open_sync(
     job->parent,
     job->filename,
@@ -1282,7 +1282,8 @@ int32_t open_job_worker(struct open_job *job, int32_t *err_out) {
 
 
 MOONBIT_FFI_EXPORT
-struct open_job *moonbitlang_async_make_open_job(
+struct openat_job *moonbitlang_async_make_openat_job(
+  HANDLE parent,
   os_string_t filename,
   int access_mode,
   int create_mode,
@@ -1293,14 +1294,8 @@ struct open_job *moonbitlang_async_make_open_job(
   void *stat_buf,
   int32_t stat_buf_len
 ) {
-  struct open_job *job = MAKE_JOB(open, 0);
-
-#ifdef _WIN32
-  job->parent = INVALID_HANDLE_VALUE;
-#else
-  job->parent = -1;
-#endif
-
+  struct openat_job *job = MAKE_JOB(openat, 0);
+  job->parent = parent;
   job->filename = filename;
   job->options.access_mode = access_mode;
   job->options.is_async = access_mode == ListDirectory; // for `ReadDirectoryChangesW`
@@ -1316,13 +1311,45 @@ struct open_job *moonbitlang_async_make_open_job(
 }
 
 MOONBIT_FFI_EXPORT
-void moonbitlang_async_open_job_set_parent(struct open_job *job, HANDLE parent) {
-  job->parent = parent;
+HANDLE moonbitlang_async_openat_job_get_fd(struct openat_job *job) {
+  return job->result;
+}
+
+// Keep the old open job entry points for runtime compatibility.
+MOONBIT_FFI_EXPORT
+struct openat_job *moonbitlang_async_make_open_job(
+  os_string_t filename,
+  int access_mode,
+  int create_mode,
+  int append,
+  int sync_mode,
+  int permission,
+  uint32_t stat_request,
+  void *stat_buf,
+  int32_t stat_buf_len
+) {
+#ifdef _WIN32
+  HANDLE parent = INVALID_HANDLE_VALUE;
+#else
+  HANDLE parent = -1;
+#endif
+  return moonbitlang_async_make_openat_job(
+    parent,
+    filename,
+    access_mode,
+    create_mode,
+    append,
+    sync_mode,
+    permission,
+    stat_request,
+    stat_buf,
+    stat_buf_len
+  );
 }
 
 MOONBIT_FFI_EXPORT
-HANDLE moonbitlang_async_open_job_get_fd(struct open_job *job) {
-  return job->result;
+HANDLE moonbitlang_async_open_job_get_fd(struct openat_job *job) {
+  return moonbitlang_async_openat_job_get_fd(job);
 }
 
 // ===== fstatx job, get properties of an existing fd =====

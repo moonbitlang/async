@@ -236,10 +236,11 @@ fn JobHandle::open(
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_open_stat_job"
 
 ///|
-priv struct OpenJob(Job)
+priv struct OpenAtJob(Job)
 
 ///|
-fn Job::open(
+fn Job::openat(
+  parent : @fd_util.Fd,
   filename : @os_string.OsString,
   // 0 => read only, 1 => write only, 2 => read write
   access : Int32,
@@ -253,35 +254,34 @@ fn Job::open(
   stat_request~ : UInt32,
   stat_buf~ : FixedArray[Byte],
   stat_buf_len~ : Int32,
-) -> OpenJob {
-  Job(
-    JobHandle::open(
-      filename,
-      access,
-      create~,
-      append~,
-      sync~,
-      mode~,
-      stat_request~,
-      stat_buf_len~,
+) -> OpenAtJob {
+  if @fd_util.fd_is_valid(parent) {
+    panic()
+  }
+  OpenAtJob(
+    Job(
+      JobHandle::open(
+        filename,
+        access,
+        create~,
+        append~,
+        sync~,
+        mode~,
+        stat_request~,
+        stat_buf_len~,
+      ),
+      copy_output=job => job.get_stat_result(stat_buf, stat_buf_len),
     ),
-    copy_output=job => job.get_stat_result(stat_buf, stat_buf_len),
   )
 }
 
 ///|
-// TODO: port to Wasm
-fn OpenJob::set_parent(_job : OpenJob, _parent : @fd_util.Fd) -> Unit {
-  panic()
-}
-
-///|
 #unsafe_skip_stub_check
-fn OpenJob::fd_ffi(job : JobHandle) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/open_job_get_fd"
+fn OpenAtJob::fd_ffi(job : JobHandle) -> @fd_util.Fd = "moonbitlang/async" "thread_pool/open_job_get_fd"
 
 ///|
-fn OpenJob::fd(job : OpenJob) -> @fd_util.Fd {
-  OpenJob::fd_ffi(job.0.handle)
+fn OpenAtJob::fd(job : OpenAtJob) -> @fd_util.Fd {
+  OpenAtJob::fd_ffi(job.0.handle)
 }
 
 ///|
