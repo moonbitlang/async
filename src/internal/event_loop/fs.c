@@ -32,6 +32,7 @@
 #if _WIN32_WINNT >= 0x0602
 #include <pathcch.h>
 #pragma comment(lib, "Pathcch.lib")
+#pragma comment(lib, "ntdll.lib")
 #endif
 
 typedef LPWSTR os_string_t;
@@ -101,8 +102,39 @@ void moonbitlang_async_leave_cancellable_region(void *worker);
 static
 HMODULE ntdll_handle = NULL;
 
-static
-ULONG (NTAPI *pRtlIsDosDeviceName_U)(PCWSTR DosFileName) = NULL;
+#define DECLARE_NT_FUNCTION_GENERIC(ret, name, args, FAILURE, RETURN, ...) \
+  typedef ret (NTAPI *pfn_##name)(__VA_ARGS__); \
+  static ret NTAPI name##_loader(__VA_ARGS__); \
+  static pfn_##name name = & name##_loader; \
+  static ret NTAPI name##_loader(__VA_ARGS__) { \
+    if (!ntdll_handle) { \
+      ntdll_handle = GetModuleHandleW(L"ntdll"); \
+      if (!ntdll_handle) FAILURE; \
+    } \
+    pfn_##name f = (pfn_##name)GetProcAddress(ntdll_handle, #name); \
+    if (!f) FAILURE; \
+    name = f; \
+    RETURN f args; \
+  }
+
+#ifndef STATUS_PROCEDURE_NOT_FOUND
+#define STATUS_PROCEDURE_NOT_FOUND ((NTSTATUS)0xC000007AL)
+#endif
+
+#define DECLARE_NT_FUNCTION_WITH_STATUS(name, args, ...) \
+  DECLARE_NT_FUNCTION_GENERIC(NTSTATUS, name, args, return STATUS_PROCEDURE_NOT_FOUND, return, __VA_ARGS__)
+
+#define DECLARE_VOID_NT_FUNCTION(name, args, ...) \
+  DECLARE_NT_FUNCTION_GENERIC(VOID, name, args, return, (void), __VA_ARGS__)
+
+#define DECLARE_NT_FUNCTION(ret, name, err_ret, args, ...) \
+  DECLARE_NT_FUNCTION_GENERIC(ret, name, args, return err_ret, return, __VA_ARGS__)
+
+DECLARE_NT_FUNCTION(
+  ULONG, RtlIsDosDeviceName_U,
+  FALSE, (DosFileName),
+  PCWSTR DosFileName
+)
 
 // `RTL_RELATIVE_NAME_U` is not exposed by the Windows SDK's `winternl.h`.
 typedef struct _RTL_RELATIVE_NAME_U {
@@ -111,80 +143,18 @@ typedef struct _RTL_RELATIVE_NAME_U {
   PVOID CurDirRef;
 } RTL_RELATIVE_NAME_U, *PRTL_RELATIVE_NAME_U;
 
-typedef NTSTATUS (NTAPI *pfn_NtCreateFile)(
-  PHANDLE,
-  ACCESS_MASK,
-  POBJECT_ATTRIBUTES,
-  PIO_STATUS_BLOCK,
-  PLARGE_INTEGER,
-  ULONG,
-  ULONG,
-  ULONG,
-  ULONG,
-  PVOID,
-  ULONG
-);
+DECLARE_NT_FUNCTION_WITH_STATUS(
+  RtlDosPathNameToRelativeNtPathName_U_WithStatus, (DosFileName, NtFileName, FilePart, RelativeName),
+  PCWSTR DosFileName,
+  PUNICODE_STRING NtFileName,
+  PWSTR *FilePart,
+  PRTL_RELATIVE_NAME_U RelativeName
+)
 
-typedef NTSTATUS (NTAPI *pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus)(
-  PCWSTR,
-  PUNICODE_STRING,
-  PWSTR *,
-  PRTL_RELATIVE_NAME_U
-);
-
-static
-pfn_NtCreateFile pNtCreateFile = NULL;
-
-static
-pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus
-pRtlDosPathNameToRelativeNtPathName_U_WithStatus = NULL;
-
-static
-VOID (NTAPI *pRtlReleaseRelativeName)(PRTL_RELATIVE_NAME_U) = NULL;
-
-static
-VOID (NTAPI *pRtlFreeUnicodeString)(PUNICODE_STRING) = NULL;
-
-static
-ULONG (NTAPI *pRtlNtStatusToDosError)(NTSTATUS) = NULL;
-
-static
-int load_ntdll_file_apis(void) {
-  if (
-    pNtCreateFile
-    && pRtlDosPathNameToRelativeNtPathName_U_WithStatus
-    && pRtlReleaseRelativeName
-    && pRtlFreeUnicodeString
-    && pRtlNtStatusToDosError
-  )
-    return 1;
-
-  if (!ntdll_handle) {
-    ntdll_handle = GetModuleHandleW(L"ntdll");
-    if (!ntdll_handle)
-      return 0;
-  }
-
-  pNtCreateFile = (pfn_NtCreateFile)GetProcAddress(ntdll_handle, "NtCreateFile");
-  pRtlDosPathNameToRelativeNtPathName_U_WithStatus =
-    (pfn_RtlDosPathNameToRelativeNtPathName_U_WithStatus)GetProcAddress(
-      ntdll_handle,
-      "RtlDosPathNameToRelativeNtPathName_U_WithStatus"
-    );
-  pRtlReleaseRelativeName = (VOID (NTAPI*)(PRTL_RELATIVE_NAME_U))
-    GetProcAddress(ntdll_handle, "RtlReleaseRelativeName");
-  pRtlFreeUnicodeString = (VOID (NTAPI*)(PUNICODE_STRING))
-    GetProcAddress(ntdll_handle, "RtlFreeUnicodeString");
-  pRtlNtStatusToDosError = (ULONG (NTAPI*)(NTSTATUS))
-    GetProcAddress(ntdll_handle, "RtlNtStatusToDosError");
-
-  return
-    pNtCreateFile
-    && pRtlDosPathNameToRelativeNtPathName_U_WithStatus
-    && pRtlReleaseRelativeName
-    && pRtlFreeUnicodeString
-    && pRtlNtStatusToDosError;
-}
+DECLARE_VOID_NT_FUNCTION(
+  RtlReleaseRelativeName, (RelativeName),
+  PRTL_RELATIVE_NAME_U RelativeName
+)
 
 #endif
 
@@ -248,11 +218,6 @@ HANDLE moonbitlang_async_open_sync(
   if (!options->is_async)
     access_flag |= SYNCHRONIZE;
 
-  if (!load_ntdll_file_apis()) {
-    SetLastError(ERROR_PROC_NOT_FOUND);
-    return INVALID_HANDLE_VALUE;
-  }
-
   int relative_open = parent != INVALID_HANDLE_VALUE;
   UNICODE_STRING nt_name = { 0 };
   RTL_RELATIVE_NAME_U relative_name = { 0 };
@@ -271,14 +236,14 @@ HANDLE moonbitlang_async_open_sync(
     nt_name.MaximumLength = nt_name.Length;
     nt_name.Buffer = filename;
   } else {
-    nt_status = pRtlDosPathNameToRelativeNtPathName_U_WithStatus(
+    nt_status = RtlDosPathNameToRelativeNtPathName_U_WithStatus(
       filename,
       &nt_name,
       NULL,
       &relative_name
     );
     if (!NT_SUCCESS(nt_status)) {
-      SetLastError(pRtlNtStatusToDosError(nt_status));
+      SetLastError(RtlNtStatusToDosError(nt_status));
       return INVALID_HANDLE_VALUE;
     }
 
@@ -310,7 +275,7 @@ HANDLE moonbitlang_async_open_sync(
     }
 
     result = INVALID_HANDLE_VALUE;
-    nt_status = pNtCreateFile(
+    nt_status = NtCreateFile(
       &result,
       access_flag, // desired access
       &object_attributes,
@@ -330,7 +295,7 @@ HANDLE moonbitlang_async_open_sync(
 
     // handle error
     result = INVALID_HANDLE_VALUE;
-    err = pRtlNtStatusToDosError(nt_status);
+    err = RtlNtStatusToDosError(nt_status);
     if (err != ERROR_PIPE_BUSY || relative_open)
       break;
 
@@ -352,8 +317,8 @@ HANDLE moonbitlang_async_open_sync(
   }
 
   if (!relative_open) {
-    pRtlReleaseRelativeName(&relative_name);
-    pRtlFreeUnicodeString(&nt_name);
+    RtlReleaseRelativeName(&relative_name);
+    RtlFreeUnicodeString(&nt_name);
   }
 
   if (result == INVALID_HANDLE_VALUE)
@@ -2320,18 +2285,6 @@ int dos_path_is_exact(WCHAR *path, size_t len) {
   if (len >= MAX_PATH)
     return 0;
 
-  if (!pRtlIsDosDeviceName_U) {
-    if (!ntdll_handle) {
-      ntdll_handle = GetModuleHandleW(L"ntdll");
-      if (!ntdll_handle)
-        return 0;
-    }
-
-    pRtlIsDosDeviceName_U = (ULONG (NTAPI*)(PCWSTR))GetProcAddress(ntdll_handle, "RtlIsDosDeviceName_U");
-    if (!pRtlIsDosDeviceName_U)
-      return 0;
-  }
-
   size_t start = 0;
   while (start < len) {
     size_t end = start;
@@ -2348,7 +2301,7 @@ int dos_path_is_exact(WCHAR *path, size_t len) {
     if (end < len)
       path[end] = 0;
 
-    BOOL is_dos_device = pRtlIsDosDeviceName_U(path + start);
+    BOOL is_dos_device = RtlIsDosDeviceName_U(path + start);
 
     if (end < len)
       path[end] = L'\\';
