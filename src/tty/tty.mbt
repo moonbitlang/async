@@ -237,12 +237,10 @@ pub fn State::make_raw(self : State) -> State {
 
 ///|
 /// Whether reads in `self` are console input records, i.e. line input is off.
-/// Only meaningful on Windows, where reading takes a different path.
+#cfg(platform="windows")
 fn State::reads_records(self : State) -> Bool {
   // ENABLE_LINE_INPUT
-  @event_loop.platform is Windows &&
-  self.0 is [u32le(input), ..] &&
-  (input & 0x2) == 0
+  self.0 is [u32le(input), ..] && (input & 0x2) == 0
 }
 
 ///|
@@ -310,6 +308,7 @@ fn tty_size(output : @fd_util.Fd, context~ : String) -> (Int32, Int32) raise {
 
 ///|
 /// Return `-1` for a resize, see `@event_loop.Tty::read`.
+#cfg(platform="windows")
 async fn Tty::read_once(
   self : Tty,
   buf : FixedArray[Byte],
@@ -331,6 +330,25 @@ async fn Tty::read_once(
     block_resize~,
     context~,
   )
+}
+
+///|
+/// Return `-1` for a resize, see `@event_loop.Tty::read`.
+#cfg(not(platform="windows"))
+async fn Tty::read_once(
+  self : Tty,
+  buf : FixedArray[Byte],
+  offset~ : Int32,
+  len~ : Int32,
+  block_resize~ : Bool,
+  context~ : String,
+) -> Int32 {
+  guard! !self.reading
+  self.reading = true
+  defer {
+    self.reading = false
+  }
+  self.tty.read(buf, offset~, len~, block_resize~, context~)
 }
 
 ///|

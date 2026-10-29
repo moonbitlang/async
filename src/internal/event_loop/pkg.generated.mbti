@@ -165,7 +165,7 @@ type Tty
 pub fn Tty::close(Self) -> Unit
 pub fn Tty::input_fd(Self) -> Int32
 pub fn Tty::new(input~ : IoHandle) -> Self
-pub async fn Tty::read(Self, FixedArray[Byte], offset~ : Int32, len~ : Int32, raw~ : Bool, block_resize~ : Bool, context~ : String) -> Int32
+pub async fn Tty::read(Self, FixedArray[Byte], offset~ : Int32, len~ : Int32, block_resize~ : Bool, context~ : String) -> Int32
 
 // Type aliases
 

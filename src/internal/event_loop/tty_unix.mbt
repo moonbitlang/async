@@ -75,11 +75,9 @@ pub async fn Tty::read(
   buf : FixedArray[Byte],
   offset~ : Int32,
   len~ : Int32,
-  raw~ : Bool,
   block_resize~ : Bool,
   context~ : String,
 ) -> Int32 {
-  ignore(raw)
   @coroutine.check_cancellation()
   guard! curr_loop.val is Some(evloop)
   for ;; {
