@@ -10,12 +10,17 @@ these examples can be run via `moon run -C examples examples/<example-name>` in 
 You can find a brief introduction to some examples in `examples/README.md`,
 including the topics each example covers.
 
+This library will be replaced by `moonbitlang/core/async` in the standard library in the future.
+Currently `moonbitlang/core/async` already functions, but its API has not stabilized yet.
+This library share the same runtime with `moonbitlang/core/async`,
+so users could mix the two libraries within the same program for incremental migration.
+
 WARNING: this library is current experimental, API is subject to future change.
 
 ## Installation
 In your MoonBit project root, run:
 ```bash
-moon add moonbitlang/async@0.22.5
+moon add moonbitlang/async@0.22.6
 ```
 This library provides the following packages:
 
