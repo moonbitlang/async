@@ -171,7 +171,8 @@ enum OpenAccessMode {
   WriteOnly = 1,
   ReadWrite = 2,
   ListDirectory = 3,
-  ReadAttributes = 4
+  ReadAttributes = 4,
+  DeleteAccess = 5
 };
 
 struct OpenOption {
@@ -199,7 +200,8 @@ HANDLE moonbitlang_async_open_sync(
     GENERIC_WRITE | FILE_READ_ATTRIBUTES,
     GENERIC_READ | GENERIC_WRITE,
     FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES,
-    FILE_READ_ATTRIBUTES
+    FILE_READ_ATTRIBUTES,
+    DELETE
   };
   static ULONG create_modes[] = {
     FILE_OPEN,
@@ -333,7 +335,14 @@ HANDLE moonbitlang_async_open_sync(
 // #ifdef _WIN32
 #else
 
-  static int access_flags[] = { O_RDONLY, O_WRONLY, O_RDWR, O_RDONLY, O_RDONLY };
+  static int access_flags[] = {
+    O_RDONLY,
+    O_WRONLY,
+    O_RDWR,
+    O_RDONLY,
+    O_RDONLY,
+    O_RDONLY
+  };
   static int create_modes[] = {
     0,
     O_TRUNC,
@@ -1608,6 +1617,109 @@ int32_t remove_job_worker(struct remove_job *job, int32_t *err_out) {
 
 struct remove_job *moonbitlang_async_make_remove_job(os_string_t path) {
   struct remove_job *job = MAKE_JOB(remove, 0);
+  job->path = path;
+  return job;
+}
+
+// ===== removeat job, remove file from file system relative to a directory =====
+static
+int32_t moonbitlang_async_removeat_sync(HANDLE parent, os_string_t path) {
+#ifdef _WIN32
+
+  struct OpenOption options;
+  options.access_mode = DeleteAccess;
+  options.follow_symlink = 0;
+  options.is_async = 0;
+  options.create_mode = 0;
+  options.append = 0;
+  options.sync_mode = 0;
+  options.permission = 0;
+
+  HANDLE handle = moonbitlang_async_open_sync(parent, path, &options);
+  if (handle == INVALID_HANDLE_VALUE)
+    return -1;
+
+#if _WIN32_WINNT >= 0x0A00
+  FILE_DISPOSITION_INFO_EX info;
+  info.Flags =
+    FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS;
+  BOOL ret = SetFileInformationByHandle(
+    handle,
+    FileDispositionInfoEx,
+    &info,
+    sizeof(info)
+  );
+#else
+  FILE_DISPOSITION_INFO info;
+  info.DeleteFile = TRUE;
+  BOOL ret = SetFileInformationByHandle(
+    handle,
+    FileDispositionInfo,
+    &info,
+    sizeof(info)
+  );
+#endif
+  DWORD err = ret ? ERROR_SUCCESS : GetLastError();
+  CloseHandle(handle);
+
+  if (!ret)
+    SetLastError(err);
+
+  return ret ? 0 : -1;
+
+#elif defined(__MACH__)
+
+  int dirfd = parent < 0 ? AT_FDCWD : parent;
+  int ret = unlinkat(dirfd, path, 0);
+  // Darwin reports EPERM rather than EISDIR when unlinking a directory.
+  if (ret < 0 && errno == EPERM) {
+    int err = errno;
+    ret = unlinkat(dirfd, path, AT_REMOVEDIR);
+    if (ret < 0)
+      errno = err;
+  }
+  return ret;
+
+#elif defined(__linux__)
+
+  int dirfd = parent < 0 ? AT_FDCWD : parent;
+  int ret = unlinkat(dirfd, path, 0);
+  if (ret < 0 && errno == EISDIR)
+    ret = unlinkat(dirfd, path, AT_REMOVEDIR);
+  return ret;
+
+#else
+
+  return remove(path);
+
+#endif
+}
+
+struct removeat_job {
+  HANDLE parent;
+  os_string_t path;
+};
+
+static
+void free_removeat_job(struct removeat_job *job) {
+  moonbit_decref(job->path);
+}
+
+static
+int32_t removeat_job_worker(struct removeat_job *job, int32_t *err_out) {
+  if (moonbitlang_async_removeat_sync(job->parent, job->path) < 0) {
+    *err_out = GetLastError();
+    return -1;
+  }
+  return 0;
+}
+
+struct removeat_job *moonbitlang_async_make_removeat_job(
+  HANDLE parent,
+  os_string_t path
+) {
+  struct removeat_job *job = MAKE_JOB(removeat, 0);
+  job->parent = parent;
   job->path = path;
   return job;
 }

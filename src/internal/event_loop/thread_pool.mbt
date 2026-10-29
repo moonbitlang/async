@@ -194,7 +194,10 @@ extern "C" fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job = "moonbitla
 
 ///|
 #owned(path)
-extern "C" fn Job::remove(path : @os_string.OsString) -> Job = "moonbitlang_async_make_remove_job"
+extern "C" fn Job::removeat(
+  parent : @fd_util.Fd,
+  path : @os_string.OsString,
+) -> Job = "moonbitlang_async_make_removeat_job"
 
 ///|
 #owned(old_path, new_path)
