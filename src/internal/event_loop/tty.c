@@ -50,7 +50,7 @@ enum {
 
 struct tty_read_console_input_job {
   HANDLE input;
-  HANDLE wakeup;
+  HANDLE cancel;
   uint16_t *buf;
   int32_t offset;
   int32_t len;
@@ -60,6 +60,8 @@ struct tty_read_console_input_job {
 
 static
 void free_tty_read_console_input_job(struct tty_read_console_input_job *job) {
+  if (job->cancel)
+    CloseHandle(job->cancel);
   moonbit_decref(job->buf);
 }
 
@@ -111,16 +113,13 @@ int32_t tty_read_console_input_job_worker(
   if (max_records > TTY_MAX_RECORDS)
     max_records = TTY_MAX_RECORDS;
 
-  // clear a cancellation left by a previous job
-  ResetEvent(job->wakeup);
-
   while (1) {
     if (moonbitlang_async_enter_cancellable_region(worker)) {
       *err_out = ERROR_OPERATION_ABORTED;
       return -1;
     }
 
-    HANDLE handles[2] = { job->input, job->wakeup };
+    HANDLE handles[2] = { job->input, job->cancel };
     DWORD ret = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
     moonbitlang_async_leave_cancellable_region(worker);
 
@@ -166,24 +165,26 @@ int32_t tty_read_console_input_job_worker(
 
 static
 int32_t cancel_tty_read_console_input_job(struct tty_read_console_input_job *job) {
-  SetEvent(job->wakeup);
+  if (!SetEvent(job->cancel))
+    return -1;
   return 1; // `CANCELLATION_STATUS_NEED_WAIT`
 }
 
 MOONBIT_FFI_EXPORT
 struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input_job(
   HANDLE input,
-  HANDLE wakeup,
   uint16_t *buf,
   int32_t offset,
-  int32_t len
+  int32_t len,
+  int32_t *error
 ) {
   struct tty_read_console_input_job *job = MAKE_JOB(
     tty_read_console_input,
     cancel_tty_read_console_input_job
   );
   job->input = input;
-  job->wakeup = wakeup;
+  job->cancel = CreateEventW(NULL, FALSE, FALSE, NULL);
+  *error = job->cancel ? 0 : GetLastError();
   job->buf = buf;
   job->offset = offset;
   job->len = len;

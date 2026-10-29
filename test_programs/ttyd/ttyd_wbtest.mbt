@@ -230,6 +230,11 @@ async test "multiple resize events collapse into one" {
     for (rows, cols) in sizes {
       ttyd.resize(rows, cols)
     }
+    // ConPTY applies resize requests asynchronously. Wait for the final size
+    // before checking that the queued notifications are coalesced.
+    while ttyd.size() != (27, 83) {
+      @async.sleep(1)
+    }
     guard ttyd.read_event() is Some(Resize) else {
       fail("expect exactly one Resize event, got None or Some(Input)")
     }
@@ -415,9 +420,11 @@ async test "raw mode delivers a character across small reads" {
 async test "cancelling a parked read keeps the terminal usable" {
   with_ttyd() <| ttyd => {
     ttyd.make_raw()
-    expect_read_event_to_timeout(ttyd, timeout=100)
-    ttyd.send_input(b"z")
-    assert_eq(ttyd.read_event(), Some(Input(b"z")))
+    for input in [b"a", b"b", b"c"] {
+      expect_read_event_to_timeout(ttyd, timeout=100)
+      ttyd.send_input(input)
+      assert_eq(ttyd.read_event(), Some(Input(input)))
+    }
   }
 }
 

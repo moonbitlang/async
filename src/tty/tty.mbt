@@ -15,8 +15,6 @@
 ///|
 /// The controlling terminal of the process, obtained with `open()`.
 struct Tty {
-  /// the terminal descriptor on Unix, `CONOUT$` on Windows
-  mut control_fd : @fd_util.Fd
   /// the state applied by `set_state`, or read by `get_state`
   mut state : State
   /// the state when the terminal was opened, restored on exit
@@ -109,7 +107,6 @@ async fn Tty::open(context~ : String) -> Tty {
   }
   let state = State(buf.unsafe_reinterpret_as_bytes())
   {
-    control_fd: io.fd(),
     state,
     original: state,
     tty: @event_loop.Tty::new(input=io),
@@ -120,46 +117,38 @@ async fn Tty::open(context~ : String) -> Tty {
 }
 
 ///|
-/// Fill `fds` with `[input_fd, wakeup_fd, control_fd, output_fd]`
 #cfg(platform="windows")
-#borrow(fds)
-extern "C" fn tty_open(fds : FixedArray[@fd_util.Fd]) -> Int32 = "moonbitlang_async_tty_open"
-
-///|
-#cfg(platform="windows")
-fn Tty::open(context~ : String) -> Tty raise {
-  let fds = FixedArray::make(4, @fd_util.invalid_fd)
-  if tty_open(fds) < 0 {
-    @os_error.check_errno(context)
-  }
-  guard! fds is [input_fd, wakeup_fd, control_fd, output_fd]
-  let output = @event_loop.IoHandle::from_fd(
-    output_fd,
-    kind=Console,
-    is_async=false,
+async fn Tty::open(context~ : String) -> Tty {
+  let (input, _) = @event_loop.open(
+    "CONIN$",
+    2,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context~,
+  )
+  errdefer input.close()
+  let (output, _) = @event_loop.open(
+    "CONOUT$",
+    2,
+    create=0,
+    append=false,
+    sync=0,
+    mode=0,
+    context~,
   )
   errdefer output.close()
-  errdefer (@fd_util.close(control_fd, kind=Console, context="") catch {
-    _ => ()
-  })
-  let input = @event_loop.IoHandle::from_fd(
-    input_fd,
-    kind=Console,
-    is_async=false,
-  )
-  let tty = @event_loop.Tty::new(input~, wakeup=wakeup_fd)
-  errdefer tty.close()
   let buf = FixedArray::make(state_size(), b'\x00')
   // the handles are closed by `errdefer` after the error is read
-  if tty_get_state(tty.input_fd(), control_fd, buf) < 0 {
+  if tty_get_state(input.fd(), output.fd(), buf) < 0 {
     @os_error.check_errno(context)
   }
   let state = State(buf.unsafe_reinterpret_as_bytes())
   {
-    control_fd,
     state,
     original: state,
-    tty,
+    tty: @event_loop.Tty::new(input~),
     output,
     read_buf: @io.ReaderBuffer::new(),
     reading: false,
@@ -169,13 +158,6 @@ fn Tty::open(context~ : String) -> Tty raise {
 ///|
 fn Tty::close(self : Tty) -> Unit {
   self.output.close()
-  // on Unix, `control_fd` is the descriptor of `output` and `self.tty`
-  if @event_loop.platform is Windows {
-    @fd_util.close(self.control_fd, kind=Console, context="") catch {
-      _ => ()
-    }
-  }
-  self.control_fd = @fd_util.invalid_fd
   self.tty.close()
 }
 
@@ -267,7 +249,7 @@ fn State::reads_records(self : State) -> Bool {
 /// The current state of the terminal.
 pub fn Tty::get_state(self : Tty) -> State raise {
   let buf = FixedArray::make(state_size(), b'\x00')
-  if tty_get_state(self.tty.input_fd(), self.control_fd, buf) < 0 {
+  if tty_get_state(self.tty.input_fd(), self.output.fd(), buf) < 0 {
     @os_error.check_errno("@tty.Tty::get_state()")
   }
   let state = State(buf.unsafe_reinterpret_as_bytes())
@@ -284,7 +266,7 @@ pub fn Tty::get_state(self : Tty) -> State raise {
 /// defer tty.set_state(saved)
 /// ```
 pub fn Tty::set_state(self : Tty, state : State) -> Unit raise {
-  if tty_set_state(self.tty.input_fd(), self.control_fd, state.0) < 0 {
+  if tty_set_state(self.tty.input_fd(), self.output.fd(), state.0) < 0 {
     @os_error.check_errno("@tty.Tty::set_state()")
   }
   self.state = state
@@ -311,7 +293,7 @@ extern "C" fn tty_set_state(
 ///|
 /// The size of the terminal window as `(rows, cols)`.
 pub fn Tty::size(self : Tty) -> (Int32, Int32) raise {
-  tty_size(self.control_fd, context="@tty.Tty::size()")
+  tty_size(self.output.fd(), context="@tty.Tty::size()")
 }
 
 ///|

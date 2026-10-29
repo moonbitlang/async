@@ -140,19 +140,6 @@ struct tty_state {
   DWORD out;
 };
 
-static
-HANDLE open_console(const WCHAR *name) {
-  return CreateFileW(
-    name,
-    GENERIC_READ | GENERIC_WRITE,
-    FILE_SHARE_READ | FILE_SHARE_WRITE,
-    NULL,
-    OPEN_EXISTING,
-    0,
-    NULL
-  );
-}
-
 // `dwSize` includes scrollback on legacy conhost
 static
 int32_t get_window_size(HANDLE out, int32_t *rows, int32_t *cols) {
@@ -163,54 +150,6 @@ int32_t get_window_size(HANDLE out, int32_t *rows, int32_t *cols) {
   *rows = info.srWindow.Bottom - info.srWindow.Top + 1;
   *cols = info.srWindow.Right - info.srWindow.Left + 1;
   return 0;
-}
-
-MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_open(HANDLE *fds) {
-  HANDLE in = open_console(L"CONIN$");
-  if (in == INVALID_HANDLE_VALUE)
-    return -1;
-
-  HANDLE out = open_console(L"CONOUT$");
-  if (out == INVALID_HANDLE_VALUE)
-    goto fail_with_in;
-
-  HANDLE fd;
-  if (!DuplicateHandle(
-    GetCurrentProcess(), out, GetCurrentProcess(), &fd,
-    0, FALSE, DUPLICATE_SAME_ACCESS
-  ))
-    goto fail_with_out;
-
-  HANDLE cancel_event = CreateEventW(NULL, FALSE, FALSE, NULL);
-  if (!cancel_event)
-    goto fail_with_fd;
-
-  fds[0] = in;
-  fds[1] = cancel_event;
-  fds[2] = out;
-  fds[3] = fd;
-  return 0;
-
-fail_with_fd:
-  {
-    DWORD err = GetLastError();
-    CloseHandle(fd);
-    SetLastError(err);
-  }
-fail_with_out:
-  {
-    DWORD err = GetLastError();
-    CloseHandle(out);
-    SetLastError(err);
-  }
-fail_with_in:
-  {
-    DWORD err = GetLastError();
-    CloseHandle(in);
-    SetLastError(err);
-  }
-  return -1;
 }
 
 MOONBIT_FFI_EXPORT

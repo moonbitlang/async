@@ -38,8 +38,6 @@ fn Resize::notify(self : Resize) -> Unit {
 #cfg(platform="windows")
 struct Tty {
   input : IoHandle
-  /// an event for cancelling a console read
-  mut wakeup : @fd_util.Fd
   console_buffer : TtyConsoleBuffer
 }
 
@@ -162,20 +160,14 @@ fn TtyConsoleBuffer::decode(
 
 ///|
 #cfg(platform="windows")
-pub fn Tty::new(input~ : IoHandle, wakeup~ : @fd_util.Fd) -> Tty {
-  { input, wakeup, console_buffer: TtyConsoleBuffer(), }
+pub fn Tty::new(input~ : IoHandle) -> Tty {
+  { input, console_buffer: TtyConsoleBuffer(), }
 }
 
 ///|
 #cfg(platform="windows")
 pub fn Tty::close(self : Tty) -> Unit {
   self.input.close()
-  if @fd_util.fd_is_valid(self.wakeup) {
-    @fd_util.close(self.wakeup, kind=CharDevice, context="") catch {
-      _ => ()
-    }
-    self.wakeup = @fd_util.invalid_fd
-  }
 }
 
 ///|
@@ -233,14 +225,18 @@ async fn Tty::read_console_input(
   let console = self.console_buffer
   let max_len = @cmp.minimum(console.buffer.length(), @cmp.maximum(len / 3, 3))
   for ;; {
+    let error = Ref(0)
     let job = TtyReadConsoleInputJob::new(
       self.input.fd,
-      self.wakeup,
       console.buffer,
       0,
       max_len,
+      error,
     )
     defer job.0.free()
+    if error.val != 0 {
+      raise @os_error.OSError(error.val, context~)
+    }
     let n = perform_job_in_worker(job.0, context~, cancellable=true)
     if n < 0 {
       return n
@@ -262,12 +258,13 @@ async fn Tty::read_console_input(
 ///|
 #cfg(platform="windows")
 #owned(buf)
+#borrow(error)
 extern "C" fn TtyReadConsoleInputJob::new(
   input : @fd_util.Fd,
-  wakeup : @fd_util.Fd,
   buf : FixedArray[UInt16],
   offset : Int32,
   len : Int32,
+  error : Ref[Int32],
 ) -> TtyReadConsoleInputJob = "moonbitlang_async_make_tty_read_console_input_job"
 
 ///|
