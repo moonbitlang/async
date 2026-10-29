@@ -63,6 +63,7 @@ options(
     "event_bus.wasm.mbt": [ "wasm" ],
     "signal.mbt": [ "native", "wasm" ],
     "stdio.mbt": [ "native", "wasm" ],
+    "run_job_sync_wbtest.mbt": [ "native", "wasm" ],
     "thread_pool.mbt": [ "native" ],
     "timer.mbt": [ "native", "wasm" ],
     "io.wasm.mbt": [ "wasm" ],
