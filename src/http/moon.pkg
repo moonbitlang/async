@@ -3,7 +3,6 @@ import {
   "moonbitlang/core/int",
   "moonbitlang/core/string",
   "moonbitlang/core/buffer",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
   "moonbitlang/async/tls",

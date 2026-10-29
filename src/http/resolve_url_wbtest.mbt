@@ -99,29 +99,9 @@ test "resolve_host" {
       #|("2001:db8::1", 443)
     ),
   )
-  debug_inspect(
-    to_owned(resolve_host("[fe80::1%25eth0]:8080", protocol=Http)),
-    content=(
-      #|("fe80::1%eth0", 8080)
-    ),
-  )
-  debug_inspect(
-    to_owned(resolve_host("[fe80::1%25en%30]", protocol=Http)),
-    content=(
-      #|("fe80::1%en0", 80)
-    ),
-  )
-  debug_inspect(
-    to_owned(resolve_host("[fe80::1%25eth%C3%A9]", protocol=Http)),
-    content=(
-      #|("fe80::1%ethé", 80)
-    ),
-  )
   for
     host in [
-      "[localhost]:8080", "[127.0.0.1]", "[fe80::1%eth0]", "[fe80::1%25]", "[fe80::1%25%3]",
-      "[fe80::1%25%zz]", "[fe80::1%25%00]", "[fe80::1%25%20]", "[fe80::1%25%C3]",
-      "[fe80::1%25eth/0]",
+      "[localhost]:8080", "[127.0.0.1]", "[fe80::1%eth0]", "[fe80::1%25eth0]",
     ] {
     debug_inspect(
       @test.expect_error(() => to_owned(resolve_host(host, protocol=Http))),
@@ -146,11 +126,4 @@ test "resolve_host" {
       #|InvalidFormat
     ),
   )
-}
-
-///|
-test "encode_ip_literal" {
-  inspect(encode_ip_literal("2001:db8::1"), content="2001:db8::1")
-  inspect(encode_ip_literal("fe80::1%eth0"), content="fe80::1%25eth0")
-  inspect(encode_ip_literal("fe80::1%25\u{100}"), content="fe80::1%2525%C4%80")
 }
