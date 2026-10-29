@@ -340,9 +340,13 @@ pub async fn IoHandle::lock(
 }
 
 ///|
-pub async fn remove(path : StringView, context~ : String) -> Unit nocancel {
+pub async fn remove(
+  path : StringView,
+  parent~ : @fd_util.Fd = @fd_util.invalid_fd,
+  context~ : String,
+) -> Unit nocancel {
   let path_bytes = @os_string.encode(path)
-  let job = Job::remove(path_bytes)
+  let job = Job::removeat(parent, path_bytes)
   defer job.free()
   @coroutine.protect_from_cancel <| () => {
     try perform_job_in_worker(job, context~) catch {

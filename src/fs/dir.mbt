@@ -67,6 +67,7 @@ pub async fn mkdir(
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 ///
 /// This function is not cancellable.
+#cfg(target="wasm")
 pub async fn rmdir(
   path : StringView,
   recursive~ : Bool = false,
@@ -93,6 +94,44 @@ pub async fn rmdir(
     }
   }
   @event_loop.rmdir(path, context~)
+}
+
+///|
+/// Remove a directory at `path`,
+/// If `recursive` is `true` (`false` by default),
+/// files and directories in `path` will be removed recursively.
+/// If `recursive` is `false`,
+/// `path` must be an empty directory, otherwise `rmdir` will fail.
+///
+/// This function is not cancellable.
+#cfg(target="native")
+pub async fn rmdir(
+  path : StringView,
+  recursive~ : Bool = false,
+) -> Unit nocancel {
+  let context = "@fs.rmdir()"
+  if recursive {
+    @async.protect_from_cancel <| () => {
+      let dir = opendir_aux(path, context~)
+      defer dir.close()
+      dir.remove_children(context~)
+    }
+  }
+  @event_loop.rmdir(path, context~)
+}
+
+///|
+#cfg(target="native")
+async fn Directory::remove_children(dir : Directory, context~ : String) -> Unit {
+  while dir.next_aux(include_special=false, include_hidden=true, context~)
+        is Some(ent) {
+    if ent.is_dir {
+      let child = dir.open_aux(ent.name, mode=ReadOnly, context~).as_dir()
+      defer child.close()
+      child.remove_children(context~)
+    }
+    dir.remove_aux(ent.name, context~)
+  }
 }
 
 ///|
@@ -257,10 +296,10 @@ async fn Directory::open_aux(
   dir : Directory,
   filename : StringView,
   mode~ : Mode,
-  sync~ : SyncMode,
-  append~ : Bool,
-  create_mode~ : CreateMode,
-  permission~ : Int32,
+  sync~ : SyncMode = NoSync,
+  append~ : Bool = false,
+  create_mode~ : CreateMode = OpenExisting,
+  permission~ : Int32 = 0o644,
   context~ : String,
 ) -> File {
   let access = match mode {
@@ -284,6 +323,30 @@ async fn Directory::open_aux(
     context~,
   )
   { io, read_buf: @io.ReaderBuffer::new(), }
+}
+
+///|
+/// `dir.remove(filename)` remove a file under an already-opened directory.
+/// `filename` must be a relative path and will be interpreted relative to `dir`.
+/// `filename` MUST NOT contain any `..` component.
+///
+/// Relative removal protects against race condition over base directory renaming.
+/// If the base directory `dir` has been renamed after it was opened,
+/// removing its child by path may accidentally remove unrelated file under a different directory.
+/// `dir.remove(..)` always remove files under exactly the directory referred to by `dir`.
+///
+/// This method currently does not support Wasm backend.
+pub async fn Directory::remove(dir : Directory, path : StringView) -> Unit {
+  dir.remove_aux(path, context="@fs.Directory::remove()")
+}
+
+///|
+async fn Directory::remove_aux(
+  dir : Directory,
+  path : StringView,
+  context~ : String,
+) -> Unit {
+  @event_loop.remove(path, parent=dir.io.fd(), context~)
 }
 
 ///|

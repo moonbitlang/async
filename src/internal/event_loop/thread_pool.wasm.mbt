@@ -426,7 +426,10 @@ fn JobHandle::remove(
 ) -> JobHandle = "moonbitlang/async" "thread_pool/make_remove_job"
 
 ///|
-fn Job::remove(path : @os_string.OsString) -> Job {
+fn Job::removeat(parent : @fd_util.Fd, path : @os_string.OsString) -> Job {
+  if @fd_util.fd_is_valid(parent) {
+    panic()
+  }
   Job(JobHandle::remove(path))
 }
 
