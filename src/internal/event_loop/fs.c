@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
+
 #include <stdint.h>
 #include <moonbit.h>
 
@@ -355,23 +357,32 @@ HANDLE moonbitlang_async_open_sync(
   int flags =
     access_flags[options->access_mode]
     | sync_flags[options->sync_mode]
-    | create_modes[options->create_mode];
+    | create_modes[options->create_mode]
+    | O_CLOEXEC;
   if (options->append) flags |= O_APPEND;
 
   if (!options->follow_symlink)
+# ifdef __linux__
     flags |= O_NOFOLLOW;
+# elif defined(__MACH__)
+    flags |= O_SYMLINK;
+# else
+    ;
+# endif
 
   if (moonbitlang_async_enter_cancellable_region(worker)) {
     errno = EINTR;
     return -1;
   }
 
-  int ret = openat(
-    parent < 0 ? AT_FDCWD : parent,
-    filename,
-    flags | O_CLOEXEC,
-    options->permission
-  );
+  int dirfd = parent < 0 ? AT_FDCWD : parent;
+  int ret = openat(dirfd, filename, flags, options->permission);
+
+#ifdef __linux__
+  if (ret < 0 && errno == ELOOP && !options->follow_symlink)
+    ret = openat(dirfd, filename, flags | O_PATH, options->permission);
+#endif
+
   moonbitlang_async_leave_cancellable_region(worker);
   return ret;
 
@@ -1299,7 +1310,7 @@ struct openat_job *moonbitlang_async_make_openat_job(
   job->filename = filename;
   job->options.access_mode = access_mode;
   job->options.is_async = access_mode == ListDirectory; // for `ReadDirectoryChangesW`
-  job->options.follow_symlink = 0; // TODO: expose this to end users
+  job->options.follow_symlink = 1; // TODO: expose this to end users
   job->options.create_mode = create_mode;
   job->options.append = append;
   job->options.sync_mode = sync_mode;
