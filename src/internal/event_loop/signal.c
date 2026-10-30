@@ -88,11 +88,6 @@ void moonbitlang_async_set_global_cancellation_signals(
 }
 
 MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_sigwinch() {
-  return -1;
-}
-
-MOONBIT_FFI_EXPORT
 int moonbitlang_async_set_console_control_handler(int32_t add) {
   return SetConsoleCtrlHandler(console_control_handler, add);
 }
@@ -115,11 +110,6 @@ int moonbitlang_async_get_signal_by_index(int32_t code) {
     case SIGHUP_CODE: return SIGHUP;
     default: return -1;
   }
-}
-
-MOONBIT_FFI_EXPORT
-int moonbitlang_async_get_sigwinch() {
-  return SIGWINCH;
 }
 
 static

@@ -27,20 +27,19 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 )
 
 ///|
-#cfg(target="native")
-extern "C" fn get_sigwinch() -> Int32 = "moonbitlang_async_get_sigwinch"
-
-///|
-#cfg(target="wasm")
-fn get_sigwinch() -> Int32 {
-  -1
-}
-
-///|
 /// `SIGWINCH` on Unix, `-1` where it does not exist.
 /// It is always waited for by the signal thread, and recorded in
 /// `EventLoop::resize` instead of cancelling the program.
-let sigwinch : Int32 = get_sigwinch()
+#cfg(target="native")
+let sigwinch : Int32 = match platform {
+  Linux | MacOS => 28
+  Windows => -1
+}
+
+///|
+/// Terminal resize notifications are not supported on wasm.
+#cfg(target="wasm")
+let sigwinch : Int32 = -1
 
 ///|
 pub suberror KilledBySignal {
