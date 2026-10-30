@@ -69,6 +69,7 @@ options(
     "process_windows.mbt": [ "native", "wasm" ],
     "event_bus.wasm.mbt": [ "wasm" ],
     "signal.mbt": [ "native", "wasm" ],
+    "resize_wbtest.mbt": [ "native" ],
     "stdio.mbt": [ "native", "wasm" ],
     "thread_pool.mbt": [ "native" ],
     "tty_unix.mbt": [ "native" ],

@@ -79,18 +79,18 @@ pub async fn Tty::read(
   context~ : String,
 ) -> Int32 {
   @coroutine.check_cancellation()
-  guard! curr_loop.val is Some(evloop)
+  let resize = resize_state.val.unwrap()
   for ;; {
     if !block_resize {
-      if evloop.resize.pending {
-        evloop.resize.pending = false
+      if resize.pending {
+        resize.pending = false
         return -1
       }
       // `SIGWINCH` wakes the wait for input in `read`
-      evloop.resize.waiter = Some(@coroutine.current_coroutine())
+      resize.waiter = Some(@coroutine.current_coroutine())
     }
     defer {
-      evloop.resize.waiter = None
+      resize.waiter = None
     }
     return self.input.read(buf, offset~, len~, context~) catch {
       // woken by a resize, or the input was taken by another reader

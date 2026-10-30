@@ -29,7 +29,7 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 ///|
 /// `SIGWINCH` on Unix, `-1` where it does not exist.
 /// It is always waited for by the signal thread, and recorded in
-/// `EventLoop::resize` instead of cancelling the program.
+/// `resize_state` instead of cancelling the program.
 #cfg(all(target="native", not(platform="windows")))
 let sigwinch : Int32 = 28
 

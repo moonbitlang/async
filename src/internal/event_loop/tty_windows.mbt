@@ -173,14 +173,14 @@ pub async fn Tty::read(
   context~ : String,
 ) -> Int32 {
   @coroutine.check_cancellation()
-  guard! curr_loop.val is Some(evloop)
+  let resize = resize_state.val.unwrap()
   let console = self.console_buffer
   if console.pending_len > 0 {
     return console.write_pending(buf, offset~, len~)
   }
   for ;; {
-    if evloop.resize.pending && !block_resize {
-      evloop.resize.pending = false
+    if resize.pending && !block_resize {
+      resize.pending = false
       return -1
     }
     let n = if raw {
@@ -189,7 +189,7 @@ pub async fn Tty::read(
       self.input.read(buf, offset~, len~, context~)
     }
     guard n < 0 else { return n }
-    evloop.resize.pending = true
+    resize.pending = true
   }
 }
 
@@ -226,8 +226,8 @@ async fn Tty::read_console_input(
       if produced == 0 {
         return -1
       }
-      guard! curr_loop.val is Some(evloop)
-      evloop.resize.pending = true
+      let resize = resize_state.val.unwrap()
+      resize.pending = true
     }
     if produced > 0 {
       return produced
