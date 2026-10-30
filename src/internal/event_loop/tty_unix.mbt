@@ -81,22 +81,27 @@ pub async fn Tty::read(
   @coroutine.check_cancellation()
   let resize = resize_state.val.unwrap()
   for ;; {
+    if !block_resize && resize.pending {
+      resize.pending = false
+      return -1
+    }
+    let n = read_unix_ffi(self.input.fd, buf, offset~, len~)
+    if n >= 0 {
+      // Like `read_via_event_bus_unix`, give other tasks a chance to run.
+      @coroutine.pause_nocancel()
+      return n
+    }
+    if !@os_error.is_nonblocking_io_error() {
+      @os_error.check_errno(context)
+    }
+    // `SIGWINCH` wakes the wait for input; the loop then checks
+    // `resize.pending` itself instead of guessing from a failed read.
     if !block_resize {
-      if resize.pending {
-        resize.pending = false
-        return -1
-      }
-      // `SIGWINCH` wakes the wait for input in `read`
       resize.waiter = Some(@coroutine.current_coroutine())
     }
     defer {
       resize.waiter = None
     }
-    return self.input.read(buf, offset~, len~, context~) catch {
-      // woken by a resize, or the input was taken by another reader
-      @os_error.OSError(_, ..) as err if err.is_nonblocking_io_error() =>
-        continue
-      err => raise err
-    }
+    self.input.wait_read()
   }
 }
