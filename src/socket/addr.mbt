@@ -300,6 +300,35 @@ pub fn Addr::parse(src : String) -> Addr raise {
 }
 
 ///|
+fn Addr::try_parse_ip(
+  host : StringView,
+  port~ : Int32,
+  context~ : String,
+) -> Addr? raise {
+  match host {
+    ['[', .. ipv6_str, ']'] =>
+      try try_parse_ipv6_ip(ipv6_str) catch {
+        InvalidAddr => None
+      } noraise {
+        (ip_bytes, interface) => {
+          let scope_id = if interface is Some(interface) {
+            parse_ipv6_zone_suffix(interface, context~)
+          } else {
+            0
+          }
+          Some(Addr::new_ipv6(ip_bytes, port, scope_id~))
+        }
+      }
+    _ =>
+      try try_parse_ipv4_ip(host) catch {
+        InvalidAddr => None
+      } noraise {
+        ip => Some(Addr::new(ip, port))
+      }
+  }
+}
+
+///|
 using @event_loop {type AddrInfo}
 
 ///|
@@ -398,8 +427,10 @@ pub async fn Addr::resolve(
   port~ : Int32,
   protocol~ : IpProtocolPreference = NoPreference,
 ) -> Addr {
-  // TODO: Add option to prefer ipv6 or ipv4
   let context = "@socket.Addr::resolve()"
+  if Addr::try_parse_ip(host, port~, context~) is Some(addr) {
+    return addr
+  }
   let ai_root = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai_root) => ai_root
     Err(msg) => raise ResolveHostnameError(msg)
