@@ -16,6 +16,7 @@
 async test "test server" {
   @async.with_task_group <| group => {
     group.spawn_bg(no_wait=true, () => start_echo_server(port=49001))
+    @async.sleep(100) // wait for the server to start
     let client = @websocket.connect("ws://127.0.0.1:49001")
     defer client.close()
     client.send_binary(b"abcd")
