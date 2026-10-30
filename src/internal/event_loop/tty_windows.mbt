@@ -209,7 +209,7 @@ async fn Tty::read_console_input(
   let max_len = @cmp.minimum(console.buffer.length(), @cmp.maximum(len / 3, 1))
   for ;; {
     let error = Ref(0)
-    let job = TtyReadConsoleInputJob::new(
+    let job = ReadConsoleInputJob::new(
       self.input.fd,
       console.buffer,
       max_len,
@@ -241,19 +241,19 @@ async fn Tty::read_console_input(
 #cfg(platform="windows")
 #owned(buf)
 #borrow(error)
-extern "C" fn TtyReadConsoleInputJob::new(
+extern "C" fn ReadConsoleInputJob::new(
   input : @fd_util.Fd,
   buf : FixedArray[UInt16],
   len : Int32,
   error : Ref[Int32],
-) -> TtyReadConsoleInputJob = "moonbitlang_async_make_tty_read_console_input_job"
+) -> ReadConsoleInputJob = "moonbitlang_async_make_read_console_input_job"
 
 ///|
 #cfg(platform="windows")
-priv struct TtyReadConsoleInputJob(Job)
+priv struct ReadConsoleInputJob(Job)
 
 ///|
 #cfg(platform="windows")
-extern "C" fn TtyReadConsoleInputJob::resized(
-  job : TtyReadConsoleInputJob,
-) -> Bool = "moonbitlang_async_tty_read_console_input_job_get_resized"
+extern "C" fn ReadConsoleInputJob::resized(
+  job : ReadConsoleInputJob,
+) -> Bool = "moonbitlang_async_read_console_input_job_get_resized"

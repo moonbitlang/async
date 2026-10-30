@@ -51,7 +51,7 @@ enum {
   TTY_READ_RESIZED = -1,
 };
 
-struct tty_read_console_input_job {
+struct read_console_input_job {
   HANDLE input;
   HANDLE cancel;
   uint16_t *buf;
@@ -61,7 +61,7 @@ struct tty_read_console_input_job {
 };
 
 static
-void free_tty_read_console_input_job(struct tty_read_console_input_job *job) {
+void free_read_console_input_job(struct read_console_input_job *job) {
   if (job->cancel)
     CloseHandle(job->cancel);
   moonbit_decref(job->buf);
@@ -98,8 +98,8 @@ int32_t tty_records_to_text(
 }
 
 static
-int32_t tty_read_console_input_job_worker(
-  struct tty_read_console_input_job *job,
+int32_t read_console_input_job_worker(
+  struct read_console_input_job *job,
   int32_t *err_out
 ) {
   struct worker *worker = moonbitlang_async_get_current_worker();
@@ -153,22 +153,22 @@ int32_t tty_read_console_input_job_worker(
 }
 
 static
-int32_t cancel_tty_read_console_input_job(struct tty_read_console_input_job *job) {
+int32_t cancel_read_console_input_job(struct read_console_input_job *job) {
   if (!SetEvent(job->cancel))
     return -1;
   return 1; // `CANCELLATION_STATUS_NEED_WAIT`
 }
 
 MOONBIT_FFI_EXPORT
-struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input_job(
+struct read_console_input_job *moonbitlang_async_make_read_console_input_job(
   HANDLE input,
   uint16_t *buf,
   int32_t len,
   int32_t *error
 ) {
-  struct tty_read_console_input_job *job = MAKE_JOB(
-    tty_read_console_input,
-    cancel_tty_read_console_input_job
+  struct read_console_input_job *job = MAKE_JOB(
+    read_console_input,
+    cancel_read_console_input_job
   );
   job->input = input;
   job->cancel = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -180,8 +180,8 @@ struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input
 }
 
 MOONBIT_FFI_EXPORT
-int32_t moonbitlang_async_tty_read_console_input_job_get_resized(
-  struct tty_read_console_input_job *job
+int32_t moonbitlang_async_read_console_input_job_get_resized(
+  struct read_console_input_job *job
 ) {
   return job->resized;
 }
