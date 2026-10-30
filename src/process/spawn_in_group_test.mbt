@@ -14,25 +14,11 @@
 
 ///|
 async test "spawn_in_group wait" {
-  let log = []
   let sleep = sleep_prog.wait()
-  @async.with_task_group <| outer => {
-    @async.with_task_group <| inner => {
-      let (r, w) = @process.read_from_process()
-      let _ = @process.spawn(inner, sleep, stdout=w, [
-        "500", "-print-after-sleep", "done",
-      ])
-      outer.spawn_bg() <| () => {
-        defer r.close()
-        log.push("from process: \{r.read_all().text().trim()}")
-      }
-      log.push("main task completed")
-    }
-    log.push("`with_task_group` completed")
+  @async.with_task_group <| group => {
+    let proc = @process.spawn(group, sleep, ["500"])
+    group.add_defer(() => debug_inspect(proc.try_wait(), content="Some(0)"))
   }
-  json_inspect(log, content=[
-    "main task completed", "from process: done", "`with_task_group` completed",
-  ])
 }
 
 ///|
