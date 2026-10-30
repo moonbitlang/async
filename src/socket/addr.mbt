@@ -282,50 +282,12 @@ pub suberror InvalidAddr derive(Debug, ToJson)
 ///|
 /// Parse a string into IPv4 or IPv6 address, format should be `ip:port` for IPv4 or `[ip]:port` for IPv6
 // TODO: faster implementation
-pub fn Addr::parse(src : String) -> Addr raise {
-  if src.has_prefix("[") {
-    let (ip_bytes, port, interface) = try_parse_ipv6(src)
-    let scope_id = if interface is Some(interface) {
-      parse_ipv6_zone_suffix(interface, context="@socket.Addr::parse()")
-    } else {
-      0
-    }
-    Addr::new_ipv6(ip_bytes, port, scope_id~)
-  } else {
-    // IPv4 format: ip:port
-    let (ip, port) = try_parse_ipv4(src) catch { _ => raise InvalidAddr }
-    guard 0 <= port && port < 65536 else { raise InvalidAddr }
-    Addr::new(ip, port)
+pub fn Addr::parse(src : StringView) -> Addr raise {
+  guard src =~ (re":" + (re"[0-9]+$" as port_str), before=ip_str) else {
+    raise InvalidAddr
   }
-}
-
-///|
-fn Addr::try_parse_ip(
-  host : StringView,
-  port~ : Int32,
-  context~ : String,
-) -> Addr? raise {
-  match host {
-    ['[', .. ipv6_str, ']'] =>
-      try try_parse_ipv6_ip(ipv6_str) catch {
-        InvalidAddr => None
-      } noraise {
-        (ip_bytes, interface) => {
-          let scope_id = if interface is Some(interface) {
-            parse_ipv6_zone_suffix(interface, context~)
-          } else {
-            0
-          }
-          Some(Addr::new_ipv6(ip_bytes, port, scope_id~))
-        }
-      }
-    _ =>
-      try try_parse_ipv4_ip(host) catch {
-        InvalidAddr => None
-      } noraise {
-        ip => Some(Addr::new(ip, port))
-      }
-  }
+  let port = parse_port(port_str)
+  Addr::parse_ip(ip_str, port~, context="@socket.Addr::parse()")
 }
 
 ///|
@@ -428,8 +390,11 @@ pub async fn Addr::resolve(
   protocol~ : IpProtocolPreference = NoPreference,
 ) -> Addr {
   let context = "@socket.Addr::resolve()"
-  if Addr::try_parse_ip(host, port~, context~) is Some(addr) {
-    return addr
+  try Addr::parse_ip(host, port~, context~) catch {
+    InvalidAddr => ()
+    err => raise err
+  } noraise {
+    addr => return addr
   }
   let ai_root = match @event_loop.getaddrinfo(host, context~) {
     Ok(ai_root) => ai_root
