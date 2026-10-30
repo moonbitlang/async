@@ -801,7 +801,7 @@ async test "watch debounce" {
   test_dir.instantiate(path)
   defer @fs.rmdir(path, recursive=true)
 
-  let log = StringBuilder()
+  let event_queue = @async.Queue(kind=Unbounded)
   @async.with_task_group <| group => {
     let watcher = @fs.Watcher(
       watched_path,
@@ -812,52 +812,63 @@ async test "watch debounce" {
       defer watcher.close()
       for ;; {
         let events = watcher.wait()
-        log.write("watcher received: \{Repr(events)}\n")
+        event_queue.put(events)
       }
     }
 
     // 1. multiple events happen within debounce interval
-    log.write("rename happen within debounce interval\n")
-    @fs.rename("\{watched_path}/file", "\{path}/file")
-    @async.sleep(100)
-    @fs.rename("\{path}/file", "\{watched_path}/file2")
-    @async.sleep(600)
+    @async.with_task_group <| group => {
+      group.spawn_bg() <| () => {
+        @fs.rename("\{watched_path}/file", "\{path}/file")
+        @async.sleep(200)
+        @fs.rename("\{path}/file", "\{watched_path}/file2")
+      }
+      debug_inspect(
+        event_queue.get(),
+        content=(
+          #|[Rename(old="file", new="file2")]
+        ),
+      )
+    }
 
     // 2. exceed debounce interval
-    log.write("rename longer than debounce interval\n")
     @fs.rename("\{watched_path}/file2", "\{path}/file")
-    @async.sleep(600)
+    debug_inspect(
+      event_queue.get(),
+      content=(
+        #|[Remove("file2")]
+      ),
+    )
     @fs.rename("\{path}/file", "\{watched_path}/file")
-    @async.sleep(600)
+    debug_inspect(
+      event_queue.get(),
+      content=(
+        #|[Create("file")]
+      ),
+    )
 
     // 3. exceed max interval
-    log.write("rename exceed max debounce delay\n")
-    @fs.rename("\{watched_path}/file", "\{path}/file")
-    let start = @async.now()
-    // Refresh the watcher with other events until max debounce delay exceeds
-    while @async.now() - start < 650 {
-      @async.sleep(200)
-      // If we are too close to the deadline, don't perform refreshing,
-      // to avoid an extra modification event from appearing in the result
-      if @async.now() - start < 550 {
-        @fs.write_file("\{watched_path}/another_file", "1234", sync=Full)
+    @async.with_task_group <| group => {
+      let start = @async.now()
+      @fs.rename("\{watched_path}/file", "\{path}/file")
+      group.spawn_bg(no_wait=true) <| () => {
+        for ;; {
+          // keep refreshing the debouncer with modification events
+          @async.sleep(100)
+          @fs.write_file("\{watched_path}/another_file", "1234", sync=Full)
+        }
       }
+      let events = event_queue.get()
+      let end = @async.now()
+      if end - start < 600 {
+        inspect(end - start)
+      }
+      debug_inspect(
+        events,
+        content=(
+          #|[Modify("another_file"), Remove("file")]
+        ),
+      )
     }
-    @fs.rename("\{path}/file", "\{watched_path}/file2")
-    @async.sleep(600)
   }
-  inspect(
-    log,
-    content=(
-      #|rename happen within debounce interval
-      #|watcher received: [Rename(old="file", new="file2")]
-      #|rename longer than debounce interval
-      #|watcher received: [Remove("file2")]
-      #|watcher received: [Create("file")]
-      #|rename exceed max debounce delay
-      #|watcher received: [Modify("another_file"), Remove("file")]
-      #|watcher received: [Create("file2")]
-      #|
-    ),
-  )
 }

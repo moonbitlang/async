@@ -14,18 +14,10 @@
 
 ///|
 async fn main {
-  let mut duration = 500
   let mut file = None
   let mut kind = None
   for args = @env.args()[1:] {
     match args {
-      ["-duration", .. rest] => {
-        guard rest is [t, .. rest] else {
-          fail("expected duration value after `-duration`")
-        }
-        duration = @string.parse_int(t)
-        continue rest
-      }
       ["-shared", .. rest] => {
         kind = Some(@fs.Shared)
         continue rest
@@ -51,9 +43,12 @@ async fn main {
     mode=if kind is Shared { ReadOnly } else { ReadWrite },
   )
   defer file.close()
+  guard! @stdio.stdin.read_some() is Some(_)
   file.lock(kind)
-  defer file.unlock()
+  defer {
+    file.unlock()
+    @stdio.stdout.write("released lock\n")
+  }
   @stdio.stdout.write("acquired lock\n")
-  @async.sleep(duration)
-  @stdio.stdout.write("releasing lock\n")
+  guard! @stdio.stdin.read_some() is Some(_)
 }
