@@ -188,8 +188,11 @@ pub async fn Tty::read(
     } else {
       self.input.read(buf, offset~, len~, context~)
     }
-    guard n < 0 else { return n }
-    resize.pending = true
+    if n < 0 {
+      resize.pending = true
+    } else {
+      return n
+    }
   }
 }
 
