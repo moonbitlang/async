@@ -212,7 +212,6 @@ async fn Tty::read_console_input(
     let job = TtyReadConsoleInputJob::new(
       self.input.fd,
       console.buffer,
-      0,
       max_len,
       error,
     )
@@ -245,7 +244,6 @@ async fn Tty::read_console_input(
 extern "C" fn TtyReadConsoleInputJob::new(
   input : @fd_util.Fd,
   buf : FixedArray[UInt16],
-  offset : Int32,
   len : Int32,
   error : Ref[Int32],
 ) -> TtyReadConsoleInputJob = "moonbitlang_async_make_tty_read_console_input_job"

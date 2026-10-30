@@ -21,6 +21,13 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <string.h>
+
+// MoonBit array data follows its object header in a heap allocation.
+_Static_assert(
+  _Alignof(struct moonbit_object) >= _Alignof(INPUT_RECORD),
+  "MoonBit array data must be aligned for INPUT_RECORD"
+);
 
 struct worker;
 struct worker *moonbitlang_async_get_current_worker(void);
@@ -44,15 +51,10 @@ enum {
   TTY_READ_RESIZED = -1,
 };
 
-enum {
-  TTY_MAX_RECORDS = 256,
-};
-
 struct tty_read_console_input_job {
   HANDLE input;
   HANDLE cancel;
   uint16_t *buf;
-  int32_t offset;
   int32_t len;
   // set when input is returned and a resize was read with it
   int32_t resized;
@@ -67,16 +69,18 @@ void free_tty_read_console_input_job(struct tty_read_console_input_job *job) {
 
 static
 int32_t tty_records_to_text(
-  const INPUT_RECORD *records,
-  DWORD count,
   uint16_t *buf,
+  DWORD count,
   int32_t *resized
 ) {
   int32_t pos = 0;
   for (DWORD i = 0; i < count; ++i) {
-    switch (records[i].EventType) {
+    // Copy before compacting in place, without aliasing INPUT_RECORD and UInt16.
+    INPUT_RECORD record;
+    memcpy(&record, (const unsigned char *)buf + i * sizeof(record), sizeof(record));
+    switch (record.EventType) {
       case KEY_EVENT: {
-        const KEY_EVENT_RECORD *key = &records[i].Event.KeyEvent;
+        const KEY_EVENT_RECORD *key = &record.Event.KeyEvent;
         WCHAR unit = key->uChar.UnicodeChar;
         // Alt+Numpad and non-BMP characters arrive on the key-up of `VK_MENU`
         if (unit && (key->bKeyDown || key->wVirtualKeyCode == VK_MENU))
@@ -99,14 +103,12 @@ int32_t tty_read_console_input_job_worker(
   int32_t *err_out
 ) {
   struct worker *worker = moonbitlang_async_get_current_worker();
-  uint16_t *buf = job->buf + job->offset;
+  uint16_t *buf = job->buf;
 
-  INPUT_RECORD records[TTY_MAX_RECORDS];
-
-  // a record produces at most one code unit
-  DWORD max_records = job->len;
-  if (max_records > TTY_MAX_RECORDS)
-    max_records = TTY_MAX_RECORDS;
+  DWORD max_records = Moonbit_array_length(buf) * sizeof(*buf) / sizeof(INPUT_RECORD);
+  // A record produces at most one code unit; also respect the output limit.
+  if (max_records > (DWORD)job->len)
+    max_records = job->len;
 
   while (1) {
     if (moonbitlang_async_enter_cancellable_region(worker)) {
@@ -127,19 +129,11 @@ int32_t tty_read_console_input_job_worker(
       return -1;
     }
 
-    DWORD available = 0;
-    if (!GetNumberOfConsoleInputEvents(job->input, &available)) {
-      *err_out = GetLastError();
-      return -1;
-    }
-    if (available == 0)
-      continue;
-
     DWORD n_records = 0;
     if (!ReadConsoleInputW(
       job->input,
-      records,
-      available < max_records ? available : max_records,
+      (INPUT_RECORD *)buf,
+      max_records,
       &n_records
     )) {
       *err_out = GetLastError();
@@ -147,7 +141,7 @@ int32_t tty_read_console_input_job_worker(
     }
 
     int32_t resized = 0;
-    int32_t n = tty_records_to_text(records, n_records, buf, &resized);
+    int32_t n = tty_records_to_text(buf, n_records, &resized);
     if (n > 0) {
       // the records are consumed, so report the resize along with the input
       job->resized = resized;
@@ -169,7 +163,6 @@ MOONBIT_FFI_EXPORT
 struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input_job(
   HANDLE input,
   uint16_t *buf,
-  int32_t offset,
   int32_t len,
   int32_t *error
 ) {
@@ -181,7 +174,6 @@ struct tty_read_console_input_job *moonbitlang_async_make_tty_read_console_input
   job->cancel = CreateEventW(NULL, FALSE, FALSE, NULL);
   *error = job->cancel ? 0 : GetLastError();
   job->buf = buf;
-  job->offset = offset;
   job->len = len;
   job->resized = 0;
   return job;
