@@ -2,7 +2,8 @@
 
 This library provides basic asynchronous IO functionality for MoonBit,
 as well as useful asynchronous programming facilities.
-Currently, this library only supports native/LLVM backends on Linux/MacOS.
+Currently, this library has full support on Wasm1/native backend on Linux/MacOS/Windows,
+and has limited, browser-compatible support on JavaScript backend.
 
 API document is available at <https://mooncakes.io/docs/moonbitlang/async>.
 You can also find small examples in `examples`,
@@ -45,7 +46,7 @@ This library provides the following packages:
     - native integration with `moonbitlang/async/http`
 - `moonbitlang/async/signal`: control signal handling behavior
 
-To use these packages, add them to the `import` field of `moon.pkg.json`.
+To use these packages, add them to the `import` field of `moon.pkg`.
 
 ## Features
 
