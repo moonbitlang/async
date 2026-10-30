@@ -38,62 +38,15 @@ fn Resize::notify(self : Resize) -> Unit {
 #cfg(platform="windows")
 struct Tty {
   input : IoHandle
-  console_buffer : TtyConsoleBuffer
-}
-
-///|
-/// Like `WindowsConsoleBuffer`, but `pending` can hold several characters
-#cfg(platform="windows")
-priv struct TtyConsoleBuffer {
-  buffer : FixedArray[UInt16]
-  mut unpaired_surrogate : UInt16
-  pending : FixedArray[Byte]
-  mut pending_offset : Int32
-  mut pending_len : Int32
-}
-
-///|
-#cfg(platform="windows")
-fn TtyConsoleBuffer::TtyConsoleBuffer() -> TtyConsoleBuffer {
-  {
-    buffer: FixedArray::make(WINDOWS_CONSOLE_BUFFER_SIZE, 0),
-    unpaired_surrogate: 0,
-    pending: FixedArray::make(8, 0),
-    pending_offset: 0,
-    pending_len: 0,
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn TtyConsoleBuffer::write_pending(
-  self : TtyConsoleBuffer,
-  buf : FixedArray[Byte],
-  offset~ : Int32,
-  len~ : Int32,
-) -> Int32 {
-  let n = @cmp.minimum(self.pending_len, len)
-  self.pending.blit_to(
-    buf,
-    src_offset=self.pending_offset,
-    dst_offset=offset,
-    len=n,
-  )
-  self.pending_len -= n
-  self.pending_offset = if self.pending_len > 0 {
-    self.pending_offset + n
-  } else {
-    0
-  }
-  n
+  console_buffer : WindowsConsoleBuffer
 }
 
 ///|
 /// Write `char` to `buf`, or to `pending` if it does not fit.
 /// Return the new number of bytes written to `buf`.
 #cfg(platform="windows")
-fn TtyConsoleBuffer::emit(
-  self : TtyConsoleBuffer,
+fn tty_emit_char(
+  console : WindowsConsoleBuffer,
   char : Int32,
   buf : FixedArray[Byte],
   offset~ : Int32,
@@ -106,12 +59,18 @@ fn TtyConsoleBuffer::emit(
     _..<0x10000 => 3
     _ => 4
   }
-  if self.pending_len == 0 && produced + char_bytes <= len {
+  if console.pending_len == 0 && produced + char_bytes <= len {
     encode_utf8_char(char, buf, offset=offset + produced)
     produced + char_bytes
   } else {
-    encode_utf8_char(char, self.pending, offset=self.pending_len)
-    self.pending_len += char_bytes
+    console.pending.blit_to(
+      console.pending,
+      src_offset=4 - console.pending_len,
+      dst_offset=4 - console.pending_len - char_bytes,
+      len=console.pending_len,
+    )
+    encode_utf8_char(char, console.pending, offset=4 - char_bytes)
+    console.pending_len += char_bytes
     produced
   }
 }
@@ -119,22 +78,29 @@ fn TtyConsoleBuffer::emit(
 ///|
 /// Convert `buffer[:n]` to UTF-8 in `buf`. Return the number of bytes written.
 #cfg(platform="windows")
-fn TtyConsoleBuffer::decode(
-  self : TtyConsoleBuffer,
+fn tty_decode_input(
+  console : WindowsConsoleBuffer,
   n : Int32,
   buf : FixedArray[Byte],
   offset~ : Int32,
   len~ : Int32,
 ) -> Int32 {
   let mut produced = 0
-  for unit in self.buffer[:n] {
-    let high = self.unpaired_surrogate
+  for unit in console.buffer[:n] {
+    let high = console.unpaired_surrogate
     match unit {
       0xD800..<=0xDBFF => {
         if high != 0 {
-          produced = self.emit(0xFFFD, buf, offset~, len~, produced~)
+          produced = tty_emit_char(
+            console,
+            0xFFFD,
+            buf,
+            offset~,
+            len~,
+            produced~,
+          )
         }
-        self.unpaired_surrogate = unit
+        console.unpaired_surrogate = unit
       }
       0xDC00..<=0xDFFF => {
         let char = if high != 0 {
@@ -142,26 +108,40 @@ fn TtyConsoleBuffer::decode(
         } else {
           0xFFFD
         }
-        self.unpaired_surrogate = 0
-        produced = self.emit(char, buf, offset~, len~, produced~)
+        console.unpaired_surrogate = 0
+        produced = tty_emit_char(console, char, buf, offset~, len~, produced~)
       }
       _ => {
         if high != 0 {
-          self.unpaired_surrogate = 0
-          produced = self.emit(0xFFFD, buf, offset~, len~, produced~)
+          console.unpaired_surrogate = 0
+          produced = tty_emit_char(
+            console,
+            0xFFFD,
+            buf,
+            offset~,
+            len~,
+            produced~,
+          )
         }
-        produced = self.emit(unit.to_int(), buf, offset~, len~, produced~)
+        produced = tty_emit_char(
+          console,
+          unit.to_int(),
+          buf,
+          offset~,
+          len~,
+          produced~,
+        )
       }
     }
   }
   produced +
-  self.write_pending(buf, offset=offset + produced, len=len - produced)
+  console.write_pending(buf, offset=offset + produced, len=len - produced)
 }
 
 ///|
 #cfg(platform="windows")
 pub fn Tty::new(input~ : IoHandle) -> Tty {
-  { input, console_buffer: TtyConsoleBuffer(), }
+  { input, console_buffer: WindowsConsoleBuffer(Console), }
 }
 
 ///|
@@ -223,7 +203,7 @@ async fn Tty::read_console_input(
   context~ : String,
 ) -> Int32 {
   let console = self.console_buffer
-  let max_len = @cmp.minimum(console.buffer.length(), @cmp.maximum(len / 3, 3))
+  let max_len = @cmp.minimum(console.buffer.length(), @cmp.maximum(len / 3, 1))
   for ;; {
     let error = Ref(0)
     let job = TtyReadConsoleInputJob::new(
@@ -241,7 +221,7 @@ async fn Tty::read_console_input(
     if n < 0 {
       return n
     }
-    let produced = console.decode(n, buf, offset~, len~)
+    let produced = tty_decode_input(console, n, buf, offset~, len~)
     if job.resized() {
       if produced == 0 {
         return -1

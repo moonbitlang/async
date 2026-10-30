@@ -83,11 +83,6 @@ int32_t tty_records_to_text(
           buf[pos++] = unit;
         break;
       }
-      case FOCUS_EVENT:
-        buf[pos++] = 0x1b;
-        buf[pos++] = '[';
-        buf[pos++] = records[i].Event.FocusEvent.bSetFocus ? 'I' : 'O';
-        break;
       case WINDOW_BUFFER_SIZE_EVENT:
         *resized = 1;
         break;
@@ -108,8 +103,8 @@ int32_t tty_read_console_input_job_worker(
 
   INPUT_RECORD records[TTY_MAX_RECORDS];
 
-  // a record produces at most three code units
-  DWORD max_records = job->len / 3;
+  // a record produces at most one code unit
+  DWORD max_records = job->len;
   if (max_records > TTY_MAX_RECORDS)
     max_records = TTY_MAX_RECORDS;
 
