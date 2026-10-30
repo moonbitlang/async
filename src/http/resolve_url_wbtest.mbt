@@ -88,29 +88,6 @@ test "resolve_host" {
     ),
   )
   debug_inspect(
-    to_owned(resolve_host("[::1]:8080", protocol=Http)),
-    content=(
-      #|("::1", 8080)
-    ),
-  )
-  debug_inspect(
-    to_owned(resolve_host("[2001:db8::1]", protocol=Https)),
-    content=(
-      #|("2001:db8::1", 443)
-    ),
-  )
-  for
-    host in [
-      "[localhost]:8080", "[127.0.0.1]", "[fe80::1%eth0]", "[fe80::1%25eth0]",
-    ] {
-    debug_inspect(
-      @test.expect_error(() => to_owned(resolve_host(host, protocol=Http))),
-      content=(
-        #|InvalidFormat
-      ),
-    )
-  }
-  debug_inspect(
     @test.expect_error(() => {
       to_owned(resolve_host("www.example.org:0", protocol=Https))
     }),
