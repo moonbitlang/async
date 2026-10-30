@@ -13,6 +13,7 @@ import {
 import {
   "moonbitlang/core/debug",
   "moonbitlang/async",
+  "moonbitlang/async/cond_var",
   "moonbitlang/async/socket",
   "moonbitlang/async/process",
   "moonbitlang/async/internal/test_util",
