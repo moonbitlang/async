@@ -21,18 +21,25 @@ async test "cancel process" {
     let (r, w) = @process.read_from_process()
     let task = root.spawn(() => {
       defer log.write_string("process terminates\n")
-      @process.run(test_prog, ["10000"], stdout=w)
+      @process.run(
+        test_prog,
+        ["10000", "-print-after-init", "started"],
+        stdout=w,
+      )
     })
-    root.spawn_bg() <| () => {
-      defer r.close()
-      while r.read_some() is Some(data) {
-        let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
-        log.write_string("from process: \{data}")
-      }
-    }
-    @async.sleep(500)
-    task.cancel()
+    defer r.close()
+    debug_inspect(
+      r.read_until("\n"),
+      content=(
+        #|Some("started")
+      ),
+    )
     log <+ "cancelling task running process\n"
+    task.cancel()
+    while r.read_some() is Some(data) {
+      let data = @utf8.decode(data).replace_all(old="\r\n", new="\n")
+      log <+ "from process: \{data}"
+    }
   }
   inspect(
     log.to_string(),

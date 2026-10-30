@@ -20,4 +20,5 @@ fn init {
   ignore(@socket.unimplemented)
   ignore(@process.unimplemented)
   ignore((f : async () -> Unit) => @test_util.assert_raise_async(f))
+  ignore((_ : @cond_var.Cond) => ())
 }
