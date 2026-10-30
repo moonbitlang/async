@@ -1713,7 +1713,7 @@ int32_t moonbitlang_async_removeat_sync(HANDLE parent, os_string_t path) {
   if (ret < 0 && errno == EPERM) {
     int err = errno;
     ret = unlinkat(dirfd, path, AT_REMOVEDIR);
-    if (ret < 0)
+    if (ret < 0 && errno == ENOTDIR)
       errno = err;
   }
   return ret;
