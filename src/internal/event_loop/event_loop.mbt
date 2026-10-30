@@ -224,7 +224,7 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int32) -> Unit {
   guard (job_id & (1 << 31)) == 0 else {
     // signal
     let signal = job_id ^ (1 << 31)
-    if signal == sigwinch {
+    if signal == SIGWINCH {
       resize_state.val.unwrap().notify()
       return
     }

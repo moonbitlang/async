@@ -31,12 +31,12 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 /// It is always waited for by the signal thread, and recorded in
 /// `resize_state` instead of cancelling the program.
 #cfg(all(target="native", not(platform="windows")))
-let sigwinch : Int32 = 28
+const SIGWINCH : Int32 = 28
 
 ///|
 /// There is no `SIGWINCH` on Windows; terminal resizes are unsupported on wasm.
 #cfg(any(target="wasm", platform="windows"))
-let sigwinch : Int32 = -1
+const SIGWINCH : Int32 = -1
 
 ///|
 pub suberror KilledBySignal {
