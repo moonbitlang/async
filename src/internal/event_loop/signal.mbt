@@ -30,15 +30,12 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 /// `SIGWINCH` on Unix, `-1` where it does not exist.
 /// It is always waited for by the signal thread, and recorded in
 /// `EventLoop::resize` instead of cancelling the program.
-#cfg(target="native")
-let sigwinch : Int32 = match platform {
-  Linux | MacOS => 28
-  Windows => -1
-}
+#cfg(all(target="native", not(platform="windows")))
+let sigwinch : Int32 = 28
 
 ///|
-/// Terminal resize notifications are not supported on wasm.
-#cfg(target="wasm")
+/// There is no `SIGWINCH` on Windows; terminal resizes are unsupported on wasm.
+#cfg(any(target="wasm", platform="windows"))
 let sigwinch : Int32 = -1
 
 ///|
