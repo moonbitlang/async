@@ -16,17 +16,22 @@
 async test "spawn_in_group wait" {
   let log = []
   let sleep = sleep_prog.wait()
-  let t0 = @async.now()
-  @async.with_task_group() <| group => {
-    let _ = @process.spawn(group, sleep, ["500"])
-    @async.sleep(250)
-    let t = (@async.now() - t0).to_int() / 250
-    log.push("main task completed at tick #\{t}")
+  @async.with_task_group <| outer => {
+    @async.with_task_group <| inner => {
+      let (r, w) = @process.read_from_process()
+      let _ = @process.spawn(inner, sleep, stdout=w, [
+        "500", "-print-after-sleep", "done",
+      ])
+      outer.spawn_bg() <| () => {
+        defer r.close()
+        log.push("from process: \{r.read_all().text().trim()}")
+      }
+      log.push("main task completed")
+    }
+    log.push("`with_task_group` completed")
   }
-  let t = (@async.now() - t0).to_int() / 250
-  log.push("`with_task_group` completed at tick #\{t}")
   json_inspect(log, content=[
-    "main task completed at tick #1", "`with_task_group` completed at tick #2",
+    "main task completed", "from process: done", "`with_task_group` completed",
   ])
 }
 
@@ -49,13 +54,22 @@ async test "spawn_in_group cancel" {
 ///|
 async test "Process::wait" {
   let sleep = sleep_prog.wait()
-  let mut t0 = 0L
   @async.with_task_group() <| group => {
-    let child = @process.spawn(group, sleep, ["500", "-exit-code", "42"])
-    t0 = @async.now()
+    let (r, w) = @process.read_from_process()
+    let child = @process.spawn(group, sleep, stdout=w, [
+      "500", "-exit-code", "42", "-print-after-sleep", "done",
+    ])
+    let output = group.spawn() <| () => {
+      defer r.close()
+      r.read_all().text().trim().to_owned()
+    }
     let result = child.wait()
-    let t = (@async.now() - t0).to_int() / 250
-    inspect(t, content="2")
+    debug_inspect(
+      output.try_wait(),
+      content=(
+        #|Some("done")
+      ),
+    )
     inspect(result, content="42")
     // `.wait()` should be idempotent
     inspect(child.wait(), content="42")
@@ -66,9 +80,18 @@ async test "Process::wait" {
 async test "Process::try_wait" {
   let sleep = sleep_prog.wait()
   @async.with_task_group() <| group => {
-    let child = @process.spawn(group, sleep, ["200", "-exit-code", "42"])
+    let (r, w) = @process.read_from_process()
+    let child = @process.spawn(group, sleep, stdout=w, [
+      "500", "-exit-code", "42", "-print-after-sleep", "end",
+    ])
+    let output = group.spawn() <| () => {
+      defer r.close()
+      r.read_all().text().trim().to_owned()
+    }
     debug_inspect(child.try_wait(), content="None")
-    @async.sleep(400)
+    inspect(output.wait(), content="end")
+    // give some time for the child process to cleanup itself
+    @async.sleep(200)
     debug_inspect(child.try_wait(), content="Some(42)")
   }
 }
@@ -76,18 +99,16 @@ async test "Process::try_wait" {
 ///|
 async test "Process::cancel" {
   let sleep = sleep_prog.wait()
-  let mut t0 = 0L
+  let t0 = @async.now()
   @async.with_task_group() <| group => {
     let (r, w) = @process.read_from_process()
+    let child = @process.spawn(group, sleep, stdout=w, ["10000"])
     group.spawn_bg() <| () => {
       defer r.close()
       inspect(r.read_all().text().trim(), content="received termination signal")
     }
-    let child = @process.spawn(group, sleep, ["10000"], stdout=w)
-    t0 = @async.now()
     @async.sleep(500)
     child.cancel()
   }
-  let t = (@async.now() - t0).to_int() / 500
-  inspect(t, content="1")
+  assert_true(@async.now() - t0 < 10000)
 }
