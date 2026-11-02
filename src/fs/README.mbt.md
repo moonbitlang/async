@@ -599,7 +599,6 @@ async test "realpath - resolve absolute path" {
 async test "remove - delete file" {
   let test_file = "_build/test_remove.txt"
   @fs.write_file(test_file, b"test")
-  defer (if @fs.exists(test_file) { @fs.remove(test_file) })
   @fs.remove(test_file)
   let exists = @fs.exists(test_file)
   inspect(exists, content="false")
