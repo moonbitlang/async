@@ -205,7 +205,7 @@ pub async fn opendir(path : StringView) -> Directory {
 async fn opendir_aux(path : StringView, context~ : String) -> Directory {
   let (io, _) = @event_loop.open(
     path,
-    0,
+    3,
     create=0,
     append=false,
     sync=0,
