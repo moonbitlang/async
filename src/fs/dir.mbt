@@ -66,11 +66,15 @@ pub async fn mkdir(
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 ///
+/// Unless `allow_missing=true` (`false` by default),
+/// an error will be raised if the target file does not exist.
+///
 /// This function is not cancellable.
 #cfg(target="wasm")
 pub async fn rmdir(
   path : StringView,
   recursive~ : Bool = false,
+  allow_missing~ : Bool = false,
 ) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
@@ -86,14 +90,20 @@ pub async fn rmdir(
             is Some(ent) {
         let child_path = "\{base}\{sep}\{ent.name}"
         if ent.is_dir {
-          rmdir(child_path, recursive=true)
+          rmdir(child_path, recursive=true, allow_missing=true)
         } else {
-          @event_loop.remove(child_path, context~)
+          @event_loop.remove(child_path, context~) catch {
+            @os_error.OSError(_) as err if err.is_ENOENT() => ()
+            err => raise err
+          }
         }
       }
     }
   }
-  @event_loop.rmdir(path, context~)
+  @event_loop.rmdir(path, context~) catch {
+    @os_error.OSError(_) as err if allow_missing && err.is_ENOENT() => ()
+    err => raise err
+  }
 }
 
 ///|
@@ -103,11 +113,15 @@ pub async fn rmdir(
 /// If `recursive` is `false`,
 /// `path` must be an empty directory, otherwise `rmdir` will fail.
 ///
+/// Unless `allow_missing=true` (`false` by default),
+/// an error will be raised if the target file does not exist.
+///
 /// This function is not cancellable.
 #cfg(target="native")
 pub async fn rmdir(
   path : StringView,
   recursive~ : Bool = false,
+  allow_missing~ : Bool = false,
 ) -> Unit nocancel {
   let context = "@fs.rmdir()"
   if recursive {
@@ -117,7 +131,10 @@ pub async fn rmdir(
       dir.remove_children(context~)
     }
   }
-  @event_loop.rmdir(path, context~)
+  @event_loop.rmdir(path, context~) catch {
+    @os_error.OSError(_) as err if allow_missing && err.is_ENOENT() => ()
+    err => raise err
+  }
 }
 
 ///|
@@ -130,7 +147,7 @@ async fn Directory::remove_children(dir : Directory, context~ : String) -> Unit 
       defer child.close()
       child.remove_children(context~)
     }
-    dir.remove_aux(ent.name, context~)
+    dir.remove_aux(ent.name, allow_missing=true, context~)
   }
 }
 
@@ -335,18 +352,29 @@ async fn Directory::open_aux(
 /// removing its child by path may accidentally remove unrelated file under a different directory.
 /// `dir.remove(..)` always remove files under exactly the directory referred to by `dir`.
 ///
+/// Unless `allow_missing=true` (`false` by default),
+/// an error will be raised if the target file does not exist.
+///
 /// This method currently does not support Wasm backend.
-pub async fn Directory::remove(dir : Directory, path : StringView) -> Unit {
-  dir.remove_aux(path, context="@fs.Directory::remove()")
+pub async fn Directory::remove(
+  dir : Directory,
+  path : StringView,
+  allow_missing~ : Bool = false,
+) -> Unit {
+  dir.remove_aux(path, allow_missing~, context="@fs.Directory::remove()")
 }
 
 ///|
 async fn Directory::remove_aux(
   dir : Directory,
   path : StringView,
+  allow_missing~ : Bool,
   context~ : String,
 ) -> Unit {
-  @event_loop.remove(path, parent=dir.io.fd(), context~)
+  @event_loop.remove(path, parent=dir.io.fd(), context~) catch {
+    @os_error.OSError(_) as err if allow_missing && err.is_ENOENT() => ()
+    err => raise err
+  }
 }
 
 ///|
