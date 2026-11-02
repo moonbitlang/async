@@ -201,7 +201,7 @@ HANDLE moonbitlang_async_open_sync(
     GENERIC_READ,
     GENERIC_WRITE | FILE_READ_ATTRIBUTES,
     GENERIC_READ | GENERIC_WRITE,
-    FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES,
+    FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
     FILE_READ_ATTRIBUTES,
     DELETE
   };
@@ -220,6 +220,9 @@ HANDLE moonbitlang_async_open_sync(
 
   if (!options->follow_symlink)
     create_options |= FILE_OPEN_REPARSE_POINT;
+
+  if (options->access_mode == ListDirectory)
+    create_options |= FILE_DIRECTORY_FILE;
 
   ACCESS_MASK access_flag = access_flags[options->access_mode];
   if (options->append)
@@ -359,7 +362,12 @@ HANDLE moonbitlang_async_open_sync(
     | sync_flags[options->sync_mode]
     | create_modes[options->create_mode]
     | O_CLOEXEC;
-  if (options->append) flags |= O_APPEND;
+
+  if (options->append)
+    flags |= O_APPEND;
+
+  if (options->access_mode == ListDirectory)
+    flags |= O_DIRECTORY;
 
   if (!options->follow_symlink)
 # ifdef __linux__
