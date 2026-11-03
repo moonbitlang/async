@@ -32,9 +32,10 @@ struct Client {
 
 ///|
 /// Error raised when the proxy responded with a non-2XX response code
+#derive(Debug, ToJson)
 pub suberror ProxyError {
   ProxyError(Response)
-} derive(Debug, ToJson)
+}
 
 ///|
 async fn Client::connect(

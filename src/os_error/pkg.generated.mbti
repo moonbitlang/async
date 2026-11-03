@@ -3,6 +3,7 @@ package "moonbitlang/async/os_error"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -19,9 +20,10 @@ pub fn get_errno() -> Int32
 pub fn is_nonblocking_io_error() -> Bool
 
 // Errors
+#derive(@json.ToJson)
 pub(all) suberror OSError {
   OSError(Int32, context~ : String)
-} derive(ToJson)
+}
 pub fn OSError::is_EACCES(Self) -> Bool
 pub fn OSError::is_ECONNREFUSED(Self) -> Bool
 pub fn OSError::is_EEXIST(Self) -> Bool

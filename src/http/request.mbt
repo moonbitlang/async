@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
+#derive(Debug, Eq, Compare, Hash, ToJson)
 pub(all) enum Protocol {
   Http
   Https
-} derive(Debug, Eq, Compare, Hash, ToJson)
+}
 
 ///|
 pub fn Protocol::default_port(p : Protocol) -> Int32 {
@@ -27,10 +28,11 @@ pub fn Protocol::default_port(p : Protocol) -> Int32 {
 }
 
 ///|
+#derive(Debug, ToJson)
 pub suberror URIParseError {
   InvalidFormat
   UnsupportedProtocol(String)
-} derive(Debug, ToJson)
+}
 
 ///|
 fn resolve_url(uri : String) -> (Protocol, String, StringView) raise {

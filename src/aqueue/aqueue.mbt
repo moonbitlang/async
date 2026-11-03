@@ -324,7 +324,8 @@ pub fn[X] Queue::try_get(self : Queue[X]) -> X? raise {
 }
 
 ///|
-pub suberror QueueAlreadyClosed derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror QueueAlreadyClosed
 
 ///|
 /// Close an async queue. After the queue is closed:

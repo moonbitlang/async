@@ -19,7 +19,8 @@ priv enum AddrFamily {
 }
 
 ///|
-struct Addr(Bytes) derive(Eq, Compare, Hash)
+#derive(Eq, Compare, Hash)
+struct Addr(Bytes)
 
 ///|
 #cfg(target="native")
@@ -277,7 +278,8 @@ pub impl Debug for Addr with fn to_repr(self) {
 }
 
 ///|
-pub suberror InvalidAddr derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror InvalidAddr
 
 ///|
 /// Parse a string into IPv4 or IPv6 address, format should be `ip:port` for IPv4 or `[ip]:port` for IPv6
@@ -365,18 +367,20 @@ fn AddrInfo::free(self : AddrInfo) -> Unit = "moonbitlang/async" "socket/addrinf
 /// Error message from failure in resolving a network hostname.
 /// The content of the error message is platfrom-dependent,
 /// so users should never depend on it.
+#derive(Debug, ToJson)
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
-} derive(Debug, ToJson)
+}
 
 ///|
+#derive(Debug)
 pub(all) enum IpProtocolPreference {
   OnlyV4
   OnlyV6
   FavorV4
   FavorV6
   NoPreference
-} derive(Debug)
+}
 
 ///|
 /// Resolve a IPv4 or IPv6 address by hostname.

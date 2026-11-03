@@ -71,7 +71,8 @@ fn Timer::wake(timer : Timer, target_state : TimerState) -> Unit {
 }
 
 ///|
-pub suberror TimerCancelled derive(Debug)
+#derive(Debug)
+pub suberror TimerCancelled
 
 ///|
 /// Manually cancel a timer.

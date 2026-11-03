@@ -80,7 +80,8 @@ pub async fn[X] with_cancellation_handler(
 }
 
 ///|
-pub suberror TimeoutError derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror TimeoutError
 
 ///|
 /// `with_timeout(timeout, f)` run the async function `f`.

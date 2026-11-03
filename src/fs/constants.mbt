@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -22,7 +23,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Eq, Debug)
+}
 
 ///|
 // currently we cannot re-export constructors,

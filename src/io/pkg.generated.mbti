@@ -3,17 +3,20 @@ package "moonbitlang/async/io"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
 pub fn pipe() -> (PipeRead, PipeWrite)
 
 // Errors
-pub suberror PipeClosed derive(ToJson, @debug.Debug)
+#derive(@debug.Debug, @json.ToJson)
+pub suberror PipeClosed
 #deprecated
 pub impl Show for PipeClosed
 
-pub(all) suberror ReaderClosed derive(ToJson, @debug.Debug)
+#derive(@debug.Debug, @json.ToJson)
+pub(all) suberror ReaderClosed
 #deprecated
 pub impl Show for ReaderClosed
 
@@ -69,11 +72,11 @@ pub fn ReaderBuffer::new() -> Self
 trait Data
 pub impl Data for String
 pub impl Data for Bytes
-pub impl Data for Json
+pub impl Data for @json.Json
 pub impl Data for BytesView
 pub impl Data for StringView
 pub fn &Data::binary(Self) -> Bytes
-pub fn &Data::json(Self) -> Json raise
+pub fn &Data::json(Self) -> @json.Json raise
 pub fn &Data::text(Self) -> String raise
 
 pub(open) trait Reader {

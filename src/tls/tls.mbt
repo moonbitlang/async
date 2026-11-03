@@ -13,12 +13,14 @@
 // limitations under the License.
 
 ///|
+#derive(Debug, ToJson)
 pub suberror TlsError {
   TlsError(String)
-} derive(Debug, ToJson)
+}
 
 ///|
-pub suberror ConnectionClosed derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror ConnectionClosed
 
 ///|
 const PEM_BEGIN = "-----BEGIN CERTIFICATE-----"

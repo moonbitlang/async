@@ -10,16 +10,18 @@ import {
 // Values
 
 // Errors
+#derive(@debug.Debug)
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   HandshakeRejected(String, @http.Response)
   ProtocolError(String)
-} derive(@debug.Debug)
+}
 #deprecated
 pub impl Show for WebSocketError
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum CloseCode {
   Normal
   GoingAway
@@ -32,7 +34,7 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-} derive(Eq, @debug.Debug)
+}
 #deprecated
 pub impl Show for CloseCode
 
@@ -68,10 +70,11 @@ pub async fn Message::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn Message::read_until(Self, StringView) -> String?
 pub impl @io.Reader for Message
 
+#derive(@debug.Debug)
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(@debug.Debug)
+}
 #deprecated
 pub impl Show for MessageKind
 

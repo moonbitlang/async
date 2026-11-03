@@ -4,6 +4,7 @@ package "moonbitlang/async/tls"
 import {
   "moonbitlang/async/io",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -12,13 +13,15 @@ pub fn rand_bytes(Int32) -> Bytes raise
 pub fn sha1(Bytes) -> Bytes raise
 
 // Errors
-pub suberror ConnectionClosed derive(ToJson, @debug.Debug)
+#derive(@debug.Debug, @json.ToJson)
+pub suberror ConnectionClosed
 #deprecated
 pub impl Show for ConnectionClosed
 
+#derive(@debug.Debug, @json.ToJson)
 pub suberror TlsError {
   TlsError(String)
-} derive(ToJson, @debug.Debug)
+}
 #deprecated
 pub impl Show for TlsError
 
