@@ -297,14 +297,15 @@ pub async fn Directory::open(
   create_mode~ : CreateMode = OpenExisting,
   permission~ : Int32 = 0o644,
 ) -> File {
+  let context = "@fs.Directory::open()"
   dir.open_aux(
-    filename,
+    validate_relative_open_filename(filename, context~),
     mode~,
     sync~,
     append~,
     create_mode~,
     permission~,
-    context="@fs.Directory::open()",
+    context~,
   )
 }
 
@@ -331,7 +332,7 @@ async fn Directory::open_aux(
   }
   let (io, _) = @event_loop.open(
     parent=dir.io.fd(),
-    validate_relative_open_filename(filename, context~),
+    filename,
     access,
     create=create_mode.to_int(),
     append~,
@@ -361,7 +362,12 @@ pub async fn Directory::remove(
   path : StringView,
   allow_missing~ : Bool = false,
 ) -> Unit {
-  dir.remove_aux(path, allow_missing~, context="@fs.Directory::remove()")
+  let context = "@fs.Directory::remove()"
+  dir.remove_aux(
+    validate_relative_open_filename(path, context~),
+    allow_missing~,
+    context~,
+  )
 }
 
 ///|
