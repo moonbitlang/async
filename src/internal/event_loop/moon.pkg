@@ -22,6 +22,7 @@ import {
 } for "test"
 
 options(
+  "allow-experimental-packages": true,
   "native-stub": [
     "epoll.c",
     "kqueue.c",
