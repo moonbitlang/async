@@ -3,12 +3,14 @@ package "moonbitlang/async/aqueue"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
 
 // Errors
-pub suberror QueueAlreadyClosed derive(ToJson, @debug.Debug)
+#derive(@debug.Debug, @json.ToJson)
+pub suberror QueueAlreadyClosed
 #deprecated
 pub impl Show for QueueAlreadyClosed
 

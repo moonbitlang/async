@@ -107,6 +107,7 @@ pub async fn File::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Reader for File
 pub impl @io.Writer for File
 
+#derive(Eq, @debug.Debug)
 pub(all) enum FileKind {
   Unknown
   Regular
@@ -116,16 +117,17 @@ pub(all) enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-} derive(Eq, @debug.Debug)
+}
 #deprecated
 pub impl Show for FileKind
 
+#derive(Eq, @debug.Debug)
 pub(all) enum FsEvent {
   Modify(String)
   Create(String)
   Remove(String)
   Rename(old~ : String, new~ : String)
-} derive(Eq, @debug.Debug)
+}
 
 pub(all) enum Lock {
   Shared

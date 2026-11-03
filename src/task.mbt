@@ -23,8 +23,9 @@ struct Task[X] {
 ///|
 /// Special error indicating a waited task is cancelled.
 /// Note that this error has nothing to do with cancellation of *current* task.
+#derive(Debug)
 #alias(TaskCancelled, deprecated)
-pub suberror WaitedTaskAlreadyCancelled derive(Debug)
+pub suberror WaitedTaskAlreadyCancelled
 
 ///|
 /// Wait for a task and retrieve its result value.

@@ -13,11 +13,12 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Hash)
 #valtype
 pub(all) struct FileIdentity {
   dev_id : UInt64
   file_id : UInt64
-} derive(Eq, Hash)
+}
 
 ///|
 pub async fn open(

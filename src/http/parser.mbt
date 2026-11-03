@@ -47,11 +47,12 @@ fn[R : @io.Reader] Reader::new(transport : R) -> Reader {
 }
 
 ///|
+#derive(Debug, ToJson)
 pub suberror HttpProtocolError {
   BadRequest
   HttpVersionNotSupported(String)
   NotImplemented
-} derive(Debug, ToJson)
+}
 
 ///|
 /// Decode some data from current chunk, perform gzip decompression if necessary.

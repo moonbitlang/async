@@ -70,9 +70,10 @@ pub fn errno_to_string(errno : Int32) -> String {
 }
 
 ///|
+#derive(ToJson)
 pub(all) suberror OSError {
   OSError(Int32, context~ : String)
-} derive(ToJson)
+}
 
 ///|
 pub impl Show for OSError with fn output(self, logger) -> Unit {

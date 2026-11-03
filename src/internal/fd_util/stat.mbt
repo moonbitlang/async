@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -23,7 +24,7 @@ pub(all) enum FileKind {
   BlockDevice = 6
   CharDevice = 7
   Console = 8
-} derive(Eq, Debug)
+}
 
 ///|
 let known_kinds : ReadOnlyArray[FileKind] = [

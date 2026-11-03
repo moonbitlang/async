@@ -148,7 +148,8 @@ pub extend PipeRead with Reader::{
 ///|
 /// This error will be raised when
 /// writing to a pipe whose read end is already closed.
-pub suberror PipeClosed derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror PipeClosed
 
 ///|
 /// Write data to a pipe. The data can be read from the read end of the pipe.

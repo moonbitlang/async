@@ -15,7 +15,8 @@
 ///|
 /// String type with case insensitive comparison (in the ASCII sense).
 /// This type is implicitly convertible from `String` & string literal.
-pub(all) struct CaseInsensitiveString(String) derive(ToJson)
+#derive(ToJson)
+pub(all) struct CaseInsensitiveString(String)
 
 ///|
 pub impl Eq for CaseInsensitiveString with fn equal(x, y) {

@@ -9,7 +9,8 @@ import {
 pub async fn main_prog(Printer) -> Unit
 
 // Errors
-type ServerTerminate derive(@debug.Debug)
+#derive(@debug.Debug)
+type ServerTerminate
 
 // Types and methods
 pub(all) struct Printer((String) -> Unit)

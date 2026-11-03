@@ -13,12 +13,13 @@
 // limitations under the License.
 
 ///|
+#derive(Debug, ToJson)
 priv suberror FormatError {
   InvalidHeader(String)
   InvalidTrailer(String)
   InvalidBlock(String)
   NeedMoreInput(String)
-} derive(Debug, ToJson)
+}
 
 ///|
 pub const HEADER_SIZE : Int32 = 10

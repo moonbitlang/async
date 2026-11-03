@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#derive(Debug, Eq, Compare, Hash, ToJson)
 pub(all) enum RequestMethod {
   Get
   Head
@@ -23,7 +24,7 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-} derive(Debug, Eq, Compare, Hash, ToJson)
+}
 
 ///|
 /// Type for HTTP headers. The names of headers are case insensitive.
@@ -37,13 +38,15 @@ pub(all) enum RequestMethod {
 pub type Headers = Map[CaseInsensitiveString, String]
 
 ///|
+#derive(Debug, ToJson)
 pub(all) struct Request {
   meth : RequestMethod
   path : String
   headers : Headers
-} derive(Debug, ToJson)
+}
 
 ///|
+#derive(Debug, ToJson)
 pub(all) struct Response {
   code : Int32
   reason : String
@@ -53,9 +56,10 @@ pub(all) struct Response {
   /// JS backend note: browsers forbid JS code from accessing raw cookie values,
   /// so this field is always empty on JS backend.
   cookies : Array[Cookie]
-} derive(Debug, ToJson)
+}
 
 ///|
+#derive(Debug, ToJson)
 pub struct Cookie {
   name : String
   value : String
@@ -66,4 +70,4 @@ pub struct Cookie {
   secure : Bool
   http_only : Bool
   extensions : Array[String]
-} derive(Debug, ToJson)
+}

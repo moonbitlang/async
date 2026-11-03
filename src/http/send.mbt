@@ -106,7 +106,8 @@ const NON_EMPTY_MESSAGE_HEADER_END : Bytes = b"Transfer-Encoding: chunked\r\n\r\
 const EMPTY_MESSAGE_HEADER_END : Bytes = b"Content-Length: 0\r\n\r\n"
 
 ///|
-pub suberror IncorrectBodyLength derive(Debug, ToJson)
+#derive(Debug, ToJson)
+pub suberror IncorrectBodyLength
 
 ///|
 impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
