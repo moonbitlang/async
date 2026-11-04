@@ -72,6 +72,16 @@ pub fn register_hook(
 }
 
 ///|
+/// Kept outside `EventLoop` so its layout stays compatible with core/async.
+let resize_state : Ref[Resize?] = {
+  let state : Ref[Resize?] = Ref(None)
+  register_hook(init=() => state.val = Some(Resize::new()), exit=() => {
+    state.val = None
+  })
+  state
+}
+
+///|
 fn EventLoop::new(max_worker_count~ : Int32) -> EventLoop raise {
   let bus = EventBus::new()
   errdefer bus.destroy()
@@ -213,10 +223,15 @@ fn EventLoop::handle_completed_job(self : Self, job_id : Int32) -> Unit {
   // Here we encode signal events by setting the most significant bit to one.
   guard (job_id & (1 << 31)) == 0 else {
     // signal
+    let signal = job_id ^ (1 << 31)
+    if signal == SIGWINCH {
+      resize_state.val.unwrap().notify()
+      return
+    }
     if self.main is Some(main) {
       main.cancel()
     }
-    self.killed_by_signal = Some(job_id ^ (1 << 31))
+    self.killed_by_signal = Some(signal)
   }
   guard self.running_workers.get(job_id) is Some(worker) else { return }
   // Completion message for a job may receive in two cases:

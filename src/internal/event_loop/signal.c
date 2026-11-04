@@ -118,6 +118,12 @@ struct {
   int32_t started;
   pthread_t handler;
 
+  // whether `sigwinch_handler` may have replaced the action of `SIGWINCH`,
+  // saved in `old_sigwinch_action`. Only touched by the thread that
+  // configures signals, not by the `sigwait` thread.
+  int32_t sigwinch_action_saved;
+  struct sigaction old_sigwinch_action;
+
   pthread_mutex_t lock;
 
   // the following should be protected by `lock`
@@ -126,6 +132,33 @@ struct {
   sigset_t interested_signals;
   int32_t cancelled;
 } signal_config = { 0, 0 };
+
+// On macOS, an ignored signal, such as `SIGWINCH` by default or one set to
+// `SIG_IGN` by the parent process, is discarded when generated, even while
+// blocked, unless it has a handler.
+// The handler never runs: `SIGWINCH` is blocked and taken by `sigwait`.
+static
+void sigwinch_handler(int sig) {
+  (void)sig;
+}
+
+// Install `sigwinch_handler` the first time `SIGWINCH` is waited for,
+// so a process that never waits for it keeps its action unchanged.
+static
+void install_sigwinch_handler() {
+  if (signal_config.sigwinch_action_saved)
+    return;
+  signal_config.sigwinch_action_saved = 1;
+  sigaction(SIGWINCH, NULL, &signal_config.old_sigwinch_action);
+  void (*old_handler)(int) = signal_config.old_sigwinch_action.sa_handler;
+  if (old_handler == SIG_DFL || old_handler == SIG_IGN) {
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = sigwinch_handler;
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGWINCH, &act, NULL);
+  }
+}
 
 static
 void *sigwait_thread_worker(void *data) {
@@ -205,6 +238,7 @@ void moonbitlang_async_set_global_cancellation_signals(
     if (signals[i] < 0) continue;
     sigaddset(&signals_to_block, signals[i]);
     sigaddset(&signal_config.interested_signals, signals[i]);
+    if (signals[i] == SIGWINCH) install_sigwinch_handler();
   }
 
   sigaddset(&signal_config.interested_signals, SIGUSR2);
@@ -256,6 +290,11 @@ void moonbitlang_async_terminate_signal_handler() {
 
   pthread_kill(signal_config.handler, SIGUSR2);
   pthread_join(signal_config.handler, 0);
+
+  if (signal_config.sigwinch_action_saved) {
+    sigaction(SIGWINCH, &signal_config.old_sigwinch_action, NULL);
+    signal_config.sigwinch_action_saved = 0;
+  }
 
   pthread_mutex_destroy(&signal_config.lock);
   signal_config.initialized = 0;

@@ -70,3 +70,21 @@ async fn PlatformEventLoopExtra::wait_pid(
     Windows(_) => panic()
   }
 }
+
+///|
+/// Terminals are not supported on wasm, see `Resize` in `tty.mbt`
+priv enum Resize {
+  Unsupported
+}
+
+///|
+fn Resize::new() -> Resize {
+  Unsupported
+}
+
+///|
+fn Resize::notify(self : Resize) -> Unit {
+  match self {
+    Unsupported => ()
+  }
+}

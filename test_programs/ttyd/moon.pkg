@@ -1,0 +1,20 @@
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/tty",
+}
+
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/process",
+  "moonbitlang/async_test_programs/ttyd/internal/pty",
+} for "wbtest"
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")

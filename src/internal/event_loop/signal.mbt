@@ -27,6 +27,18 @@ pub let all_signals : ReadOnlyArray[Int32] = ReadOnlyArray::makei(
 )
 
 ///|
+/// `SIGWINCH` on Unix, `-1` where it does not exist.
+/// It is always waited for by the signal thread, and recorded in
+/// `resize_state` instead of cancelling the program.
+#cfg(all(target="native", not(platform="windows")))
+const SIGWINCH : Int32 = 28
+
+///|
+/// There is no `SIGWINCH` on Windows; terminal resizes are unsupported on wasm.
+#cfg(any(target="wasm", platform="windows"))
+const SIGWINCH : Int32 = -1
+
+///|
 pub suberror KilledBySignal {
   KilledBySignal(Int32)
 }
@@ -58,6 +70,11 @@ let global_signal_handler_initialized : Ref[Bool] = Ref(false)
 ///|
 pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Int32]) -> Unit {
   global_signal_handler_initialized.val = true
+  let signals = if SIGWINCH < 0 {
+    signals
+  } else {
+    ReadOnlyArray::from_array([..signals, SIGWINCH])
+  }
   set_global_cancellation_signals_ffi(
     all_signals,
     all_signals.length(),
