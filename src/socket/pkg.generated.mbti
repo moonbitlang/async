@@ -106,7 +106,7 @@ pub struct UdpServer {
   // private fields
 }
 #alias(new, deprecated)
-pub async fn UdpServer::UdpServer(Addr, dual_stack? : Bool) -> Self
+pub async fn UdpServer::UdpServer(Addr, dual_stack? : Bool, reuse_port_lb? : Bool) -> Self
 #deprecated
 pub fn UdpServer::addr(Self) -> Addr
 pub fn UdpServer::close(Self) -> Unit
