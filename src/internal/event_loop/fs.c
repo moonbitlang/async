@@ -225,8 +225,10 @@ HANDLE moonbitlang_async_open_sync(
     create_options |= FILE_DIRECTORY_FILE;
 
   ACCESS_MASK access_flag = access_flags[options->access_mode];
-  if (options->append)
+
+  if (options->append && (options->access_mode == WriteOnly || options->access_mode == ReadWrite))
     access_flag = (access_flag ^ GENERIC_WRITE) | FILE_APPEND_DATA;
+
   if (!options->is_async)
     access_flag |= SYNCHRONIZE;
 
