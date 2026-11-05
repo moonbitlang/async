@@ -68,6 +68,7 @@ async test "return_immediately error on cancel" {
 }
 
 ///|
+#warnings("-cancellable_defer")
 async test "return_immediately recursive cancel" {
   let log = []
   @async.with_task_group() <| group => {
@@ -76,6 +77,7 @@ async test "return_immediately recursive cancel" {
       log.push("100ms tick")
     }
     @async.with_task_group <| group => {
+      // Intentionally cancellable: returning immediately must cancel this sleep.
       defer @async.sleep(200)
       group.return_immediately(())
     }

@@ -45,10 +45,10 @@ async fn main {
   defer file.close()
   guard! @stdio.stdin.read_some() is Some(_)
   file.lock(kind)
-  defer {
+  defer @async.protect_from_cancel(() => {
     file.unlock()
     @stdio.stdout.write("released lock\n")
-  }
+  })
   @stdio.stdout.write("acquired lock\n")
   guard! @stdio.stdin.read_some() is Some(_)
 }
