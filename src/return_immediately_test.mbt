@@ -76,12 +76,41 @@ async test "return_immediately recursive cancel" {
       log.push("100ms tick")
     }
     @async.with_task_group <| group => {
-      defer @async.sleep(200)
-      group.return_immediately(())
+      assert_true(
+        @async.handle_cancellation(() => group.return_immediately(())) is None,
+      )
+      // Handling cancellation must not allow the next async operation to run.
+      assert_true(@async.handle_cancellation(() => @async.sleep(200)) is None)
     }
     log.push("inner group finished")
   }
   json_inspect(log, content=["inner group finished", "100ms tick"])
+}
+
+///|
+async test "return_immediately waits for protected defer" {
+  let log = []
+  let cleanup_started : @async.Queue[Unit] = @async.Queue(kind=Unbounded)
+  let continue_cleanup : @async.Queue[Unit] = @async.Queue(kind=Unbounded)
+  @async.with_task_group() <| outer => {
+    outer.spawn_bg() <| () => {
+      cleanup_started.get()
+      log.push("cleanup started")
+      continue_cleanup.put(())
+    }
+    @async.with_task_group() <| inner => {
+      defer @async.protect_from_cancel(() => {
+        cleanup_started.put(())
+        continue_cleanup.get()
+        log.push("cleanup finished")
+      })
+      inner.return_immediately(())
+    }
+    log.push("inner group finished")
+  }
+  json_inspect(log, content=[
+    "cleanup started", "cleanup finished", "inner group finished",
+  ])
 }
 
 ///|
