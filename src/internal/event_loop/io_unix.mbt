@@ -80,11 +80,13 @@ async fn IoHandle::read_via_event_bus_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // Readiness can be spurious (e.g. a stale event for a reused fd number),
+  // so a read after `wait_read` may still report `EAGAIN`: wait again
+  // instead of surfacing it as an error.
+  let mut ret = ret
+  while ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_read()
-    read_unix_ffi(handle.fd, buf, offset~, len~)
-  } else {
-    ret
+    ret = read_unix_ffi(handle.fd, buf, offset~, len~)
   }
   if ret < 0 {
     @os_error.check_errno(context)
@@ -141,11 +143,12 @@ async fn IoHandle::write_via_event_bus_unix(
     @coroutine.pause_nocancel()
     return ret
   }
-  let ret = if @os_error.is_nonblocking_io_error() {
+  // As in `read_via_event_bus_unix`: a spurious wake-up may still leave the
+  // fd unwritable, so keep waiting while the write would block.
+  let mut ret = ret
+  while ret < 0 && @os_error.is_nonblocking_io_error() {
     handle.wait_write()
-    write_unix_ffi(handle.fd, buf, offset~, len~)
-  } else {
-    ret
+    ret = write_unix_ffi(handle.fd, buf, offset~, len~)
   }
   if ret < 0 {
     @os_error.check_errno(context)
