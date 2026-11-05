@@ -76,8 +76,11 @@ async test "return_immediately recursive cancel" {
       log.push("100ms tick")
     }
     @async.with_task_group <| group => {
-      defer @async.sleep(200)
-      group.return_immediately(())
+      assert_true(
+        @async.handle_cancellation(() => group.return_immediately(())) is None,
+      )
+      // Handling cancellation must not allow the next async operation to run.
+      assert_true(@async.handle_cancellation(() => @async.sleep(200)) is None)
     }
     log.push("inner group finished")
   }
