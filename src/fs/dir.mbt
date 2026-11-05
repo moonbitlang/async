@@ -70,54 +70,7 @@ pub async fn mkdir(
 /// an error will be raised if the target file does not exist.
 ///
 /// This function is not cancellable.
-#cfg(target="wasm")
-pub async fn rmdir(
-  path : StringView,
-  recursive~ : Bool = false,
-  allow_missing~ : Bool = false,
-) -> Unit nocancel {
-  let context = "@fs.rmdir()"
-  if recursive {
-    let (base, sep) = if @event_loop.platform is Windows {
-      (path.trim_end(chars="/\\"), "\\")
-    } else {
-      (path.trim_end(chars="/"), "/")
-    }
-    @async.protect_from_cancel <| () => {
-      let dir = opendir_aux(path, context~)
-      defer dir.close()
-      while dir.next_aux(include_special=false, include_hidden=true, context~)
-            is Some(ent) {
-        let child_path = "\{base}\{sep}\{ent.name}"
-        if ent.is_dir {
-          rmdir(child_path, recursive=true, allow_missing=true)
-        } else {
-          @event_loop.remove(child_path, context~) catch {
-            @os_error.OSError(_) as err if err.is_ENOENT() => ()
-            err => raise err
-          }
-        }
-      }
-    }
-  }
-  @event_loop.rmdir(path, context~) catch {
-    @os_error.OSError(_) as err if allow_missing && err.is_ENOENT() => ()
-    err => raise err
-  }
-}
-
-///|
-/// Remove a directory at `path`,
-/// If `recursive` is `true` (`false` by default),
-/// files and directories in `path` will be removed recursively.
-/// If `recursive` is `false`,
-/// `path` must be an empty directory, otherwise `rmdir` will fail.
-///
-/// Unless `allow_missing=true` (`false` by default),
-/// an error will be raised if the target file does not exist.
-///
-/// This function is not cancellable.
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 pub async fn rmdir(
   path : StringView,
   recursive~ : Bool = false,
@@ -138,7 +91,7 @@ pub async fn rmdir(
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async fn Directory::remove_children(dir : Directory, context~ : String) -> Unit {
   while dir.next_aux(include_special=false, include_hidden=true, context~)
         is Some(ent) {
@@ -286,8 +239,6 @@ fn validate_relative_open_filename(
 ///
 /// All other parameters of `dir.open(filename, ..)` has the same semantic as `@fs.open`,
 /// see `@fs.open` for more details.
-///
-/// This method currently does not support Wasm backend.
 pub async fn Directory::open(
   dir : Directory,
   filename : StringView,
@@ -355,8 +306,6 @@ async fn Directory::open_aux(
 ///
 /// Unless `allow_missing=true` (`false` by default),
 /// an error will be raised if the target file does not exist.
-///
-/// This method currently does not support Wasm backend.
 pub async fn Directory::remove(
   dir : Directory,
   path : StringView,
