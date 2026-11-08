@@ -47,7 +47,7 @@ int moonbitlang_async_get_process_result(HANDLE handle, int32_t pid, int32_t *ou
 #ifdef _WIN32
 
   // On Windows, `get_process_result` should only be called when the process has exited.
-  BOOL ret = GetExitCodeProcess(handle, out);
+  BOOL ret = GetExitCodeProcess(handle, (LPDWORD)out);
   return ret ? 0 : - 1;
 
 #else
