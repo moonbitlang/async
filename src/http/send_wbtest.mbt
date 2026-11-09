@@ -612,6 +612,35 @@ async test "send fixed length" {
 }
 
 ///|
+async test "sender fixed length large write" {
+  @async.with_task_group() <| group => {
+    let (r, w) = @io.pipe()
+    // 16K, larger than the builtin send buffer
+    let data_len = 1 << 14
+    let data = Bytes::make(data_len, b'\x00')
+    group.spawn_bg(no_wait=true) <| () => {
+      defer r.close()
+      let total = for received = 0 {
+        let n = r.drop(1024)
+        let received = received + n
+        if n < 1024 {
+          break received
+        } else {
+          continue received
+        }
+      }
+      assert_eq(total, data_len)
+    }
+    defer w.close()
+    let sender = Sender::new(w)
+    sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
+      "Content-Length": data_len.to_string(),
+    })
+    sender.write(data)
+  }
+}
+
+///|
 async test "sender write incorrect length" {
   @async.with_task_group() <| group => {
     let (r, w) = @io.pipe()

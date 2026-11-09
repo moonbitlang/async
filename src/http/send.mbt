@@ -123,14 +123,15 @@ impl @io.Writer for Sender with fn write_once(self, buf, offset~, len~) {
     }
     SendingFixed(remaining~) as mode => {
       guard len.to_int64() <= remaining else { raise IncorrectBodyLength }
-      if self.send_len >= self.send_buf.length() {
+      if self.send_len + len > self.send_buf.length() {
         self.flush()
+        self.writer.write_once(buf, offset~, len~)
+      } else {
+        self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
+        self.send_len += len
+        mode.remaining -= len.to_int64()
+        len
       }
-      let len = @cmp.minimum(self.send_buf.length() - self.send_len, len)
-      self.send_buf.blit_from_bytes(self.send_len, buf, offset, len)
-      self.send_len += len
-      mode.remaining -= len.to_int64()
-      len
     }
     WaitingRequestBody | WaitingResponseBody => {
       if self.send_len + NON_EMPTY_MESSAGE_HEADER_END.length() >
