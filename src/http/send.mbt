@@ -82,7 +82,9 @@ fn[W : @io.Writer] Sender::new(w : W, headers~ : Headers = Map([])) -> Sender {
   {
     writer: w,
     mode: SendingHeader,
-    send_buf: FixedArray::make(1024, 0),
+    // Currently we reserve 3 bytes for chunk length,
+    // so 4K is the largest possible buffer size
+    send_buf: FixedArray::make(4096, 0),
     send_len: 0,
     headers: header_text.contents(),
     has_accept_encoding,

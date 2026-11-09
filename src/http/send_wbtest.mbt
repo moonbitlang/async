@@ -65,7 +65,7 @@ async test "send_request stream" {
         #|Accept-Encoding: gzip,identity\r
         #|Transfer-Encoding: chunked\r
         #|\r
-        #|3f9\r
+        #|ff9\r
         #|
         #|                                 Apache License
         #|                           Version 2.0, January 2004
@@ -87,9 +87,7 @@ async test "send_request stream" {
         #|      "control" means (i) the power, direct or indirect, to cause the
         #|      direction or management of such entity, whether by contract or
         #|      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-        #|      outstanding shares, or (iii) beneficial ownership of such en\r
-        #|3f9\r
-        #|tity.
+        #|      outstanding shares, or (iii) beneficial ownership of such entity.
         #|
         #|      "You" (or "Your") shall mean an individual or Legal Entity
         #|      exercising permissions granted by this License.
@@ -110,9 +108,7 @@ async test "send_request stream" {
         #|
         #|      "Derivative Works" shall mean any work, whether in Source or Object
         #|      form, that is based on (or derived from) the Work and for which the
-        #|      editorial revisions, annotations, elabor\r
-        #|3f9\r
-        #|ations, or other modifications
+        #|      editorial revisions, annotations, elaborations, or other modifications
         #|      represent, as a whole, an original work of authorship. For the purposes
         #|      of this License, Derivative Works shall not include works that remain
         #|      separable from, or merely link (or bind by name) to the interfaces of,
@@ -127,9 +123,7 @@ async test "send_request stream" {
         #|      means any form of electronic, verbal, or written communication sent
         #|      to the Licensor or its representatives, including but not limited to
         #|      communication on electronic mailing lists, source code control systems,
-        #|      and issue tracking systems that are m\r
-        #|3f9\r
-        #|anaged by, or on behalf of, the
+        #|      and issue tracking systems that are managed by, or on behalf of, the
         #|      Licensor for the purpose of discussing and improving the Work, but
         #|      excluding communication that is conspicuously marked or otherwise
         #|      designated in writing by the copyright owner as "Not a Contribution."
@@ -147,9 +141,9 @@ async test "send_request stream" {
         #|
         #|   3. Grant of Patent License. Subject to the terms and conditions of
         #|      this License, each Contributor hereby grants to You a perpetual,
-        #|      w\r
-        #|3f9\r
-        #|orldwide, non-exclusive, no-charge, royalty-free, irrevocable
+        #|      worldwide, non-exclusi\r
+        #|ff9\r
+        #|ve, no-charge, royalty-free, irrevocable
         #|      (except as stated in this section) patent license to make, have made,
         #|      use, offer to sell, sell, import, and otherwise transfer the Work,
         #|      where such license applies only to those patent claims licensable
@@ -164,9 +158,7 @@ async test "send_request stream" {
         #|      as of the date such litigation is filed.
         #|
         #|   4. Redistribution. You may reproduce and distribute copies of the
-        #|      Work or Derivative Works thereof in any medium, with or\r
-        #|3f9\r
-        #| without
+        #|      Work or Derivative Works thereof in any medium, with or without
         #|      modifications, and in Source or Object form, provided that You
         #|      meet the following conditions:
         #|
@@ -186,9 +178,7 @@ async test "send_request stream" {
         #|          distribution, then any Derivative Works that You distribute must
         #|          include a readable copy of the attribution notices contained
         #|          within such NOTICE file, excluding those notices that do not
-        #|          pertain to any part of the Derivative Works, in at least one\r
-        #|3f9\r
-        #|
+        #|          pertain to any part of the Derivative Works, in at least one
         #|          of the following places: within a NOTICE text file distributed
         #|          as part of the Derivative Works; within the Source form or
         #|          documentation, if provided along with the Derivative Works; or,
@@ -204,9 +194,7 @@ async test "send_request stream" {
         #|      You may add Your own copyright statement to Your modifications and
         #|      may provide additional or different license terms and conditions
         #|      for use, reproduction, or distribution of Your modifications, or
-        #|      for any such Derivative Works as a whole, pro\r
-        #|3f9\r
-        #|vided Your use,
+        #|      for any such Derivative Works as a whole, provided Your use,
         #|      reproduction, and distribution of the Work otherwise complies with
         #|      the conditions stated in this License.
         #|
@@ -224,10 +212,10 @@ async test "send_request stream" {
         #|      origin of the Work and reproducing the content of the NOTICE file.
         #|
         #|   7. Disclaimer of Warranty. Unless required by applicable law or
-        #|      agreed to in writing, Licensor \r
-        #|3f9\r
-        #|provides the Work (and each
-        #|      Contributor provides its Contributions) on an "AS IS" BASIS,
+        #|      agreed to in writing, Licensor provides the Work (and each
+        #|      Contribu\r
+        #|c6c\r
+        #|tor provides its Contributions) on an "AS IS" BASIS,
         #|      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
         #|      implied, including, without limitation, any warranties or conditions
         #|      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
@@ -241,9 +229,7 @@ async test "send_request stream" {
         #|      negligent acts) or agreed to in writing, shall any Contributor be
         #|      liable to You for damages, including any direct, indirect, special,
         #|      incidental, or consequential damages of any character arising as a
-        #|      result of this License or out of the use or inab\r
-        #|3f9\r
-        #|ility to use the
+        #|      result of this License or out of the use or inability to use the
         #|      Work (including but not limited to damages for loss of goodwill,
         #|      work stoppage, computer failure or malfunction, or any and all
         #|      other commercial damages or losses), even if such Contributor
@@ -260,9 +246,7 @@ async test "send_request stream" {
         #|      incurred by, or claims asserted against, such Contributor by reason
         #|      of your accepting any such warranty or additional liability.
         #|
-        #|   END OF TERMS AND CONDITI\r
-        #|3f9\r
-        #|ONS
+        #|   END OF TERMS AND CONDITIONS
         #|
         #|   APPENDIX: How to apply the Apache License to your work.
         #|
@@ -285,9 +269,7 @@ async test "send_request stream" {
         #|
         #|   Unless required by applicable law or agreed to in writing, software
         #|   distributed under the License is distributed on an "AS IS" BASIS,
-        #|   WITHOUT\r
-        #|ab\r
-        #| WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        #|   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
         #|   See the License for the specific language governing permissions and
         #|   limitations under the License.
         #|\r
