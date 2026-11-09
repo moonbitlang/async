@@ -44,6 +44,38 @@ enum {
   TTY_READ_RESIZED = -1,
 };
 
+// https://learn.microsoft.com/windows/console/readconsoleinputex
+// It is exported by kernel32, but not declared by the Windows headers.
+#ifndef CONSOLE_READ_NOWAIT
+#define CONSOLE_READ_NOWAIT 0x0002
+#endif
+
+typedef BOOL (WINAPI *pfn_ReadConsoleInputExW)(
+  HANDLE hConsoleInput,
+  PINPUT_RECORD lpBuffer,
+  DWORD nLength,
+  LPDWORD lpNumberOfEventsRead,
+  USHORT wFlags
+);
+
+static pfn_ReadConsoleInputExW pReadConsoleInputExW;
+
+static
+int load_read_console_input_ex(void) {
+  if (pReadConsoleInputExW)
+    return 1;
+
+  HMODULE kernel32_handle = GetModuleHandleW(L"kernel32");
+  if (!kernel32_handle)
+    return 0;
+
+  pReadConsoleInputExW = (pfn_ReadConsoleInputExW)GetProcAddress(
+    kernel32_handle,
+    "ReadConsoleInputExW"
+  );
+  return pReadConsoleInputExW != NULL;
+}
+
 struct read_console_input_job {
   HANDLE input;
   HANDLE cancel;
@@ -109,6 +141,10 @@ int32_t read_console_input_job_worker(
     *err_out = ERROR_INSUFFICIENT_BUFFER;
     return -1;
   }
+  if (!load_read_console_input_ex()) {
+    *err_out = GetLastError();
+    return -1;
+  }
 
   while (1) {
     if (moonbitlang_async_enter_cancellable_region(worker)) {
@@ -129,12 +165,17 @@ int32_t read_console_input_job_worker(
       return -1;
     }
 
+    // Another reader of the console, such as a child process, can take the
+    // input after the wait. `ReadConsoleInputW` would then block until more
+    // input arrives, where `job->cancel` cannot interrupt it. Read without
+    // waiting instead, and wait again if the console is empty.
     DWORD n_records = 0;
-    if (!ReadConsoleInputW(
+    if (!pReadConsoleInputExW(
       job->input,
       (INPUT_RECORD *)buf,
       max_records,
-      &n_records
+      &n_records,
+      CONSOLE_READ_NOWAIT
     )) {
       *err_out = GetLastError();
       return -1;
