@@ -4,6 +4,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/async",
+  "moonbitlang/async/process",
   "moonbitlang/async/socket",
   "moonbitlang/async/tty",
 }
@@ -11,7 +12,6 @@ import {
 import {
   "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/async/process",
   "moonbitlang/async_test_programs/ttyd/internal/pty",
 } for "wbtest"
 

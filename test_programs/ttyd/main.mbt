@@ -29,9 +29,14 @@
 /// - `read_exactly`, params `{"len": n}`: `@io.Reader::read_exactly`,
 ///   result the bytes in base64
 /// - `write`, params `{"bytes": "<base64>"}`: result `null`
+/// - `spawn_reader`: start a second process on the same terminal, see
+///   `reader`, result `null`
 ///
 /// An error raised by `@tty` is reported as error `-32000` with its description.
 async fn main {
+  if @env.get_env_var("TTYD_READER") is Some(_) {
+    return reader()
+  }
   guard @env.get_env_var("TTYD_PORT") is Some(port) else {
     fail("TTYD_PORT is not set")
   }
@@ -41,6 +46,21 @@ async fn main {
   while rpc.read_until("\n") is Some(line) {
     rpc.write("\{respond(tty, @json.parse(line)).stringify()}\n")
   }
+}
+
+///|
+/// Another reader of the terminal, started by `spawn_reader`. It displays
+/// `reader ready` before reading, reads input until `q`, then displays
+/// `reader done`.
+async fn reader() -> Unit {
+  let tty = @tty.open()
+  tty.write("reader ready\r\n")
+  while tty.read_event() is Some(event) {
+    if event is Input(b"q") {
+      break
+    }
+  }
+  tty.write("reader done\r\n")
 }
 
 ///|
@@ -133,6 +153,11 @@ async fn call(tty : @tty.Tty, name : String, params : Json) -> Json {
         raise invalid_params("`bytes` must be a base64 string")
       }
       tty.write(@base64.decode(bytes))
+      null
+    }
+    "spawn_reader" => {
+      @process.spawn_orphan(@env.args()[0], [], extra_env={ "TTYD_READER": "1" })
+      |> ignore
       null
     }
     _ => raise RpcError(code=-32601, message="Method not found: \{name}")

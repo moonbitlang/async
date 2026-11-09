@@ -126,6 +126,14 @@ async fn Ttyd::send_input(self : Ttyd, bytes : Bytes) -> Unit {
 }
 
 ///|
+/// Start another process reading the terminal of `ttyd`, see `reader` in
+/// `main.mbt`, and wait until it is about to read. Send `q` to stop it.
+async fn Ttyd::spawn_reader(self : Ttyd) -> Unit {
+  self.call("spawn_reader", params={}) |> ignore
+  self.expect_output_text("reader ready")
+}
+
+///|
 fn Ttyd::resize(self : Ttyd, rows : Int32, cols : Int32) -> Unit raise {
   self.pty.resize(rows~, cols~)
 }
@@ -443,6 +451,43 @@ async test "a cooked read can be cancelled" {
   with_ttyd() <| ttyd => {
     ttyd.send_input(b"partial")
     expect_read_event_to_timeout(ttyd, timeout=100)
+  }
+}
+
+///|
+async test "a read stays cancellable when another reader takes its input" {
+  with_ttyd() <| ttyd => {
+    ttyd.make_raw()
+    ttyd.spawn_reader()
+    // Both readers wake up for each key and race for it. Repeat until the
+    // other reader wins: `ttyd` must then wait again, so its timeout can
+    // cancel the read, rather than block until more input arrives.
+    let mut reader_won = false
+    for _ in 0..<20 {
+      reader_won = @async.with_task_group(group => {
+        // A failed task would fail the group, so settle the result inside it.
+        let read = group.spawn(() => {
+          try ttyd.read_event(timeout=300) catch {
+            Timeout => true
+            error => raise error
+          } noraise {
+            event => {
+              assert_eq(event, Some(Input(b"a")))
+              false
+            }
+          }
+        })
+        @async.sleep(100)
+        ttyd.send_input(b"a")
+        read.wait()
+      })
+      if reader_won {
+        break
+      }
+    }
+    ttyd.send_input(b"q")
+    ttyd.expect_output_text("reader done")
+    assert_true(reader_won)
   }
 }
 
