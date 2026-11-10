@@ -611,14 +611,16 @@ async test "sender fixed length large write" {
           continue received
         }
       }
-      assert_eq(total, data_len)
+      assert_eq(total, data_len + 1)
     }
     defer w.close()
     let sender = Sender::new(w)
     sender.send_response(200, "OK", cookies=[], request_method=Get, extra_headers={
-      "Content-Length": data_len.to_string(),
+      "Content-Length": (data_len + 1).to_string(),
     })
     sender.write(data)
+    sender.write(b"!")
+    sender.end_body()
   }
 }
 
