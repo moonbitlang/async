@@ -41,7 +41,7 @@ pub using @coroutine {pause}
 pub using @coroutine {is_being_cancelled}
 
 ///|
-#deprecated("`catch` can no longer capture cancellation, and cancellation is no longer represented as an error, so `is_cancellation_error` is now meaningless. Use `with_cancellation_handler` or `is_being_cancelled` instead.")
+#deprecated("`catch` can no longer capture cancellation, and cancellation is no longer represented as an error, so `is_cancellation_error` is now meaningless. Use `handle_cancellation` or `is_being_cancelled` instead.")
 pub fn is_cancellation_error(_ : Error) -> Bool {
   false
 }
