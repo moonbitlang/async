@@ -214,6 +214,12 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
   void (*wakeup_callback)(void)
 ) {
   struct EventBusWaiter *waiter = (struct EventBusWaiter*)malloc(sizeof(struct EventBusWaiter));
+  if (!waiter) {
+#ifdef _WIN32
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+#endif
+    return 0;
+  }
   waiter->event_bus = bus;
   waiter->wakeup_callback = wakeup_callback;
 
@@ -242,6 +248,14 @@ struct EventBusWaiter *moonbitlang_async_spawn_event_bus_waiter(
 #ifdef _WIN32
 
   waiter->thread_id = CreateThread(NULL, 512, &waiter_loop, waiter, 0, 0);
+  if (!waiter->thread_id) {
+    DWORD error = GetLastError();
+    mutex_destroy(&waiter->lock);
+    cond_destroy(&waiter->waker);
+    free(waiter);
+    SetLastError(error);
+    return 0;
+  }
 
 // #ifdef _WIN32
 #else
@@ -309,7 +323,8 @@ void moonbitlang_async_terminate_event_bus_waiter(struct EventBusWaiter *waiter)
   mutex_unlock(&waiter->lock);
 
 #ifdef _WIN32
-  WaitForSingleObject(waiter->thread_id, INFINITE);
+  if (WaitForSingleObject(waiter->thread_id, INFINITE) != WAIT_OBJECT_0)
+    moonbit_panic();
   CloseHandle(waiter->thread_id);
 #else
   pthread_join(waiter->thread_id, 0);
