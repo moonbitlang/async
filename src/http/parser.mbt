@@ -173,7 +173,7 @@ impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
       } else {
         len_str
       }
-      let next_chunk_len = @string.parse_uint64(len_str, base=16) catch {
+      let next_chunk_len = @string.parse_uint64(len_str, radix=16) catch {
         _ => raise BadRequest
       }
       guard next_chunk_len > 0 else {
@@ -323,7 +323,7 @@ fn Reader::setup_message_body(
 ) -> Unit raise {
   let content_length = match headers.get("Content-Length") {
     None => None
-    Some(value) => Some(@string.parse_uint64(value, base=10))
+    Some(value) => Some(@string.parse_uint64(value, radix=10))
   }
   let chunked = match headers.get("Transfer-Encoding") {
     None => false
@@ -437,7 +437,7 @@ async fn Reader::read_response(
   }
   let response_line = response_line[protocol_len + 1:]
   guard response_line.find(" ") is Some(code_len) else { raise BadRequest }
-  let code = @string.parse_int(response_line[:code_len], base=10) catch {
+  let code = @string.parse_int(response_line[:code_len], radix=10) catch {
     _ => raise BadRequest
   }
   let reason = response_line[code_len + 1:].to_owned()

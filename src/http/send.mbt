@@ -51,7 +51,7 @@ fn sanitize_header_value(s : StringView) -> StringView {
       // fast path: no CRLF detected, return immediately
       s
     }
-    let buf = StringBuilder(size_hint=s.length() - crlf_count)
+    let buf = StringBuilder(capacity=s.length() - crlf_count)
     for c in s {
       match c {
         '\r' | '\n' => ()
@@ -342,7 +342,7 @@ async fn Sender::send_headers(self : Sender, headers : Headers) -> Int64? {
       continue
     }
     if k == "Content-Length" {
-      let len = @string.parse_int64(v.trim(), base=10)
+      let len = @string.parse_int64(v.trim(), radix=10)
       content_length = Some(len)
     } else if forbidden_headers.contains(k) {
       continue

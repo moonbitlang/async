@@ -404,7 +404,7 @@ async fn read_bounded(
   limit : Int32,
   stream : String,
 ) -> Bytes {
-  let buffer = @buffer.Buffer(size_hint=4096)
+  let buffer = @buffer.Buffer(capacity=4096)
   for ;; {
     let remaining = limit - captured.val
     let chunk_size = if remaining < 4096 { remaining + 1 } else { 4096 }
@@ -440,7 +440,7 @@ async fn read_lines(
   on_line : async (String) -> Unit,
   limit : Int32,
 ) -> Unit {
-  let pending = @buffer.Buffer(size_hint=4096)
+  let pending = @buffer.Buffer(capacity=4096)
   while reader.read_some(max_len=4096) is Some(chunk) {
     let mut start = 0
     for index in 0..<chunk.length() {
