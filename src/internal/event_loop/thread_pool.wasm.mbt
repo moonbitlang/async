@@ -219,7 +219,8 @@ fn Job::write_console(
 ///|
 #unsafe_skip_stub_check
 #borrow(filename)
-fn JobHandle::open(
+fn JobHandle::openat(
+  parent : @fd_util.Fd,
   filename : @os_string.OsString,
   filename_len~ : Int32 = filename.to_string().length(),
   // 0 => read only, 1 => write only, 2 => read write
@@ -233,7 +234,7 @@ fn JobHandle::open(
   mode~ : Int32,
   stat_request~ : UInt32,
   stat_buf_len~ : Int32,
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_open_stat_job"
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_openat_job"
 
 ///|
 priv struct OpenAtJob(Job)
@@ -255,12 +256,10 @@ fn Job::openat(
   stat_buf~ : FixedArray[Byte],
   stat_buf_len~ : Int32,
 ) -> OpenAtJob {
-  if @fd_util.fd_is_valid(parent) {
-    panic()
-  }
   OpenAtJob(
     Job(
-      JobHandle::open(
+      JobHandle::openat(
+        parent,
         filename,
         access,
         create~,
@@ -420,17 +419,15 @@ fn Job::flock(fd : @fd_util.Fd, exclusive : Bool) -> Job {
 ///|
 #unsafe_skip_stub_check
 #borrow(path)
-fn JobHandle::remove(
+fn JobHandle::removeat(
+  parent : @fd_util.Fd,
   path : @os_string.OsString,
   path_len~ : Int32 = path.to_string().length(),
-) -> JobHandle = "moonbitlang/async" "thread_pool/make_remove_job"
+) -> JobHandle = "moonbitlang/async" "thread_pool/make_removeat_job"
 
 ///|
 fn Job::removeat(parent : @fd_util.Fd, path : @os_string.OsString) -> Job {
-  if @fd_util.fd_is_valid(parent) {
-    panic()
-  }
-  Job(JobHandle::remove(path))
+  Job(JobHandle::removeat(parent, path))
 }
 
 ///|

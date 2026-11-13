@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "relative open" {
   let old_path = "_build/relative_open_test"
   let new_path = "_build/relative_open_test_renamed"
@@ -30,6 +30,8 @@ async test "relative open" {
     err =>
       raise Failure("incorrect error when accessing out-dated old path: \{err}")
   }
+  @fs.mkdir(old_path)
+  @fs.write_file("\{old_path}/file", "replacement")
   inspect(@fs.read_file("\{new_path}/file").text(), content="abcd")
   let file = dir.open("file", mode=ReadOnly)
   defer file.close()
@@ -37,7 +39,7 @@ async test "relative open" {
 }
 
 ///|
-#cfg(target="native")
+#cfg(any(target="native", target="wasm"))
 async test "relative remove" {
   let old_path = "_build/relative_remove_test"
   let new_path = "_build/relative_remove_test_renamed"
@@ -54,7 +56,46 @@ async test "relative remove" {
     err =>
       raise Failure("incorrect error when accessing out-dated old path: \{err}")
   }
+  @fs.mkdir(old_path)
+  @fs.write_file("\{old_path}/file", "replacement")
   inspect(@fs.read_file("\{new_path}/file").text(), content="abcd")
   dir.remove("file")
   assert_false(@fs.exists("\{new_path}/file"))
+  inspect(@fs.read_file("\{old_path}/file").text(), content="replacement")
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "relative remove rejects parent traversal and absolute paths" {
+  let root = "_build/relative_remove_validation_test"
+  @fs.mkdir("\{root}/base/nested", recursive=true)
+  defer @fs.rmdir(root, recursive=true)
+  @fs.write_file("\{root}/victim", "keep")
+  let absolute = @fs.realpath("\{root}/victim")
+  let dir = @fs.opendir("\{root}/base")
+  defer dir.close()
+  for path in ["../victim", "nested/../../victim", absolute] {
+    match @test_util.expect_error_async(() => dir.remove(path)) {
+      Failure(_) => ()
+      err => raise Failure("expected filename validation failure, got \{err}")
+    }
+    inspect(@fs.read_file("\{root}/victim").text(), content="keep")
+  }
+}
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "relative remove normalizes paths like relative open" {
+  let root = "_build/relative_remove_normalization_test"
+  @fs.mkdir("\{root}/nested", recursive=true)
+  defer @fs.rmdir(root, recursive=true)
+  @fs.write_file("\{root}/nested/file", "keep")
+  let dir = @fs.opendir(root)
+  defer dir.close()
+  let path = match @event_loop.platform {
+    Windows => ".\\nested//./file"
+    Linux | MacOS => ".//nested/./file"
+  }
+  dir.remove(path)
+  assert_false(@fs.exists("\{root}/nested/file"))
 }
