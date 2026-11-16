@@ -109,3 +109,30 @@ async test "request to an IPv6 address" {
     inspect(body.text(), content="Host: [::1]:\{port}")
   }
 }
+
+///|
+#cfg(any(target="native", target="wasm"))
+async test "toplevel helpers support explicit `Content-Length`" {
+  @async.with_task_group <| group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    let port = server.addr.port()
+    group.spawn_bg(no_wait=true) <| () => {
+      server.run_forever() <| ((request, body, conn) => {
+        guard request.headers.get("Content-Length") is Some(len) else {
+          fail("expected `Content-Length` header, found nothing")
+        }
+        let len = @string.parse_int(len)
+        assert_eq(body.read_all().binary().length(), len)
+        conn..send_response(200, "OK").end_response()
+      })
+    }
+    let (response, _) = @http.put("http://127.0.0.1:\{port}", b"abcd", headers={
+      "Content-Length": "4",
+    })
+    inspect(response.code, content="200")
+    let _ = @http.post("http://127.0.0.1:\{port}", b"abcd", headers={
+      "Content-Length": "4",
+    })
+    inspect(response.code, content="200")
+  }
+}
