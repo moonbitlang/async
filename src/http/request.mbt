@@ -91,9 +91,12 @@ pub async fn request(
   proxy? : Client,
 ) -> (Response, &@io.Data) {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, headers~, protocol~, proxy?)
+  let client = Client::connect(host, protocol~, proxy?)
   defer client.close()
-  let response = client..request(meth, path)..write(body).end_request()
+  let response = client
+    ..request(meth, path, extra_headers=headers)
+    ..write(body)
+    .end_request()
   (response, client.read_all())
 }
 
@@ -157,9 +160,12 @@ pub async fn get_stream(
   proxy? : Client,
 ) -> (Response, Client) {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, headers~, protocol~, proxy?)
+  let client = Client::connect(host, protocol~, proxy?)
   errdefer client.close()
-  let response = client..request(Get, path)..write(body).end_request()
+  let response = client
+    ..request(Get, path, extra_headers=headers)
+    ..write(body)
+    .end_request()
   (response, client)
 }
 
@@ -182,9 +188,9 @@ pub async fn put_stream(
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, headers~, proxy?)
+  let client = Client::connect(host, protocol~, proxy?)
   errdefer client.close()
-  client.request(Put, path)
+  client.request(Put, path, extra_headers=headers)
   client
 }
 
@@ -207,8 +213,8 @@ pub async fn post_stream(
   proxy? : Client,
 ) -> Client {
   let (protocol, host, path) = resolve_url(uri)
-  let client = Client::connect(host, protocol~, headers~, proxy?)
+  let client = Client::connect(host, protocol~, proxy?)
   errdefer client.close()
-  client.request(Post, path)
+  client.request(Post, path, extra_headers=headers)
   client
 }
