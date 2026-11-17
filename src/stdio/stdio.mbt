@@ -52,7 +52,10 @@ pub extend Input with @io.Reader::{
 }
 
 ///|
-struct Output(Result[@event_loop.IoHandle, Error])
+struct Output {
+  io : Result[@event_loop.IoHandle, Error]
+  lock : @async.Mutex
+}
 
 ///|
 /// Return the file descriptor of an output channel.
@@ -62,17 +65,25 @@ struct Output(Result[@event_loop.IoHandle, Error])
 /// This method will fail with error.
 /// So `.fd()` can be used as a way to tell if `stdout`/`stderr` is valid.
 pub fn Output::fd(self : Output) -> @fd_util.Fd raise {
-  self.0.unwrap_or_error().fd()
+  self.io.unwrap_or_error().fd()
 }
 
 ///|
+/// Unlike most ordinary streams, concurrent write over `stdout` or `stderr` is allowed.
+/// Individual writes are automatically serialized internally.
+/// Large writes may get split to multiple writes and may still be interleaved, though.
 pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
-  self.0
+  self.lock.acquire()
+  defer self.lock.release()
+  self.io
   .unwrap_or_error()
   .write(buf, offset~, len~, context="@stdio.Output::write()")
 }
 
 ///|
+/// Unlike most ordinary streams, concurrent write over `stdout` or `stderr` is allowed.
+/// Individual writes are automatically serialized internally.
+/// Large writes may get split to multiple writes and may still be interleaved, though.
 pub extend Output with @io.Writer::{write_once, write, write_reader}
 
 ///|
@@ -101,7 +112,7 @@ pub let stdin : Input = {
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stdout : Output = @event_loop.stdout
+pub let stdout : Output = { io: @event_loop.stdout, lock: Mutex(), }
 
 ///|
 /// The standard error channel.
@@ -115,4 +126,4 @@ pub let stdout : Output = @event_loop.stdout
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stderr : Output = @event_loop.stderr
+pub let stderr : Output = { io: @event_loop.stderr, lock: Mutex(), }
