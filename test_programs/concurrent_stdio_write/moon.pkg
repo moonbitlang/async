@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+}
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")

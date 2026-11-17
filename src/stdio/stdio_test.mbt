@@ -13,11 +13,14 @@
 // limitations under the License.
 
 ///|
-#cfg(any(target="native", target="wasm"))
 let cat : @async.Lazy[String] = Lazy(() => @test_util.build_test_program("cat"))
 
 ///|
-#cfg(any(target="native", target="wasm"))
+let concurrent_stdio_write : @async.Lazy[String] = Lazy(() => {
+  @test_util.build_test_program("concurrent_stdio_write")
+})
+
+///|
 async test "redirect_file" {
   let cat = cat.wait()
   let out_file = "_build/stdio_file_test"
@@ -32,7 +35,6 @@ async test "redirect_file" {
 }
 
 ///|
-#cfg(any(target="native", target="wasm"))
 async test "redirect pipe" {
   @async.with_task_group() <| root => {
     let cat = cat.wait()
@@ -61,7 +63,6 @@ async test "redirect pipe" {
 }
 
 ///|
-#cfg(any(target="native", target="wasm"))
 async test "stdio cancel" {
   let cat = cat.wait()
   @async.with_task_group() <| group => {
@@ -98,7 +99,6 @@ async test "stdio cancel" {
 }
 
 ///|
-#cfg(any(target="native", target="wasm"))
 async test "stdout and stderr are the same" {
   let cat = cat.wait()
   let (cat_read, we_write) = @process.write_to_process()
@@ -118,4 +118,15 @@ async test "stdout and stderr are the same" {
       ),
     )
   }
+}
+
+///|
+async test "concurrent stdio write" {
+  let prog = concurrent_stdio_write.wait()
+  let (exit_code, stdout, stderr) = @process.collect_output(prog, [])
+  inspect(exit_code, content="0")
+  inspect(stdout.text().iter().filter(c => c is 'a').count(), content="100")
+  inspect(stdout.text().iter().filter(c => c is 'b').count(), content="100")
+  inspect(stderr.text().iter().filter(c => c is 'a').count(), content="100")
+  inspect(stderr.text().iter().filter(c => c is 'b').count(), content="100")
 }
