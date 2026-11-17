@@ -207,6 +207,14 @@ async test "user agent" {
     })
     defer client.close()
     inspect(response.code, content="200")
+    let client = @http.Client("http://127.0.0.1:\{port}", headers={
+      "User-Agent": "persistent-UA/1.0",
+    })
+    defer client.close()
+    let response = client
+      ..request(Get, "/", extra_headers={ "User-Agent": "per-request-UA/2.0" })
+      .end_request()
+    inspect(response.code, content="200")
   }
   inspect(
     log.to_string(),
@@ -215,6 +223,8 @@ async test "user agent" {
       #|User-Agent: moonbit-http-client/1.1
       #|server received request: GET /
       #|User-Agent: my-custom-UA/4.2
+      #|server received request: GET /
+      #|User-Agent: per-request-UA/2.0
       #|
     ),
   )

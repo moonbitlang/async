@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/int",
   "moonbitlang/core/string",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
   "moonbitlang/async/tls",
@@ -13,7 +14,6 @@ import {
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/gzip" @gzip_stream,
@@ -22,7 +22,6 @@ import {
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/test",
   "moonbitlang/async",
   "moonbitlang/async/fs",

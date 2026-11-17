@@ -21,6 +21,7 @@ pub let unimplemented : Unit = {
   ignore(@int.MAX_VALUE)
   ignore(() => @string.parse_int("0"))
   ignore(@cmp.minimum(0, 0))
+  ignore(@utf8.encode(""))
   ignore(@io.pipe)
   ignore(@socket.unimplemented)
   ignore(@tls.unimplemented)
