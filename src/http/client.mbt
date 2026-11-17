@@ -56,25 +56,25 @@ async fn Client::connect(
     Plain(@socket.Tcp::connect_to_host(hostname, port~))
   }
   errdefer transport.close()
-  headers["Host"] = host.to_owned()
-  // TODO: case insensitive check
-  if !headers.contains("User-Agent") {
-    headers["User-Agent"] = "moonbit-http-client/1.1"
+  let user_agent = headers.get("User-Agent")
+  let (read_transport, write_transport) = match transport {
+    Plain(conn) => (conn as &@io.Reader, conn as &@io.Writer)
+    Proxy(conn) => (conn as &@io.Reader, conn as &@io.Writer)
   }
-  let (tls, reader, sender) = match (protocol, transport) {
-    (Http, Plain(conn)) =>
-      (None, Reader::new(conn), Sender::new(conn, headers~))
-    (Https, Plain(conn)) => {
-      let tls = @tls.Tls::client(conn, host=hostname.to_owned(), trust~)
-      (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
-    }
-    (Http, Proxy(proxy)) =>
-      (None, Reader::new(proxy), Sender::new(proxy, headers~))
-    (Https, Proxy(proxy)) => {
-      let tls = @tls.Tls::client(proxy, host=hostname.to_owned(), trust~)
-      (Some(tls), Reader::new(tls), Sender::new(tls, headers~))
+  let (tls, read_transport, write_transport) = match protocol {
+    Http => (None, read_transport, write_transport)
+    Https => {
+      let tls = @tls.Tls::client_from_pair(
+        read_transport,
+        write_transport,
+        host=hostname.to_owned(),
+        trust~,
+      )
+      (Some(tls), tls, tls)
     }
   }
+  let reader = Reader::new(read_transport)
+  let sender = Sender::client(write_transport, host~, user_agent?, headers~)
   {
     transport,
     tls,
@@ -99,11 +99,13 @@ async fn Client::connect(
 /// i.e. all requests made from this client will share these headers.
 /// The ownership of `headers` will be transferred to the new client,
 /// so `headers` should not be used by the caller later.
-/// The following headers is automatically set,
+/// The following headers are managed automatically
 /// and must not be specified in `headers`:
 ///
 /// - Host
 /// - Content-Length, Transfer-Encoding
+///
+/// `User-Agent` may be specified in `headers` to override the library default.
 ///
 /// If `proxy` is present, it should be another HTTP client in a clean state.
 /// The new client will send a `CONNECT` request via the proxy client
@@ -271,10 +273,8 @@ pub async fn Client::end_request(
 /// - Host
 /// - Transfer-Encoding
 ///
-/// The following headers can only be set globally for each client on initialization,
-/// and must not be set on a per-request basis:
-///
-/// - User-Agent
+/// `User-Agent` may be specified in `extra_headers` to override the value
+/// configured when the client was created for this request only.
 ///
 /// If `Content-Length` is present in `extra_headers`,
 /// it should be the total length of the request body.

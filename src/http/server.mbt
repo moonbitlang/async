@@ -27,10 +27,9 @@ struct ServerConnection {
 ///
 /// `headers` can be used to specify persistent headers for the connection,
 /// i.e. all response sent by this connection will share these headers.
-/// The following headers is automatically set,
-/// and must not be specified in `headers`:
-/// 
-/// - Content-Length, Transfer-Encoding
+/// `Content-Length` and `Transfer-Encoding` are managed automatically.
+/// `Host` and `User-Agent` are request-only headers.
+/// These headers are ignored if specified in `headers`.
 pub fn ServerConnection::new(
   conn : @socket.Tcp,
   headers~ : Headers = Map([]),
@@ -38,7 +37,7 @@ pub fn ServerConnection::new(
   {
     reader: Reader::new(conn),
     conn,
-    sender: Sender::new(conn, headers~),
+    sender: Sender::server(conn, headers~),
     closed: false,
     request_method: Get,
   }
