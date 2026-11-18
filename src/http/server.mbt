@@ -302,9 +302,13 @@ pub async fn Server::run_forever(
       f(request, conn, conn)
       if conn.closed {
         break
-      } else if conn.sender.mode
-        is (WaitingResponseBody | SendingFixed(_) | SendingBody) {
-        conn.end_response()
+      }
+      match conn.sender.mode {
+        SendingHeader => ()
+        WaitingResponseBody | SendingFixed(_) | SendingBody =>
+          conn.end_response()
+        PassThrough => break
+        WaitingRequestBody => panic()
       }
     }
   })
