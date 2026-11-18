@@ -20,7 +20,8 @@ struct Timer {
 }
 
 ///|
-let timer_id : Ref[Int32] = { val: 0, }
+#warnings("-alert_internal")
+let timer_id : Ref[Int32] = @runtime_internal.timer_id
 
 ///|
 pub fn Timer::new(duration : Int32, callback : () -> Unit) -> Timer {
