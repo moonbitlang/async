@@ -288,12 +288,21 @@ pub async fn Server::accept(self : Server) -> (ServerConnection, @socket.Addr) {
 /// If `f` manually closes the connection,
 /// the connection will be dropped after `f` returns.
 /// On error or cancellation, the server will be closed automatically.
+///
+/// The supplied server connection may get closed after `f` returns,
+/// so `f` should not let the connection escape and use it after `f` returns.
+/// If the request handler need to communicate with other tasks,
+/// use synchronization primitives such as `@async.Cond` or `@async.Queue` instead.
+///
+/// `run_forever` will automatically close the server on cancellation or error,
+/// and callers do not need to close the server manually.
 pub async fn Server::run_forever(
   self : Server,
   f : async (Request, &@io.Reader, ServerConnection) -> Unit,
   allow_failure? : Bool,
   max_connections? : Int32,
 ) -> Unit {
+  defer self.close()
   self.server.run_forever(allow_failure?, max_connections?) <| ((conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)
     defer conn.close()
