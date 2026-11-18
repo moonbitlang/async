@@ -31,7 +31,6 @@ options(
     "io_unix.c",
     "io_windows.c",
     "process.c",
-    "signal.c",
     "stdio.c",
     "fs.c",
     "event_bus.c",

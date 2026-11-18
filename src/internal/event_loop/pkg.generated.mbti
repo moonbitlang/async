@@ -80,8 +80,6 @@ pub fn set_deadlock_handler((Array[SourceLoc]) -> Unit) -> Unit
 
 pub fn set_external_event_loop(&@external_loop_integration.ExternalEventLoop) -> Unit
 
-pub fn set_global_cancellation_signals(ReadOnlyArray[Int32]) -> Unit
-
 pub async fn sleep(Int32) -> Unit noraise
 
 pub async fn spawn_unix(@os_string.OsString, @c_buffer.Buffer, env~ : @c_buffer.Buffer, stdin~ : Int32, stdout~ : Int32, stderr~ : Int32, is_orphan~ : Bool, cwd~ : @os_string.OsString?, context~ : String) -> Process
@@ -95,8 +93,6 @@ pub let stdin : Result[IoHandle, Error]
 pub let stdout : Result[IoHandle, Error]
 
 pub async fn symlink(StringView, StringView, force_symlink~ : Bool, context~ : String) -> Unit
-
-pub fn terminate_process_by_signal(Int32) -> Unit
 
 pub fn with_event_loop(async () -> Unit, max_worker_count? : Int32) -> Unit raise
 
