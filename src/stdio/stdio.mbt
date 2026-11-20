@@ -54,7 +54,7 @@ pub extend Input with @io.Reader::{
 ///|
 struct Output {
   io : Result[@event_loop.IoHandle, Error]
-  lock : @async.Mutex
+  lock : @core_async.Mutex
 }
 
 ///|
@@ -112,7 +112,11 @@ pub let stdin : Input = {
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stdout : Output = { io: @event_loop.stdout, lock: Mutex(), }
+#warnings("-alert_internal")
+pub let stdout : Output = {
+  io: @event_loop.stdout,
+  lock: @runtime_internal.stdout_lock,
+}
 
 ///|
 /// The standard error channel.
@@ -126,4 +130,8 @@ pub let stdout : Output = { io: @event_loop.stdout, lock: Mutex(), }
 /// and submitted to the actual console screen buffer via unicode-safe API.
 /// If the input is not valid UTF-8, the correct parts will be preserved,
 /// but the final output for incorrect parts is undefined
-pub let stderr : Output = { io: @event_loop.stderr, lock: Mutex(), }
+#warnings("-alert_internal")
+pub let stderr : Output = {
+  io: @event_loop.stderr,
+  lock: @runtime_internal.stderr_lock,
+}

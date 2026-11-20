@@ -2,7 +2,12 @@ import {
   "moonbitlang/async/internal/event_loop",
   "moonbitlang/async/internal/fd_util",
   "moonbitlang/async/io",
-  "moonbitlang/async",
+}
+
+#cfg(any(target="native", target="wasm"))
+import {
+  "moonbitlang/core/async" @core_async,
+  "moonbitlang/core/async/runtime_internal",
 }
 
 import {
