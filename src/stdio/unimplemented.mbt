@@ -20,5 +20,4 @@ pub let unimplemented : Unit = {
   ignore(@io.pipe)
   ignore(@event_loop.Timer::new)
   ignore(@fd_util.unimplemented)
-  ignore((_ : @async.Mutex) => ())
 }
