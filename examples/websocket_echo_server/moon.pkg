@@ -3,8 +3,11 @@ import {
   "moonbitlang/async/socket",
   "moonbitlang/async/http",
   "moonbitlang/async/websocket",
-  "moonbitlang/async",
 }
+
+import {
+  "moonbitlang/async",
+} for "wbtest"
 
 supported_targets = "+native"
 
