@@ -37,6 +37,11 @@ pub fn Signal::to_int(signal : Signal) -> Int32 {
 }
 
 ///|
+fn to_core_signal_array(
+  sigs : ReadOnlyArray[Signal],
+) -> ReadOnlyArray[@core_signal.Signal] = "%identity"
+
+///|
 /// Set the list of signals that are used as global cancellation signal.
 /// When a global cancellation signal is received, the whole program will be cancelled gracefully,
 /// using the native cancellation mechanism of `moonbitlang/async`.
@@ -44,4 +49,6 @@ pub fn Signal::to_int(signal : Signal) -> Int32 {
 /// Signals unavailable on current platform will be silently ignored.
 ///
 /// The default list is all supported signals.
-pub using @core_signal {set_global_cancellation_signals}
+pub fn set_global_cancellation_signals(signals : ReadOnlyArray[Signal]) -> Unit {
+  @core_signal.set_global_cancellation_signals(to_core_signal_array(signals))
+}

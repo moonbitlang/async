@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn set_global_cancellation_signals(ReadOnlyArray[@moonbitlang/core/async/signal.Signal]) -> Unit
+pub fn set_global_cancellation_signals(ReadOnlyArray[Signal]) -> Unit
 
 // Errors
 
