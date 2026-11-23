@@ -16,6 +16,7 @@ concurrency:
 
 env:
   MOON_WASM_NEW_ALLOCATOR: "1"
+  MOON_SEPARATE_COMPILATION: "1"
 
 jobs:
   wasm-test:
