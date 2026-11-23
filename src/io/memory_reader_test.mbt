@@ -71,7 +71,7 @@ async test "MemoryReader failure" {
       inspect(
         err,
         content=(
-          #|Failure(failure)
+          #|Failure: failure
         ),
       )
   } noraise {
