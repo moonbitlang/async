@@ -145,7 +145,7 @@ async test "all failure propagates" {
     inspect(
       result,
       content=(
-        #|Failure(Err)
+        #|Failure: Err
       ),
     )
     json_inspect(log, content=[
@@ -246,7 +246,7 @@ async test "any failure without allow_failure" {
   inspect(
     result,
     content=(
-      #|Failure(Err)
+      #|Failure: Err
     ),
   )
   json_inspect(log, content=["task #1 cancelled"])
@@ -329,12 +329,9 @@ async test "any single task" {
 
 ///|
 async test "any empty fails" {
-  debug_inspect(
-    @test_util.expect_error_async(() => (@async.any([]) : Unit)),
-    content=(
-      #|Failure("src/all_any_test.mbt:333:42-333:56@moonbitlang/async FAILED: no tasks provided to any()")
-    ),
-  )
+  let error = @test_util.expect_error_async(() => (@async.any([]) : Unit))
+  guard error is Failure::Failure(message) else { raise error }
+  assert_true(message.has_suffix(" FAILED: no tasks provided to any()"))
 }
 
 ///|
