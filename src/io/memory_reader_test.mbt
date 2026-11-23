@@ -68,10 +68,10 @@ async test "MemoryReader failure" {
   defer r.close()
   try r.read_all().text() catch {
     err =>
-      inspect(
+      debug_inspect(
         err,
         content=(
-          #|Failure(failure)
+          #|Failure("failure")
         ),
       )
   } noraise {

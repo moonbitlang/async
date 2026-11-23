@@ -26,28 +26,28 @@ test "relative open filename validation" {
       inspect(check("file"), content="file")
       inspect(check("a/b//c/"), content="a/b/c")
       inspect(check("./a/b/./c"), content="a/b/c")
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("../a")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("a/../b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("a/b/..")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("/a/b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
     }
@@ -55,64 +55,64 @@ test "relative open filename validation" {
       inspect(check("file"), content="file")
       inspect(check("a\\b//c\\"), content="a\\b\\c")
       inspect(check("./a/b\\./c"), content="a\\b\\c")
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("../a")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("a/../b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("a/b/..")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support `..`)
+          #|Failure("relative open filename validation: relative open does not support `..`")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("\\a\\b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("C:\\a\\b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("C:/a/b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("C:a/b")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("\\\\UNC\\machine\\a")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("\\\\.\\local_device")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
-      inspect(
+      debug_inspect(
         @test.expect_error(() => check("\\\\?\\root_local_device")),
         content=(
-          #|Failure(relative open filename validation: relative open does not support absolute path)
+          #|Failure("relative open filename validation: relative open does not support absolute path")
         ),
       )
     }
