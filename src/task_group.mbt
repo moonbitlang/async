@@ -92,7 +92,7 @@ fn[X] TaskGroup::spawn_coroutine(
   }
 
   let coro = @coroutine.spawn(worker, loc~)
-  self.children.add(coro)
+  self.children.insert(coro)
   if !(self.state is Running) {
     coro.cancel()
   }

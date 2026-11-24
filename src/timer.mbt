@@ -106,7 +106,7 @@ pub async fn Timer::wait(timer : Timer) -> Unit {
   }
 
   let coro = @coroutine.current_coroutine()
-  timer.waiters.add(coro)
+  timer.waiters.insert(coro)
   defer timer.waiters.remove(coro)
   @coroutine.suspend()
   if timer.state is Cancelled(err) {

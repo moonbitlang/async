@@ -131,7 +131,7 @@ pub async fn Client::Client(
 ///|
 pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
   guard! self.request is Some(request)
-  request.body.write_bytes(buf[offset:offset + len])
+  request.body.write_bytesview(buf[offset:offset + len])
   len
 }
 
