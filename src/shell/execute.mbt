@@ -416,7 +416,7 @@ async fn read_bounded(
           raise OutputLimitExceeded(stream~, limit~)
         }
         captured.val = next_total
-        buffer.write_bytes(chunk)
+        buffer.write_bytesview(chunk)
       }
     }
   }
