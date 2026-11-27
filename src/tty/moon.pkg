@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/async/tty" @core_tty,
+}
+
+supported_targets = "native"
+
+options(
+  "allow-experimental-packages": true,
+)

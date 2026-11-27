@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/async/tty"
+
+// Values
+pub async fn open() -> @moonbitlang/core/async/tty.Tty
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @moonbitlang/core/async/tty {type Event}
+
+pub using @moonbitlang/core/async/tty {type Tty}
+
+// Traits

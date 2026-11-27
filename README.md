@@ -29,6 +29,7 @@ This library provides the following packages:
 - `moonbitlang/async/socket`: TCP and UDP socket
 - `moonbitlang/async/tls`: TLS support via OpenSSL
 - `moonbitlang/async/stdio`: operations on standard output channels
+- `moonbitlang/async/tty`: controlling terminal I/O, raw mode, and window resize events on native targets
 - `moonbitlang/async/pipe`: operations on pipes
 - `moonbitlang/async/fs`: file system operations, such as file IO and directory reading
 - `moonbitlang/async/process`: spawning system process
