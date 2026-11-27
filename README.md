@@ -12,11 +12,10 @@ You can find a brief introduction to some examples in `examples/README.md`,
 including the topics each example covers.
 
 This library will be replaced by `moonbitlang/core/async` in the standard library in the future.
-Currently `moonbitlang/core/async` already functions, but its API has not stabilized yet.
+For new libraries/applications, we recommend using `moonbitlang/core/async` directly instead.
+For existing projects, see <https://github.com/moonbitlang/core/blob/main/async/MIGRATION.md> for guide on migrating to `moonbitlang/core/async`.
 This library share the same runtime with `moonbitlang/core/async`,
 so users could mix the two libraries within the same program for incremental migration.
-
-WARNING: this library is current experimental, API is subject to future change.
 
 ## Installation
 In your MoonBit project root, run:
